@@ -1,7 +1,8 @@
 # 🎯 Word Hunter
 
+<img width="2560" height="1390" alt="5uMgNPR0lD" src="https://github.com/user-attachments/assets/07f4a3d6-37e3-491b-81f5-d2d1218a55d0" />
+[old screenshot from 0.1 version]
 
-# <img width="2560" height="1390" alt="5uMgNPR0lD" src="https://github.com/user-attachments/assets/07f4a3d6-37e3-491b-81f5-d2d1218a55d0" />
 # Latest release [download here](https://github.com/Ironship/WordHunter/releases/download/WordHunterv0.2.0/Word.Hunter.exe)
 
 Learn foreign languages by reading real texts — offline, no subscription, no ads.
@@ -14,6 +15,17 @@ Word Hunter is a desktop app that combines an ebook reader with a smart spaced-r
 
 ---
 
+## 💡 Why we built it this way (Design Philosophy)
+
+Word Hunter was designed with specific principles in mind to provide the best, distraction-free language learning experience:
+
+- **100% Offline & Private:** We built this as a standalone desktop app, not a web service. Why? Because your learning data, books, and vocabulary are yours. Everything is stored locally on your machine. No accounts, no telemetry, no subscriptions.
+- **Reading-First Approach:** Vocabulary isn't learned in isolation. We tightly integrated the reader with the dictionary so you always learn words within their native context. The app automatically extracts the sentences where you found the word so you can review them later.
+- **Smart Language Features:** Languages have quirks. For example, German has separable verbs (e.g., *stehe ... auf*). We built a "Smart Suggestion" engine that detects these edge cases and lets you intuitively merge words together. We also fully support multi-word phrases (like *das Fenster*) because languages are about chunks of meaning, not just isolated tokens.
+- **Proven Algorithms:** Instead of reinventing the wheel, we implemented the tried-and-true SM-2 algorithm (the same one used by Anki). It guarantees that your flashcard reviews are spaced optimally, saving you time and maximizing retention.
+
+---
+
 ## 📚 Library — Your Reading Collection
 
 Already have books to study from? Add them and start learning vocabulary instantly.
@@ -22,8 +34,6 @@ Already have books to study from? Add them and start learning vocabulary instant
 - **Custom texts** — drop in any text file, pick the language and difficulty. Every new reading becomes a fresh vocabulary source.
 - **Filters & sorting** — search by title/author, filter by reading level, sort by progress or popularity.
 - **Progress cards** — at a glance you see how many words you know, are learning, and still have ahead of you.
-
-
 
 ---
 
@@ -38,7 +48,12 @@ Open a book and start your journey. Words are color-coded based on your vocabula
 
 Click any word — a panel opens with info: translation, notes, example sentences from the text. The app automatically extracts the context where you encountered that word.
 
-# <img width="2560" height="1390" alt="iMsiMMczRv" src="https://github.com/user-attachments/assets/4a0e7ac8-194e-4d93-ab02-72d4831e66bb" />
+<img width="2560" height="1390" alt="GKkIAUvVTp" src="https://github.com/user-attachments/assets/91a13c3a-09f0-4539-8243-ceb53c98ce44" />
+[old screenshot from 0.1.1 version]
+
+
+<img width="2560" height="1390" alt="iMsiMMczRv" src="https://github.com/user-attachments/assets/4a0e7ac8-194e-4d93-ab02-72d4831e66bb" />
+[old screenshot from 0.1 version]
 
 ---
 
@@ -82,7 +97,6 @@ Looking for reading material at your level? Search Project Gutenberg's catalog d
 - **Vocabulary stats** — before adding a book, see how many unique words it contains and what percentage you already know
 - **One-click add** — save your pick to the library instantly
 
-
 ---
 
 ## ⚙️ Settings — tailor the app to yourself
@@ -98,15 +112,13 @@ Looking for reading material at your level? Search Project Gutenberg's catalog d
 | **Token highlighting** — toggle word colors on/off | Sometimes you just want clean text for printing |
 | **Speech speed** — slow, normal, fast | Listen at the pace your brain processes |
 
-
-
 ---
 
 ## 🌐 8 Languages Supported
 
 Word Hunter ships with full translations. Supported languages:
 
-🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська
+🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська · 🇷🇺 Państwo Moskiewskie
 
 Interface language and learning language are independent — e.g., read in German while the app translates to Polish.
 
@@ -118,7 +130,6 @@ Word Hunter is a **single desktop application** — not a website, not a browser
 
 When you add new words or change settings, data is saved to `vocab.json` (plain JSON) and an SQLite database — so your data is always visible, backupable, and easy to export.
 
-
 ---
 
 ## 📦 Installation
@@ -126,11 +137,31 @@ When you add new words or change settings, data is saved to `vocab.json` (plain 
 ### Requirements
 - Windows 10/11
 
-Thats it. App is just a portable .exe file. No installation needed. User data is stored in **%APPDATA%\WordHunter**.
+That's it. App is just a portable `.exe` file. No installation needed. User data is stored in `%APPDATA%\WordHunter`.
 
 ---
 
-##  License
+## 🚀 Roadmap (TODO)
+
+Here is a glimpse of features we are planning for the future to make Word Hunter even better:
+
+- **[FEATURE] Better text to speech:** Integrating more advanced TTS engines (e.g., Edge TTS, Google Cloud, or OpenAI) for more natural-sounding voices and native-like intonation.
+- **[FEATURE] Import tool for subtitles as word source:** Allowing users to import `.srt` or `.vtt` movie/series subtitles so they can learn vocabulary directly from their favorite shows and videos.
+
+---
+
+## ☕ Support the Project
+
+If Word Hunter helps you learn languages and you'd like to support its continued development, consider buying me a coffee:
+
+- [Suppi (PLN)](https://suppi.pl/aryo)
+- [Patronite](https://patronite.pl/aryo)
+
+Thank you! ❤️
+
+---
+
+## 📄 License
 
 MIT License — see the `LICENSE` file.
 
