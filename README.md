@@ -36,6 +36,7 @@ Already have books to study from? Add them and start learning vocabulary instant
 
 - **Built-in texts** — a curated collection of books from Project Gutenberg, tagged with CEFR levels (A1–C1). Pick something appropriate for your level and read without second-guessing.
 - **Custom texts** — drop in any text file, pick the language and difficulty. Every new reading becomes a fresh vocabulary source.
+- **Edit books** — easily modify the title, author, cover, or even the full text of any added book directly from the library.
 - **Filters & sorting** — search by title/author, filter by reading level, sort by progress or popularity.
 - **Progress cards** — at a glance you see how many words you know, are learning, and still have ahead of you.
 
@@ -118,11 +119,11 @@ Looking for reading material at your level? Search Project Gutenberg's catalog d
 
 ---
 
-## 🌐 8 Languages Supported
+## 🌐 9 Languages Supported
 
 Word Hunter ships with full translations. Supported languages:
 
-🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська · 🇷🇺 Państwo Moskiewskie
+🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська · 🇷🇺 Państwo Moskiewskie · 🇯🇵 日本語
 
 Interface language and learning language are independent — e.g., read in German while the app translates to Polish.
 
