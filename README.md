@@ -106,7 +106,7 @@ Looking for reading material at your level? Search Project Gutenberg's catalog d
 
 Word Hunter ships with full translations. Supported languages:
 
-🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська · 🇷🇺 Русский
+🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська
 
 Interface language and learning language are independent — e.g., read in German while the app translates to Polish.
 
