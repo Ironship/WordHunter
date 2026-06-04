@@ -1,4 +1,8 @@
-# 🎯 Word Hunter
+# <img width="3410" height="1017" alt="Gemini_Generated_Image_1pfa6z1pfa6z1pfa" src="https://github.com/user-attachments/assets/5d236aa6-d669-49d0-8c41-5a2ee47d372b" />
+
+
+# Easy spaced repetition learning tool with books and texts.
+
 
 <img width="2560" height="1390" alt="5uMgNPR0lD" src="https://github.com/user-attachments/assets/07f4a3d6-37e3-491b-81f5-d2d1218a55d0" />
 [old screenshot from 0.1 version]
