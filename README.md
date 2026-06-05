@@ -147,15 +147,6 @@ That's it. App is just a portable `.exe` file. No installation needed. User data
 
 ---
 
-## 🚀 Roadmap (TODO)
-
-Here is a glimpse of features we are planning for the future to make Word Hunter even better:
-
-- **[FEATURE] Better text to speech:** Integrating more advanced TTS engines (e.g., Edge TTS, Google Cloud, or OpenAI) for more natural-sounding voices and native-like intonation.
-- **[FEATURE] Import tool for subtitles as word source:** Allowing users to import `.srt` or `.vtt` movie/series subtitles so they can learn vocabulary directly from their favorite shows and videos.
-
----
-
 ## ☕ Support the Project
 
 If Word Hunter helps you learn languages and you'd like to support its continued development, consider buying me a coffee:
@@ -179,6 +170,10 @@ MIT License — see the `LICENSE` file.
 - **Piotr Woźniak / SuperMemo** — classic SM-2 algorithm behind spaced repetition (also used by Anki and Memrise)
 - **Gutendex** — simple API wrapper around Project Gutenberg's catalog
 - **YouGlish** — pronunciation video search engine embedded via iframe
+
+## Why there is no source code?
+
+In current state app code is bunch of scripts which are a litle bit messy. I want to cleanup it and think about architecture or how to handle extensions. On version 1.0 I want to publish it as complete learning tool.
 
 ---
 
