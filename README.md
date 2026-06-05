@@ -7,7 +7,7 @@
 <img width="2560" height="1390" alt="5uMgNPR0lD" src="https://github.com/user-attachments/assets/07f4a3d6-37e3-491b-81f5-d2d1218a55d0" />
 [old screenshot from 0.1 version]
 
-# Latest release [download here](https://github.com/Ironship/WordHunter/releases/tag/WordHunterv0.2.3)
+# Latest release [download here](https://github.com/Ironship/WordHunter/releases/tag/WordHunter0.2.3)
 
 
 Learn foreign languages by reading real texts — offline, no subscription, no ads.
