@@ -7,7 +7,7 @@
 
 [Word Hunter screenshot from 0.2.4 version work in progress]
 
-# Latest release [download here](https://github.com/Ironship/WordHunter/releases/tag/WordHunter0.2.3)
+# Latest release [download here](https://github.com/Ironship/WordHunter/releases)
 
 
 Learn foreign languages by reading real texts — offline, no subscription, no ads.
