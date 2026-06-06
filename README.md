@@ -3,9 +3,10 @@
 
 # Easy spaced repetition learning tool with books and texts.
 
-<img width="1920" height="1040" alt="image" src="https://github.com/user-attachments/assets/0b60d5f3-6f16-4230-9cfd-2ded022f7fb0" />
+<img width="1920" height="1040" alt="image" src="https://github.com/user-attachments/assets/fb3d4c09-d930-4302-830f-671fab587660" />
 
-[Word Hunter screenshot from 0.2.4 version work in progress]
+
+[Word Hunter screenshot from 0.2.5 version work in progress]
 
 # Latest release [download here](https://github.com/Ironship/WordHunter/releases)
 
