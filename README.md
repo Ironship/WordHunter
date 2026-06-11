@@ -178,72 +178,13 @@ In current state app code is bunch of scripts which are a litle bit messy. I wan
 
 ---
 
-## 📋 Changelog
-
-### v0.2.7 (current)
-- **Translator Tab** — dedicated offline neural translation tab (shortcut: `T`) with instant translate-as-you-type, source/target swap, auto-download language packs
-- **Graphs Tab** — 9 canvas charts (due forecast, status donut, intervals, ease factor, repetitions, cards added, day-of-week, mature vs young, FSRS stability vs difficulty) + GitHub-style contribution heatmap
-- **Keyboard Shortcut Overhaul** — `T` → Translator, `W` → jump to text, `G` → Graphs; removed conflicts
-- **Library Sorting** — sort by known/new/learning word counts; reverse sort toggle
-- **Image Selection** — Ctrl+1/2/3 badges; "own image" upload option
-- **implement TTS Position-Aware Reading** — starts from clicked word, not beginning of page
-- **attempts to implement session Persistence** — reader position saved on view switch; scroll restoration fallback
-- **Settings Reorganization** — Reader, Flashcards, Translator & Dictionary sections
-- **Flashcard UI Fixes** — card proportions, heatmap centering, overdue bar overlap fixed
-- **Events.js Refactor** — split 1,335-line file into 5 feature submodules
-- **Bug fixes** — translator state sync, XSS fix, duplicate IDs, graph clipping, mature/young legend layout
-
-### v0.2.6
-- **Offline AI Translation (Argos Translate)** — entirely offline neural engine; disabled by default, ~100-200 MB per language
-- **Improved Focus Management** — no auto-focus conflicts with shortcuts
-- **Escape Key Actions** — smooth unfocus for text boxes and image selection
-- **Image Selection Shortcuts** — Ctrl+1/2/3 for top suggestions
-- **Keyboard Shortcut Badges** — visual hints (E, N, I) in Reader word panel
-- **Reader Progress Persistence** — remembers exact page per book
-- **Configurable Anki Export** — defaults to "Learning" words with checkboxes
-- **Vocab Search Debounce** — 200ms debounce
-- **Critical Data Persistence Fix** — vocabulary and custom texts now save correctly
-- **SQLite Thread Safety** — thread-local connections prevent corruption
-- **EPUB Security Hardening** — ZIP bomb and XXE protection
-- **Localization Overhaul** — full Japanese support; improved Ukrainian/Muscovian translations
-
-### v0.2.5
-- **New Formats** — EPUB, SRT, VTT, ASS native import
-- **FSRS Algorithm** — optional Free Spaced Repetition Scheduler (default: SM-2)
-- **YouGlish & Dictionary** — seamless integration in reader + flashcards
-- **Custom Book Covers** — upload and assign cover images
-- **Custom Tags** — add/remove tags for books
-- **Review Input** — type translation directly during review if card back is empty
-- **Settings Reorganization** — detailed data management (export, import, reset)
-
-### v0.2.3
-- **Microsoft Edge TTS** — higher quality voice synthesis (optional setting)
-
-### v0.2.2
-- **Bug fixes** — layout clipping, import element, image scaling, proxy URLs, book switching race condition
-- **Clean-up** — removed hardcoded test books
-
-### v0.2.1
-- **9 Languages** — added Japanese; full interface and learning runtime localization
-- **Multi-Word Phrases** — correct recognition of grouped terms (e.g., "das Fenster")
-- **Wikipedia & Wikinews** — real-world article fetching with image rendering
-- **Smart Suggestion Refinements** — blacklist to eliminate invalid separable verb combos
-- **Book Editing** — modify title, author, cover, or full text
-- **TinySegmenter** — Japanese text tokenization
-- **Linux Build** — `Word.Hunter.Linux` portable binary
-
-### v0.2.0 — Initial Public Release
-- Built-in graded readers from Project Gutenberg (CEFR A1–C1)
-- Interactive reader with color-coded word states
-- SM-2 spaced repetition flashcards
-- Vocabulary manager with status, translation, notes, examples
-- Discover panel — search Gutenberg catalog via Gutendex API
-- 8 interface languages
-- YouGlish pronunciation video integration
-- Light / Dark / Auto theme
-- Custom text import
-- Settings: font, size, line height, alignment, column width, TTS speed
-
----
-
 *Word Hunter v0.2.7 — Learn languages by reading real texts.*
+
+
+### I have found similar projects. I didn't copy them I found them AFTER i made my own app but as we all seek to learn i dont mind to mention those other projects.
+
+https://www.vocabtracker.com - online word tracking tool
+https://github.com/word-hunter/word-hunter - chrome extension. What a coincidence it even has same name xD but its only for english as i see
+https://github.com/word-hunter/flow-read - This seems very similar to my app.
+
+if i find more i will link it here.
