@@ -183,8 +183,8 @@ In current state app code is bunch of scripts which are a litle bit messy. I wan
 
 ### I have found similar projects. I didn't copy them I found them AFTER i made my own app but as we all seek to learn i dont mind to mention those other projects.
 
-https://www.vocabtracker.com - online word tracking tool
-https://github.com/word-hunter/word-hunter - chrome extension. What a coincidence it even has same name xD but its only for english as i see
-https://github.com/word-hunter/flow-read - This seems very similar to my app.
+- https://www.vocabtracker.com - online word tracking tool
+- https://github.com/word-hunter/word-hunter - chrome extension. What a coincidence it even has same name xD but its only for english as i see
+- https://github.com/word-hunter/flow-read - This seems very similar to my app.
 
 if i find more i will link it here.
