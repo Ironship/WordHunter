@@ -1,0 +1,38 @@
+# PyInstaller build files
+build/
+build_work/
+*.spec
+.venv-linux/
+.venv/
+
+# PyInstaller output / compiled executables
+output/
+dist/
+
+# Python caching
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.so
+**/*.o
+
+# Cython byproducts from accidental in-place builds
+src/wordhunter/*.c
+src/wordhunter/*.html
+
+# Temporary local helper scripts / experiments
+scratch/
+TODO/
+My_Data/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Playwright test artifacts
+.playwright-mcp/
+
+# Kilo AI config — generated from kilo.jsonc
+.kilo/kilo.json
+.kilo/agent-manager.json

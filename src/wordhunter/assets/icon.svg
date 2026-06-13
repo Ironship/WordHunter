@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f6f57"/>
+      <stop offset="1" stop-color="#1f4a3a"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7faf5"/>
+      <stop offset="1" stop-color="#dcebe4"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="48" fill="url(#bg)"/>
+  <!-- Book -->
+  <g transform="translate(38 52)">
+    <rect x="0" y="0" width="180" height="148" rx="10" fill="#17201c" opacity="0.35"/>
+    <rect x="6" y="6" width="80" height="142" rx="6" fill="url(#page)"/>
+    <rect x="94" y="6" width="80" height="142" rx="6" fill="url(#page)"/>
+    <line x1="90" y1="10" x2="90" y2="148" stroke="#17201c" stroke-width="2" opacity="0.4"/>
+    <!-- Text lines on left page -->
+    <g stroke="#2f6f57" stroke-width="3" stroke-linecap="round" opacity="0.55">
+      <line x1="16" y1="28" x2="74" y2="28"/>
+      <line x1="16" y1="44" x2="68" y2="44"/>
+      <line x1="16" y1="60" x2="74" y2="60"/>
+      <line x1="16" y1="76" x2="56" y2="76"/>
+    </g>
+    <!-- Right page: highlighted "W" -->
+    <text x="134" y="92" font-family="Georgia, serif" font-size="76" font-weight="700"
+          fill="#2f6f57" text-anchor="middle">W</text>
+  </g>
+  <!-- Sparkle dot top-right -->
+  <circle cx="206" cy="58" r="10" fill="#e6b16a"/>
+</svg>
