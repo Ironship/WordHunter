@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html data-theme="{{theme}}">
+<head>
+    <meta charset="utf-8">
+    <title>{{title}}</title>
+    <style>
+        :root {
+            --bg: #f7f9f6;
+            --panel: #ffffff;
+            --panel-strong: #f0f3ef;
+            --ink: #1a201d;
+            --muted: #6b726e;
+            --line: #e2e8e4;
+            --green: #297a5b;
+            --green-hover: #1e5a3f;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+            --radius: 8px;
+            color-scheme: light;
+        }
+        :root[data-theme="dark"] {
+            --bg: #0d1114;
+            --panel: #151a1e;
+            --panel-strong: #1e252a;
+            --ink: #eaeff2;
+            --muted: #8b98a0;
+            --line: #29343d;
+            --green: #4fb38e;
+            --green-hover: #23694d;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            color-scheme: dark;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root[data-theme="auto"] {
+                --bg: #0d1114;
+                --panel: #151a1e;
+                --panel-strong: #1e252a;
+                --ink: #eaeff2;
+                --muted: #8b98a0;
+                --line: #29343d;
+                --green: #4fb38e;
+                --green-hover: #23694d;
+                --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+                color-scheme: dark;
+            }
+        }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg); overflow: hidden; }
+        body {
+            padding: 1.25rem;
+            color: var(--ink);
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+            display: flex; flex-direction: column; gap: 0.85rem;
+        }
+        .toolbar { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap; }
+        .lang-group { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 140px; }
+        .lang-group > span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
+        .flag-icon { width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
+        select {
+            background: var(--panel-strong); color: var(--ink);
+            border: 1px solid var(--line); border-radius: 6px;
+            padding: 0.5rem 0.75rem; width: 100%;
+            outline: none; cursor: pointer; font-size: 0.95rem;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b98a0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 0.75rem center;
+            background-size: 14px;
+        }
+        select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); }
+        select option { background: var(--panel); color: var(--ink); }
+        .editor-box { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
+        textarea {
+            flex: 1; width: 100%; background: var(--panel-strong); color: var(--ink);
+            border: 1px solid var(--line); border-radius: 6px; padding: 1rem;
+            font-size: 1.05rem; resize: none; outline: none;
+            line-height: 1.55; font-family: inherit;
+        }
+        textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); }
+        textarea[readonly] { color: var(--green); background: var(--bg); }
+        .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
+        .footer { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0 0.25rem; border-top: 1px solid var(--line); flex-shrink: 0; }
+        .engine-info { font-size: 0.75rem; color: var(--muted); opacity: 0.8; }
+        .primary-button {
+            display: inline-flex; align-items: center; justify-content: center;
+            gap: 0.5rem; height: 38px; padding: 0 1.5rem;
+            background: var(--green); color: #ffffff;
+            border: 1px solid var(--green); border-radius: 6px;
+            font-size: 0.9rem; font-weight: 500; cursor: pointer;
+        }
+        .primary-button:hover { background: var(--green-hover); border-color: var(--green-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+        .primary-button:active { transform: translateY(0); }
+        .primary-button svg { width: 1.2rem; height: 1.2rem; stroke-width: 2; }
+        .translator-progress { width: 100%; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; opacity: 0; transition: opacity 0.25s; }
+        .translator-progress.active { opacity: 1; }
+        .translator-progress-fill {
+            width: 30%; height: 100%;
+            background: linear-gradient(90deg, var(--green), #6bcbab, var(--green));
+            border-radius: 3px;
+            animation: translator-progress-slide 1.2s ease-in-out infinite;
+        }
+        @keyframes translator-progress-slide {
+            0%   { transform: translateX(-120%); }
+            50%  { transform: translateX(180%); }
+            100% { transform: translateX(380%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <label class="lang-group">
+            <span>{{title}}</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <img id="flag-from" class="flag-icon" src="{{base_url}}/flags/{{from_code}}.svg" onerror="this.style.display='none'">
+                <select id="from-lang">{{from_options}}</select>
+            </div>
+        </label>
+        <span style="color: var(--muted); font-size: 1.2rem; font-weight: 300; margin-top: 1.1rem;">→</span>
+        <label class="lang-group">
+            <span>&nbsp;</span>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <img id="flag-to" class="flag-icon" src="{{base_url}}/flags/{{to_code}}.svg" onerror="this.style.display='none'">
+                <select id="to-lang">{{to_options}}</select>
+            </div>
+        </label>
+    </div>
+    <div class="editor-box">
+        <div class="label">{{source_label}}</div>
+        <textarea id="source-text" placeholder="{{placeholder}}">{{text}}</textarea>
+    </div>
+    <div class="editor-box">
+        <div class="label">{{target_label}}</div>
+        <textarea id="target-text" readonly placeholder="{{target_placeholder}}"></textarea>
+    </div>
+    <div class="translator-progress" id="translator-progress"><div class="translator-progress-fill"></div></div>
+    <div class="footer">
+        <span class="engine-info">{{footer}}</span>
+        <button class="primary-button" id="copy-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            {{copy_btn}}
+        </button>
+    </div>
+    <script>
+        const sourceEl = document.getElementById('source-text');
+        const targetEl = document.getElementById('target-text');
+        const fromEl = document.getElementById('from-lang');
+        const toEl = document.getElementById('to-lang');
+        const flagFrom = document.getElementById('flag-from');
+        const flagTo = document.getElementById('flag-to');
+        const progressEl = document.getElementById('translator-progress');
+        let timer = null;
+        function cleanTranslation(text) {
+            return String(text || '')
+                .replace(/\{[A-Z]:\s*[^{}]{0,120}\}/g, '')
+                .replace(/\{\s*\d+\s*\}/g, '')
+                .replace(/\{\s*[A-Za-z0-9_$:;.,#@\- ]{1,80}\s*\}/g, '')
+                .replace(/^\s*[/\\|]+\s*/g, '')
+                .replace(/\s+([,.;:!?])/g, '$1')
+                .replace(/\s+'/g, "'")
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+        async function translate() {
+            const val = sourceEl.value.trim();
+            if (!val) { targetEl.value = ''; return; }
+            if (progressEl) progressEl.classList.add('active');
+            try {
+                const url = `/__argos/translate?text=${encodeURIComponent(val)}&from=${fromEl.value}&to=${toEl.value}`;
+                const res = await fetch(url);
+                if (res.ok) { const data = await res.json(); targetEl.value = cleanTranslation(data.translated); }
+            } catch (e) { console.error('Translation error', e); }
+            finally { if (progressEl) progressEl.classList.remove('active'); }
+        }
+        function updateFlags() {
+            flagFrom.src = `{{base_url}}/flags/${fromEl.value}.svg`;
+            flagFrom.style.display = 'block';
+            flagTo.src = `{{base_url}}/flags/${toEl.value}.svg`;
+            flagTo.style.display = 'block';
+        }
+        sourceEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(translate, 300); });
+        [fromEl, toEl].forEach(el => el.addEventListener('change', () => { updateFlags(); translate(); }));
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            if (!targetEl.value) return;
+            targetEl.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('copy-btn');
+            const originalHTML = btn.innerHTML;
+            btn.textContent = "{{copied}}";
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
+        });
+        if (sourceEl.value) translate();
+        sourceEl.focus();
+    </script>
+</body>
+</html>

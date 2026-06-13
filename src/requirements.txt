@@ -1,0 +1,5 @@
+PySide6>=6.6
+PySide6-Addons>=6.6
+requests>=2.31
+edge-tts>=6.1.3
+argostranslate>=1.9.1
