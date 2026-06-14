@@ -75,6 +75,7 @@ export function syncSettingsControls() {
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
+  if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
   if (els.prefRemovalBehavior) els.prefRemovalBehavior.value = prefs.removalBehavior || "ignored";
   if (els.ankiExportStatusFilters?.length) {
     const selected = Array.isArray(prefs.ankiExportStatuses) && prefs.ankiExportStatuses.length

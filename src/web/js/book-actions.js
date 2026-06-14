@@ -123,9 +123,25 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
 
 let editingBookId = null;
 export let pendingEditCoverDataUrl = null;
+let editBookOriginalValues = null;
 
 export function setPendingEditCoverDataUrl(url) {
   pendingEditCoverDataUrl = url;
+}
+
+export function isEditBookDirty() {
+  if (!editBookOriginalValues) return false;
+  const title = els.editBookTitle.value;
+  const author = els.editBookAuthor.value;
+  const tags = els.editBookTags?.value || "";
+  const level = els.editBookLevel?.value || "";
+  const text = els.editBookText.value;
+  return title !== editBookOriginalValues.title
+    || author !== editBookOriginalValues.author
+    || tags !== editBookOriginalValues.tags
+    || level !== editBookOriginalValues.level
+    || text !== editBookOriginalValues.text
+    || pendingEditCoverDataUrl !== editBookOriginalValues.cover;
 }
 
 export async function openEditBookModal(id) {
@@ -164,8 +180,24 @@ export async function openEditBookModal(id) {
     els.editBookCoverImg.src = "";
     els.editBookCoverPreview.hidden = true;
   }
+
+  editBookOriginalValues = {
+    title: els.editBookTitle.value,
+    author: els.editBookAuthor.value,
+    tags: els.editBookTags?.value || "",
+    level: els.editBookLevel?.value || "",
+    text: els.editBookText.value,
+    cover: pendingEditCoverDataUrl
+  };
   
   els.editBookDialog.showModal();
+}
+
+export function cancelEditBook() {
+  editBookOriginalValues = null;
+  pendingEditCoverDataUrl = null;
+  editingBookId = null;
+  els.editBookDialog.close();
 }
 
 export async function saveEditedBook() {
@@ -214,6 +246,7 @@ export async function saveEditedBook() {
   renderLibrary();
   if (state.currentTextId === editingBookId) renderReader();
   showToast(t("toast.textSaved"));
+  editBookOriginalValues = null;
   els.editBookDialog.close();
   editingBookId = null;
 }

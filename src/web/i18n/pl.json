@@ -142,10 +142,6 @@
     "ttsStopTitle": "Zatrzymaj",
     "textVocabList": "Słówka",
     "textVocabListTitle": "Pokaż słówka występujące w tym tekście",
-    "exportLearningWords": "TXT",
-    "exportLearningWordsTitle": "Eksportuj słówka w nauce z tego tekstu",
-    "exportLearningWordsTranslations": "TXT + tłum.",
-    "exportLearningWordsTranslationsTitle": "Eksportuj słówka w nauce z tłumaczeniami",
     "ttsWordTitle": "Odtwórz wymowę (TTS)",
     "youglishWordTitle": "Sprawdź w YouGlish",
     "youglishModalTitle": "Wymowa (YouGlish)",
@@ -172,7 +168,6 @@
     "exportVisible": "Eksport",
     "exportTxt": "Eksportuj widoczne słowa do TXT",
     "exportAnki": "Eksportuj widoczne słowa do Anki (TSV)",
-    "textExportHeaderWithTranslations": "Słowo\tTłumaczenie\n",
     "status": "Status",
     "statusAll": "Wszystkie",
     "statusNew": "Nowe",
@@ -339,6 +334,8 @@
     "rateSlow": "Wolno",
     "rateNormal": "Normalnie",
     "rateFast": "Szybko",
+    "autoTtsOnWordFocus": "Czytaj słowo po fokusie",
+    "autoTtsOnWordFocusHint": "Automatycznie odtwarza TTS po wybraniu słowa w czytniku.",
     "fontSize": "Rozmiar tekstu: {n}px",
     "highlight": "Podświetlanie statusu w tekście",
     "highlightHint": "Kolorowe podkreślenia słów wg statusu nauki.",
@@ -528,8 +525,8 @@
     "contactIssues": "<strong>Błędy i pomysły (Issues):</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Kontakt:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>Licencja:</strong> Projekt jest udostępniany na licencji MIT. Szczegóły w pliku <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a>.",
-    "whatsNew": "<strong>Nowości w 0.2.7.4:</strong> Przegląd bezpieczeństwa danych — atomowe zapisy słownika z odzyskiwaniem kopii zapasowej, logika ponownych prób dla nieudanych zapisów i synchroniczny XHR przy zamykaniu okna, aby zapobiec utracie danych. Walidacja payloadów serwera, bezpieczna migracja SQLite i transakcje savepoint dla preferencji. Debouncing równoległych zapisów i upserty tekstu bez mutowania oryginału.",
-    "version": "<strong>Wersja:</strong> Word Hunter 0.2.7.4",
+    "whatsNew": "<strong>Nowości w 0.2.7.5:</strong> Ochrona przed przypadkowym zamknięciem dialogów — dialogi edycji książki, słowa, wyboru języków Argos i przenoszenia książki pytają o potwierdzenie przy niezapisanych zmianach. Okno edycji książki jest szersze (1000px). Dodano nowy edytor słów z wyborem statusu oraz opcję automatycznego czytania TTS po fokusie słowa w czytniku. Usunięto nieużywane klucze i18n.",
+    "version": "<strong>Wersja:</strong> Word Hunter 0.2.7.5",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Wciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd> aby wejść w tekst",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> do nawigacji po słowach",
@@ -652,9 +649,7 @@
     "textSaved": "Książka zapisana",
     "noTextSource": "Brak źródła tekstu",
     "ankiExportEmpty": "Brak słów do eksportu dla wybranych statusów.",
-    "vocabExportEmpty": "Brak słów do eksportu dla bieżących filtrów.",
-    "textVocabExportNoText": "Brak otwartego tekstu do eksportu.",
-    "textVocabExportEmpty": "Brak słówek w nauce w tym tekście."
+    "vocabExportEmpty": "Brak słów do eksportu dla bieżących filtrów."
   },
   "languages": {
     "pl": "Polski",
@@ -696,6 +691,13 @@
     "hint": "Wybierz docelowy profil językowy dla tej książki:",
     "cancel": "Anuluj",
     "confirm": "Przenieś"
+  },
+  "unsavedChanges": {
+    "title": "Niezapisane zmiany",
+    "message": "Masz niezapisane zmiany. Czy chcesz je zachować?",
+    "save": "Zapisz",
+    "discard": "Zamknij bez zapisu",
+    "cancel": "Anuluj"
   },
   "update": {
     "title": "Dostępna aktualizacja",

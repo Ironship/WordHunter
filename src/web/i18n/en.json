@@ -142,10 +142,6 @@
     "ttsStopTitle": "Stop reading",
     "textVocabList": "Words",
     "textVocabListTitle": "Show words that appear in this text",
-    "exportLearningWords": "TXT",
-    "exportLearningWordsTitle": "Export learning words from this text",
-    "exportLearningWordsTranslations": "TXT + trans.",
-    "exportLearningWordsTranslationsTitle": "Export learning words with translations",
     "ttsWordTitle": "Play pronunciation (TTS)",
     "youglishWordTitle": "Check on YouGlish",
     "youglishModalTitle": "Pronunciation (YouGlish)",
@@ -172,7 +168,6 @@
     "exportVisible": "Export",
     "exportTxt": "Export visible words to TXT",
     "exportAnki": "Export visible words to Anki (TSV)",
-    "textExportHeaderWithTranslations": "Word\tTranslation\n",
     "status": "Status",
     "statusAll": "All",
     "statusNew": "New",
@@ -339,6 +334,8 @@
     "rateSlow": "Slow",
     "rateNormal": "Normal",
     "rateFast": "Fast",
+    "autoTtsOnWordFocus": "Read word on focus",
+    "autoTtsOnWordFocusHint": "Automatically plays TTS after selecting a word in the reader.",
     "fontSize": "Font size: {n}px",
     "highlight": "Highlight word status in text",
     "highlightHint": "Coloured underlines per learning status.",
@@ -528,8 +525,8 @@
     "contactIssues": "<strong>Bug reports & Feature requests:</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Contact:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>License:</strong> This project is distributed under the MIT License. See <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a> for details.",
-    "whatsNew": "<strong>What's new in 0.2.7.4:</strong> Data safety overhaul — atomic vocab saves with backup recovery, retry logic for failed saves, and sync XHR on window close to prevent data loss. Server payload validation, safe SQLite migration, and savepoint transactions for prefs. Debounced concurrent saves and non-mutating text upserts.",
-    "version": "<strong>Version:</strong> Word Hunter 0.2.7.4",
+    "whatsNew": "<strong>What's new in 0.2.7.5:</strong> Dialog backdrop click-to-close protection — edit book, word editor, Argos language selection, and move book dialogs now confirm before closing with unsaved changes. Edit book dialog is wider (1000px). Added a new word editor with status selector and an option to automatically read focused reader words with TTS. Cleaned up unused i18n keys.",
+    "version": "<strong>Version:</strong> Word Hunter 0.2.7.5",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -652,9 +649,7 @@
     "textSaved": "Book saved",
     "noTextSource": "No text source found",
     "ankiExportEmpty": "No words match the selected export statuses.",
-    "vocabExportEmpty": "No words match the current export filters.",
-    "textVocabExportNoText": "No open text to export.",
-    "textVocabExportEmpty": "No learning words found in this text."
+    "vocabExportEmpty": "No words match the current export filters."
   },
   "languages": {
     "pl": "Polish",
@@ -696,6 +691,13 @@
     "hint": "Select the target language profile for this book:",
     "cancel": "Cancel",
     "confirm": "Move"
+  },
+  "unsavedChanges": {
+    "title": "Unsaved changes",
+    "message": "You have unsaved changes. Do you want to save them?",
+    "save": "Save",
+    "discard": "Discard",
+    "cancel": "Cancel"
   },
   "update": {
     "title": "Update Available",

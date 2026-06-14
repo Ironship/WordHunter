@@ -5,7 +5,7 @@ import { escapeAttribute } from "./utils.js";
 import { clearReaderSelectionRange } from "./views/reader.js";
 import { renderVocabulary, getOrCreateEntry, gradeReview, removeFromSrs, loadMoreVocab } from "./views/vocabulary.js";
 import { setWordStatus, updateWordField, deleteWord, ignoreWord, handleReviewAction, setWordImage, removeWordImage } from "./vocab-actions.js";
-import { importCustomText, addUserBook, removeUserBook, saveEditedBook, pasteImageToEditBook, moveBookToProfile } from "./book-actions.js";
+import { importCustomText, addUserBook, removeUserBook, saveEditedBook, pasteImageToEditBook, moveBookToProfile, isEditBookDirty, cancelEditBook } from "./book-actions.js";
 import { exportVocabularySelection } from "./sync-actions.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -18,6 +18,7 @@ import { bindSettingsEvents } from "./events/settings.js";
 import { bindTranslatorEvents } from "./events/translator.js";
 import { bindNavigationEvents } from "./events/navigation.js";
 import { bindDiscoverEvents } from "./events/discover.js";
+import { registerUnsavedDialog } from "./dialog-backdrop.js";
 
 const VOCAB_STATUS_FILTERS = ["new", "learning", "known", "ignored"];
 
@@ -240,7 +241,8 @@ export function bindEvents() {
   }
 
   // Edit Book modal
-  if (els.editBookCancel) els.editBookCancel.addEventListener("click", () => els.editBookDialog.close());
+  registerUnsavedDialog("edit-book-dialog", isEditBookDirty, () => saveEditedBook());
+  if (els.editBookCancel) els.editBookCancel.addEventListener("click", () => cancelEditBook());
   if (els.editBookSave) els.editBookSave.addEventListener("click", () => saveEditedBook());
   // Enter to save in edit book dialog
   if (els.editBookDialog) {
@@ -489,6 +491,49 @@ export function bindEvents() {
   const addWordConfirm = document.getElementById("add-word-confirm");
   const addWordCancel = document.getElementById("add-word-cancel");
   const addWordEditing = document.getElementById("add-word-editing");
+  const addWordStatusInputs = [...document.querySelectorAll("input[name='add-word-status']")];
+  let addWordOriginalValues = null;
+
+  function getAddWordStatus() {
+    return addWordStatusInputs.find(input => input.checked)?.value || "new";
+  }
+
+  function setAddWordStatus(status) {
+    const normalized = VOCAB_STATUS_FILTERS.includes(status) ? status : "new";
+    addWordStatusInputs.forEach(input => { input.checked = input.value === normalized; });
+  }
+
+  function isAddWordDirty() {
+    if (!addWordOriginalValues) return false;
+    const word = addWordInput?.value || "";
+    const translation = addTranslationInput?.value || "";
+    const example = addExampleInput?.value || "";
+    const status = getAddWordStatus();
+    return word !== addWordOriginalValues.word
+      || translation !== addWordOriginalValues.translation
+      || example !== addWordOriginalValues.example
+      || status !== addWordOriginalValues.status;
+  }
+
+  function resetAddWordDirty() {
+    addWordOriginalValues = null;
+  }
+
+  function captureAddWordOriginal() {
+    addWordOriginalValues = {
+      word: addWordInput?.value || "",
+      translation: addTranslationInput?.value || "",
+      example: addExampleInput?.value || "",
+      status: getAddWordStatus()
+    };
+  }
+
+  registerUnsavedDialog(
+    "add-word-dialog",
+    isAddWordDirty,
+    () => addWordConfirm.click(),
+    () => { resetAddWordDirty(); addWordDialog.close(); }
+  );
 
   if (addWordBtn && addWordDialog) {
     addWordBtn.addEventListener("click", () => {
@@ -496,9 +541,11 @@ export function bindEvents() {
       if (addWordInput) { addWordInput.value = ""; addWordInput.disabled = false; }
       if (addTranslationInput) addTranslationInput.value = "";
       if (addExampleInput) addExampleInput.value = "";
+      setAddWordStatus("new");
       const title = addWordDialog.querySelector("#add-word-dialog-title");
       if (title) title.textContent = t("vocab.addWordTitle");
       addWordConfirm.textContent = t("vocab.addWordConfirm");
+      captureAddWordOriginal();
       addWordDialog.showModal();
       if (addWordInput) setTimeout(() => addWordInput.focus(), 100);
     });
@@ -515,25 +562,32 @@ export function bindEvents() {
     if (addWordInput) { addWordInput.value = word; addWordInput.disabled = true; }
     if (addTranslationInput) addTranslationInput.value = entry.translation || "";
     if (addExampleInput) addExampleInput.value = (entry.examples && entry.examples[0]) || entry.note || "";
+    setAddWordStatus(entry.status || "new");
     const title = addWordDialog.querySelector("#add-word-dialog-title");
     if (title) title.textContent = t("vocab.editWordTitle");
     addWordConfirm.textContent = t("vocab.editWordConfirm");
+    captureAddWordOriginal();
     addWordDialog.showModal();
     if (addTranslationInput) setTimeout(() => addTranslationInput.focus(), 100);
   });
 
   if (addWordCancel && addWordDialog) {
-    addWordCancel.addEventListener("click", () => addWordDialog.close());
+    addWordCancel.addEventListener("click", () => {
+      resetAddWordDirty();
+      addWordDialog.close();
+    });
   }
   if (addWordConfirm && addWordDialog) {
     addWordConfirm.addEventListener("click", () => {
       const editing = addWordEditing?.value;
+      const selectedStatus = getAddWordStatus();
       if (editing) {
         // Edit mode — update existing entry
         const entry = state.vocab[editing];
         if (!entry) return;
         const translation = addTranslationInput?.value.trim();
         if (translation !== undefined) entry.translation = translation;
+        entry.status = selectedStatus;
         const example = addExampleInput?.value.trim();
         if (example) {
           entry.examples = [example, ...(entry.examples || []).filter(e => e !== example)].slice(0, 3);
@@ -546,6 +600,7 @@ export function bindEvents() {
         const word = addWordInput?.value.trim();
         if (!word) return;
         getOrCreateEntry(word);
+        state.vocab[word].status = selectedStatus;
         const translation = addTranslationInput?.value.trim();
         if (translation) {
           state.vocab[word].translation = translation;
@@ -559,9 +614,11 @@ export function bindEvents() {
       }
       saveState();
       renderVocabulary();
+      resetAddWordDirty();
       addWordDialog.close();
     });
     addWordDialog.addEventListener("keydown", (e) => {
+      if (e.target === addExampleInput && e.key === "Enter" && !e.ctrlKey && !e.metaKey) return;
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         addWordConfirm.click();
@@ -574,10 +631,3 @@ export function bindEvents() {
   bindTranslatorEvents();
   bindDiscoverEvents({ addUserBook, removeUserBook });
 }
-
-// Dialog backdrop click-to-close
-document.querySelectorAll("dialog").forEach((dialog) => {
-  dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) dialog.close();
-  });
-});

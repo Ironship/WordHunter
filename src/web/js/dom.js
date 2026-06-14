@@ -108,6 +108,7 @@ export function cacheElements() {
   els.prefTextAlign = document.getElementById("pref-text-align");
   els.prefMaxWidth = document.getElementById("pref-max-width");
   els.prefTtsRate = document.getElementById("pref-tts-rate");
+  els.prefAutoTtsOnWordFocus = document.getElementById("pref-auto-tts-on-word-focus");
   els.prefUseEdgeTts = document.getElementById("pref-use-edge-tts");
 
   els.storageSummary = document.getElementById("storage-summary");
