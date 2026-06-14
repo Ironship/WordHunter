@@ -10,6 +10,7 @@ import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPre
 import { showToast } from "../toast.js";
 import { exportState, importStateFile, clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
+import { registerUnsavedDialog } from "../dialog-backdrop.js";
 
 function resetReaderScrollForCurrentText() {
   if (!state.currentTextId) return;
@@ -18,6 +19,29 @@ function resetReaderScrollForCurrentText() {
 }
 
 export function bindSettingsEvents() {
+  function isArgosDirty() {
+    return !!els.argosDownloadDialog?.open;
+  }
+
+  async function cancelArgosDownload() {
+    if (els.argosDownloadDialog) els.argosDownloadDialog.close();
+    if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
+    updatePreferenceValue("offlineTranslator", false);
+    if (els.prefArgosAsDictRow) {
+      els.prefArgosAsDictRow.style.opacity = "0.5";
+      els.prefArgosAsDictRow.style.pointerEvents = "none";
+    }
+    if (els.prefAutoTranslateRow) {
+      els.prefAutoTranslateRow.style.opacity = "0.5";
+      els.prefAutoTranslateRow.style.pointerEvents = "none";
+    }
+    const { renderTranslator } = await import("../views/translator.js");
+    renderTranslator();
+  }
+
+  registerUnsavedDialog("argos-download-dialog", isArgosDirty, () => {
+    els.argosDownloadConfirm.click();
+  }, cancelArgosDownload);
   // Settings
   const exportBtn = document.getElementById("export-state");
   if (exportBtn) exportBtn.addEventListener("click", exportState);
@@ -122,6 +146,7 @@ export function bindSettingsEvents() {
   if (els.prefTextAlign) els.prefTextAlign.addEventListener("change", (e) => updatePreferenceValue("readerTextAlign", e.target.value));
   if (els.prefMaxWidth) els.prefMaxWidth.addEventListener("change", (e) => updatePreferenceValue("readerMaxWidth", e.target.value));
   if (els.prefTtsRate) els.prefTtsRate.addEventListener("change", (e) => updatePreferenceValue("ttsRate", e.target.value));
+  if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.addEventListener("change", (e) => updatePreferenceValue("autoTtsOnWordFocus", e.target.checked));
   if (els.prefUseEdgeTts) els.prefUseEdgeTts.addEventListener("change", (e) => updatePreferenceValue("useEdgeTts", e.target.checked));
   els.prefHighlight.addEventListener("change", (e) => updatePreferenceValue("highlightTokens", e.target.checked));
   if (els.prefHideKnown) els.prefHideKnown.addEventListener("change", (e) => updatePreferenceValue("hideKnownIgnored", e.target.checked));
@@ -158,7 +183,9 @@ export function bindSettingsEvents() {
           updateBtnText();
         }
 
-        if (els.argosDownloadDialog) els.argosDownloadDialog.showModal();
+        if (els.argosDownloadDialog) {
+          els.argosDownloadDialog.showModal();
+        }
       } else {
         updatePreferenceValue("offlineTranslator", false);
         if (els.prefArgosAsDictRow) {
@@ -184,21 +211,7 @@ export function bindSettingsEvents() {
   }
 
   if (els.argosDownloadCancel) {
-    els.argosDownloadCancel.addEventListener("click", async () => {
-      if (els.argosDownloadDialog) els.argosDownloadDialog.close();
-      if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
-      updatePreferenceValue("offlineTranslator", false);
-      if (els.prefArgosAsDictRow) {
-        els.prefArgosAsDictRow.style.opacity = "0.5";
-        els.prefArgosAsDictRow.style.pointerEvents = "none";
-      }
-      if (els.prefAutoTranslateRow) {
-        els.prefAutoTranslateRow.style.opacity = "0.5";
-        els.prefAutoTranslateRow.style.pointerEvents = "none";
-      }
-      const { renderTranslator } = await import("../views/translator.js");
-      renderTranslator();
-    });
+    els.argosDownloadCancel.addEventListener("click", cancelArgosDownload);
   }
 
   if (els.argosDownloadConfirm) {

@@ -707,6 +707,13 @@
               </label>
               <label class="setting-row toggle-row">
                 <span>
+                  <span data-i18n="settings.autoTtsOnWordFocus">Czytaj słowo po fokusie</span>
+                  <small data-i18n="settings.autoTtsOnWordFocusHint">Automatycznie odtwarza TTS po wybraniu słowa w czytniku.</small>
+                </span>
+                <input id="pref-auto-tts-on-word-focus" type="checkbox">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
                   <span data-i18n="settings.useEdgeTts">Głosy neuralne Edge (online)</span>
                   <small data-i18n="settings.useEdgeTtsHint" style="color: var(--muted); font-weight: 400;"></small>
                 </span>
@@ -1071,7 +1078,7 @@
     </div>
   </dialog>
 
-  <dialog id="edit-book-dialog" class="panel" style="width: 90vw; max-width: 800px; max-height: 90vh;">
+  <dialog id="edit-book-dialog" class="panel" style="width: 95vw; max-width: 1000px; max-height: 90vh;">
     <div class="panel-header">
       <h2 data-i18n="editBook.title">Edytuj książkę</h2>
     </div>
@@ -1180,24 +1187,45 @@
     </div>
   </dialog>
 
-  <dialog id="add-word-dialog" class="panel" style="width: 90vw; max-width: 400px;">
+  <dialog id="add-word-dialog" class="panel word-editor-dialog" style="width: 92vw; max-width: 680px;">
     <div class="panel-header">
       <h2 id="add-word-dialog-title" data-i18n="vocab.addWordTitle">Dodaj słowo</h2>
     </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
-      <label class="setting-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-        <span data-i18n="vocab.addWordLabel">Słowo</span>
-        <input id="add-word-input" type="text" class="input" style="width: 100%;" autocomplete="off" autofocus>
-      </label>
-      <label class="setting-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-        <span data-i18n="vocab.addTranslationLabel">Tłumaczenie (opcjonalnie)</span>
-        <input id="add-translation-input" type="text" class="input" style="width: 100%;" autocomplete="off">
-      </label>
-      <label class="setting-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem;">
-        <span data-i18n="vocab.addExampleLabel">Przykładowe zdanie (opcjonalnie)</span>
-        <input id="add-example-input" type="text" class="input" style="width: 100%;" autocomplete="off">
-      </label>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+    <div class="word-editor-body">
+      <div class="word-editor-grid">
+        <label class="word-editor-field word-editor-word">
+          <span data-i18n="vocab.addWordLabel">Słowo</span>
+          <input id="add-word-input" type="text" class="input" autocomplete="off" autofocus>
+        </label>
+        <label class="word-editor-field">
+          <span data-i18n="vocab.addTranslationLabel">Tłumaczenie (opcjonalnie)</span>
+          <input id="add-translation-input" type="text" class="input" autocomplete="off">
+        </label>
+        <fieldset class="word-editor-status">
+          <legend data-i18n="vocab.status">Status</legend>
+          <label class="word-status-option word-status-new">
+            <input type="radio" name="add-word-status" value="new" checked>
+            <span data-i18n="vocab.statusNew">Nowe</span>
+          </label>
+          <label class="word-status-option word-status-learning">
+            <input type="radio" name="add-word-status" value="learning">
+            <span data-i18n="vocab.statusLearning">Uczę się</span>
+          </label>
+          <label class="word-status-option word-status-known">
+            <input type="radio" name="add-word-status" value="known">
+            <span data-i18n="vocab.statusKnown">Znane</span>
+          </label>
+          <label class="word-status-option word-status-ignored">
+            <input type="radio" name="add-word-status" value="ignored">
+            <span data-i18n="vocab.statusIgnored">Ignorowane</span>
+          </label>
+        </fieldset>
+        <label class="word-editor-field word-editor-example">
+          <span data-i18n="vocab.addExampleLabel">Przykładowe zdanie (opcjonalnie)</span>
+          <textarea id="add-example-input" class="input" rows="4" autocomplete="off"></textarea>
+        </label>
+      </div>
+      <div class="word-editor-actions">
         <button id="add-word-cancel" class="secondary-button" data-i18n="moveBook.cancel">Anuluj</button>
         <button id="add-word-confirm" class="primary-button" data-i18n="vocab.addWordConfirm">Dodaj</button>
       </div>

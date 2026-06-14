@@ -7,6 +7,9 @@ import { getTextById, updateWordStatusInReader } from "./views/reader.js";
 import { renderShell } from "./views/shell.js";
 import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, toggleReviewAnswer } from "./views/vocabulary.js";
 import { renderLibrary } from "./views/library.js";
+import { speakWord } from "./tts.js";
+
+let lastAutoTtsFocusKey = "";
 
 async function maybeAutoTranslateWord(word, entry) {
   if (state.preferences?.offlineTranslator !== true) return false;
@@ -58,6 +61,7 @@ export function selectWord(rawWord, normalizeFn, preserveScroll = false) {
   saveState();
   renderShell();
   updateReaderSelection();
+  maybeAutoSpeakFocusedWord(word);
   
   if (word.includes(" ") && isFresh) {
     import("./views/reader.js").then(({ renderReader }) => {
@@ -81,6 +85,21 @@ export function selectWord(rawWord, normalizeFn, preserveScroll = false) {
   if (state.currentView === "vocabulary") {
     renderVocabulary();
   }
+}
+
+function maybeAutoSpeakFocusedWord(word) {
+  if (state.currentView !== "reader") return;
+  if (state.preferences?.autoTtsOnWordFocus !== true) return;
+
+  const active = document.activeElement?.classList?.contains("word-token")
+    ? document.activeElement
+    : (window.lastActiveToken && document.body.contains(window.lastActiveToken) ? window.lastActiveToken : null);
+  if (!active || active.dataset.word !== word) return;
+
+  const focusKey = `${word}|${active.dataset.wordIndex || ""}`;
+  if (focusKey === lastAutoTtsFocusKey) return;
+  lastAutoTtsFocusKey = focusKey;
+  speakWord(word);
 }
 
 export function setWordStatus(word, status) {

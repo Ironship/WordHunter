@@ -87,6 +87,7 @@ export function createDefaultState() {
       readerTextAlign: "left",
       readerMaxWidth: "medium",
       ttsRate: "normal",
+      autoTtsOnWordFocus: false,
       reviewReverse: false,
       srsAlgorithm: "sm2",
       removalBehavior: "ignored",
