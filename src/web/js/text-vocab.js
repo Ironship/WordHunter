@@ -1,8 +1,11 @@
 import { state } from "./state.js";
 import { getAllBooks, bookTexts } from "./books.js";
-import { normalizeWord, resolveTokenizerAlgorithm, tokenizeText } from "./tokenizer_v2.js";
-
-const textWordCache = new Map();
+import { normalizeWord } from "./tokenizer_v2.js";
+import {
+  computeSignature,
+  getCachedEntry,
+  requestVocabIndex
+} from "./vocab-index-client.js";
 
 export function getVocabularyTextOptions() {
   const seen = new Set();
@@ -27,18 +30,6 @@ export function getVocabularyTextById(textId) {
   return getVocabularyTextOptions().find((item) => item.id === textId) || null;
 }
 
-function buildCacheKey(text, textId, lang, algorithm) {
-  const mode = resolveTokenizerAlgorithm(algorithm);
-  return [
-    textId || "",
-    lang || "",
-    mode,
-    String(text?.length || 0),
-    String(text || "").slice(0, 200),
-    String(text || "").slice(-200)
-  ].join("|");
-}
-
 export function getTextVocabularyIndex(textId) {
   const textRecord = getVocabularyTextById(textId);
   if (!textRecord) return null;
@@ -46,21 +37,35 @@ export function getTextVocabularyIndex(textId) {
   const lang = state.preferences.learningLanguage || "en";
   const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
   const text = textRecord.text || "";
-  const cacheKey = buildCacheKey(text, textRecord.id, lang, algorithm);
-  const cached = textWordCache.get(cacheKey);
-  if (cached) return cached;
+  const book = { id: textRecord.id };
+  const signature = computeSignature(book, text, lang, algorithm);
+  const cached = getCachedEntry(signature);
+  if (cached) {
+    return {
+      text: textRecord,
+      words: new Set(cached.words),
+      tokenLine: cached.tokenLine
+    };
+  }
 
-  const tokens = tokenizeText(text, lang, algorithm)
-    .filter((part) => part.type === "word")
-    .map((part) => normalizeWord(part.value))
-    .filter(Boolean);
-  const index = {
+  requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
+  return null;
+}
+
+export async function loadTextVocabularyIndex(textId) {
+  const textRecord = getVocabularyTextById(textId);
+  if (!textRecord) return null;
+  const lang = state.preferences.learningLanguage || "en";
+  const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+  const text = textRecord.text || "";
+  const book = { id: textRecord.id };
+  const entry = await requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
+  if (!entry) return null;
+  return {
     text: textRecord,
-    words: new Set(tokens),
-    tokenLine: ` ${tokens.join(" ")} `
+    words: new Set(entry.words),
+    tokenLine: entry.tokenLine
   };
-  textWordCache.set(cacheKey, index);
-  return index;
 }
 
 export function entryAppearsInText(word, textIndex) {
@@ -70,12 +75,4 @@ export function entryAppearsInText(word, textIndex) {
   if (!normalized.includes(" ")) return textIndex.words.has(normalized);
   const phrase = normalized.split(/\s+/).filter(Boolean).join(" ");
   return Boolean(phrase) && textIndex.tokenLine.includes(` ${phrase} `);
-}
-
-export function getVocabularyEntriesForText(textId) {
-  const textIndex = getTextVocabularyIndex(textId);
-  if (!textIndex) return [];
-  return Object.entries(state.vocab)
-    .filter(([word]) => entryAppearsInText(word, textIndex))
-    .map(([word, entry]) => ({ word, ...entry }));
 }

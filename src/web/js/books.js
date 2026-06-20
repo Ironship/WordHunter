@@ -1,7 +1,7 @@
 // Book catalog: fetches the built-in database from books/index.json and texts (local or remote).
 import { BOOKS_INDEX_URL } from "./constants.js";
 import { state } from "./state.js";
-import { invalidateBookStats } from "./stats-cache.js";
+import { invalidateBookId } from "./vocab-index-client.js";
 import { cleanGutenbergText } from "./tokenizer_v2.js";
 import { t } from "./i18n.js";
 
@@ -23,10 +23,6 @@ export async function loadBooksCatalog() {
   return catalog;
 }
 
-export function getCatalog() {
-  return catalog;
-}
-
 export function getAllBooks() {
   const hidden = new Set(state.hiddenBuiltInBooks || []);
   const currentLang = state.preferences?.learningLanguage || "en";
@@ -34,10 +30,6 @@ export function getAllBooks() {
     ...catalog.filter((book) => !hidden.has(book.id) && book.lang === currentLang),
     ...(state.userBooks || [])
   ];
-}
-
-export function isBuiltInBook(id) {
-  return catalog.some((book) => book.id === id);
 }
 
 export function findBookById(id) {
@@ -98,7 +90,7 @@ async function loadBookTextUncached(book) {
     throw lastError || new Error(t("toast.noTextSource"));
     }
 
-export async function loadCustomTextContent(text) {
+async function loadCustomTextContent(text) {
   if (!text?.id) return "";
   if (bookTexts.has(text.id)) return bookTexts.get(text.id);
   if (text.text) {
@@ -134,5 +126,5 @@ export function loadAllCustomTextContents() {
 export function clearBookTextCache(id) {
   bookTexts.delete(id);
   textLoadingById.delete(id);
-  invalidateBookStats(id);
+  invalidateBookId(id);
 }

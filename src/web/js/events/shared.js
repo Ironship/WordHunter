@@ -21,7 +21,7 @@ export async function openDictionary(word) {
     const locale = state.preferences.locale || "pl";
     const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme}&locale=${locale}`;
     const dictUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("translator.argosTitle"))}`;
-    fetch(dictUrl).catch(e => console.warn("Failed to open Argos UI", e));
+    fetch(dictUrl).catch(e => console.warn("Failed to open offline translator UI", e));
     return;
   }
 

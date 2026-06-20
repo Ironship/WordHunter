@@ -1,7 +1,6 @@
 // Punkt wejścia aplikacji. Składa moduły, nie zawiera logiki domenowej.
 import { cacheElements } from "./js/dom.js";
 import "./js/toast.js";
-import "./js/events.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { loadBooksCatalog, loadAllBookTexts, loadAllCustomTextContents } from "./js/books.js";
@@ -27,7 +26,18 @@ window.addEventListener("unhandledrejection", function(event) {
   document.body.appendChild(errDiv);
 });
 
+window.addEventListener("beforeunload", () => {
+  if (typeof window.flushWordFieldSave === "function") window.flushWordFieldSave();
+  if (typeof window.flushPendingSave === "function") window.flushPendingSave();
+});
+
 document.addEventListener("contextmenu", event => event.preventDefault());
+
+window.addEventListener("vocab-index:loaded", () => {
+  if (state.currentView === "library" || state.currentView === "vocabulary") {
+    render();
+  }
+});
 
 // Start locale fetch immediately (module-level, before DOMContentLoaded)
 const _localePromise = loadLocale(state.preferences?.locale || "en");
@@ -65,6 +75,4 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const reloadBtn = document.getElementById("app-reload");
   if (reloadBtn) reloadBtn.addEventListener("click", () => window.location.reload());
-  const reloadBtnOld = document.getElementById("reload-btn");
-  if (reloadBtnOld) reloadBtnOld.remove();
 });

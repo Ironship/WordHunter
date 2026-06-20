@@ -141,14 +141,49 @@ export function isDue(nextDate, today = todayISO()) {
 export function applyReview(entry, quality, now = new Date(), algorithm = "sm2") {
   const mode = algorithm === "fsrs" ? "fsrs" : "sm2";
   const next = mode === "fsrs" ? calculateFSRS(quality, entry, now) : calculateSM2(quality, entry);
+  applyReviewResult(entry, next, now, mode);
+  return entry;
+}
+
+export async function applyReviewNative(entry, quality, now = new Date(), algorithm = "sm2") {
+  if (!window.__qtBridge) {
+    return applyReview(entry, quality, now, algorithm);
+  }
+  const mode = algorithm === "fsrs" ? "fsrs" : "sm2";
+  try {
+    const response = await fetch("/__srs/review", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-WH-Token": window.WH_TOKEN || ""
+      },
+      body: JSON.stringify({
+        entry,
+        quality,
+        algorithm: mode,
+        now: now.toISOString(),
+        today: todayISO(now)
+      })
+    });
+    if (!response.ok) throw new Error(await response.text());
+    const next = await response.json();
+    applyReviewResult(entry, next, now, mode);
+    return entry;
+  } catch (err) {
+    console.warn("native SRS review failed, falling back to JS", err);
+    return applyReview(entry, quality, now, mode);
+  }
+}
+
+function applyReviewResult(entry, next, now, mode) {
   entry.repetition = next.repetition;
   entry.interval = next.interval;
   if (Number.isFinite(next.efactor)) entry.efactor = next.efactor;
   if (Number.isFinite(next.stability)) entry.stability = next.stability;
   if (Number.isFinite(next.difficulty)) entry.difficulty = next.difficulty;
-  entry.nextDate = addDaysISO(next.interval, now);
-  entry.lastReviewedAt = now.toISOString();
-  entry.srsAlgorithm = mode;
+  entry.nextDate = next.nextDate || addDaysISO(next.interval, now);
+  entry.lastReviewedAt = next.lastReviewedAt || now.toISOString();
+  entry.srsAlgorithm = next.srsAlgorithm === "fsrs" ? "fsrs" : mode;
   return entry;
 }
 

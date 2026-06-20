@@ -10,7 +10,7 @@ export function showToast(message) {
   toastTimer = setTimeout(() => els.toast.classList.remove("visible"), 3600);
 }
 
-export function hideToast() {
+function hideToast() {
   if (!els.toast) return;
   els.toast.classList.remove("visible");
   clearTimeout(toastTimer);

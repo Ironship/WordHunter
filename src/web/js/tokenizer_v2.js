@@ -76,7 +76,7 @@ export function tokenizeText(text, lang = "en", algorithm = "modern") {
 
 export function normalizeWord(value) {
   return String(value || "")
-    .toLocaleLowerCase("de-DE")
+    .toLowerCase()
     .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
     .trim();
 }
@@ -90,11 +90,6 @@ export function normalizeSearchVariants(value) {
     .replace(/ß/g, "ss");
   const ascii = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return Array.from(new Set([raw, german, ascii]));
-}
-
-export function normalizeSearch(value) {
-  const variants = normalizeSearchVariants(value);
-  return variants.join(" ");
 }
 
 function getClassicSentenceForWord(text, word) {
@@ -240,7 +235,7 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
       
       const sentence = text.slice(start, end).trim();
       if (sentence) {
-        if (tokenizeText(sentence, lang, "modern").some(part => part.type === "word" && normalizeWord(part.value) === word)) {
+        if (tokenizeText(sentence, lang, algorithm).some(part => part.type === "word" && normalizeWord(part.value) === word)) {
           return sentence;
         }
       }

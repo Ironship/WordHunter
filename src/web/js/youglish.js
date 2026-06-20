@@ -1,5 +1,5 @@
 import { state } from "./state.js";
-export let youglishWidget = null;
+let youglishWidget = null;
 
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";

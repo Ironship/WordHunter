@@ -1,25 +1,23 @@
-# PyInstaller build files
+# Rust/Tauri build files
 build/
 build_work/
+src-tauri/target/
+src-tauri/ocr-runner/target/
+src-tauri/ocr-runner/Cargo.lock
+src-tauri/ocr-runtime/.cache/
+src-tauri/ocr-runtime/bin/*
+!src-tauri/ocr-runtime/bin/.gitkeep
+src-tauri/ocr-runtime/models/*
+!src-tauri/ocr-runtime/models/.gitkeep
+src-tauri/ocr-runtime/dictionaries/*
+!src-tauri/ocr-runtime/dictionaries/.gitkeep
+src-tauri/gen/
 *.spec
-.venv-linux/
-.venv/
 
-# PyInstaller output / compiled executables
+# Build output / compiled executables
+outputs/
 output/
 dist/
-
-# Python caching
-**/__pycache__/
-**/*.pyc
-**/*.pyo
-**/*.pyd
-**/*.so
-**/*.o
-
-# Cython byproducts from accidental in-place builds
-src/wordhunter/*.c
-src/wordhunter/*.html
 
 # Temporary local helper scripts / experiments
 scratch/
@@ -34,5 +32,4 @@ Thumbs.db
 .playwright-mcp/
 
 # Kilo AI config — generated from kilo.jsonc
-.kilo/kilo.json
-.kilo/agent-manager.json
+.kilo

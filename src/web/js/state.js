@@ -1,7 +1,12 @@
-import { STORAGE_KEY } from "./constants.js";
+import { STORAGE_KEY, UI_SCALE } from "./constants.js";
+import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 import { clamp } from "./utils.js";
-
-const VOCAB_STATUS_FILTERS = ["new", "learning", "known", "ignored"];
+import {
+  buildSavePayload,
+  saveToLocalStorage,
+  saveWithRetry,
+  saveSyncXhr
+} from "./api.js";
 
 function normalizeVocabStatusFilters(value, legacyValue) {
   if (Array.isArray(value)) {
@@ -51,6 +56,7 @@ export function createDefaultState() {
     readerPage: 1,
     readerPages: {},
     readerScrolls: {},
+    readerScrollsPerPage: {},
     filters: {
       libraryQuery: "",
       libraryLevel: "all",
@@ -85,7 +91,7 @@ export function createDefaultState() {
       dictionaryUrl: "",
       dictionaryMode: "internal",
       readerTextAlign: "left",
-      readerMaxWidth: "medium",
+      readerMaxWidth: "wide",
       ttsRate: "normal",
       autoTtsOnWordFocus: false,
       reviewReverse: false,
@@ -93,22 +99,18 @@ export function createDefaultState() {
       removalBehavior: "ignored",
       useEdgeTts: false,
       autoTranslateWords: false,
+      translationProvider: "offline",
+      deeplApiKey: "",
+      lmStudioEndpoint: "http://127.0.0.1:1234/v1/chat/completions",
+      lmStudioModel: "",
       ankiExportStatuses: ["learning"],
       wordDetectionAlgorithm: "modern",
+      uiScale: UI_SCALE.DEFAULT,
       lastReadTextIds: {},
       skippedVersion: "",
       disableUpdateCheck: false
     }
   };
-}
-
-export function getAllCustomTexts() {
-  if (!state.profiles) return state.customTexts || [];
-  const all = [];
-  for (const p of Object.values(state.profiles)) {
-    if (p.customTexts) all.push(...p.customTexts);
-  }
-  return all;
 }
 
 export function normalizeState(nextState) {
@@ -122,15 +124,24 @@ export function normalizeState(nextState) {
   nextState.filters.vocabStatuses = normalizeVocabStatusFilters(nextState.filters.vocabStatuses, nextState.filters.vocabStatus);
   nextState.discover = { ...defaults.discover, ...(nextState.discover || {}) };
   nextState.preferences = { ...defaults.preferences, ...(nextState.preferences || {}) };
+  if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) {
+    nextState.preferences.translationProvider = "offline";
+  }
   nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
   nextState.preferences.lastReadTextIds = nextState.preferences.lastReadTextIds && typeof nextState.preferences.lastReadTextIds === "object" && !Array.isArray(nextState.preferences.lastReadTextIds)
     ? nextState.preferences.lastReadTextIds
     : {};
   nextState.readerFontSize = clamp(Number(nextState.readerFontSize) || 18, 14, 28);
+  nextState.preferences.uiScale = clamp(
+    Math.round(Number(nextState.preferences?.uiScale) || UI_SCALE.DEFAULT),
+    UI_SCALE.MIN,
+    UI_SCALE.MAX
+  );
   nextState.readerPage = Number(nextState.readerPage) || 1;
   nextState.readerPages = nextState.readerPages && typeof nextState.readerPages === "object" ? nextState.readerPages : {};
   nextState.readerScrolls = nextState.readerScrolls && typeof nextState.readerScrolls === "object" ? nextState.readerScrolls : {};
+  nextState.readerScrollsPerPage = nextState.readerScrollsPerPage && typeof nextState.readerScrollsPerPage === "object" && !Array.isArray(nextState.readerScrollsPerPage) ? nextState.readerScrollsPerPage : {};
   nextState.readerSelectionRange = null;
   
   if (!nextState.preferences.learningLanguage) {
@@ -261,33 +272,23 @@ function loadState() {
 const _proxyCache = new WeakMap();
 let _saveTimer = null;
 let _suspendAutoSave = 0;
+let _saveInFlight = false;
+let _savePending = false;
 
 function _unwrapProxy(value) {
   if (value && typeof value === "object" && value._raw) return value._raw;
   return value;
 }
 
-function _toPlain(value, seen = new WeakSet()) {
-  value = _unwrapProxy(value);
-  if (value === null || typeof value !== "object") return value;
-  if (value instanceof Date) return value;
-  if (seen.has(value)) return undefined;
-  seen.add(value);
-
-  if (Array.isArray(value)) {
-    return value.map((item) => _toPlain(item, seen));
+function _scheduleSave() {
+  if (_suspendAutoSave > 0) return;
+  if (_saveInFlight) {
+    _savePending = true;
+    return;
   }
-
-  const result = {};
-  for (const [key, item] of Object.entries(value)) {
-    const plain = _toPlain(item, seen);
-    if (plain !== undefined) result[key] = plain;
-  }
-  return result;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(_doSave, 200);
 }
-
-let _saveInFlight = false;
-let _savePending = false;
 
 function _doSave() {
   const rawState = state._raw || state;
@@ -299,18 +300,10 @@ function _doSave() {
     }
   }
   if (window.__qtBridge) {
-    const payload = {
-      texts: _toPlain(rawState.customTexts || []),
-      prefs: {
-        ..._toPlain(rawState.preferences || {}),
-        __userBooks: _toPlain(rawState.userBooks || [])
-      },
-      hiddenBooks: _toPlain(rawState.hiddenBuiltInBooks || []),
-      vocab: _toPlain(rawState.profiles || {})
-    };
+    const payload = buildSavePayload(rawState);
     const body = JSON.stringify(payload);
     _saveInFlight = true;
-    _saveWithRetry(body, 3).then(() => {
+    saveWithRetry(body, 3).then(() => {
       _saveInFlight = false;
       if (_savePending) {
         _savePending = false;
@@ -319,47 +312,12 @@ function _doSave() {
     }).catch((e) => {
       _saveInFlight = false;
       console.error("bridge save failed after retries", e);
-      // Schedule one more attempt
       _savePending = false;
       _scheduleSave();
     });
   } else {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(_toPlain(rawState)));
-    } catch (e) {
-      console.error("localStorage save failed", e);
-    }
+    saveToLocalStorage(rawState);
   }
-}
-
-async function _saveWithRetry(body, maxRetries) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch("/__store/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-WH-Token": window.WH_TOKEN || ""
-        },
-        body
-      });
-      if (response.ok) return;
-      throw new Error(`HTTP ${response.status}`);
-    } catch (e) {
-      if (attempt === maxRetries) throw e;
-      await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
-    }
-  }
-}
-
-function _scheduleSave() {
-  if (_suspendAutoSave > 0) return;
-  if (_saveInFlight) {
-    _savePending = true;
-    return;
-  }
-  clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(_doSave, 200);
 }
 
 function _createDeepProxy(target, path = []) {
@@ -410,12 +368,11 @@ export function resetInitialVocabKeys() {
   Object.keys(state.vocab || {}).forEach((key) => initialVocabKeys.add(key));
 }
 
-export function flushPendingSave() {
+function flushPendingSave() {
   if (_saveTimer) {
     clearTimeout(_saveTimer);
     _saveTimer = null;
   }
-  // Use synchronous XHR for closeEvent — guarantees data is sent before window closes
   const rawState = state._raw || state;
   if (rawState.profiles && rawState.preferences) {
     const lang = rawState.preferences.learningLanguage;
@@ -425,30 +382,10 @@ export function flushPendingSave() {
     }
   }
   if (window.__qtBridge) {
-    try {
-      const payload = {
-        texts: _toPlain(rawState.customTexts || []),
-        prefs: {
-          ..._toPlain(rawState.preferences || {}),
-          __userBooks: _toPlain(rawState.userBooks || [])
-        },
-        hiddenBooks: _toPlain(rawState.hiddenBuiltInBooks || []),
-        vocab: _toPlain(rawState.profiles || {})
-      };
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/__store/save", false); // synchronous!
-      xhr.setRequestHeader("Content-Type", "application/json");
-      xhr.setRequestHeader("X-WH-Token", window.WH_TOKEN || "");
-      xhr.send(JSON.stringify(payload));
-    } catch (e) {
-      console.error("flush save failed", e);
-    }
+    const payload = buildSavePayload(rawState);
+    saveSyncXhr(JSON.stringify(payload));
   } else {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(_toPlain(rawState)));
-    } catch (e) {
-      console.error("flush localStorage save failed", e);
-    }
+    saveToLocalStorage(rawState);
   }
 }
 window.flushPendingSave = flushPendingSave;

@@ -5,7 +5,7 @@ import { render, setView, ensureCurrentText } from "./render.js";
 import { renderLibrary } from "./views/library.js";
 import { renderReader, setReaderLoading, clearReaderLoading, rememberReaderScrollPosition } from "./views/reader.js";
 import { bookTexts, clearBookTextCache, loadBookText, findBookById } from "./books.js";
-import { invalidateBookStats } from "./stats-cache.js";
+import { invalidateBookId } from "./vocab-index-client.js";
 import { cleanGutenbergText } from "./tokenizer_v2.js";
 import { formatTagList, parseTagList } from "./utils.js";
 import { t } from "./i18n.js";
@@ -69,7 +69,7 @@ export async function openLastReadBook() {
 export async function importCustomText(title, text, meta = {}, openAfterImport = true) {
   const cleanTitle = title.trim();
   const cleanText = text.trim();
-  if (!cleanTitle || !cleanText) return;
+  if (!cleanTitle || !cleanText) return null;
 
   const now = new Date().toISOString();
   const slug = cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -86,6 +86,10 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
     sourceUrl: meta.sourceUrl || "",
     textUrl: meta.textUrl || "",
     coverDataUrl: meta.coverDataUrl || "",
+    pdfOcrPages: Array.isArray(meta.pdfOcrPages) ? meta.pdfOcrPages : undefined,
+    pdfOcrEngine: meta.pdfOcrEngine || "",
+    pdfOcrPageCount: meta.pdfOcrPageCount || 0,
+    experimental: Boolean(meta.experimental),
     createdAt: meta.createdAt || now,
     updatedAt: now
   };
@@ -95,7 +99,7 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   }
   
   bookTexts.set(id, cleanText);
-  invalidateBookStats(id);
+  invalidateBookId(id);
 
   const idx = state.customTexts.findIndex(item => String(item.id) === String(customText.id));
   if (idx !== -1) state.customTexts.splice(idx, 1);
@@ -119,6 +123,7 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   } else {
     renderLibrary();
   }
+  return id;
 }
 
 let editingBookId = null;
@@ -227,7 +232,7 @@ export async function saveEditedBook() {
   }
   
   bookTexts.set(editingBookId, cleanText);
-  invalidateBookStats(editingBookId);
+  invalidateBookId(editingBookId);
   
   if (window.__qtBridge) {
     const payload = customText
@@ -300,8 +305,8 @@ export function moveBookToProfile(id, targetLang, isCustom) {
     textObj.id = newId;
     textObj.updatedAt = new Date().toISOString();
     state.profiles[targetLang].customTexts.push(textObj);
-    invalidateBookStats(id);
-    invalidateBookStats(newId);
+    invalidateBookId(id);
+    invalidateBookId(newId);
     
     if (state.currentTextId === id) {
       state.currentTextId = null;
@@ -349,7 +354,7 @@ export function removeCustomText(id) {
   if (idx === -1) return;
   forgetArchivedBook(id);
   state.customTexts.splice(idx, 1);
-  invalidateBookStats(id);
+  invalidateBookId(id);
   if (state.currentTextId === id) {
     state.currentTextId = null;
     state.selectedWord = null;
@@ -425,7 +430,7 @@ export async function loadFullGutenbergText(book) {
           const localText = (await localResponse.text()).trim();
           if (localText.length >= 500) {
             bookTexts.set(book.id, localText);
-            invalidateBookStats(book.id);
+            invalidateBookId(book.id);
             state.currentTextId = book.id;
             setLastReadTextId(book.id);
             state.selectedWord = null;

@@ -5,10 +5,6 @@ const FALLBACK = "en";
 let currentLocale = FALLBACK;
 let dict = {};
 
-export function getSupportedLocales() {
-  return [...SUPPORTED];
-}
-
 export function getLocale() {
   return currentLocale;
 }

@@ -3,6 +3,7 @@ import { state } from "./state.js";
 let speaking = false;
 let currentAudio = null;
 let onFinishCallback = null;
+const MAX_TTS_SEGMENT_LENGTH = 500;
 
 function getTtsLang(lang) {
   const map = { en: "en-US", de: "de-DE", es: "es-ES", fr: "fr-FR", it: "it-IT", pl: "pl-PL", uk: "uk-UA", ru: "ru-RU", ja: "ja-JP" };
@@ -87,11 +88,10 @@ export function speakText(text, containerElement, onFinish) {
   stopSpeaking();
   onFinishCallback = onFinish;
 
-  const selectedText = window.getSelection().toString().trim();
+  const selectedText = getSelectedTextInContainer(containerElement);
   const textToRead = selectedText || text;
 
-  // Split text into sentences for better pacing
-  const sentences = textToRead.match(/[^.!?\n。！？]+[.!?\n).！？]+|[^.!?\n。！？]+$/g) || [textToRead];
+  const sentences = splitTextForTts(textToRead);
   
   speaking = true;
   
@@ -100,6 +100,56 @@ export function speakText(text, containerElement, onFinish) {
   } else {
     readNextSentenceLocal(sentences, 0, containerElement);
   }
+}
+
+export function splitTextForTts(text) {
+  const normalized = normalizeTextForTts(text);
+  if (!normalized) return [];
+
+  const sentences = normalized.match(/[^.!?。！？]+[.!?。！？]+(?:["')\]]+)?|[^.!?。！？]+$/gu) || [normalized];
+  return sentences.flatMap(splitLongTtsSegment).map((sentence) => sentence.trim()).filter(Boolean);
+}
+
+function normalizeTextForTts(text) {
+  return String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/(\p{L})-\n(?=\p{L})/gu, "$1")
+    .replace(/[ \t]*\n+[ \t]*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitLongTtsSegment(segment) {
+  const text = String(segment || "").trim();
+  if (!text) return [];
+  if (text.length <= MAX_TTS_SEGMENT_LENGTH) return [text];
+
+  const chunks = [];
+  let remaining = text;
+  while (remaining.length > MAX_TTS_SEGMENT_LENGTH) {
+    let cut = remaining.lastIndexOf(" ", MAX_TTS_SEGMENT_LENGTH);
+    if (cut < Math.floor(MAX_TTS_SEGMENT_LENGTH / 2)) cut = MAX_TTS_SEGMENT_LENGTH;
+    chunks.push(remaining.slice(0, cut).trim());
+    remaining = remaining.slice(cut).trim();
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
+function getSelectedTextInContainer(containerElement) {
+  const selection = window.getSelection?.();
+  if (!selection || selection.isCollapsed) return "";
+  const text = selection.toString().trim();
+  if (!text) return "";
+  if (!containerElement || !selection.rangeCount) return text;
+
+  for (let index = 0; index < selection.rangeCount; index++) {
+    const range = selection.getRangeAt(index);
+    const node = range.commonAncestorContainer;
+    const element = node?.nodeType === 1 ? node : node?.parentElement;
+    if (element && containerElement.contains(element)) return text;
+  }
+  return "";
 }
 
 function readNextSentenceEdge(sentences, index, containerElement) {
