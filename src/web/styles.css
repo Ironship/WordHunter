@@ -13,8 +13,15 @@
   --amber-soft: #fcf1df;
   --red: #ab443e;
   --red-soft: #fceceb;
+  --purple: #7c3aed;
+  --purple-soft: #f1ebfb;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
   --radius: 8px;
+
+  /* Aliases for legacy token names used in chart/spinner rules */
+  --border: #e2e8e4;
+  --text: #1a201d;
+  --accent: #4f7cff;
 
   /* Reader — controlled by JS preferences */
   --reader-font-family: Georgia, "Times New Roman", serif;
@@ -37,7 +44,11 @@
   --amber-soft: #382c16;
   --red: #e37e76;
   --red-soft: #381e1d;
+  --purple: #b794f4;
+  --purple-soft: #2a1f3d;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --border: #29343d;
+  --text: #eaeff2;
 }
 
 :root[data-theme="dark"] input,
@@ -51,15 +62,18 @@
   display: none !important;
 }
 
-/* Qt WebEngine can burn CPU on continuous CSS animations. Keep the app static by default. */
+/* Qt WebEngine can burn CPU on continuous CSS animations. Keep the app static by default,
+   but allow loading spinners (short-lived, user waits on them). */
 *,
 *::before,
 *::after {
   animation: none !important;
   transition: none !important;
   box-sizing: border-box;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
+}
+.spinner,
+.discover-status.busy::after {
+  animation: spin 0.8s linear infinite !important;
 }
 *::-webkit-scrollbar {
   width: 10px;
@@ -116,16 +130,16 @@ code {
 
 kbd {
   display: inline-block;
-  padding: 0.15rem 0.4rem;
-  font-family: inherit;
-  font-size: 0.85rem;
+  padding: 0.05rem 0.4rem;
+  margin: 0 0.1rem;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--ink);
   background: var(--panel-strong);
   border: 1px solid var(--line);
   border-bottom-width: 2px;
   border-radius: 4px;
-  margin: 0 0.2rem;
   min-width: 1.5rem;
   text-align: center;
 }
@@ -177,11 +191,6 @@ kbd {
   overflow-wrap: anywhere;
   color: #b8c5bd;
   font-size: 0.88rem;
-}
-
-.brand span {
-  color: #b8c5bd;
-  font-size:  0.88rem;
 }
 
 .nav-list {
@@ -269,6 +278,11 @@ kbd {
   color: #ffffff;
 }
 
+.nav-item.active:not(.nav-item-locked) {
+  border-color: rgba(79, 179, 142, 0.4);
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
 .nav-item-locked {
   opacity: 0.45;
   cursor: not-allowed;
@@ -338,7 +352,9 @@ kbd {
 }
 
 .topbar h1 {
-  font-size: 1.8rem;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .topbar-actions,
@@ -352,7 +368,6 @@ kbd {
   gap: 0.5rem;
 }
 
-.metric-pill,
 .tag,
 .status-chip {
   display: inline-flex;
@@ -370,9 +385,10 @@ kbd {
 .eyebrow {
   margin: 0 0 0.2rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .view {
@@ -537,15 +553,9 @@ kbd {
   height: 100%;
   background: linear-gradient(90deg, var(--green), #6bcbab, var(--green));
   border-radius: 3px;
-  animation: translator-progress-slide 1.2s ease-in-out infinite;
+  animation: loading-slide 1.2s ease-in-out infinite;
   will-change: transform;
   backface-visibility: hidden;
-}
-
-@keyframes translator-progress-slide {
-  0%   { transform: translateX(-120%); }
-  50%  { transform: translateX(180%); }
-  100% { transform: translateX(380%); }
 }
 
 /* Graphs tab */
@@ -553,7 +563,7 @@ kbd {
 .graphs-layout > .panel { width: 100%; }
 
 .graphs-heatmap { padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
-.heatmap-wrap { display: flex; gap: 4px; align-items: flex-start; min-width: fit-content; }
+.heatmap-wrap { display: flex; gap: 4px; align-items: flex-start; min-width: -webkit-fill-available; min-width: fit-content; }
 .heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-top: 20px; font-size: 10px; color: var(--muted); line-height: 14px; }
 .heatmap-grid-area { position: relative; }
 .heatmap-months { display: flex; gap: 0; font-size: 10px; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
@@ -567,7 +577,7 @@ kbd {
 
 .graphs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.25rem; padding: 1.25rem; }
 .graph-cell { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 0.5rem 0.5rem; min-height: 280px; }
-.graph-cell canvas { display: block; width: 100%; height: 260px; }
+.graph-cell canvas { display: block; width: 100%; aspect-ratio: 1.5; }
 
 .graphs-stats { padding: 0.75rem 1.25rem 0.5rem; }
 .graphs-stats-row { display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -584,11 +594,7 @@ kbd {
 .review-chart-fullwidth:empty { display: none; }
 .review-chart-frame { width: min(100%, 860px); margin: 0 auto; overflow: hidden; }
 .review-chart-fullwidth canvas { display: block; width: 100%; max-width: 100%; border-radius: var(--radius); }
-.review-heatmap { width: 100%; overflow-x: auto; display: flex; justify-content: center; }
-.review-heatmap-grid { display: grid; grid-template-columns: repeat(var(--review-heatmap-weeks), 12px); gap: 3px; min-width: fit-content; }
-.review-heatmap-week { display: grid; grid-template-rows: repeat(7, 12px); gap: 3px; min-width: 0; }
-.review-heatmap-cell { height: 12px; min-width: 8px; border-radius: 3px; background: var(--panel-strong); cursor: default; }
-.review-heatmap-cell:hover { outline: 1px solid var(--ink); outline-offset: -1px; }
+.review-heatmap { width: 100%; padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
 .image-action-button { font-size: 0.75rem; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem; justify-content: center; }
 .word-image-search .image-action-button { width: 100%; }
 .review-image-search .image-action-button { margin: 0 auto; }
@@ -626,12 +632,13 @@ kbd {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--line);
 }
 
 .panel-header.stacked {
   display: block;
+  padding: 1.1rem 1.25rem;
 }
 
 .library-panel > .panel-header {
@@ -704,6 +711,63 @@ kbd {
   right: 0.5rem;
   pointer-events: none;
   margin-left: 0;
+}
+
+.reader-zoom-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 38px;
+  padding: 0 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.reader-zoom-slider input[type="range"] {
+  width: 90px;
+  height: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.reader-zoom-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  margin-top: -5px;
+}
+.reader-zoom-slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+.reader-zoom-value {
+  min-width: 2.6rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* In PDF OCR mode the text is an image overlay; font-size scaling does not
+   apply, so hide the zoom slider and A-/A+ buttons. */
+.reader-panel:has(.reader-text.pdf-ocr-reader) .toolbar-buttons [data-font],
+.reader-panel:has(.reader-text.pdf-ocr-reader) .reader-zoom-slider {
+  display: none;
 }
 
 .status-filter-field {
@@ -810,8 +874,9 @@ input:focus,
 select:focus,
 textarea:focus,
 button:focus-visible {
-  outline: 3px solid rgba(47, 111, 87, 0.22);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15);
 }
 
 .book-grid {
@@ -836,7 +901,7 @@ button:focus-visible {
 .book-card:hover {
   transform: translateY(-2px);
   border-color: var(--green);
-  box-shadow: 0 12px 28px rgba(28, 39, 32, 0.12);
+  box-shadow: 0 8px 20px -6px rgba(28, 39, 32, 0.18);
 }
 
 .book-card.archived {
@@ -1112,6 +1177,19 @@ button.icon-button {
   gap: 0.85rem;
 }
 
+.import-form > label:not(.import-cover-dropzone) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.import-form > label:not(.import-cover-dropzone) > span:first-child {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
 .data-actions {
   display: grid;
   gap: 0;
@@ -1229,10 +1307,10 @@ button.icon-button {
 
 .progress-track {
   display: flex;
-  height: 10px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--amber-soft);
+  background: var(--panel-strong);
 }
 
 .progress-track span {
@@ -1248,6 +1326,7 @@ button.icon-button {
 }
 
 .reader-text {
+  width: 100%;
   min-height: 0;
   max-height: none;
   flex: 1;
@@ -1267,26 +1346,22 @@ html[data-text-align="justify"] .reader-text {
 
 html[data-max-width="narrow"] .reader-text {
   max-width: 600px;
-  margin-left: 0.4rem;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 html[data-max-width="medium"] .reader-text {
   max-width: 800px;
-  margin-left: 0.4rem;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 html[data-max-width="wide"] .reader-text {
   max-width: 1200px;
-  margin-left: 0.4rem;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 html[data-max-width="full"] .reader-text {
   max-width: none;
-  margin-left: 0.4rem;
-  margin-right: auto;
+  margin-inline: auto;
 }
 
 .word-token {
@@ -1319,19 +1394,19 @@ html[data-max-width="full"] .reader-text {
 
 .word-token.status-known {
   color: var(--muted);
-  box-shadow: none;
+  box-shadow: inset 0 -0.28em var(--token-known-bg, var(--green-soft));
 }
 
 .word-token.status-ignored {
   color: var(--muted);
-  opacity: 0.7;
-  box-shadow: none;
+  box-shadow: inset 0 -0.28em var(--token-ignored-bg, rgba(0, 0, 0, 0.08));
 }
 
 :root.no-token-highlight .word-token {
   box-shadow: none !important;
   color: inherit !important;
   opacity: 1 !important;
+  text-decoration: none !important;
 }
 
 :root.no-token-highlight .word-token:hover,
@@ -1346,6 +1421,7 @@ html[data-max-width="full"] .reader-text {
   box-shadow: none !important;
   color: inherit !important;
   opacity: 1 !important;
+  text-decoration: none !important;
 }
 
 :root.no-highlight-known-ignored .word-token.status-known:hover,
@@ -1355,6 +1431,115 @@ html[data-max-width="full"] .reader-text {
   background: rgba(77, 190, 150, 0.16);
   outline: 2px solid var(--green);
   outline-offset: 1px;
+}
+
+.reader-text.pdf-ocr-reader {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  white-space: normal;
+  text-align: left;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.pdf-ocr-stage {
+  display: grid;
+  justify-items: stretch;
+  gap: 1rem;
+  width: 100%;
+}
+
+.pdf-ocr-page {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--pdf-page-width) / var(--pdf-page-height);
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.pdf-ocr-page-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pdf-ocr-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.word-token.pdf-ocr-word {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-width: 3px;
+  min-height: 3px;
+  overflow: visible;
+  border-radius: 5px;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: transparent !important;
+  font-size: 0;
+  line-height: 0;
+  text-shadow: none !important;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 1;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.word-token.pdf-ocr-word::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(2px, 16%, 6px);
+  border-radius: 0 0 4px 4px;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.word-token.pdf-ocr-word.status-new::after {
+  background: var(--token-new-bg, var(--amber-soft));
+}
+
+.word-token.pdf-ocr-word.status-learning::after {
+  background: var(--token-learning-bg, var(--blue-soft));
+}
+
+.word-token.pdf-ocr-word.status-known::after {
+  background: var(--token-known-bg, var(--green-soft));
+}
+
+.word-token.pdf-ocr-word.status-ignored::after {
+  background: var(--token-ignored-bg, rgba(0, 0, 0, 0.08));
+}
+
+.word-token.pdf-ocr-word:hover,
+.word-token.pdf-ocr-word:focus,
+.word-token.pdf-ocr-word.selected {
+  background: transparent !important;
+  outline: 2px solid var(--green);
+  outline-offset: 0;
+}
+
+.word-token.pdf-ocr-word:hover::after,
+.word-token.pdf-ocr-word.selected::after {
+  opacity: 1;
+}
+
+:root.no-token-highlight .word-token.pdf-ocr-word::after,
+:root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-known::after,
+:root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-ignored::after {
+  display: none;
 }
 
 .review-chart svg {
@@ -1392,16 +1577,17 @@ html[data-max-width="full"] .reader-text {
 .focus-hint {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.6rem;
   width: 100%;
   box-sizing: border-box;
-  padding: 1rem;
-  border: 1px dashed var(--line);
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--green);
   border-radius: 6px;
-  background: transparent;
+  background: var(--panel-strong);
   color: var(--muted);
-  font-size: 0.85rem;
-  text-align: center;
+  font-size: 0.82rem;
+  text-align: left;
 }
 
 .empty-state {
@@ -1504,13 +1690,11 @@ html[data-max-width="full"] .reader-text {
   margin: 0.15rem 0 0.6rem;
   font-size: 1rem;
 }
-.review-chart {
-  padding-right: 0.5rem;
-}
 
 .book-summary {
   display: -webkit-box;
   -webkit-line-clamp: 4;
+  line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1627,19 +1811,17 @@ html[data-max-width="full"] .reader-text {
 .reader-loading h3 {
   margin: 0;
 }
-.spinner {
+.reader-loading .spinner {
   width: 44px;
   height: 44px;
-  border: 4px solid var(--border);
-  border-top-color: var(--accent, #4f7cff);
-  border-radius: 50%;
-  animation: spinner-rot 0.9s linear infinite;
-  will-change: transform;
-  backface-visibility: hidden;
+  border-width: 4px;
 }
-@keyframes spinner-rot {
-  to { transform: rotate(360deg); }
+@keyframes loading-slide {
+  0%   { transform: translateX(-120%); }
+  50%  { transform: translateX(180%); }
+  100% { transform: translateX(380%); }
 }
+
 .loading-bar {
   width: min(420px, 80%);
   height: 6px;
@@ -1657,10 +1839,43 @@ html[data-max-width="full"] .reader-text {
   will-change: transform;
   backface-visibility: hidden;
 }
-@keyframes loading-slide {
-  0%   { transform: translateX(-120%); }
-  50%  { transform: translateX(180%); }
-  100% { transform: translateX(380%); }
+
+.ocr-progress-bar {
+  width: min(320px, 80%);
+  height: 6px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+.ocr-progress-bar-fill {
+  height: 100%;
+  width: 35%;
+  background: linear-gradient(90deg, var(--green), #6bcbab, var(--green));
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: ocr-progress-sweep 1.4s linear infinite !important;
+}
+@keyframes ocr-progress-sweep {
+  to { background-position: 200% 0; }
+}
+.ocr-progress-eta {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+.ocr-confirm-dialog {
+  width: min(92vw, 480px);
+  padding: 0;
+}
+.ocr-confirm-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+.ocr-confirm-body p { margin: 0; }
+.ocr-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .table-wrap {
@@ -1720,6 +1935,7 @@ html[data-max-width="full"] .reader-text {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .vocab-translation-input {
@@ -1751,6 +1967,15 @@ html[data-max-width="full"] .reader-text {
 .vocab-translation-input::placeholder {
   color: var(--muted);
   opacity: 1;
+}
+
+.vocab-row-added-in-session strong {
+  color: var(--purple) !important;
+}
+
+.vocab-row-added-in-session .row-actions .icon-button:not(.danger-button) {
+  color: var(--purple) !important;
+  border-color: var(--purple-soft) !important;
 }
 
 .review-translation-input {
@@ -1827,7 +2052,6 @@ html[data-max-width="full"] .reader-text {
   overflow-y: auto;
   max-height: 100%;
   width: 100%;
-  scrollbar-width: thin;
 }
 
 .review-word strong {
@@ -1970,10 +2194,6 @@ html[data-max-width="full"] .reader-text {
   .help-list {
     grid-template-columns: 1fr;
   }
-
-  .reader-text {
-    max-height: none;
-  }
 }
 
 /* Topbar status pills */
@@ -1981,36 +2201,37 @@ html[data-max-width="full"] .reader-text {
   display: inline-flex;
   align-items: center;
   min-height: 30px;
-  padding: 0.25rem 0.7rem;
+  padding: 0.2rem 0.75rem;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.83rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .metric-pill.metric-known {
-  border-color: #b8d3c5;
+  border-color: transparent;
   background: var(--green-soft);
   color: var(--green);
 }
 
 .metric-pill.metric-learning {
-  border-color: #afc8dd;
+  border-color: transparent;
   background: var(--blue-soft);
   color: var(--blue);
 }
 
 .metric-pill.metric-new {
-  border-color: #dfc18e;
-  background: var(--amber-soft);
-  color: var(--amber);
+  border-color: transparent;
+  background: var(--purple-soft);
+  color: var(--purple);
 }
 
-dialog {
-  color: var(--ink);
-  background: var(--panel);
+.metric-pill#overall-count {
+  border-color: var(--line);
+  background: var(--panel-strong);
 }
 
 /* Tags */
@@ -2128,19 +2349,6 @@ dialog {
   left: 22px;
 }
 
-kbd {
-  display: inline-block;
-  padding: 0.05rem 0.4rem;
-  margin: 0 0.1rem;
-  border: 1px solid var(--line);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--panel-strong);
-  color: var(--ink);
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 0.82rem;
-}
-
 @media (max-width: 540px) {
   .data-action-buttons {
     justify-content: stretch;
@@ -2164,8 +2372,9 @@ kbd {
 .book-card.has-cover { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; }
 .book-cover { aspect-ratio: 3/4; max-width: 96px; background: var(--panel-strong); border-radius: 6px; overflow: hidden; }
 .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.book-card.no-cover .book-cover, :root.no-covers .book-cover { display: none; }
+:root.no-covers .book-cover { display: none; }
 :root.no-covers .book-card.has-cover { grid-template-columns: 1fr; }
+.reading-active { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px; }
 
 /* === Discover view === */
 .discover-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); align-items: start; }
@@ -2175,7 +2384,6 @@ kbd {
 .discover-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .6rem 1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-strong); flex-wrap: wrap; }
 .discover-toolbar .toolbar-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
 .discover-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .85rem; padding: 1rem; }
-.discover-card.book-card.has-cover { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; }
 :root.no-covers .discover-card.book-card.has-cover { grid-template-columns: 1fr; }
 .discover-card.selected { outline: 2px solid var(--green); border-color: var(--green); }
 .discover-card .discover-check { display: inline-flex; align-items: center; gap: .3rem; font-size: .85rem; color: var(--muted); margin-right: auto; }
@@ -2256,11 +2464,12 @@ kbd {
 .page-jump-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); }
 .page-jump-input::-webkit-inner-spin-button,
 .page-jump-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.page-jump-input[type="number"] { -moz-appearance: textfield; }
+.page-jump-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .page-jump-total { color: var(--muted); font-size: 0.9rem; }
 
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 
@@ -2274,6 +2483,208 @@ dialog {
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
 }
 
+/* Word editor dialog (Add / Edit word) */
+.word-editor-body {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.word-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.word-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.word-editor-field > span,
+.word-editor-field > label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.word-editor-field > .input,
+.word-editor-field > textarea,
+.word-editor-field > input[type="text"] {
+  width: 100%;
+}
+
+.word-editor-field.word-editor-word {
+  grid-column: 1;
+}
+
+.word-editor-field.word-editor-example {
+  grid-column: 1 / -1;
+}
+
+.word-editor-status {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+}
+
+.word-editor-status > legend {
+  padding: 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.word-editor-status .status-options {
+  width: 100%;
+}
+
+.word-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  border-top: 1px solid var(--line);
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+}
+
 /* Help View styles */
 #help-view ul { list-style-type: none; padding-left: 0; }
 #help-view li { margin-bottom: 0.5rem; }
+
+/* =====================================================================
+   Locked viewport layout (>=781px): topbar with status pills stays
+   visible, each view scrolls internally instead of scrolling the whole
+   window. Below 781px the existing page-scroll layout is kept.
+   ===================================================================== */
+@media (min-width: 781px) {
+  .app-shell {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .sidebar {
+    height: 100vh;
+  }
+
+  .main-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .topbar {
+    flex: 0 0 auto;
+  }
+
+  .view.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  /* Reader: panel fills the view, text scrolls inside; word panel sticks. */
+  #reader-view.active {
+    overflow: hidden;
+  }
+
+  #reader-view.active > .reader-grid {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .reader-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .reader-panel > .reader-text {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .reader-sidebar-wrapper {
+    position: static;
+    top: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: auto;
+    align-self: stretch;
+  }
+
+  /* Library: both panels scroll independently, import button stays visible. */
+  #library-view.active {
+    overflow: hidden;
+  }
+
+  #library-view.active > .library-layout {
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  .library-panel,
+  .import-panel {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .library-panel > .book-grid {
+    overflow: visible;
+  }
+
+  .import-form {
+    padding-bottom: 4.5rem;
+  }
+
+  .import-form > .primary-button[type="submit"] {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    width: calc(100% + 2rem);
+    margin: 0.75rem -1rem -1rem;
+    height: 48px;
+    min-height: 48px;
+    padding: 0 1rem;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    box-shadow: 0 -10px 18px -8px rgba(0, 0, 0, 0.18);
+  }
+
+  :root[data-theme="dark"] .import-form > .primary-button[type="submit"] {
+    box-shadow: 0 -10px 22px -8px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Vocab: table area scrolls, filters stay. */
+  #vocabulary-view.active > .vocab-layout,
+  #graphs-view.active > .graphs-layout,
+  #discover-view.active > .discover-grid,
+  #flashcards-view.active > .flashcards-layout,
+  #translator-view.active > .translator-layout,
+  #settings-view.active > .settings-grid,
+  #help-view.active > .help-grid {
+    min-height: 0;
+  }
+
+  .table-wrap {
+    min-height: 0;
+  }
+}

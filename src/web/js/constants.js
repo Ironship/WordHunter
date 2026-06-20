@@ -15,5 +15,12 @@ export const LINE_HEIGHTS = {
   loose: 2.1
 };
 
+export const UI_SCALE = {
+  MIN: 80,
+  MAX: 150,
+  STEP: 5,
+  DEFAULT: 100
+};
+
 export const BOOKS_INDEX_URL = "books/index.json";
 export const GUTENDEX_URL = "https://gutendex.com/books/";

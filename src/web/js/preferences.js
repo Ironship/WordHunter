@@ -1,9 +1,10 @@
 // User preferences: theme, font, size — reads and saves state, updates DOM.
 import { state, saveState, createDefaultState } from "./state.js";
-import { FONT_STACKS, LINE_HEIGHTS } from "./constants.js";
+import { FONT_STACKS, LINE_HEIGHTS, UI_SCALE } from "./constants.js";
 import { els } from "./dom.js";
 import { clamp, escapeHtml } from "./utils.js";
 import { t } from "./i18n.js";
+import { canUseTranslationProvider } from "./translation-provider.js";
 
 export function themeLabel(theme) {
   if (theme === "dark") return t("toast.themeDark");
@@ -26,7 +27,7 @@ export function applyPreferences() {
   document.documentElement.style.setProperty("--reader-line-height", String(LINE_HEIGHTS[lineKey]));
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   document.documentElement.dataset.textAlign = prefs.readerTextAlign || "left";
-  document.documentElement.dataset.maxWidth = prefs.readerMaxWidth || "medium";
+  document.documentElement.dataset.maxWidth = prefs.readerMaxWidth || "wide";
   document.documentElement.style.setProperty("--token-new-bg", prefs.colorNew || "#ff6b6b");
   document.documentElement.style.setProperty("--token-learning-bg", prefs.colorLearning || "#ffb84d");
   document.documentElement.style.setProperty("--token-known-bg", prefs.colorKnown || "#8ce99a");
@@ -35,6 +36,9 @@ export function applyPreferences() {
   document.documentElement.classList.toggle("no-highlight-known-ignored", prefs.hideKnownIgnored === true);
   document.documentElement.classList.toggle("no-card-stats", prefs.showCardStats === false);
   document.documentElement.classList.toggle("no-covers", prefs.showCovers === false);
+
+  const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
+  document.documentElement.style.zoom = String(uiScale / 100);
 
   if (els.themeToggle) {
     const glyph = theme === "dark" ? "☀" : theme === "light" ? "☽" : "◑";
@@ -70,7 +74,7 @@ export function syncSettingsControls() {
   els.prefFont.value = prefs.readerFont || "serif";
   els.prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
-  if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "medium";
+  if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "wide";
   if (els.prefWordsPerPage) els.prefWordsPerPage.value = prefs.wordsPerPage || "1000";
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
@@ -88,14 +92,27 @@ export function syncSettingsControls() {
   }
   els.prefFontSize.value = state.readerFontSize || 18;
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize || 18 });
+  if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize || 18);
+  if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize || 18}px`;
+  const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
+  if (els.prefUiScale) els.prefUiScale.value = String(uiScale);
+  if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: uiScale });
   els.prefHighlight.checked = prefs.highlightTokens !== false;
   if (els.prefHideKnown) els.prefHideKnown.checked = prefs.hideKnownIgnored === true;
   if (els.prefReviewGraphType) els.prefReviewGraphType.value = prefs.reviewGraphType || "heatmap";
   els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
   if (els.prefAutoAddLearning) els.prefAutoAddLearning.checked = prefs.autoAddLearningOnly === true;
+  const provider = ["offline", "deepl", "google", "lmstudio"].includes(prefs.translationProvider) ? prefs.translationProvider : "offline";
+  if (els.prefTranslationProvider) els.prefTranslationProvider.value = provider;
+  if (els.prefDeepLApiKey) els.prefDeepLApiKey.value = prefs.deeplApiKey || "";
+  if (els.prefLmStudioEndpoint) els.prefLmStudioEndpoint.value = prefs.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions";
+  if (els.prefLmStudioModel) els.prefLmStudioModel.value = prefs.lmStudioModel || "";
+  if (els.prefDeepLApiKeyRow) els.prefDeepLApiKeyRow.hidden = provider !== "deepl";
+  if (els.prefLmStudioEndpointRow) els.prefLmStudioEndpointRow.hidden = provider !== "lmstudio";
+  if (els.prefLmStudioModelRow) els.prefLmStudioModelRow.hidden = provider !== "lmstudio";
   if (els.prefAutoTranslate) els.prefAutoTranslate.checked = prefs.autoTranslateWords === true;
   if (els.prefAutoTranslateRow) {
-    const enabled = prefs.offlineTranslator === true;
+    const enabled = canUseTranslationProvider();
     els.prefAutoTranslateRow.style.opacity = enabled ? "1" : "0.5";
     els.prefAutoTranslateRow.style.pointerEvents = enabled ? "auto" : "none";
   }
@@ -103,7 +120,7 @@ export function syncSettingsControls() {
   if (els.prefArgosAsDict) {
     els.prefArgosAsDict.checked = prefs.argosAsDict === true;
     if (els.prefArgosAsDictRow) {
-      const enabled = prefs.offlineTranslator === true;
+      const enabled = provider === "offline" && prefs.offlineTranslator === true;
       els.prefArgosAsDictRow.style.opacity = enabled ? "1" : "0.5";
       els.prefArgosAsDictRow.style.pointerEvents = enabled ? "auto" : "none";
     }
@@ -153,4 +170,21 @@ export function setReaderFontSize(value) {
   applyPreferences();
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize });
   if (els.prefFontSize) els.prefFontSize.value = String(state.readerFontSize);
+  if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize);
+  if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize}px`;
+}
+
+export function getUiScale() {
+  return clamp(Math.round(Number(state.preferences?.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
+}
+
+export function setUiScale(value) {
+  const stepped = Math.round(Number(value) / UI_SCALE.STEP) * UI_SCALE.STEP;
+  const clamped = clamp(stepped || UI_SCALE.DEFAULT, UI_SCALE.MIN, UI_SCALE.MAX);
+  state.preferences.uiScale = clamped;
+  saveState();
+  applyPreferences();
+  if (els.prefUiScale) els.prefUiScale.value = String(clamped);
+  if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: clamped });
+  return clamped;
 }

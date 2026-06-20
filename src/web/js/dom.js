@@ -8,7 +8,6 @@ export function cacheElements() {
   els.pillLearning = document.getElementById("pill-learning");
   els.pillNew = document.getElementById("pill-new");
   els.themeToggle = document.getElementById("theme-toggle");
-  els.reloadBtn = document.getElementById("reload-btn");
   els.navItems = [...document.querySelectorAll(".nav-item")];
   els.translatorNavItem = document.querySelector('[data-view="translator"]');
   els.views = [...document.querySelectorAll(".view")];
@@ -36,6 +35,8 @@ export function cacheElements() {
   els.readerSource = document.getElementById("reader-source");
   els.readerText = document.getElementById("reader-text");
   els.readerVocabList = document.getElementById("reader-vocab-list");
+  els.readerFontSizeSlider = document.getElementById("reader-font-size-slider");
+  els.readerFontSizeValue = document.getElementById("reader-font-size-value");
   els.trackingSummary = document.getElementById("tracking-summary");
   els.uniqueSummary = document.getElementById("unique-summary");
   els.progressBar = document.getElementById("progress-bar");
@@ -87,6 +88,8 @@ export function cacheElements() {
   els.prefSrsAlgorithm = document.getElementById("pref-srs-algorithm");
   els.prefFontSize = document.getElementById("pref-font-size");
   els.prefFontSizeLabel = document.getElementById("pref-font-size-label");
+  els.prefUiScale = document.getElementById("pref-ui-scale");
+  els.prefUiScaleLabel = document.getElementById("pref-ui-scale-label");
   els.prefHighlight = document.getElementById("pref-highlight");
   els.prefHideKnown = document.getElementById("pref-hide-known");
   els.prefReviewGraphType = document.getElementById("pref-review-graph-type");
@@ -95,6 +98,13 @@ export function cacheElements() {
   els.prefAutoTranslate = document.getElementById("pref-auto-translate");
   els.prefAutoTranslateRow = document.getElementById("pref-auto-translate-row");
   els.prefOfflineTranslator = document.getElementById("pref-offline-translator");
+  els.prefTranslationProvider = document.getElementById("pref-translation-provider");
+  els.prefDeepLApiKey = document.getElementById("pref-deepl-api-key");
+  els.prefDeepLApiKeyRow = document.getElementById("pref-deepl-key-row");
+  els.prefLmStudioEndpoint = document.getElementById("pref-lmstudio-endpoint");
+  els.prefLmStudioEndpointRow = document.getElementById("pref-lmstudio-endpoint-row");
+  els.prefLmStudioModel = document.getElementById("pref-lmstudio-model");
+  els.prefLmStudioModelRow = document.getElementById("pref-lmstudio-model-row");
   els.prefArgosAsDict = document.getElementById("pref-argos-as-dict");
   els.prefArgosAsDictRow = document.getElementById("pref-argos-as-dict-row");
   els.argosDownloadDialog = document.getElementById("argos-download-dialog");
@@ -105,6 +115,7 @@ export function cacheElements() {
   els.prefDictionaryMode = document.getElementById("pref-dictionary-mode");
   els.prefCardStats = document.getElementById("pref-card-stats");
   els.prefCovers = document.getElementById("pref-covers");
+  els.ocrGpuStatus = document.getElementById("ocr-gpu-status");
   els.prefTextAlign = document.getElementById("pref-text-align");
   els.prefMaxWidth = document.getElementById("pref-max-width");
   els.prefTtsRate = document.getElementById("pref-tts-rate");

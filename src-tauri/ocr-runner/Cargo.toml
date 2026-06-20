@@ -1,0 +1,13 @@
+[package]
+name = "wordhunter-paddleocr"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["download-binaries", "copy-dylibs", "ndarray", "directml"] }
+paddle-ocr-rs = "0.6"
+pdfium-render = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

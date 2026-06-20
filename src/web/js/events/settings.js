@@ -6,7 +6,7 @@ import { renderLibrary } from "../views/library.js";
 import { renderReader } from "../views/reader.js";
 import { renderReview } from "../views/vocabulary.js";
 import { renderDiscover } from "../views/discover.js";
-import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize } from "../preferences.js";
+import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
 import { showToast } from "../toast.js";
 import { exportState, importStateFile, clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
@@ -35,6 +35,7 @@ export function bindSettingsEvents() {
       els.prefAutoTranslateRow.style.opacity = "0.5";
       els.prefAutoTranslateRow.style.pointerEvents = "none";
     }
+    syncSettingsControls();
     const { renderTranslator } = await import("../views/translator.js");
     renderTranslator();
   }
@@ -156,6 +157,32 @@ export function bindSettingsEvents() {
   });
   els.prefAutoLearn.addEventListener("change", (e) => updatePreferenceValue("autoLearnOnClick", e.target.checked));
   if (els.prefAutoAddLearning) els.prefAutoAddLearning.addEventListener("change", (e) => updatePreferenceValue("autoAddLearningOnly", e.target.checked));
+  if (els.prefTranslationProvider) {
+    els.prefTranslationProvider.addEventListener("change", async (e) => {
+      updatePreferenceValue("translationProvider", e.target.value);
+      syncSettingsControls();
+      const { renderTranslator } = await import("../views/translator.js");
+      renderTranslator();
+    });
+  }
+  if (els.prefDeepLApiKey) {
+    els.prefDeepLApiKey.addEventListener("change", (e) => {
+      updatePreferenceValue("deeplApiKey", e.target.value.trim());
+      syncSettingsControls();
+    });
+  }
+  if (els.prefLmStudioEndpoint) {
+    els.prefLmStudioEndpoint.addEventListener("change", (e) => {
+      updatePreferenceValue("lmStudioEndpoint", e.target.value.trim() || "http://127.0.0.1:1234/v1/chat/completions");
+      syncSettingsControls();
+    });
+  }
+  if (els.prefLmStudioModel) {
+    els.prefLmStudioModel.addEventListener("change", (e) => {
+      updatePreferenceValue("lmStudioModel", e.target.value.trim());
+      syncSettingsControls();
+    });
+  }
   if (els.prefAutoTranslate) els.prefAutoTranslate.addEventListener("change", (e) => updatePreferenceValue("autoTranslateWords", e.target.checked));
   
   if (els.prefOfflineTranslator) {
@@ -200,6 +227,7 @@ export function bindSettingsEvents() {
           els.prefArgosAsDict.checked = false;
           updatePreferenceValue("argosAsDict", false);
         }
+        syncSettingsControls();
         const { renderTranslator } = await import("../views/translator.js");
         renderTranslator();
       }
@@ -249,13 +277,14 @@ export function bindSettingsEvents() {
           els.prefAutoTranslateRow.style.opacity = "1";
           els.prefAutoTranslateRow.style.pointerEvents = "auto";
         }
+        syncSettingsControls();
         if (els.argosDownloadDialog) els.argosDownloadDialog.close();
         const { refreshTranslatorAvailability, invalidatePackagesCache } = await import("../views/translator.js");
         invalidatePackagesCache();
         await refreshTranslatorAvailability();
         import("../toast.js").then(m => m.showToast(t("toast.modelsDownloaded")));
       } catch (err) {
-        console.error("Argos install error", err);
+        console.error("Offline translator install error", err);
         import("../toast.js").then(m => m.showToast(t("toast.modelsDownloadError")));
         if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
         if (els.prefArgosAsDictRow) {
@@ -267,6 +296,7 @@ export function bindSettingsEvents() {
           els.prefAutoTranslateRow.style.pointerEvents = "none";
         }
         updatePreferenceValue("offlineTranslator", false);
+        syncSettingsControls();
         const { renderTranslator } = await import("../views/translator.js");
         renderTranslator();
       } finally {
@@ -287,4 +317,14 @@ export function bindSettingsEvents() {
   if (els.prefColorIgnored) els.prefColorIgnored.addEventListener("input", (e) => updatePreferenceValue("colorIgnored", e.target.value));
   
   els.prefFontSize.addEventListener("input", (e) => setReaderFontSize(e.target.value));
+
+  if (els.prefUiScale) {
+    els.prefUiScale.addEventListener("input", (e) => {
+      setUiScale(e.target.value);
+    });
+  }
+
+  if (els.readerFontSizeSlider) {
+    els.readerFontSizeSlider.addEventListener("input", (e) => setReaderFontSize(e.target.value));
+  }
 }

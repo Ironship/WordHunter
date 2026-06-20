@@ -4,10 +4,10 @@ import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render, ensureCurrentText } from "./render.js";
 import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
-import { normalizeSearchVariants } from "./tokenizer_v2.js";
-import { entryAppearsInText, getTextVocabularyIndex, getVocabularyTextById } from "./text-vocab.js";
+import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
+import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 
-const VOCAB_STATUS_FILTERS = ["new", "learning", "known", "ignored"];
+const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
 
 async function nativeSave(data, filename, mime) {
   if (window.__qtBridge) {
@@ -27,6 +27,32 @@ async function nativeSave(data, filename, mime) {
   }
 }
 
+async function requestVocabExport(payload) {
+  if (!window.__qtBridge) {
+    throw new Error("vocab export requires native bridge");
+  }
+  const response = await fetch("/__vocab", {
+    method: "POST",
+    headers: WH_TOKEN_HEADER,
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) throw new Error(`vocab_export HTTP ${response.status}`);
+  return response.json();
+}
+
+async function requestAnkiImport(tsv) {
+  if (!window.__qtBridge) {
+    throw new Error("anki import requires native bridge");
+  }
+  const response = await fetch("/__vocab", {
+    method: "POST",
+    headers: WH_TOKEN_HEADER,
+    body: JSON.stringify({ op: "import", tsv })
+  });
+  if (!response.ok) throw new Error(`vocab_import HTTP ${response.status}`);
+  return response.json();
+}
+
 function safeFilenamePart(value) {
   return String(value || "text")
     .normalize("NFKD")
@@ -36,10 +62,6 @@ function safeFilenamePart(value) {
     .slice(0, 80) || "text";
 }
 
-function cleanExportCell(value) {
-  return String(value || "").replace(/[\t\r\n]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
 function getSelectedVocabStatusesForExport() {
   if (Array.isArray(state.filters?.vocabStatuses)) {
     return state.filters.vocabStatuses.filter((status) => VOCAB_STATUS_FILTERS.includes(status));
@@ -47,52 +69,54 @@ function getSelectedVocabStatusesForExport() {
   return [...VOCAB_STATUS_FILTERS];
 }
 
-function getFilteredVocabularyEntriesForExport() {
-  const query = state.filters?.vocabQuery || "";
-  const queryVariants = normalizeSearchVariants(query);
-  const statusFilters = new Set(getSelectedVocabStatusesForExport());
-  const textId = state.filters?.vocabTextId || "all";
-  const textIndex = textId === "all" ? null : getTextVocabularyIndex(textId);
+async function loadTextIndexForExport(textId) {
+  if (textId === "all") return null;
+  const index = await loadTextVocabularyIndex(textId);
+  if (!index) return null;
+  return {
+    words: Array.from(index.words),
+    tokenLine: index.tokenLine
+  };
+}
 
-  return Object.entries(state.vocab || {})
-    .map(([word, entry]) => ({ word, ...entry }))
-    .filter((entry) => {
-      if (!statusFilters.has(entry.status || "new")) return false;
-      if (textIndex && !entryAppearsInText(entry.word, textIndex)) return false;
-      if (!query) return true;
-      const haystackText = `${entry.word} ${entry.translation || ""} ${entry.note || ""}`;
-      const haystacks = normalizeSearchVariants(haystackText);
-      return queryVariants.some((q) => haystacks.some((h) => h.includes(q)));
-    })
-    .sort((first, second) => first.word.localeCompare(second.word, undefined, { sensitivity: "base" }));
+function exportRequestBase(filename, format) {
+  return {
+    op: "export",
+    vocab: state.vocab || {},
+    query: state.filters?.vocabQuery || "",
+    statuses: getSelectedVocabStatusesForExport(),
+    textIndex: null,
+    format,
+    filename,
+    headerRow: format === "anki" ? t("settings.ankiTsvHeader") : undefined,
+    lang: state.preferences?.learningLanguage || "en",
+    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+  };
 }
 
 export async function exportVocabularySelection(format) {
-  const entries = getFilteredVocabularyEntriesForExport();
-  if (!entries.length) {
-    showToast(t("toast.vocabExportEmpty"));
-    return;
-  }
-
   const textId = state.filters?.vocabTextId || "all";
   const text = textId === "all" ? null : getVocabularyTextById(textId);
   const sourcePart = safeFilenamePart(text?.title || "filtered");
   const datePart = new Date().toISOString().slice(0, 10);
+  const suffix = format === "anki" ? "anki" : "words";
+  const ext = format === "anki" ? "tsv" : "txt";
+  const filename = `wordhunter-${sourcePart}-${suffix}-${datePart}.${ext}`;
 
-  if (format === "anki") {
-    let tsv = t("settings.ankiTsvHeader");
-    for (const entry of entries) {
-      const context = entry.examples?.[0] || entry.note || "";
-      tsv += `${cleanExportCell(entry.word)}\t${cleanExportCell(entry.translation)}\t${cleanExportCell(context)}\n`;
+  const payload = exportRequestBase(filename, format);
+  try {
+    payload.textIndex = await loadTextIndexForExport(textId);
+    const result = await requestVocabExport(payload);
+    if (!result.count) {
+      showToast(t("toast.vocabExportEmpty"));
+      return;
     }
-    await nativeSave(tsv, `wordhunter-${sourcePart}-anki-${datePart}.tsv`, "text/tab-separated-values");
+    await nativeSave(result.content, result.filename, result.mime);
     showToast(t("toast.exportReady"));
-    return;
+  } catch (error) {
+    console.warn("vocab_export failed", error);
+    showToast(t("toast.importFailed"));
   }
-
-  const body = `${entries.map((entry) => cleanExportCell(entry.word)).join("\n")}\n`;
-  await nativeSave(body, `wordhunter-${sourcePart}-words-${datePart}.txt`, "text/plain;charset=utf-8");
-  showToast(t("toast.exportReady"));
 }
 
 export async function exportState() {
@@ -131,7 +155,7 @@ export function importStateFile(event) {
       const imported = normalizeState({ ...createDefaultState(), ...parsed });
       replaceState(imported);
       ensureCurrentText();
-      
+
       if (window.__qtBridge) {
         fetch("/__store/save", {
           method: "POST",
@@ -146,7 +170,7 @@ export function importStateFile(event) {
       } else {
         saveState();
       }
-      
+
       render();
       showToast(t("toast.importDone"));
     } catch (error) {
@@ -205,16 +229,16 @@ export function clearLocalState() {
   if (!confirmed) return;
   localStorage.removeItem(STORAGE_KEY);
   replaceState(createDefaultState());
-  
+
   if (window.__qtBridge) {
-    fetch("/__store/wipe", { 
+    fetch("/__store/wipe", {
       method: "POST",
       headers: { "X-WH-Token": window.WH_TOKEN || "" }
     }).catch(e => console.warn("wipe failed", e));
   } else {
     saveState();
   }
-  
+
   hideReviewAnswer();
   ensureCurrentText();
   render();
@@ -225,57 +249,56 @@ export async function exportAnkiTsv() {
   const selectedStatuses = Array.isArray(state.preferences?.ankiExportStatuses) && state.preferences.ankiExportStatuses.length
     ? state.preferences.ankiExportStatuses
     : ["learning"];
-  const exportStatuses = new Set(selectedStatuses);
-  const entries = Object.entries(state.vocab)
-    .filter(([, entry]) => exportStatuses.has(entry?.status || "new"));
-
-  if (!entries.length) {
-    showToast(t("toast.ankiExportEmpty"));
-    return;
+  const datePart = new Date().toISOString().slice(0, 10);
+  const filename = `vocab-anki-${datePart}.tsv`;
+  const payload = {
+    op: "export",
+    vocab: state.vocab || {},
+    query: "",
+    statuses: selectedStatuses.filter((s) => VOCAB_STATUS_FILTERS.includes(s)),
+    textIndex: null,
+    format: "anki",
+    filename,
+    headerRow: t("settings.ankiTsvHeader"),
+    lang: state.preferences?.learningLanguage || "en",
+    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+  };
+  try {
+    const result = await requestVocabExport(payload);
+    if (!result.count) {
+      showToast(t("toast.ankiExportEmpty"));
+      return;
+    }
+    await nativeSave(result.content, result.filename, result.mime);
+    showToast(t("toast.exportReady"));
+  } catch (error) {
+    console.warn("anki export failed", error);
   }
-
-  let tsv = t("settings.ankiTsvHeader");
-  for (const [word, entry] of entries) {
-    const translation = entry.translation || "";
-    const context = entry.examples?.[0] || entry.note || "";
-    const cleanWord = word.replace(/\t/g, " ").replace(/\n/g, " ");
-    const cleanTrans = translation.replace(/\t/g, " ").replace(/\n/g, " ");
-    const cleanCtx = context.replace(/\t/g, " ").replace(/\n/g, " ");
-    tsv += `${cleanWord}\t${cleanTrans}\t${cleanCtx}\n`;
-  }
-  const filename = `vocab-anki-${new Date().toISOString().slice(0, 10)}.tsv`;
-  await nativeSave(tsv, filename, "text/tab-separated-values");
-  showToast(t("toast.exportReady"));
 }
 
 export function importAnkiTsv(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
+  reader.addEventListener("load", async () => {
     try {
       const text = String(reader.result || "");
-      const lines = text.split("\n");
+      let rows;
+      if (window.__qtBridge) {
+        const result = await requestAnkiImport(text);
+        rows = result.rows || [];
+      } else {
+        rows = parseAnkiTsvLocally(text);
+      }
       let importedCount = 0;
-      let hasHeader = false;
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const parts = line.split("\t");
-        if (!hasHeader && parts[0].toLowerCase() === "word") {
-          hasHeader = true;
-          continue;
-        }
-        const word = parts[0]?.trim();
-        const translation = parts[1]?.trim() || "";
-        const context = parts[2]?.trim() || "";
+      for (const row of rows) {
+        const word = row.word;
         if (!word) continue;
-        
-        const entry = getOrCreateEntry(word, context);
-        if (translation) entry.translation = translation;
+        const entry = getOrCreateEntry(word, row.context);
+        if (row.translation) entry.translation = row.translation;
         entry.updatedAt = new Date().toISOString();
         importedCount++;
       }
-      
       saveState();
       render();
       showToast(t("toast.importDoneCount", { count: importedCount }));
@@ -286,4 +309,26 @@ export function importAnkiTsv(event) {
   });
   reader.readAsText(file);
   event.target.value = "";
+}
+
+function parseAnkiTsvLocally(text) {
+  const rows = [];
+  let hasHeader = false;
+  for (const line of text.split("\n")) {
+    const trimmed = line.replace(/\r$/, "");
+    if (!trimmed.trim()) continue;
+    const parts = trimmed.split("\t");
+    if (!hasHeader && parts[0]?.trim().toLowerCase() === "word") {
+      hasHeader = true;
+      continue;
+    }
+    const word = parts[0]?.trim();
+    if (!word) continue;
+    rows.push({
+      word,
+      translation: parts[1]?.trim() || "",
+      context: parts[2]?.trim() || ""
+    });
+  }
+  return rows;
 }

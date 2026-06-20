@@ -1,0 +1,36 @@
+[package]
+name = "ctranslate2-sys"
+version = "0.1.5"
+edition = "2024"
+description = "Compiles CTranslate2 from source or uses pre-built binaries"
+license = "MIT"
+exclude = ["CTranslate2-*/**"]
+links = "ctranslate2"
+
+[dependencies]
+
+[build-dependencies]
+ctranslate2-src-build-support.workspace = true
+bindgen = "0.72.1"
+cc = "1.2.40"
+
+[features]
+cuda = []
+cudnn = []
+cuda-dynamic-loading = []
+mkl = []
+openblas = []
+ruy = []
+accelerate = []
+tensor-parallel = []
+dnnl = []
+openmp-runtime-comp = []
+openmp-runtime-intel = []
+crt-dynamic = []
+msse4_1 = []
+os-defaults = []
+flash-attention = []
+vendor = []
+shared = []
+cuda-small-binary = []
+export-vendor = []

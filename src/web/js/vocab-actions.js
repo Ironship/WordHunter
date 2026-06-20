@@ -8,37 +8,35 @@ import { renderShell } from "./views/shell.js";
 import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, toggleReviewAnswer } from "./views/vocabulary.js";
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
+import { canUseTranslationProvider, translateText } from "./translation-provider.js";
 
 let lastAutoTtsFocusKey = "";
 
 async function maybeAutoTranslateWord(word, entry) {
-  if (state.preferences?.offlineTranslator !== true) return false;
   if (state.preferences?.autoTranslateWords !== true) return false;
+  if (!canUseTranslationProvider()) return false;
   if (!entry || String(entry.translation || "").trim()) return false;
   if (entry.translationAutoRejected === true) return false;
   
   try {
     const fromLang = state.preferences.learningLanguage || "en";
     const toLang = state.preferences.locale || "pl";
-    const url = `/__argos/translate?text=${encodeURIComponent(word)}&from=${encodeURIComponent(fromLang)}&to=${encodeURIComponent(toLang)}`;
-    const response = await fetch(url);
-    if (response.ok) {
-      const data = await response.json();
-      if (data.translated && data.translated !== word) {
-        entry.translation = data.translated.toLowerCase();
-        entry.translationSource = "argos";
-        entry.updatedAt = new Date().toISOString();
-        saveState();
-        
-        if (state.currentView === "reader") updateReaderSelection();
-        else if (state.currentView === "vocabulary") renderVocabulary();
-        else if (state.currentView === "flashcards") renderReview();
-        
-        return true;
-      }
+    const data = await translateText(word, fromLang, toLang);
+    const translated = String(data.translated || "").trim();
+    if (translated && translated !== word) {
+      entry.translation = translated;
+      entry.translationSource = data.engine || "translator";
+      entry.updatedAt = new Date().toISOString();
+      saveState();
+
+      if (state.currentView === "reader") updateReaderSelection();
+      else if (state.currentView === "vocabulary") renderVocabulary();
+      else if (state.currentView === "flashcards") renderReview();
+
+      return true;
     }
   } catch (e) {
-    console.warn("Argos translation failed", e);
+    console.warn("Auto translation failed", e);
   }
 
   return false;
@@ -50,7 +48,7 @@ export function selectWord(rawWord, normalizeFn, preserveScroll = false) {
   const current = getTextById(state.currentTextId);
   const isFresh = !Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word, current?.text || "");
-  maybeAutoTranslateWord(word, entry);
+  maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   let statusChanged = false;
   if (isFresh && state.preferences?.autoLearnOnClick) {
     entry.status = "learning";
@@ -106,7 +104,7 @@ export function setWordStatus(word, status) {
   if (!STATUS_ORDER.includes(status)) return;
   const entry = getOrCreateEntry(word, getTextById(state.currentTextId)?.text || "");
   const previousStatus = entry.status;
-  maybeAutoTranslateWord(word, entry);
+  maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   entry.status = status;
   entry.updatedAt = new Date().toISOString();
   saveState();

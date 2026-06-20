@@ -33,6 +33,17 @@ export function icon(name, size = 18, extraClass = "") {
   return svg.replace("<svg", `<svg style="${sizeStyle}"${cls}`);
 }
 
+const STATUS_ICONS = {
+  new: "star",
+  learning: "pencil",
+  known: "check",
+  ignored: "eyeOff"
+};
+
+export function statusIcon(status, size = 16) {
+  return icon(STATUS_ICONS[status] || "star", size);
+}
+
 export function renderCardStat(className, label, title, value) {
   const percent = `${Math.round(value)}%`;
   const description = `${title}: ${percent}`;

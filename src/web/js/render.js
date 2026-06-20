@@ -9,6 +9,11 @@ import { renderGraphs } from "./views/graphs.js";
 import { renderTranslator } from "./views/translator.js";
 import { syncSettingsControls } from "./preferences.js";
 import { getTextById } from "./views/reader.js";
+import { t } from "./i18n.js";
+import { els } from "./dom.js";
+
+let ocrGpuStatus;
+let ocrGpuProbe;
 
 export function render() {
   renderShell();
@@ -20,7 +25,7 @@ export function render() {
   if (viewName === "graphs") renderGraphs();
   if (viewName === "discover") renderDiscover();
   if (viewName === "translator") renderTranslator();
-  if (viewName === "settings") syncSettingsControls();
+  if (viewName === "settings") { syncSettingsControls(); refreshOcrGpuStatus(); }
 }
 
 export function setView(viewName) {
@@ -44,7 +49,31 @@ export function setView(viewName) {
   if (viewName === "graphs") renderGraphs();
   if (viewName === "discover") renderDiscover();
   if (viewName === "translator") renderTranslator();
-  if (viewName === "settings") syncSettingsControls();
+  if (viewName === "settings") { syncSettingsControls(); refreshOcrGpuStatus(); }
+}
+
+function refreshOcrGpuStatus() {
+  if (!ocrGpuStatus && !ocrGpuProbe) {
+    ocrGpuProbe = fetch("/__ocr/gpu-status")
+      .then((response) => response.ok ? response.json() : { status: "failed" })
+      .catch(() => ({ status: "failed" }))
+      .then(({ status }) => {
+        ocrGpuStatus = status === "ready" || status === "unavailable" ? status : "failed";
+        renderOcrGpuStatus();
+      });
+  }
+  renderOcrGpuStatus();
+}
+
+function renderOcrGpuStatus() {
+  const key = ocrGpuStatus === "ready"
+    ? "settings.ocrGpuReady"
+    : ocrGpuStatus === "unavailable"
+      ? "settings.ocrGpuUnavailable"
+      : ocrGpuStatus === "failed"
+        ? "settings.ocrGpuFailed"
+        : "settings.ocrGpuChecking";
+  if (els.ocrGpuStatus) els.ocrGpuStatus.textContent = t(key);
 }
 
 export function ensureCurrentText() {

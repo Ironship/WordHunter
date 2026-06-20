@@ -63,7 +63,7 @@ function buildConfirmDialog() {
   return dialog;
 }
 
-export function showUnsavedConfirm(onSave, onDiscard) {
+function showUnsavedConfirm(onSave, onDiscard) {
   const dialog = buildConfirmDialog();
   const btns = dialog.querySelectorAll("button");
   const btnCancel = btns[0];

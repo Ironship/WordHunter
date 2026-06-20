@@ -18,11 +18,11 @@ export function renderShell() {
   els.pillNew.textContent = t("topbar.new", { n: totals.session });
 }
 
-export function countByStatus() {
+function countByStatus() {
   const totals = { total: 0, new: 0, learning: 0, known: 0, ignored: 0, session: 0 };
   Object.entries(state.vocab).forEach(([word, entry]) => {
-    totals.total += 1;
     const status = STATUS_ORDER.includes(entry.status) ? entry.status : "new";
+    if (status !== "ignored") totals.total += 1;
     totals[status] += 1;
     if (!initialVocabKeys.has(word)) {
       totals.session += 1;

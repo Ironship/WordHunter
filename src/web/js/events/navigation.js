@@ -1,7 +1,7 @@
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { setView } from "../render.js";
-import { updatePreferenceValue, applyPreferences, themeLabel } from "../preferences.js";
+import { updatePreferenceValue, applyPreferences, themeLabel, setUiScale, getUiScale } from "../preferences.js";
 import { renderLibrary } from "../views/library.js";
 import { renderReader, clearReaderSelectionRange, setReaderSelectionAnchorFromToken, extendReaderSelection } from "../views/reader.js";
 import { renderReview } from "../views/vocabulary.js";
@@ -50,7 +50,7 @@ export function bindNavigationEvents() {
   }
 }
 
-export function handleGlobalKeydown(event) {
+function handleGlobalKeydown(event) {
   if (event.defaultPrevented) return;
   const key = event.key.toLowerCase();
 
@@ -78,6 +78,21 @@ export function handleGlobalKeydown(event) {
   }
 
   if (inField) return;
+
+  // UI scale shortcuts: Ctrl+Alt+= / Ctrl+Alt+- / Ctrl+Alt+0
+  // (Ctrl+= / Ctrl+- without Alt remain bound to reader font size below.)
+  if (event.ctrlKey && event.altKey && (key === "=" || key === "+" || key === "-" || key === "0")) {
+    event.preventDefault();
+    if (key === "0") {
+      const v = setUiScale(100);
+      showToast(t("toast.uiScale", { n: v }));
+    } else {
+      const delta = key === "-" ? -5 : 5;
+      const v = setUiScale(getUiScale() + delta);
+      showToast(t("toast.uiScale", { n: v }));
+    }
+    return;
+  }
 
   if (event.ctrlKey && (key === "1" || key === "2" || key === "3" || key === "4")) {
     const index = parseInt(key) - 1;

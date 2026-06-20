@@ -5,7 +5,7 @@ import { escapeHtml, escapeAttribute, parseTagList, calcStatsPcts } from "../uti
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
 import { normalizeSearchVariants } from "../tokenizer_v2.js";
 import { getAllBooks, bookTexts } from "../books.js";
-import { getCachedTextStats } from "../stats-cache.js";
+import { getCachedTextStats, getCachedUniqueWordCount } from "../stats-cache.js";
 import { t, getLocale } from "../i18n.js";
 
 function sourceTagForBook(book) {
@@ -73,6 +73,8 @@ export function renderLibrary() {
       coverDataUrl: ct.coverDataUrl || "",
       tags: parseTagList(ct.tags),
       source: ct.source || "",
+      pdfOcrPages: ct.pdfOcrPages,
+      pdfOcrEngine: ct.pdfOcrEngine || "",
       isCustom: true,
       _customText: bookTexts.get(ct.id) || ct.text || ""
     }))
@@ -91,13 +93,19 @@ export function renderLibrary() {
     })
     .map((book) => {
       const fullText = book._customText || bookTexts.get(book.id) || book.sample || "";
-      const stats = needsStats && fullText
+      const isArchived = archivedBookIds.has(book.id);
+      const lang = state.preferences.learningLanguage || "en";
+      const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+      // ponytail: archive view reads its existing count; it never starts a vocabulary lookup.
+      const stats = isArchived
+        ? { unique: getCachedUniqueWordCount(book, fullText, lang, algorithm), known: 0, ignored: 0, learning: 0 }
+        : needsStats && fullText
         ? getCachedTextStats(
           book,
           fullText,
           state.vocab,
-          state.preferences.learningLanguage || "en",
-          state.preferences.wordDetectionAlgorithm || "modern"
+          lang,
+          algorithm
         )
         : { unique: 0, known: 0, ignored: 0, learning: 0 };
     return { book, stats, ...calcStatsPcts(stats) };
@@ -127,7 +135,9 @@ export function renderLibrary() {
     const isArchived = archivedBookIds.has(book.id);
     const uniqueValue = stats.unique.toLocaleString(localeTag);
     const statsBlock = showStats
-      ? `
+      ? isArchived
+        ? `<div class="progress-block"><span class="card-stat-summary">${renderCardCount(uniqueValue, t("library.uniqueWordsLabel"))}</span></div>`
+        : `
         <div class="progress-block" aria-label="${escapeAttribute(t("library.progressLabel"))}">
           <div class="progress-line card-progress-line">
             <span class="card-stat-summary">
@@ -283,17 +293,4 @@ export function bindLibraryEvents() {
     if (control.dataset.action === "remove-user-book") actions.removeUserBook(book.id);
     if (control.dataset.action === "edit-custom") actions.openEditBookModal(id);
   });
-}
-
-// Global cover fallback (if the first source fails, we try the next).
-if (typeof window !== "undefined") {
-  window.__handleCoverError = function (img) {
-    const list = (img.dataset.fallback || "").split("|").filter(Boolean);
-    if (!list.length) {
-      img.parentElement?.classList.add("no-cover");
-      return;
-    }
-    img.src = list.shift();
-    img.dataset.fallback = list.join("|");
-  };
 }

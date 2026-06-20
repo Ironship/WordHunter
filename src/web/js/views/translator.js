@@ -3,8 +3,9 @@ import { t } from "../i18n.js";
 import { state } from "../state.js";
 import { showToast } from "../toast.js";
 import { escapeHtml } from "../utils.js";
+import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
 
-// All languages supported by the app (matching available Argos models)
+// All languages supported by the app (matching available offline models)
 const SUPPORTED_LANGUAGES = ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk"];
 
 let translateTimer = null;
@@ -37,12 +38,11 @@ function languageName(code) {
 
 function updateTranslatorNavState(hasModels) {
   if (!els.translatorNavItem) return;
-  const prefs = state.preferences || {};
-  const offlineEnabled = prefs.offlineTranslator === true;
-  const locked = !hasModels || !offlineEnabled;
+  const provider = activeTranslationProvider();
+  const locked = !canUseTranslationProvider() || (provider === "offline" && !hasModels);
   els.translatorNavItem.hidden = false;
   els.translatorNavItem.classList.toggle("nav-item-locked", locked);
-  els.translatorNavItem.title = !offlineEnabled ? t("translator.disabled") : (!hasModels ? t("translator.noModels") : t("nav.translator"));
+  els.translatorNavItem.title = locked ? t("translator.providerUnavailable") : t("nav.translator");
 }
 
 let _packagesFetched = false;
@@ -116,7 +116,7 @@ function optionHtml(code, selected) {
 function ensureSelectedPair() {
   const models = getModels();
   if (!models.length || !els.translatorFrom || !els.translatorTo) {
-    // Argos not available — still show languages so user can see the UI
+    // Offline translator not available — still show languages so user can see the UI
     const allCodes = getAllLanguageCodes();
     return {
       fromCode: allCodes[0] || "",
@@ -142,21 +142,23 @@ export function renderTranslator() {
   const models = getModels();
   const pair = ensureSelectedPair();
   const hasModels = state.argosAvailable && models.length > 0;
+  const provider = activeTranslationProvider();
+  const canTranslate = canUseTranslationProvider() && (provider !== "offline" || hasModels);
   updateTranslatorNavState(hasModels);
 
   // Save current language codes BEFORE rebuilding innerHTML
   const currentFrom = pair.fromCode;
   const currentTo = pair.toCode;
 
-  if (els.translatorSource) els.translatorSource.disabled = !hasModels;
-  if (els.translatorResult) els.translatorResult.disabled = !hasModels;
+  if (els.translatorSource) els.translatorSource.disabled = !canTranslate;
+  if (els.translatorResult) els.translatorResult.disabled = !canTranslate;
   if (els.translatorSwap) els.translatorSwap.disabled = false;
   
   els.translatorFrom.innerHTML = pair.fromCodes.map((code) => optionHtml(code, currentFrom)).join("");
   els.translatorTo.innerHTML = pair.toCodes.map((code) => optionHtml(code, currentTo)).join("");
 
-  if (!hasModels) {
-    if (els.translatorStatus) els.translatorStatus.textContent = t("translator.noModels");
+  if (!canTranslate) {
+    if (els.translatorStatus) els.translatorStatus.textContent = provider === "offline" ? t("translator.noModels") : t("translator.providerUnavailable");
   } else if (els.translatorStatus && !els.translatorStatus.dataset.busy) {
     els.translatorStatus.textContent = t("translator.ready");
   }
@@ -188,13 +190,14 @@ async function translateNow() {
   }
 
   const pair = ensureSelectedPair();
-  if (!pair) {
-    showToast(t("translator.noModels"), "error");
+  const provider = activeTranslationProvider();
+  if (!canUseTranslationProvider()) {
+    showToast(t("translator.providerUnavailable"), "error");
     return;
   }
 
   // Check if a model exists for this pair (direct or pivot)
-  if (!hasModelForPair(pair.fromCode, pair.toCode) && pair.fromCode !== pair.toCode) {
+  if (provider === "offline" && !hasModelForPair(pair.fromCode, pair.toCode) && pair.fromCode !== pair.toCode) {
     const sizeMb = getPackageSize(pair.fromCode, pair.toCode);
     if (els.translatorStatus) {
       els.translatorStatus.innerHTML = `${t("translator.noModelFor", { from: languageName(pair.fromCode), to: languageName(pair.toCode) })} <button class="ghost-button" id="translator-download-prompt" style="font-size:0.8rem; padding:0.2rem 0.5rem;">${t("translator.downloadNow")} (${t("translator.sizeMb", { size: Math.round(sizeMb) })})</button>`;
@@ -213,10 +216,7 @@ async function translateNow() {
   if (els.translatorProgress) els.translatorProgress.classList.add("active");
 
   try {
-    const params = new URLSearchParams({ text, from: pair.fromCode, to: pair.toCode });
-    const response = await fetch(`/__argos/translate?${params.toString()}`, { cache: "no-cache" });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const data = await translateText(text, pair.fromCode, pair.toCode);
     els.translatorResult.value = data.translated || "";
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.done");
   } catch (error) {
@@ -229,7 +229,7 @@ async function translateNow() {
   }
 }
 
-/** Open the existing Argos download dialog pre-populated with the target language. */
+/** Open the existing offline model download dialog pre-populated with the target language. */
 function openDownloadDialog(fromCode, toCode) {
   const dialog = document.getElementById("argos-download-dialog");
   const list = document.getElementById("argos-languages-list");

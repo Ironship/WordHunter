@@ -4,7 +4,7 @@ import { t } from "./i18n.js";
 const GITHUB_RELEASES_URL = "https://github.com/Ironship/WordHunter/releases";
 
 function parseVersion(v) {
-  return (v || "").replace(/^v/, "").replace(/[-+].*$/, "").split(".").map(n => parseInt(n, 10) || 0);
+  return (String(v || "").match(/\d+/g) || []).map(n => parseInt(n, 10) || 0);
 }
 
 function isNewer(latest, current) {
