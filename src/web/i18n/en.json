@@ -170,7 +170,10 @@
     "pdfOcrOverlayLabel": "OCR text overlay",
     "sourceGutenberg": "Project Gutenberg",
     "sourceGutenbergTxt": "Project Gutenberg TXT",
-    "keySpace": "Space"
+    "keySpace": "Space",
+    "keyPageUp": "Page Up",
+    "keyPageDown": "Page Down",
+    "keyEnter": "Enter"
   },
   "vocab": {
     "eyebrow": "Your words",
@@ -561,8 +564,8 @@
     "contactIssues": "<strong>Bug reports & Feature requests:</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Contact:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>License:</strong> This project is distributed under the MIT License. See <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a> for details.",
-    "whatsNew": "<strong>What's new in 0.3.0:</strong> The whole app has been rewritten in Rust/Tauri — faster startup, smaller binary, no Python runtime. The translator now supports four engines: offline CTranslate2, DeepL, Google Translate, and local LM Studio. Import scan-based PDFs with the bundled PaddleOCR runtime. A new interface-scale setting keeps the UI tidy at 1080p. FSRS review charts gained axis labels; known and ignored words are underlined in the reader; the add-word dialog uses icon status buttons. Many reader pagination and chart bugs fixed.",
-    "version": "<strong>Version:</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>What's new in 0.3.2:</strong> More reliable local saves and recovery after interrupted work. Improved OCR and model-install limits, manual update checks, and a startup maximize fix.",
+    "version": "<strong>Version:</strong> Word Hunter 0.3.2",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -742,6 +745,11 @@
     "cancel": "Cancel"
   },
   "update": {
+    "checkTitle": "App updates",
+    "checkHint": "Manually check whether a newer version of Word Hunter is available.",
+    "checkButton": "Check for updates",
+    "upToDate": "You're on the latest version ({current}).",
+    "checkFailed": "Couldn't check for updates.",
     "title": "Update Available",
     "message": "Word Hunter {version} is available! (You have {current})",
     "skipLabel": "Skip this version",

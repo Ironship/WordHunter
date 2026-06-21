@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::response;
 
-pub const USER_AGENT: &str = "WordHunter/0.3.0 (Tauri)";
+pub const USER_AGENT: &str = "WordHunter/0.3.2 (Tauri)";
 const MAX_PROXY_BODY: u64 = 10_485_760;
 
 /// Proxy endpoint — fetch remote resources for allowed domains only.

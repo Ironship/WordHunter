@@ -4,7 +4,7 @@ export function resolveTokenizerAlgorithm(value) {
 }
 
 function pushClassicTokens(block, parts) {
-  const pattern = /\p{L}+(?:[-']\p{L}+)*/gu;
+  const pattern = /[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*/gu;
   let last = 0;
   let match = pattern.exec(block);
   while (match) {
@@ -255,16 +255,27 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
   return "";
 }
 
-export function getTextStats(text, vocab, lang = "en", algorithm = "modern") {
-  const words = new Set(
-    tokenizeText(text, lang, algorithm).filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean)
-  );
+export function getTokenStats(tokens, vocab) {
+  const words = new Map();
+  tokens.forEach((part) => {
+    if (part.type === "word") {
+      const normalized = normalizeWord(part.value);
+      if (normalized) {
+        words.set(normalized, (words.get(normalized) || 0) + 1);
+      }
+    }
+  });
+
   const stats = { unique: words.size, known: 0, learning: 0, ignored: 0, new: 0 };
-  words.forEach((word) => {
+  words.forEach((count, word) => {
     const status = vocab[word]?.status || "new";
-    stats[status] = (stats[status] || 0) + 1;
+    stats[status] = (stats[status] || 0) + count;
   });
   return stats;
+}
+
+export function getTextStats(text, vocab, lang = "en", algorithm = "modern") {
+  return getTokenStats(tokenizeText(text, lang, algorithm), vocab);
 }
 
 export function cleanGutenbergText(rawText) {

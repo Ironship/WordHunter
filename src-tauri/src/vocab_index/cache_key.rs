@@ -4,7 +4,7 @@ use crate::tokenizer;
 
 use super::hash;
 
-const SIGNATURE_VERSION: &str = "v1";
+const SIGNATURE_VERSION: &str = "v2";
 const VALID_STATUSES: &[&str] = &["new", "learning", "known", "ignored"];
 
 pub fn text_signature(book: Option<&Value>, text: &str, lang: &str, algorithm: &str) -> String {

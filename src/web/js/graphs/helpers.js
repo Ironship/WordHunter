@@ -69,45 +69,47 @@ export function showTooltip(evt, tipText) {
 
 export function hideTooltip() { if (tooltipEl) tooltipEl.style.display = "none"; }
 
-export function drawBarChart(ctx, bins, maxVal, color, pad) {
+export function drawBarChart(ctx, bins, maxVal, color, pad, { minimal = false } = {}) {
   const W = ctx.w, H = ctx.h;
   const pw = W - pad.left - pad.right;
   const ph = H - pad.top - pad.bottom;
-  const barW = Math.max(3, pw / bins.length - (bins.length > 7 ? 4 : 6));
+  const barW = Math.max(3, pw / bins.length - (minimal ? 4 : (bins.length > 7 ? 4 : 6)));
 
   ctx.fillStyle = panelBg;
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = grid;
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 4; i++) {
-    const y = pad.top + ph - (i / 4) * ph;
-    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
-  }
-  ctx.strokeRect(pad.left, pad.top, pw, ph);
-  ctx.fillStyle = labelMuted;
-  ctx.font = "10px Inter, sans-serif";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "middle";
-  for (let i = 0; i <= 4; i++) {
-    ctx.fillText(Math.round((i / 4) * maxVal), pad.left - 6, pad.top + ph - (i / 4) * ph);
+  if (!minimal) {
+    ctx.strokeStyle = grid;
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + ph - (i / 4) * ph;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    }
+    ctx.strokeRect(pad.left, pad.top, pw, ph);
+    ctx.fillStyle = labelMuted;
+    ctx.font = "10px Inter, sans-serif";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i <= 4; i++) {
+      ctx.fillText(Math.round((i / 4) * maxVal), pad.left - 6, pad.top + ph - (i / 4) * ph);
+    }
   }
   for (let i = 0; i < bins.length; i++) {
     const h = (bins[i].val / maxVal) * ph;
-    const x = pad.left + i * (pw / bins.length) + 3;
+    const x = pad.left + i * (pw / bins.length) + (minimal ? 2 : 3);
     ctx.fillStyle = bins[i].color || color;
     ctx.beginPath();
     ctx.roundRect(x, pad.top + ph - h, barW, Math.max(h, 0.5), [3, 3, 0, 0]);
     ctx.fill();
-    ctx.fillStyle = labelMuted;
+    ctx.fillStyle = minimal ? text : labelMuted;
     ctx.font = "9px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.fillText(bins[i].label, x + barW / 2, H - pad.bottom + 14);
+    ctx.fillText(bins[i].label, x + barW / 2, H - pad.bottom + (minimal ? 8 : 14));
     if (bins[i].val > 0) {
       ctx.fillStyle = text;
-      ctx.font = "bold 10px Inter, sans-serif";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(bins[i].val, x + barW / 2, Math.max(18, pad.top + ph - h - 4));
+      ctx.font = minimal ? "9px Inter,sans-serif" : "bold 10px Inter, sans-serif";
+      ctx.textBaseline = minimal ? "top" : "bottom";
+      ctx.fillText(bins[i].val, x + barW / 2, minimal ? pad.top + ph - h - 4 : Math.max(18, pad.top + ph - h - 4));
     }
   }
 }

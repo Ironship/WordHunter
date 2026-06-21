@@ -170,7 +170,10 @@
     "imageAlt": "Bild",
     "pdfOcrPageAlt": "PDF-Seite {n}",
     "pdfOcrOverlayLabel": "OCR-Textebene",
-    "keySpace": "Leertaste"
+    "keySpace": "Leertaste",
+    "keyPageUp": "Bild ↑",
+    "keyPageDown": "Bild ↓",
+    "keyEnter": "Eingabe"
   },
   "vocab": {
     "eyebrow": "Deine Worte",
@@ -486,8 +489,8 @@
     "contactIssues": "<strong>Fehlerberichte & Ideen (Issues):</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Kontakt:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>Lizenz:</strong> Dieses Projekt wird unter der MIT-Lizenz vertrieben. Details finden Sie in der <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a>-Datei.",
-    "whatsNew": "<strong>Neu in 0.3.0:</strong> Die gesamte App wurde in Rust/Tauri neu geschrieben — schnellerer Start, kleinere Binärdatei, keine Python-Laufzeit. Der Übersetzer unterstützt nun vier Engines: Offline-CTranslate2, DeepL, Google Übersetzer und lokales LM Studio. Importiere gescannte PDFs mit der gebündelten PaddleOCR-Laufzeit. Eine neue Einstellung für die Skalierung der Oberfläche hält die UI bei 1080p aufgeräumt. FSRS-Wiederholungsdiagramme haben jetzt Achsenbeschriftungen; bekannte und ignorierte Wörter sind im Leser unterstrichen; der Wort-hinzufügen-Dialog nutzt Status-Symbole. Viele Fehler bei Reader-Paginierung und Diagrammen behoben.",
-    "version": "<strong>Version:</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>Neu in 0.3.2:</strong> Zuverlässigere lokale Speicherung und Wiederherstellung nach Unterbrechungen. Verbesserte OCR- und Modellinstallationslimits, manuelle Update-Prüfung und ein Fix für das Maximieren beim Start.",
+    "version": "<strong>Version:</strong> Word Hunter 0.3.2",
     "focusHint1": "Drücke <kbd>Strg</kbd>+<kbd>Eingabe</kbd> um Text zu betreten",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> um Wörter zu navigieren",
     "focusHint3": "<kbd>Strg</kbd>+<kbd>Leertaste</kbd> Satz vorlesen",
@@ -742,6 +745,11 @@
     "fullTextSuffix": "(vollständiger Text)"
   },
   "update": {
+    "checkTitle": "App-Updates",
+    "checkHint": "Manuell prüfen, ob eine neuere Word-Hunter-Version verfügbar ist.",
+    "checkButton": "Nach Updates suchen",
+    "upToDate": "Du hast die neueste Version ({current}).",
+    "checkFailed": "Updates konnten nicht geprüft werden.",
     "title": "Update verfügbar",
     "message": "Word Hunter {version} ist verfügbar! (Du hast {current})",
     "skipLabel": "Diese Version überspringen",

@@ -170,7 +170,10 @@
     "pdfOcrOverlayLabel": "Warstwa tekstu OCR",
     "sourceGutenberg": "Project Gutenberg",
     "sourceGutenbergTxt": "Project Gutenberg TXT",
-    "keySpace": "Spacja"
+    "keySpace": "Spacja",
+    "keyPageUp": "Page Up",
+    "keyPageDown": "Page Down",
+    "keyEnter": "Enter"
   },
   "vocab": {
     "eyebrow": "Twoje słowa",
@@ -561,8 +564,8 @@
     "contactIssues": "<strong>Błędy i pomysły (Issues):</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Kontakt:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>Licencja:</strong> Projekt jest udostępniany na licencji MIT. Szczegóły w pliku <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a>.",
-    "whatsNew": "<strong>Nowości w 0.3.0:</strong> Cała aplikacja została przepisana w Rust/Tauri — szybszy start, mniejszy plik, bez środowiska Python. Translator obsługuje teraz cztery silniki: offline CTranslate2, DeepL, Google Translate oraz lokalny LM Studio. Importuj skany PDF dzięki wbudowanemu silnikowi PaddleOCR. Nowe ustawienie skali interfejsu utrzymuje porządek przy 1080p. Wykresy powtórek FSRS mają etykiety osi; znane i ignorowane słowa są podkreślone w czytniku; okno dodawania słowa używa przycisków statusu z ikonami. Naprawiono wiele błędów paginacji czytnika i wykresów.",
-    "version": "<strong>Wersja:</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>Nowości w 0.3.2:</strong> Bezpieczniejszy zapis lokalnych danych i odzyskiwanie po przerwaniu pracy. Ulepszone limity OCR i instalacji modeli, ręczne sprawdzanie aktualizacji oraz poprawka maksymalizacji okna podczas uruchamiania.",
+    "version": "<strong>Wersja:</strong> Word Hunter 0.3.2",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Wciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd> aby wejść w tekst",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> do nawigacji po słowach",
@@ -742,6 +745,11 @@
     "cancel": "Anuluj"
   },
   "update": {
+    "checkTitle": "Aktualizacje programu",
+    "checkHint": "Sprawdź ręcznie, czy jest dostępna nowsza wersja Word Hunter.",
+    "checkButton": "Sprawdź aktualizacje",
+    "upToDate": "Masz najnowszą wersję ({current}).",
+    "checkFailed": "Nie udało się sprawdzić aktualizacji.",
     "title": "Dostępna aktualizacja",
     "message": "Word Hunter {version} jest dostępny! (Masz {current})",
     "skipLabel": "Pomiń tę wersję",

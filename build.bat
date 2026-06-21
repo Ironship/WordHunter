@@ -14,7 +14,9 @@ $RustManifest = Join-Path $Root "src-tauri\Cargo.toml"
 $RustExe = Join-Path $Root "src-tauri\target\release\word-hunter-rustified.exe"
 $TauriBundleDir = Join-Path $Root "src-tauri\target\release\bundle\nsis"
 $OcrRuntimeScript = Join-Path $Root "src-tauri\ocr-runtime\prepare-runtime.ps1"
-$OutputExe = Join-Path $Outputs "Word.Hunter.Rustified.exe"
+$PortableDir = Join-Path $Outputs "Word.Hunter.portable"
+$OutputPortable = Join-Path $PortableDir "Word.Hunter.portable.exe"
+$OutputPortableZip = Join-Path $Outputs "Word.Hunter.portable.zip"
 $OutputInstaller = Join-Path $Outputs "Word.Hunter.Setup.exe"
 
 function Write-Step([string]$Message) {
@@ -119,12 +121,13 @@ Install Visual Studio Build Tools with workload:
     }
 }
 
-function Build-RustExe {
-    Write-Step "Building Rust/Tauri exe"
+function Build-Portable {
+    Write-Step "Building portable package"
     Ensure-Cargo
 
     Enable-MSVC
     Ensure-Directory $Outputs
+    Build-OcrRuntime
 
     $previousParallel = $env:CMAKE_BUILD_PARALLEL_LEVEL
     if (-not $previousParallel) {
@@ -144,9 +147,12 @@ function Build-RustExe {
         Fail "Rust build finished, but expected exe was not found: $RustExe"
     }
 
-    Copy-Item -LiteralPath $RustExe -Destination $OutputExe -Force
+    Ensure-Directory $PortableDir
+    Copy-Item -LiteralPath $RustExe -Destination $OutputPortable -Force
+    Copy-Item -LiteralPath (Join-Path $Root "src-tauri\ocr-runtime") -Destination $PortableDir -Recurse -Force
+    Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $OutputPortableZip -Force
     Write-Host ""
-    Write-Host "Done: $OutputExe" -ForegroundColor Green
+    Write-Host "Done: $OutputPortableZip" -ForegroundColor Green
 }
 
 function Build-Installer {
@@ -216,12 +222,13 @@ function Show-Usage {
     Write-Host "Word Hunter Rustified build"
     Write-Host ""
     Write-Host "Usage from PowerShell:"
-    Write-Host "  .\build.bat              build outputs\Word.Hunter.Setup.exe"
-    Write-Host "  .\build.bat all          build outputs\Word.Hunter.Setup.exe"
+    Write-Host "  .\build.bat              build portable ZIP and Setup installer"
+    Write-Host "  .\build.bat all          build portable ZIP and Setup installer"
     Write-Host "  .\build.bat installer    build outputs\Word.Hunter.Setup.exe"
+    Write-Host "  .\build.bat portable     build outputs\Word.Hunter.portable.zip"
     Write-Host "  .\build.bat ocr-runtime  prepare bundled native PaddleOCR runtime"
-    Write-Host "  .\build.bat exe          build outputs\Word.Hunter.Rustified.exe"
-    Write-Host "  .\build.bat rust         build outputs\Word.Hunter.Rustified.exe"
+    Write-Host "  .\build.bat exe          build outputs\Word.Hunter.portable.zip"
+    Write-Host "  .\build.bat rust         build outputs\Word.Hunter.portable.zip"
     Write-Host "  .\build.bat flatpak      Rust/Tauri Flatpak is not wired on Windows yet"
     Write-Host "  .\build.bat dmg          macOS-only"
 }
@@ -241,7 +248,7 @@ try {
     foreach ($rawTarget in $targets) {
         $target = $rawTarget.ToLowerInvariant()
         switch ($target) {
-            "all" { Build-Installer }
+            "all" { Build-Portable; Build-Installer }
             "windows" { Build-Installer }
             "win" { Build-Installer }
             "installer" { Build-Installer }
@@ -250,10 +257,11 @@ try {
             "ocr" { Build-OcrRuntime }
             "ocr-runtime" { Build-OcrRuntime }
             "paddleocr" { Build-OcrRuntime }
-            "exe" { Build-RustExe }
-            "rust" { Build-RustExe }
+            "portable" { Build-Portable }
+            "exe" { Build-Portable }
+            "rust" { Build-Portable }
             "tauri" { Build-Installer }
-            "rustified" { Build-RustExe }
+            "rustified" { Build-Portable }
             "flatpak" { Build-Flatpak }
             "linux" { Build-Flatpak }
             "wsl" { Build-Flatpak }

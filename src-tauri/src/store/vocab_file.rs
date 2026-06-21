@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde_json::{json, Value};
 
 use super::Store;
@@ -5,9 +7,22 @@ use super::Store;
 impl Store {
     pub fn load_vocab(&self) -> Result<Value, String> {
         let inner = self.inner.lock().unwrap();
+        if let Some(vocab) = read_valid_json(&inner.vocab_path) {
+            return Ok(vocab);
+        }
+
+        let tmp = inner.vocab_path.with_extension("tmp");
+        if let Some(vocab) = read_valid_json(&tmp) {
+            return Ok(vocab);
+        }
+
+        let backup = inner.vocab_path.with_extension("bak");
+        if let Some(vocab) = read_valid_json(&backup) {
+            return Ok(vocab);
+        }
+
         if inner.vocab_path.exists() {
-            let raw = std::fs::read_to_string(&inner.vocab_path).map_err(|e| e.to_string())?;
-            return serde_json::from_str(&raw).map_err(|e| e.to_string());
+            return Err("vocab file is unreadable and no recovery copy is valid".to_string());
         }
         Ok(json!({}))
     }
@@ -23,22 +38,7 @@ impl Store {
         .map_err(|e| e.to_string())?;
 
         if inner.vocab_path.exists() {
-            // Remove a stale backup first. If removal fails (e.g. antivirus lock on
-            // Windows), fall back to overwriting it via copy+remove so the subsequent
-            // rename of the current file into `backup` can still succeed.
-            if backup.exists() {
-                if std::fs::remove_file(&backup).is_err() {
-                    let _ = std::fs::copy(&inner.vocab_path, &backup);
-                    // best-effort; if the current file can't be copied, continue and
-                    // let the rename below surface a real error instead of failing silently
-                }
-            }
-            // Move the current vocab aside so the final atomic rename targets a free path.
-            // On Windows `rename` fails if the destination exists, which is why `backup`
-            // must be cleared above.
-            if let Err(e) = std::fs::rename(&inner.vocab_path, &backup) {
-                // Rename failed: clean up the temp file so we don't leave stale artifacts,
-                // then surface the real error instead of silently dropping data.
+            if let Err(e) = std::fs::copy(&inner.vocab_path, &backup) {
                 let _ = std::fs::remove_file(&tmp);
                 return Err(format!("failed to back up existing vocab: {e}"));
             }
@@ -47,14 +47,81 @@ impl Store {
         match std::fs::rename(&tmp, &inner.vocab_path) {
             Ok(()) => Ok(()),
             Err(e) => {
-                // Final rename failed. Try to restore the previous vocab from backup so
-                // we don't end up with no vocab file at all.
-                if backup.exists() {
-                    let _ = std::fs::rename(&backup, &inner.vocab_path);
+                // On Windows, `rename` can fail if the destination file is temporarily locked.
+                // (e.g., by an antivirus). Fall back to copying the file and then removing the temp file.
+                if std::fs::copy(&tmp, &inner.vocab_path).is_ok() {
+                    let _ = std::fs::remove_file(&tmp);
+                    return Ok(());
                 }
+
                 let _ = std::fs::remove_file(&tmp);
                 Err(format!("failed to commit vocab save: {e}"))
             }
         }
+    }
+}
+
+fn read_valid_json(path: &Path) -> Option<Value> {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use serde_json::{json, Value};
+
+    use crate::store::{Store, StoreInner};
+
+    fn store_at(dir: &tempfile::TempDir) -> Store {
+        Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                db_path: dir.path().join("store.sqlite"),
+                vocab_path: dir.path().join("vocab.json"),
+                books_dir: dir.path().join("books"),
+            }),
+            write_lock: Mutex::new(()),
+        }
+    }
+
+    #[test]
+    fn load_vocab_recovers_from_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        std::fs::write(dir.path().join("vocab.json"), "{").unwrap();
+        std::fs::write(
+            dir.path().join("vocab.bak"),
+            r#"{"hello":{"status":"known"}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            store.load_vocab().unwrap(),
+            json!({ "hello": { "status": "known" } })
+        );
+    }
+
+    #[test]
+    fn save_vocab_keeps_the_previous_version_as_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        std::fs::write(
+            dir.path().join("vocab.json"),
+            r#"{"hello":{"status":"new"}}"#,
+        )
+        .unwrap();
+
+        store
+            .save_vocab(&json!({ "hello": { "status": "known" } }))
+            .unwrap();
+
+        let backup = std::fs::read_to_string(dir.path().join("vocab.bak")).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&backup).unwrap(),
+            json!({ "hello": { "status": "new" } })
+        );
     }
 }

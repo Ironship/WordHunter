@@ -582,7 +582,7 @@
               </label>
               <label class="setting-row">
                 <span id="pref-ui-scale-label"></span>
-                <input id="pref-ui-scale" type="range" min="80" max="150" step="5" aria-labelledby="pref-ui-scale-label">
+                <input id="pref-ui-scale" type="range" min="80" max="150" step="5" aria-labelledby="pref-ui-scale-label" title="UI Scale">
               </label>
               <label class="setting-row">
                 <span data-i18n="settings.reviewGraphType">Wykres w fiszkach</span>
@@ -685,7 +685,7 @@
               </label>
               <label class="setting-row">
                 <span id="pref-font-size-label"></span>
-                <input id="pref-font-size" type="range" min="14" max="28" step="1" aria-labelledby="pref-font-size-label">
+                <input id="pref-font-size" type="range" min="14" max="28" step="1" aria-labelledby="pref-font-size-label" title="Font Size">
               </label>
               <label class="setting-row toggle-row">
                 <span>
@@ -839,6 +839,15 @@
             <div class="settings-body">
               <p class="muted-copy" id="storage-summary"></p>
               <div class="data-actions">
+                <section class="data-action-row">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="update.checkTitle">Aktualizacje programu</h3>
+                    <p data-i18n="update.checkHint">Sprawdź ręcznie, czy jest dostępna nowsza wersja Word Hunter.</p>
+                  </div>
+                  <div class="data-action-buttons">
+                    <button class="secondary-button" type="button" id="check-updates" data-i18n="update.checkButton">Sprawdź aktualizacje</button>
+                  </div>
+                </section>
                 <section class="data-action-row">
                   <div class="data-action-copy">
                     <h3 data-i18n="settings.backupTitle">Pełna kopia WordHuntera</h3>

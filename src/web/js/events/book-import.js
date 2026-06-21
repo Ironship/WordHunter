@@ -168,6 +168,7 @@ async function importPdfFile(file) {
   if (!await confirmWholeBookOcr()) return false;
   const lang = state.preferences.learningLanguage || "en";
   const id = `${lang}-pdf-ocr-${slugFromFileName(file.name)}-${Date.now()}`;
+  const jobId = crypto.randomUUID();
   const controller = new AbortController();
   let cancelled = false;
   let requestStarted = false;
@@ -179,7 +180,7 @@ async function importPdfFile(file) {
       void fetch("/__import/pdf_ocr/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({ book_id: id })
+        body: JSON.stringify({ job_id: jobId })
       });
     }
   });
@@ -193,6 +194,7 @@ async function importPdfFile(file) {
       signal: controller.signal,
       body: JSON.stringify({
         book_id: id,
+        job_id: jobId,
         filename: file.name || t("import.importedPdfTitle"),
         data,
         lang,

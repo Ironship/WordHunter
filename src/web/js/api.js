@@ -6,8 +6,10 @@ import { STORAGE_KEY } from "./constants.js";
  * @returns {{ texts: object[], prefs: object, hiddenBooks: string[], vocab: object }}
  */
 export function buildSavePayload(rawState) {
+  const profileTexts = Object.values(rawState.profiles || {})
+    .flatMap((profile) => Array.isArray(profile?.customTexts) ? profile.customTexts : []);
   return {
-    texts: toPlain(rawState.customTexts || []),
+    texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
     prefs: {
       ...toPlain(rawState.preferences || {}),
       __userBooks: toPlain(rawState.userBooks || [])

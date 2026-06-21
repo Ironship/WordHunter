@@ -1,5 +1,6 @@
 import { state, saveState } from "./state.js";
 import { t } from "./i18n.js";
+import { showToast } from "./toast.js";
 
 const GITHUB_RELEASES_URL = "https://github.com/Ironship/WordHunter/releases";
 
@@ -19,18 +20,21 @@ function isNewer(latest, current) {
   return false;
 }
 
-export async function checkForUpdates() {
-  if (state.preferences.disableUpdateCheck) return;
+export async function checkForUpdates({ manual = false } = {}) {
+  if (!manual && state.preferences.disableUpdateCheck) return;
 
   try {
     const res = await fetch("/__update/check");
-    if (!res.ok) return;
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (data.error || !data.latest) return;
+    if (data.error || !data.latest) throw new Error(data.error || "missing release version");
 
-    if (!isNewer(data.latest, data.current)) return;
+    if (!isNewer(data.latest, data.current)) {
+      if (manual) showToast(t("update.upToDate", { current: data.current }));
+      return;
+    }
 
-    if (state.preferences.skippedVersion === data.latest) return;
+    if (!manual && state.preferences.skippedVersion === data.latest) return;
 
     const dialog = document.getElementById("update-dialog");
     if (!dialog) return;
@@ -78,5 +82,6 @@ export async function checkForUpdates() {
     dialog.showModal();
   } catch (e) {
     console.warn("Update check failed:", e);
+    if (manual) showToast(t("update.checkFailed"));
   }
 }

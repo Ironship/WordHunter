@@ -118,7 +118,7 @@ fn stats_counts_unique_words_and_vocab_status() {
     });
     let stats = text_stats(text, &vocab, "en", Some("classic"));
     assert_eq!(stats["unique"], 5);
-    assert_eq!(stats["known"], 1);
+    assert_eq!(stats["known"], 2);
     assert_eq!(stats["learning"], 1);
     assert_eq!(stats["new"], 3);
 }

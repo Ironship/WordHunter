@@ -1,5 +1,6 @@
 import { state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, clearLastReadTextForLanguage } from "./state.js";
 import { STORAGE_KEY } from "./constants.js";
+import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render, ensureCurrentText } from "./render.js";
@@ -160,12 +161,7 @@ export function importStateFile(event) {
         fetch("/__store/save", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-          body: JSON.stringify({
-            texts: state.customTexts || [],
-            prefs: { ...(state.preferences || {}), __userBooks: state.userBooks || [] },
-            hiddenBooks: state.hiddenBuiltInBooks || [],
-            vocab: state.profiles || {}
-          })
+          body: JSON.stringify(buildSavePayload(state))
         }).catch(e => console.warn("bridge save state file failed", e));
       } else {
         saveState();
@@ -203,6 +199,16 @@ export function clearLibrary() {
   const confirmed = window.confirm(t("toast.confirmClearLibrary"));
   if (!confirmed) return;
   const lang = state.preferences?.learningLanguage || "de";
+  const removedTextIds = state.customTexts.map((text) => text.id);
+  if (window.__qtBridge) {
+    removedTextIds.forEach((id) => {
+      fetch("/__store/delete_text", {
+        method: "POST",
+        headers: WH_TOKEN_HEADER,
+        body: JSON.stringify({ id })
+      }).catch((error) => console.warn("clear library text delete failed", error));
+    });
+  }
   state.customTexts = [];
   state.userBooks = [];
   state.hiddenBuiltInBooks = [];

@@ -45,7 +45,8 @@ export function statusLabel(status) {
 }
 
 export function calcStatsPcts(stats) {
-  const total = stats.unique || 1;
+  const total = stats.known + stats.ignored + stats.learning + stats.new;
+  if (!total) return { knownPct: 0, learningPct: 0, newPct: 0, total: 0 };
   const knownPct = ((stats.known + stats.ignored) / total) * 100;
   const learningPct = (stats.learning / total) * 100;
   const newPct = 100 - knownPct - learningPct;
