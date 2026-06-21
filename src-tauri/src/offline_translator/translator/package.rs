@@ -8,6 +8,7 @@ use zip::ZipArchive;
 /// URL for the Argos Translate package index.
 pub const ARGOS_PACKAGE_INDEX_URL: &str =
     "https://raw.githubusercontent.com/argosopentech/argospm-index/main/index.json";
+const MAX_PACKAGE_DOWNLOAD: u64 = 400_000_000;
 
 /// Metadata for a single model package from the Argos index.
 #[derive(Clone, Debug)]
@@ -141,8 +142,12 @@ fn install_package(pkg: &ModelPackageInfo) -> Result<bool, String> {
     let mut data = Vec::new();
     response
         .into_reader()
+        .take(MAX_PACKAGE_DOWNLOAD + 1)
         .read_to_end(&mut data)
         .map_err(|e| e.to_string())?;
+    if data.len() as u64 > MAX_PACKAGE_DOWNLOAD {
+        return Err("model package is too large (max 400 MB)".to_string());
+    }
     extract_package(&data, &target)?;
     Ok(true)
 }
@@ -151,6 +156,7 @@ fn install_package(pkg: &ModelPackageInfo) -> Result<bool, String> {
 fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
     const MAX_ENTRIES: usize = 2_000;
     const MAX_TOTAL_SIZE: u64 = 600_000_000;
+    let staging = tempfile::tempdir_in(target).map_err(|e| e.to_string())?;
     let mut archive = ZipArchive::new(Cursor::new(data)).map_err(|e| e.to_string())?;
     if archive.len() > MAX_ENTRIES {
         return Err(format!(
@@ -168,7 +174,7 @@ fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
         let Some(relative) = file.enclosed_name().map(PathBuf::from) else {
             return Err(format!("invalid path in model package: {}", file.name()));
         };
-        let destination = target.join(relative);
+        let destination = staging.path().join(relative);
         if file.is_dir() {
             fs::create_dir_all(&destination).map_err(|e| e.to_string())?;
             continue;
@@ -179,6 +185,20 @@ fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
         let mut output = fs::File::create(&destination).map_err(|e| e.to_string())?;
         std::io::copy(&mut file, &mut output).map_err(|e| e.to_string())?;
     }
+    let mut entries = fs::read_dir(staging.path())
+        .map_err(|e| e.to_string())?
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
+    if entries.len() != 1 || !entries[0].path().is_dir() {
+        return Err("model package must contain exactly one top-level directory".to_string());
+    }
+    let package = entries.pop().unwrap().path();
+    let name = package.file_name().ok_or_else(|| "invalid model package directory".to_string())?;
+    let destination = target.join(name);
+    if destination.exists() {
+        return Err("model package already exists".to_string());
+    }
+    fs::rename(package, destination).map_err(|e| e.to_string())?;
     Ok(())
 }
 

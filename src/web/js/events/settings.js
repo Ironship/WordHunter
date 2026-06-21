@@ -47,6 +47,17 @@ export function bindSettingsEvents() {
   const exportBtn = document.getElementById("export-state");
   if (exportBtn) exportBtn.addEventListener("click", exportState);
 
+  const checkUpdatesBtn = document.getElementById("check-updates");
+  if (checkUpdatesBtn) checkUpdatesBtn.addEventListener("click", async () => {
+    checkUpdatesBtn.disabled = true;
+    try {
+      const { checkForUpdates } = await import("../update-checker.js");
+      await checkForUpdates({ manual: true });
+    } finally {
+      checkUpdatesBtn.disabled = false;
+    }
+  });
+
   const exportAnkiBtn = document.getElementById("export-anki-tsv");
   if (exportAnkiBtn) exportAnkiBtn.addEventListener("click", exportAnkiTsv);
 

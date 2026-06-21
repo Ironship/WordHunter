@@ -170,7 +170,10 @@
     "imageAlt": "Image",
     "pdfOcrPageAlt": "Page PDF {n}",
     "pdfOcrOverlayLabel": "Calque de texte OCR",
-    "keySpace": "Espace"
+    "keySpace": "Espace",
+    "keyPageUp": "Page préc.",
+    "keyPageDown": "Page suiv.",
+    "keyEnter": "Entrée"
   },
   "vocab": {
     "eyebrow": "Tes mots",
@@ -486,8 +489,8 @@
     "contactIssues": "<strong>Signaler un bug & Idées (Issues):</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Contact:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>Licence:</strong> Ce projet est distribué sous licence MIT. Voir le fichier <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a> pour plus de détails.",
-    "whatsNew": "<strong>Nouveautés de 0.3.0 :</strong> L'application entière a été réécrite en Rust/Tauri — démarrage plus rapide, binaire plus petit, sans runtime Python. Le traducteur prend désormais en charge quatre moteurs : CTranslate2 hors ligne, DeepL, Google Traduction et LM Studio local. Importez des PDF numérisés avec le runtime PaddleOCR intégré. Un nouveau réglage d'échelle d'interface garde l'UI nette en 1080p. Les graphiques de révision FSRS ont des étiquettes d'axe ; les mots connus et ignorés sont soulignés dans le lecteur ; la boîte d'ajout de mot utilise des boutons de statut avec icônes. Correction de nombreux bugs de pagination du lecteur et des graphiques.",
-    "version": "<strong>Version:</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>Nouveautés de 0.3.2 :</strong> Sauvegarde locale plus fiable et récupération après interruption. Limites améliorées pour l'OCR et l'installation des modèles, vérification manuelle des mises à jour et correction du maximisage au démarrage.",
+    "version": "<strong>Version:</strong> Word Hunter 0.3.2",
     "focusHint1": "Appuyez sur <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour entrer dans le texte",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> pour naviguer les mots",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espace</kbd> lire la phrase",
@@ -742,6 +745,11 @@
     "fullTextSuffix": "(texte intégral)"
   },
   "update": {
+    "checkTitle": "Mises à jour de l'application",
+    "checkHint": "Vérifiez manuellement si une nouvelle version de Word Hunter est disponible.",
+    "checkButton": "Rechercher des mises à jour",
+    "upToDate": "Vous avez la dernière version ({current}).",
+    "checkFailed": "Impossible de vérifier les mises à jour.",
     "title": "Mise à jour disponible",
     "message": "Word Hunter {version} est disponible ! (Vous avez {current})",
     "skipLabel": "Ignorer cette version",

@@ -15,17 +15,26 @@ import { els } from "./dom.js";
 let ocrGpuStatus;
 let ocrGpuProbe;
 
+const VIEW_RENDERERS = {
+  library: () => renderLibrary(),
+  reader: () => renderReader(),
+  vocabulary: () => { renderVocabulary(); renderReview(); },
+  flashcards: () => renderReview(),
+  graphs: () => renderGraphs(),
+  discover: () => renderDiscover(),
+  translator: () => renderTranslator(),
+  settings: () => { syncSettingsControls(); refreshOcrGpuStatus(); },
+  help: null
+};
+
+function renderView(viewName) {
+  const fn = VIEW_RENDERERS[viewName];
+  if (fn) fn();
+}
+
 export function render() {
   renderShell();
-  const viewName = state.currentView || "library";
-  if (viewName === "library") renderLibrary();
-  if (viewName === "reader") renderReader();
-  if (viewName === "vocabulary") { renderVocabulary(); renderReview(); }
-  if (viewName === "flashcards") renderReview();
-  if (viewName === "graphs") renderGraphs();
-  if (viewName === "discover") renderDiscover();
-  if (viewName === "translator") renderTranslator();
-  if (viewName === "settings") { syncSettingsControls(); refreshOcrGpuStatus(); }
+  renderView(state.currentView || "library");
 }
 
 export function setView(viewName) {
@@ -42,14 +51,7 @@ export function setView(viewName) {
   state.currentView = viewName;
   saveState();
   renderShell();
-  if (viewName === "library") renderLibrary();
-  if (viewName === "reader") renderReader();
-  if (viewName === "vocabulary") { renderVocabulary(); renderReview(); }
-  if (viewName === "flashcards") { renderReview(); }
-  if (viewName === "graphs") renderGraphs();
-  if (viewName === "discover") renderDiscover();
-  if (viewName === "translator") renderTranslator();
-  if (viewName === "settings") { syncSettingsControls(); refreshOcrGpuStatus(); }
+  renderView(viewName);
 }
 
 function refreshOcrGpuStatus() {

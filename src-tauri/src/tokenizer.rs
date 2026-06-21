@@ -15,7 +15,7 @@ pub struct Token {
 const STRIP_PUNCTUATION: &str = "\u{201e}\u{201c}\u{201d}\"\u{2018}\u{2019}.,!?;:()[]{}<>\u{00ab}\u{00bb}";
 
 static CLASSIC_PATTERN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\p{L}+(?:[-']\p{L}+)*").expect("classic word pattern compiles")
+    Regex::new(r"[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*").expect("classic word pattern compiles")
 });
 
 static IMAGE_PATTERN: Lazy<Regex> =
@@ -187,12 +187,12 @@ pub fn clean_gutenberg_text(raw: &str) -> String {
 }
 
 pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>) -> Value {
-    let mut words = std::collections::HashSet::new();
+    let mut words = std::collections::HashMap::new();
     for token in tokenize(text, lang, algorithm) {
         if token.kind == "word" {
             let normalized = normalize_word(&token.value);
             if !normalized.is_empty() {
-                words.insert(normalized);
+                *words.entry(normalized).or_insert(0usize) += 1;
             }
         }
     }
@@ -203,7 +203,7 @@ pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>
     stats.insert("ignored".to_string(), json!(0));
     stats.insert("new".to_string(), json!(0));
     let vocab_obj = vocab.as_object();
-    for word in &words {
+    for (word, freq) in &words {
         let status = vocab_obj
             .and_then(|v| v.get(word))
             .and_then(|entry| entry.get("status"))
@@ -211,10 +211,10 @@ pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>
             .unwrap_or("new");
         if let Some(count) = stats.get_mut(status) {
             if let Some(n) = count.as_i64() {
-                *count = json!(n + 1);
+                *count = json!(n + *freq as i64);
             }
         } else {
-            stats.insert(status.to_string(), json!(1));
+            stats.insert(status.to_string(), json!(*freq as i64));
         }
     }
     Value::Object(stats)

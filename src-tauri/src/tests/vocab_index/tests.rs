@@ -33,7 +33,7 @@ fn handle_returns_words_stats_and_signature() {
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
     assert_eq!(result["unique"], 3);
-    assert_eq!(result["known"], 1);
+    assert_eq!(result["known"], 2);
     assert_eq!(result["learning"], 1);
     assert_eq!(result["new"], 1);
     let words: Vec<String> = result["words"]
@@ -48,7 +48,7 @@ fn handle_returns_words_stats_and_signature() {
         " hello world rust "
     );
     let signature = result["signature"].as_str().unwrap();
-    assert!(signature.starts_with("v1|en-foo|en|modern|"));
+    assert!(signature.starts_with("v2|en-foo|en|modern|"));
     assert!(signature.contains("|2024-01-02|2024-01-01|"));
 }
 

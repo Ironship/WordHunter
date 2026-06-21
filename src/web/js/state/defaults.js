@@ -1,0 +1,106 @@
+import { UI_SCALE } from "../constants.js";
+import { VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
+
+export function normalizeVocabStatusFilters(value, legacyValue) {
+  if (Array.isArray(value)) return value.filter((status) => VOCAB_STATUS_FILTERS.includes(status));
+  if (legacyValue === "all") return [...VOCAB_STATUS_FILTERS];
+  if (legacyValue === "not_ignored") return ["new", "learning", "known"];
+  if (VOCAB_STATUS_FILTERS.includes(legacyValue)) return [legacyValue];
+  return [...VOCAB_STATUS_FILTERS];
+}
+
+export function normalizeAnkiExportStatuses(value) {
+  if (!Array.isArray(value)) return ["learning"];
+  const statuses = value.filter((status) => VOCAB_STATUS_FILTERS.includes(status));
+  return statuses.length ? statuses : ["learning"];
+}
+
+export function getDefaultDictionaryUrl(lang) {
+  const urls = {
+    en: "https://www.diki.pl/slownik-angielskiego?q={{word}}",
+    de: "https://www.diki.pl/slownik-niemieckiego?q={{word}}",
+    es: "https://www.diki.pl/slownik-hiszpanskiego?q={{word}}",
+    it: "https://www.diki.pl/slownik-wloskiego?q={{word}}",
+    fr: "https://www.diki.pl/slownik-francuskiego?q={{word}}",
+    pl: "https://sjp.pwn.pl/szukaj/{{word}}.html",
+    uk: "https://translate.google.com/?sl=uk&tl=pl&text={{word}}&op=translate",
+    ru: "https://translate.google.com/?sl=ru&tl=pl&text={{word}}&op=translate",
+    ja: "https://jisho.org/search/{{word}}"
+  };
+  return urls[lang] || urls.en;
+}
+
+export function createDefaultState() {
+  return {
+    currentView: "library",
+    currentTextId: null,
+    selectedWord: null,
+    readerSelectionRange: null,
+    customTexts: [],
+    userBooks: [],
+    hiddenBuiltInBooks: [],
+    archivedBookIds: [],
+    vocab: {},
+    profiles: null,
+    reviewIndex: 0,
+    readerFontSize: 18,
+    readerPage: 1,
+    readerPages: {},
+    readerScrolls: {},
+    readerScrollsPerPage: {},
+    filters: {
+      libraryQuery: "",
+      libraryLevel: "all",
+      librarySort: "title",
+      librarySortReverse: false,
+      libraryArchive: "active",
+      vocabQuery: "",
+      vocabStatus: "all",
+      vocabStatuses: ["new", "learning", "known", "ignored"],
+      vocabTextId: "all"
+    },
+    discover: { query: "", source: "gutenberg", language: "de", sort: "popular", level: "", page: 1 },
+    preferences: {
+      theme: "auto",
+      locale: "en",
+      readerFont: "serif",
+      readerLineHeight: "normal",
+      highlightTokens: true,
+      hideKnownIgnored: true,
+      autoLearnOnClick: false,
+      autoAddLearningOnly: true,
+      showCardStats: true,
+      showCovers: true,
+      learningLanguage: "de",
+      dictionaryUrl: "",
+      dictionaryMode: "internal",
+      readerTextAlign: "left",
+      readerMaxWidth: "wide",
+      ttsRate: "normal",
+      autoTtsOnWordFocus: false,
+      reviewReverse: false,
+      srsAlgorithm: "sm2",
+      removalBehavior: "ignored",
+      useEdgeTts: false,
+      autoTranslateWords: false,
+      translationProvider: "offline",
+      deeplApiKey: "",
+      lmStudioEndpoint: "http://127.0.0.1:1234/v1/chat/completions",
+      lmStudioModel: "",
+      ankiExportStatuses: ["learning"],
+      wordDetectionAlgorithm: "modern",
+      uiScale: UI_SCALE.DEFAULT,
+      lastReadTextIds: {},
+      skippedVersion: "",
+      disableUpdateCheck: false,
+      wordsPerPage: 1000,
+      argosAsDict: false,
+      offlineTranslator: false,
+      colorNew: "#ff6b6b",
+      colorLearning: "#ffb84d",
+      colorKnown: "#8ce99a",
+      colorIgnored: "#ced4da",
+      reviewGraphType: "heatmap"
+    }
+  };
+}

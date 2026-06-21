@@ -170,7 +170,10 @@
     "imageAlt": "画像",
     "pdfOcrPageAlt": "PDFページ {n}",
     "pdfOcrOverlayLabel": "OCRテキストレイヤー",
-    "keySpace": "Space"
+    "keySpace": "スペース",
+    "keyPageUp": "PageUp",
+    "keyPageDown": "PageDown",
+    "keyEnter": "Enter"
   },
   "vocab": {
     "eyebrow": "あなたの単語",
@@ -581,8 +584,8 @@
     "contactIssues": "<strong>バグ報告＆機能リクエスト：</strong><a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>お問い合わせ：</strong><a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>ライセンス：</strong> このプロジェクトはMITライセンスの下で配布されています。詳細は<a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a>ファイルをご覧ください。",
-    "whatsNew": "<strong>0.3.0の新機能：</strong> アプリ全体をRust/Tauriで再実装 — 起動が高速、バイナリが小型、Python不要。翻訳機能は4つのエンジンに対応：オフラインCTranslate2、DeepL、Google翻訳、ローカルLM Studio。同梱のPaddleOCRでスキャンPDFを取り込み可能。新しいUI スケール設定で1080pでもレイアウトが整う。FSRS復習グラフに軸ラベルを追加。既知・無視の単語はリーダーで下線表示。単語追加ダイアログはアイコン付きステータスボタンに。読者のページ送りやグラフの多くのバグを修正。",
-    "version": "<strong>バージョン：</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>0.3.2の新機能：</strong> ローカル保存と中断後の復元を改善しました。OCRとモデル導入の制限、手動更新確認、起動直後の最大化に関する修正を追加しました。",
+    "version": "<strong>バージョン：</strong> Word Hunter 0.3.2",
     "creditOfflineTranslator": "<strong>オフライン翻訳</strong> — ローカル翻訳は CTranslate2 / ctranslate2-rs (MIT) と SentencePiece 対応を使用します。ダウンロードしたモデルパッケージは外部アセットで、それぞれのライセンスに従います。"
   },
   "sync": {
@@ -742,6 +745,11 @@
     "fullTextSuffix": "（全文）"
   },
   "update": {
+    "checkTitle": "アプリの更新",
+    "checkHint": "Word Hunter の新しいバージョンがあるか手動で確認します。",
+    "checkButton": "更新を確認",
+    "upToDate": "最新バージョンです（{current}）。",
+    "checkFailed": "更新を確認できませんでした。",
     "title": "アップデートがあります",
     "message": "Word Hunter {version} が利用可能です！（現在 {current}）",
     "skipLabel": "このバージョンをスキップ",

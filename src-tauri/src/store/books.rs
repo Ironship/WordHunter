@@ -1,7 +1,10 @@
 use base64::Engine;
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::io::Write;
 
 use super::Store;
+
+const RECORD: &str = "book.json";
 
 impl Store {
     pub fn all_texts(&self) -> Result<Vec<Value>, String> {
@@ -12,12 +15,17 @@ impl Store {
         }
         for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
-            let meta = entry.path().join("metadata.json");
-            if meta.is_file() {
-                if let Ok(text) = std::fs::read_to_string(meta) {
-                    if let Ok(value) = serde_json::from_str::<Value>(&text) {
-                        books.push(value);
-                    }
+            if !entry.path().is_dir() {
+                continue;
+            }
+            match read_book(&entry.path()) {
+                Ok(Some((metadata, _))) => books.push(metadata),
+                Ok(None) => {}
+                Err(e) => {
+                    return Err(format!(
+                        "book {} is unreadable: {e}",
+                        entry.path().display()
+                    ))
                 }
             }
         }
@@ -34,33 +42,38 @@ impl Store {
         let book_dir = inner.books_dir.join(safe_id);
         std::fs::create_dir_all(&book_dir).map_err(|e| e.to_string())?;
 
-        let mut meta = text.clone();
-        if let Some(obj) = meta.as_object_mut() {
-            if let Some(raw_text) = obj
+        let (mut metadata, mut content) =
+            read_book(&book_dir)?.unwrap_or((json!({}), String::new()));
+        let mut incoming = text.clone();
+        if let Some(obj) = incoming.as_object_mut() {
+            if let Some(raw) = obj
                 .remove("text")
-                .and_then(|value| value.as_str().map(str::to_string))
+                .and_then(|v| v.as_str().map(str::to_owned))
             {
-                std::fs::write(book_dir.join("text.txt"), raw_text)
-                    .map_err(|e| e.to_string())?;
+                content = raw;
             }
         }
-
-        std::fs::write(
-            book_dir.join("metadata.json"),
-            serde_json::to_vec(&meta).map_err(|e| e.to_string())?,
+        let target = metadata
+            .as_object_mut()
+            .ok_or_else(|| "stored book metadata is not an object".to_string())?;
+        for (key, value) in incoming
+            .as_object()
+            .ok_or_else(|| "text must be an object".to_string())?
+        {
+            target.insert(key.clone(), value.clone());
+        }
+        atomic_json(
+            &book_dir.join(RECORD),
+            &json!({ "metadata": metadata, "text": content }),
         )
-        .map_err(|e| e.to_string())
     }
 
     pub fn get_text_content(&self, id: &str) -> Result<String, String> {
         let safe_id = crate::paths::sanitize_id(id)?;
         let inner = self.inner.lock().unwrap();
-        let path = inner.books_dir.join(safe_id).join("text.txt");
-        if path.exists() {
-            std::fs::read_to_string(path).map_err(|e| e.to_string())
-        } else {
-            Ok(String::new())
-        }
+        Ok(read_book(&inner.books_dir.join(safe_id))?
+            .map(|(_, text)| text)
+            .unwrap_or_default())
     }
 
     pub fn delete_text(&self, id: &str) -> Result<(), String> {
@@ -76,24 +89,6 @@ impl Store {
     pub fn sync_texts(&self, texts: &[Value]) -> Result<(), String> {
         for text in texts {
             self.upsert_text(text)?;
-        }
-
-        let requested: std::collections::HashSet<String> = texts
-            .iter()
-            .filter_map(|text| text.get("id").and_then(Value::as_str))
-            .filter_map(|id| crate::paths::sanitize_id(id).ok())
-            .collect();
-        let inner = self.inner.lock().unwrap();
-        if inner.books_dir.exists() {
-            for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
-                let entry = entry.map_err(|e| e.to_string())?;
-                if entry.path().is_dir() {
-                    let name = entry.file_name().to_string_lossy().to_string();
-                    if !requested.contains(&name) {
-                        let _ = std::fs::remove_dir_all(entry.path());
-                    }
-                }
-            }
         }
         Ok(())
     }
@@ -118,12 +113,7 @@ impl Store {
         let data = base64::engine::general_purpose::STANDARD
             .decode(encoded)
             .map_err(|e| e.to_string())?;
-        let safe_book = crate::paths::sanitize_id(book_id)?;
-        let safe_img = crate::paths::sanitize_id(img_name)?;
-        let inner = self.inner.lock().unwrap();
-        let img_dir = inner.books_dir.join(safe_book).join("images");
-        std::fs::create_dir_all(&img_dir).map_err(|e| e.to_string())?;
-        std::fs::write(img_dir.join(safe_img), data).map_err(|e| e.to_string())
+        self.save_book_image_bytes(book_id, img_name, &data)
     }
 
     pub fn save_book_image_bytes(
@@ -149,5 +139,114 @@ impl Store {
             .join(safe_book)
             .join("images")
             .join(safe_img))
+    }
+}
+
+fn read_book(dir: &std::path::Path) -> Result<Option<(Value, String)>, String> {
+    let record = dir.join(RECORD);
+    if record.exists() {
+        return parse_record(&record)
+            .or_else(|_| parse_record(&record.with_extension("bak")))
+            .map(Some);
+    }
+    let metadata = dir.join("metadata.json");
+    if !metadata.exists() {
+        return Ok(None);
+    }
+    let metadata = serde_json::from_slice(&std::fs::read(metadata).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    let text = std::fs::read_to_string(dir.join("text.txt")).unwrap_or_default();
+    Ok(Some((metadata, text)))
+}
+
+fn parse_record(path: &std::path::Path) -> Result<(Value, String), String> {
+    let value: Value =
+        serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
+    let metadata = value
+        .get("metadata")
+        .cloned()
+        .filter(Value::is_object)
+        .ok_or_else(|| "record metadata is missing".to_string())?;
+    let text = value
+        .get("text")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "record text is missing".to_string())?
+        .to_string();
+    Ok((metadata, text))
+}
+
+fn atomic_json(path: &std::path::Path, value: &Value) -> Result<(), String> {
+    let tmp = path.with_extension("tmp");
+    let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+    file.write_all(&serde_json::to_vec(value).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    file.sync_all().map_err(|e| e.to_string())?;
+    if path.exists() {
+        std::fs::copy(path, path.with_extension("bak")).map_err(|e| e.to_string())?;
+    }
+    std::fs::rename(&tmp, path)
+        .or_else(|_| {
+            std::fs::copy(&tmp, path)?;
+            std::fs::remove_file(tmp)
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use serde_json::json;
+
+    use crate::store::{Store, StoreInner};
+
+    #[test]
+    fn book_record_keeps_text_and_metadata_together() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                db_path: dir.path().join("store.sqlite"),
+                vocab_path: dir.path().join("vocab.json"),
+                books_dir: books_dir.clone(),
+            }),
+            write_lock: Mutex::new(()),
+        };
+
+        store
+            .upsert_text(&json!({ "id": "book", "title": "First", "text": "content" }))
+            .unwrap();
+        store
+            .upsert_text(&json!({ "id": "book", "title": "Renamed" }))
+            .unwrap();
+
+        assert_eq!(store.get_text_content("book").unwrap(), "content");
+        assert_eq!(store.all_texts().unwrap()[0]["title"], "Renamed");
+        assert!(books_dir.join("book").join("book.json").is_file());
+    }
+
+    #[test]
+    fn language_prefixed_book_ids_do_not_collide() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                db_path: dir.path().join("store.sqlite"),
+                vocab_path: dir.path().join("vocab.json"),
+                books_dir,
+            }),
+            write_lock: Mutex::new(()),
+        };
+
+        store.upsert_text(&json!({ "id": "de-custom-home", "text": "Haus" })).unwrap();
+        store.upsert_text(&json!({ "id": "fr-custom-home", "text": "Maison" })).unwrap();
+
+        assert_eq!(store.get_text_content("de-custom-home").unwrap(), "Haus");
+        assert_eq!(store.get_text_content("fr-custom-home").unwrap(), "Maison");
     }
 }

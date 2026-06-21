@@ -4,6 +4,7 @@
  */
 import { state } from "../state.js";
 import { getTextStats, cleanGutenbergText } from "../tokenizer_v2.js";
+import { calcStatsPcts } from "../utils.js";
 
 export const discoverStats = new Map();
 
@@ -50,7 +51,7 @@ async function fetchTextForStats(id, textUrl, signal) {
     const card = document.querySelector(`.discover-card[data-id="${CSS.escape(id)}"] .stats-block`);
     if (card) {
       const pcts = calcStatsPcts(stats);
-      card.innerHTML = renderStatsPct(pcts, stats.unique);
+      card.innerHTML = renderStatsPct(pcts);
     }
   } catch (e) {
     if (e.name !== "AbortError") console.warn("Stats fetch failed for", id, e);
@@ -65,15 +66,7 @@ export function cancelAllStatsFetches() {
   activeFetches = 0;
 }
 
-function calcStatsPcts(stats) {
-  const total = stats.unique || 1;
-  return {
-    knownPct: Math.round(((stats.knownCount || 0) / total) * 100),
-    learningPct: Math.round(((stats.learningCount || 0) / total) * 100),
-    newPct: Math.round(((stats.newCount || 0) / total) * 100)
-  };
-}
 
-function renderStatsPct(pcts, unique) {
+function renderStatsPct(pcts) {
   return `<span class="tag tag-soft">${pcts.knownPct}%</span>`;
 }

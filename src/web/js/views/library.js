@@ -3,9 +3,9 @@ import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, parseTagList, calcStatsPcts } from "../utils.js";
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
-import { normalizeSearchVariants } from "../tokenizer_v2.js";
+import { getTextStats, normalizeSearchVariants } from "../tokenizer_v2.js";
 import { getAllBooks, bookTexts } from "../books.js";
-import { getCachedTextStats, getCachedUniqueWordCount } from "../stats-cache.js";
+import { getCachedUniqueWordCount } from "../stats-cache.js";
 import { t, getLocale } from "../i18n.js";
 
 function sourceTagForBook(book) {
@@ -23,15 +23,15 @@ function getSortValue(book, stats, sortKey) {
     case "author":
       return String(book.author || "").toLowerCase();
     case "length":
-      return -stats.unique; // Negative for descending (longest first)
+      return -(stats.known + stats.ignored + stats.learning + stats.new); // Negative for descending (longest first)
     case "known":
-      return -((stats.known + stats.ignored) / (stats.unique || 1)) * 100;
+      return -((stats.known + stats.ignored) / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
     case "new":
-      return -((stats.unique - stats.known - stats.ignored - stats.learning) / (stats.unique || 1)) * 100;
+      return -(stats.new / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
     case "learning":
-      return -(stats.learning / (stats.unique || 1)) * 100;
+      return -(stats.learning / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
     case "progress":
-      return -(((stats.known + stats.ignored) / (stats.unique || 1)) * 100);
+      return -(((stats.known + stats.ignored) / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100);
     case "year":
       return Number(book.year) || 0;
     default:
@@ -98,16 +98,10 @@ export function renderLibrary() {
       const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
       // ponytail: archive view reads its existing count; it never starts a vocabulary lookup.
       const stats = isArchived
-        ? { unique: getCachedUniqueWordCount(book, fullText, lang, algorithm), known: 0, ignored: 0, learning: 0 }
+        ? { unique: getCachedUniqueWordCount(book, fullText, lang, algorithm), known: 0, ignored: 0, learning: 0, new: 0 }
         : needsStats && fullText
-        ? getCachedTextStats(
-          book,
-          fullText,
-          state.vocab,
-          lang,
-          algorithm
-        )
-        : { unique: 0, known: 0, ignored: 0, learning: 0 };
+        ? getTextStats(fullText, state.vocab, lang, algorithm)
+        : { unique: 0, known: 0, ignored: 0, learning: 0, new: 0 };
     return { book, stats, ...calcStatsPcts(stats) };
     })
     .sort((a, b) => {

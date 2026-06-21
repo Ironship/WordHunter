@@ -4,12 +4,13 @@ import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { renderLibrary } from "../views/library.js";
 import { runDiscoverSearch, getDiscoverHandlers } from "../views/discover.js";
-import { addUserBook, removeUserBook } from "../book-actions.js";
+import { addUserBook, removeUserBook, openBook } from "../book-actions.js";
 
 export function bindDiscoverEvents({ addUserBook, removeUserBook }) {
   const discoverHandlers = getDiscoverHandlers({
     onAdd: addUserBook,
-    onRemove: removeUserBook
+    onRemove: removeUserBook,
+    onOpen: openBook
   });
   els.discoverForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -58,8 +59,10 @@ export function bindDiscoverEvents({ addUserBook, removeUserBook }) {
   els.discoverResults.addEventListener("change", discoverHandlers.onResultsChange);
   els.discoverSelectAll.addEventListener("click", () => discoverHandlers.toggleAll(true));
   els.discoverClear.addEventListener("click", () => discoverHandlers.toggleAll(false));
-  els.discoverAddSelected.addEventListener("click", () => {
-    const added = discoverHandlers.addSelected();
+  els.discoverAddSelected.addEventListener("click", async () => {
+    els.discoverAddSelected.disabled = true;
+    const added = await discoverHandlers.addSelected();
+    els.discoverAddSelected.disabled = false;
     showToast(added ? t("toast.addedMany", { n: added }) : t("toast.addedNone"));
     renderLibrary();
   });

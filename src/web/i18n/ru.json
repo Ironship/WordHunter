@@ -170,7 +170,10 @@
     "imageAlt": "Изображение",
     "pdfOcrPageAlt": "Страница PDF {n}",
     "pdfOcrOverlayLabel": "Слой текста OCR",
-    "keySpace": "Пробел"
+    "keySpace": "Пробел",
+    "keyPageUp": "Page Up",
+    "keyPageDown": "Page Down",
+    "keyEnter": "Ввод"
   },
   "vocab": {
     "eyebrow": "Ваши слова",
@@ -517,8 +520,8 @@
     "contactIssues": "<strong>Отчеты об ошибках и Идеи (Issues):</strong> <a href=\"https://github.com/Ironship/WordHunter/issues\" target=\"_blank\">GitHub Issues</a>",
     "contactAuthor": "<strong>Контакты:</strong> <a href=\"https://x.com/AryoSomeGumul\" target=\"_blank\">X (Twitter)</a>",
     "contactLicense": "<strong>Лицензия:</strong> Этот проект распространяется под лицензией MIT. Подробнее в файле <a href=\"https://github.com/Ironship/WordHunter/blob/master/LICENSE\" target=\"_blank\">LICENSE</a>.",
-    "whatsNew": "<strong>Новое в 0.3.0:</strong> Всё приложение переписано на Rust/Tauri — более быстрый запуск, меньший бинарник, без Python. Переводчик теперь поддерживает четыре движка: офлайн CTranslate2, DeepL, Google Переводчик и локальный LM Studio. Импортируйте отсканированные PDF со встроенным рантаймом PaddleOCR. Новая настройка масштаба интерфейса сохраняет аккуратность при 1080p. Графики повторений FSRS получили подписи осей; известные и игнорируемые слова подчёркиваются в читалке; окно добавления слова использует кнопки статуса с иконками. Исправлено множество ошибок пагинации читалки и графиков.",
-    "version": "<strong>Версия:</strong> Word Hunter 0.3.0",
+    "whatsNew": "<strong>Новое в 0.3.2:</strong> Более надёжное локальное сохранение и восстановление после прерывания. Улучшены ограничения OCR и установки моделей, добавлена ручная проверка обновлений и исправлено разворачивание окна при запуске.",
+    "version": "<strong>Версия:</strong> Word Hunter 0.3.2",
     "focusHint1": "Нажмите <kbd>Ctrl</kbd>+<kbd>Enter</kbd> для ввода текста",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> для навигации по словам",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Пробел</kbd> читать предложение",
@@ -742,6 +745,11 @@
     "fullTextSuffix": "(полный текст)"
   },
   "update": {
+    "checkTitle": "Обновления приложения",
+    "checkHint": "Проверить, доступна ли новая версия Word Hunter.",
+    "checkButton": "Проверить обновления",
+    "upToDate": "У вас последняя версия ({current}).",
+    "checkFailed": "Не удалось проверить обновления.",
     "title": "Доступно обновление",
     "message": "Word Hunter {version} доступен! (У вас {current})",
     "skipLabel": "Пропустить эту версию",

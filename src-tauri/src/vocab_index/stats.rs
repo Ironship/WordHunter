@@ -12,17 +12,17 @@ pub struct VocabStats {
 }
 
 impl VocabStats {
-    pub fn from_words(words: &[String], vocab: &Value) -> Self {
+    pub fn from_words(words: &[String], frequencies: &[usize], vocab: &Value) -> Self {
         let mut known = 0usize;
         let mut learning = 0usize;
         let mut ignored = 0usize;
         let mut new = 0usize;
-        for word in words {
+        for (word, &freq) in words.iter().zip(frequencies.iter()) {
             match status_from_vocab(vocab, word) {
-                "known" => known += 1,
-                "learning" => learning += 1,
-                "ignored" => ignored += 1,
-                _ => new += 1,
+                "known" => known += freq,
+                "learning" => learning += freq,
+                "ignored" => ignored += freq,
+                _ => new += freq,
             }
         }
         VocabStats {

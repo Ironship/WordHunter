@@ -127,7 +127,9 @@ function renderResults(data) {
     const langs = (book.languages || []).join(", ");
     const summary = (book.summaries && book.summaries[0]) || "";
     const isSelected = selected.has(id);
-    const inLibrary = (state.userBooks || []).some((entry) => entry.gutenbergId === id);
+    const inLibrary = isGutenberg
+      ? (state.userBooks || []).some((entry) => entry.gutenbergId === id)
+      : (state.customTexts || []).some((entry) => String(entry.id) === id);
     const showCover = state.preferences?.showCovers !== false;
     const coverBlock = showCover
       ? (cover
@@ -164,7 +166,7 @@ function renderResults(data) {
               <span>${escapeHtml(t("discover.selectLabel"))}</span>
             </label>
             <div style="display: flex; gap: 0.5rem;">
-              <button class="primary-button icon-button" type="button" data-discover-add="${escapeAttribute(id)}" ${inLibrary ? "disabled" : ""} title="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}">
+              <button class="primary-button icon-button" type="button" data-discover-add="${escapeAttribute(id)}" ${inLibrary ? "disabled" : ""} title="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}" aria-label="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}">
                 ${inLibrary
                   ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`
                   : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
@@ -200,8 +202,8 @@ function renderUserBooks() {
   const books = state.userBooks || [];
   if (!books.length) { el.innerHTML = ""; return; }
   el.innerHTML = books.map((entry) => {
-    const id = entry.gutenbergId || entry.id;
-    const cover = entry.formats?.["image/jpeg"] || entry.coverDataUrl || "";
+    const id = entry.id;
+    const cover = entry.formats?.["image/jpeg"] || entry.coverDataUrl || entry.coverUrl || "";
     const coverBlock = cover
       ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy"></div>`
       : "";
@@ -222,7 +224,65 @@ function renderUserBooks() {
   }).join("");
 }
 
-export function getDiscoverHandlers() {
+export function getDiscoverHandlers({ onAdd, onRemove, onOpen } = {}) {
+  const findResult = (id) => lastResults.find((book) => String(book.id) === String(id));
+
+  async function addOne(id, options) {
+    const book = findResult(id);
+    if (!book || !onAdd) return false;
+    const added = await onAdd(book, options);
+    if (added) selected.delete(String(id));
+    renderResults();
+    renderUserBooks();
+    return added;
+  }
+
+  async function addSelected() {
+    let added = 0;
+    for (const id of [...selected]) {
+      if (await addOne(id, { silent: true })) added++;
+    }
+    return added;
+  }
+
+  function toggleAll(checked) {
+    lastResults.forEach((book) => {
+      const id = String(book.id);
+      if (checked) selected.add(id); else selected.delete(id);
+    });
+    renderResults();
+  }
+
+  async function onResultsClick(event) {
+    const addButton = event.target.closest("[data-discover-add]");
+    if (addButton) {
+      addButton.disabled = true;
+      await addOne(addButton.dataset.discoverAdd);
+      return;
+    }
+
+    const pageButton = event.target.closest("[data-page]");
+    if (!pageButton || pageButton.disabled) return;
+    state.discover.page = Number(pageButton.dataset.page);
+    saveState();
+    runDiscoverSearch();
+  }
+
+  function onResultsChange(event) {
+    const checkbox = event.target.closest("[data-discover-check]");
+    if (!checkbox) return;
+    const { discoverCheck: id } = checkbox.dataset;
+    if (checkbox.checked) selected.add(id); else selected.delete(id);
+    renderResults();
+  }
+
+  function onUserBooksClick(event) {
+    const openButton = event.target.closest("[data-open-book]");
+    if (openButton) return onOpen?.(openButton.dataset.openBook);
+    const removeButton = event.target.closest("[data-remove-book]");
+    if (removeButton) onRemove?.(removeButton.dataset.removeBook);
+  }
+
   return {
     selected,
     lastResults,
@@ -236,6 +296,11 @@ export function getDiscoverHandlers() {
     queueStatsFetch,
     setStatus,
     renderResults,
-    renderPagination
+    renderPagination,
+    addSelected,
+    toggleAll,
+    onResultsClick,
+    onResultsChange,
+    onUserBooksClick
   };
 }

@@ -10,6 +10,8 @@ use rusqlite::Connection;
 
 pub struct Store {
     inner: Mutex<StoreInner>,
+    // ponytail: global save lock; shard only if saves become a bottleneck.
+    write_lock: Mutex<()>,
 }
 
 struct StoreInner {
@@ -33,8 +35,10 @@ impl Store {
                 vocab_path,
                 books_dir,
             }),
+            write_lock: Mutex::new(()),
         };
         store.init_schema()?;
+        store.recover_pending_save()?;
         Ok(store)
     }
 

@@ -2,6 +2,7 @@
 
 mod ebook;
 mod external_translator;
+mod handlers;
 mod offline_translator;
 mod paths;
 mod pdf_ocr;
@@ -21,7 +22,7 @@ mod vocab_index;
 mod youglish;
 
 use std::sync::Arc;
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{webview::PageLoadEvent, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 
 use store::Store;
@@ -50,6 +51,13 @@ fn main() {
             )
             .title("Word Hunter")
             .inner_size(1360.0, 880.0)
+            // ponytail: avoid a WebView2 resize race while the first page is loading.
+            .visible(false)
+            .on_page_load(|window, payload| {
+                if matches!(payload.event(), PageLoadEvent::Finished) {
+                    let _ = window.show();
+                }
+            })
             .build()?;
 
             Ok(())
