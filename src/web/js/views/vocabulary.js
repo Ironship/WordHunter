@@ -29,7 +29,7 @@ export function getOrCreateEntry(word, text = "") {
       efactor: SM2_DEFAULTS.efactor,
       stability: FSRS_DEFAULTS.stability,
       difficulty: FSRS_DEFAULTS.difficulty,
-      srsAlgorithm: state.preferences?.srsAlgorithm || "sm2",
+      srsAlgorithm: state.preferences?.srsAlgorithm || "fsrs",
       nextDate: todayISO()
     };
     sessionAddedWords.add(word);

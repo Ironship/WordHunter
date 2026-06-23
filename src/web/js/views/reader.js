@@ -1,7 +1,7 @@
 // Reader view: orchestrator — binds events, re-exports from sub-modules.
 // Keeps full API compatibility: all imports from "../views/reader.js" still work.
 
-import { state } from "../state.js";
+import { bindSidebarResizer } from "../panel-resizer.js";
 
 // Import for local use (bindReaderEvents)
 import {
@@ -47,6 +47,11 @@ export {
 
 export function bindReaderEvents() {
   import("../dom.js").then(({ els }) => {
+    bindSidebarResizer(els.readerSidebarResizer, {
+      preference: "readerSidebarWidth", cssVariable: "--reader-sidebar-width",
+      defaultWidth: 380, minWidth: 300, maxWidth: 720, minMainWidth: 420,
+      sidebarSelector: ".reader-sidebar-wrapper"
+    });
     els.textSelect.addEventListener("change", async () => {
       const actions = await import("../book-actions.js");
       actions.openBook(els.textSelect.value);

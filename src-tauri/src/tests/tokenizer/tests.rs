@@ -69,6 +69,23 @@ fn modern_tokenize_splits_hyphenated_words() {
 }
 
 #[test]
+fn word_visitor_matches_tokenize_for_every_algorithm() {
+    let text = "Hello, well-known [IMG:cover.jpg] Grüß Gott!";
+    for algorithm in ["classic", "modern"] {
+        let expected: Vec<String> = tokenize(text, "de", Some(algorithm))
+            .into_iter()
+            .filter(|token| token.kind == "word")
+            .map(|token| token.value)
+            .collect();
+        let mut actual = Vec::new();
+        for_each_word(text, "de", Some(algorithm), |word| {
+            actual.push(word.to_string())
+        });
+        assert_eq!(actual, expected, "algorithm: {algorithm}");
+    }
+}
+
+#[test]
 fn empty_input_returns_empty_list() {
     assert!(tokenize("", "en", Some("modern")).is_empty());
     assert!(tokenize("", "en", Some("classic")).is_empty());

@@ -8,6 +8,10 @@ import { STORAGE_KEY } from "./constants.js";
 export function buildSavePayload(rawState) {
   const profileTexts = Object.values(rawState.profiles || {})
     .flatMap((profile) => Array.isArray(profile?.customTexts) ? profile.customTexts : []);
+  const profiles = Object.fromEntries(Object.entries(rawState.profiles || {}).map(([lang, profile]) => {
+    const { customTexts: _customTexts, ...withoutTexts } = profile || {};
+    return [lang, toPlain(withoutTexts)];
+  }));
   return {
     texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
     prefs: {
@@ -15,7 +19,8 @@ export function buildSavePayload(rawState) {
       __userBooks: toPlain(rawState.userBooks || [])
     },
     hiddenBooks: toPlain(rawState.hiddenBuiltInBooks || []),
-    vocab: toPlain(rawState.profiles || {})
+    // ponytail: texts have their own durable store; do not serialize every book twice.
+    vocab: profiles
   };
 }
 

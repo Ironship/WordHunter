@@ -28,6 +28,8 @@ export function applyPreferences() {
   document.documentElement.style.setProperty("--reader-font-size", `${state.readerFontSize || 18}px`);
   document.documentElement.dataset.textAlign = prefs.readerTextAlign || "left";
   document.documentElement.dataset.maxWidth = prefs.readerMaxWidth || "wide";
+  document.documentElement.style.setProperty("--reader-sidebar-width", `${Math.min(720, Math.max(300, Number(prefs.readerSidebarWidth) || 380))}px`);
+  document.documentElement.style.setProperty("--library-sidebar-width", `${Math.min(600, Math.max(280, Number(prefs.librarySidebarWidth) || 360))}px`);
   document.documentElement.style.setProperty("--token-new-bg", prefs.colorNew || "#ff6b6b");
   document.documentElement.style.setProperty("--token-learning-bg", prefs.colorLearning || "#ffb84d");
   document.documentElement.style.setProperty("--token-known-bg", prefs.colorKnown || "#8ce99a");
@@ -38,6 +40,7 @@ export function applyPreferences() {
   document.documentElement.classList.toggle("no-covers", prefs.showCovers === false);
 
   const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
+  document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
   document.documentElement.style.zoom = String(uiScale / 100);
 
   if (els.themeToggle) {
@@ -77,7 +80,7 @@ export function syncSettingsControls() {
   if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "wide";
   if (els.prefWordsPerPage) els.prefWordsPerPage.value = prefs.wordsPerPage || "1000";
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
-  if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
+  if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
   if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
   if (els.prefRemovalBehavior) els.prefRemovalBehavior.value = prefs.removalBehavior || "ignored";
@@ -102,7 +105,7 @@ export function syncSettingsControls() {
   if (els.prefReviewGraphType) els.prefReviewGraphType.value = prefs.reviewGraphType || "heatmap";
   els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
   if (els.prefAutoAddLearning) els.prefAutoAddLearning.checked = prefs.autoAddLearningOnly === true;
-  const provider = ["offline", "deepl", "google", "lmstudio"].includes(prefs.translationProvider) ? prefs.translationProvider : "offline";
+  const provider = ["offline", "deepl", "google", "lmstudio"].includes(prefs.translationProvider) ? prefs.translationProvider : "google";
   if (els.prefTranslationProvider) els.prefTranslationProvider.value = provider;
   if (els.prefDeepLApiKey) els.prefDeepLApiKey.value = prefs.deeplApiKey || "";
   if (els.prefLmStudioEndpoint) els.prefLmStudioEndpoint.value = prefs.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions";
@@ -145,6 +148,11 @@ export function syncSettingsControls() {
     } catch (error) {
       console.warn(error);
     }
+  }
+  if (els.dataDirectory) {
+    els.dataDirectory.textContent = state.dataDirectory
+      ? t("settings.dataFolderPath", { path: state.dataDirectory })
+      : t("settings.dataFolderDefault");
   }
 }
 

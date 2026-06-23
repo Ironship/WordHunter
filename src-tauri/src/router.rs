@@ -20,6 +20,9 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
     match (method, path.as_str()) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => response::json_response(request, state.store.snapshot()),
+        (Method::Get, "/__store/data_dir") => {
+            response::json_response(request, json!({ "path": state.store.dir() }))
+        }
         (Method::Get, "/__data") => {
             let _ = open::that(state.store.dir());
             response::no_content(request)
@@ -44,6 +47,7 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
         (Method::Get, path) if path.starts_with("/__open_dict") => {
             popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)
         }
+        (Method::Get, "/__popup/close") => popup::serve_close_popup(request, &state.app_handle),
         (Method::Get, path) if path.starts_with("/__argos/status") => {
             response::json_response(request, offline_translator::status())
         }
@@ -91,6 +95,11 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                     state.store.bulk_save(payload)?;
                     response::no_content(request)
                 }
+                "/__store/choose_data_dir" => match handlers::choose_data_dir(&state) {
+                    Ok(Some(path)) => response::json_response(request, json!({ "path": path })),
+                    Ok(None) => response::json_response(request, json!({ "path": null })),
+                    Err(err) => response::error_response(request, 500, &err),
+                },
                 "/__store/upsert_text" => {
                     let payload = response::read_json(&mut request)?;
                     state.store.upsert_text(&payload)?;

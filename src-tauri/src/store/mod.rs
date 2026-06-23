@@ -46,6 +46,28 @@ impl Store {
         self.inner.lock().unwrap().dir.clone()
     }
 
+    pub fn relocate(&self, dir: PathBuf) -> Result<PathBuf, String> {
+        let _write_guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| "save lock is unavailable".to_string())?;
+        let current = self.dir();
+        if current == dir {
+            return Ok(current);
+        }
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        copy_data_dir(&current, &dir)?;
+        crate::paths::set_data_dir(crate::APP_NAME, &dir)?;
+        let mut inner = self.inner.lock().unwrap();
+        inner.db_path = dir.join("store.sqlite");
+        inner.vocab_path = dir.join("vocab.json");
+        inner.books_dir = dir.join("books");
+        inner.dir = dir.clone();
+        drop(inner);
+        self.init_schema()?;
+        Ok(dir)
+    }
+
     fn conn(inner: &StoreInner) -> Result<Connection, String> {
         Connection::open(&inner.db_path).map_err(|e| e.to_string())
     }
@@ -68,5 +90,72 @@ impl Store {
         )
         .map_err(|e| e.to_string())?;
         Ok(())
+    }
+}
+
+fn copy_data_dir(from: &std::path::Path, to: &std::path::Path) -> Result<(), String> {
+    for name in [
+        "store.sqlite",
+        "store.sqlite-wal",
+        "store.sqlite-shm",
+        "vocab.json",
+        "vocab.bak",
+    ] {
+        let source = from.join(name);
+        if source.is_file() {
+            std::fs::copy(&source, to.join(name)).map_err(|e| e.to_string())?;
+        }
+    }
+    for name in ["books", "argos-packages"] {
+        let source = from.join(name);
+        if source.is_dir() {
+            copy_tree(&source, &to.join(name))?;
+        }
+    }
+    Ok(())
+}
+
+fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<(), String> {
+    std::fs::create_dir_all(to).map_err(|e| e.to_string())?;
+    for entry in std::fs::read_dir(from).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let target = to.join(entry.file_name());
+        if entry.path().is_dir() {
+            copy_tree(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::copy_data_dir;
+
+    #[test]
+    fn relocation_copies_state_and_book_files() {
+        let source = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        std::fs::write(source.path().join("vocab.json"), "{}").unwrap();
+        std::fs::create_dir_all(source.path().join("books/one")).unwrap();
+        std::fs::write(source.path().join("books/one/text.txt"), "hello").unwrap();
+        std::fs::create_dir_all(source.path().join("argos-packages")).unwrap();
+        std::fs::write(source.path().join("argos-packages/model.bin"), "model").unwrap();
+
+        copy_data_dir(source.path(), target.path()).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(target.path().join("vocab.json")).unwrap(),
+            "{}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(target.path().join("books/one/text.txt")).unwrap(),
+            "hello"
+        );
+        assert_eq!(
+            std::fs::read_to_string(target.path().join("argos-packages/model.bin")).unwrap(),
+            "model"
+        );
     }
 }

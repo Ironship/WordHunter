@@ -256,21 +256,18 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
 }
 
 export function getTokenStats(tokens, vocab) {
-  const words = new Map();
-  tokens.forEach((part) => {
-    if (part.type === "word") {
-      const normalized = normalizeWord(part.value);
-      if (normalized) {
-        words.set(normalized, (words.get(normalized) || 0) + 1);
-      }
-    }
-  });
-
-  const stats = { unique: words.size, known: 0, learning: 0, ignored: 0, new: 0 };
-  words.forEach((count, word) => {
-    const status = vocab[word]?.status || "new";
-    stats[status] = (stats[status] || 0) + count;
-  });
+  const words = tokens.filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean);
+  const phrases = Object.entries(vocab || {})
+    .filter(([word]) => word.includes(" "))
+    .map(([word, entry]) => ({ words: word.split(/\s+/), status: entry?.status || "new" }))
+    .sort((a, b) => b.words.length - a.words.length);
+  const statuses = words.map((word) => vocab?.[word]?.status || "new");
+  for (let i = 0; i < words.length; i += 1) {
+    const phrase = phrases.find(({ words: phraseWords }) => phraseWords.every((word, offset) => words[i + offset] === word));
+    if (phrase) phrase.words.forEach((_word, offset) => { statuses[i + offset] = phrase.status; });
+  }
+  const stats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
+  statuses.forEach((status) => { stats[["known", "learning", "ignored"].includes(status) ? status : "new"] += 1; });
   return stats;
 }
 

@@ -76,6 +76,7 @@ impl Store {
         }
 
         json!({
+            "dataDir": self.dir(),
             "texts": texts,
             "prefs": prefs,
             "hiddenBooks": hidden_books,
@@ -85,7 +86,10 @@ impl Store {
     }
 
     pub fn bulk_save(&self, payload: Value) -> Result<(), String> {
-        let _guard = self.write_lock.lock().map_err(|_| "save lock is unavailable".to_string())?;
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| "save lock is unavailable".to_string())?;
         let journal = self.save_journal_path();
         let temp = journal.with_extension("tmp");
         let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
@@ -100,7 +104,10 @@ impl Store {
     }
 
     pub fn wipe(&self) -> Result<(), String> {
-        let _guard = self.write_lock.lock().map_err(|_| "save lock is unavailable".to_string())?;
+        let _guard = self
+            .write_lock
+            .lock()
+            .map_err(|_| "save lock is unavailable".to_string())?;
         {
             let inner = self.inner.lock().unwrap();
             let conn = Self::conn(&inner)?;

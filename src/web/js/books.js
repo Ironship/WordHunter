@@ -9,6 +9,7 @@ let catalog = [];
 export const bookTexts = new Map();
 let bookTextsLoadingPromise = null;
 const textLoadingById = new Map();
+const TEXT_LOAD_CONCURRENCY = 2;
 
 export async function loadBooksCatalog() {
   try {
@@ -45,11 +46,19 @@ export function loadAllBookTexts() {
     return Promise.resolve();
   }
   
-  bookTextsLoadingPromise = Promise.all(books.map((book) => 
-    loadBookText(book).catch((error) => {
-      console.warn(`Failed to load ${book.localPath || book.textUrl}:`, error);
-    })
-  )).finally(() => {
+  let nextBook = 0;
+  const loadNext = async () => {
+    while (nextBook < books.length) {
+      const book = books[nextBook++];
+      await loadBookText(book).catch((error) => {
+        console.warn(`Failed to load ${book.localPath || book.textUrl}:`, error);
+      });
+    }
+  };
+  // ponytail: two fetches keep startup memory bounded; every book still gets its complete text.
+  bookTextsLoadingPromise = Promise.all(
+    Array.from({ length: Math.min(TEXT_LOAD_CONCURRENCY, books.length) }, loadNext)
+  ).finally(() => {
     bookTextsLoadingPromise = null;
   });
   

@@ -3,10 +3,13 @@ import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, parseTagList, calcStatsPcts } from "../utils.js";
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
-import { getTextStats, normalizeSearchVariants } from "../tokenizer_v2.js";
+import { normalizeSearchVariants } from "../tokenizer_v2.js";
 import { getAllBooks, bookTexts } from "../books.js";
-import { getCachedUniqueWordCount } from "../stats-cache.js";
+import { getCachedTextStats, getCachedUniqueWordCount, prepareTextStats } from "../stats-cache.js";
 import { t, getLocale } from "../i18n.js";
+import { bindSidebarResizer } from "../panel-resizer.js";
+
+const EMPTY_STATS = { unique: 0, known: 0, learning: 0, ignored: 0, new: 0 };
 
 function sourceTagForBook(book) {
   const source = `${book.source || ""} ${book.pageUrl || ""}`.toLowerCase();
@@ -59,6 +62,7 @@ export function renderLibrary() {
   const showStats = state.preferences?.showCardStats !== false;
   const statSortKeys = new Set(["length", "known", "new", "learning", "progress"]);
   const needsStats = showStats || statSortKeys.has(sortKey);
+  const preparedVocabStatuses = needsStats ? prepareTextStats(state.vocab) : "";
 
   const allBooks = [
     ...getAllBooks(),
@@ -92,21 +96,25 @@ export function renderLibrary() {
       return matchesLevel && matchesQuery;
     })
     .map((book) => {
-      const fullText = book._customText || bookTexts.get(book.id) || book.sample || "";
+      const loadedText = book._customText || bookTexts.get(book.id) || "";
+      const fullText = loadedText || book.sample || "";
+      const hasCompleteText = Boolean(loadedText);
       const isArchived = archivedBookIds.has(book.id);
       const lang = state.preferences.learningLanguage || "en";
       const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
       // ponytail: archive view reads its existing count; it never starts a vocabulary lookup.
-      const stats = isArchived
+      const stats = !hasCompleteText
+        ? null
+        : isArchived
         ? { unique: getCachedUniqueWordCount(book, fullText, lang, algorithm), known: 0, ignored: 0, learning: 0, new: 0 }
         : needsStats && fullText
-        ? getTextStats(fullText, state.vocab, lang, algorithm)
+        ? getCachedTextStats(book, fullText, state.vocab, lang, algorithm, preparedVocabStatuses)
         : { unique: 0, known: 0, ignored: 0, learning: 0, new: 0 };
-    return { book, stats, ...calcStatsPcts(stats) };
+    return { book, stats, statsReady: stats !== null, ...calcStatsPcts(stats || EMPTY_STATS) };
     })
     .sort((a, b) => {
-      const valA = getSortValue(a.book, a.stats, sortKey);
-      const valB = getSortValue(b.book, b.stats, sortKey);
+      const valA = getSortValue(a.book, a.stats || EMPTY_STATS, sortKey);
+      const valB = getSortValue(b.book, b.stats || EMPTY_STATS, sortKey);
       
       let result = 0;
       if (typeof valA === "string" && typeof valB === "string") {
@@ -125,11 +133,13 @@ export function renderLibrary() {
 
   const localeTag = getLocale() === "en" ? "en-US" : "pl-PL";
 
-  els.bookList.innerHTML = books.map(({ book, stats, progress, knownPct, learningPct, newPct }) => {
+  els.bookList.innerHTML = books.map(({ book, stats, statsReady, progress, knownPct, learningPct, newPct }) => {
     const isArchived = archivedBookIds.has(book.id);
-    const uniqueValue = stats.unique.toLocaleString(localeTag);
+    const uniqueValue = (stats?.unique || 0).toLocaleString(localeTag);
     const statsBlock = showStats
-      ? isArchived
+      ? !statsReady
+        ? `<div class="progress-block" aria-busy="true"><span class="card-stat-summary">…</span></div>`
+        : isArchived
         ? `<div class="progress-block"><span class="card-stat-summary">${renderCardCount(uniqueValue, t("library.uniqueWordsLabel"))}</span></div>`
         : `
         <div class="progress-block" aria-label="${escapeAttribute(t("library.progressLabel"))}">
@@ -228,6 +238,38 @@ function renderBookCover(book) {
 }
 
 export function bindLibraryEvents() {
+  bindSidebarResizer(els.librarySidebarResizer, {
+    preference: "librarySidebarWidth", cssVariable: "--library-sidebar-width",
+    defaultWidth: 360, minWidth: 280, maxWidth: 600, minMainWidth: 360,
+    sidebarSelector: ".import-panel", overlay: true
+  });
+  const deleteDialog = document.getElementById("delete-book-dialog");
+  const deleteTitle = document.getElementById("delete-book-title");
+  const deleteMessage = document.getElementById("delete-book-message");
+  const deleteCancel = document.getElementById("delete-book-cancel");
+  const deleteConfirm = document.getElementById("delete-book-confirm");
+  let pendingDelete = null;
+  const closeDeleteDialog = () => {
+    pendingDelete = null;
+    deleteDialog?.close();
+  };
+  const requestBookRemoval = (title, message, remove, confirmLabel = t("library.removeConfirmButton")) => {
+    if (!deleteDialog || !deleteTitle || !deleteMessage || !deleteConfirm) return;
+    pendingDelete = remove;
+    deleteTitle.textContent = title;
+    deleteMessage.textContent = message;
+    deleteConfirm.textContent = confirmLabel;
+    deleteDialog.showModal();
+  };
+  deleteCancel?.addEventListener("click", closeDeleteDialog);
+  deleteConfirm?.addEventListener("click", () => {
+    const remove = pendingDelete;
+    closeDeleteDialog();
+    remove?.();
+  });
+  deleteDialog?.addEventListener("cancel", (event) => { event.preventDefault(); closeDeleteDialog(); });
+  deleteDialog?.addEventListener("click", (event) => { if (event.target === deleteDialog) closeDeleteDialog(); });
+
   els.librarySearch.addEventListener("input", () => {
     state.filters.libraryQuery = els.librarySearch.value;
     saveState();
@@ -263,12 +305,27 @@ export function bindLibraryEvents() {
     const id = control.dataset.id;
     const actions = await import("../book-actions.js");
 
-    if (control.dataset.action === "remove-custom") { actions.removeCustomText(id); return; }
-    if (control.dataset.action === "hide-builtin") { if (window.confirm(t("toast.confirmHideBook"))) actions.hideBuiltInBook(id); return; }
+    const customText = (state.customTexts || []).find((t) => t.id === id);
+    if (control.dataset.action === "remove-custom" && customText) {
+      requestBookRemoval(
+        t("library.removeConfirmTitle"),
+        t("library.removeConfirmMessage", { title: customText.title }),
+        () => actions.removeCustomText(id)
+      );
+      return;
+    }
+    if (control.dataset.action === "hide-builtin") {
+      requestBookRemoval(
+        t("library.removeBuiltInTitle"),
+        t("toast.confirmHideBook"),
+        () => actions.hideBuiltInBook(id),
+        t("library.removeBuiltInTitle")
+      );
+      return;
+    }
     if (control.dataset.action === "archive-book") { actions.archiveBook(id); return; }
     if (control.dataset.action === "unarchive-book") { actions.unarchiveBook(id); return; }
 
-    const customText = (state.customTexts || []).find((t) => t.id === id);
     if (customText) {
       if (control.dataset.action === "read-sample") actions.openBook(id);
       if (control.dataset.action === "edit-custom") actions.openEditBookModal(id);
@@ -284,7 +341,13 @@ export function bindLibraryEvents() {
       else actions.openBook(book.id);
     }
     if (control.dataset.action === "load-full") await actions.loadFullGutenbergText(book);
-    if (control.dataset.action === "remove-user-book") actions.removeUserBook(book.id);
+    if (control.dataset.action === "remove-user-book") {
+      requestBookRemoval(
+        t("library.removeConfirmTitle"),
+        t("library.removeConfirmMessage", { title: book.title }),
+        () => actions.removeUserBook(book.id)
+      );
+    }
     if (control.dataset.action === "edit-custom") actions.openEditBookModal(id);
   });
 }

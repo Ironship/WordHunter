@@ -7,7 +7,8 @@ import { loadBooksCatalog, loadAllBookTexts, loadAllCustomTextContents } from ".
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
 import { state } from "./js/state.js";
-import { bindLibraryEvents } from "./js/views/library.js";
+import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
+import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 
 window.onerror = function(msg, url, line, col, error) {
   const errDiv = document.createElement("div");
@@ -34,9 +35,12 @@ window.addEventListener("beforeunload", () => {
 document.addEventListener("contextmenu", event => event.preventDefault());
 
 window.addEventListener("vocab-index:loaded", () => {
-  if (state.currentView === "library" || state.currentView === "vocabulary") {
-    render();
-  }
+  if (state.currentView === "library") renderLibrary();
+  if (state.currentView === "vocabulary") { renderVocabulary(); renderReview(); }
+});
+
+window.addEventListener("text-stats:loaded", () => {
+  if (state.currentView === "library") renderLibrary();
 });
 
 // Start locale fetch immediately (module-level, before DOMContentLoaded)

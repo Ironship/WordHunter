@@ -27,6 +27,7 @@
   --reader-font-family: Georgia, "Times New Roman", serif;
   --reader-line-height: 1.82;
   --reader-font-size: 18px;
+  --ui-scale: 1;
 }
 
 :root[data-theme="dark"] {
@@ -409,7 +410,8 @@ kbd {
 }
 
 .library-layout {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  position: relative;
+  grid-template-columns: minmax(360px, 1fr) minmax(280px, min(var(--library-sidebar-width, 360px), calc(100% - 376px)));
 }
 
 .vocab-layout {
@@ -609,11 +611,42 @@ kbd {
 }
 
 .reader-grid {
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  grid-template-columns: minmax(0, 1fr) 8px minmax(300px, var(--reader-sidebar-width, 380px));
+}
+
+.reader-sidebar-resizer {
+  position: static;
+  cursor: col-resize;
+  border-radius: 999px;
+  background: var(--line);
+  touch-action: none;
+}
+
+.panel-sidebar-resizer {
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 8px;
+  cursor: col-resize;
+  border-radius: 999px;
+  background: var(--line);
+  touch-action: none;
+}
+
+.reader-sidebar-resizer:hover,
+.panel-sidebar-resizer:hover {
+  background: var(--green);
 }
 
 .settings-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.is-resizing-panel,
+body.is-resizing-panel * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .panel {
@@ -1878,6 +1911,21 @@ html[data-max-width="full"] .reader-text {
   gap: 0.5rem;
 }
 
+.confirmation-dialog {
+  width: min(92vw, 480px);
+}
+.confirmation-dialog-body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+.confirmation-dialog-body p { margin: 0; }
+.confirmation-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .table-wrap {
   overflow: auto;
   max-width: 100%;
@@ -2155,6 +2203,9 @@ html[data-max-width="full"] .reader-text {
     max-height: none;
     overflow: visible;
   }
+
+  .reader-sidebar-resizer,
+  .panel-sidebar-resizer { display: none; }
 }
 
 @media (max-width: 780px) {
@@ -2568,18 +2619,18 @@ dialog {
    ===================================================================== */
 @media (min-width: 781px) {
   .app-shell {
-    height: 100vh;
+    height: calc(100vh / var(--ui-scale));
     overflow: hidden;
   }
 
   .sidebar {
-    height: 100vh;
+    height: calc(100vh / var(--ui-scale));
   }
 
   .main-panel {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: calc(100vh / var(--ui-scale));
     overflow: hidden;
   }
 

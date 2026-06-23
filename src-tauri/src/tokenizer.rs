@@ -74,6 +74,42 @@ pub fn tokenize(text: &str, lang: &str, algorithm: Option<&str>) -> Vec<Token> {
     parts
 }
 
+/// Visits the same word tokens as `tokenize` without allocating text/image tokens.
+pub fn for_each_word(text: &str, lang: &str, algorithm: Option<&str>, mut visit: impl FnMut(&str)) {
+    if text.is_empty() {
+        return;
+    }
+    let mode = resolve_algorithm(algorithm);
+    let mut last = 0usize;
+    for image_match in IMAGE_PATTERN.find_iter(text) {
+        if image_match.start() > last {
+            visit_words_in_block(&text[last..image_match.start()], lang, mode, &mut visit);
+        }
+        last = image_match.end();
+    }
+    if last < text.len() {
+        visit_words_in_block(&text[last..], lang, mode, &mut visit);
+    }
+}
+
+fn visit_words_in_block(block: &str, _lang: &str, mode: &str, visit: &mut impl FnMut(&str)) {
+    if mode == "classic" {
+        for word in CLASSIC_PATTERN.find_iter(block) {
+            visit(word.as_str());
+        }
+        return;
+    }
+    for segment in block.split_word_bounds() {
+        if !segment.trim().is_empty()
+            && segment
+                .chars()
+                .any(|c| c.is_alphabetic() || c.is_alphanumeric())
+        {
+            visit(segment);
+        }
+    }
+}
+
 fn push_text_block(block: &str, lang: &str, mode: &str, parts: &mut Vec<Token>) {
     if block.is_empty() {
         return;
@@ -188,14 +224,12 @@ pub fn clean_gutenberg_text(raw: &str) -> String {
 
 pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>) -> Value {
     let mut words = std::collections::HashMap::new();
-    for token in tokenize(text, lang, algorithm) {
-        if token.kind == "word" {
-            let normalized = normalize_word(&token.value);
-            if !normalized.is_empty() {
-                *words.entry(normalized).or_insert(0usize) += 1;
-            }
+    for_each_word(text, lang, algorithm, |word| {
+        let normalized = normalize_word(word);
+        if !normalized.is_empty() {
+            *words.entry(normalized).or_insert(0usize) += 1;
         }
-    }
+    });
     let mut stats = serde_json::Map::new();
     stats.insert("unique".to_string(), json!(words.len()));
     stats.insert("known".to_string(), json!(0));

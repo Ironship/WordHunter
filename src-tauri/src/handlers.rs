@@ -151,3 +151,14 @@ pub(crate) fn save_export(payload: Value) -> Result<(), String> {
     }
     Ok(())
 }
+
+pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, String> {
+    let Some(path) = rfd::FileDialog::new()
+        .set_directory(state.store.dir())
+        .pick_folder()
+    else {
+        return Ok(None);
+    };
+    let path = state.store.relocate(path)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
