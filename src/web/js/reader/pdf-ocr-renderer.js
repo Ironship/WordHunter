@@ -12,6 +12,7 @@ import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
+import { getLearningColor } from "../reader-colors.js";
 
 const PDF_OCR_LAYOUT_FONT = `"Times New Roman", Georgia, serif`;
 let pdfOcrMeasureContext = null;
@@ -217,12 +218,14 @@ function renderPdfOcrWord(item, page, globalIndex) {
   const entry = state.vocab[word];
   const status = entry ? entry.status : "new";
   const selected = state.selectedWord === word ? "selected" : "";
+  const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
   const style = [
     `left:${((x / pageWidth) * 100).toFixed(4)}%`,
     `top:${((y / pageHeight) * 100).toFixed(4)}%`,
     `width:${((width / pageWidth) * 100).toFixed(4)}%`,
-    `height:${((height / pageHeight) * 100).toFixed(4)}%`
-  ].join(";");
+    `height:${((height / pageHeight) * 100).toFixed(4)}%`,
+    color && `--token-learning-bg:${color}`
+  ].filter(Boolean).join(";");
 
   return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalIndex}" style="${style}" aria-label="${escapeAttribute(raw)}">${escapeHtml(raw)}</button>`;
 }

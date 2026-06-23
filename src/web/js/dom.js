@@ -83,6 +83,9 @@ export function cacheElements() {
   els.prefColorLearning = document.getElementById("pref-color-learning");
   els.prefColorKnown = document.getElementById("pref-color-known");
   els.prefColorIgnored = document.getElementById("pref-color-ignored");
+  els.prefDynamicLearningColors = document.getElementById("pref-dynamic-learning-colors");
+  els.prefLearningColors = [...document.querySelectorAll("[data-learning-color]")];
+  els.prefLearningColorsRow = document.getElementById("pref-learning-colors-row");
   els.prefFont = document.getElementById("pref-font");
   els.prefLineHeight = document.getElementById("pref-line-height");
   els.prefWordsPerPage = document.getElementById("pref-words-per-page");
@@ -94,6 +97,7 @@ export function cacheElements() {
   els.prefUiScaleLabel = document.getElementById("pref-ui-scale-label");
   els.prefHighlight = document.getElementById("pref-highlight");
   els.prefHideKnown = document.getElementById("pref-hide-known");
+  els.prefInTextReview = document.getElementById("pref-in-text-review");
   els.prefReviewGraphType = document.getElementById("pref-review-graph-type");
   els.prefAutoLearn = document.getElementById("pref-auto-learn");
   els.prefAutoAddLearning = document.getElementById("pref-auto-add-learning");

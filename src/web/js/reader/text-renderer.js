@@ -11,6 +11,7 @@ import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { paginationHtml } from "./pagination.js";
+import { getLearningColor } from "../reader-colors.js";
 
 const CHUNK_SIZE = 500;
 
@@ -111,10 +112,12 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
       let status = "new";
       let selected = "";
       let dataWord = escapeHtml(word);
+      let entry = null;
 
       if (matchedPhraseKey) {
         const phrEntry = state.vocab[matchedPhraseKey];
         if (phrEntry) {
+          entry = phrEntry;
           status = phrEntry.status;
           selected = state.selectedWord === matchedPhraseKey ? "selected" : "";
           dataWord = escapeHtml(matchedPhraseKey);
@@ -122,7 +125,7 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
       }
       if (!matchedPhraseKey || !Object.hasOwn(state.vocab, matchedPhraseKey)) {
         consumedTokens = 1;
-        const entry = state.vocab[word];
+        entry = state.vocab[word];
         status = entry ? entry.status : "new";
         selected = state.selectedWord === word ? "selected" : "";
       }
@@ -134,7 +137,9 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
         } else {
            const pSelected = selected || (state.selectedWord === normalizeWord(consumedPart.value) ? "selected" : "");
            const globalIdx = globalWordIdx[pageStartIndex + i + j];
-           htmlChunk += `<button class="word-token status-${status} ${pSelected}" type="button" data-word="${dataWord}" data-word-index="${globalIdx}">${escapeHtml(consumedPart.value)}</button>`;
+           const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
+           const style = color ? ` style="--token-learning-bg:${color}"` : "";
+           htmlChunk += `<button class="word-token status-${status} ${pSelected}" type="button" data-word="${dataWord}" data-word-index="${globalIdx}"${style}>${escapeHtml(consumedPart.value)}</button>`;
         }
       }
 

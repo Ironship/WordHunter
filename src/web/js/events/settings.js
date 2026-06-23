@@ -178,6 +178,10 @@ export function bindSettingsEvents() {
   if (els.prefUseEdgeTts) els.prefUseEdgeTts.addEventListener("change", (e) => updatePreferenceValue("useEdgeTts", e.target.checked));
   els.prefHighlight.addEventListener("change", (e) => updatePreferenceValue("highlightTokens", e.target.checked));
   if (els.prefHideKnown) els.prefHideKnown.addEventListener("change", (e) => updatePreferenceValue("hideKnownIgnored", e.target.checked));
+  if (els.prefInTextReview) els.prefInTextReview.addEventListener("change", (e) => {
+    updatePreferenceValue("inTextReview", e.target.checked);
+    renderReader();
+  });
   if (els.prefReviewGraphType) els.prefReviewGraphType.addEventListener("change", (e) => {
     updatePreferenceValue("reviewGraphType", e.target.value);
     import("../views/vocabulary.js").then(m => m.renderReview());
@@ -330,6 +334,17 @@ export function bindSettingsEvents() {
   if (els.prefColorLearning) els.prefColorLearning.addEventListener("input", (e) => updatePreferenceValue("colorLearning", e.target.value));
   if (els.prefColorKnown) els.prefColorKnown.addEventListener("input", (e) => updatePreferenceValue("colorKnown", e.target.value));
   if (els.prefColorIgnored) els.prefColorIgnored.addEventListener("input", (e) => updatePreferenceValue("colorIgnored", e.target.value));
+  if (els.prefDynamicLearningColors) els.prefDynamicLearningColors.addEventListener("change", (e) => {
+    updatePreferenceValue("dynamicLearningColors", e.target.checked);
+    syncSettingsControls();
+    renderReader();
+  });
+  if (els.prefLearningColors?.length) {
+    els.prefLearningColors.forEach((input) => input.addEventListener("input", () => {
+      updatePreferenceValue("learningColors", els.prefLearningColors.map((color) => color.value));
+      renderReader();
+    }));
+  }
   
   els.prefFontSize.addEventListener("input", (e) => setReaderFontSize(e.target.value));
 

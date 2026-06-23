@@ -606,6 +606,23 @@
                   <input type="color" id="pref-color-ignored" class="color-picker-lg" data-i18n-attr="title=vocab.statusIgnored">
                 </div>
               </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.dynamicLearningColors">Kolor słów w nauce według poziomu SRS</span>
+                  <small data-i18n="settings.dynamicLearningColorsHint">Poziom 1 jest pomarańczowy, a poziom 5 zielony. Kolory możesz zmienić poniżej.</small>
+                </span>
+                <input id="pref-dynamic-learning-colors" type="checkbox">
+              </label>
+              <div class="setting-row" id="pref-learning-colors-row" hidden>
+                <span data-i18n="settings.learningColorPalette">Paleta poziomów nauki (1–5)</span>
+                <div class="color-pickers-group">
+                  <input type="color" class="color-picker-lg" data-learning-color="0">
+                  <input type="color" class="color-picker-lg" data-learning-color="1">
+                  <input type="color" class="color-picker-lg" data-learning-color="2">
+                  <input type="color" class="color-picker-lg" data-learning-color="3">
+                  <input type="color" class="color-picker-lg" data-learning-color="4">
+                </div>
+              </div>
 
               <label class="setting-row toggle-row">
                 <span>
@@ -748,6 +765,13 @@
                   <small data-i18n="settings.autoAddLearningOnlyHint">Do powtórek trafiają tylko słowa „Uczę się”. Słowa „Nowe” poczekają, aż ręcznie zmienisz im status.</small>
                 </span>
                 <input id="pref-auto-add-learning" type="checkbox">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.inTextReview">Powtórki podczas czytania</span>
+                  <small data-i18n="settings.inTextReviewHint">Przy słowie „Uczę się” najpierw spróbujesz odgadnąć tłumaczenie, potem ocenisz odpowiedź od 1 do 5.</small>
+                </span>
+                <input id="pref-in-text-review" type="checkbox">
               </label>
               <label class="setting-row">
                 <span>
@@ -973,6 +997,7 @@
                     <li data-i18n-html="help.readerKeys.focus"></li>
                     <li data-i18n-html="help.readerKeys.page"></li>
                     <li data-i18n-html="help.readerKeys.imgSuggest"></li>
+                    <li data-i18n-html="help.readerKeys.inTextReview"></li>
                   </ul>
                 </div>
                 

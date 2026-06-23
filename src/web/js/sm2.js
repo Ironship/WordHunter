@@ -128,10 +128,19 @@ export function addDaysISO(days, from = new Date()) {
   return todayISO(d);
 }
 
+export function scheduleFirstLearningReview(entry, now = new Date()) {
+  entry.nextDate = addDaysISO(1, now);
+  return entry;
+}
+
 /** Whether a given date is due (≤ today)? No date = immediately due. */
 export function isDue(nextDate, today = todayISO()) {
   if (!nextDate) return true;
   return String(nextDate) <= today;
+}
+
+export function isInTextReviewDue(entry, today = todayISO()) {
+  return entry?.status === "learning" && isDue(entry.nextDate, today);
 }
 
 /**

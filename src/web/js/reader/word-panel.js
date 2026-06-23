@@ -12,10 +12,65 @@ import { getOrCreateEntry } from "../views/vocabulary.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
 import { getReaderSelectionText } from "./selection.js";
 import { getSmartSuggestionHtml } from "./smart-suggest.js";
+import { applyReviewGrade } from "../vocabulary/review-card.js";
+import { getLearningColor } from "../reader-colors.js";
+import { isInTextReviewDue } from "../sm2.js";
+
+let inTextReviewWord = "";
+let inTextAnswerVisible = false;
+let inTextReviewCompleted = false;
 
 function isTransientReaderRangeSelection() {
   const text = getReaderSelectionText();
   return !!text && !Object.hasOwn(state.vocab, state.selectedWord);
+}
+
+function resetInTextReview(word) {
+  if (word !== inTextReviewWord) {
+    inTextReviewWord = word;
+    inTextAnswerVisible = false;
+    inTextReviewCompleted = false;
+  }
+}
+
+function renderTranslationEditor(entry, word, marginTop = "0") {
+  return `
+    <label style="margin-top: ${marginTop};">
+      <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+        ${escapeHtml(t("reader.translationLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">E</span>
+      </span>
+      <input type="text" value="${escapeAttribute(entry.translation || "")}" data-word="${escapeHtml(word)}" data-word-field="translation" placeholder="${escapeAttribute(t("reader.translationPlaceholder"))}">
+    </label>
+  `;
+}
+
+function renderInTextReview(entry, word, hasSmartSuggestion) {
+  if (state.preferences?.inTextReview !== true || !isInTextReviewDue(entry)) {
+    return renderTranslationEditor(entry, word, hasSmartSuggestion ? "0.75rem" : "0");
+  }
+  if (!inTextAnswerVisible) {
+    return `
+      <div class="in-text-review">
+        <p class="muted-copy">${escapeHtml(t("sm2.inTextPrompt"))}</p>
+        <button class="secondary-button" type="button" data-in-text-answer>
+          ${escapeHtml(t("sm2.showAnswer"))}
+          <span class="shortcut-badge">${escapeHtml(t("reader.keyEnter"))}</span>
+        </button>
+      </div>
+    `;
+  }
+  const grades = [1, 2, 3, 4, 5].map((grade) => `
+    <button class="status-button sm2-grade sm2-grade-${grade}" type="button" data-in-text-grade="${grade}" title="${escapeAttribute(t(`sm2.grade${grade}`))}">${grade}<span class="shortcut-badge">${grade}</span></button>
+  `).join("");
+  return `
+    <div class="in-text-review">
+      <p><strong>${escapeHtml(t("reader.translationLabel"))}:</strong> ${escapeHtml(entry.translation || t("vocab.reviewNoTranslation"))}</p>
+      ${entry.translation ? "" : renderTranslationEditor(entry, word)}
+      ${inTextReviewCompleted
+        ? `<p class="muted-copy">${escapeHtml(t("sm2.inTextRecorded"))}</p>`
+        : `<p class="muted-copy sm2-prompt">${escapeHtml(t("sm2.inTextRating"))}</p><div class="sm2-grades">${grades}</div>`}
+    </div>
+  `;
 }
 
 export function renderWordPanel(currentText) {
@@ -35,6 +90,7 @@ export function renderWordPanel(currentText) {
   const entry = isTransientRange
     ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
     : getOrCreateEntry(word, currentText.text);
+  resetInTextReview(word);
   const context = entry.examples?.[0] || getSentenceForWord(
     currentText.text,
     word,
@@ -60,12 +116,7 @@ export function renderWordPanel(currentText) {
         }).join("")}
       </div>
       ${smartSuggestionHtml}
-      <label style="margin-top: ${smartSuggestionHtml ? '0.75rem' : '0'};">
-        <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          ${escapeHtml(t("reader.translationLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">E</span>
-        </span>
-        <input type="text" value="${escapeAttribute(entry.translation || "")}" data-word="${escapeHtml(word)}" data-word-field="translation" placeholder="${escapeAttribute(t("reader.translationPlaceholder"))}">
-      </label>
+      ${renderInTextReview(entry, word, !!smartSuggestionHtml)}
       <label>
         <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
           ${escapeHtml(t("reader.noteLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">N</span>
@@ -96,6 +147,16 @@ export function renderWordPanel(currentText) {
       </div>
     </div>
   `;
+  els.wordPanel.querySelector("[data-in-text-answer]")?.addEventListener("click", () => {
+    inTextAnswerVisible = true;
+    renderWordPanel(currentText);
+  });
+  els.wordPanel.querySelectorAll("[data-in-text-grade]").forEach((button) => button.addEventListener("click", async () => {
+    const updated = await applyReviewGrade(word, Number(button.dataset.inTextGrade));
+    if (!updated) return;
+    inTextReviewCompleted = true;
+    updateWordStatusInReader(word, updated.status);
+  }));
 }
 
 export function updateWordStatusInReader(word, status) {
@@ -104,6 +165,9 @@ export function updateWordStatusInReader(word, status) {
   tokens.forEach(token => {
     token.classList.remove("status-new", "status-learning", "status-known", "status-ignored");
     token.classList.add(`status-${status}`);
+    const color = status === "learning" ? getLearningColor(state.vocab[word], state.preferences) : "";
+    if (color) token.style.setProperty("--token-learning-bg", color);
+    else token.style.removeProperty("--token-learning-bg");
   });
   const current = getTextById(state.currentTextId);
   if (current && state.selectedWord === word) {

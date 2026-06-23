@@ -137,6 +137,19 @@ export function handleReaderKeys(event, key) {
   }
 
   if (!state.selectedWord) return false;
+  const showInTextAnswer = document.querySelector("[data-in-text-answer]");
+  if (key === "enter" && showInTextAnswer) {
+    event.preventDefault();
+    showInTextAnswer.click();
+    return true;
+  }
+  const reviewDigit = /^[1-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([1-5])/)?.[1];
+  const inTextGrade = reviewDigit && document.querySelector(`[data-in-text-grade="${reviewDigit}"]`);
+  if (inTextGrade) {
+    event.preventDefault();
+    inTextGrade.click();
+    return true;
+  }
   if (key === "c" && event.ctrlKey) {
     if (hasNativeTextSelection()) return true;
     event.preventDefault();

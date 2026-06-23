@@ -2,6 +2,7 @@
 // Keeps full API compatibility: all imports from "../views/reader.js" still work.
 
 import { bindSidebarResizer } from "../panel-resizer.js";
+import { state } from "../state.js";
 
 // Import for local use (bindReaderEvents)
 import {

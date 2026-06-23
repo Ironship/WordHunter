@@ -1,5 +1,6 @@
 import { UI_SCALE } from "../constants.js";
 import { VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
+import { DEFAULT_LEARNING_COLORS } from "../reader-colors.js";
 
 export function normalizeVocabStatusFilters(value, legacyValue) {
   if (Array.isArray(value)) return value.filter((status) => VOCAB_STATUS_FILTERS.includes(status));
@@ -68,6 +69,9 @@ export function createDefaultState() {
       readerLineHeight: "normal",
       highlightTokens: true,
       hideKnownIgnored: true,
+      inTextReview: true,
+      dynamicLearningColors: true,
+      learningColors: [...DEFAULT_LEARNING_COLORS],
       autoLearnOnClick: false,
       autoAddLearningOnly: true,
       showCardStats: true,
