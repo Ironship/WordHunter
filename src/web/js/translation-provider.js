@@ -1,8 +1,8 @@
 import { state } from "./state.js";
 
 export function activeTranslationProvider() {
-  const provider = state.preferences?.translationProvider || "offline";
-  return ["offline", "deepl", "google", "lmstudio"].includes(provider) ? provider : "offline";
+  const provider = state.preferences?.translationProvider || "google";
+  return ["offline", "deepl", "google", "lmstudio"].includes(provider) ? provider : "google";
 }
 
 export function canUseTranslationProvider() {

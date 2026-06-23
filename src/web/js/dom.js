@@ -29,6 +29,7 @@ export function cacheElements() {
   els.importCoverPreview = document.getElementById("import-cover-preview");
   els.importCoverImg = document.getElementById("import-cover-img");
   els.importCoverClear = document.getElementById("import-cover-clear");
+  els.librarySidebarResizer = document.getElementById("library-sidebar-resizer");
 
   els.textSelect = document.getElementById("text-select");
   els.readerHeading = document.getElementById("reader-heading");
@@ -42,6 +43,7 @@ export function cacheElements() {
   els.progressBar = document.getElementById("progress-bar");
   els.progressBarLearning = document.getElementById("progress-bar-learning");
   els.wordPanel = document.getElementById("word-panel");
+  els.readerSidebarResizer = document.getElementById("reader-sidebar-resizer");
 
   els.translatorFrom = document.getElementById("translator-from");
   els.translatorTo = document.getElementById("translator-to");
@@ -123,6 +125,8 @@ export function cacheElements() {
   els.prefUseEdgeTts = document.getElementById("pref-use-edge-tts");
 
   els.storageSummary = document.getElementById("storage-summary");
+  els.dataDirectory = document.getElementById("data-directory");
+  els.chooseDataDirectory = document.getElementById("choose-data-directory");
 
   els.discoverForm = document.getElementById("discover-form");
   els.discoverQuery = document.getElementById("discover-query");

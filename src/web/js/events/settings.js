@@ -31,10 +31,6 @@ export function bindSettingsEvents() {
       els.prefArgosAsDictRow.style.opacity = "0.5";
       els.prefArgosAsDictRow.style.pointerEvents = "none";
     }
-    if (els.prefAutoTranslateRow) {
-      els.prefAutoTranslateRow.style.opacity = "0.5";
-      els.prefAutoTranslateRow.style.pointerEvents = "none";
-    }
     syncSettingsControls();
     const { renderTranslator } = await import("../views/translator.js");
     renderTranslator();
@@ -46,6 +42,26 @@ export function bindSettingsEvents() {
   // Settings
   const exportBtn = document.getElementById("export-state");
   if (exportBtn) exportBtn.addEventListener("click", exportState);
+
+  if (els.chooseDataDirectory) els.chooseDataDirectory.addEventListener("click", async () => {
+    try {
+      window.flushPendingSave?.();
+      const response = await fetch("/__store/choose_data_dir", {
+        method: "POST",
+        headers: { "X-WH-Token": window.WH_TOKEN || "" }
+      });
+      if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
+      const result = await response.json();
+      if (result.path) {
+        state.dataDirectory = result.path;
+        syncSettingsControls();
+        showToast(t("settings.dataFolderChanged"));
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(t("settings.dataFolderChangeFailed"), "error");
+    }
+  });
 
   const checkUpdatesBtn = document.getElementById("check-updates");
   if (checkUpdatesBtn) checkUpdatesBtn.addEventListener("click", async () => {
@@ -149,7 +165,7 @@ export function bindSettingsEvents() {
     render();
   });
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.addEventListener("change", (e) => {
-    state.preferences.srsAlgorithm = e.target.value === "fsrs" ? "fsrs" : "sm2";
+    state.preferences.srsAlgorithm = e.target.value === "sm2" ? "sm2" : "fsrs";
     saveState();
     applyPreferences();
     renderReview();
@@ -230,10 +246,6 @@ export function bindSettingsEvents() {
           els.prefArgosAsDictRow.style.opacity = "0.5";
           els.prefArgosAsDictRow.style.pointerEvents = "none";
         }
-        if (els.prefAutoTranslateRow) {
-          els.prefAutoTranslateRow.style.opacity = "0.5";
-          els.prefAutoTranslateRow.style.pointerEvents = "none";
-        }
         if (els.prefArgosAsDict) {
           els.prefArgosAsDict.checked = false;
           updatePreferenceValue("argosAsDict", false);
@@ -284,10 +296,6 @@ export function bindSettingsEvents() {
           els.prefArgosAsDictRow.style.opacity = "1";
           els.prefArgosAsDictRow.style.pointerEvents = "auto";
         }
-        if (els.prefAutoTranslateRow) {
-          els.prefAutoTranslateRow.style.opacity = "1";
-          els.prefAutoTranslateRow.style.pointerEvents = "auto";
-        }
         syncSettingsControls();
         if (els.argosDownloadDialog) els.argosDownloadDialog.close();
         const { refreshTranslatorAvailability, invalidatePackagesCache } = await import("../views/translator.js");
@@ -301,10 +309,6 @@ export function bindSettingsEvents() {
         if (els.prefArgosAsDictRow) {
           els.prefArgosAsDictRow.style.opacity = "0.5";
           els.prefArgosAsDictRow.style.pointerEvents = "none";
-        }
-        if (els.prefAutoTranslateRow) {
-          els.prefAutoTranslateRow.style.opacity = "0.5";
-          els.prefAutoTranslateRow.style.pointerEvents = "none";
         }
         updatePreferenceValue("offlineTranslator", false);
         syncSettingsControls();

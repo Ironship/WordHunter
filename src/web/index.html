@@ -198,6 +198,8 @@
             <div class="book-grid" id="book-list"></div>
           </section>
 
+          <div id="library-sidebar-resizer" class="panel-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=library.resizeImportPanel"></div>
+
           <aside class="panel import-panel" aria-labelledby="import-heading">
             <div class="panel-header stacked">
               <p class="eyebrow" data-i18n="import.eyebrow">Własny tekst</p>
@@ -299,6 +301,7 @@
             <article class="reader-text" id="reader-text" tabindex="0"></article>
           </section>
 
+          <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
           <div class="reader-sidebar-wrapper">
             <aside class="panel word-panel" id="word-panel" aria-live="polite">
               <div class="empty-state">
@@ -475,13 +478,13 @@
                 <label>
                   <span data-i18n="discover.language">Język</span>
                   <select id="discover-language">
-                    <option value="de" selected data-i18n="discover.langDe">Niemiecki (de)</option>
-                    <option value="en" data-i18n="discover.langEn">Angielski (en)</option>
-                    <option value="fr" data-i18n="discover.langFr">Francuski (fr)</option>
-                    <option value="es" data-i18n="discover.langEs">Hiszpański (es)</option>
-                    <option value="pl" data-i18n="discover.langPl">Polski (pl)</option>
-                    <option value="ja" data-i18n="discover.langJa">Japoński (ja)</option>
-                    <option value="uk" data-i18n="discover.langUk">Ukraiński (uk)</option>
+                    <option value="de" selected data-i18n="languages.de">Niemiecki</option>
+                    <option value="en" data-i18n="languages.en">Angielski</option>
+                    <option value="fr" data-i18n="languages.fr">Francuski</option>
+                    <option value="es" data-i18n="languages.es">Hiszpański</option>
+                    <option value="pl" data-i18n="languages.pl">Polski</option>
+                    <option value="ja" data-i18n="languages.ja">Japoński</option>
+                    <option value="uk" data-i18n="languages.uk">Ukraiński</option>
                     <option value="" data-i18n="discover.langAll">Wszystkie</option>
                   </select>
                 </label>
@@ -838,6 +841,8 @@
             </div>
             <div class="settings-body">
               <p class="muted-copy" id="storage-summary"></p>
+              <p class="muted-copy" id="data-directory"></p>
+              <button id="choose-data-directory" type="button" class="secondary-button" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
               <div class="data-actions">
                 <section class="data-action-row">
                   <div class="data-action-copy">
@@ -930,7 +935,6 @@
               </div>
             </div>
           </section>
-
 
         </div>
       </section>
@@ -1115,6 +1119,17 @@
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
         <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Anuluj</button>
         <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Przenieś</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="delete-book-dialog" class="panel confirmation-dialog" aria-labelledby="delete-book-title">
+    <div class="panel-header"><h2 id="delete-book-title"></h2></div>
+    <div class="confirmation-dialog-body">
+      <p id="delete-book-message" class="muted-copy"></p>
+      <div class="confirmation-dialog-actions">
+        <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Anuluj</button>
+        <button id="delete-book-confirm" type="button" class="danger-button"></button>
       </div>
     </div>
   </dialog>

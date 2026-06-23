@@ -9,12 +9,13 @@ export function normalizeState(nextState) {
   nextState.hiddenBuiltInBooks = Array.isArray(nextState.hiddenBuiltInBooks) ? nextState.hiddenBuiltInBooks : [];
   nextState.archivedBookIds = Array.isArray(nextState.archivedBookIds) ? nextState.archivedBookIds : [];
   nextState.vocab = nextState.vocab && typeof nextState.vocab === "object" ? nextState.vocab : {};
+  nextState.dataDirectory = typeof nextState.dataDirectory === "string" ? nextState.dataDirectory : "";
   nextState.filters = { ...defaults.filters, ...(nextState.filters || {}) };
   nextState.filters.vocabStatuses = normalizeVocabStatusFilters(nextState.filters.vocabStatuses, nextState.filters.vocabStatus);
   nextState.discover = { ...defaults.discover, ...(nextState.discover || {}) };
   nextState.preferences = { ...defaults.preferences, ...(nextState.preferences || {}) };
-  if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "offline";
-  nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
+  if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "google";
+  nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
   nextState.preferences.lastReadTextIds = nextState.preferences.lastReadTextIds && typeof nextState.preferences.lastReadTextIds === "object" && !Array.isArray(nextState.preferences.lastReadTextIds)
     ? nextState.preferences.lastReadTextIds : {};
@@ -99,6 +100,7 @@ export function loadState() {
       const hasProfiles = Object.values(rawVocab).some((value) => value && typeof value === "object" && value.vocab !== undefined);
       const merged = {
         ...fallback,
+        dataDirectory: typeof snap.dataDir === "string" ? snap.dataDir : "",
         customTexts: hasProfiles ? [] : (Array.isArray(snap.texts) ? snap.texts : []),
         userBooks: hasProfiles ? [] : (Array.isArray(userBooks) ? userBooks : []),
         hiddenBuiltInBooks: hasProfiles ? [] : (Array.isArray(snap.hiddenBooks) ? snap.hiddenBooks : []),
