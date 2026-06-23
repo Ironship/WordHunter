@@ -1,6 +1,7 @@
 import { STORAGE_KEY, UI_SCALE } from "../constants.js";
 import { clamp } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
+import { normalizeLearningColors } from "../reader-colors.js";
 
 export function normalizeState(nextState) {
   const defaults = createDefaultState();
@@ -17,6 +18,9 @@ export function normalizeState(nextState) {
   if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "google";
   nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
+  nextState.preferences.inTextReview = nextState.preferences.inTextReview === true;
+  nextState.preferences.dynamicLearningColors = nextState.preferences.dynamicLearningColors === true;
+  nextState.preferences.learningColors = normalizeLearningColors(nextState.preferences.learningColors);
   nextState.preferences.lastReadTextIds = nextState.preferences.lastReadTextIds && typeof nextState.preferences.lastReadTextIds === "object" && !Array.isArray(nextState.preferences.lastReadTextIds)
     ? nextState.preferences.lastReadTextIds : {};
   nextState.readerFontSize = clamp(Number(nextState.readerFontSize) || 18, 14, 28);

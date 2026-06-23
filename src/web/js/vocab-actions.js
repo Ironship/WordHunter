@@ -9,6 +9,7 @@ import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, tog
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
 import { canUseTranslationProvider, translateText } from "./translation-provider.js";
+import { scheduleFirstLearningReview } from "./sm2.js";
 
 let lastAutoTtsFocusKey = "";
 
@@ -52,6 +53,7 @@ export function selectWord(rawWord, normalizeFn, preserveScroll = false) {
   let statusChanged = false;
   if (isFresh && state.preferences?.autoLearnOnClick) {
     entry.status = "learning";
+    scheduleFirstLearningReview(entry);
     entry.updatedAt = new Date().toISOString();
     statusChanged = true;
   }
@@ -106,6 +108,7 @@ export function setWordStatus(word, status) {
   const previousStatus = entry.status;
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   entry.status = status;
+  if (status === "learning" && previousStatus !== "learning") scheduleFirstLearningReview(entry);
   entry.updatedAt = new Date().toISOString();
   saveState();
   renderShell();

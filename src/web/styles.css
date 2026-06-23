@@ -217,17 +217,23 @@ kbd {
 
 .color-pickers-group {
   display: flex;
-  gap: 1rem;
+  justify-content: flex-end;
+  gap: 0.75rem;
   align-items: center;
   margin-top: 0.5rem;
 }
 
 .color-picker-lg {
+  --color-picker-size: 42px;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-  width: 48px;
-  height: 48px;
+  box-sizing: border-box;
+  flex: 0 0 var(--color-picker-size);
+  width: var(--color-picker-size);
+  min-width: var(--color-picker-size);
+  height: var(--color-picker-size);
+  aspect-ratio: 1;
   background-color: transparent;
   border: none;
   padding: 0;
@@ -236,6 +242,9 @@ kbd {
   box-shadow: var(--shadow);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+
+#pref-learning-colors-row .color-pickers-group { gap: 0.5rem; }
+#pref-learning-colors-row .color-picker-lg { --color-picker-size: 36px; }
 
 .color-picker-lg::-webkit-color-swatch {
   border-radius: 50%;
@@ -1423,6 +1432,12 @@ html[data-max-width="full"] .reader-text {
 
 .word-token.status-learning {
   box-shadow: inset 0 -0.28em var(--token-learning-bg, var(--blue-soft));
+}
+
+.in-text-review {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.75rem 0;
 }
 
 .word-token.status-known {

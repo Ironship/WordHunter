@@ -178,15 +178,21 @@ export function renderReview() {
     <p class="muted-copy">${state.reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
 }
-export async function gradeReview(word, quality) {
+export async function applyReviewGrade(word, quality) {
   const entry = state.vocab[word];
-  if (!entry) return;
+  if (!entry) return null;
   await applyReviewNative(entry, quality, new Date(), state.preferences?.srsAlgorithm || "sm2");
   entry.updatedAt = new Date().toISOString();
   if (quality >= 4 && entry.repetition >= 2) entry.status = "known";
   else if (quality < 3) entry.status = "learning";
   else if (entry.status === "new") entry.status = "learning";
   saveState();
+  return entry;
+}
+
+export async function gradeReview(word, quality) {
+  const entry = await applyReviewGrade(word, quality);
+  if (!entry) return;
   const { hideReviewAnswer } = await import("../views/vocabulary.js");
   hideReviewAnswer();
   state.reviewIndex = 0;

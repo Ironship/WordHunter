@@ -5,6 +5,7 @@ import { els } from "./dom.js";
 import { clamp, escapeHtml } from "./utils.js";
 import { t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
+import { normalizeLearningColors } from "./reader-colors.js";
 
 export function themeLabel(theme) {
   if (theme === "dark") return t("toast.themeDark");
@@ -102,6 +103,17 @@ export function syncSettingsControls() {
   if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: uiScale });
   els.prefHighlight.checked = prefs.highlightTokens !== false;
   if (els.prefHideKnown) els.prefHideKnown.checked = prefs.hideKnownIgnored === true;
+  if (els.prefInTextReview) els.prefInTextReview.checked = prefs.inTextReview === true;
+  if (els.prefDynamicLearningColors) els.prefDynamicLearningColors.checked = prefs.dynamicLearningColors === true;
+  if (els.prefLearningColors?.length) {
+    const colors = normalizeLearningColors(prefs.learningColors);
+    els.prefLearningColors.forEach((input, index) => {
+      input.value = colors[index];
+      input.title = t("settings.learningColorLevel", { n: index + 1 });
+      input.setAttribute("aria-label", input.title);
+    });
+  }
+  if (els.prefLearningColorsRow) els.prefLearningColorsRow.hidden = prefs.dynamicLearningColors !== true;
   if (els.prefReviewGraphType) els.prefReviewGraphType.value = prefs.reviewGraphType || "heatmap";
   els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
   if (els.prefAutoAddLearning) els.prefAutoAddLearning.checked = prefs.autoAddLearningOnly === true;
