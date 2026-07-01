@@ -1,8 +1,9 @@
 use base64::Engine;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::Write;
 
 use super::Store;
+use super::record_files;
 
 const RECORD: &str = "book.json";
 
@@ -25,7 +26,7 @@ impl Store {
                     return Err(format!(
                         "book {} is unreadable: {e}",
                         entry.path().display()
-                    ))
+                    ));
                 }
             }
         }
@@ -45,13 +46,12 @@ impl Store {
         let (mut metadata, mut content) =
             read_book(&book_dir)?.unwrap_or((json!({}), String::new()));
         let mut incoming = text.clone();
-        if let Some(obj) = incoming.as_object_mut() {
-            if let Some(raw) = obj
+        if let Some(obj) = incoming.as_object_mut()
+            && let Some(raw) = obj
                 .remove("text")
-                .and_then(|v| v.as_str().map(str::to_owned))
-            {
-                content = raw;
-            }
+                .and_then(|value| value.as_str().map(str::to_owned))
+        {
+            content = raw;
         }
         let target = metadata
             .as_object_mut()
@@ -62,13 +62,20 @@ impl Store {
         {
             target.insert(key.clone(), value.clone());
         }
-        atomic_json(
-            &book_dir.join(RECORD),
-            &json!({ "metadata": metadata, "text": content }),
-        )
+        let record = json!({ "metadata": metadata, "text": content });
+        atomic_json(&book_dir.join(RECORD), &record)?;
+        let mut sync_text = text.clone();
+        if let Some(obj) = sync_text.as_object_mut() {
+            obj.entry("text".to_string())
+                .or_insert_with(|| Value::String(content));
+        }
+        record_files::upsert_text_record(&inner.dir, &sync_text, self.device_id())
     }
 
     pub fn get_text_content(&self, id: &str) -> Result<String, String> {
+        if let Some(text) = record_files::text_content(&self.dir(), id)? {
+            return Ok(text);
+        }
         let safe_id = crate::paths::sanitize_id(id)?;
         let inner = self.inner.lock().unwrap();
         Ok(read_book(&inner.books_dir.join(safe_id))?
@@ -83,6 +90,7 @@ impl Store {
         if path.exists() {
             std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
         }
+        record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         Ok(())
     }
 
@@ -144,7 +152,7 @@ impl Store {
 
 fn read_book(dir: &std::path::Path) -> Result<Option<(Value, String)>, String> {
     let record = dir.join(RECORD);
-    if record.exists() {
+    if record.exists() || record.with_extension("bak").exists() {
         return parse_record(&record)
             .or_else(|_| parse_record(&record.with_extension("bak")))
             .map(Some);
@@ -160,9 +168,8 @@ fn read_book(dir: &std::path::Path) -> Result<Option<(Value, String)>, String> {
 }
 
 fn parse_record(path: &std::path::Path) -> Result<(Value, String), String> {
-    let value: Value =
-        serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())?;
+    let value: Value = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
     let metadata = value
         .get("metadata")
         .cloned()
@@ -185,16 +192,23 @@ fn atomic_json(path: &std::path::Path, value: &Value) -> Result<(), String> {
     if path.exists() {
         std::fs::copy(path, path.with_extension("bak")).map_err(|e| e.to_string())?;
     }
-    std::fs::rename(&tmp, path)
-        .or_else(|_| {
-            std::fs::copy(&tmp, path)?;
-            std::fs::remove_file(tmp)
-        })
-        .map_err(|e| e.to_string())
+    replace_with_tmp(&tmp, path)
+}
+
+fn replace_with_tmp(tmp: &std::path::Path, path: &std::path::Path) -> Result<(), String> {
+    if std::fs::rename(tmp, path).is_ok() {
+        return Ok(());
+    }
+    if path.exists() {
+        std::fs::remove_file(path)
+            .map_err(|e| format!("failed to replace locked book {}: {e}", path.display()))?;
+    }
+    std::fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::sync::Mutex;
 
     use serde_json::json;
@@ -214,6 +228,8 @@ mod tests {
                 books_dir: books_dir.clone(),
             }),
             write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
         };
 
         store
@@ -241,12 +257,35 @@ mod tests {
                 books_dir,
             }),
             write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
         };
 
-        store.upsert_text(&json!({ "id": "de-custom-home", "text": "Haus" })).unwrap();
-        store.upsert_text(&json!({ "id": "fr-custom-home", "text": "Maison" })).unwrap();
+        store
+            .upsert_text(&json!({ "id": "de-custom-home", "text": "Haus" }))
+            .unwrap();
+        store
+            .upsert_text(&json!({ "id": "fr-custom-home", "text": "Maison" }))
+            .unwrap();
 
         assert_eq!(store.get_text_content("de-custom-home").unwrap(), "Haus");
         assert_eq!(store.get_text_content("fr-custom-home").unwrap(), "Maison");
+    }
+
+    #[test]
+    fn book_record_recovers_from_backup_when_primary_was_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let book_dir = dir.path().join("book");
+        std::fs::create_dir_all(&book_dir).unwrap();
+        std::fs::write(
+            book_dir.join("book.bak"),
+            r#"{"metadata":{"id":"book","title":"Backup"},"text":"safe text"}"#,
+        )
+        .unwrap();
+
+        let (metadata, text) = super::read_book(&book_dir).unwrap().unwrap();
+
+        assert_eq!(metadata["title"], "Backup");
+        assert_eq!(text, "safe text");
     }
 }

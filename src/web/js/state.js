@@ -11,7 +11,7 @@ export const state = stateRef = autosave.wrap(loadState());
 export const initialVocabKeys = new Set(Object.keys(state.vocab || {}));
 
 export function saveState() {
-  autosave.saveState();
+  return autosave.saveState();
 }
 
 function flushPendingSave() {
@@ -48,17 +48,27 @@ export function clearLastReadTextForLanguage(lang = state.preferences?.learningL
   if (map && typeof map === "object") delete map[lang];
 }
 
-export function replaceState(nextState) {
+export function replaceState(nextState, { save = true } = {}) {
   autosave.withoutAutoSave(() => {
     Object.keys(state).forEach((key) => delete state[key]);
     Object.assign(state, nextState);
   });
   resetInitialVocabKeys();
-  saveState();
+  if (save) saveState();
 }
 
 export function switchLearningLanguage(lang) {
-  flushPendingSave();
+  const previousLang = state.preferences?.learningLanguage;
+  const previousProfile = state.profiles?.[previousLang];
+  if (previousProfile) {
+    previousProfile.vocab = state.vocab || {};
+    previousProfile.customTexts = state.customTexts || [];
+    previousProfile.userBooks = state.userBooks || [];
+    previousProfile.hiddenBuiltInBooks = state.hiddenBuiltInBooks || [];
+    previousProfile.archivedBookIds = state.archivedBookIds || [];
+    previousProfile.preferences = previousProfile.preferences || {};
+    previousProfile.preferences.dictionaryUrl = state.preferences.dictionaryUrl;
+  }
   state.preferences.learningLanguage = lang;
   state.discover.language = lang;
   if (!state.profiles) state.profiles = {};
@@ -69,6 +79,11 @@ export function switchLearningLanguage(lang) {
     };
   }
   const active = state.profiles[lang];
+  active.vocab = active.vocab || {};
+  active.customTexts = active.customTexts || [];
+  active.userBooks = active.userBooks || [];
+  active.hiddenBuiltInBooks = active.hiddenBuiltInBooks || [];
+  active.preferences = active.preferences || {};
   state.vocab = active.vocab;
   state.customTexts = active.customTexts;
   state.userBooks = active.userBooks;

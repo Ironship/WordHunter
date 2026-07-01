@@ -44,21 +44,19 @@ impl Store {
             }
         }
 
-        match std::fs::rename(&tmp, &inner.vocab_path) {
-            Ok(()) => Ok(()),
-            Err(e) => {
-                // On Windows, `rename` can fail if the destination file is temporarily locked.
-                // (e.g., by an antivirus). Fall back to copying the file and then removing the temp file.
-                if std::fs::copy(&tmp, &inner.vocab_path).is_ok() {
-                    let _ = std::fs::remove_file(&tmp);
-                    return Ok(());
-                }
-
-                let _ = std::fs::remove_file(&tmp);
-                Err(format!("failed to commit vocab save: {e}"))
-            }
-        }
+        replace_with_tmp(&tmp, &inner.vocab_path)
     }
+}
+
+fn replace_with_tmp(tmp: &Path, path: &Path) -> Result<(), String> {
+    if std::fs::rename(tmp, path).is_ok() {
+        return Ok(());
+    }
+    if path.exists() {
+        std::fs::remove_file(path)
+            .map_err(|e| format!("failed to replace locked vocab {}: {e}", path.display()))?;
+    }
+    std::fs::rename(tmp, path).map_err(|e| e.to_string())
 }
 
 fn read_valid_json(path: &Path) -> Option<Value> {
@@ -69,6 +67,7 @@ fn read_valid_json(path: &Path) -> Option<Value> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::sync::Mutex;
 
     use serde_json::{json, Value};
@@ -84,6 +83,8 @@ mod tests {
                 books_dir: dir.path().join("books"),
             }),
             write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
         }
     }
 
@@ -92,6 +93,22 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
         std::fs::write(dir.path().join("vocab.json"), "{").unwrap();
+        std::fs::write(
+            dir.path().join("vocab.bak"),
+            r#"{"hello":{"status":"known"}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            store.load_vocab().unwrap(),
+            json!({ "hello": { "status": "known" } })
+        );
+    }
+
+    #[test]
+    fn load_vocab_recovers_from_backup_when_primary_was_removed() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
         std::fs::write(
             dir.path().join("vocab.bak"),
             r#"{"hello":{"status":"known"}}"#,

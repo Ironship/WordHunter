@@ -4,9 +4,10 @@ import { state } from "../state.js";
 import { showToast } from "../toast.js";
 import { escapeHtml } from "../utils.js";
 import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { TRANSLATOR_LANGUAGES } from "../constants.js";
 
-// All languages supported by the app (matching available offline models)
-const SUPPORTED_LANGUAGES = ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk"];
+// All languages supported by online/local translator providers.
+const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
 
 let translateTimer = null;
 

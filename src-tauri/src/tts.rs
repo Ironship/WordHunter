@@ -40,6 +40,8 @@ fn voice_for(lang: &str) -> &'static str {
         "uk" => "uk-UA-OstapNeural",
         "ru" => "ru-RU-DmitryNeural",
         "ja" => "ja-JP-KeitaNeural",
+        "zh" => "zh-CN-YunjianNeural",
+        "grc" => "el-GR-NestorasNeural",
         _ => "en-US-AriaNeural",
     }
 }

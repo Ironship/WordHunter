@@ -1,0 +1,877 @@
+/* Android / Word Hunter Pocket shell. Shared views stay intact; this layer only
+   changes navigation density, touch targets, and mobile-only panel behavior. */
+.pocket-mode,
+.pocket-mode body {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+html.pocket-mode {
+  --pocket-statusbar-safe-top: env(safe-area-inset-top, 0px);
+  --pocket-navbar-safe-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  zoom: 1 !important;
+}
+
+.pocket-mode body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.pocket-mode body::before {
+  content: "";
+  position: fixed;
+  z-index: 90;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--pocket-statusbar-safe-top);
+  background: var(--bg);
+  pointer-events: none;
+}
+
+.pocket-mode.pocket-import-open body::after {
+  content: "";
+  position: fixed;
+  z-index: 55;
+  inset: 0;
+  background: rgba(10, 18, 14, 0.28);
+}
+
+.pocket-mode button,
+.pocket-mode select,
+.pocket-mode input,
+.pocket-mode .file-button,
+.pocket-mode .primary-button,
+.pocket-mode .secondary-button,
+.pocket-mode .danger-button,
+.pocket-mode .status-button {
+  min-height: 44px;
+}
+
+.pocket-mode .icon-button,
+.pocket-mode button.icon-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+
+.pocket-mode input.color-picker-lg {
+  width: var(--color-picker-size);
+  min-width: var(--color-picker-size);
+  height: var(--color-picker-size);
+  min-height: var(--color-picker-size);
+}
+
+.pocket-mode .app-shell {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+.pocket-mode[data-view="reader"] .app-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.pocket-mode[data-view="reader"] .topbar {
+  display: none;
+}
+
+.pocket-mode .main-panel {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  padding: calc(0.75rem + var(--pocket-statusbar-safe-top)) 0.75rem calc(5.2rem + var(--pocket-navbar-safe-bottom));
+}
+
+.pocket-mode[data-view="reader"] .main-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.pocket-mode[data-view="reader"] #reader-view.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pocket-mode[data-view="reader"] #reader-view.active > .reader-grid {
+  height: 100%;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.pocket-mode[data-view="reader"] .reader-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pocket-mode .sidebar {
+  position: fixed;
+  z-index: 70;
+  inset: auto 0 0;
+  height: auto;
+  gap: 0;
+  padding: 0.35rem max(0.45rem, env(safe-area-inset-left, 0px)) calc(0.35rem + var(--pocket-navbar-safe-bottom)) max(0.45rem, env(safe-area-inset-right, 0px));
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.pocket-mode .brand,
+.pocket-mode .sidebar-footer,
+.pocket-mode .nav-item[data-view="translator"],
+.pocket-mode .nav-item[data-view="help"] {
+  display: none;
+}
+
+.pocket-mode .nav-list {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.pocket-mode .nav-item {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  justify-items: center;
+  gap: 0.12rem;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 56px;
+  padding: 0.35rem 0.15rem;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.66rem;
+  line-height: 1.15;
+  overflow: hidden;
+}
+
+.pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.pocket-mode .nav-item > .nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.pocket-mode .nav-item > .nav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pocket-mode .shortcut-badge {
+  display: none;
+}
+
+.pocket-mode .nav-item.active:not(.nav-item-locked) {
+  box-shadow: inset 0 -3px 0 var(--green);
+}
+
+.pocket-mode .nav-item:hover:not(.active) {
+  border-color: transparent;
+  background: transparent;
+  color: #dfe8e1;
+  box-shadow: none;
+}
+
+.pocket-mode .nav-item:hover:not(.active) > .nav-icon {
+  color: #cfe0d6;
+  background: transparent;
+}
+
+.pocket-mode .topbar {
+  position: static;
+  z-index: 25;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0.55rem;
+  margin: 0 -0.75rem 0.75rem;
+  padding: 0 0.75rem 0.65rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.pocket-mode .topbar .eyebrow {
+  display: none;
+}
+
+.pocket-mode .topbar h1 {
+  font-size: 1.18rem;
+  letter-spacing: 0;
+}
+
+.pocket-mode .topbar-actions {
+  justify-content: flex-start;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 0.1rem;
+}
+
+.pocket-mode .metric-pill {
+  min-height: 28px;
+  padding: 0.08rem 0.5rem;
+  font-size: 0.74rem;
+}
+
+.pocket-mode .workspace-grid,
+.pocket-mode .library-layout,
+.pocket-mode .reader-grid,
+.pocket-mode .settings-grid,
+.pocket-mode .help-grid,
+.pocket-mode .discover-grid,
+.pocket-mode .translator-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pocket-mode .panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.pocket-mode .panel-sidebar-resizer,
+.pocket-mode .reader-sidebar-resizer {
+  display: none;
+}
+
+.pocket-mode .desktop-only-setting {
+  display: none;
+}
+
+.pocket-mode .desktop-only-control {
+  display: none;
+}
+
+.pocket-mode .pocket-only-setting {
+  display: grid;
+}
+
+.pocket-mode .pocket-import-toggle {
+  position: fixed;
+  z-index: 50;
+  top: 50dvh;
+  right: 0;
+  display: none;
+  width: 42px;
+  min-width: 42px;
+  height: 104px;
+  padding: 1.85rem 0.25rem 0.5rem;
+  border-radius: 8px 0 0 8px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  align-items: center;
+  justify-content: center;
+  box-shadow: -8px 0 22px rgba(0, 0, 0, 0.18);
+  transform: translateY(-50%);
+}
+
+.pocket-mode .pocket-import-toggle::before {
+  content: "";
+  position: absolute;
+  top: 0.55rem;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M15%2018l-6-6%206-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%23000'%20stroke-width='2.6'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='M15%2018l-6-6%206-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: translateX(-50%);
+}
+
+.pocket-mode[data-view="library"] .pocket-import-toggle {
+  display: inline-flex;
+}
+
+.pocket-mode.pocket-import-open .pocket-import-toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pocket-mode .import-panel {
+  position: fixed;
+  z-index: 70;
+  top: var(--pocket-statusbar-safe-top);
+  right: 0;
+  bottom: calc(4.9rem + var(--pocket-navbar-safe-bottom));
+  width: min(88vw, 420px);
+  max-width: calc(100vw - 1.25rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 8px 0 0 8px;
+  box-shadow: -16px 0 36px rgba(0, 0, 0, 0.26);
+  transform: translateX(calc(100% + 1rem));
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.22s ease;
+}
+
+.pocket-mode.pocket-import-open .import-panel {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.pocket-mode .import-panel .panel-header {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding-right: 3.5rem;
+  background: var(--panel);
+}
+
+.pocket-mode .pocket-drawer-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-flex;
+}
+
+.pocket-mode .settings-body {
+  min-width: 0;
+  padding: 0.9rem;
+}
+
+.pocket-mode .setting-row,
+.pocket-mode .setting-row.toggle-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: stretch;
+}
+
+.pocket-mode .setting-row input[type="checkbox"] {
+  justify-self: start;
+  width: 68px;
+  min-width: 68px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.pocket-mode .setting-row input[type="checkbox"]::after {
+  top: 3px;
+  left: 3px;
+  width: 32px;
+  height: 32px;
+}
+
+.pocket-mode .setting-row input[type="checkbox"]:checked::after {
+  left: 31px;
+}
+
+.pocket-mode .settings-body .muted-copy,
+.pocket-mode .data-action-copy,
+.pocket-mode .data-action-copy h3,
+.pocket-mode .data-action-copy p,
+.pocket-mode .anki-export-statuses small {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.pocket-mode .data-actions {
+  padding: 0;
+}
+
+.pocket-mode .anki-export-statuses,
+.pocket-mode .status-filter-field {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pocket-mode .status-filter-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.pocket-mode .status-check {
+  width: 100%;
+  gap: 0.4rem;
+  white-space: normal;
+}
+
+.pocket-mode .status-check input {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+}
+
+.pocket-mode .status-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.pocket-mode .status-check {
+  min-height: 44px;
+}
+
+.pocket-mode .data-action-buttons,
+.pocket-mode .data-action-buttons .primary-button,
+.pocket-mode .data-action-buttons .secondary-button,
+.pocket-mode .data-action-buttons .danger-button,
+.pocket-mode .data-action-buttons .file-button,
+.pocket-mode #choose-data-directory {
+  width: 100%;
+  max-width: 100%;
+}
+
+.pocket-mode .panel-header,
+.pocket-mode .reader-meta,
+.pocket-mode .reader-toolbar {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+}
+
+.pocket-mode .library-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pocket-mode .library-filters-toggle {
+  display: inline-flex;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+}
+
+.pocket-mode .library-panel.library-filters-collapsed .compact-filters {
+  display: none;
+}
+
+.pocket-mode .library-panel.library-filters-collapsed .panel-header {
+  gap: 0.55rem;
+}
+
+.pocket-mode .compact-filters,
+.pocket-mode .toolbar-buttons,
+.pocket-mode .word-actions,
+.pocket-mode .translator-controls,
+.pocket-mode .data-action-buttons {
+  justify-content: stretch;
+}
+
+.pocket-mode #vocabulary-view .panel-header {
+  gap: 0.55rem;
+  padding: 0.75rem;
+}
+
+.pocket-mode #vocabulary-view .panel-header > div:first-child {
+  display: none;
+}
+
+.pocket-mode #vocabulary-view .compact-filters {
+  gap: 0.5rem;
+}
+
+.pocket-mode #vocabulary-view .vocab-export-actions {
+  grid-template-columns: minmax(0, 1fr) 44px 44px;
+  align-items: center;
+  width: 100%;
+}
+
+.pocket-mode #vocabulary-view .vocab-export-actions > span {
+  grid-column: auto;
+}
+
+.pocket-mode #vocabulary-view .vocab-export-actions .icon-button {
+  width: 44px;
+  height: 44px;
+}
+
+.pocket-mode #reader-view .toolbar-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  width: 100%;
+}
+
+.pocket-mode #reader-view .toolbar-buttons [data-font],
+.pocket-mode #reader-view .reader-zoom-slider {
+  display: none;
+}
+
+.pocket-mode[data-view="reader"] .reader-toolbar {
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.pocket-mode[data-view="reader"] .reader-toolbar label {
+  display: none;
+}
+
+.pocket-mode[data-view="reader"] .reader-meta {
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem 0.5rem;
+}
+
+.pocket-mode[data-view="reader"] .reader-meta > div:first-child {
+  display: none;
+}
+
+.pocket-mode[data-view="reader"] .progress-block {
+  width: 100%;
+  min-width: 0;
+}
+
+.pocket-mode[data-view="reader"] .progress-line {
+  gap: 0.5rem;
+  margin-bottom: 0.22rem;
+  font-size: 0.72rem;
+  line-height: 1.1;
+}
+
+.pocket-mode[data-view="reader"] #unique-summary {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.pocket-mode[data-view="reader"] .progress-track {
+  height: 4px;
+}
+
+.pocket-mode .compact-filters > label,
+.pocket-mode .library-search-field,
+.pocket-mode .library-level-field,
+.pocket-mode .library-status-field,
+.pocket-mode .library-sort-field,
+.pocket-mode .translator-controls label {
+  width: 100%;
+  flex: 1 1 100%;
+}
+
+.pocket-mode .book-grid,
+.pocket-mode .discover-results,
+.pocket-mode .graphs-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pocket-mode .graphs-heatmap,
+.pocket-mode .review-heatmap {
+  justify-content: flex-start;
+  padding-inline: 0.75rem;
+}
+
+.pocket-mode .book-card.has-cover {
+  grid-template-columns: 74px minmax(0, 1fr);
+}
+
+.pocket-mode .book-cover {
+  max-width: 74px;
+}
+
+.pocket-mode .table-wrap {
+  overflow: visible;
+}
+
+.pocket-mode .vocab-table {
+  min-width: 0;
+}
+
+.pocket-mode .vocab-table,
+.pocket-mode .vocab-table thead,
+.pocket-mode .vocab-table tbody,
+.pocket-mode .vocab-table tr,
+.pocket-mode .vocab-table th,
+.pocket-mode .vocab-table td {
+  display: block;
+}
+
+.pocket-mode .vocab-table thead {
+  display: none;
+}
+
+.pocket-mode .vocab-table tbody {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+}
+
+.pocket-mode .vocab-table tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.pocket-mode .vocab-table td {
+  width: auto !important;
+  max-width: none;
+  padding: 0;
+  border: 0;
+}
+
+.pocket-mode .vocab-table td:nth-child(1) {
+  grid-column: 1;
+}
+
+.pocket-mode .vocab-table td:nth-child(1) strong {
+  max-height: none;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.pocket-mode .vocab-table td:nth-child(2) {
+  grid-column: 2;
+  align-self: start;
+}
+
+.pocket-mode .vocab-table td:nth-child(3),
+.pocket-mode .vocab-table td:nth-child(4),
+.pocket-mode .vocab-table td:nth-child(5),
+.pocket-mode .vocab-table td[colspan] {
+  grid-column: 1 / -1;
+}
+
+.pocket-mode .vocab-translation-input {
+  width: 100%;
+  min-height: 44px;
+  background: var(--panel-strong);
+}
+
+.pocket-mode textarea.vocab-translation-input {
+  min-height: 3.8rem;
+  resize: none;
+}
+
+.pocket-mode .vocab-table td:nth-child(4) {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.pocket-mode .vocab-table td:last-child .row-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 44px);
+  gap: 0.35rem;
+  justify-content: start;
+}
+
+.pocket-mode .vocab-table td:last-child .row-actions .icon-button {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 44px;
+  border-radius: 8px;
+}
+
+.pocket-mode .reader-text {
+  padding: 1rem 1rem calc(6.2rem + var(--pocket-navbar-safe-bottom));
+  font-size: var(--reader-font-size);
+  overscroll-behavior: contain;
+}
+
+.pocket-mode .word-token {
+  padding: 0.06rem 0.12rem;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+
+.pocket-mode .word-token.pdf-ocr-word {
+  padding: 0;
+  border-radius: 5px;
+}
+
+.pocket-mode .word-token.status-new {
+  box-shadow: inset 0 -0.28em var(--token-new-bg, var(--amber-soft));
+}
+
+.pocket-mode .word-token.status-learning {
+  box-shadow: inset 0 -0.28em var(--token-learning-bg, var(--blue-soft));
+}
+
+.pocket-mode .word-token.status-known {
+  box-shadow: inset 0 -0.28em var(--token-known-bg, var(--green-soft));
+}
+
+.pocket-mode .word-token.status-ignored {
+  box-shadow: inset 0 -0.28em var(--token-ignored-bg, rgba(0, 0, 0, 0.08));
+}
+
+.pocket-mode #reader-view.active .pagination-controls {
+  position: fixed;
+  z-index: 54;
+  right: 0.75rem;
+  bottom: calc(4.95rem + var(--pocket-navbar-safe-bottom));
+  left: 0.75rem;
+  margin: 0;
+  padding: 0.45rem;
+  flex-wrap: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.pocket-mode #reader-view.active .pagination-controls .secondary-button {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pocket-mode #reader-view.active .pagination-controls kbd {
+  display: none;
+}
+
+.pocket-mode #reader-view.active .page-jump {
+  flex: 0 0 auto;
+}
+
+.pocket-mode #reader-view.active .page-jump-input {
+  width: 58px;
+  min-height: 44px;
+}
+
+.pocket-mode .reader-sidebar-wrapper {
+  display: none;
+}
+
+.pocket-mode .focus-hint {
+  display: none;
+}
+
+.pocket-mode.has-selected-word #reader-view.active .reader-sidebar-wrapper {
+  position: fixed;
+  z-index: 60;
+  top: calc(100dvh - min(54vh, 460px) - 4.9rem - var(--pocket-navbar-safe-bottom));
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: auto;
+  display: block;
+  max-height: min(54vh, 460px);
+  overflow: auto;
+  border-radius: 8px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+
+.pocket-mode.has-selected-word #reader-view.active .reader-sidebar-wrapper::before {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 4px;
+  margin: 0.55rem auto 0;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.pocket-mode .word-panel {
+  max-height: inherit;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.pocket-mode .word-panel-header {
+  position: static;
+  top: 0;
+  z-index: 1;
+  padding: 0.15rem 0 0.55rem;
+  background: var(--panel);
+}
+
+.pocket-mode .word-panel-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.pocket-mode .word-form {
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.pocket-mode .context-box {
+  max-height: 5.5rem;
+  overflow: auto;
+}
+
+.pocket-mode .word-form textarea {
+  min-height: 92px;
+  max-height: 120px;
+}
+
+.pocket-mode .review-card {
+  min-height: 260px;
+}
+
+.pocket-mode .review-word strong {
+  overflow-wrap: anywhere;
+}
+
+.pocket-mode #flashcards-view .word-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pocket-mode #flashcards-view .word-actions .secondary-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.pocket-mode #flashcards-view [data-tts-word].secondary-button {
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+}
+
+.pocket-mode .sm2-grades {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pocket-mode .sm2-grades .sm2-grade {
+  min-height: 52px;
+  font-size: 1.12rem;
+}
+
+.pocket-mode dialog {
+  width: calc(100vw - 1.5rem);
+  max-width: calc(100vw - 1.5rem);
+}
+
+@media (max-width: 380px) {
+  .pocket-mode .nav-item {
+    font-size: 0.56rem;
+  }
+
+  .pocket-mode .metric-pill#overall-count {
+    display: none;
+  }
+}

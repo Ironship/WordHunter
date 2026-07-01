@@ -1,5 +1,5 @@
 // Text tokenization and statistics. Independent of global state.
-export function resolveTokenizerAlgorithm(value) {
+function resolveTokenizerAlgorithm(value) {
   return value === "classic" ? "classic" : "modern";
 }
 

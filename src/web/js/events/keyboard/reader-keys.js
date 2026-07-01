@@ -1,5 +1,5 @@
 import { state } from "../../state.js";
-import { renderReader, clearReaderSelectionRange, setReaderSelectionAnchorFromToken, extendReaderSelection } from "../../views/reader.js";
+import { clearReaderSelection, setReaderSelectionAnchorFromToken, extendReaderSelection } from "../../views/reader.js";
 import { speakWord } from "../../tts.js";
 import { setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
@@ -36,11 +36,9 @@ export function handleReaderKeys(event, key) {
       document.activeElement.blur();
       return true;
     }
-    if (state.readerSelectionRange) clearReaderSelectionRange(false);
-    if (state.selectedWord) {
+    if (state.readerSelectionRange || state.selectedWord) {
       event.preventDefault();
-      state.selectedWord = null;
-      renderReader();
+      clearReaderSelection(true);
       return true;
     }
   }

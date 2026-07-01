@@ -22,5 +22,11 @@ export const UI_SCALE = {
   DEFAULT: 100
 };
 
+export const APP_LOCALES = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
+export const LEARNING_LANGUAGES = ["en", "de", "es", "it", "fr", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
+export const DISCOVER_LANGUAGES = ["de", "en", "fr", "es", "pl", "ja", "uk", "zh", "la", "grc"];
+export const TRANSLATOR_LANGUAGES = ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk", "zh", "la", "grc"];
+export const OFFLINE_TRANSLATOR_LANGUAGES = ["en", "pl", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"];
+
 export const BOOKS_INDEX_URL = "books/index.json";
 export const GUTENDEX_URL = "https://gutendex.com/books/";

@@ -6,7 +6,7 @@ use tiny_http::{Method, Request};
 use crate::{
     ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy, response,
     server::ServerState, srs, subtitles, tokenizer, update, vocab_export, vocab_index,
-    youglish,
+    youtube_captions, youglish,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../src/web");
@@ -24,12 +24,13 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
             response::json_response(request, json!({ "path": state.store.dir() }))
         }
         (Method::Get, "/__data") => {
-            let _ = open::that(state.store.dir());
+            crate::platform::open_path(state.store.dir());
             response::no_content(request)
         }
-        (Method::Get, "/__update/check") => {
-            response::json_response(request, update::check(proxy::USER_AGENT, crate::APP_VERSION))
-        }
+        (Method::Get, "/__update/check") => response::json_response(
+            request,
+            update::check(proxy::USER_AGENT, crate::APP_VERSION),
+        ),
         (Method::Get, path) if path.starts_with("/__book/text") => {
             let params = response::parse_query(&query);
             let id = params.get("id").cloned().unwrap_or_default();
@@ -41,9 +42,7 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
         (Method::Get, path) if path.starts_with("/__media") => {
             handlers::serve_media(request, &state, &query)
         }
-        (Method::Get, path) if path.starts_with("/__proxy") => {
-            proxy::serve_proxy(request, &query)
-        }
+        (Method::Get, path) if path.starts_with("/__proxy") => proxy::serve_proxy(request, &query),
         (Method::Get, path) if path.starts_with("/__open_dict") => {
             popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)
         }
@@ -69,7 +68,9 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
         (Method::Get, path) if path.starts_with("/__argos/ui") => {
             handlers::serve_offline_translator_ui(request, &query)
         }
-        (Method::Get, path) if path.starts_with("/__tts") => handlers::serve_edge_tts(request, &query),
+        (Method::Get, path) if path.starts_with("/__tts") => {
+            handlers::serve_edge_tts(request, &query)
+        }
         (Method::Get, _) => handlers::serve_static(request, &state, &path),
         (Method::Post, "/__log_error") => {
             let body = response::read_body(&mut request)?;
@@ -77,8 +78,7 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
             // loaded in the webview. The global error handler only sends short messages.
             const MAX_LOG_BODY: usize = 8 * 1024;
             let text = if body.len() > MAX_LOG_BODY {
-                String::from_utf8_lossy(&body[..MAX_LOG_BODY]).into_owned()
-                    + "…[truncated]"
+                String::from_utf8_lossy(&body[..MAX_LOG_BODY]).into_owned() + "…[truncated]"
             } else {
                 String::from_utf8_lossy(&body).into_owned()
             };
@@ -96,8 +96,23 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                     response::no_content(request)
                 }
                 "/__store/choose_data_dir" => match handlers::choose_data_dir(&state) {
-                    Ok(Some(path)) => response::json_response(request, json!({ "path": path })),
+                    Ok(Some(path)) => response::json_response(
+                        request,
+                        json!({ "path": path, "snapshot": state.store.snapshot() }),
+                    ),
                     Ok(None) => response::json_response(request, json!({ "path": null })),
+                    Err(err) => response::error_response(request, 500, &err),
+                },
+                "/__store/choose_sync_dir" => match handlers::choose_sync_dir(&state) {
+                    Ok(Some((path, snapshot))) => response::json_response(
+                        request,
+                        json!({ "path": path, "snapshot": snapshot }),
+                    ),
+                    Ok(None) => response::json_response(request, json!({ "path": null })),
+                    Err(err) => response::error_response(request, 500, &err),
+                },
+                "/__store/sync_now" => match handlers::sync_now(&state) {
+                    Ok(snapshot) => response::json_response(request, json!({ "snapshot": snapshot })),
                     Err(err) => response::error_response(request, 500, &err),
                 },
                 "/__store/upsert_text" => {
@@ -125,8 +140,8 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                 }
                 "/__export/save" => {
                     let payload = response::read_json(&mut request)?;
-                    handlers::save_export(payload)?;
-                    response::no_content(request)
+                    let saved = handlers::save_export(payload)?;
+                    response::json_response(request, json!({ "saved": saved }))
                 }
                 "/__import/ebook" => {
                     let payload = response::read_json(&mut request)?;
@@ -187,6 +202,13 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                 "/__subtitles/parse" => {
                     let payload = response::read_json(&mut request)?;
                     match subtitles::handle(payload) {
+                        Ok(payload) => response::json_response(request, payload),
+                        Err(err) => response::error_response(request, 400, &err),
+                    }
+                }
+                "/__youtube/captions" => {
+                    let payload = response::read_json(&mut request)?;
+                    match youtube_captions::handle(payload) {
                         Ok(payload) => response::json_response(request, payload),
                         Err(err) => response::error_response(request, 400, &err),
                     }

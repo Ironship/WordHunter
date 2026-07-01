@@ -5,7 +5,10 @@ export function createAutosave(getState) {
   let saveTimer = null;
   let suspendAutoSave = 0;
   let saveInFlight = false;
+  let savePromise = Promise.resolve();
   let savePending = false;
+  let syncBlocked = false;
+  let retryDelayMs = 0;
 
   function rawState() {
     const state = getState();
@@ -25,14 +28,15 @@ export function createAutosave(getState) {
     return value && typeof value === "object" && value._raw ? value._raw : value;
   }
 
-  function scheduleSave() {
+  function scheduleSave(delayMs = 200) {
+    if (syncBlocked) return;
     if (suspendAutoSave > 0) return;
     if (saveInFlight) {
       savePending = true;
       return;
     }
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(doSave, 200);
+    saveTimer = setTimeout(doSave, delayMs);
   }
 
   function doSave() {
@@ -40,21 +44,33 @@ export function createAutosave(getState) {
     syncProfilePreferences();
     if (!window.__qtBridge) {
       saveToLocalStorage(current);
-      return;
+      return Promise.resolve();
     }
     saveInFlight = true;
-    saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then(() => {
+    savePromise = saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then(() => {
+      syncBlocked = false;
+      retryDelayMs = 0;
       saveInFlight = false;
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { time: new Date().toLocaleTimeString() } }));
       if (savePending) {
         savePending = false;
-        doSave();
+        return doSave();
       }
     }).catch((error) => {
       saveInFlight = false;
+      if (error.status === 409) {
+        syncBlocked = true;
+        savePending = false;
+        window.dispatchEvent(new CustomEvent("wordhunter:sync-conflict"));
+        return;
+      }
       console.error("bridge save failed after retries", error);
       savePending = false;
-      scheduleSave();
+      retryDelayMs = retryDelayMs ? Math.min(retryDelayMs * 2, 30000) : 1000;
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-error", { detail: { retryDelayMs } }));
+      scheduleSave(retryDelayMs);
     });
+    return savePromise;
   }
 
   function wrap(target) {
@@ -94,9 +110,9 @@ export function createAutosave(getState) {
       saveTimer = null;
       if (saveInFlight) {
         savePending = true;
-        return;
+        return savePromise;
       }
-      doSave();
+      return doSave();
     },
     flushPendingSave() {
       clearTimeout(saveTimer);

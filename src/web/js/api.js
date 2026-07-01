@@ -54,8 +54,11 @@ export async function saveWithRetry(body, maxRetries) {
         body
       });
       if (response.ok) return;
-      throw new Error(`HTTP ${response.status}`);
+      const error = new Error(`HTTP ${response.status}`);
+      error.status = response.status;
+      throw error;
     } catch (e) {
+      if (e.status === 409) throw e;
       if (attempt === maxRetries) throw e;
       await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
     }
@@ -73,8 +76,16 @@ export function saveSyncXhr(body) {
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.setRequestHeader("X-WH-Token", window.WH_TOKEN || "");
     xhr.send(body);
+    if (xhr.status === 409) {
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-conflict"));
+    } else if (xhr.status >= 200 && xhr.status < 300) {
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { time: new Date().toLocaleTimeString() } }));
+    } else {
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-error"));
+    }
   } catch (e) {
     console.error("sync save failed", e);
+    window.dispatchEvent(new CustomEvent("wordhunter:sync-error"));
   }
 }
 

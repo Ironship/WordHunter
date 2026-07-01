@@ -26,7 +26,10 @@ export function getDefaultDictionaryUrl(lang) {
     pl: "https://sjp.pwn.pl/szukaj/{{word}}.html",
     uk: "https://translate.google.com/?sl=uk&tl=pl&text={{word}}&op=translate",
     ru: "https://translate.google.com/?sl=ru&tl=pl&text={{word}}&op=translate",
-    ja: "https://jisho.org/search/{{word}}"
+    ja: "https://jisho.org/search/{{word}}",
+    zh: "https://www.mdbg.net/chinese/dictionary?page=worddict&wdrst=0&wdqb={{word}}",
+    la: "https://logeion.uchicago.edu/{{word}}",
+    grc: "https://logeion.uchicago.edu/{{word}}"
   };
   return urls[lang] || urls.en;
 }
@@ -50,6 +53,7 @@ export function createDefaultState() {
     readerScrolls: {},
     readerScrollsPerPage: {},
     dataDirectory: "",
+    syncDirectory: "",
     filters: {
       libraryQuery: "",
       libraryLevel: "all",
@@ -65,6 +69,7 @@ export function createDefaultState() {
     preferences: {
       theme: "auto",
       locale: "en",
+      languageOnboardingDone: false,
       readerFont: "serif",
       readerLineHeight: "normal",
       highlightTokens: true,
@@ -81,10 +86,14 @@ export function createDefaultState() {
       dictionaryMode: "internal",
       readerTextAlign: "left",
       readerMaxWidth: "wide",
+      readerFocusMode: false,
+      readerWordPanelVisible: true,
+      touchControls: false,
       readerSidebarWidth: 380,
       librarySidebarWidth: 360,
       ttsRate: "normal",
       autoTtsOnWordFocus: true,
+      ttsWordHighlight: false,
       reviewReverse: false,
       srsAlgorithm: "fsrs",
       removalBehavior: "ignored",
@@ -107,7 +116,8 @@ export function createDefaultState() {
       colorLearning: "#ffb84d",
       colorKnown: "#8ce99a",
       colorIgnored: "#ced4da",
-      reviewGraphType: "heatmap"
+      reviewGraphType: "heatmap",
+      graphRange: "recent"
     }
   };
 }

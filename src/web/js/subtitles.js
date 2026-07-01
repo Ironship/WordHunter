@@ -1,5 +1,6 @@
 function normalizeSubtitleText(value) {
   return String(value || "")
+    .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
     .replace(/\{[^}]*\}/g, "")
     .replace(/<\/?[^>]+>/g, "")
     .replace(/\\[Nnh]/g, " ")
@@ -47,11 +48,17 @@ function parseVtt(text) {
       continue;
     }
     if (/^WEBVTT($|\s)/i.test(line)) continue;
-    if (/^(NOTE|STYLE|REGION)($|\s)/i.test(line)) {
+    if (line === "##") {
+      skippingBlock = false;
+      continue;
+    }
+    if (/^(Kind|Language):\s*/i.test(line)) continue;
+    if (/^(NOTE|STYLE|REGION)(:|\s|$)/i.test(line)) {
       skippingBlock = true;
       continue;
     }
     if (skippingBlock) continue;
+    if (line.startsWith("::cue") || line === "}") continue;
     if (/^\d+$/.test(line)) continue;
     if (/^(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}\s+-->\s+(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}/.test(line)) continue;
     output.push(line);

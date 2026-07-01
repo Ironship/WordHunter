@@ -13,12 +13,18 @@ export function cacheElements() {
   els.views = [...document.querySelectorAll(".view")];
 
   els.bookList = document.getElementById("book-list");
+  els.libraryPanel = document.querySelector(".library-panel");
+  els.libraryFiltersToggle = document.getElementById("library-filters-toggle");
   els.librarySearch = document.getElementById("library-search");
   els.levelFilter = document.getElementById("level-filter");
   els.librarySort = document.getElementById("library-sort");
   els.librarySortReverse = document.getElementById("library-sort-reverse");
   els.libraryArchiveFilter = document.getElementById("library-archive-filter");
   els.importForm = document.getElementById("import-form");
+  els.importYoutubeUrl = document.getElementById("import-youtube-url");
+  els.importYoutubeLoad = document.getElementById("import-youtube-load");
+  els.importYoutubeTrack = document.getElementById("import-youtube-track");
+  els.importYoutubeStatus = document.getElementById("import-youtube-status");
   els.importTitle = document.getElementById("import-title");
   els.importAuthor = document.getElementById("import-author");
   els.importTags = document.getElementById("import-tags");
@@ -35,7 +41,8 @@ export function cacheElements() {
   els.readerHeading = document.getElementById("reader-heading");
   els.readerSource = document.getElementById("reader-source");
   els.readerText = document.getElementById("reader-text");
-  els.readerVocabList = document.getElementById("reader-vocab-list");
+  els.readerHighlightToggle = document.getElementById("reader-highlight-toggle");
+  els.readerWordPanelToggle = document.getElementById("reader-word-panel-toggle");
   els.readerFontSizeSlider = document.getElementById("reader-font-size-slider");
   els.readerFontSizeValue = document.getElementById("reader-font-size-value");
   els.trackingSummary = document.getElementById("tracking-summary");
@@ -77,8 +84,20 @@ export function cacheElements() {
   els.resetPrefs = document.getElementById("reset-prefs");
   els.prefRemovalBehavior = document.getElementById("pref-removal-behavior");
   els.prefTheme = document.getElementById("pref-theme");
-  els.prefLocale = document.getElementById("pref-locale-sidebar");
-  els.prefLearningLanguage = document.getElementById("pref-learning-language-sidebar");
+  els.prefLocales = [
+    document.getElementById("pref-locale-sidebar"),
+    document.getElementById("pref-locale-settings"),
+    document.getElementById("pref-locale-onboarding"),
+  ].filter(Boolean);
+  els.prefLearningLanguages = [
+    document.getElementById("pref-learning-language-sidebar"),
+    document.getElementById("pref-learning-language-settings"),
+    document.getElementById("pref-learning-language-onboarding"),
+  ].filter(Boolean);
+  els.prefLocale = els.prefLocales[0] || null;
+  els.prefLearningLanguage = els.prefLearningLanguages[0] || null;
+  els.languageOnboardingDialog = document.getElementById("language-onboarding-dialog");
+  els.languageOnboardingDone = document.getElementById("language-onboarding-done");
   els.prefColorNew = document.getElementById("pref-color-new");
   els.prefColorLearning = document.getElementById("pref-color-learning");
   els.prefColorKnown = document.getElementById("pref-color-known");
@@ -95,6 +114,7 @@ export function cacheElements() {
   els.prefFontSizeLabel = document.getElementById("pref-font-size-label");
   els.prefUiScale = document.getElementById("pref-ui-scale");
   els.prefUiScaleLabel = document.getElementById("pref-ui-scale-label");
+  els.prefTouchControls = document.getElementById("pref-touch-controls");
   els.prefHighlight = document.getElementById("pref-highlight");
   els.prefHideKnown = document.getElementById("pref-hide-known");
   els.prefInTextReview = document.getElementById("pref-in-text-review");
@@ -124,13 +144,20 @@ export function cacheElements() {
   els.ocrGpuStatus = document.getElementById("ocr-gpu-status");
   els.prefTextAlign = document.getElementById("pref-text-align");
   els.prefMaxWidth = document.getElementById("pref-max-width");
+  els.prefReaderFocusMode = document.getElementById("pref-reader-focus-mode");
+  els.prefReaderWordPanelVisible = document.getElementById("pref-reader-word-panel-visible");
   els.prefTtsRate = document.getElementById("pref-tts-rate");
   els.prefAutoTtsOnWordFocus = document.getElementById("pref-auto-tts-on-word-focus");
+  els.prefTtsWordHighlight = document.getElementById("pref-tts-word-highlight");
   els.prefUseEdgeTts = document.getElementById("pref-use-edge-tts");
 
   els.storageSummary = document.getElementById("storage-summary");
   els.dataDirectory = document.getElementById("data-directory");
+  els.syncDirectory = document.getElementById("sync-directory");
+  els.syncStatus = document.getElementById("sync-status");
   els.chooseDataDirectory = document.getElementById("choose-data-directory");
+  els.chooseSyncDirectory = document.getElementById("choose-sync-directory");
+  els.forceSync = document.getElementById("force-sync");
 
   els.discoverForm = document.getElementById("discover-form");
   els.discoverQuery = document.getElementById("discover-query");

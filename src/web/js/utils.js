@@ -15,6 +15,17 @@ export function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+export function cleanCatalogTitle(value) {
+  return String(value || "")
+    .replace(/\s*:\s*\$[a-z]\s*/gi, ": ")
+    .replace(/\s*\/\s*\$[a-z]\s*/gi, " / ")
+    .replace(/\s+\$[a-z]\s*/gi, " ")
+    .replace(/\s+([:;,])/g, "$1")
+    .replace(/([:;,])(?=\S)/g, "$1 ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function parseTagList(value) {
   const source = Array.isArray(value) ? value : String(value || "").split(",");
   const seen = new Set();

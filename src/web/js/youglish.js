@@ -76,7 +76,7 @@ function loadYouglishApi() {
 }
 
 function getYouglishLang(langCode) {
-  const map = { en: "english", de: "german", es: "spanish", it: "italian", fr: "french", pl: "polish", ru: "russian", uk: "ukrainian", ja: "japanese" };
+  const map = { en: "english", de: "german", es: "spanish", it: "italian", fr: "french", pl: "polish", ru: "russian", uk: "ukrainian", ja: "japanese", zh: "chinese", la: "latin", grc: "greek" };
   return map[langCode] || "english";
 }
 

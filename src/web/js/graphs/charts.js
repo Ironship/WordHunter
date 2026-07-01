@@ -8,13 +8,225 @@ import {
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart
 } from "./helpers.js";
 
-export function renderDueForecast(_chartEntries) {
+const CEFR_THRESHOLDS = {
+  en: [500, 1000, 2000, 4000, 8000, 16000],
+  de: [400, 800, 1800, 3500, 7000, 14000],
+  fr: [500, 1000, 2000, 4000, 8000, 16000],
+  es: [500, 1000, 2000, 4000, 8000, 16000],
+  it: [500, 1000, 2000, 4000, 8000, 16000],
+  pl: [400, 800, 1500, 3000, 6000, 12000],
+  uk: [400, 800, 1500, 3000, 6000, 12000],
+  ru: [400, 800, 1500, 3000, 6000, 12000],
+  ja: [300, 800, 1500, 3000, 6000, 10000],
+  zh: [200, 600, 1200, 2500, 5000, 9000],
+};
+
+const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+const MS_PER_DAY = 86400000;
+
+function getCefrThresholds(lang) {
+  return CEFR_THRESHOLDS[lang] || CEFR_THRESHOLDS.en;
+}
+
+function getKnownWordCount(entries = Object.values(state.vocab || {})) {
+  return entries.filter(e => e?.status === "known").length;
+}
+
+function getKnownLearningWordCount(entries = Object.values(state.vocab || {})) {
+  return entries.filter(e => e?.status === "known" || e?.status === "learning").length;
+}
+
+function knownAt(entry) {
+  const raw = entry?.knownAt || entry?.updatedAt || entry?.lastReviewedAt || entry?.addedAt;
+  const time = raw ? new Date(raw).getTime() : NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+function progressAt(entry) {
+  if (entry?.status === "known") return knownAt(entry);
+  const raw = entry?.updatedAt || entry?.addedAt || entry?.lastReviewedAt;
+  const time = raw ? new Date(raw).getTime() : NaN;
+  return Number.isFinite(time) ? time : null;
+}
+
+function buildWordSeries(entries, includeEntry, dateForEntry, width = 400, now = Date.now()) {
+  const included = entries.filter(includeEntry);
+  const dated = [];
+  let undated = 0;
+  for (const entry of included) {
+    const time = dateForEntry(entry);
+    if (time === null) undated++;
+    else dated.push(time);
+  }
+  dated.sort((a, b) => a - b);
+
+  if (!dated.length) {
+    return [
+      { t: now - MS_PER_DAY * 30, val: included.length },
+      { t: now, val: included.length }
+    ];
+  }
+
+  const start = dated[0];
+  const end = Math.max(now, dated[dated.length - 1]);
+  const series = [{ t: start - MS_PER_DAY * 7, val: undated }];
+  let count = undated;
+  for (let i = 0; i < dated.length;) {
+    const t = dated[i];
+    while (i < dated.length && dated[i] === t) { count++; i++; }
+    series.push({ t, val: count });
+  }
+  if (series[series.length - 1].t < end) series.push({ t: end, val: included.length });
+  return series;
+}
+
+export function buildKnownWordSeries(entries = Object.values(state.vocab || {}), width = 400, now = Date.now()) {
+  return buildWordSeries(entries, e => e?.status === "known", knownAt, width, now);
+}
+
+export function buildKnownLearningWordSeries(entries = Object.values(state.vocab || {}), width = 400, now = Date.now()) {
+  return buildWordSeries(entries, e => e?.status === "known" || e?.status === "learning", progressAt, width, now);
+}
+
+export function getCurrentLevel(count, thresholds) {
+  let level = "Pre-A1";
+  for (let i = 0; i < thresholds.length; i++) {
+    if (count >= thresholds[i]) level = CEFR_LEVELS[i];
+    else break;
+  }
+  return level;
+}
+
+function languageName(lang) {
+  const label = t(`languages.${lang}`);
+  return label === `languages.${lang}` ? lang.toUpperCase() : label;
+}
+
+export function formatVocabProgressDate(time, span, locale) {
+  const options = span >= MS_PER_DAY * 365
+    ? { month: "short", year: "numeric" }
+    : { month: "short", day: "numeric" };
+  return new Date(time).toLocaleDateString(locale, options);
+}
+
+function monthLabel(date) {
+  return date.toLocaleDateString(undefined, { month: "short" });
+}
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthRange(start, end) {
+  const months = [];
+  const d = new Date(start.getFullYear(), start.getMonth(), 1);
+  const last = new Date(end.getFullYear(), end.getMonth(), 1);
+  while (d <= last) {
+    months.push(new Date(d));
+    d.setMonth(d.getMonth() + 1);
+  }
+  return months;
+}
+
+function rangeTitle(title, allTime) {
+  return allTime ? `${title.replace(/\s*\([^)]*\)/, "")} · ${t("graphs.rangeAll")}` : title;
+}
+
+export function buildAddedOverTimeBins(entries = Object.values(state.vocab || {}), allTime = false, now = new Date()) {
+  const dated = entries
+    .filter(e => e?.status !== "ignored" && e?.addedAt)
+    .map(e => new Date(e.addedAt))
+    .filter(d => Number.isFinite(d.getTime()));
+
+  if (!allTime) {
+    const bins = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      bins.push({ key: monthKey(d), label: monthLabel(d), val: 0, color: amber });
+    }
+    const byKey = Object.fromEntries(bins.map(bin => [bin.key, bin]));
+    for (const d of dated) if (byKey[monthKey(d)]) byKey[monthKey(d)].val++;
+    return bins;
+  }
+
+  if (!dated.length) return [{ label: monthLabel(now), val: 0, color: amber }];
+  const first = new Date(Math.min(...dated.map(d => d.getTime())));
+  const monthSpan = (now.getFullYear() - first.getFullYear()) * 12 + now.getMonth() - first.getMonth();
+  if (monthSpan > 24) {
+    const years = [];
+    for (let y = first.getFullYear(); y <= now.getFullYear(); y++) years.push({ key: String(y), label: String(y), val: 0, color: amber });
+    const byYear = Object.fromEntries(years.map(bin => [bin.key, bin]));
+    for (const d of dated) if (byYear[String(d.getFullYear())]) byYear[String(d.getFullYear())].val++;
+    return years;
+  }
+
+  const bins = monthRange(first, now).map(d => ({
+    key: monthKey(d),
+    label: d.getMonth() === 0 ? `${monthLabel(d)} ${d.getFullYear()}` : monthLabel(d),
+    val: 0,
+    color: amber
+  }));
+  const byKey = Object.fromEntries(bins.map(bin => [bin.key, bin]));
+  for (const d of dated) if (byKey[monthKey(d)]) byKey[monthKey(d)].val++;
+  return bins;
+}
+
+export function renderDueForecast(_chartEntries, options = {}) {
   const ctx = canvas("graph-due");
   if (!ctx) return;
   const W = ctx.w, H = ctx.h;
   const pad = { top: 52, right: 20, bottom: 40, left: 44 };
   const pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
   const today = new Date().toISOString().slice(0, 10);
+  if (options.allTime) {
+    const todayDate = new Date(`${today}T00:00:00`);
+    let overdue = 0;
+    let total = 0;
+    let latest = todayDate;
+    const counts = {};
+    for (const e of _chartEntries || Object.values(state.vocab)) {
+      if (e.status === "ignored" || e.status === "known" || !e.nextDate) continue;
+      total++;
+      const delta = daysBetween(e.nextDate, today);
+      if (delta < 0) {
+        overdue++;
+        continue;
+      }
+      const d = new Date(`${e.nextDate}T00:00:00`);
+      if (Number.isFinite(d.getTime())) {
+        latest = latest > d ? latest : d;
+        counts[monthKey(d)] = (counts[monthKey(d)] || 0) + 1;
+      }
+    }
+    const monthSpan = (latest.getFullYear() - todayDate.getFullYear()) * 12 + latest.getMonth() - todayDate.getMonth();
+    let bins;
+    if (monthSpan > 24) {
+      bins = [];
+      for (let y = todayDate.getFullYear(); y <= latest.getFullYear(); y++) {
+        bins.push({ key: String(y), label: String(y), val: 0, color: blue });
+      }
+      const byYear = Object.fromEntries(bins.map(bin => [bin.key, bin]));
+      for (const [key, val] of Object.entries(counts)) {
+        const year = key.slice(0, 4);
+        if (byYear[year]) byYear[year].val += val;
+      }
+    } else {
+      bins = monthRange(todayDate, latest).map((d) => ({
+        key: monthKey(d),
+        label: d.getMonth() === 0 ? `${monthLabel(d)} ${d.getFullYear()}` : monthLabel(d),
+        val: counts[monthKey(d)] || 0,
+        color: blue
+      }));
+    }
+    if (overdue > 0) bins.unshift({ label: t("graphs.overdue"), val: overdue, color: red });
+    const maxVal = Math.max(1, ...bins.map(b => b.val));
+    drawBarChart(ctx, bins, maxVal, blue, pad);
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif"; ctx.fillText(rangeTitle(t("graphs.dueForecast"), true), W / 2, 10);
+    ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif";
+    ctx.fillText(t("graphs.totalReviews", { n: total, overdue }), W / 2, 24);
+    return;
+  }
   const buckets = new Array(DAYS).fill(0);
   let overdue = 0, total = 0;
   for (const e of _chartEntries || Object.values(state.vocab)) {
@@ -210,26 +422,16 @@ export function renderRepetitions(_chartEntries) {
   ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif"; ctx.fillText(t("graphs.repetitions"), ctx.w / 2, 10);
 }
 
-export function renderAddedOverTime(_chartEntries) {
+export function renderAddedOverTime(_chartEntries, options = {}) {
   const ctx = canvas("graph-added");
   if (!ctx) return;
-  const now = new Date();
-  const bins = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    bins.push({ label: d.toLocaleDateString(undefined, { month: "short" }), val: 0, color: amber });
-  }
-  for (const e of _chartEntries || Object.values(state.vocab)) {
-    if (e.status === "ignored" || !e.addedAt) continue;
-    const d = new Date(e.addedAt);
-    const idx = 11 - (now.getFullYear() * 12 + now.getMonth() - d.getFullYear() * 12 - d.getMonth());
-    if (idx >= 0 && idx < 12) bins[idx].val++;
-  }
+  const bins = buildAddedOverTimeBins(_chartEntries || Object.values(state.vocab), options.allTime);
   const maxVal = Math.max(1, ...bins.map(b => b.val));
   const pad = { top: 50, right: 14, left: 44, bottom: 38 };
   drawBarChart(ctx, bins, maxVal, amber, pad);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif"; ctx.fillText(t("graphs.addedOverTime"), ctx.w / 2, 10);
+  ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif";
+  ctx.fillText(rangeTitle(t("graphs.addedOverTime"), options.allTime), ctx.w / 2, 10);
 }
 
 export function renderDayOfWeek(_chartEntries) {
@@ -369,3 +571,207 @@ export function renderMatureVsYoung(_chartEntries) {
   ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif"; ctx.textAlign = "center";
   ctx.fillText(t("graphs.matureVsYoung"), W / 2, 4);
 }
+
+export function renderVocabProgress(_chartEntries) {
+  const ctx = canvas("graph-vocab-progress");
+  if (!ctx) return;
+  const W = ctx.w, H = ctx.h;
+  const pad = { top: 52, right: 62, bottom: 48, left: 58 };
+  const pw = W - pad.left - pad.right;
+  const ph = H - pad.top - pad.bottom;
+  const chartEntries = _chartEntries || Object.values(state.vocab || {});
+
+  const lang = state.preferences?.learningLanguage || "en";
+  const thresholds = getCefrThresholds(lang);
+  const knownCount = getKnownWordCount(chartEntries);
+  const knownLearningCount = getKnownLearningWordCount(chartEntries);
+  const maxThreshold = thresholds[thresholds.length - 1];
+  const logMax = Math.log10(Math.max(maxThreshold, knownCount, knownLearningCount, 10) * 1.15);
+  const series = buildKnownWordSeries(chartEntries, pw);
+  const potentialSeries = buildKnownLearningWordSeries(chartEntries, pw);
+  const startTime = Math.min(series[0].t, potentialSeries[0].t);
+  const endTime = Math.max(series[series.length - 1].t, potentialSeries[potentialSeries.length - 1].t);
+
+  ctx.fillStyle = panelBg;
+  ctx.fillRect(0, 0, W, H);
+
+  const xScale = (t) => pad.left + ((t - startTime) / (endTime - startTime || 1)) * pw;
+  const yScale = (v) => Math.log10(Math.max(v, 1)) / logMax;
+  const yFor = (v) => pad.top + ph - yScale(v) * ph;
+
+  // Standard gridlines at 0/25/50/75/100% of log scale (same pattern as renderDayOfWeek etc.)
+  ctx.strokeStyle = grid;
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + ph - (i / 4) * ph;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+  }
+
+  // CEFR threshold lines double as the Y axis.
+  ctx.save();
+  ctx.strokeStyle = green;
+  ctx.fillStyle = text;
+  ctx.lineWidth = 0.75;
+  ctx.font = "600 10px Inter, sans-serif";
+  ctx.textBaseline = "middle";
+  for (let i = 0; i < thresholds.length; i++) {
+    const y = yFor(thresholds[i]);
+    if (y < pad.top + 4 || y > pad.top + ph - 4) continue;
+    ctx.setLineDash([5, 4]);
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+    ctx.textAlign = "right";
+    ctx.fillText(CEFR_LEVELS[i], pad.left - 8, y);
+    ctx.textAlign = "left";
+    ctx.fillStyle = labelMuted;
+    ctx.fillText(thresholds[i].toLocaleString(), W - pad.right + 8, y);
+    ctx.fillStyle = text;
+  }
+  ctx.restore();
+
+  ctx.strokeRect(pad.left, pad.top, pw, ph);
+
+  // --- Draw area + line ---
+  const points = series.map(s => ({ x: xScale(s.t), y: yFor(s.val) }));
+  const potentialPoints = potentialSeries.map(s => ({ x: xScale(s.t), y: yFor(s.val) }));
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, pad.top + ph);
+  for (const p of points) ctx.lineTo(p.x, p.y);
+  ctx.lineTo(points[points.length - 1].x, pad.top + ph);
+  ctx.closePath();
+  const areaGrad = ctx.createLinearGradient(0, pad.top + ph, 0, pad.top);
+  areaGrad.addColorStop(0, "rgba(79, 179, 142, 0.05)");
+  areaGrad.addColorStop(1, "rgba(79, 179, 142, 0.25)");
+  ctx.fillStyle = areaGrad;
+  ctx.fill();
+
+  if (knownLearningCount > knownCount) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.beginPath();
+    ctx.moveTo(potentialPoints[0].x, potentialPoints[0].y);
+    for (let i = 1; i < potentialPoints.length; i++) ctx.lineTo(potentialPoints[i].x, potentialPoints[i].y);
+    ctx.strokeStyle = blue;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.strokeStyle = green;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  const lastPx = points[points.length - 1].x;
+  const lastPy = points[points.length - 1].y;
+
+  // Current value label
+  ctx.fillStyle = text;
+  ctx.font = "600 11px Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "bottom";
+
+  // Check if label would overflow the right edge
+  const labelW = ctx.measureText(`${knownCount.toLocaleString()} ${t("graphs.knownWords")}`).width;
+  const lx = lastPx + (lastPx + 12 + labelW > W - pad.right ? -labelW - 14 : 10);
+  const labelY = Math.max(pad.top + 14, Math.min(lastPy - 4, pad.top + ph - 18));
+  ctx.fillText(`${knownCount.toLocaleString()} ${t("graphs.knownWords")}`, lx, labelY);
+
+  const currentLevel = getCurrentLevel(knownCount, thresholds);
+  ctx.fillStyle = green;
+  ctx.font = "600 9px Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(`CEFR: ${currentLevel}`, lx, labelY + 4);
+
+  const potentialLevel = getCurrentLevel(knownLearningCount, thresholds);
+  if (knownLearningCount > knownCount) {
+    const potentialLast = potentialPoints[potentialPoints.length - 1];
+    const potentialText = `${knownLearningCount.toLocaleString()} ${t("vocab.statusKnown")} + ${t("vocab.statusLearning")} · ${potentialLevel}`;
+    const potentialW = ctx.measureText(potentialText).width;
+    const px = potentialLast.x + (potentialLast.x + 12 + potentialW > W - pad.right ? -potentialW - 14 : 10);
+    const py = Math.max(pad.top + 16, Math.min(potentialLast.y - 4, pad.top + ph - 18));
+    ctx.save();
+    ctx.globalAlpha = 0.72;
+    ctx.fillStyle = blue;
+    ctx.font = "600 10px Inter, sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(potentialText, px, py);
+    ctx.restore();
+  }
+
+  // X-axis dates
+  ctx.fillStyle = labelMuted;
+  ctx.font = "10px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  const nLabels = Math.max(1, Math.min(5, Math.floor(pw / 70)));
+  const timeSpan = endTime - startTime;
+  for (let i = 0; i <= nLabels; i++) {
+    const tick = startTime + timeSpan * (i / nLabels);
+    ctx.fillText(formatVocabProgressDate(tick, timeSpan), xScale(tick), H - pad.bottom + 8);
+  }
+
+  // Title
+  ctx.fillStyle = text;
+  ctx.font = "600 12px Inter, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(t("graphs.vocabProgress"), W / 2, 10);
+  ctx.fillStyle = labelMuted;
+  ctx.font = "11px Inter, sans-serif";
+  ctx.fillText(t("graphs.currentLevel", { level: currentLevel, lang: languageName(lang) }), W / 2, 24);
+
+  // Tooltip
+  const canv = document.getElementById("graph-vocab-progress");
+  if (canv) {
+    canv.onmousemove = (e) => {
+      const r = canv.getBoundingClientRect();
+      const mx = e.clientX - r.left;
+      const my = e.clientY - r.top;
+      if (mx >= pad.left && mx <= pad.left + pw && my >= pad.top && my <= pad.top + ph) {
+        let nearest = points[0];
+        let minDist = Infinity;
+        for (const p of points) {
+          const d = Math.abs(p.x - mx);
+          if (d < minDist) { minDist = d; nearest = p; }
+        }
+        const idx = points.indexOf(nearest);
+        const val = series[idx].val;
+        let potentialIdx = 0;
+        let potentialDist = Infinity;
+        for (let i = 0; i < potentialPoints.length; i++) {
+          const d = Math.abs(potentialPoints[i].x - mx);
+          if (d < potentialDist) { potentialDist = d; potentialIdx = i; }
+        }
+        const potentialVal = potentialSeries[potentialIdx].val;
+        const dateStr = new Date(series[idx].t)
+          .toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+        const level = getCurrentLevel(val, thresholds);
+        const nextVal = thresholds.find(t => t > val);
+        const toNext = nextVal ? nextVal - val : 0;
+        let tip = `${dateStr} · ${val.toLocaleString()} ${t("graphs.knownWords")} · ${level}`;
+        if (potentialVal > val) {
+          tip += ` · ${potentialVal.toLocaleString()} ${t("vocab.statusKnown")} + ${t("vocab.statusLearning")} · ${getCurrentLevel(potentialVal, thresholds)}`;
+        }
+        if (nextVal) tip += ` · ${toNext} ${t("graphs.toNextLevel")}`;
+        showTooltip(e, tip);
+        return;
+      }
+      hideTooltip();
+    };
+    canv.onmouseleave = hideTooltip;
+  }
+}
+
+export { getCefrThresholds, getKnownWordCount, CEFR_LEVELS, CEFR_THRESHOLDS };

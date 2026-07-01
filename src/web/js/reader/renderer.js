@@ -23,7 +23,7 @@ import {
 
 export { changeReaderPage, goToReaderPage };
 
-export function getAllTexts() {
+function getAllTexts() {
   const fromBooks = getAllBooks().map((book) => ({
     id: book.id,
     title: book.title,

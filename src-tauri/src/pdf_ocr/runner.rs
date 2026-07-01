@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::fs::File;
 use std::{
     collections::HashSet,
@@ -103,17 +103,17 @@ fn runner_candidates(app_handle: &AppHandle) -> Vec<PathBuf> {
         candidates.push(resource_dir.join("ocr-runtime").join(runner_name()));
     }
 
-    if let Ok(current_exe) = std::env::current_exe() {
-        if let Some(exe_dir) = current_exe.parent() {
-            candidates.push(exe_dir.join("ocr-runtime").join("bin").join(runner_name()));
-            candidates.push(
-                exe_dir
-                    .join("resources")
-                    .join("ocr-runtime")
-                    .join("bin")
-                    .join(runner_name()),
-            );
-        }
+    if let Ok(current_exe) = std::env::current_exe()
+        && let Some(exe_dir) = current_exe.parent()
+    {
+        candidates.push(exe_dir.join("ocr-runtime").join("bin").join(runner_name()));
+        candidates.push(
+            exe_dir
+                .join("resources")
+                .join("ocr-runtime")
+                .join("bin")
+                .join(runner_name()),
+        );
     }
 
     candidates.push(

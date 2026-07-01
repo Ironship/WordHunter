@@ -3,8 +3,9 @@
  */
 import { GUTENDEX_URL } from "../constants.js";
 import { t } from "../i18n.js";
+import { cleanCatalogTitle } from "../utils.js";
 
-export const LEVEL_TOPICS = {
+const LEVEL_TOPICS = {
   A1: "children",
   A2: "fairy",
   B1: "fiction",
@@ -34,7 +35,10 @@ export async function searchGutendex(discover, signal) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = await response.json();
 
-  let results = data.results || [];
+  let results = (data.results || []).map((book) => ({
+    ...book,
+    title: cleanCatalogTitle(book.title)
+  }));
   if (clientYearSort) {
     const dir = discover.sort === "year-asc" ? 1 : -1;
     const yearOf = (book) => {

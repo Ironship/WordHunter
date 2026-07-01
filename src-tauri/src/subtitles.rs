@@ -1,6 +1,6 @@
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::{json, Value};
+use std::sync::LazyLock;
 
 const ASS_OVERRIDE: &str = r"\{[^}]*\}";
 const HTML_TAG: &str = r"</?[^>]+>";
@@ -18,33 +18,36 @@ const ASS_FORMAT: &str = r"^Format:\s*(.+)$";
 const ASS_EVENTS: &str = r"(?i)^\[events\]$";
 const ASS_SECTION: &str = r"^\[.+\]$";
 const ASS_VTT_HEADER: &str = r"(?i)^WEBVTT($|\s)";
-const ASS_VTT_BLOCK_HEADER: &str = r"(?i)^(NOTE|STYLE|REGION)($|\s)";
+const ASS_VTT_BLOCK_HEADER: &str = r"(?i)^(NOTE|STYLE|REGION)(:|\s|$)";
+const VTT_METADATA: &str = r"(?i)^(Kind|Language):\s*";
 
-static RE_ASS_OVERRIDE: Lazy<Regex> = Lazy::new(|| Regex::new(ASS_OVERRIDE).unwrap());
-static RE_HTML_TAG: Lazy<Regex> = Lazy::new(|| Regex::new(HTML_TAG).unwrap());
-static RE_ASS_BREAK: Lazy<Regex> = Lazy::new(|| Regex::new(ASS_BREAK).unwrap());
-static RE_BRACKETED: Lazy<Regex> = Lazy::new(|| Regex::new(BRACKETED).unwrap());
-static RE_WHITESPACE: Lazy<Regex> = Lazy::new(|| Regex::new(WHITESPACE).unwrap());
-static RE_SRT_TIMESTAMP: Lazy<Regex> = Lazy::new(|| Regex::new(SRT_TIMESTAMP).unwrap());
-static RE_VTT_TIMESTAMP: Lazy<Regex> = Lazy::new(|| Regex::new(VTT_TIMESTAMP).unwrap());
-static RE_SEQUENCE: Lazy<Regex> = Lazy::new(|| Regex::new(SEQUENCE_NUMBER).unwrap());
-static RE_ASS_DIALOGUE: Lazy<Regex> = Lazy::new(|| {
+static RE_ASS_OVERRIDE: LazyLock<Regex> = LazyLock::new(|| Regex::new(ASS_OVERRIDE).unwrap());
+static RE_HTML_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new(HTML_TAG).unwrap());
+static RE_ASS_BREAK: LazyLock<Regex> = LazyLock::new(|| Regex::new(ASS_BREAK).unwrap());
+static RE_BRACKETED: LazyLock<Regex> = LazyLock::new(|| Regex::new(BRACKETED).unwrap());
+static RE_WHITESPACE: LazyLock<Regex> = LazyLock::new(|| Regex::new(WHITESPACE).unwrap());
+static RE_SRT_TIMESTAMP: LazyLock<Regex> = LazyLock::new(|| Regex::new(SRT_TIMESTAMP).unwrap());
+static RE_VTT_TIMESTAMP: LazyLock<Regex> = LazyLock::new(|| Regex::new(VTT_TIMESTAMP).unwrap());
+static RE_SEQUENCE: LazyLock<Regex> = LazyLock::new(|| Regex::new(SEQUENCE_NUMBER).unwrap());
+static RE_ASS_DIALOGUE: LazyLock<Regex> = LazyLock::new(|| {
     let pattern = format!("(?i){ASS_DIALOGUE}");
     Regex::new(&pattern).expect("ass dialogue pattern compiles")
 });
-static RE_ASS_FORMAT: Lazy<Regex> = Lazy::new(|| {
+static RE_ASS_FORMAT: LazyLock<Regex> = LazyLock::new(|| {
     let pattern = format!("(?i){ASS_FORMAT}");
     Regex::new(&pattern).expect("ass format pattern compiles")
 });
-static RE_ASS_EVENTS: Lazy<Regex> =
-    Lazy::new(|| Regex::new(ASS_EVENTS).expect("ass events pattern compiles"));
-static RE_ASS_SECTION: Lazy<Regex> =
-    Lazy::new(|| Regex::new(ASS_SECTION).expect("ass section pattern compiles"));
-static RE_VTT_HEADER: Lazy<Regex> =
-    Lazy::new(|| Regex::new(ASS_VTT_HEADER).expect("vtt header pattern compiles"));
-static RE_VTT_BLOCK_HEADER: Lazy<Regex> =
-    Lazy::new(|| Regex::new(ASS_VTT_BLOCK_HEADER).expect("vtt block header pattern compiles"));
-static RE_TITLE_EXT: Lazy<Regex> = Lazy::new(|| {
+static RE_ASS_EVENTS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(ASS_EVENTS).expect("ass events pattern compiles"));
+static RE_ASS_SECTION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(ASS_SECTION).expect("ass section pattern compiles"));
+static RE_VTT_HEADER: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(ASS_VTT_HEADER).expect("vtt header pattern compiles"));
+static RE_VTT_BLOCK_HEADER: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(ASS_VTT_BLOCK_HEADER).expect("vtt block header pattern compiles"));
+static RE_VTT_METADATA: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(VTT_METADATA).expect("vtt metadata pattern compiles"));
+static RE_TITLE_EXT: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)\.(txt|md|markdown|srt|vtt|ass|ssa|epub|mobi|azw|azw3)$")
         .expect("title extension pattern compiles")
 });
@@ -54,7 +57,11 @@ fn strip_bom(text: &str) -> String {
 }
 
 fn normalize_line(value: &str) -> String {
-    let cleaned = RE_ASS_OVERRIDE.replace_all(value, "");
+    let visible: String = value
+        .chars()
+        .filter(|ch| !matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{2060}' | '\u{feff}'))
+        .collect();
+    let cleaned = RE_ASS_OVERRIDE.replace_all(&visible, "");
     let cleaned = RE_HTML_TAG.replace_all(&cleaned, "");
     let cleaned = RE_ASS_BREAK.replace_all(&cleaned, " ");
     let cleaned = RE_BRACKETED.replace_all(&cleaned, "");
@@ -105,11 +112,21 @@ pub fn parse_vtt(text: &str) -> String {
         if RE_VTT_HEADER.is_match(line) {
             continue;
         }
+        if line == "##" {
+            skipping_block = false;
+            continue;
+        }
+        if RE_VTT_METADATA.is_match(line) {
+            continue;
+        }
         if RE_VTT_BLOCK_HEADER.is_match(line) {
             skipping_block = true;
             continue;
         }
         if skipping_block {
+            continue;
+        }
+        if line.starts_with("::cue") || line == "}" {
             continue;
         }
         if RE_SEQUENCE.is_match(line) {

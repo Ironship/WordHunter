@@ -20,7 +20,7 @@ fn handle_rejects_missing_text() {
 }
 
 #[test]
-fn handle_returns_words_stats_and_signature() {
+fn handle_returns_words_stats() {
     let payload = json!({
         "text": "Hello world. Hello Rust!",
         "vocab": {
@@ -47,9 +47,7 @@ fn handle_returns_words_stats_and_signature() {
         result["tokenLine"].as_str().unwrap(),
         " hello world rust "
     );
-    let signature = result["signature"].as_str().unwrap();
-    assert!(signature.starts_with("v2|en-foo|en|modern|"));
-    assert!(signature.contains("|2024-01-02|2024-01-01|"));
+    assert!(result.get("signature").is_none());
 }
 
 #[test]
@@ -60,10 +58,6 @@ fn handle_uses_default_lang_and_algorithm() {
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
     assert_eq!(result["unique"], 2);
-    assert!(result["signature"]
-        .as_str()
-        .unwrap()
-        .contains("||en|modern|"));
 }
 
 #[test]
@@ -94,41 +88,6 @@ fn handle_falls_back_to_new_for_unknown_status() {
     let result = vocab_index::handle(payload).expect("handle succeeds");
     assert_eq!(result["new"], 1);
     assert_eq!(result["known"], 0);
-}
-
-#[test]
-fn handle_signature_changes_when_text_changes() {
-    let mut payload = json!({
-        "text": "alpha beta",
-        "vocab": {},
-        "lang": "en",
-        "algorithm": "modern",
-        "book": book_payload(),
-    });
-    let first = vocab_index::handle(payload.clone()).expect("first ok");
-    payload["text"] = json!("alpha beta gamma");
-    let second = vocab_index::handle(payload).expect("second ok");
-    assert_ne!(
-        first["signature"].as_str(),
-        second["signature"].as_str(),
-    );
-}
-
-#[test]
-fn handle_signature_stable_for_same_text() {
-    let payload = json!({
-        "text": "alpha beta",
-        "vocab": {},
-        "lang": "en",
-        "algorithm": "modern",
-        "book": book_payload(),
-    });
-    let first = vocab_index::handle(payload.clone()).expect("first ok");
-    let second = vocab_index::handle(payload).expect("second ok");
-    assert_eq!(
-        first["signature"].as_str(),
-        second["signature"].as_str(),
-    );
 }
 
 #[test]

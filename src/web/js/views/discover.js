@@ -61,7 +61,7 @@ export async function runDiscoverSearch() {
       if (runId !== searchRunId) return;
       lastResults = data.results || [];
       data.results = lastResults;
-    } else if (source === "wikipedia" || source === "wikinews") {
+  } else if (source === "wikipedia" || source === "wikinews" || source === "wikisource") {
       const mw = await searchMediaWiki(
         source,
         state.discover.language || "en",
@@ -140,6 +140,7 @@ function renderResults(data) {
     let sourceTag = t("discover.sourceGutenberg", { id: escapeHtml(id) });
     if (book.source === "wikipedia") sourceTag = t("discover.sourceWikipedia");
     if (book.source === "wikinews") sourceTag = t("discover.sourceWikinews");
+    if (book.source === "wikisource") sourceTag = t("discover.sourceWikisource");
 
     const stats = discoverStats.get(id);
     const statsBlock = isGutenberg ? renderStatsBlock(id, stats) : "";

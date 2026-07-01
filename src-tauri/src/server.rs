@@ -28,12 +28,33 @@ pub fn make_token() -> String {
 /// Bind a `TinyHTTP` server on a random port and spawn a worker thread pool.
 ///
 /// Each incoming request is dispatched to `crate::router::handle_request` with the shared state.
+#[cfg(not(target_os = "android"))]
 pub fn start_server(
     store: Arc<Store>,
     token: String,
     app_handle: AppHandle,
 ) -> Result<u16, String> {
     let listener = TcpListener::bind((crate::HOST, 0)).map_err(|e| e.to_string())?;
+    start_server_from_listener(listener, store, token, app_handle)
+}
+
+#[cfg(target_os = "android")]
+pub fn start_server_on_port(
+    store: Arc<Store>,
+    token: String,
+    app_handle: AppHandle,
+    port: u16,
+) -> Result<u16, String> {
+    let listener = TcpListener::bind((crate::HOST, port)).map_err(|e| e.to_string())?;
+    start_server_from_listener(listener, store, token, app_handle)
+}
+
+fn start_server_from_listener(
+    listener: TcpListener,
+    store: Arc<Store>,
+    token: String,
+    app_handle: AppHandle,
+) -> Result<u16, String> {
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
     let server = Server::from_listener(listener, None).map_err(|e| e.to_string())?;
     let state = Arc::new(ServerState {

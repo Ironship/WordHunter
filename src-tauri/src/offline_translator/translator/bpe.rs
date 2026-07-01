@@ -145,7 +145,8 @@ impl BpeTokenizer {
             (r#"(["'])\s+"#, "$1"),
             (r"\s+", " "),
         ] {
-            if let Ok(regex) = Regex::new(pattern) {
+            let compiled = Regex::new(pattern);
+            if let Ok(regex) = compiled {
                 text = regex.replace_all(&text, replacement).to_string();
             }
         }

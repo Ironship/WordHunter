@@ -3,6 +3,7 @@ import { state } from "../state.js";
 import { t } from "../i18n.js";
 import { getReaderSelectionText } from "../views/reader.js";
 import { showToast } from "../toast.js";
+import { openAndroidUrl } from "../platform.js";
 
 export function hasNativeTextSelection() {
   const selection = window.getSelection?.();
@@ -30,6 +31,7 @@ export async function openDictionary(word) {
   url = url.replace("{{word}}", encodeURIComponent(word));
   const mode = state.preferences.dictionaryMode || "internal";
 
+  if (openAndroidUrl(url)) return;
   if (window.__qtBridge) {
     fetch("/__open_dict?url=" + encodeURIComponent(url) + "&mode=" + encodeURIComponent(mode))
       .catch(e => console.warn("Failed to open dictionary", e));

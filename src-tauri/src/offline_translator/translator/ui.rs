@@ -40,21 +40,22 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         "uk".to_string(),
         "ru".to_string(),
         "ja".to_string(),
+        "zh".to_string(),
     ];
     let mut to_langs = from_langs.clone();
     if !models.is_empty() {
         from_langs.clear();
         to_langs.clear();
         for model in models {
-            if let Some(from) = model.get("from").and_then(Value::as_str) {
-                if !from_langs.iter().any(|item| item == from) {
-                    from_langs.push(from.to_string());
-                }
+            if let Some(from) = model.get("from").and_then(Value::as_str)
+                && !from_langs.iter().any(|item| item == from)
+            {
+                from_langs.push(from.to_string());
             }
-            if let Some(to) = model.get("to").and_then(Value::as_str) {
-                if !to_langs.iter().any(|item| item == to) {
-                    to_langs.push(to.to_string());
-                }
+            if let Some(to) = model.get("to").and_then(Value::as_str)
+                && !to_langs.iter().any(|item| item == to)
+            {
+                to_langs.push(to.to_string());
             }
         }
         from_langs.sort();
@@ -166,20 +167,20 @@ pub(crate) fn translator_labels(locale: &str) -> std::collections::HashMap<Strin
         "en"
     };
     let path = format!("i18n/{safe_locale}.json");
-    if let Some(file) = router::WEB_ASSETS.get_file(&path) {
-        if let Ok(value) = serde_json::from_slice::<Value>(file.contents()) {
-            if let Some(translator) = value.get("translator").and_then(Value::as_object) {
-                for (key, value) in translator {
-                    if let Some(text) = value.as_str() {
-                        labels.insert(key.clone(), text.to_string());
-                    }
+    if let Some(file) = router::WEB_ASSETS.get_file(&path)
+        && let Ok(value) = serde_json::from_slice::<Value>(file.contents())
+    {
+        if let Some(translator) = value.get("translator").and_then(Value::as_object) {
+            for (key, value) in translator {
+                if let Some(text) = value.as_str() {
+                    labels.insert(key.clone(), text.to_string());
                 }
             }
-            if let Some(languages) = value.get("languages").and_then(Value::as_object) {
-                for (key, value) in languages {
-                    if let Some(text) = value.as_str() {
-                        labels.insert(format!("language.{key}"), text.to_string());
-                    }
+        }
+        if let Some(languages) = value.get("languages").and_then(Value::as_object) {
+            for (key, value) in languages {
+                if let Some(text) = value.as_str() {
+                    labels.insert(format!("language.{key}"), text.to_string());
                 }
             }
         }

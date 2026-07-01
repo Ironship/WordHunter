@@ -73,6 +73,32 @@ function renderInTextReview(entry, word, hasSmartSuggestion) {
   `;
 }
 
+function bindInTextReviewControls(currentText, word, entry, hasSmartSuggestion) {
+  const refreshInTextReview = (nextEntry = entry) => {
+    const review = els.wordPanel.querySelector(".in-text-review");
+    if (!review) {
+      renderWordPanel(currentText);
+      return;
+    }
+    review.outerHTML = renderInTextReview(nextEntry, word, hasSmartSuggestion);
+    bindInTextReviewControls(currentText, word, nextEntry, hasSmartSuggestion);
+  };
+
+  els.wordPanel.querySelector("[data-in-text-answer]")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    inTextAnswerVisible = true;
+    refreshInTextReview(entry);
+  });
+  els.wordPanel.querySelectorAll("[data-in-text-grade]").forEach((button) => button.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const updated = await applyReviewGrade(word, Number(button.dataset.inTextGrade));
+    if (!updated) return;
+    inTextReviewCompleted = true;
+    updateWordStatusInReader(word, updated.status, { renderPanel: false });
+    refreshInTextReview(updated);
+  }));
+}
+
 export function renderWordPanel(currentText) {
   const word = state.selectedWord;
   if (!word) {
@@ -101,8 +127,13 @@ export function renderWordPanel(currentText) {
   const smartSuggestionHtml = getSmartSuggestionHtml(context, word);
 
   els.wordPanel.innerHTML = `
-    <p class="eyebrow">${escapeHtml(statusLabel(entry.status))}</p>
-    <h2 class="word-title">${escapeHtml(word)}</h2>
+    <div class="word-panel-header">
+      <div>
+        <p class="eyebrow">${escapeHtml(statusLabel(entry.status))}</p>
+        <h2 class="word-title">${escapeHtml(word)}</h2>
+      </div>
+      <button class="icon-button word-panel-close" type="button" data-close-word-panel aria-label="${escapeAttribute(t("reader.close"))}" title="${escapeAttribute(t("reader.close"))}">×</button>
+    </div>
     <div class="word-form">
       <div class="status-options">
         ${STATUS_ORDER.map((status) => {
@@ -147,19 +178,11 @@ export function renderWordPanel(currentText) {
       </div>
     </div>
   `;
-  els.wordPanel.querySelector("[data-in-text-answer]")?.addEventListener("click", () => {
-    inTextAnswerVisible = true;
-    renderWordPanel(currentText);
-  });
-  els.wordPanel.querySelectorAll("[data-in-text-grade]").forEach((button) => button.addEventListener("click", async () => {
-    const updated = await applyReviewGrade(word, Number(button.dataset.inTextGrade));
-    if (!updated) return;
-    inTextReviewCompleted = true;
-    updateWordStatusInReader(word, updated.status);
-  }));
+  bindInTextReviewControls(currentText, word, entry, !!smartSuggestionHtml);
 }
 
-export function updateWordStatusInReader(word, status) {
+export function updateWordStatusInReader(word, status, options = {}) {
+  const { renderPanel = true } = options;
   if (!els.readerText) return;
   const tokens = els.readerText.querySelectorAll(`.word-token[data-word="${CSS.escape(word)}"]`);
   tokens.forEach(token => {
@@ -170,7 +193,7 @@ export function updateWordStatusInReader(word, status) {
     else token.style.removeProperty("--token-learning-bg");
   });
   const current = getTextById(state.currentTextId);
-  if (current && state.selectedWord === word) {
+  if (current && state.selectedWord === word && renderPanel) {
     renderWordPanel(current);
   }
 

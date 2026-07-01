@@ -11,6 +11,7 @@ import { syncSettingsControls } from "./preferences.js";
 import { getTextById } from "./views/reader.js";
 import { t } from "./i18n.js";
 import { els } from "./dom.js";
+import { applyPlatformUi, isAndroidPlatform } from "./platform.js";
 
 let ocrGpuStatus;
 let ocrGpuProbe;
@@ -23,7 +24,7 @@ const VIEW_RENDERERS = {
   graphs: () => renderGraphs(),
   discover: () => renderDiscover(),
   translator: () => renderTranslator(),
-  settings: () => { syncSettingsControls(); refreshOcrGpuStatus(); },
+  settings: () => { syncSettingsControls(); applyPlatformUi(); if (!isAndroidPlatform()) refreshOcrGpuStatus(); },
   help: null
 };
 

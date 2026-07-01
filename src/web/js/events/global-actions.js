@@ -1,5 +1,5 @@
-import { state, saveState } from "../state.js";
-import { clearReaderSelectionRange } from "../views/reader.js";
+import { state } from "../state.js";
+import { clearReaderSelection } from "../views/reader.js";
 import { gradeReview, loadMoreVocab, removeFromSrs } from "../views/vocabulary.js";
 import {
   deleteWord,
@@ -11,7 +11,7 @@ import {
   updateWordField
 } from "../vocab-actions.js";
 import { exportVocabularySelection } from "../sync-actions.js";
-import { setReaderFontSize } from "../preferences.js";
+import { setReaderFontSize, syncSettingsControls, updatePreferenceValue } from "../preferences.js";
 import { openYouGlish } from "../youglish.js";
 import { speakText, speakWord, stopSpeaking } from "../tts.js";
 import { getSelectedReaderActionText, openDictionary } from "./shared.js";
@@ -59,6 +59,12 @@ function handleUploadImageInput(uploadFileInput) {
 }
 
 function handleGlobalClick(event) {
+  const closeWordPanelBtn = event.target.closest("[data-close-word-panel]");
+  if (closeWordPanelBtn) {
+    clearReaderSelection(true);
+    return;
+  }
+
   const ttsWordBtn = event.target.closest("[data-tts-word]");
   if (ttsWordBtn) speakWord(getSelectedReaderActionText() || ttsWordBtn.dataset.ttsWord);
 
@@ -68,8 +74,11 @@ function handleGlobalClick(event) {
   const dictBtn = event.target.closest("[data-dict-word]");
   if (dictBtn) openDictionary(getSelectedReaderActionText() || dictBtn.dataset.dictWord);
 
-  if (state.currentView === "reader" && !event.target.closest("#reader-text, #word-panel")) {
-    clearReaderSelectionRange(true);
+  const clickPath = event.composedPath?.() || [];
+  const clickedReaderSurface = event.target.closest("#reader-text, #word-panel")
+    || clickPath.some((node) => node?.id === "reader-text" || node?.id === "word-panel");
+  if (state.currentView === "reader" && !clickedReaderSurface) {
+    clearReaderSelection(true);
   }
 
   const playTextBtn = event.target.closest("#tts-play-text");
@@ -78,11 +87,16 @@ function handleGlobalClick(event) {
   const stopTextBtn = event.target.closest("#tts-stop-text");
   if (stopTextBtn) stopSpeaking();
 
-  const readerVocabListBtn = event.target.closest("#reader-vocab-list");
-  if (readerVocabListBtn && state.currentTextId) {
-    state.filters.vocabTextId = state.currentTextId;
-    saveState();
-    import("../render.js").then(m => m.setView("vocabulary"));
+  const readerHighlightToggleBtn = event.target.closest("#reader-highlight-toggle");
+  if (readerHighlightToggleBtn) {
+    updatePreferenceValue("highlightTokens", state.preferences.highlightTokens === false);
+    syncSettingsControls();
+  }
+
+  const readerWordPanelToggleBtn = event.target.closest("#reader-word-panel-toggle");
+  if (readerWordPanelToggleBtn) {
+    updatePreferenceValue("readerWordPanelVisible", state.preferences.readerWordPanelVisible === false);
+    syncSettingsControls();
   }
 
   const exportVocabTxtBtn = event.target.closest("#export-vocab-txt");

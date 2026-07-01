@@ -1,5 +1,5 @@
 /**
- * Book text sources: Gutenberg full-text fetch, fallback chain, user book add.
+ * Book text sources: Gutenberg full-text fetch and user book add.
  */
 import { state, saveState, setLastReadTextId } from "../state.js";
 import { showToast } from "../toast.js";
@@ -8,13 +8,15 @@ import { setReaderLoading, clearReaderLoading, renderReader } from "../views/rea
 import { bookTexts, findBookById, loadBookText } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { cleanGutenbergText } from "../tokenizer_v2.js";
+import { cleanCatalogTitle } from "../utils.js";
 import { t } from "../i18n.js";
 import { renderLibrary } from "../views/library.js";
 import { importCustomText } from "./custom-text.js";
+import { addUserBookToActiveProfile, findCustomText, hasUserBook } from "./profile-library.js";
 
 export async function loadFullGutenbergText(book) {
   const cachedId = `gutenberg-full-${book.gutenbergId}`;
-  const cached = state.customTexts.find((item) => item.id === cachedId);
+  const cached = findCustomText(cachedId);
   if (cached && cached.text && cached.text.length >= 500) {
     state.currentTextId = cached.id;
     setLastReadTextId(cached.id);
@@ -73,10 +75,8 @@ export async function loadFullGutenbergText(book) {
 
 async function fetchTextWithFallback(url) {
   const attempts = [
-    url,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://r.jina.ai/${url}`
+    `/__proxy?url=${encodeURIComponent(url)}`,
+    url
   ];
   let lastError;
   for (const target of attempts) {
@@ -95,48 +95,13 @@ async function fetchTextWithFallback(url) {
 
 export async function addUserBook(result, { silent } = {}) {
   const isGutenberg = !result.source || result.source === "gutenberg";
+  const title = cleanCatalogTitle(result.title) || t("library.untitled");
 
-  if (!isGutenberg) {
-    const exists = state.customTexts.some(b => String(b.id) === String(result.id)) || state.userBooks.some(b => String(b.id) === String(result.id));
-    if (exists) return false;
-
-    showToast(t("toast.fetchingTxt", { title: result.title }));
-    try {
-      const apiUrl = `https://${result.languages[0]}.${result.domain}/w/api.php?action=query&prop=extracts&explaintext=1&pageids=${result.mwId}&format=json&origin=*`;
-      const res = await fetch(apiUrl);
-      const data = await res.json();
-      const page = data.query?.pages?.[result.mwId];
-      if (!page || !page.extract) throw new Error("No text found");
-
-      const cleanText = page.extract;
-      const sourceName = result.source === "wikipedia" ? t("discover.sourceWikipedia") : t("discover.sourceWikinews");
-      const sourceUrl = `https://${result.languages[0]}.${result.domain}/?curid=${result.mwId}`;
-
-      await importCustomText(result.title, cleanText, {
-        id: result.id,
-        author: sourceName,
-        source: sourceName,
-        sourceUrl: sourceUrl,
-        level: "custom",
-        coverDataUrl: result.coverDataUrl || ""
-      }, false);
-
-      // We don't add to userBooks because importCustomText already added to customTexts.
-
-      // Need to re-render discover to update button state
-      const { renderDiscover } = await import("../views/discover.js");
-      renderDiscover();
-
-    } catch (e) {
-      showToast(t("toast.fetchTxtFailed"));
-      return false;
-    }
-    return true;
-  }
+  if (!isGutenberg) return addMediaWikiBook(result, title);
 
   const gutenbergId = String(result.id);
   const id = `user-${gutenbergId}`;
-  const exists = state.userBooks.some((b) => b.id === id) || findBookById(id);
+  const exists = hasUserBook(id) || findBookById(id);
   if (exists) return false;
 
   const formats = result.formats || {};
@@ -144,16 +109,56 @@ export async function addUserBook(result, { silent } = {}) {
   const coverUrl = formats["image/jpeg"] || `https://www.gutenberg.org/cache/epub/${gutenbergId}/pg${gutenbergId}.cover.medium.jpg`;
   const author = (result.authors || []).map((a) => a.name).join(", ") || t("reader.sourceGutenberg");
 
-  state.userBooks.push({
-    id, gutenbergId, title: result.title || t("library.untitled"), author, level: "custom",
+  const newBook = addUserBookToActiveProfile({
+    id, gutenbergId, title, author, level: "custom",
     year: result.authors?.[0]?.birth_year ?? "", pages: t("reader.sourceGutenberg"),
     pageUrl: `https://www.gutenberg.org/ebooks/${gutenbergId}`, textUrl, coverUrl, coverPath: null,
     blurb: (result.summaries?.[0] || "").slice(0, 240), sample: ""
   });
   saveState();
-  if (!silent) showToast(t("toast.added", { title: result.title }));
-  const newBook = state.userBooks[state.userBooks.length - 1];
+  if (!silent) showToast(t("toast.added", { title }));
   loadBookText(newBook).catch(() => {});
   renderLibrary();
   return true;
+}
+
+async function addMediaWikiBook(result, title) {
+  const exists = state.customTexts.some(b => String(b.id) === String(result.id)) || state.userBooks.some(b => String(b.id) === String(result.id));
+  if (exists) return false;
+
+  showToast(t("toast.fetchingTxt", { title }));
+  try {
+    const apiLang = result.apiLang || result.languages?.[0] || "en";
+    const apiUrl = `https://${apiLang}.${result.domain}/w/api.php?action=query&prop=extracts&explaintext=1&pageids=${result.mwId}&format=json&origin=*`;
+    const res = await fetch(apiUrl);
+    const data = await res.json();
+    const page = data.query?.pages?.[result.mwId];
+    if (!page || !page.extract) throw new Error("No text found");
+
+    const sourceName = mediaWikiSourceName(result.source);
+    const sourceUrl = `https://${apiLang}.${result.domain}/?curid=${result.mwId}`;
+
+    await importCustomText(title, page.extract, {
+      id: result.id,
+      author: sourceName,
+      source: sourceName,
+      sourceUrl,
+      level: "custom",
+      coverDataUrl: result.coverDataUrl || ""
+    }, false);
+
+    const { renderDiscover } = await import("../views/discover.js");
+    renderDiscover();
+    return true;
+  } catch (e) {
+    console.warn(e);
+    showToast(t("toast.fetchTxtFailed"));
+    return false;
+  }
+}
+
+function mediaWikiSourceName(source) {
+  if (source === "wikinews") return t("discover.sourceWikinews");
+  if (source === "wikisource") return t("discover.sourceWikisource");
+  return t("discover.sourceWikipedia");
 }

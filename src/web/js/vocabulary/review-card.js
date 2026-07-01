@@ -9,6 +9,7 @@ import { t } from "../i18n.js";
 import { applyReviewNative, isDue, todayISO } from "../sm2.js";
 import { renderVocabulary } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
+import { setEntryStatus } from "./entry-state.js";
 
 import { reviewAnswerVisible } from "../views/vocabulary.js";
 
@@ -181,11 +182,14 @@ export function renderReview() {
 export async function applyReviewGrade(word, quality) {
   const entry = state.vocab[word];
   if (!entry) return null;
-  await applyReviewNative(entry, quality, new Date(), state.preferences?.srsAlgorithm || "sm2");
-  entry.updatedAt = new Date().toISOString();
-  if (quality >= 4 && entry.repetition >= 2) entry.status = "known";
-  else if (quality < 3) entry.status = "learning";
-  else if (entry.status === "new") entry.status = "learning";
+  const now = new Date();
+  await applyReviewNative(entry, quality, now, state.preferences?.srsAlgorithm || "sm2");
+  const updatedAt = now.toISOString();
+  let status = entry.status;
+  if (quality >= 4 && entry.repetition >= 2) status = "known";
+  else if (quality < 3) status = "learning";
+  else if (entry.status === "new") status = "learning";
+  setEntryStatus(entry, status, updatedAt);
   saveState();
   return entry;
 }
@@ -202,8 +206,7 @@ export async function gradeReview(word, quality) {
 export function removeFromSrs(word) {
   const entry = state.vocab[word];
   if (!entry) return;
-  entry.status = "ignored";
-  entry.updatedAt = new Date().toISOString();
+  setEntryStatus(entry, "ignored");
   saveState();
   state.reviewIndex = 0;
   renderReview();

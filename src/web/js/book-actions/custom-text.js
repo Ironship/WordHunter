@@ -9,8 +9,12 @@ import { parseTagList } from "../utils.js";
 import { t } from "../i18n.js";
 import { render, ensureCurrentText } from "../render.js";
 import { renderLibrary } from "../views/library.js";
-import { openBook } from "./index.js";
-import { forgetArchivedBook } from "./library-ops.js";
+import {
+  clearCurrentBookSelectionIfMatches,
+  findCustomText,
+  removeCustomTextFromActiveProfile,
+  upsertCustomText
+} from "./profile-library.js";
 
 export function slugify(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -24,6 +28,9 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   const now = new Date().toISOString();
   const slug = slugify(cleanTitle);
   const id = meta.id || `${state.preferences.learningLanguage}-custom-${slug || Date.now()}`;
+  const existingText = findCustomText(id, { coerce: true });
+  const pdfOcrPages = Array.isArray(meta.pdfOcrPages) ? meta.pdfOcrPages : existingText?.pdfOcrPages;
+  const hasPdfOcrPages = Array.isArray(pdfOcrPages) && pdfOcrPages.length > 0;
   const customText = {
     id: id,
     title: cleanTitle,
@@ -35,11 +42,11 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
     tags: parseTagList(meta.tags),
     sourceUrl: meta.sourceUrl || "",
     textUrl: meta.textUrl || "",
-    coverDataUrl: meta.coverDataUrl || "",
-    pdfOcrPages: Array.isArray(meta.pdfOcrPages) ? meta.pdfOcrPages : undefined,
-    pdfOcrEngine: meta.pdfOcrEngine || "",
-    pdfOcrPageCount: meta.pdfOcrPageCount || 0,
-    experimental: Boolean(meta.experimental),
+    coverDataUrl: meta.coverDataUrl || existingText?.coverDataUrl || "",
+    pdfOcrPages: hasPdfOcrPages ? pdfOcrPages : undefined,
+    pdfOcrEngine: meta.pdfOcrEngine || (hasPdfOcrPages ? existingText?.pdfOcrEngine || "" : ""),
+    pdfOcrPageCount: meta.pdfOcrPageCount || (hasPdfOcrPages ? existingText?.pdfOcrPageCount || 0 : 0),
+    experimental: Boolean(meta.experimental || (hasPdfOcrPages && existingText?.experimental)),
     createdAt: meta.createdAt || now,
     updatedAt: now
   };
@@ -51,9 +58,7 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   bookTexts.set(id, cleanText);
   invalidateBookId(id);
 
-  const idx = state.customTexts.findIndex(item => String(item.id) === String(customText.id));
-  if (idx !== -1) state.customTexts.splice(idx, 1);
-  state.customTexts.push(customText);
+  upsertCustomText(customText);
 
   if (window.__qtBridge) {
     const payload = { ...customText, text: cleanText };
@@ -69,6 +74,7 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   saveState();
   showToast(t("toast.textAdded"));
   if (openAfterImport) {
+    const { openBook } = await import("../book-actions.js");
     await openBook(id);
   } else {
     renderLibrary();
@@ -77,16 +83,10 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
 }
 
 export function removeCustomText(id) {
-  const idx = state.customTexts.findIndex(t => t.id === id);
-  if (idx === -1) return;
-  forgetArchivedBook(id);
-  state.customTexts.splice(idx, 1);
+  const textObj = removeCustomTextFromActiveProfile(id);
+  if (!textObj) return;
   invalidateBookId(id);
-  if (state.currentTextId === id) {
-    state.currentTextId = null;
-    state.selectedWord = null;
-    ensureCurrentText();
-  }
+  if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
 
   if (window.__qtBridge) {

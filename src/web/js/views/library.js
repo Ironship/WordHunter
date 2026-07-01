@@ -15,6 +15,7 @@ function sourceTagForBook(book) {
   const source = `${book.source || ""} ${book.pageUrl || ""}`.toLowerCase();
   if (source.includes("wikipedia.org") || source.includes("wikipedia")) return t("library.sourceWikipedia");
   if (source.includes("wikinews.org") || source.includes("wikinews")) return t("library.sourceWikinews");
+  if (source.includes("wikisource.org") || source.includes("wikisource")) return t("library.sourceWikisource");
   if (source.includes("gutenberg.org") || source.includes("project gutenberg")) return book.gutenbergId ? t("library.sourceGutenberg", { id: book.gutenbergId }) : t("library.sourceGutenbergNoId");
   return "";
 }
@@ -237,7 +238,25 @@ function renderBookCover(book) {
   return `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(sources[0])}" onerror="const fallbacks=this.dataset.fallback?.split('|')||[]; if(fallbacks.length) { this.src=fallbacks.shift(); this.dataset.fallback=fallbacks.join('|'); } else { this.parentElement.style.display='none'; }" data-fallback="${fallback}" alt="${escapeHtml(t("library.coverAlt"))}" /></div>`;
 }
 
+function bindLibraryFiltersToggle() {
+  if (!els.libraryPanel || !els.libraryFiltersToggle) return;
+  const setExpanded = (expanded) => {
+    els.libraryPanel.classList.toggle("library-filters-collapsed", !expanded);
+    els.libraryFiltersToggle.setAttribute("aria-expanded", String(expanded));
+    const labelKey = expanded ? "library.hideFilters" : "library.showFilters";
+    const label = t(labelKey);
+    els.libraryFiltersToggle.dataset.i18nAttr = `title=${labelKey},aria-label=${labelKey}`;
+    els.libraryFiltersToggle.title = label;
+    els.libraryFiltersToggle.setAttribute("aria-label", label);
+  };
+  setExpanded(!els.libraryPanel.classList.contains("library-filters-collapsed"));
+  els.libraryFiltersToggle.addEventListener("click", () => {
+    setExpanded(els.libraryPanel.classList.contains("library-filters-collapsed"));
+  });
+}
+
 export function bindLibraryEvents() {
+  bindLibraryFiltersToggle();
   bindSidebarResizer(els.librarySidebarResizer, {
     preference: "librarySidebarWidth", cssVariable: "--library-sidebar-width",
     defaultWidth: 360, minWidth: 280, maxWidth: 600, minMainWidth: 360,

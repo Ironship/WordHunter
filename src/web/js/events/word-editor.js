@@ -136,31 +136,35 @@ export function bindWordEditorEvents() {
   addWordConfirm.addEventListener("click", () => {
     const editing = addWordEditing?.value;
     const selectedStatus = getAddWordStatus();
+    const now = new Date().toISOString();
     if (editing) {
       const entry = state.vocab[editing];
       if (!entry) return;
+      const previousStatus = entry.status;
       const translation = addTranslationInput?.value.trim();
       if (translation !== undefined) entry.translation = translation;
       entry.status = selectedStatus;
+      if (selectedStatus === "known" && previousStatus !== "known") entry.knownAt = now;
       const example = addExampleInput?.value.trim();
       if (example) {
         entry.examples = [example, ...(entry.examples || []).filter(e => e !== example)].slice(0, 3);
       } else {
         entry.examples = entry.examples || [];
       }
-      entry.updatedAt = new Date().toISOString();
+      entry.updatedAt = now;
     } else {
       const word = addWordInput?.value.trim();
       if (!word) return;
-      getOrCreateEntry(word);
-      state.vocab[word].status = selectedStatus;
+      const entry = getOrCreateEntry(word);
+      const previousStatus = entry.status;
+      entry.status = selectedStatus;
+      if (selectedStatus === "known" && previousStatus !== "known") entry.knownAt = now;
+      entry.updatedAt = now;
       const translation = addTranslationInput?.value.trim();
-      if (translation) {
-        state.vocab[word].translation = translation;
-      }
+      if (translation) entry.translation = translation;
       const example = addExampleInput?.value.trim();
-      if (example && !state.vocab[word].examples?.includes(example)) {
-        state.vocab[word].examples = [example, ...(state.vocab[word].examples || [])].slice(0, 3);
+      if (example && !entry.examples?.includes(example)) {
+        entry.examples = [example, ...(entry.examples || [])].slice(0, 3);
       }
     }
     saveState();
