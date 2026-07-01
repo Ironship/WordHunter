@@ -15,6 +15,12 @@ export function bindNavigationEvents() {
   els.navItems.forEach((button) => button.addEventListener("click", () => {
     if (button.dataset.view === "reader") openReaderView(); else setView(button.dataset.view);
   }));
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-open-view]");
+    if (!button) return;
+    if (button.dataset.openView === "reader") openReaderView(); else setView(button.dataset.openView);
+  });
+  document.getElementById("app-reload")?.addEventListener("click", () => window.location.reload());
 
   els.themeToggle.addEventListener("click", () => {
     const order = ["auto", "light", "dark"];

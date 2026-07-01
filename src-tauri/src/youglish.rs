@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 const LANG_MAP: &[(&str, &str)] = &[
@@ -11,6 +11,9 @@ const LANG_MAP: &[(&str, &str)] = &[
     ("ru", "russian"),
     ("uk", "ukrainian"),
     ("ja", "japanese"),
+    ("zh", "chinese"),
+    ("la", "latin"),
+    ("grc", "greek"),
 ];
 
 pub fn yg_lang_from_code(code: &str) -> &'static str {
@@ -32,10 +35,7 @@ pub fn handle(payload: Value) -> Result<Value, String> {
         .ok_or_else(|| "missing op".to_string())?;
     match op {
         "lang" => {
-            let code = payload
-                .get("code")
-                .and_then(Value::as_str)
-                .unwrap_or("en");
+            let code = payload.get("code").and_then(Value::as_str).unwrap_or("en");
             Ok(json!({
                 "code": code,
                 "yg_lang": yg_lang_from_code(code),

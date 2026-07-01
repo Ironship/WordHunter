@@ -9,14 +9,18 @@ import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js"
 import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
+const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
 
 async function nativeSave(data, filename, mime) {
   if (window.__qtBridge) {
-    await fetch("/__export/save", {
+    const response = await fetch("/__export/save", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
       body: JSON.stringify({ data, filename, mime })
     });
+    if (!response.ok) throw new Error(`export HTTP ${response.status}`);
+    const result = await response.json().catch(() => ({ saved: true }));
+    return result.saved !== false;
   } else {
     const blob = new Blob([data], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -25,6 +29,25 @@ async function nativeSave(data, filename, mime) {
     link.download = filename;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+    return true;
+  }
+}
+
+async function backupBeforeClear() {
+  const payload = JSON.stringify(state, null, 2);
+  localStorage.setItem(LAST_BACKUP_KEY, payload);
+  const filename = `wordhunter-backup-before-clear-${new Date().toISOString().slice(0, 10)}.json`;
+  try {
+    if (!await nativeSave(payload, filename, "application/json")) {
+      showToast(t("toast.backupRequired"));
+      return false;
+    }
+    showToast(t("toast.backupCreated"));
+    return true;
+  } catch (error) {
+    console.warn("backup before clear failed", error);
+    showToast(t("toast.backupRequired"));
+    return false;
   }
 }
 
@@ -112,8 +135,7 @@ export async function exportVocabularySelection(format) {
       showToast(t("toast.vocabExportEmpty"));
       return;
     }
-    await nativeSave(result.content, result.filename, result.mime);
-    showToast(t("toast.exportReady"));
+    showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
   } catch (error) {
     console.warn("vocab_export failed", error);
     showToast(t("toast.importFailed"));
@@ -123,8 +145,7 @@ export async function exportVocabularySelection(format) {
 export async function exportState() {
   const payload = JSON.stringify(state, null, 2);
   const filename = `wordhunter-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  await nativeSave(payload, filename, "application/json");
-  showToast(t("toast.exportReady"));
+  showToast(await nativeSave(payload, filename, "application/json") ? t("toast.exportReady") : t("toast.exportCancelled"));
 }
 
 export function importStateFile(event) {
@@ -178,9 +199,10 @@ export function importStateFile(event) {
   event.target.value = "";
 }
 
-export function clearWords() {
+export async function clearWords() {
   const confirmed = window.confirm(t("toast.confirmClearWords"));
   if (!confirmed) return;
+  if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
   state.vocab = {};
   if (state.profiles?.[lang]) {
@@ -195,9 +217,10 @@ export function clearWords() {
   showToast(t("toast.dataCleared"));
 }
 
-export function clearLibrary() {
+export async function clearLibrary() {
   const confirmed = window.confirm(t("toast.confirmClearLibrary"));
   if (!confirmed) return;
+  if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
   const removedTextIds = state.customTexts.map((text) => text.id);
   if (window.__qtBridge) {
@@ -230,9 +253,10 @@ export function clearLibrary() {
   showToast(t("toast.dataCleared"));
 }
 
-export function clearLocalState() {
+export async function clearLocalState() {
   const confirmed = window.confirm(t("toast.confirmClear"));
   if (!confirmed) return;
+  if (!await backupBeforeClear()) return;
   localStorage.removeItem(STORAGE_KEY);
   replaceState(createDefaultState());
 
@@ -275,8 +299,7 @@ export async function exportAnkiTsv() {
       showToast(t("toast.ankiExportEmpty"));
       return;
     }
-    await nativeSave(result.content, result.filename, result.mime);
-    showToast(t("toast.exportReady"));
+    showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
   } catch (error) {
     console.warn("anki export failed", error);
   }

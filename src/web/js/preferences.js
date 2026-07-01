@@ -1,11 +1,31 @@
 // User preferences: theme, font, size — reads and saves state, updates DOM.
 import { state, saveState, createDefaultState } from "./state.js";
-import { FONT_STACKS, LINE_HEIGHTS, UI_SCALE } from "./constants.js";
+import { APP_LOCALES, FONT_STACKS, LEARNING_LANGUAGES, LINE_HEIGHTS, UI_SCALE } from "./constants.js";
 import { els } from "./dom.js";
 import { clamp, escapeHtml } from "./utils.js";
 import { t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
+import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
+import { isAndroidPlatform } from "./platform.js";
+
+let syncStatus = null;
+
+function getAndroidSyncFolderLabel() {
+  const getter = window.WordHunterAndroid?.getSyncFolderLabel;
+  if (!isAndroidPlatform() || typeof getter !== "function") return "";
+  try {
+    return String(getter.call(window.WordHunterAndroid) || "");
+  } catch (error) {
+    console.warn("Failed to read Android sync folder label", error);
+    return "";
+  }
+}
+
+export function setSyncStatus(status, vars = {}) {
+  syncStatus = { status, vars };
+  syncSettingsControls();
+}
 
 export function themeLabel(theme) {
   if (theme === "dark") return t("toast.themeDark");
@@ -39,8 +59,11 @@ export function applyPreferences() {
   document.documentElement.classList.toggle("no-highlight-known-ignored", prefs.hideKnownIgnored === true);
   document.documentElement.classList.toggle("no-card-stats", prefs.showCardStats === false);
   document.documentElement.classList.toggle("no-covers", prefs.showCovers === false);
+  document.documentElement.classList.toggle("reader-focus-mode", prefs.readerFocusMode === true && !isAndroidPlatform());
+  document.documentElement.classList.toggle("reader-word-panel-hidden", prefs.readerWordPanelVisible === false && !isAndroidPlatform());
+  document.documentElement.classList.toggle("touch-controls-mode", prefs.touchControls === true && !isAndroidPlatform());
 
-  const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
+  const uiScale = isAndroidPlatform() ? UI_SCALE.DEFAULT : clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
   document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
   document.documentElement.style.zoom = String(uiScale / 100);
 
@@ -53,23 +76,30 @@ export function applyPreferences() {
 
 export function syncSettingsControls() {
   if (els.prefTheme) els.prefTheme.value = state.preferences.theme || "auto";
-  if (els.prefLocale) els.prefLocale.value = state.preferences.locale || "pl";
-  if (els.prefLearningLanguage) els.prefLearningLanguage.value = state.preferences.learningLanguage || "en";
-  
+  els.prefLocales?.forEach((control) => { control.value = state.preferences.locale || "pl"; });
+  els.prefLearningLanguages?.forEach((control) => { control.value = state.preferences.learningLanguage || "en"; });
+
+  const setFlagImages = (kind, lang, supported, fallback) => {
+    const flagKey = supported.includes(lang) ? lang : fallback;
+    document.querySelectorAll(`[data-language-flag="${kind}"]`).forEach((img) => {
+      img.src = `flags/${flagKey}.svg`;
+      img.alt = t(`languages.${flagKey}`);
+    });
+    return flagKey;
+  };
+
+  const locale = state.preferences.locale || "pl";
+  const appFlagKey = setFlagImages("locale", locale, APP_LOCALES, "pl");
   const appFlagEl = document.getElementById("app-lang-flag");
   if (appFlagEl) {
-    const locale = state.preferences.locale || "pl";
-    const supportedAppFlags = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
-    const flagKey = supportedAppFlags.includes(locale) ? locale : "pl";
-    appFlagEl.innerHTML = `<img src="flags/${flagKey}.svg" alt="${escapeHtml(t(`languages.${flagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    appFlagEl.innerHTML = `<img src="flags/${appFlagKey}.svg" alt="${escapeHtml(t(`languages.${appFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
   }
 
+  const lang = state.preferences.learningLanguage || "en";
+  const learnFlagKey = setFlagImages("learning", lang, LEARNING_LANGUAGES, "en");
   const learnFlagEl = document.getElementById("learning-lang-flag");
   if (learnFlagEl) {
-    const lang = state.preferences.learningLanguage || "en";
-    const supportedFlags = ["en", "de", "es", "it", "fr", "pl", "uk", "ru", "ja"];
-    const flagKey = supportedFlags.includes(lang) ? lang : "en";
-    learnFlagEl.innerHTML = `<img src="flags/${flagKey}.svg" alt="${escapeHtml(t(`languages.${flagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    learnFlagEl.innerHTML = `<img src="flags/${learnFlagKey}.svg" alt="${escapeHtml(t(`languages.${learnFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
   }
 
   const prefs = state.preferences || {};
@@ -79,11 +109,19 @@ export function syncSettingsControls() {
   els.prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
   if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "wide";
+  if (els.prefReaderFocusMode) els.prefReaderFocusMode.checked = prefs.readerFocusMode === true;
+  if (els.prefReaderWordPanelVisible) els.prefReaderWordPanelVisible.checked = prefs.readerWordPanelVisible !== false;
+  if (els.readerWordPanelToggle) {
+    const visible = prefs.readerWordPanelVisible !== false;
+    els.readerWordPanelToggle.setAttribute("aria-pressed", String(visible));
+    els.readerWordPanelToggle.textContent = t(visible ? "settings.readerWordPanelHideControl" : "settings.readerWordPanelShowControl");
+  }
   if (els.prefWordsPerPage) els.prefWordsPerPage.value = prefs.wordsPerPage || "1000";
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
   if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
+  if (els.prefTtsWordHighlight) els.prefTtsWordHighlight.checked = prefs.ttsWordHighlight === true;
   if (els.prefRemovalBehavior) els.prefRemovalBehavior.value = prefs.removalBehavior || "ignored";
   if (els.ankiExportStatusFilters?.length) {
     const selected = Array.isArray(prefs.ankiExportStatuses) && prefs.ankiExportStatuses.length
@@ -101,7 +139,9 @@ export function syncSettingsControls() {
   const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
   if (els.prefUiScale) els.prefUiScale.value = String(uiScale);
   if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: uiScale });
+  if (els.prefTouchControls) els.prefTouchControls.checked = prefs.touchControls === true;
   els.prefHighlight.checked = prefs.highlightTokens !== false;
+  if (els.readerHighlightToggle) els.readerHighlightToggle.setAttribute("aria-pressed", String(prefs.highlightTokens !== false));
   if (els.prefHideKnown) els.prefHideKnown.checked = prefs.hideKnownIgnored === true;
   if (els.prefInTextReview) els.prefInTextReview.checked = prefs.inTextReview === true;
   if (els.prefDynamicLearningColors) els.prefDynamicLearningColors.checked = prefs.dynamicLearningColors === true;
@@ -117,10 +157,15 @@ export function syncSettingsControls() {
   if (els.prefReviewGraphType) els.prefReviewGraphType.value = prefs.reviewGraphType || "heatmap";
   els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
   if (els.prefAutoAddLearning) els.prefAutoAddLearning.checked = prefs.autoAddLearningOnly === true;
-  const provider = ["offline", "deepl", "google", "lmstudio"].includes(prefs.translationProvider) ? prefs.translationProvider : "google";
+  let provider = normalizeTranslationProvider(prefs.translationProvider);
+  if (isAndroidPlatform() && isDesktopOnlyTranslationProvider(provider)) {
+    provider = "google";
+    state.preferences.translationProvider = provider;
+    saveState();
+  }
   if (els.prefTranslationProvider) els.prefTranslationProvider.value = provider;
   if (els.prefDeepLApiKey) els.prefDeepLApiKey.value = prefs.deeplApiKey || "";
-  if (els.prefLmStudioEndpoint) els.prefLmStudioEndpoint.value = prefs.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions";
+  if (els.prefLmStudioEndpoint) els.prefLmStudioEndpoint.value = prefs.lmStudioEndpoint || DEFAULT_LM_STUDIO_ENDPOINT;
   if (els.prefLmStudioModel) els.prefLmStudioModel.value = prefs.lmStudioModel || "";
   if (els.prefDeepLApiKeyRow) els.prefDeepLApiKeyRow.hidden = provider !== "deepl";
   if (els.prefLmStudioEndpointRow) els.prefLmStudioEndpointRow.hidden = provider !== "lmstudio";
@@ -166,6 +211,19 @@ export function syncSettingsControls() {
       ? t("settings.dataFolderPath", { path: state.dataDirectory })
       : t("settings.dataFolderDefault");
   }
+  const syncDirectory = state.syncDirectory || getAndroidSyncFolderLabel();
+  if (els.syncDirectory) {
+    els.syncDirectory.textContent = syncDirectory
+      ? t("settings.syncFolderPath", { path: syncDirectory })
+      : t("settings.syncFolderDefault");
+  }
+  if (els.syncStatus) {
+    const key = syncStatus
+      ? `settings.syncStatus${syncStatus.status[0].toUpperCase()}${syncStatus.status.slice(1)}`
+      : (syncDirectory ? "settings.syncStatusReady" : "settings.syncStatusDefault");
+    els.syncStatus.textContent = t(key, syncStatus?.vars);
+  }
+  if (els.forceSync) els.forceSync.disabled = typeof window.flushPendingSave !== "function";
 }
 
 export function updatePreferenceValue(key, value) {

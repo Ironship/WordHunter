@@ -6,10 +6,22 @@ fn classic_tokenize_keeps_punctuation() {
     assert_eq!(
         parts,
         vec![
-            Token { kind: "word".into(), value: "Hello".into() },
-            Token { kind: "text".into(), value: ", ".into() },
-            Token { kind: "word".into(), value: "world".into() },
-            Token { kind: "text".into(), value: "!".into() },
+            Token {
+                kind: "word".into(),
+                value: "Hello".into()
+            },
+            Token {
+                kind: "text".into(),
+                value: ", ".into()
+            },
+            Token {
+                kind: "word".into(),
+                value: "world".into()
+            },
+            Token {
+                kind: "text".into(),
+                value: "!".into()
+            },
         ]
     );
 }
@@ -110,6 +122,13 @@ fn normalize_search_variants_creates_german_and_ascii() {
     assert!(variants.iter().any(|v| v == "grüße"));
     assert!(variants.iter().any(|v| v == "gruesse"));
     assert!(variants.iter().any(|v| v == "gruße"));
+}
+
+#[test]
+fn normalize_search_variants_creates_greek_accentless_form() {
+    let variants = normalize_search_variants("λόγος");
+    assert!(variants.iter().any(|v| v == "λόγος"));
+    assert!(variants.iter().any(|v| v == "λογος"));
 }
 
 #[test]

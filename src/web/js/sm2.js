@@ -42,7 +42,7 @@ function elapsedDaysSince(dateISO, now) {
  * @param {{repetition:number, interval:number, efactor:number}} prev
  * @returns {{repetition:number, interval:number, efactor:number}}
  */
-export function calculateSM2(quality, prev) {
+function calculateSM2(quality, prev) {
   const q = normalizeQuality(quality);
   const repetition = Number.isFinite(prev?.repetition) ? prev.repetition : SM2_DEFAULTS.repetition;
   const interval = Number.isFinite(prev?.interval) ? prev.interval : SM2_DEFAULTS.interval;
@@ -74,7 +74,7 @@ export function calculateSM2(quality, prev) {
  * Lightweight FSRS-style scheduler: tracks card stability and difficulty and
  * determines interval with target retention. Does not require external services.
  */
-export function calculateFSRS(quality, prev, now = new Date()) {
+function calculateFSRS(quality, prev, now = new Date()) {
   const rating = fsrsRating(quality);
   const repetition = Number.isFinite(prev?.repetition) ? prev.repetition : SM2_DEFAULTS.repetition;
   const baseStability = Number.isFinite(prev?.stability) && prev.stability > 0
@@ -122,7 +122,7 @@ export function todayISO(date = new Date()) {
 }
 
 /** Adds N days to a date and returns in YYYY-MM-DD format. */
-export function addDaysISO(days, from = new Date()) {
+function addDaysISO(days, from = new Date()) {
   const d = new Date(from);
   d.setDate(d.getDate() + Math.max(0, Math.round(days)));
   return todayISO(d);
@@ -147,7 +147,7 @@ export function isInTextReviewDue(entry, today = todayISO()) {
  * Applies a grade to a vocabulary entry: overwrites scheduling fields and nextDate.
  * Mutates the entry and returns it.
  */
-export function applyReview(entry, quality, now = new Date(), algorithm = "sm2") {
+function applyReview(entry, quality, now = new Date(), algorithm = "sm2") {
   const mode = algorithm === "fsrs" ? "fsrs" : "sm2";
   const next = mode === "fsrs" ? calculateFSRS(quality, entry, now) : calculateSM2(quality, entry);
   applyReviewResult(entry, next, now, mode);

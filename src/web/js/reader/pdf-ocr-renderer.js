@@ -4,7 +4,7 @@
  */
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
+import { escapeAttribute, clamp } from "../utils.js";
 import { t } from "../i18n.js";
 import { normalizeWord, getTextStats } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
@@ -227,5 +227,5 @@ function renderPdfOcrWord(item, page, globalIndex) {
     color && `--token-learning-bg:${color}`
   ].filter(Boolean).join(";");
 
-  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalIndex}" style="${style}" aria-label="${escapeAttribute(raw)}">${escapeHtml(raw)}</button>`;
+  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalIndex}" style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
 }

@@ -6,18 +6,27 @@ import { renderLibrary } from "../views/library.js";
 import { runDiscoverSearch, getDiscoverHandlers } from "../views/discover.js";
 import { addUserBook, removeUserBook, openBook } from "../book-actions.js";
 
-export function bindDiscoverEvents({ addUserBook, removeUserBook }) {
+export function bindDiscoverEvents() {
   const discoverHandlers = getDiscoverHandlers({
     onAdd: addUserBook,
     onRemove: removeUserBook,
     onOpen: openBook
   });
-  els.discoverForm.addEventListener("submit", (event) => {
-    event.preventDefault();
+  const submitSearch = () => {
     state.discover.query = els.discoverQuery.value.trim();
     state.discover.page = 1;
     saveState();
     runDiscoverSearch();
+  };
+  els.discoverForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitSearch();
+  });
+  els.discoverQuery.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    els.discoverQuery.blur();
+    submitSearch();
   });
   els.discoverSource.addEventListener("change", () => {
     state.discover.query = els.discoverQuery.value.trim();

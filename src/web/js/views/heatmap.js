@@ -3,6 +3,28 @@
 import { t } from "../i18n.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 
+export function buildContributionMonthLabels(weeks, weeksToShow, monthLabels) {
+  const months = [];
+  let lastMonth = -1;
+  for (let wi = 0; wi < weeks.length; wi++) {
+    const weekDate = new Date(weeks[wi][0].date);
+    const m = weekDate.getMonth();
+    if (m === lastMonth) continue;
+
+    const year = weekDate.getFullYear();
+    const label = weeksToShow > 60 && (m === 0 || wi === 0) ? `${monthLabels[m]} ${year}` : monthLabels[m];
+    const previous = months[months.length - 1];
+    if (previous && wi - previous.week < 2) {
+      if (previous.week === 0) months[months.length - 1] = { label, week: wi };
+      lastMonth = m;
+      continue;
+    }
+    months.push({ label, week: wi });
+    lastMonth = m;
+  }
+  return months;
+}
+
 export function renderContributionHeatmap(target, options = {}) {
   const {
     getValue,        // (isoDate: string) => number
@@ -48,16 +70,8 @@ export function renderContributionHeatmap(target, options = {}) {
     return `rgb(${r},${g},${b})`;
   }
 
-  const months = [];
-  let lastMonth = -1;
   const MONTHS = t("graphs.monthLabels").split("|");
-  for (let wi = 0; wi < weeks.length; wi++) {
-    const m = new Date(weeks[wi][0].date).getMonth();
-    if (m !== lastMonth) {
-      months.push({ label: MONTHS[m], week: wi });
-      lastMonth = m;
-    }
-  }
+  const months = buildContributionMonthLabels(weeks, weeksToShow, MONTHS);
 
   let html = '<div class="heatmap-wrap"><div class="heatmap-day-labels" style="width:10px;"></div><div class="heatmap-grid-area">';
   html += '<div class="heatmap-months">';

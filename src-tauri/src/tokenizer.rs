@@ -1,7 +1,7 @@
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
+use std::sync::LazyLock;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -12,27 +12,28 @@ pub struct Token {
     pub value: String,
 }
 
-const STRIP_PUNCTUATION: &str = "\u{201e}\u{201c}\u{201d}\"\u{2018}\u{2019}.,!?;:()[]{}<>\u{00ab}\u{00bb}";
+const STRIP_PUNCTUATION: &str =
+    "\u{201e}\u{201c}\u{201d}\"\u{2018}\u{2019}.,!?;:()[]{}<>\u{00ab}\u{00bb}";
 
-static CLASSIC_PATTERN: Lazy<Regex> = Lazy::new(|| {
+static CLASSIC_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*").expect("classic word pattern compiles")
 });
 
-static IMAGE_PATTERN: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\[IMG:[^\]]+\]").expect("image pattern compiles"));
+static IMAGE_PATTERN: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[IMG:[^\]]+\]").expect("image pattern compiles"));
 
-static GUTENBERG_START: Lazy<Regex> = Lazy::new(|| {
+static GUTENBERG_START: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\*\*\* START OF (THE|THIS) PROJECT GUTENBERG EBOOK[^\n]*\n")
         .expect("gutenberg start pattern compiles")
 });
 
-static GUTENBERG_END: Lazy<Regex> = Lazy::new(|| {
+static GUTENBERG_END: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"\*\*\* END OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*")
         .expect("gutenberg end pattern compiles")
 });
 
-static BLANK_LINES: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\n{3,}").expect("blank line pattern compiles"));
+static BLANK_LINES: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\n{3,}").expect("blank line pattern compiles"));
 
 pub fn resolve_algorithm(value: Option<&str>) -> &'static str {
     match value {
@@ -149,7 +150,9 @@ fn push_modern(block: &str, _lang: &str, parts: &mut Vec<Token>) {
         if segment.trim().is_empty() {
             continue;
         }
-        let is_word = segment.chars().any(|c| c.is_alphabetic() || c.is_alphanumeric());
+        let is_word = segment
+            .chars()
+            .any(|c| c.is_alphabetic() || c.is_alphanumeric());
         parts.push(Token {
             kind: if is_word { "word" } else { "text" }.to_string(),
             value: segment.to_string(),
@@ -243,10 +246,10 @@ pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>
             .and_then(|entry| entry.get("status"))
             .and_then(Value::as_str)
             .unwrap_or("new");
-        if let Some(count) = stats.get_mut(status) {
-            if let Some(n) = count.as_i64() {
-                *count = json!(n + *freq as i64);
-            }
+        if let Some(count) = stats.get_mut(status)
+            && let Some(n) = count.as_i64()
+        {
+            *count = json!(n + *freq as i64);
         } else {
             stats.insert(status.to_string(), json!(*freq as i64));
         }
@@ -261,49 +264,28 @@ pub fn handle(payload: Value) -> Result<Value, String> {
         .ok_or_else(|| "missing op".to_string())?;
     match op {
         "tokenize" => {
-            let text = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let lang = payload
-                .get("lang")
-                .and_then(Value::as_str)
-                .unwrap_or("en");
+            let text = payload.get("text").and_then(Value::as_str).unwrap_or("");
+            let lang = payload.get("lang").and_then(Value::as_str).unwrap_or("en");
             let algorithm = payload.get("algorithm").and_then(Value::as_str);
             Ok(json!({ "tokens": tokenize(text, lang, algorithm) }))
         }
         "normalize" => {
-            let value = payload
-                .get("value")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let value = payload.get("value").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "normalized": normalize_word(value) }))
         }
         "search_variants" => {
-            let value = payload
-                .get("value")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let value = payload.get("value").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "variants": normalize_search_variants(value) }))
         }
         "stats" => {
-            let text = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let lang = payload
-                .get("lang")
-                .and_then(Value::as_str)
-                .unwrap_or("en");
+            let text = payload.get("text").and_then(Value::as_str).unwrap_or("");
+            let lang = payload.get("lang").and_then(Value::as_str).unwrap_or("en");
             let algorithm = payload.get("algorithm").and_then(Value::as_str);
             let vocab = payload.get("vocab").cloned().unwrap_or(Value::Null);
             Ok(text_stats(text, &vocab, lang, algorithm))
         }
         "clean_gutenberg" => {
-            let raw = payload
-                .get("raw")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let raw = payload.get("raw").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "text": clean_gutenberg_text(raw) }))
         }
         other => Err(format!("unknown tokenizer op: {other}")),

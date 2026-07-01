@@ -32,7 +32,7 @@ function getCachedTotalPages(textId) {
   return _cachedTotalPages.textId === textId ? _cachedTotalPages.totalPages : null;
 }
 
-export function readerTotalPages() {
+function readerTotalPages() {
   return getCachedTotalPages(state.currentTextId);
 }
 
@@ -61,7 +61,7 @@ export function computePageSlice(tokens, readerPage, wordsPerPage) {
   return { pageStartIndex, pageEndIndex };
 }
 
-export function applyReaderPage(next) {
+function applyReaderPage(next) {
   if (next === state.readerPage) return;
   state.readerPage = next;
   if (!state.readerPages) state.readerPages = {};

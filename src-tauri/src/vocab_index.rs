@@ -1,6 +1,5 @@
 mod cache_key;
 mod handle;
-mod hash;
 mod index;
 mod stats;
 

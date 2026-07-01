@@ -9,8 +9,6 @@ src-tauri/ocr-runtime/bin/*
 !src-tauri/ocr-runtime/bin/.gitkeep
 src-tauri/ocr-runtime/models/*
 !src-tauri/ocr-runtime/models/.gitkeep
-src-tauri/ocr-runtime/dictionaries/*
-!src-tauri/ocr-runtime/dictionaries/.gitkeep
 src-tauri/gen/
 *.spec
 
@@ -23,6 +21,21 @@ dist/
 scratch/
 TODO/
 My_Data/
+
+# Local AI/session artifacts
+.agents/
+.codex/
+.codex-remote-attachments/
+
+# Local secrets / signing keys
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
 
 # Operating system files
 .DS_Store

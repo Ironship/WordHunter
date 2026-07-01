@@ -35,11 +35,29 @@ function Ensure-Cargo {
     }
 }
 
+function Get-Sha256Hex([string]$Path) {
+    if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+        return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
+    }
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace "-", "").ToUpperInvariant()
+        } finally {
+            $sha256.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 function Test-Sha256([string]$Path, [string]$ExpectedHash) {
     if (-not (Test-Path -LiteralPath $Path)) {
         return $false
     }
-    $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
+    $actual = Get-Sha256Hex $Path
     return $actual -eq $ExpectedHash.ToUpperInvariant()
 }
 

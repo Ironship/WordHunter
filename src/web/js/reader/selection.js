@@ -6,13 +6,14 @@ import { els } from "../dom.js";
 import { normalizeWord } from "../tokenizer_v2.js";
 import { getTextById } from "./renderer.js";
 import { renderWordPanel } from "./word-panel.js";
+import { renderShell } from "../views/shell.js";
 
-export function getReaderWordTokens() {
+function getReaderWordTokens() {
   if (!els.readerText) return [];
   return Array.from(els.readerText.querySelectorAll(".word-token"));
 }
 
-export function getRangeBounds(range) {
+function getRangeBounds(range) {
   if (!range) return null;
   const anchor = Number(range.anchor);
   const focus = Number(range.focus);
@@ -25,7 +26,7 @@ export function getRangeBounds(range) {
   };
 }
 
-export function getRangeText(tokens, range) {
+function getRangeText(tokens, range) {
   const bounds = getRangeBounds(range);
   if (!bounds) return "";
   const startToken = tokens[bounds.start];
@@ -83,6 +84,15 @@ export function clearReaderSelectionRange(renderSelection = false) {
   if (!state.readerSelectionRange) return;
   state.readerSelectionRange = null;
   saveState();
+  if (renderSelection) updateReaderSelection();
+}
+
+export function clearReaderSelection(renderSelection = false) {
+  if (!state.selectedWord && !state.readerSelectionRange) return;
+  state.selectedWord = null;
+  state.readerSelectionRange = null;
+  saveState();
+  renderShell();
   if (renderSelection) updateReaderSelection();
 }
 

@@ -7,7 +7,8 @@ import { state } from "../state.js";
 // Import for local use (bindReaderEvents)
 import {
   setReaderSelectionAnchorFromToken,
-  clearReaderSelectionRange
+  clearReaderSelectionRange,
+  clearReaderSelection
 } from "../reader/selection.js";
 
 import {
@@ -24,6 +25,7 @@ export {
   getReaderSelectionText,
   setReaderSelectionAnchorFromToken,
   clearReaderSelectionRange,
+  clearReaderSelection,
   extendReaderSelection,
   updateReaderSelection
 } from "../reader/selection.js";
@@ -48,6 +50,10 @@ export {
 
 export function bindReaderEvents() {
   import("../dom.js").then(({ els }) => {
+    let lastWordPanelInteractionAt = 0;
+    const rememberWordPanelInteraction = () => {
+      lastWordPanelInteractionAt = Date.now();
+    };
     bindSidebarResizer(els.readerSidebarResizer, {
       preference: "readerSidebarWidth", cssVariable: "--reader-sidebar-width",
       defaultWidth: 380, minWidth: 300, maxWidth: 720, minMainWidth: 420,
@@ -67,6 +73,28 @@ export function bindReaderEvents() {
         if (last && last.readerPage != null && last.readerPage !== state.readerPage) return;
         rememberReaderScrollPosition();
       }, 150);
+    }, { passive: true });
+    let swipeStart = null;
+    const beginSwipe = (clientX, clientY, target) => {
+      if (target?.closest?.(".pagination-controls, input, textarea, select")) return;
+      swipeStart = { x: clientX, y: clientY };
+    };
+    const finishSwipe = (clientX, clientY) => {
+      if (!swipeStart) return;
+      const dx = clientX - swipeStart.x;
+      const dy = clientY - swipeStart.y;
+      swipeStart = null;
+      if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      clearReaderSelection(false);
+      changeReaderPage(dx < 0 ? 1 : -1);
+    };
+    els.readerText.addEventListener("touchstart", (event) => {
+      const touch = event.touches[0];
+      if (touch) beginSwipe(touch.clientX, touch.clientY, event.target);
+    }, { passive: true });
+    els.readerText.addEventListener("touchend", (event) => {
+      const touch = event.changedTouches[0];
+      if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true });
     els.readerText.addEventListener("change", (event) => {
       const pageInput = event.target.closest("#page-jump-input");
@@ -107,15 +135,16 @@ export function bindReaderEvents() {
 
         selectWord(wordToSelect, normalizeWord);
       } else {
-        clearReaderSelectionRange(true);
+        clearReaderSelection(true);
       }
     });
     els.readerText.addEventListener("focusout", () => {
       setTimeout(() => {
+        if (Date.now() - lastWordPanelInteractionAt < 700) return;
         const active = document.activeElement;
         if (!active) return;
         if (active.closest?.("#reader-text .word-token, #word-panel")) return;
-        clearReaderSelectionRange(true);
+        clearReaderSelection(true);
       }, 150);
     });
     els.readerText.addEventListener("keydown", async (event) => {
@@ -159,7 +188,11 @@ export function bindReaderEvents() {
     });
 
     // Handle smart suggestion click
+    els.wordPanel.addEventListener("pointerdown", rememberWordPanelInteraction);
+    els.wordPanel.addEventListener("touchstart", rememberWordPanelInteraction, { passive: true });
+    els.wordPanel.addEventListener("focusin", rememberWordPanelInteraction);
     els.wordPanel.addEventListener("click", async (event) => {
+      rememberWordPanelInteraction();
       const suggestBtn = event.target.closest("[data-suggest-word]");
       if (suggestBtn) {
         const { selectWord } = await import("../vocab-actions.js");

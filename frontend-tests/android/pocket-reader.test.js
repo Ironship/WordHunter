@@ -1,0 +1,53 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+describe("Android Pocket reader", () => {
+  it("keeps Pocket reader word marking and page navigation touch-friendly", () => {
+    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
+    const sharedCss = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const globalActions = readFileSync(new URL("../../src/web/js/events/global-actions.js", import.meta.url), "utf8");
+    const readerEvents = readFileSync(new URL("../../src/web/js/views/reader.js", import.meta.url), "utf8");
+    const wordPanel = readFileSync(new URL("../../src/web/js/reader/word-panel.js", import.meta.url), "utf8");
+    const selection = readFileSync(new URL("../../src/web/js/reader/selection.js", import.meta.url), "utf8");
+    const shell = readFileSync(new URL("../../src/web/js/views/shell.js", import.meta.url), "utf8");
+
+    assert.doesNotMatch(html, /id="reader-vocab-list"/);
+    assert.doesNotMatch(globalActions, /reader-vocab-list/);
+    assert.match(globalActions, /event\.composedPath/);
+    assert.match(globalActions, /clickedReaderSurface/);
+    assert.match(readerEvents, /touchstart/);
+    assert.match(readerEvents, /touchend/);
+    assert.match(readerEvents, /changeReaderPage\(dx < 0 \? 1 : -1\)/);
+    assert.match(wordPanel, /data-close-word-panel/);
+    assert.match(wordPanel, /function bindInTextReviewControls/);
+    assert.match(wordPanel, /refreshInTextReview\(entry\)/);
+    assert.match(wordPanel, /event\.stopPropagation\(\)/);
+    assert.doesNotMatch(wordPanel, /data-in-text-answer[\s\S]{0,180}renderWordPanel\(currentText\)/);
+    assert.match(selection, /export function clearReaderSelection/);
+    assert.match(shell, /document\.documentElement\.dataset\.view = state\.currentView/);
+    assert.match(css, /\.pocket-mode\[data-view="reader"\] \.main-panel[\s\S]*overflow: hidden/);
+    assert.match(css, /\.pocket-mode\[data-view="reader"\] \.topbar[\s\S]*display: none/);
+    assert.match(css, /\.pocket-mode\[data-view="reader"\] \.reader-toolbar label[\s\S]*display: none/);
+    assert.match(css, /\.pocket-mode\[data-view="reader"\] \.reader-meta > div:first-child[\s\S]*display: none/);
+    assert.match(css, /#reader-view\.active \.pagination-controls[\s\S]*position: fixed/);
+    assert.match(css, /\.pocket-mode \.word-token[\s\S]*touch-action: manipulation/);
+    assert.match(css, /\.pocket-mode \.word-token\.pdf-ocr-word\s*{[\s\S]*padding: 0;[\s\S]*border-radius: 5px;/);
+    assert.match(css, /\.pocket-mode \.word-token\.status-new[\s\S]*box-shadow: inset 0 -0\.28em var\(--token-new-bg/);
+    assert.match(css, /\.pocket-mode \.word-token\.status-learning[\s\S]*box-shadow: inset 0 -0\.28em var\(--token-learning-bg/);
+    assert.doesNotMatch(css, /\.pocket-mode \.word-token\.status-learning[\s\S]*border-bottom-color/);
+    assert.match(css, /\.pocket-mode \.shortcut-badge[\s\S]*display: none/);
+    assert.match(css, /#reader-view \.toolbar-buttons[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+    assert.match(css, /#reader-view \.toolbar-buttons \[data-font\],[\s\S]*#reader-view \.reader-zoom-slider[\s\S]*display: none/);
+    assert.doesNotMatch(css, /#reader-view #reader-vocab-list/);
+    assert.match(css, /\.reader-sidebar-wrapper[\s\S]*top: calc\(100dvh/);
+    assert.match(css, /\.pocket-mode \.word-panel[\s\S]*overflow: visible/);
+    assert.match(css, /\.pocket-mode \.word-panel-header[\s\S]*position: static/);
+    assert.match(css, /\.pocket-mode \.word-panel-close[\s\S]*display: inline-flex/);
+    assert.match(sharedCss, /\.sm2-grades \.status-button\.sm2-grade-1[\s\S]*background: var\(--red-soft\)/);
+    assert.match(sharedCss, /\.sm2-grades \.status-button\.sm2-grade-3[\s\S]*background: var\(--amber-soft\)/);
+    assert.match(sharedCss, /\.sm2-grades \.status-button\.sm2-grade-5[\s\S]*background: var\(--green-soft\)/);
+    assert.match(sharedCss, /:root\[data-theme="dark"\] \.sm2-grades \.status-button\.sm2-grade-5/);
+  });
+});

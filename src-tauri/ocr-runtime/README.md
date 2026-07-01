@@ -3,7 +3,8 @@
 PDF OCR uses a bundled native PaddleOCR runner. No Python runtime is required by
 Word Hunter.
 
-Run this before building the installer:
+The build script prepares this automatically for `portable`, `installer`, and
+`all`. Run it manually only when refreshing the OCR runtime:
 
 ```powershell
 .\src-tauri\ocr-runtime\prepare-runtime.ps1

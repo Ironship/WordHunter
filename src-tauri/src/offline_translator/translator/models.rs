@@ -117,12 +117,14 @@ pub(crate) fn clean_translation(value: String) -> String {
         r"^\s*[/\\|]+\s*",
     ];
     for pattern in patterns {
-        if let Ok(regex) = Regex::new(pattern) {
+        let compiled = Regex::new(pattern);
+        if let Ok(regex) = compiled {
             cleaned = regex.replace_all(&cleaned, "").to_string();
         }
     }
     for (pattern, replacement) in [(r"\s+([,.;:!?])", "$1"), (r"\s+'", "'"), (r"\s+", " ")] {
-        if let Ok(regex) = Regex::new(pattern) {
+        let compiled = Regex::new(pattern);
+        if let Ok(regex) = compiled {
             cleaned = regex.replace_all(&cleaned, replacement).to_string();
         }
     }

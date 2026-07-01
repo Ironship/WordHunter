@@ -1,0 +1,102 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const localeDir = path.join("src", "web", "i18n");
+const localeFiles = fs.readdirSync(localeDir).filter((name) => name.endsWith(".json")).sort();
+const translatorPopupKeys = [
+  "title",
+  "sourceLabel",
+  "targetLabel",
+  "placeholder",
+  "targetPlaceholder",
+  "footer",
+  "copyBtn",
+  "copied"
+];
+
+function flatten(value, prefix = "", out = {}) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const key of Object.keys(value).sort()) flatten(value[key], prefix ? `${prefix}.${key}` : key, out);
+  } else {
+    out[prefix] = String(value ?? "");
+  }
+  return out;
+}
+
+function placeholders(text) {
+  return [...text.matchAll(/\{\{?([A-Za-z0-9_]+)\}?\}/g)].map((match) => match[1]).sort();
+}
+
+function walk(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(full);
+    return entry.isFile() && /\.(html|js)$/.test(entry.name) ? [full] : [];
+  });
+}
+
+function isLineComment(source, index) {
+  const lineStart = source.lastIndexOf("\n", index) + 1;
+  return source.slice(lineStart, index).trimStart().startsWith("//");
+}
+
+function staticI18nKeys() {
+  const keys = new Set();
+  for (const file of walk(path.join("src", "web"))) {
+    const source = fs.readFileSync(file, "utf8");
+    for (const match of source.matchAll(/data-i18n(?:-html)?="([^"]+)"/g)) {
+      if (!isLineComment(source, match.index)) keys.add(match[1]);
+    }
+    for (const match of source.matchAll(/data-i18n-attr="([^"]+)"/g)) {
+      if (isLineComment(source, match.index)) continue;
+      for (const part of match[1].split(/[;,]/)) {
+        const key = part.split("=").pop()?.trim();
+        if (key) keys.add(key);
+      }
+    }
+    for (const match of source.matchAll(/\bt\(\s*["']([^"']+)["']/g)) {
+      if (!isLineComment(source, match.index)) keys.add(match[1]);
+    }
+  }
+  return keys;
+}
+
+describe("i18n coverage", () => {
+  it("keeps locale key sets and placeholders in sync", () => {
+    const locales = new Map(localeFiles.map((file) => [
+      file,
+      flatten(JSON.parse(fs.readFileSync(path.join(localeDir, file), "utf8")))
+    ]));
+    const baseline = locales.get("en.json");
+    const baselineKeys = Object.keys(baseline).sort();
+
+    for (const [file, data] of locales) {
+      const keys = Object.keys(data).sort();
+      assert.deepEqual(keys.filter((key) => !(key in baseline)), [], `${file} has extra locale keys`);
+      assert.deepEqual(baselineKeys.filter((key) => !(key in data)), [], `${file} is missing locale keys`);
+
+      for (const key of baselineKeys) {
+        assert.deepEqual(placeholders(data[key]), placeholders(baseline[key]), `${file} placeholder mismatch at ${key}`);
+      }
+    }
+  });
+
+  it("ships every static UI key used by markup and JavaScript", () => {
+    const enKeys = new Set(Object.keys(flatten(JSON.parse(fs.readFileSync(path.join(localeDir, "en.json"), "utf8")))));
+    const missing = [...staticI18nKeys()].filter((key) => !enKeys.has(key)).sort();
+
+    assert.deepEqual(missing, []);
+  });
+
+  it("keeps dynamic translator popup labels in every locale", () => {
+    for (const file of localeFiles) {
+      const data = JSON.parse(fs.readFileSync(path.join(localeDir, file), "utf8"));
+      for (const key of translatorPopupKeys) {
+        assert.equal(typeof data.translator?.[key], "string", `${file} missing translator.${key}`);
+        assert.ok(data.translator[key].trim(), `${file} has empty translator.${key}`);
+      }
+    }
+  });
+});

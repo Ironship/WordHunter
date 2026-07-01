@@ -15,8 +15,9 @@ import { t } from "../i18n.js";
  * @returns {Promise<{results: object[], count: number, next: boolean, previous: boolean, continueToken: string|null}>}
  */
 export async function searchMediaWiki(source, lang, query, page, sort, continueToken, signal) {
-  const domain = source === "wikipedia" ? "wikipedia.org" : "wikinews.org";
-  const baseUrl = `https://${lang}.${domain}/w/api.php`;
+  const domain = mediaWikiDomain(source);
+  const apiLang = mediaWikiLang(source, lang);
+  const baseUrl = `https://${apiLang}.${domain}/w/api.php`;
   const currentContinue = page === 1 ? null : continueToken;
 
   let apiUrl = "";
@@ -39,11 +40,12 @@ export async function searchMediaWiki(source, lang, query, page, sort, continueT
   const pages = rawData.query?.pages ? Object.values(rawData.query.pages) : [];
 
   const mapPage = (item) => ({
-    id: `mw-${item.pageid}`,
+    id: source === "wikisource" ? `wikisource-${item.pageid}` : `mw-${item.pageid}`,
     mwId: item.pageid,
+    apiLang,
     title: item.title,
-    authors: [{ name: source === "wikipedia" ? t("discover.sourceWikipedia") : t("discover.sourceWikinews") }],
-    languages: [lang],
+    authors: [{ name: mediaWikiSourceName(source) }],
+    languages: [lang || apiLang],
     summaries: [item.extract ? item.extract.slice(0, 200) + "..." : ""],
     formats: {},
     source: source,
@@ -69,4 +71,21 @@ export async function searchMediaWiki(source, lang, query, page, sort, continueT
     previous: page > 1,
     continueToken: newContinueToken
   };
+}
+
+function mediaWikiDomain(source) {
+  if (source === "wikinews") return "wikinews.org";
+  if (source === "wikisource") return "wikisource.org";
+  return "wikipedia.org";
+}
+
+function mediaWikiLang(source, lang) {
+  if (source === "wikisource" && lang === "grc") return "el";
+  return lang || "en";
+}
+
+function mediaWikiSourceName(source) {
+  if (source === "wikinews") return t("discover.sourceWikinews");
+  if (source === "wikisource") return t("discover.sourceWikisource");
+  return t("discover.sourceWikipedia");
 }

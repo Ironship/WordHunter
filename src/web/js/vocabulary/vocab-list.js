@@ -56,6 +56,7 @@ export function renderVocabulary(resetLimit = true) {
   syncVocabExportButtons();
   syncVocabStatusCheckboxes();
   const textIndex = syncVocabTextFilter();
+  const pocketMode = document.documentElement.classList.contains("pocket-mode");
 
   if (resetLimit) vocabRenderCount = 50;
 
@@ -82,11 +83,15 @@ export function renderVocabulary(resetLimit = true) {
 
   els.vocabTableBody.innerHTML = entriesToRender.map((entry) => {
     const addedInSession = sessionAddedWords.has(entry.word);
-    return `
-    <tr class="${addedInSession ? "vocab-row-added-in-session" : ""}">
-      <td><strong>${escapeHtml(entry.word)}</strong></td>
-      <td><span class="status-chip status-${escapeHtml(entry.status)}">${escapeHtml(statusLabel(entry.status))}</span></td>
-      <td>
+    const translationField = pocketMode ? `
+        <textarea
+          class="vocab-translation-input${entry.translation ? "" : " empty"}"
+          rows="2"
+          data-word="${escapeAttribute(entry.word)}"
+          data-word-field="translation"
+          placeholder="${escapeAttribute(t("vocab.addTranslationPlaceholder"))}"
+          aria-label="${escapeAttribute(t("vocab.addTranslationAria", { word: entry.word }))}">${escapeHtml(entry.translation || "")}</textarea>
+      ` : `
         <input
           class="vocab-translation-input${entry.translation ? "" : " empty"}"
           type="text"
@@ -95,6 +100,13 @@ export function renderVocabulary(resetLimit = true) {
           data-word-field="translation"
           placeholder="${escapeAttribute(t("vocab.addTranslationPlaceholder"))}"
           aria-label="${escapeAttribute(t("vocab.addTranslationAria", { word: entry.word }))}">
+      `;
+    return `
+    <tr class="${addedInSession ? "vocab-row-added-in-session" : ""}">
+      <td><strong>${escapeHtml(entry.word)}</strong></td>
+      <td><span class="status-chip status-${escapeHtml(entry.status)}">${escapeHtml(statusLabel(entry.status))}</span></td>
+      <td>
+        ${translationField}
       </td>
       <td>${escapeHtml((entry.examples && entry.examples[0]) || entry.note || "")}</td>
       <td>

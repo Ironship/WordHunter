@@ -1,7 +1,7 @@
 {
   "$schema": "./gen/schemas/desktop-schema.json",
   "productName": "Word Hunter",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "identifier": "com.wordhunter.app",
   "build": {
     "frontendDist": "../src/web"
@@ -14,7 +14,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
     "icon": [
       "../src/assets/icon-32.png",
       "../src/assets/icon-128.png",
@@ -25,13 +24,6 @@
       "../src/assets/**/*",
       "ocr-runtime/bin/**/*",
       "ocr-runtime/models/**/*"
-    ],
-    "windows": {
-      "nsis": {
-        "installMode": "perMachine",
-        "installerIcon": "../src/assets/icon.ico",
-        "startMenuFolder": "Word Hunter"
-      }
-    }
+    ]
   }
 }

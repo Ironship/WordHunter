@@ -41,14 +41,6 @@ pub(crate) fn bootstrap_script(token: &str) -> String {
 (function() {{
   window.__qtBridge = true;
   window.WH_TOKEN = "{escaped}";
-  try {{
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', '/__store/load', false);
-    xhr.send(null);
-    if (xhr.status === 200) {{
-      window.__bridgeState = JSON.parse(xhr.responseText);
-    }}
-  }} catch (e) {{ console.warn('bridge preload failed', e); }}
   const origFetch = window.fetch.bind(window);
   window.fetch = function(input, init) {{
     try {{
@@ -80,7 +72,7 @@ pub(crate) fn serve_static(
         .first_or_octet_stream()
         .essence_str()
         .to_string();
-    response::respond(request, 200, file.contents().to_vec(), &mime, true)
+    response::respond(request, 200, file.contents().to_vec(), &mime, false)
 }
 
 pub(crate) fn sanitize_relative_path(path: &str) -> Result<PathBuf, String> {
@@ -140,7 +132,8 @@ pub(crate) fn serve_offline_translator_ui(request: Request, query: &str) -> Resu
     response::respond(request, 200, html, "text/html; charset=utf-8", false)
 }
 
-pub(crate) fn save_export(payload: Value) -> Result<(), String> {
+#[cfg(not(target_os = "android"))]
+pub(crate) fn save_export(payload: Value) -> Result<bool, String> {
     let data = payload.get("data").and_then(Value::as_str).unwrap_or("");
     let filename = payload
         .get("filename")
@@ -148,12 +141,20 @@ pub(crate) fn save_export(payload: Value) -> Result<(), String> {
         .unwrap_or("export.txt");
     if let Some(path) = rfd::FileDialog::new().set_file_name(filename).save_file() {
         fs::write(path, data).map_err(|e| e.to_string())?;
+        return Ok(true);
     }
-    Ok(())
+    Ok(false)
 }
 
+#[cfg(target_os = "android")]
+pub(crate) fn save_export(_payload: Value) -> Result<bool, String> {
+    Err("Export file picker is not available in Word Hunter Pocket yet".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
 pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, String> {
     let Some(path) = rfd::FileDialog::new()
+        .set_title("Choose WordHunter local data folder")
         .set_directory(state.store.dir())
         .pick_folder()
     else {
@@ -161,4 +162,38 @@ pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, Str
     };
     let path = state.store.relocate(path)?;
     Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn choose_data_dir(_state: &ServerState) -> Result<Option<String>, String> {
+    Err("Sync folder picker needs Android Storage Access Framework wiring".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn choose_sync_dir(state: &ServerState) -> Result<Option<(String, Value)>, String> {
+    let start = crate::paths::sync_dir(crate::APP_NAME)
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| state.store.dir());
+    let Some(path) = rfd::FileDialog::new()
+        .set_title("Choose WordHunter sync folder")
+        .set_directory(start)
+        .pick_folder()
+    else {
+        return Ok(None);
+    };
+    crate::paths::set_sync_dir(crate::APP_NAME, &path)?;
+    let snapshot = state.store.sync_with_directory(path.clone())?;
+    Ok(Some((path.to_string_lossy().into_owned(), snapshot)))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn choose_sync_dir(_state: &ServerState) -> Result<Option<(String, Value)>, String> {
+    Err("Sync folder picker is handled by the Android bridge".to_string())
+}
+
+pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
+    let dir = crate::paths::sync_dir(crate::APP_NAME)?
+        .ok_or_else(|| "sync folder is not configured".to_string())?;
+    state.store.sync_with_directory(dir)
 }

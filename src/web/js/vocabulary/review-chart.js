@@ -14,10 +14,10 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
-import { drawBarChart, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
+import { buildHeatmapActivityCounts, drawBarChart, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
 import { formatSrsMeta } from "./review-card.js";
 
-export function diffDays(fromISO, toISO) {
+function diffDays(fromISO, toISO) {
   // Interpret date-only strings as UTC midnight so the day difference is stable
   // across host time zones and DST transitions.
   const a = Date.parse(fromISO + "T00:00:00Z");
@@ -35,14 +35,9 @@ export function renderReviewChart(srsEntries, today) {
     const hEl = document.getElementById("review-heatmap");
     if (!hEl) return;
 
-    const due = {};
-    for (const e of srsEntries) {
-      const d = e.nextDate;
-      if (!d) continue;
-      due[d] = (due[d] || 0) + 1;
-    }
+    const { counts: activity } = buildHeatmapActivityCounts(Object.values(state.vocab || {}));
     renderContributionHeatmap(hEl, {
-      getValue: (isoDate) => due[isoDate],
+      getValue: (isoDate) => activity[isoDate],
       tooltip: (isoDate, count) => `${isoDate} · ${t("vocab.cardCount", { count })}`
     });
   } else {

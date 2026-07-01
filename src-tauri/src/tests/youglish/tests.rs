@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn maps_all_nine_languages() {
+fn maps_all_supported_languages() {
     assert_eq!(yg_lang_from_code("en"), "english");
     assert_eq!(yg_lang_from_code("de"), "german");
     assert_eq!(yg_lang_from_code("es"), "spanish");
@@ -11,6 +11,9 @@ fn maps_all_nine_languages() {
     assert_eq!(yg_lang_from_code("ru"), "russian");
     assert_eq!(yg_lang_from_code("uk"), "ukrainian");
     assert_eq!(yg_lang_from_code("ja"), "japanese");
+    assert_eq!(yg_lang_from_code("zh"), "chinese");
+    assert_eq!(yg_lang_from_code("la"), "latin");
+    assert_eq!(yg_lang_from_code("grc"), "greek");
 }
 
 #[test]
@@ -31,7 +34,7 @@ fn handle_langs_returns_full_map() {
     let result = handle(json!({ "op": "langs" })).unwrap();
     let map = result["langs"].as_object().unwrap();
     assert_eq!(map.get("en").unwrap(), "english");
-    assert_eq!(map.len(), 9);
+    assert_eq!(map.len(), 12);
 }
 
 #[test]

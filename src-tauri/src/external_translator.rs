@@ -1,6 +1,6 @@
-use serde_json::{json, Value};
-use url::form_urlencoded::Serializer;
+use serde_json::{Value, json};
 use url::Url;
+use url::form_urlencoded::Serializer;
 
 use crate::proxy::USER_AGENT;
 
@@ -90,8 +90,15 @@ fn translate_deepl(text: &str, from: &str, to: &str, key: &str) -> Result<String
 fn translate_google(text: &str, from: &str, to: &str) -> Result<String, String> {
     let mut query = Serializer::new(String::new());
     query.append_pair("client", "gtx");
-    query.append_pair("sl", if from.is_empty() { "auto" } else { from });
-    query.append_pair("tl", to);
+    query.append_pair(
+        "sl",
+        if from.is_empty() {
+            "auto"
+        } else {
+            google_lang(from)
+        },
+    );
+    query.append_pair("tl", google_lang(to));
     query.append_pair("dt", "t");
     query.append_pair("q", text);
     let url = format!(
@@ -124,7 +131,18 @@ fn deepl_lang(code: &str, target: bool) -> String {
     match code.trim().to_ascii_lowercase().as_str() {
         "en" if target => "EN-US".to_string(),
         "en" => "EN".to_string(),
+        "zh" if target => "ZH-HANS".to_string(),
+        "zh" => "ZH".to_string(),
+        "grc" => "EL".to_string(),
         other => other.to_ascii_uppercase().replace('-', "_"),
+    }
+}
+
+fn google_lang(code: &str) -> &str {
+    match code.trim().to_ascii_lowercase().as_str() {
+        "zh" => "zh-CN",
+        "grc" => "el",
+        _ => code,
     }
 }
 
@@ -184,7 +202,7 @@ fn is_local_lmstudio_url(url: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{deepl_lang, is_local_lmstudio_url};
+    use super::{deepl_lang, google_lang, is_local_lmstudio_url};
     use url::Url;
 
     #[test]
@@ -192,6 +210,15 @@ mod tests {
         assert_eq!(deepl_lang("en", true), "EN-US");
         assert_eq!(deepl_lang("en", false), "EN");
         assert_eq!(deepl_lang("pl", true), "PL");
+        assert_eq!(deepl_lang("zh", true), "ZH-HANS");
+        assert_eq!(deepl_lang("grc", false), "EL");
+    }
+
+    #[test]
+    fn google_uses_provider_codes_for_new_profiles() {
+        assert_eq!(google_lang("zh"), "zh-CN");
+        assert_eq!(google_lang("grc"), "el");
+        assert_eq!(google_lang("la"), "la");
     }
 
     #[test]

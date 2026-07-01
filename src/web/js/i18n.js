@@ -1,5 +1,7 @@
 // Simple translation system. Locale in `i18n/<code>.json`. Dot-separated keys → path.
-const SUPPORTED = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
+import { APP_LOCALES } from "./constants.js";
+
+const SUPPORTED = APP_LOCALES;
 const FALLBACK = "en";
 
 let currentLocale = FALLBACK;

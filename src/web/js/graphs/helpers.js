@@ -131,21 +131,38 @@ export function setGraphsLoading(visible) {
   }
 }
 
-export function renderHeatmap(_chartEntries) {
+export function activityDateForHeatmap(entry) {
+  return entry?.lastReviewedAt || entry?.addedAt || "";
+}
+
+export function buildHeatmapActivityCounts(entries) {
+  const counts = {};
+  let firstTime = Infinity;
+  for (const e of entries || []) {
+    if (e.status === "ignored") continue;
+    const d = activityDateForHeatmap(e);
+    if (!d) continue;
+    const time = new Date(d).getTime();
+    if (!Number.isFinite(time)) continue;
+    firstTime = Math.min(firstTime, time);
+    const day = new Date(time).toISOString().slice(0, 10);
+    counts[day] = (counts[day] || 0) + 1;
+  }
+  return { counts, firstTime };
+}
+
+export function renderHeatmap(_chartEntries, options = {}) {
   const el = document.getElementById("graphs-heatmap");
   if (!el) return;
   if (!Object.keys(state.vocab).length) { el.innerHTML = ""; return; }
 
-  const counts = {};
-  for (const e of _chartEntries || Object.values(state.vocab)) {
-    if (e.status === "ignored") continue;
-    const d = e.addedAt || e.lastReviewedAt;
-    if (!d) continue;
-    const day = new Date(d).toISOString().slice(0, 10);
-    counts[day] = (counts[day] || 0) + 1;
-  }
+  const { counts, firstTime } = buildHeatmapActivityCounts(_chartEntries || Object.values(state.vocab));
+  const weeksToShow = options.allTime && Number.isFinite(firstTime)
+    ? Math.max(52, Math.ceil((Date.now() - firstTime) / (7 * 86400000)) + 1)
+    : 52;
 
   renderContributionHeatmap(el, {
+    weeksToShow,
     getValue: (isoDate) => counts[isoDate],
     tooltip: (isoDate, count) => `${isoDate} · ${count} ${t("graphs.totalCards")}`
   });

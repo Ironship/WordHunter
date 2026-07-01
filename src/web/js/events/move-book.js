@@ -1,8 +1,9 @@
 import { state } from "../state.js";
 import { t } from "../i18n.js";
 import { moveBookToProfile } from "../book-actions.js";
+import { LEARNING_LANGUAGES } from "../constants.js";
 
-const MOVE_BOOK_LANGS = ["en", "de", "es", "it", "fr", "pl", "uk", "ru"];
+const MOVE_BOOK_LANGS = LEARNING_LANGUAGES;
 
 export function bindMoveBookEvents() {
   let moveBookTarget = null;
