@@ -1,0 +1,48 @@
+# Rust/Tauri build files
+build/
+build_work/
+src-tauri/target/
+src-tauri/ocr-runner/target/
+src-tauri/ocr-runner/Cargo.lock
+src-tauri/ocr-runtime/.cache/
+src-tauri/ocr-runtime/bin/*
+!src-tauri/ocr-runtime/bin/.gitkeep
+src-tauri/ocr-runtime/models/*
+!src-tauri/ocr-runtime/models/.gitkeep
+src-tauri/gen/
+*.spec
+
+# Build output / compiled executables
+outputs/
+output/
+dist/
+
+# Temporary local helper scripts / experiments
+scratch/
+TODO/
+My_Data/
+
+# Local AI/session artifacts
+.agents/
+.codex/
+.codex-remote-attachments/
+
+# Local secrets / signing keys
+.env
+.env.*
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Playwright test artifacts
+.playwright-mcp/
+
+# Kilo AI config — generated from kilo.jsonc
+.kilo

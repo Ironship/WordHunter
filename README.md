@@ -1,190 +1,236 @@
-# <img width="3410" height="1017" alt="Gemini_Generated_Image_1pfa6z1pfa6z1pfa" src="https://github.com/user-attachments/assets/5d236aa6-d669-49d0-8c41-5a2ee47d372b" />
+<p align="center">
+  <img src="src/web/favicon.svg" width="128" alt="Word Hunter logo">
+</p>
 
+<h1 align="center">Word Hunter</h1>
 
-# Easy spaced repetition learning tool with books and texts.
+Word Hunter is a local-first reader, vocabulary trainer, and language-learning
+workspace for desktop and Android. The Android version is called Word Hunter
+Pocket.
 
-<img width="1920" height="1040" alt="image" src="https://github.com/user-attachments/assets/fb3d4c09-d930-4302-830f-671fab587660" />
+The project is built around one idea: read real texts, click words you want to
+learn, keep the context, and review them later without losing control of your
+data.
 
+## Project Status
 
-[Word Hunter screenshot from 0.2.5 version work in progress]
+Current release snapshot: `0.3.5`.
 
-# Latest release [download here](https://github.com/Ironship/WordHunter/releases)
+Active targets:
 
+- Windows and Linux desktop: `Word Hunter`
+- Android: `Word Hunter Pocket`
 
-Learn foreign languages by reading real texts — offline, no subscription, no ads.
+Installers, portable archives, APKs, and AABs are published as GitHub Release
+assets, not tracked in the source tree.
 
-Word Hunter is a desktop app that combines an ebook reader with a smart spaced-repetition system. You click a word → the app remembers it for you → later it quizzes you at optimal intervals. The more you read, the richer your vocabulary becomes.
+## What It Includes
 
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
-[![PySide6](https://img.shields.io/badge/Qt-PySide6-green.svg)](https://www.qt.io/)
+- Local-first reading for pasted text, PDFs, EPUB files, URLs, subtitles, and
+  library imports.
+- Vocabulary states, spaced-repetition review, TTS, keyboard shortcuts, and
+  reading progress.
+- OCR-assisted PDF reading for scanned documents on desktop builds.
+- Translation and dictionary tools with language-aware handling for modern and
+  historical languages.
+- Android Pocket layout for mobile reading and review.
+- Optional folder sync for library data, vocabulary, review state, and backups.
 
----
+## Supported Learning Languages
 
-## 💡 Why we built it this way (Design Philosophy)
+Word Hunter keeps a separate library and vocabulary profile for each learning
+language:
 
-Word Hunter was designed with specific principles in mind to provide the best, distraction-free language learning experience:
+<table>
+  <tr>
+    <td><img src="src/web/flags/en.svg" width="24" alt="English flag"> English</td>
+    <td><img src="src/web/flags/de.svg" width="24" alt="German flag"> German</td>
+    <td><img src="src/web/flags/es.svg" width="24" alt="Spanish flag"> Spanish</td>
+  </tr>
+  <tr>
+    <td><img src="src/web/flags/it.svg" width="24" alt="Italian flag"> Italian</td>
+    <td><img src="src/web/flags/fr.svg" width="24" alt="French flag"> French</td>
+    <td><img src="src/web/flags/pl.svg" width="24" alt="Polish flag"> Polish</td>
+  </tr>
+  <tr>
+    <td><img src="src/web/flags/uk.svg" width="24" alt="Ukrainian flag"> Ukrainian</td>
+    <td><img src="src/web/flags/ru.svg" width="24" alt="Russian flag"> Russian</td>
+    <td><img src="src/web/flags/ja.svg" width="24" alt="Japanese flag"> Japanese</td>
+  </tr>
+  <tr>
+    <td><img src="src/web/flags/zh.svg" width="24" alt="Chinese flag"> Chinese (Simplified)</td>
+    <td><img src="src/web/flags/la.svg" width="24" alt="Latin flag artwork"> Latin</td>
+    <td><img src="src/web/flags/grc.svg" width="24" alt="Ancient Greek flag artwork"> Ancient Greek</td>
+  </tr>
+</table>
 
-- **100% Offline & Private:** We built this as a standalone desktop app, not a web service. Why? Because your learning data, books, and vocabulary are yours. Everything is stored locally on your machine. No accounts, no telemetry, no subscriptions.
-- **Reading-First Approach:** Vocabulary isn't learned in isolation. We tightly integrated the reader with the dictionary so you always learn words within their native context. The app automatically extracts the sentences where you found the word so you can review them later.
-- **Smart Language Features:** Languages have quirks. For example, German has separable verbs (e.g., *stehe ... auf*). We built a "Smart Suggestion" engine that detects these edge cases and lets you intuitively merge words together. We also fully support multi-word phrases (like *das Fenster*) because languages are about chunks of meaning, not just isolated tokens.
-- **Proven Algorithms:** Instead of reinventing the wheel, we implemented the tried-and-true SM-2 algorithm (the same one used by Anki). It guarantees that your flashcard reviews are spaced optimally, saving you time and maximizing retention.
+Translation, TTS, catalog, and offline-model availability can vary by language
+and provider.
 
----
+## Feature Walkthrough
 
-## 📚 Library — Your Reading Collection
+### Library, Import, and OCR
 
-Already have books to study from? Add them and start learning vocabulary instantly.
+The library collects imported texts, public-domain books, OCR/PDF entries, and
+reading progress in one place. Desktop keeps the full import workflow visible,
+including pasted text, ebooks, subtitles, and scanned PDF/OCR imports.
 
-- **Built-in texts** — a curated collection of books from Project Gutenberg, tagged with CEFR levels (A1–C1). Pick something appropriate for your level and read without second-guessing.
-- **Custom texts** — drop in any text file, pick the language and difficulty. Every new reading becomes a fresh vocabulary source.
-- **Edit books** — easily modify the title, author, cover, or even the full text of any added book directly from the library.
-- **Filters & sorting** — search by title/author, filter by reading level, sort by progress or popularity.
-- **Progress cards** — at a glance you see how many words you know, are learning, and still have ahead of you.
+<img src="docs/screenshots/pc-library.png" width="860" alt="Word Hunter desktop library with import panel">
 
----
+Word Hunter Pocket shows the same kind of library in a phone layout. Pocket is
+optimized for reading and review on Android, with a compact card list, large
+touch targets, collapsible search filters, and a side import drawer for lighter
+mobile imports.
 
-## 📖 Reader — read and learn at the same time
+<img src="docs/screenshots/pocket-library.png" width="300" alt="Word Hunter Pocket library">
 
-Open a book and start your journey. Words are color-coded based on your vocabulary:
+### Reader, Highlighting, and Word Panel
 
-- 🔴 **Red** = new, you haven't learned them yet
-- 🟡 **Yellow** = learning, should review soon
-- 🟢 **Green** = known, in your long-term memory
-- ⚪ **Gray** = ignored
+The reader highlights vocabulary by status directly in the text. Clicking a word
+opens the word panel with status buttons, translation, notes, context, dictionary
+actions, TTS, image hints, and in-text review controls.
 
-Click any word — a panel opens with info: translation, notes, example sentences from the text. The app automatically extracts the context where you encountered that word.
+<img src="docs/screenshots/pc-reader.png" width="860" alt="Word Hunter desktop reader with highlighted words and word panel">
 
-<img width="2560" height="1390" alt="GKkIAUvVTp" src="https://github.com/user-attachments/assets/91a13c3a-09f0-4539-8243-ceb53c98ce44" />
-[old screenshot from 0.1.1 version]
+Pocket keeps the same reading model, but changes the shape for mobile: bottom
+navigation, touch selection, a compact toolbar, and a bottom sheet-style word
+panel.
 
+<img src="docs/screenshots/pocket-reader.png" width="300" alt="Word Hunter Pocket reader with word panel">
 
-<img width="2560" height="1390" alt="iMsiMMczRv" src="https://github.com/user-attachments/assets/4a0e7ac8-194e-4d93-ab02-72d4831e66bb" />
-[old screenshot from 0.1 version]
+### Word Base
 
----
+Every saved word keeps its status, translation, example sentence, review data,
+and source context. The word base is the maintenance view for searching,
+filtering, editing, exporting, and cleaning vocabulary.
 
-## 🔊 Text-to-Speech — hear how every word sounds
+<img src="docs/screenshots/pc-word-base.png" width="860" alt="Word Hunter vocabulary list with statuses, translations, examples, and actions">
 
-No downloads needed — built-in speech synthesis reads any word or full paragraph aloud. You can slow it down to catch pronunciation better, and the voice matches your chosen learning language.
+### Flashcards and SRS
 
----
+Flashcards use the same vocabulary records as the reader. Word Hunter supports
+spaced repetition, due queues, review history, pronunciation, dictionary
+actions, reverse cards, and rating buttons.
 
-## 🧠 Vocabulary — manage your personal word bank
+<img src="docs/screenshots/pc-flashcards.png" width="860" alt="Word Hunter desktop flashcard review with SRS queue">
 
-The app auto-adds words when you click them in the reader (you can also add manually). Each word entry has:
+Pocket keeps flashcard review usable on a phone, with the card, answer controls,
+review heatmap, and queue adapted to the narrow screen.
 
-- **Status** — new, learning, known, ignored
-- **Translation** — write your own or leave it blank for later
-- **Notes** — save associations, mnemonics, anything that helps you remember
-- **Examples** — auto-extracted sentences from the text (up to 3 per word)
+<img src="docs/screenshots/pocket-flashcards.png" width="300" alt="Word Hunter Pocket flashcard review">
 
-Filter and search through thousands of words. Find something to delete or change? Edit it with a single click.
+### Graphs and Progress
 
----
+The graphs view turns vocabulary history into visible progress: total cards, due
+reviews, mature cards, active review cards, heatmap activity, and vocabulary
+growth levels.
 
-## 🃏 Flashcards — reviews that actually work
+<img src="docs/screenshots/pc-graphs.png" width="860" alt="Word Hunter desktop graphs with vocabulary progress and heatmap">
 
-Powered by the **SuperMemo 2** (SM-2) algorithm — the same one Anki and Memrise use. The app decides when you're due for review:
+The same progress view is available in Pocket, so review activity and vocabulary
+growth remain visible away from the desktop.
 
-- Remember a word well? → next review comes in a week, then a month
-- Forget it? → we'll bring it back tomorrow
-- The algorithm adapts frequency to your results automatically
+<img src="docs/screenshots/pocket-graphs.png" width="300" alt="Word Hunter Pocket graphs with vocabulary progress and heatmap">
 
-Reverse mode — learn both directions: target language → native and native → target.
+### Desktop and Pocket Sync
 
----
+Word Hunter is local-first. Desktop and Android can share custom texts, user
+books, vocabulary, settings, progress, and imported reading materials through a
+user-selected sync folder. The screenshots below show a shared demo library with
+vocabulary progress rendered on desktop and Pocket.
 
-## 🔍 Discover — find the perfect book for you
+| Desktop | Pocket |
+| --- | --- |
+| <img src="docs/screenshots/pc-library.png" width="420" alt="Word Hunter desktop library with synchronized learning data"> | <img src="docs/screenshots/pocket-library.png" width="220" alt="Word Hunter Pocket library with synchronized learning data"> |
 
-Looking for reading material at your level? Search Project Gutenberg's catalog directly from within the app via the Gutendex API:
+Pocket intentionally keeps heavy import work lighter than desktop. Larger
+conversion and OCR work is best done on desktop, then moved to Pocket through
+sync.
 
-- **Filter by language** — English, German, French, and more
-- **Level matching** — fairy tales → A2, fiction → B1, drama → B2, philosophy → C1
-- **Vocabulary stats** — before adding a book, see how many unique words it contains and what percentage you already know
-- **One-click add** — save your pick to the library instantly
+## Sync and Backups
 
----
+Word Hunter does not require an account or a central server. The app stores data
+locally and can copy changes through a folder chosen by the user.
 
-## ⚙️ Settings — tailor the app to yourself
+- Desktop can use a local data folder and an optional sync folder.
+- Android keeps local data inside the app and lets the user pick a separate sync
+  folder.
+- Sync transfers books, vocabulary, settings, progress, and imported reading
+  materials.
+- Deleted books and words stay deleted after sync instead of returning from an
+  older device copy.
+- Cloud folders can be delayed. When using Google Drive or similar providers,
+  use a dedicated Word Hunter folder and wait until cloud upload/download is
+  complete before opening another device.
+- Full backup export is useful before testing new sync setups.
 
-| What you can change | Why it matters |
-|---------------------|----------------|
-| **Theme** — light, dark, or auto | Read at night without straining your eyes |
-| **Interface language** — 8 languages (PL, EN, DE, ES, FR, IT, UK, RU) | Use the app in your native tongue |
-| **Learning language** — pick what you're studying | Adjusts translations and TTS voice automatically |
-| **Font & size** — serif, sans-serif, monospace; size slider | Read comfortably for hours on end |
-| **Line height** — compact, normal, loose | Matches your personal reading preference |
-| **Text alignment** — left / center / right / justified | Choose the layout that feels natural to you |
-| **Token highlighting** — toggle word colors on/off | Sometimes you just want clean text for printing |
-| **Speech speed** — slow, normal, fast | Listen at the pace your brain processes |
+## Supported Targets
 
----
+- Windows desktop
+- Linux desktop
+- Android Pocket
 
-## 🌐 9 Languages Supported
+macOS and iOS are not active targets right now.
 
-Word Hunter ships with full translations. Supported languages:
-
-🇵🇱 Polski · 🇬🇧 English · 🇩🇪 Deutsch · 🇪🇸 Español · 🇫🇷 Français · 🇮🇹 Italiano · 🇺🇦 Українська · 🇷🇺 Państwo Moskiewskie · 🇯🇵 日本語
-
-Interface language and learning language are independent — e.g., read in German while the app translates to Polish.
-
----
-
-## 💻 How it works? (for the curious)
-
-Word Hunter is a **single desktop application** — not a website, not a browser extension. You launch it and start reading immediately. Everything runs offline: book texts, vocabulary, reviews — all stored locally on your hard drive.
-
-When you add new words or change settings, data is saved to `vocab.json` (plain JSON) and an SQLite database — so your data is always visible, backupable, and easy to export.
-
----
-
-## 📦 Installation
+## Build From Source
 
 ### Requirements
-- Windows 10/11
 
-That's it. App is just a portable `.exe` file. No installation needed. User data is stored in `%APPDATA%\WordHunter`.
+- Rust `1.88` or newer with Cargo.
+- Tauri 2 native prerequisites for the desktop platform being built.
+- PowerShell when using the bundled `build.bat` helper on Windows.
+- Android SDK, NDK, and JDK for Android Pocket builds.
+- OCR runtime/model assets only when preparing desktop OCR support.
 
----
+### Common Commands
 
-## ☕ Support the Project
+```powershell
+.\build.bat test         # run shared, desktop, and Android frontend tests
+.\build.bat installer    # build outputs\Word.Hunter.Setup.exe
+.\build.bat portable     # build outputs\Word.Hunter.portable.zip
+.\build.bat apk          # build outputs\Word.Hunter.Pocket.debug.apk
+.\build.bat aab          # build outputs\Word.Hunter.Pocket.release.aab
+.\build.bat play         # build signed Google Play AAB
+.\build.bat ocr-runtime  # prepare bundled native PaddleOCR runtime
+```
 
-If Word Hunter helps you learn languages and you'd like to support its continued development, consider buying me a coffee:
+Rust backend tests can also be run directly:
 
-- [Suppi (PLN)](https://suppi.pl/aryo)
-- [Patronite](https://patronite.pl/aryo)
+```powershell
+cargo test --manifest-path src-tauri\Cargo.toml
+```
 
-Thank you! ❤️
+The build script writes distributable files to `outputs/`. That directory is
+generated output, not source.
 
----
+## Repository Layout
 
-## 📄 License
+- `src/web/` - shared frontend application code.
+- `src/web/platforms/` - platform-specific frontend styling and behavior.
+- `src-tauri/` - Tauri 2 Rust backend, commands, OCR/import logic, and platform
+  config.
+- `src-tauri/platforms/android/` - Android-specific backend boundary.
+- `frontend-tests/` - Node-based frontend and platform tests.
+- `docs/` - public documentation and screenshots.
+- `.cargo/` - Cargo configuration used by the workspace.
+- `build.bat` - Windows convenience entrypoint for tests and release artifacts.
 
-MIT License — see the `LICENSE` file.
+## Privacy and Data Ownership
 
----
+Word Hunter is designed as a local-first app:
 
-## 🙏 Credits
+- No account is required.
+- Books, custom texts, vocabulary, progress, and settings are stored locally.
+- Sync uses a folder chosen by the user.
+- Online requests happen only when the user uses features that need them, such
+  as public catalog discovery, dictionary links, online translation, or online
+  speech features.
+- User data should be backed up before risky sync experiments or before moving
+  data folders.
 
-- **Project Gutenberg** — free public domain books powering the built-in library
-- **Piotr Woźniak / SuperMemo** — classic SM-2 algorithm behind spaced repetition (also used by Anki and Memrise)
-- **Gutendex** — simple API wrapper around Project Gutenberg's catalog
-- **YouGlish** — pronunciation video search engine embedded via iframe
+## License
 
-## Why there is no source code?
+Word Hunter is licensed under `AGPL-3.0-or-later`.
 
-In current state app code is bunch of scripts which are a litle bit messy. I want to cleanup it and think about architecture or how to handle extensions. On version 1.0 I want to publish it as complete learning tool.
-
----
-
-*Word Hunter v0.2.7 — Learn languages by reading real texts.*
-
-
-### I have found similar projects. I didn't copy them I found them AFTER i made my own app but as we all seek to learn i dont mind to mention those other projects.
-
-- https://www.vocabtracker.com - online word tracking tool
-- https://github.com/word-hunter/word-hunter - chrome extension. What a coincidence it even has same name xD but its only for english as i see
-- https://github.com/word-hunter/flow-read - This seems very similar to my app.
-
-if i find more i will link it here.
+Closed-source commercial derivative use requires a separate written commercial
+license. See `COMMERCIAL-LICENSE.md` for details.

@@ -1,0 +1,58 @@
+[package]
+name = "word-hunter"
+version = "0.3.5"
+description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
+authors = ["Word Hunter"]
+edition = "2024"
+rust-version = "1.88"
+license = "AGPL-3.0-or-later"
+
+[[bin]]
+name = "word-hunter-rustified"
+path = "src/main.rs"
+
+[lib]
+name = "word_hunter"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+encoding_rs = "0.8"
+html-escape = "0.2"
+include_dir = "0.7"
+mime_guess = "2"
+percent-encoding = "2"
+rand = "0.8"
+regex = "1"
+roxmltree = "0.20"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2.11.3", features = [] }
+tempfile = "3"
+time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
+tiny_http = "0.12"
+tokio = { version = "1", features = ["rt", "time"] }
+unicode-normalization = "0.1"
+unicode-segmentation = "1"
+ureq = { version = "2", features = ["json"] }
+url = "2"
+zip = "2"
+
+[target.'cfg(target_os = "android")'.dependencies]
+pdf-extract = "0.12"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+ctranslate2 = { version = "2.1.1", default-features = false, features = ["sentencepiece"] }
+ctranslate2-sys = { version = "0.1.5", features = ["ruy", "crt-dynamic"] }
+edge-tts-rust = "0.1.3"
+open = "5"
+rfd = "0.15"
+
+[patch.crates-io]
+ctranslate2 = { path = "vendor/ctranslate2" }
+ctranslate2-sys = { path = "vendor/ctranslate2-sys" }

@@ -1,0 +1,24 @@
+{
+  "productName": "Word Hunter Pocket",
+  "identifier": "com.wordhunter.pocket",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "Word Hunter Pocket",
+        "url": "http://127.0.0.1:38619/index.html",
+        "width": 395,
+        "height": 880
+      }
+    ]
+  },
+  "bundle": {
+    "resources": [
+      "../src/assets/**/*"
+    ],
+    "android": {
+      "minSdkVersion": 24
+    }
+  }
+}
