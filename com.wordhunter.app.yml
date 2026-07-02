@@ -30,9 +30,14 @@ modules:
         CARGO_HOME: /run/build/word-hunter/cargo
         CARGO_NET_OFFLINE: "true"
         CTRANSLATE2_RELEASE: "4.6.0"
+        ORT_LIB_LOCATION: /run/build/word-hunter/src-tauri/target/flatpak-onnxruntime
     build-commands:
       - cargo --offline build --release --manifest-path src-tauri/Cargo.toml
+      - cargo --offline build --release --manifest-path src-tauri/ocr-runner/Cargo.toml
       - install -Dm755 src-tauri/target/release/word-hunter-rustified /app/bin/word-hunter-rustified
+      - install -Dm755 src-tauri/ocr-runner/target/release/wordhunter-paddleocr /app/bin/ocr-runtime/bin/wordhunter-paddleocr
+      - install -Dm755 src-tauri/target/flatpak-pdfium/libpdfium.so /app/bin/ocr-runtime/bin/libpdfium.so
+      - install -Dm644 src-tauri/target/flatpak-ocr-models/*.onnx -t /app/bin/ocr-runtime/models/
       - install -Dm644 flatpak/com.wordhunter.app.desktop /app/share/applications/com.wordhunter.app.desktop
       - install -Dm644 flatpak/com.wordhunter.app.metainfo.xml /app/share/metainfo/com.wordhunter.app.metainfo.xml
       - install -Dm644 src/assets/icon-16.png /app/share/icons/hicolor/16x16/apps/com.wordhunter.app.png
@@ -66,6 +71,22 @@ modules:
       - flatpak/cargo-sources.json
       - type: patch
         path: flatpak/patches/sentencepiece-sys-cstdint.patch
+
+      - type: archive
+        archive-type: tar-gzip
+        url: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.22.0/x86_64-unknown-linux-gnu.tgz
+        sha256: ed1716de95974bf47ab0223ca33734a0b5a5d09a181225d0e8ed62d070aea893
+        dest: src-tauri/target/flatpak-onnxruntime
+      - type: archive
+        archive-type: tar-gzip
+        url: https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F7920/pdfium-linux-x64.tgz
+        sha256: 49ab3afbd4e6c1e284b5f2898129c8bb8a10fd785c1c5392c8c1fc70242f9ced
+        dest: src-tauri/target/flatpak-pdfium
+      - type: archive
+        archive-type: zip
+        url: https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip
+        sha256: 2fa4055b10dc4e9c1433444fe29f8d5acca2fccc0a0e86b3313caa5cc9e56b7a
+        dest: src-tauri/target/flatpak-ocr-models
 
       - type: archive
         url: https://github.com/OpenNMT/CTranslate2/archive/refs/tags/v4.6.0.tar.gz

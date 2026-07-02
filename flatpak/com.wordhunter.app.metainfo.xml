@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.6.1" date="2026-07-02">
+      <description>
+        <ul>
+          <li>Fixed Flatpak sync folder selection so the chosen folder is stored only after a successful sync and uses XDG config/data locations.</li>
+          <li>Fixed Flatpak/Linux OCR GPU platform detection for more reliable startup diagnostics.</li>
+          <li>Bundled the Flatpak CPU OCR runner, PDFium library, and PaddleOCR models so scanned-PDF OCR works in the Linux package.</li>
+          <li>Refreshed Windows packaging so installer and portable builds include the required GNU runtime DLLs.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.6" date="2026-07-02">
       <description>
         <ul>

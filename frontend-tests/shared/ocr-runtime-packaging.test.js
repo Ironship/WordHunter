@@ -26,4 +26,17 @@ describe("OCR runtime packaging", () => {
     assert.match(readme, /bin\\libstdc\+\+-6\.dll/);
     assert.match(readme, /Word\.Hunter\.portable\.exe/);
   });
+
+  it("bundles the Linux OCR runtime in the Flatpak manifest", () => {
+    const manifest = readFileSync(new URL("../../com.wordhunter.app.yml", import.meta.url), "utf8");
+
+    assert.match(manifest, /ORT_LIB_LOCATION: .*flatpak-onnxruntime/);
+    assert.match(manifest, /cargo --offline build --release --manifest-path src-tauri\/ocr-runner\/Cargo\.toml/);
+    assert.match(manifest, /wordhunter-paddleocr \/app\/bin\/ocr-runtime\/bin\/wordhunter-paddleocr/);
+    assert.match(manifest, /flatpak-pdfium\/libpdfium\.so \/app\/bin\/ocr-runtime\/bin\/libpdfium\.so/);
+    assert.match(manifest, /src-tauri\/target\/flatpak-ocr-models\/\*\.onnx/);
+    assert.match(manifest, /x86_64-unknown-linux-gnu\.tgz/);
+    assert.match(manifest, /pdfium-linux-x64\.tgz/);
+    assert.match(manifest, /Paddle\.OCR\.V5\.zip/);
+  });
 });

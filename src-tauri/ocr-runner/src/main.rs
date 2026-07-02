@@ -141,9 +141,7 @@ fn main() -> Result<()> {
 
         let (lines, words, text, bounds_version) =
             match extract_pdf_text_layer(&page, page_image.width(), page_image.height())? {
-                Some((lines, words, text)) => {
-                    (lines, words, text, Some(TEXT_LAYER_BOUNDS_VERSION))
-                }
+                Some((lines, words, text)) => (lines, words, text, Some(TEXT_LAYER_BOUNDS_VERSION)),
                 None => {
                     let ocr = ensure_ocr(&mut ocr, &models_dir, args.threads)?;
                     let (lines, words, text) = run_page_ocr(ocr, &page_image, &args)
@@ -406,7 +404,10 @@ mod tests {
             words,
             "Fahrer- und Konstrukteursweltmeisterschaft werden parallel ermittelt",
         );
-        let texts = split.iter().map(|word| word.text.as_str()).collect::<Vec<_>>();
+        let texts = split
+            .iter()
+            .map(|word| word.text.as_str())
+            .collect::<Vec<_>>();
 
         assert_eq!(texts, vec!["Konstrukteursweltmeisterschaft", "werden"]);
         assert!(split[0].width < 160.0);
@@ -441,7 +442,10 @@ mod tests {
             words,
             "0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 Die Reifen gehören",
         );
-        let texts = split.iter().map(|word| word.text.as_str()).collect::<Vec<_>>();
+        let texts = split
+            .iter()
+            .map(|word| word.text.as_str())
+            .collect::<Vec<_>>();
 
         assert_eq!(&texts[texts.len() - 3..], &["Die", "Reifen", "gehören"]);
     }
@@ -571,16 +575,15 @@ fn configure_ort(device: DeviceMode) -> Result<()> {
 }
 
 fn write_gpu_status(args: &Args) -> Result<()> {
+    if !cfg!(windows) {
+        return print_gpu_status("unavailable");
+    }
+
     let models_dir = args
         .models_dir
         .clone()
         .unwrap_or(runtime_root()?.join("models"));
-    let gpu_device = if cfg!(windows) {
-        DeviceMode::DirectMl
-    } else {
-        DeviceMode::Cpu
-    };
-    let status = if configure_ort(gpu_device)
+    let status = if configure_ort(DeviceMode::DirectMl)
         .and_then(|_| load_ocr(&models_dir, args.threads).map(|_| ()))
         .is_ok()
     {
@@ -588,6 +591,11 @@ fn write_gpu_status(args: &Args) -> Result<()> {
     } else {
         "unavailable"
     };
+    print_gpu_status(status)?;
+    Ok(())
+}
+
+fn print_gpu_status(status: &'static str) -> Result<()> {
     println!(
         "{}",
         serde_json::to_string(&GpuStatus { status }).context("failed to serialize GPU status")?
@@ -841,7 +849,8 @@ fn extract_pdf_text_layer(
         return Ok(None);
     }
 
-    let text = clean_native_plain_page_text(&plain_text).unwrap_or_else(|| native_text_from_words(&words));
+    let text =
+        clean_native_plain_page_text(&plain_text).unwrap_or_else(|| native_text_from_words(&words));
     let lines = words.iter().map(native_word_to_line).collect();
     Ok(Some((lines, words, text)))
 }
@@ -1153,7 +1162,9 @@ fn match_word_to_plain_tokens(
     if word_key.is_empty() {
         return None;
     }
-    let end = tokens.len().min(cursor.saturating_add(PLAIN_TOKEN_SCAN_WINDOW));
+    let end = tokens
+        .len()
+        .min(cursor.saturating_add(PLAIN_TOKEN_SCAN_WINDOW));
     for start in cursor..end {
         if let Some(parts) = match_word_at_plain_token(&word_key, tokens, start) {
             return Some((start, parts));
@@ -1169,7 +1180,9 @@ fn match_word_at_plain_token(
 ) -> Option<Vec<String>> {
     let mut joined = String::new();
     let mut parts = Vec::new();
-    let end = tokens.len().min(start.saturating_add(PLAIN_TOKEN_JOIN_LIMIT));
+    let end = tokens
+        .len()
+        .min(start.saturating_add(PLAIN_TOKEN_JOIN_LIMIT));
     for token in &tokens[start..end] {
         joined.push_str(&token.key);
         parts.push(token.text.clone());
@@ -1266,7 +1279,8 @@ fn plain_text_word_fragment_can_merge(left: &str, right: &str, fragment_gap: boo
 }
 
 fn native_pdf_fragment_gap(previous: PixelBounds, next: PixelBounds) -> bool {
-    native_horizontal_gap(previous, next) <= previous.height().min(next.height()).clamp(1.0, 48.0) * 0.35
+    native_horizontal_gap(previous, next)
+        <= previous.height().min(next.height()).clamp(1.0, 48.0) * 0.35
 }
 
 fn text_ends_with_joining_hyphen(text: &str) -> bool {
@@ -1311,10 +1325,7 @@ fn normalize_pdf_text_for_lookup(text: &str) -> String {
         .chars()
         .filter(|ch| !matches!(ch, '\u{00ad}' | '\u{200b}'))
         .collect::<String>();
-    cleaned
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+    cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn clean_native_plain_page_text(text: &str) -> Option<String> {
