@@ -2,8 +2,8 @@ mod date;
 mod fsrs;
 mod sm2;
 
-use serde_json::{json, Value};
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use serde_json::{Value, json};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use self::date::{add_days_iso, today_from_iso};
 use self::fsrs::calculate_fsrs;

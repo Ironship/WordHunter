@@ -20,10 +20,44 @@ export function ensureActiveLibraryCollections() {
 }
 
 function ensureProfile(lang) {
-  if (!state.profiles[lang]) {
+  if (!state.profiles || typeof state.profiles !== "object" || Array.isArray(state.profiles)) state.profiles = {};
+  if (!state.profiles[lang] || typeof state.profiles[lang] !== "object" || Array.isArray(state.profiles[lang])) {
     state.profiles[lang] = { vocab: {}, customTexts: [], userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [] };
   }
+  const profile = state.profiles[lang];
+  if (!profile.vocab || typeof profile.vocab !== "object") profile.vocab = {};
+  if (!Array.isArray(profile.customTexts)) profile.customTexts = [];
+  if (!Array.isArray(profile.userBooks)) profile.userBooks = [];
+  if (!Array.isArray(profile.hiddenBuiltInBooks)) profile.hiddenBuiltInBooks = [];
+  if (!Array.isArray(profile.archivedBookIds)) profile.archivedBookIds = [];
   return state.profiles[lang];
+}
+
+function withLanguagePrefix(id, lang) {
+  const rawId = String(id || "");
+  return rawId.match(/^[a-z]{2,3}-/) ? rawId.replace(/^[a-z]{2,3}-/, `${lang}-`) : `${lang}-${rawId}`;
+}
+
+function customTextIdsAcrossProfiles() {
+  const ids = new Set();
+  for (const profile of Object.values(state.profiles || {})) {
+    if (!Array.isArray(profile?.customTexts)) continue;
+    for (const text of profile.customTexts) {
+      if (text?.id) ids.add(String(text.id));
+    }
+  }
+  return ids;
+}
+
+function uniqueCustomTextId(candidate) {
+  const ids = customTextIdsAcrossProfiles();
+  let nextId = candidate;
+  let suffix = 2;
+  while (ids.has(nextId)) {
+    nextId = `${candidate}-${suffix}`;
+    suffix += 1;
+  }
+  return nextId;
 }
 
 export function findCustomText(id, { coerce = false } = {}) {
@@ -86,10 +120,12 @@ export function removeUserBookFromActiveProfile(id) {
 export function moveCustomTextToProfile(id, targetLang) {
   const textObj = removeCustomTextFromActiveProfile(id);
   if (!textObj) return null;
-  const newId = id.replace(/^[a-z]{2}-/, `${targetLang}-`);
+  const targetProfile = ensureProfile(targetLang);
+  const newId = uniqueCustomTextId(withLanguagePrefix(id, targetLang));
   textObj.id = newId;
+  textObj.lang = targetLang;
   textObj.updatedAt = new Date().toISOString();
-  ensureProfile(targetLang).customTexts.push(textObj);
+  targetProfile.customTexts.push(textObj);
   return { textObj, oldId: id, newId };
 }
 

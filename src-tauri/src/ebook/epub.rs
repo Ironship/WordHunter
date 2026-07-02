@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::io::{Cursor, Read};
 
 use percent_encoding::percent_decode_str;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use zip::ZipArchive;
 
 use super::text::{clean_imported_ebook_text, decode_epub_text, strip_xhtml_to_text};
@@ -104,8 +104,7 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
     }
 
     let cover_data_url =
-        cover_data_url(&mut archive, &manifest, cover_id.as_deref(), &opf_dir)
-            .unwrap_or_default();
+        cover_data_url(&mut archive, &manifest, cover_id.as_deref(), &opf_dir).unwrap_or_default();
     let text = clean_imported_ebook_text(&text_parts.join("\n\n"));
     if text.is_empty() {
         return Err("No readable text found in EPUB".to_string());

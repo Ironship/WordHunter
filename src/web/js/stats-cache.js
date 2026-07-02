@@ -111,7 +111,7 @@ export function getCachedTextStats(book, text, vocab, lang = "en", algorithm = "
     return null;
   }
 
-  // ponytail: fallback preserves phrase matching when Workers are unavailable.
+  // Fallback preserves phrase matching when Workers are unavailable.
   const stats = getTextStats(text, vocab, lang, algorithm);
   textStatsCache.set(signature, { text, stats });
   return stats;

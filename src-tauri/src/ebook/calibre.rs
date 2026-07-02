@@ -89,7 +89,11 @@ pub(crate) fn convert_with_calibre(data: &[u8], suffix: &str) -> Result<String, 
     if !status.success() {
         let stderr_text = String::from_utf8_lossy(&stderr).trim().to_string();
         let stdout_text = String::from_utf8_lossy(&stdout).trim().to_string();
-        return Err(if stderr_text.is_empty() { stdout_text } else { stderr_text });
+        return Err(if stderr_text.is_empty() {
+            stdout_text
+        } else {
+            stderr_text
+        });
     }
 
     let text = fs::read(&target).map_err(|e| e.to_string())?;

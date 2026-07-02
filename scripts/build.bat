@@ -8,7 +8,8 @@ exit /b %ERRORLEVEL%
 # POWERSHELL_PAYLOAD
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $env:BUILD_SCRIPT
+$ScriptDir = Split-Path -Parent $env:BUILD_SCRIPT
+$Root = Split-Path -Parent $ScriptDir
 $Outputs = Join-Path $Root "outputs"
 $RustManifest = Join-Path $Root "src-tauri\Cargo.toml"
 $RustExe = Join-Path $Root "src-tauri\target\release\word-hunter-rustified.exe"
@@ -22,6 +23,9 @@ $OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.debug.apk"
 $OutputAndroidEmulatorDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.emulator.debug.apk"
 $OutputAndroidReleaseAab = Join-Path $Outputs "Word.Hunter.Pocket.release.aab"
 $RequiredTauriCliVersion = "2.11.4"
+$WindowsRuntimeScript = Join-Path $Root "scripts\windows-runtime.ps1"
+
+. $WindowsRuntimeScript
 
 function Write-Step([string]$Message) {
     Write-Host ""
@@ -63,6 +67,97 @@ function Invoke-WithCmakeBuildParallelLimit([scriptblock]$Action) {
             $env:CMAKE_BUILD_PARALLEL_LEVEL = $previousParallel
         } else {
             Remove-Item Env:\CMAKE_BUILD_PARALLEL_LEVEL -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-PackagedWindowsRuntimeDllNames([string]$Directory) {
+    if (-not (Test-Path -LiteralPath $Directory)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $Directory -File -ErrorAction SilentlyContinue |
+        Where-Object { $WindowsRuntimeDllNames -contains $_.Name.ToLowerInvariant() } |
+        ForEach-Object { $_.Name })
+}
+
+function Copy-AppRuntimeDlls([string]$ExecutablePath, [string]$DestinationDir) {
+    $exeDir = Split-Path -Parent $ExecutablePath
+    $runtimeDlls = Copy-RequiredWindowsRuntimeDlls `
+        -ExecutablePath $ExecutablePath `
+        -DestinationDir $DestinationDir `
+        -ExtraSearchDirs @($exeDir, (Join-Path $exeDir "deps"))
+
+    foreach ($dll in Get-PackagedWindowsRuntimeDllNames $DestinationDir) {
+        Write-Note "Bundled $dll"
+    }
+    return @($runtimeDlls)
+}
+
+function New-WindowsRuntimeTauriConfig([string[]]$RuntimeDlls, [string]$ExecutableDir) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return ""
+    }
+
+    $resources = [ordered]@{
+        "../src/assets/**/*" = "src/assets/"
+        "ocr-runtime/bin/**/*" = "ocr-runtime/bin/"
+        "ocr-runtime/models/**/*" = "ocr-runtime/models/"
+    }
+    foreach ($dll in $RuntimeDlls) {
+        $resources["target/release/$dll"] = $dll
+    }
+
+    $config = [ordered]@{
+        bundle = [ordered]@{
+            resources = $resources
+        }
+    }
+    $configPath = Join-Path $ExecutableDir "wordhunter-runtime-tauri.conf.json"
+    $config | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath -Encoding UTF8
+    return $configPath
+}
+
+function Assert-NsisScriptsContainRuntimeDlls([string]$ExecutableDir, [string[]]$RuntimeDlls) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return
+    }
+    $nsisDir = Join-Path $ExecutableDir "nsis"
+    if (-not (Test-Path -LiteralPath $nsisDir)) {
+        Write-Note "NSIS script directory was not found; skipping generated script runtime DLL inspection."
+        return
+    }
+
+    $scripts = @(Get-ChildItem -LiteralPath $nsisDir -Recurse -File -Filter "installer.nsi" -ErrorAction SilentlyContinue)
+    if ($scripts.Count -eq 0) {
+        Write-Note "Generated installer.nsi was not found; skipping generated script runtime DLL inspection."
+        return
+    }
+
+    $content = ($scripts | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+    foreach ($dll in $RuntimeDlls) {
+        if ($content -notmatch [regex]::Escape($dll)) {
+            Fail "Generated NSIS script is missing bundled runtime DLL: $dll"
+        }
+    }
+}
+
+function Assert-ArchiveContainsRuntimeDlls([string]$ArchivePath, [string[]]$RuntimeDlls) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return
+    }
+    $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+    if (-not $sevenZip) {
+        $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
+    }
+    if (-not $sevenZip) {
+        Write-Note "7-Zip was not found; skipping archive runtime DLL inspection for $ArchivePath."
+        return
+    }
+
+    $listing = & $sevenZip.Source l $ArchivePath
+    foreach ($dll in $RuntimeDlls) {
+        if (-not ($listing -match [regex]::Escape($dll))) {
+            Fail "$ArchivePath is missing bundled runtime DLL: $dll"
         }
     }
 }
@@ -183,7 +278,7 @@ function Get-AndroidRustTarget([string]$Target) {
     switch ($Target) {
         "aarch64" { return "aarch64-linux-android" }
         "x86_64" { return "x86_64-linux-android" }
-        default { Fail "Unsupported Android target for build.bat: $Target" }
+        default { Fail "Unsupported Android target for scripts\build.bat: $Target" }
     }
 }
 
@@ -400,8 +495,10 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
         Fail "Rust build finished, but expected exe was not found: $RustExe"
     }
 
+    Remove-Item -LiteralPath $PortableDir -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $PortableDir
     Copy-Item -LiteralPath $RustExe -Destination $OutputPortable -Force
+    $portableRuntimeDlls = Copy-AppRuntimeDlls $RustExe $PortableDir
     $portableOcrRuntime = Join-Path $PortableDir "ocr-runtime"
     Remove-Item -LiteralPath $portableOcrRuntime -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $portableOcrRuntime
@@ -409,6 +506,7 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
         Copy-Item -LiteralPath (Join-Path $Root "src-tauri\ocr-runtime\$runtimeDir") -Destination $portableOcrRuntime -Recurse -Force
     }
     Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $OutputPortableZip -Force
+    Assert-ArchiveContainsRuntimeDlls $OutputPortableZip $portableRuntimeDlls
     Write-Host ""
     Write-Host "Done: $OutputPortableZip" -ForegroundColor Green
 }
@@ -424,13 +522,28 @@ function Build-Installer([switch]$SkipRuntime) {
     Ensure-TauriCli
 
     Invoke-WithCmakeBuildParallelLimit {
+        Invoke-External "cargo.exe" @("build", "--release", "--manifest-path", $RustManifest)
+    }
+    if (-not (Test-Path -LiteralPath $RustExe)) {
+        Fail "Rust build finished, but expected exe was not found: $RustExe"
+    }
+    $rustExeDir = Split-Path -Parent $RustExe
+    $installerRuntimeDlls = Copy-AppRuntimeDlls $RustExe $rustExeDir
+    $runtimeTauriConfig = New-WindowsRuntimeTauriConfig $installerRuntimeDlls $rustExeDir
+
+    Invoke-WithCmakeBuildParallelLimit {
         Push-Location -LiteralPath (Join-Path $Root "src-tauri")
         try {
-            Invoke-External "cargo.exe" @("tauri", "build")
+            $tauriArgs = @("tauri", "build")
+            if ($runtimeTauriConfig) {
+                $tauriArgs += @("--config", $runtimeTauriConfig)
+            }
+            Invoke-External "cargo.exe" $tauriArgs
         } finally {
             Pop-Location
         }
     }
+    Assert-NsisScriptsContainRuntimeDlls $rustExeDir $installerRuntimeDlls
 
     $installer = Get-ChildItem -LiteralPath $TauriBundleDir -Filter "*.exe" -File -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
@@ -440,6 +553,7 @@ function Build-Installer([switch]$SkipRuntime) {
     }
 
     Copy-Item -LiteralPath $installer.FullName -Destination $OutputInstaller -Force
+    Assert-ArchiveContainsRuntimeDlls $OutputInstaller $installerRuntimeDlls
     Write-Host ""
     Write-Host "Done: $OutputInstaller" -ForegroundColor Green
 }
@@ -598,19 +712,19 @@ function Show-Usage {
     Write-Host "Word Hunter Rustified build"
     Write-Host ""
     Write-Host "Usage from PowerShell:"
-    Write-Host "  .\build.bat              build portable ZIP and Setup installer"
-    Write-Host "  .\build.bat all          build portable ZIP and Setup installer"
-    Write-Host "  .\build.bat installer    build outputs\Word.Hunter.Setup.exe"
-    Write-Host "  .\build.bat portable     build outputs\Word.Hunter.portable.zip"
-    Write-Host "  .\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk"
-    Write-Host "  .\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
-    Write-Host "  .\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
-    Write-Host "  .\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
-    Write-Host "  .\build.bat test         run shared, desktop, and Android frontend tests"
-    Write-Host "  .\build.bat test-shared  run shared frontend tests"
-    Write-Host "  .\build.bat test-desktop run desktop frontend tests"
-    Write-Host "  .\build.bat test-android run Android frontend tests"
-    Write-Host "  .\build.bat ocr-runtime  prepare bundled native PaddleOCR runtime"
+    Write-Host "  .\scripts\build.bat              build portable ZIP and Setup installer"
+    Write-Host "  .\scripts\build.bat all          build portable ZIP and Setup installer"
+    Write-Host "  .\scripts\build.bat installer    build outputs\Word.Hunter.Setup.exe"
+    Write-Host "  .\scripts\build.bat portable     build outputs\Word.Hunter.portable.zip"
+    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk"
+    Write-Host "  .\scripts\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
+    Write-Host "  .\scripts\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
+    Write-Host "  .\scripts\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
+    Write-Host "  .\scripts\build.bat test         run shared, desktop, and Android frontend tests"
+    Write-Host "  .\scripts\build.bat test-shared  run shared frontend tests"
+    Write-Host "  .\scripts\build.bat test-desktop run desktop frontend tests"
+    Write-Host "  .\scripts\build.bat test-android run Android frontend tests"
+    Write-Host "  .\scripts\build.bat ocr-runtime  prepare bundled native PaddleOCR runtime"
 }
 
 try {

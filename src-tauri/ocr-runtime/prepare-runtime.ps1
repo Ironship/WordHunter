@@ -11,6 +11,9 @@ $RunnerManifest = Join-Path $SrcTauriDir "ocr-runner\Cargo.toml"
 $RunnerTargetDir = Join-Path $SrcTauriDir "ocr-runner\target\release"
 $RunnerExe = Join-Path $RunnerTargetDir "wordhunter-paddleocr.exe"
 $RuntimeRunnerExe = Join-Path $BinDir "wordhunter-paddleocr.exe"
+$WindowsRuntimeScript = Join-Path $RepoRoot "scripts\windows-runtime.ps1"
+
+. $WindowsRuntimeScript
 
 $PaddleModelsUrl = "https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip"
 $PaddleModelsSha256 = "2FA4055B10DC4E9C1433444FE29F8D5ACCA2FCCC0A0E86B3313CAA5CC9E56B7A"
@@ -178,6 +181,10 @@ function Build-Runner {
                 Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $BinDir $_.Name) -Force
             }
     }
+    Copy-RequiredWindowsRuntimeDlls `
+        -ExecutablePath $RuntimeRunnerExe `
+        -DestinationDir $BinDir `
+        -ExtraSearchDirs @($RunnerTargetDir, (Join-Path $RunnerTargetDir "deps")) | Out-Null
     $runtimeDlls = Get-ChildItem -LiteralPath $BinDir -File -Filter "*.dll" |
         Where-Object { $_.Name -ne "pdfium.dll" }
     if (-not $runtimeDlls) {

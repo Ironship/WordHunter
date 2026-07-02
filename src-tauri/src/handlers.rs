@@ -1,6 +1,8 @@
 use serde_json::Value;
 use std::path::{Component, Path};
 use std::{fs, path::PathBuf};
+#[cfg(target_os = "android")]
+use tauri::Manager;
 use tiny_http::Request;
 
 use crate::{offline_translator, response, server::ServerState, tts};
@@ -196,4 +198,30 @@ pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
     let dir = crate::paths::sync_dir(crate::APP_NAME)?
         .ok_or_else(|| "sync folder is not configured".to_string())?;
     state.store.sync_with_directory(dir)
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn sync_android_staging(state: &ServerState) -> Result<Value, String> {
+    let cache_dir = state
+        .app_handle
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?;
+    let staging_root = cache_dir.join("wordhunter-sync-staging");
+    let incoming_dir = staging_root.join("incoming");
+
+    let staging_root = std::fs::canonicalize(&staging_root)
+        .map_err(|_| "Android sync staging folder is unavailable".to_string())?;
+    let incoming_dir = std::fs::canonicalize(&incoming_dir)
+        .map_err(|_| "Android sync input folder is unavailable".to_string())?;
+    if !incoming_dir.starts_with(&staging_root) {
+        return Err("Android sync staging path is invalid".to_string());
+    }
+
+    state.store.sync_with_directory(incoming_dir)
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn sync_android_staging(_state: &ServerState) -> Result<Value, String> {
+    Err("Android staged sync is only available on Word Hunter Pocket".to_string())
 }

@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 describe("Android Pocket bridges", () => {
   it("routes Pocket TTS through the Android native bridge", async () => {
@@ -100,27 +100,95 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /dispatchAndroidTtsResult\(utteranceId, "range", start, end\)/);
   });
 
-  it("syncs a selected folder without replacing app data", () => {
+  it("exposes Android PDF page rendering for imported overlays", () => {
+    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
+    const generatedActivityUrl = new URL("../../src-tauri/gen/android/app/src/main/java/com/wordhunter/pocket/MainActivity.kt", import.meta.url);
+    const generatedActivity = existsSync(generatedActivityUrl)
+      ? readFileSync(generatedActivityUrl, "utf8")
+      : activity;
+    const importEvents = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+
+    assert.match(activity, /import android\.graphics\.pdf\.PdfRenderer/);
+    assert.match(activity, /private val pdfRenderSessions = mutableMapOf<String, PdfRenderSession>\(\)/);
+    assert.match(activity, /fun beginPdfRender\(sessionId: String\?, dataUrl: String\?\): String/);
+    assert.match(activity, /ParcelFileDescriptor\.open\(file, ParcelFileDescriptor\.MODE_READ_ONLY\)/);
+    assert.match(activity, /PdfRenderer\(descriptor\)/);
+    assert.match(activity, /fun renderPdfPage\(sessionId: String\?, pageIndex: Int, renderWidth: Int\): String/);
+    assert.match(activity, /page\.render\(bitmap, null, null, PdfRenderer\.Page\.RENDER_MODE_FOR_DISPLAY\)/);
+    assert.match(activity, /Base64\.encodeToString\(bytes\.toByteArray\(\), Base64\.NO_WRAP\)/);
+    assert.match(activity, /fun endPdfRender\(sessionId: String\?\)/);
+    assert.match(activity, /closeAllPdfRenderSessions\(\)/);
+    assert.match(generatedActivity, /fun beginPdfRender\(sessionId: String\?, dataUrl: String\?\): String/);
+    assert.match(generatedActivity, /fun renderPdfPage\(sessionId: String\?, pageIndex: Int, renderWidth: Int\): String/);
+    assert.match(importEvents, /getAndroidPdfRendererBridge\(\)/);
+    assert.match(importEvents, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
+  });
+
+  it("syncs a selected folder through staging without treating legacy files as canonical", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
     const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
+    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
+    const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
 
     assert.match(activity, /Executors\.newSingleThreadExecutor\(\)/);
-    assert.match(activity, /syncExecutor\.execute \{[\s\S]*syncSelectedFolder\(uri\)/);
-    assert.match(activity, /fun forceSyncFolder\(\): Boolean/);
+    assert.match(activity, /@Volatile private var pendingSyncToken: String\? = null/);
+    assert.match(activity, /ActivityResultContracts\.StartActivityForResult\(\)/);
+    assert.match(activity, /Intent\(Intent\.ACTION_OPEN_DOCUMENT_TREE\)/);
+    assert.match(activity, /syncFolderLauncher\.launch\(syncFolderPickerIntent\(\)\)/);
+    assert.match(activity, /DocumentsContract\.EXTRA_INITIAL_URI/);
+    assert.match(activity, /defaultSyncTreeUri\(\)/);
+    assert.match(activity, /FLAG_GRANT_PREFIX_URI_PERMISSION/);
+    assert.match(activity, /android\.content\.extra\.SHOW_ADVANCED/);
+    assert.match(activity, /android\.provider\.extra\.SHOW_ADVANCED/);
+    assert.doesNotMatch(activity, /ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION/);
+    assert.doesNotMatch(activity, /MANAGE_EXTERNAL_STORAGE/);
+    assert.match(activity, /syncExecutor\.execute \{[\s\S]*syncSelectedFolder\(uri, token = syncToken\)/);
+    assert.match(activity, /fun chooseSyncFolder\(token: String\?\)/);
+    assert.match(activity, /pendingSyncToken = token/);
+    assert.match(activity, /fun forceSyncFolder\(token: String\?\): Boolean/);
+    assert.match(activity, /syncSelectedFolder\(uri, persistPermission = false, token = token\)/);
     assert.match(activity, /fun getSyncFolderLabel\(\): String\?/);
     assert.match(activity, /getSharedPreferences\("wordhunter-sync", MODE_PRIVATE\)/);
     assert.match(activity, /folder\.name\?\.takeIf \{ it\.isNotBlank\(\) \} \?: uri\.toString\(\)/);
     assert.match(activity, /\.putString\("sync_label", label\)/);
-    assert.match(activity, /copyDocumentTreeToFile\(folder, appDir, root = true\)/);
-    assert.match(activity, /copyFileTreeToDocument\(appDir, folder, root = true\)/);
-    assert.match(activity, /if \(root && name !in knownDataNames\) return@forEach/);
-    assert.match(activity, /private fun shouldCopyDocumentFile\(source: DocumentFile, destination: File\): Boolean/);
-    assert.match(activity, /isSyncRecordFile\(destination\)[\s\S]*remoteClock > localClock/);
-    assert.match(activity, /isSyncRecordFile\(source\)[\s\S]*localClock <= remoteClock\) return/);
-    assert.match(activity, /private fun syncRecordClock\(raw: String\?\): Long\?/);
+    assert.match(activity, /val stagingRoot = prepareSyncStagingRoot\(\)/);
+    assert.match(activity, /val incomingDir = File\(stagingRoot, "incoming"\)/);
+    assert.match(activity, /copyDocumentTreeToFile\(folder, incomingDir, root = true\)/);
+    assert.match(activity, /syncStagedDirectoryWithRust\(token\)/);
+    assert.match(activity, /URL\("http:\/\/127\.0\.0\.1:38619\/__store\/sync_android_staging"\)/);
+    assert.match(activity, /connection\.setRequestProperty\("X-WH-Token", syncToken\)/);
+    assert.match(activity, /copyFileTreeToDocument\(incomingDir, folder, root = true\)/);
+    assert.ok(router.indexOf("if !response::valid_token") < router.indexOf("\"/__store/sync_android_staging\""));
+    assert.match(router, /"\/__store\/sync_android_staging"[\s\S]*handlers::sync_android_staging\(&state\)/);
+    assert.match(handlers, /fn sync_android_staging\(state: &ServerState\) -> Result<Value, String>/);
+    assert.match(handlers, /app_cache_dir\(\)/);
+    assert.match(handlers, /join\("wordhunter-sync-staging"\)/);
+    assert.match(handlers, /join\("incoming"\)/);
+    assert.match(handlers, /state\.store\.sync_with_directory\(incoming_dir\)/);
+    assert.match(activity, /finally \{[\s\S]*cleanupSyncStaging\(stagingRoot\)/);
+    assert.match(activity, /private val knownDataNames = setOf\("records", "books", "argos-packages"\)/);
+    assert.match(activity, /private val skippedBookRecordNames = setOf\("book\.json", "book\.bak", "metadata\.json", "text\.txt"\)/);
+    assert.match(activity, /private fun shouldSyncRelativePath\(relativePath: String, isDirectory: Boolean\): Boolean/);
+    assert.match(activity, /rootName !in knownDataNames/);
+    assert.match(activity, /rootName == "books" && name in skippedBookRecordNames/);
+    assert.match(activity, /relativePath == "records\/v1" \|\| relativePath\.startsWith\("records\/v1\/"\)/);
+    assert.match(activity, /inRecordsV1 && isSyncRecordName\(name\)/);
+    assert.match(activity, /private fun isSyncRecordName\(name: String\): Boolean/);
+    assert.match(activity, /name\.endsWith\("\.json", ignoreCase = true\)[\s\S]*name\.endsWith\("\.bak", ignoreCase = true\)/);
+    assert.doesNotMatch(activity, /private fun isIncompleteDocumentRecord/);
+    assert.doesNotMatch(activity, /applyStagedSyncToLive/);
+    assert.doesNotMatch(activity, /private fun shouldCopyLocalFile/);
+    assert.doesNotMatch(activity, /private fun copyFileTreeToFile/);
+    assert.doesNotMatch(activity, /private fun copyLocalFileAtomically/);
+    assert.doesNotMatch(activity, /private fun syncRecordClock/);
     assert.match(preferences, /getAndroidSyncFolderLabel\(\)/);
     assert.match(preferences, /state\.syncDirectory \|\| getAndroidSyncFolderLabel\(\)/);
-    assert.doesNotMatch(activity, /"argos-packages"/);
+    assert.doesNotMatch(activity, /copyDocumentTreeToFile\(folder, appDir, root = true\)/);
+    assert.doesNotMatch(activity, /copyFileTreeToDocument\(appDir, folder, root = true\)/);
+    assert.doesNotMatch(activity, /"store\.sqlite"/);
+    assert.doesNotMatch(activity, /"vocab\.json"/);
+    assert.doesNotMatch(activity, /"save-journal\.json"/);
+    assert.doesNotMatch(activity, /"device-id\.txt"/);
     assert.doesNotMatch(activity, /importDocumentTreeToAppData\(folder, appDir\)/);
     assert.doesNotMatch(activity, /WordHunter\.importing/);
     assert.doesNotMatch(activity, /clearWordHunterDir\(appDir\)[\s\S]*copyDocumentTreeToFile\(folder, appDir\)/);
@@ -132,9 +200,12 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /private fun copyFileToDocument\(source: File, target: DocumentFile\)/);
     assert.match(activity, /val tempName = "\$\{source\.name\}\.tmp"/);
     assert.match(activity, /copyFileToDocument\(child, target\)/);
-    assert.match(activity, /copyFileTreeToDocument\(appDir, folder, root = true\)/);
-    assert.match(activity, /if \(root && child\.name !in knownDataNames\) return@forEach/);
-    assert.ok(activity.indexOf("target.createFile(mimeFor(source.name), tempName)") < activity.indexOf("existing?.delete()"));
-    assert.match(activity, /temp\.renameTo\(source\.name\)/);
+    assert.match(activity, /copyFileTreeToDocument\(incomingDir, folder, root = true\)/);
+    assert.match(activity, /shouldSyncRelativePath\(childRelativePath, child\.isDirectory\)/);
+    assert.match(activity, /val expectedLength = source\.length\(\)/);
+    assert.ok(activity.indexOf("target.createFile(mimeFor(source.name), tempName)") < activity.indexOf("replaceDocumentWithTemp(temp, existing, source.name)"));
+    assert.match(activity, /private fun replaceDocumentWithTemp\(temp: DocumentFile, existing: DocumentFile\?, finalName: String\)/);
+    assert.match(activity, /existing\.renameTo\(backupName\)/);
+    assert.match(activity, /temp\.renameTo\(finalName\)/);
   });
 });
