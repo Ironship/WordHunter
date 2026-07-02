@@ -2,6 +2,7 @@ import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { loadState } from "./state/normalize.js";
 
+export { STATE_SCHEMA_VERSION } from "./constants.js";
 export { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./state/defaults.js";
 export { normalizeState } from "./state/normalize.js";
 

@@ -14,7 +14,7 @@ data.
 
 ## Project Status
 
-Current release snapshot: `0.3.5`.
+Current release snapshot: `0.3.6`.
 
 Active targets:
 
@@ -24,16 +24,23 @@ Active targets:
 Installers, portable archives, APKs, and AABs are published as GitHub Release
 assets, not tracked in the source tree.
 
+Release `0.3.6` focuses on PDF and packaging work: PDF pages can keep their
+original background with selectable word overlays, scanned/text-layer spacing is
+more reliable, Pocket can zoom and pan PDF pages on Android, and Linux builds now
+have Flatpak packaging.
+
 ## What It Includes
 
 - Local-first reading for pasted text, PDFs, EPUB files, URLs, subtitles, and
   library imports.
 - Vocabulary states, spaced-repetition review, TTS, keyboard shortcuts, and
   reading progress.
-- OCR-assisted PDF reading for scanned documents on desktop builds.
+- PDF reading with OCR/text-layer support, page-background overlays, and a clean
+  text mode for focused reading.
 - Translation and dictionary tools with language-aware handling for modern and
   historical languages.
-- Android Pocket layout for mobile reading and review.
+- Android Pocket layout for mobile reading, review, and PDF zoom/pan.
+- Linux Flatpak packaging for local installation and release distribution.
 - Optional folder sync for library data, vocabulary, review state, and backups.
 
 ## Supported Learning Languages
@@ -178,26 +185,51 @@ macOS and iOS are not active targets right now.
 
 - Rust `1.88` or newer with Cargo.
 - Tauri 2 native prerequisites for the desktop platform being built.
-- PowerShell when using the bundled `build.bat` helper on Windows.
+- PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
 - OCR runtime/model assets only when preparing desktop OCR support.
 
 ### Common Commands
 
 ```powershell
-.\build.bat test         # run shared, desktop, and Android frontend tests
-.\build.bat installer    # build outputs\Word.Hunter.Setup.exe
-.\build.bat portable     # build outputs\Word.Hunter.portable.zip
-.\build.bat apk          # build outputs\Word.Hunter.Pocket.debug.apk
-.\build.bat aab          # build outputs\Word.Hunter.Pocket.release.aab
-.\build.bat play         # build signed Google Play AAB
-.\build.bat ocr-runtime  # prepare bundled native PaddleOCR runtime
+.\scripts\build.bat test         # run shared, desktop, and Android frontend tests
+.\scripts\build.bat installer    # build outputs\Word.Hunter.Setup.exe
+.\scripts\build.bat portable     # build outputs\Word.Hunter.portable.zip
+.\scripts\build.bat apk          # build outputs\Word.Hunter.Pocket.debug.apk
+.\scripts\build.bat aab          # build outputs\Word.Hunter.Pocket.release.aab
+.\scripts\build.bat play         # build signed Google Play AAB
+.\scripts\build.bat ocr-runtime  # prepare bundled native PaddleOCR runtime
 ```
 
 Rust backend tests can also be run directly:
 
 ```powershell
 cargo test --manifest-path src-tauri\Cargo.toml
+```
+
+### Flatpak
+
+Linux Flatpak packaging is available through `flatpak-builder`:
+
+```bash
+./scripts/build-flatpak.sh
+./scripts/install-flatpak-local.sh
+```
+
+The script installs missing Flatpak SDK dependencies from Flathub when needed,
+builds the manifest in `com.wordhunter.app.yml`, and writes
+`outputs/WordHunter.flatpak`. Install from the generated local repo for desktop
+testing so software stores can read the local AppStream metadata and icons.
+Word Hunter uses the GNOME Flatpak runtime because Tauri depends on
+GTK/WebKitGTK; on KDE Plasma the script also installs the Breeze GTK theme
+extension when needed so the GTK/WebKit window follows KDE
+styling. The Flatpak disables WebKitGTK's DMABUF renderer to avoid known
+Wayland renderer crashes on some KDE/Mesa setups while still keeping Wayland
+enabled. After changing `src-tauri/Cargo.lock`, refresh the vendored Cargo source
+list with:
+
+```bash
+./scripts/update-flatpak-cargo-sources.sh
 ```
 
 The build script writes distributable files to `outputs/`. That directory is
@@ -213,7 +245,7 @@ generated output, not source.
 - `frontend-tests/` - Node-based frontend and platform tests.
 - `docs/` - public documentation and screenshots.
 - `.cargo/` - Cargo configuration used by the workspace.
-- `build.bat` - Windows convenience entrypoint for tests and release artifacts.
+- `scripts/build.bat` - Windows convenience entrypoint for tests and release artifacts.
 
 ## Privacy and Data Ownership
 

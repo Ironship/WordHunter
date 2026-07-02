@@ -3,7 +3,7 @@ mod epub;
 pub(crate) mod text;
 
 use base64::Engine;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::Path;
 
 use self::calibre::convert_with_calibre;

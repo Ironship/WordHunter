@@ -1,5 +1,5 @@
-use tiny_http::Request;
 use tauri::{AppHandle, Manager, PhysicalPosition, Position, WebviewUrl, WebviewWindowBuilder};
+use tiny_http::Request;
 use url::Url;
 
 use crate::response;
@@ -29,10 +29,7 @@ pub fn serve_open_dict(
         } else {
             url.to_string()
         };
-        let mode = params
-            .get("mode")
-            .map(String::as_str)
-            .unwrap_or("external");
+        let mode = params.get("mode").map(String::as_str).unwrap_or("external");
         let title = params
             .get("title")
             .cloned()
@@ -60,7 +57,8 @@ pub fn serve_open_dict(
                         }
                     }
                     if let Some((x, y)) = center {
-                        let _ = existing.set_position(Position::Physical(PhysicalPosition { x, y }));
+                        let _ =
+                            existing.set_position(Position::Physical(PhysicalPosition { x, y }));
                     }
                     if let Err(err) = existing.set_focus() {
                         eprintln!("popup focus failed: {err}");
@@ -86,8 +84,8 @@ pub fn serve_open_dict(
                 {
                     Ok(window) => {
                         if let Some((x, y)) = center {
-                            let _ = window
-                                .set_position(Position::Physical(PhysicalPosition { x, y }));
+                            let _ =
+                                window.set_position(Position::Physical(PhysicalPosition { x, y }));
                         }
                         if let Err(err) = window.set_focus() {
                             eprintln!("popup focus failed: {err}");

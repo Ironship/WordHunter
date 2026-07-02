@@ -2,7 +2,7 @@ use tauri::{Manager, WebviewWindowBuilder};
 
 use std::sync::Arc;
 
-use crate::{server, store::Store, APP_NAME};
+use crate::{APP_NAME, server, store::Store};
 
 use super::SetupResult;
 

@@ -4,21 +4,65 @@
  */
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { escapeAttribute, clamp } from "../utils.js";
+import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { t } from "../i18n.js";
-import { normalizeWord, getTextStats } from "../tokenizer_v2.js";
+import { normalizeWord, getTextStats, tokenizeText } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
 import { getLearningColor } from "../reader-colors.js";
+import { icon } from "../icons.js";
 
 const PDF_OCR_LAYOUT_FONT = `"Times New Roman", Georgia, serif`;
+const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2";
+const PDF_OCR_ZOOM_MIN = 0.75;
+const PDF_OCR_ZOOM_MAX = 3;
+const PDF_OCR_ZOOM_STEP = 0.15;
 let pdfOcrMeasureContext = null;
 
 export function isPdfOcrText(text) {
   return Array.isArray(text?.pdfOcrPages) && text.pdfOcrPages.length > 0;
+}
+
+export function getPdfOcrZoom() {
+  return normalizePdfOcrZoom(state.readerPdfZoom);
+}
+
+export function getPdfOcrViewMode() {
+  return state.readerPdfViewMode === "text" ? "text" : "overlay";
+}
+
+export function setPdfOcrViewMode(value, options = {}) {
+  const mode = value === "text" ? "text" : "overlay";
+  if (state.readerPdfViewMode !== mode) state.readerPdfViewMode = mode;
+  if (options.commit !== false) saveState();
+  return mode;
+}
+
+export function setPdfOcrZoom(value, options = {}) {
+  const zoom = normalizePdfOcrZoom(value);
+  const container = els.readerText;
+  const page = container?.querySelector?.(".pdf-ocr-page");
+  const anchor = page ? getPdfOcrZoomAnchor(container, page, options) : null;
+  if (state.readerPdfZoom !== zoom) state.readerPdfZoom = zoom;
+  applyPdfOcrZoomToDom(zoom);
+  if (anchor) restorePdfOcrZoomAnchor(container, page, anchor);
+  if (options.commit !== false) saveState();
+  return zoom;
+}
+
+export function adjustPdfOcrZoom(delta, options = {}) {
+  return setPdfOcrZoom(getPdfOcrZoom() + delta, options);
+}
+
+export function resetPdfOcrZoom(options = {}) {
+  return setPdfOcrZoom(1, options);
+}
+
+export function pdfOcrZoomStep() {
+  return PDF_OCR_ZOOM_STEP;
 }
 
 export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
@@ -42,15 +86,28 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   const page = pages[pageIndex] || pages[0] || {};
   els.readerText.dataset.ttsText = getPdfOcrPageText(page);
   const globalOffset = pages.slice(0, pageIndex).reduce((sum, item) => sum + countPdfOcrWords(item), 0);
+  const viewMode = getPdfOcrViewMode();
+  const overlayMode = viewMode === "overlay";
+  els.readerText.classList.toggle("pdf-ocr-reader", overlayMode);
+  els.readerText.classList.toggle("pdf-text-layer-reader", !overlayMode);
+
+  if (!overlayMode) {
+    renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPerPageKey, savedPos);
+    return;
+  }
+
   const imageName = page.imageName || "";
   const imageUrl = `/__media?book=${encodeURIComponent(current.id)}&img=${encodeURIComponent(imageName)}`;
   const wordsHtml = getPdfOcrPageWords(page)
-    .map((word, index) => renderPdfOcrWord(word, page, globalOffset + index + 1))
+    .map((word, index) => renderPdfOcrWord(word, page, globalOffset + index + 1, current))
     .join("");
+  const zoom = getPdfOcrZoom();
+  const { stageWidthPercent, pageWidthPercent } = pdfOcrZoomLayout(zoom);
 
   els.readerText.innerHTML = `
-    <div class="pdf-ocr-stage">
-      <div class="pdf-ocr-page" style="--pdf-page-width:${Number(page.width) || 1}; --pdf-page-height:${Number(page.height) || 1};">
+    ${renderPdfOcrToolbar(zoom, viewMode)}
+    <div class="pdf-ocr-stage" style="width:${stageWidthPercent}%;">
+      <div class="pdf-ocr-page" style="--pdf-page-width:${Number(page.width) || 1}; --pdf-page-height:${Number(page.height) || 1}; width:${pageWidthPercent}%;">
         <img class="pdf-ocr-page-image" src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(t("reader.pdfOcrPageAlt", { n: state.readerPage }))}">
         <div class="pdf-ocr-overlay" aria-label="${escapeAttribute(t("reader.pdfOcrOverlayLabel"))}">
           ${wordsHtml}
@@ -77,11 +134,147 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   updateReaderSelection();
 }
 
+function renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPerPageKey, savedPos) {
+  const pageText = getPdfOcrPageText(page);
+  const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
+  const tokens = tokenizeText(pageText, state.preferences.learningLanguage || "en", wordAlgorithm);
+  const textHtml = renderPdfOcrTextTokens(tokens, globalOffset);
+  const emptyHtml = `<p class="muted-copy">${escapeHtml(t("reader.empty"))}</p>`;
+
+  els.readerText.innerHTML = [
+    renderPdfOcrToolbar(getPdfOcrZoom(), getPdfOcrViewMode()),
+    `<div class="pdf-text-page" aria-label="${escapeAttribute(t("reader.pdfTextPageLabel", { n: state.readerPage }))}">${textHtml || emptyHtml}</div>`,
+    totalPages > 1 ? paginationHtml(current.id, state.readerPage, totalPages, t) : ""
+  ].join("");
+
+  renderWordPanel(current);
+  const perPageScroll = state.readerScrollsPerPage?.[scrollPerPageKey];
+  if (perPageScroll !== undefined) {
+    els.readerText.scrollTop = perPageScroll;
+    els.readerText.dataset.rendering = "0";
+  } else {
+    const savedScroll = state.readerScrolls?.[current.id];
+    if (savedScroll && typeof savedScroll === "object" && savedScroll.readerPage != null && savedScroll.readerPage !== state.readerPage) {
+      els.readerText.scrollTop = 0;
+      els.readerText.dataset.rendering = "0";
+    } else {
+      restoreReaderScrollPosition(current.id, savedPos);
+    }
+  }
+  updateReaderSelection();
+}
+
+function renderPdfOcrTextTokens(tokens, globalOffset) {
+  let html = "";
+  let wordCount = 0;
+  for (const token of tokens) {
+    if (token.type !== "word") {
+      html += escapeHtml(token.value || "");
+      continue;
+    }
+
+    wordCount += 1;
+    const raw = String(token.value || "");
+    const word = normalizeWord(raw);
+    const entry = state.vocab[word];
+    const status = entry ? entry.status : "new";
+    const selected = state.selectedWord === word ? "selected" : "";
+    const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
+    const style = color ? ` style="--token-learning-bg:${color}"` : "";
+    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalOffset + wordCount}"${style}>${escapeHtml(raw)}</button>`;
+  }
+  return html;
+}
+
+function normalizePdfOcrZoom(value) {
+  const zoom = Number(value);
+  return clamp(Number.isFinite(zoom) ? zoom : 1, PDF_OCR_ZOOM_MIN, PDF_OCR_ZOOM_MAX);
+}
+
+function pdfOcrZoomLayout(zoom) {
+  const normalized = normalizePdfOcrZoom(zoom);
+  const stageScale = Math.max(1, normalized);
+  const pageScale = normalized / stageScale;
+  return {
+    stageWidthPercent: (stageScale * 100).toFixed(2),
+    pageWidthPercent: (pageScale * 100).toFixed(2)
+  };
+}
+
+function renderPdfOcrToolbar(zoom, viewMode) {
+  const textMode = viewMode === "text";
+  const targetMode = textMode ? "overlay" : "text";
+  const targetLabel = textMode ? t("reader.pdfShowBackground") : t("reader.pdfShowText");
+  const modeButton = `
+    <button type="button" class="icon-button pdf-ocr-mode-button" data-pdf-view-mode="${escapeAttribute(targetMode)}" title="${escapeAttribute(targetLabel)}" aria-label="${escapeAttribute(targetLabel)}">
+      ${icon(textMode ? "fileImage" : "fileText", 16)}
+    </button>
+  `;
+  if (textMode) {
+    return `<div class="pdf-ocr-toolbar" aria-label="${escapeAttribute(t("reader.pdfViewModeLabel"))}">${modeButton}</div>`;
+  }
+
+  const percent = `${Math.round(zoom * 100)}%`;
+  const outDisabled = zoom <= PDF_OCR_ZOOM_MIN + 0.001 ? " disabled" : "";
+  const inDisabled = zoom >= PDF_OCR_ZOOM_MAX - 0.001 ? " disabled" : "";
+  return `
+    <div class="pdf-ocr-toolbar" aria-label="${escapeAttribute(t("reader.pdfZoomLabel"))}">
+      ${modeButton}
+      <button type="button" class="icon-button pdf-ocr-zoom-button" data-pdf-zoom="out" title="${escapeAttribute(t("reader.pdfZoomOut"))}" aria-label="${escapeAttribute(t("reader.pdfZoomOut"))}"${outDisabled}>${icon("minus", 16)}</button>
+      <button type="button" class="secondary-button pdf-ocr-zoom-reset" data-pdf-zoom="reset" title="${escapeAttribute(t("reader.pdfZoomReset"))}" aria-label="${escapeAttribute(t("reader.pdfZoomReset"))}"><span data-pdf-zoom-value>${escapeHtml(percent)}</span></button>
+      <button type="button" class="icon-button pdf-ocr-zoom-button" data-pdf-zoom="in" title="${escapeAttribute(t("reader.pdfZoomIn"))}" aria-label="${escapeAttribute(t("reader.pdfZoomIn"))}"${inDisabled}>${icon("plus", 16)}</button>
+    </div>
+  `;
+}
+
+function applyPdfOcrZoomToDom(zoom) {
+  const container = els.readerText;
+  const stage = container?.querySelector?.(".pdf-ocr-stage");
+  const page = container?.querySelector?.(".pdf-ocr-page");
+  const layout = pdfOcrZoomLayout(zoom);
+  if (stage) stage.style.width = `${layout.stageWidthPercent}%`;
+  if (page) page.style.width = `${layout.pageWidthPercent}%`;
+  const value = container?.querySelector?.("[data-pdf-zoom-value]");
+  if (value) value.textContent = `${Math.round(zoom * 100)}%`;
+  const zoomOut = container?.querySelector?.("[data-pdf-zoom='out']");
+  if (zoomOut) zoomOut.disabled = zoom <= PDF_OCR_ZOOM_MIN + 0.001;
+  const zoomIn = container?.querySelector?.("[data-pdf-zoom='in']");
+  if (zoomIn) zoomIn.disabled = zoom >= PDF_OCR_ZOOM_MAX - 0.001;
+}
+
+function getPdfOcrZoomAnchor(container, page, options) {
+  const containerRect = container.getBoundingClientRect();
+  const pageRect = page.getBoundingClientRect();
+  if (!pageRect.width || !pageRect.height) return null;
+  const focalClientX = Number.isFinite(options.focalClientX)
+    ? options.focalClientX
+    : containerRect.left + containerRect.width / 2;
+  const focalClientY = Number.isFinite(options.focalClientY)
+    ? options.focalClientY
+    : Math.min(containerRect.top + containerRect.height / 2, pageRect.top + pageRect.height / 2);
+  return {
+    xRatio: clamp((focalClientX - pageRect.left) / pageRect.width, 0, 1),
+    yRatio: clamp((focalClientY - pageRect.top) / pageRect.height, 0, 1),
+    viewportX: focalClientX - containerRect.left,
+    viewportY: focalClientY - containerRect.top
+  };
+}
+
+function restorePdfOcrZoomAnchor(container, page, anchor) {
+  container.scrollLeft = Math.max(0, page.offsetLeft + page.offsetWidth * anchor.xRatio - anchor.viewportX);
+  container.scrollTop = Math.max(0, page.offsetTop + page.offsetHeight * anchor.yRatio - anchor.viewportY);
+}
+
 function getPdfOcrPageWords(page) {
+  const pageWords = Array.isArray(page?.words)
+    ? page.words.filter((word) => String(word?.text || "").trim())
+    : [];
+  if (pageWords.length) return pageWords;
+
   const lines = Array.isArray(page?.lines) ? page.lines : [];
   const words = lines.flatMap((line) => layoutPdfOcrLineWords(line, page));
   if (words.length) return words;
-  return Array.isArray(page?.words) ? page.words : [];
+  return [];
 }
 
 function getPdfOcrPageText(page) {
@@ -102,10 +295,15 @@ function getPdfOcrPageText(page) {
 }
 
 function countPdfOcrWords(page) {
+  const pageWords = Array.isArray(page?.words)
+    ? page.words.filter((word) => String(word?.text || "").trim())
+    : [];
+  if (pageWords.length) return pageWords.length;
+
   const lines = Array.isArray(page?.lines) ? page.lines : [];
   const fromLines = lines.reduce((sum, line) => sum + splitPdfOcrTextRuns(line?.text).length, 0);
   if (fromLines > 0) return fromLines;
-  return Array.isArray(page?.words) ? page.words.length : 0;
+  return 0;
 }
 
 function layoutPdfOcrLineWords(line, page) {
@@ -200,20 +398,43 @@ function pdfOcrGlyphWeight(ch) {
   return 1;
 }
 
-function pdfOcrRect(item, page) {
+function pdfOcrRect(item, page, current) {
   const pageWidth = Math.max(1, Number(page?.width) || 1);
   const pageHeight = Math.max(1, Number(page?.height) || 1);
-  const x = clamp(Number(item?.x) || 0, 0, pageWidth);
-  const y = clamp(Number(item?.y) || 0, 0, pageHeight);
-  const width = clamp(Number(item?.width) || 1, 1, pageWidth - x || 1);
-  const height = clamp(Number(item?.height) || 1, 1, pageHeight - y || 1);
+  const rect = correctLegacyPdfTextLayerRect({
+    x: Number(item?.x) || 0,
+    y: Number(item?.y) || 0,
+    width: Number(item?.width) || 1,
+    height: Number(item?.height) || 1
+  }, page, current);
+  const x = clamp(rect.x, 0, pageWidth);
+  const y = clamp(rect.y, 0, pageHeight);
+  const width = clamp(rect.width, 1, pageWidth - x || 1);
+  const height = clamp(rect.height, 1, pageHeight - y || 1);
   return { pageWidth, pageHeight, x, y, width, height };
 }
 
-function renderPdfOcrWord(item, page, globalIndex) {
+function correctLegacyPdfTextLayerRect(rect, page, current) {
+  if (!usesLegacyPdfTextLayerBounds(page, current)) return rect;
+
+  const fontHeight = Math.max(1, rect.height / 1.24);
+  return {
+    ...rect,
+    y: rect.y - fontHeight * 0.82,
+    height: fontHeight * 1.04
+  };
+}
+
+function usesLegacyPdfTextLayerBounds(page, current) {
+  if (String(page?.boundsVersion || "") === PDF_TEXT_LAYER_BOUNDS_VERSION) return false;
+  const engine = String(current?.pdfOcrEngine || "");
+  return engine.includes("pdf-text-layer") || engine.includes("pdfium-text-layer");
+}
+
+function renderPdfOcrWord(item, page, globalIndex, current) {
   const raw = String(item?.text || "").trim();
   if (!raw) return "";
-  const { pageWidth, pageHeight, x, y, width, height } = pdfOcrRect(item, page);
+  const { pageWidth, pageHeight, x, y, width, height } = pdfOcrRect(item, page, current);
   const word = normalizeWord(raw);
   const entry = state.vocab[word];
   const status = entry ? entry.status : "new";

@@ -155,6 +155,10 @@ export function cacheElements() {
   els.dataDirectory = document.getElementById("data-directory");
   els.syncDirectory = document.getElementById("sync-directory");
   els.syncStatus = document.getElementById("sync-status");
+  els.syncConflictsPanel = document.getElementById("sync-conflicts-panel");
+  els.syncConflictsList = document.getElementById("sync-conflicts-list");
+  els.recoveryStatusPanel = document.getElementById("recovery-status-panel");
+  els.recoveryStatusList = document.getElementById("recovery-status-list");
   els.chooseDataDirectory = document.getElementById("choose-data-directory");
   els.chooseSyncDirectory = document.getElementById("choose-sync-directory");
   els.forceSync = document.getElementById("force-sync");

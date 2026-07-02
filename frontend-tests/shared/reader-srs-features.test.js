@@ -145,10 +145,10 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.mobileFileHint, "string", `${locale}.import.mobileFileHint`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /0\.3\.5/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.whatsNew, /Word Hunter Pocket/, `${locale}.help.whatsNew Pocket`);
+      assert.match(data.help.whatsNew, /0\.3\.6/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.whatsNew, /PDF/, `${locale}.help.whatsNew PDF`);
       assert.match(data.help.whatsNew, /Android/, `${locale}.help.whatsNew Android`);
-      assert.match(data.help.whatsNew, /sync|synchron|sincron|同期|Синхрон/i, `${locale}.help.whatsNew sync`);
+      assert.match(data.help.whatsNew, /Flatpak\/Linux/, `${locale}.help.whatsNew Flatpak`);
     });
   }
 });

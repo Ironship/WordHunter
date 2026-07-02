@@ -25,8 +25,14 @@ fn compares_versions() {
     assert!(!is_newer("0.2.7.5", "0.2.7.6"));
     assert!(!is_newer("0.2", "0.2.0"));
     assert!(is_newer("0.2.1", "0.2"));
-    assert!(is_newer("0.3", "0.2.99"), "shorter version can be newer than longer base");
-    assert!(!is_newer("0.2.99", "0.3"), "longer base with smaller trailing must lose to shorter head");
+    assert!(
+        is_newer("0.3", "0.2.99"),
+        "shorter version can be newer than longer base"
+    );
+    assert!(
+        !is_newer("0.2.99", "0.3"),
+        "longer base with smaller trailing must lose to shorter head"
+    );
 }
 
 #[test]

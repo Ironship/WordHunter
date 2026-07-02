@@ -985,6 +985,12 @@
               <p class="muted-copy" id="data-directory"></p>
               <p class="muted-copy" id="sync-directory"></p>
               <p class="muted-copy" id="sync-status"></p>
+              <div id="sync-conflicts-panel" class="sync-conflicts-panel" hidden>
+                <div id="sync-conflicts-list" class="sync-conflicts-list"></div>
+              </div>
+              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
+                <div id="recovery-status-list" class="recovery-status-list"></div>
+              </div>
               <p class="muted-copy desktop-only-setting" data-i18n="settings.dataFolderHint">Choose where WordHunter keeps its local data. Keep this folder on the device for the safest startup.</p>
               <p class="muted-copy" data-i18n="settings.dataFolderSteps">Sync: choose a separate Google Drive, Dropbox, Nextcloud, or similar folder. WordHunter copies changes between the local data folder and that sync folder in the background.</p>
               <p class="muted-copy" data-i18n="settings.dataFolderCloudDelay">Use a dedicated WordHunter folder, not the whole cloud drive. Cloud apps can take up to 30 minutes to upload or download new books and records; in Google Drive, mark the sync folder available offline if files do not appear.</p>
@@ -1202,6 +1208,7 @@
                 <li data-i18n-html="help.tip5"></li>
                 <li data-i18n-html="help.tip6"></li>
                 <li data-i18n-html="help.tip7"></li>
+                <li data-i18n-html="help.tip8"></li>
               </ul>
             </div>
           </section>

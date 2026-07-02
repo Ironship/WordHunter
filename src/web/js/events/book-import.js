@@ -62,6 +62,66 @@ async function readFileAsBase64(file) {
   return btoa(binary);
 }
 
+function parseAndroidPdfRenderResponse(raw, fallbackMessage) {
+  let payload = null;
+  try {
+    payload = JSON.parse(String(raw || ""));
+  } catch {
+    throw new Error(fallbackMessage);
+  }
+  if (!payload?.success) {
+    throw new Error(payload?.error || fallbackMessage);
+  }
+  return payload;
+}
+
+function getAndroidPdfRendererBridge() {
+  const bridge = window.WordHunterAndroid;
+  if (!bridge || typeof bridge.beginPdfRender !== "function" || typeof bridge.renderPdfPage !== "function") {
+    return null;
+  }
+  return bridge;
+}
+
+async function renderAndSaveAndroidPdfPages(data, bookId, pages) {
+  if (!isAndroidPlatform() || !pages.length) return;
+  const bridge = getAndroidPdfRendererBridge();
+  if (!bridge) throw new Error(t("toast.pdfOcrRequiresApp"));
+
+  const sessionId = `wh-pdf-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  parseAndroidPdfRenderResponse(
+    bridge.beginPdfRender(sessionId, data),
+    t("toast.pdfOcrNoText")
+  );
+  try {
+    for (let index = 0; index < pages.length; index += 1) {
+      const page = pages[index];
+      const rendered = parseAndroidPdfRenderResponse(
+        bridge.renderPdfPage(sessionId, index, 1400),
+        t("toast.pdfOcrNoText")
+      );
+      if (!rendered.dataUrl || !page?.imageName) {
+        throw new Error(t("toast.pdfOcrNoText"));
+      }
+      const response = await fetch("/__book/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({
+          book_id: bookId,
+          img_name: page.imageName,
+          base64_data: rendered.dataUrl
+        })
+      });
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+    }
+  } finally {
+    if (typeof bridge.endPdfRender === "function") bridge.endPdfRender(sessionId);
+  }
+}
+
 function setImportLoading(visible, messageKey = "import.parsingEbook") {
   let overlay = document.getElementById("import-loading");
   if (visible) {
@@ -276,19 +336,19 @@ function confirmWholeBookOcr() {
 }
 
 async function importPdfFile(file) {
-  const androidTextLayerOnly = isAndroidPlatform();
-  if (!window.__qtBridge && !androidTextLayerOnly) {
+  const androidPdfOverlay = isAndroidPlatform();
+  if (!window.__qtBridge && !androidPdfOverlay) {
     throw new Error(t("toast.pdfOcrRequiresApp"));
   }
-  if (!androidTextLayerOnly && !await confirmWholeBookOcr()) return false;
+  if (!androidPdfOverlay && !await confirmWholeBookOcr()) return false;
   const lang = state.preferences.learningLanguage || "en";
   const id = `${lang}-pdf-ocr-${slugFromFileName(file.name)}-${Date.now()}`;
   const jobId = crypto.randomUUID();
   const controller = new AbortController();
   let cancelled = false;
   let requestStarted = false;
-  setImportLoading(true, androidTextLayerOnly ? "import.parsingPdfTextLayer" : "import.parsingPdfOcr");
-  if (!androidTextLayerOnly) {
+  setImportLoading(true, "import.parsingPdfOcr");
+  if (!androidPdfOverlay) {
     startOcrProgress(() => {
       cancelled = true;
       controller.abort();
@@ -332,6 +392,9 @@ async function importPdfFile(file) {
     const pageCount = imported.pageCount || pages.length;
     const ocrEngine = imported.ocrEngine || "PaddleOCR";
     const hasOverlayPages = pages.length > 0;
+    if (androidPdfOverlay && hasOverlayPages) {
+      await renderAndSaveAndroidPdfPages(data, id, pages);
+    }
     const blurb = hasOverlayPages
       ? imported.truncated
         ? t("import.pdfOcrBlurbTruncated", { processed: pages.length, total: pageCount, engine: ocrEngine })

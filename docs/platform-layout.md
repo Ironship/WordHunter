@@ -14,7 +14,7 @@ macOS and iOS are intentionally outside the current layout.
 
 - `src/web/` contains the shared HTML, JavaScript, i18n, flags, and base CSS.
 - `src-tauri/src/` contains shared Rust handlers, storage, SRS, tokenization, subtitles, and export logic.
-- `build.bat` is the shared build entrypoint for Windows desktop artifacts, Linux placeholders, Android APK/AAB builds, and frontend tests.
+- `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Linux placeholders, Android APK/AAB builds, and frontend tests.
 
 ## Web platform layers
 
@@ -52,4 +52,4 @@ EPUB import uses the shared Rust ebook parser on every platform. MOBI/AZW still 
 - `frontend-tests/shared/` contains cross-platform frontend logic tests.
 - `frontend-tests/desktop/` contains desktop UI and platform-contract tests.
 - `frontend-tests/android/` contains Pocket/Android UI and packaging tests.
-- Run all frontend tests with `.\build.bat test`.
+- Run all frontend tests with `.\scripts\build.bat test`.

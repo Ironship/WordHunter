@@ -84,6 +84,7 @@ export function clearReaderLoading() {
 
 export function renderReader() {
   if (!els.readerText) return;
+  els.readerText.classList.remove("pdf-ocr-reader", "pdf-text-layer-reader");
   if (loadingBook) {
     els.readerText.dataset.rendering = "1";
     delete els.readerText.dataset.ttsText;
@@ -139,6 +140,7 @@ export function renderReader() {
   els.readerSource.textContent = current.author || current.source || t("reader.localSource");
   els.readerText.style.fontSize = "";
   els.readerText.classList.toggle("pdf-ocr-reader", isPdfOcrText(current));
+  els.readerText.classList.remove("pdf-text-layer-reader");
   delete els.readerText.dataset.ttsText;
 
   els.readerText.dataset.rendering = "1";

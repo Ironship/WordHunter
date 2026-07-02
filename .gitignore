@@ -1,4 +1,5 @@
 # Rust/Tauri build files
+.flatpak-builder/
 build/
 build_work/
 src-tauri/target/
@@ -21,6 +22,10 @@ dist/
 scratch/
 TODO/
 My_Data/
+
+# Local planning / release assessment notes
+docs/android/
+docs/ddia-assessment.md
 
 # Local AI/session artifacts
 .agents/

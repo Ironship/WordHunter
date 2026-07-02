@@ -33,8 +33,8 @@ function getRangeText(tokens, range) {
   const endToken = tokens[bounds.end];
   if (!startToken || !endToken || !els.readerText) return "";
 
-  const startOcrPage = startToken.closest?.(".pdf-ocr-page");
-  const endOcrPage = endToken.closest?.(".pdf-ocr-page");
+  const startOcrPage = startToken.closest?.(".pdf-ocr-page, .pdf-text-page");
+  const endOcrPage = endToken.closest?.(".pdf-ocr-page, .pdf-text-page");
   if (startOcrPage && startOcrPage === endOcrPage) {
     const pageTokens = Array.from(startOcrPage.querySelectorAll(".word-token"));
     const startIndex = pageTokens.indexOf(startToken);

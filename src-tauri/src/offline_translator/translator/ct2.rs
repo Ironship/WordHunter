@@ -5,9 +5,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use ctranslate2::{
-    translator::BatchType, ComputeType, Device, TranslationOptions, Translator2, TranslatorConfig,
+    ComputeType, Device, TranslationOptions, Translator2, TranslatorConfig, translator::BatchType,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::bpe::BpeTokenizer;
 use super::models::{clean_translation, find_model_dir};
@@ -156,7 +156,9 @@ fn native_ct2_translate_with_pivot(input: &Value) -> Result<String, String> {
     }
 
     if from.is_empty() || from == "en" || to == "en" {
-        return Err(format!("native CTranslate2 model was not found for {from}->{to}"));
+        return Err(format!(
+            "native CTranslate2 model was not found for {from}->{to}"
+        ));
     }
     let step1 = json!({ "text": text, "from": from, "to": "en" });
     let english = native_ct2_translate(&step1).map_err(|pivot_err| {

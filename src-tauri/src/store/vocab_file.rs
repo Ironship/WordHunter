@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::Store;
 
@@ -70,7 +70,7 @@ mod tests {
     use std::collections::BTreeMap;
     use std::sync::Mutex;
 
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use crate::store::{Store, StoreInner};
 

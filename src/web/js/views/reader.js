@@ -17,8 +17,18 @@ import {
 
 import {
   changeReaderPage,
-  goToReaderPage
+  goToReaderPage,
+  renderReader
 } from "../reader/renderer.js";
+import {
+  adjustPdfOcrZoom,
+  getPdfOcrViewMode,
+  getPdfOcrZoom,
+  pdfOcrZoomStep,
+  resetPdfOcrZoom,
+  setPdfOcrViewMode,
+  setPdfOcrZoom
+} from "../reader/pdf-ocr-renderer.js";
 
 // Re-export the public reader API used by the rest of the app.
 export {
@@ -88,14 +98,60 @@ export function bindReaderEvents() {
       clearReaderSelection(false);
       changeReaderPage(dx < 0 ? 1 : -1);
     };
+    let pdfPinch = null;
+    const isPdfOcrGestureTarget = (target) => getPdfOcrViewMode() === "overlay" && Boolean(target?.closest?.(".pdf-ocr-page, .pdf-ocr-stage, .pdf-ocr-toolbar"));
+    const shouldReservePdfPan = (target) => isPdfOcrGestureTarget(target) && getPdfOcrZoom() > 1.01;
+    const touchDistance = (first, second) => Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+    const touchMidpoint = (first, second) => ({
+      x: (first.clientX + second.clientX) / 2,
+      y: (first.clientY + second.clientY) / 2
+    });
+    const beginPdfPinch = (event) => {
+      if (event.touches.length < 2 || !isPdfOcrGestureTarget(event.target)) return false;
+      const [first, second] = event.touches;
+      pdfPinch = {
+        distance: Math.max(1, touchDistance(first, second)),
+        zoom: getPdfOcrZoom()
+      };
+      swipeStart = null;
+      return true;
+    };
+    const updatePdfPinch = (event) => {
+      if (!pdfPinch || event.touches.length < 2) return false;
+      const [first, second] = event.touches;
+      const midpoint = touchMidpoint(first, second);
+      const nextZoom = pdfPinch.zoom * (touchDistance(first, second) / pdfPinch.distance);
+      setPdfOcrZoom(nextZoom, { focalClientX: midpoint.x, focalClientY: midpoint.y, commit: false });
+      return true;
+    };
     els.readerText.addEventListener("touchstart", (event) => {
+      if (beginPdfPinch(event)) {
+        event.preventDefault();
+        return;
+      }
       const touch = event.touches[0];
-      if (touch) beginSwipe(touch.clientX, touch.clientY, event.target);
-    }, { passive: true });
+      if (touch && !shouldReservePdfPan(event.target)) beginSwipe(touch.clientX, touch.clientY, event.target);
+    }, { passive: false });
+    els.readerText.addEventListener("touchmove", (event) => {
+      if (!updatePdfPinch(event)) return;
+      event.preventDefault();
+    }, { passive: false });
     els.readerText.addEventListener("touchend", (event) => {
+      if (pdfPinch) {
+        if (event.touches.length >= 2) return;
+        pdfPinch = null;
+        swipeStart = null;
+        return;
+      }
       const touch = event.changedTouches[0];
       if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true });
+    els.readerText.addEventListener("wheel", (event) => {
+      if ((!event.ctrlKey && !event.metaKey) || !isPdfOcrGestureTarget(event.target)) return;
+      event.preventDefault();
+      const direction = event.deltaY < 0 ? 1 : -1;
+      adjustPdfOcrZoom(direction * pdfOcrZoomStep(), { focalClientX: event.clientX, focalClientY: event.clientY });
+    }, { passive: false });
     els.readerText.addEventListener("change", (event) => {
       const pageInput = event.target.closest("#page-jump-input");
       if (!pageInput) return;
@@ -104,6 +160,26 @@ export function bindReaderEvents() {
       goToReaderPage(Number(pageInput.value));
     });
     els.readerText.addEventListener("click", async (event) => {
+      const zoomBtn = event.target.closest("[data-pdf-zoom]");
+      if (zoomBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const action = zoomBtn.dataset.pdfZoom;
+        const step = pdfOcrZoomStep();
+        if (action === "in") adjustPdfOcrZoom(step);
+        else if (action === "out") adjustPdfOcrZoom(-step);
+        else if (action === "reset") resetPdfOcrZoom();
+        return;
+      }
+      const pdfViewModeBtn = event.target.closest("[data-pdf-view-mode]");
+      if (pdfViewModeBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        clearReaderSelection(false);
+        setPdfOcrViewMode(pdfViewModeBtn.dataset.pdfViewMode);
+        renderReader();
+        return;
+      }
       const prevBtn = event.target.closest("#btn-prev-page");
       if (prevBtn && !prevBtn.disabled) {
         event.preventDefault();

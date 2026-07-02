@@ -70,7 +70,8 @@ fn translate_deepl(text: &str, from: &str, to: &str, key: &str) -> Result<String
         body.append_pair("source_lang", &deepl_lang(from, false));
     }
 
-    let response = ureq::post(endpoint)
+    let response = crate::http::agent()
+        .post(endpoint)
         .set("User-Agent", USER_AGENT)
         .set("Authorization", &format!("DeepL-Auth-Key {key}"))
         .set("Content-Type", "application/x-www-form-urlencoded")
@@ -106,7 +107,8 @@ fn translate_google(text: &str, from: &str, to: &str) -> Result<String, String> 
         query.finish()
     );
 
-    let response = ureq::get(&url)
+    let response = crate::http::agent()
+        .get(&url)
         .set("User-Agent", USER_AGENT)
         .call()
         .map_err(|e| e.to_string())?;
@@ -175,7 +177,8 @@ fn translate_lmstudio(
         "stream": false
     });
 
-    let response = ureq::post(endpoint)
+    let response = crate::http::agent()
+        .post(endpoint)
         .set("User-Agent", USER_AGENT)
         .set("Content-Type", "application/json")
         .send_json(payload)

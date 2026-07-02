@@ -28,6 +28,8 @@
   --reader-line-height: 1.82;
   --reader-font-size: 18px;
   --ui-scale: 1;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23626b65' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
@@ -50,13 +52,8 @@
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
   --border: #29343d;
   --text: #eaeff2;
-}
-
-:root[data-theme="dark"] input,
-:root[data-theme="dark"] select,
-:root[data-theme="dark"] textarea {
-  background: #121a1f;
-  color: var(--ink);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b98a0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  color-scheme: dark;
 }
 
 [hidden] {
@@ -786,15 +783,17 @@ body.is-resizing-panel * {
 }
 
 .library-panel > .panel-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: nowrap;
 }
 
 .library-title-row {
+  flex: 0 0 auto;
   min-width: 0;
 }
 
-.library-filters-toggle {
+button.library-filters-toggle {
   display: none;
 }
 
@@ -837,11 +836,15 @@ body.is-resizing-panel * {
 }
 
 .library-panel .compact-filters {
-  flex: 1 1 680px;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  min-width: 0;
 }
 
 .library-panel .compact-filters > label {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .library-search-field {
@@ -1039,9 +1042,34 @@ textarea {
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #ffffff;
+  background: var(--panel);
   color: var(--ink);
   padding: 0.55rem 0.65rem;
+}
+
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.2rem;
+  background-color: var(--panel);
+  background-image: var(--select-arrow);
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 14px;
+}
+
+select option,
+select optgroup {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
+  opacity: 0.7;
 }
 
 textarea {
@@ -1444,6 +1472,73 @@ button.icon-button {
   padding: 0;
 }
 
+.sync-conflicts-panel {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sync-conflicts-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sync-conflict-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sync-conflict-title {
+  font-weight: 700;
+}
+
+.sync-conflict-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.sync-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.recovery-status-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.recovery-status-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.recovery-status-title {
+  font-weight: 700;
+}
+
+.recovery-status-lines {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+}
+
+.recovery-status-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.recovery-status-details code {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.15rem 0.35rem;
+  color: var(--text);
+}
+
 .data-action-row {
   display: grid;
   grid-template-columns: 1fr;
@@ -1823,18 +1918,66 @@ html[data-max-width="full"] .reader-text {
   white-space: normal;
   text-align: left;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow: auto;
+}
+
+.reader-text.pdf-text-layer-reader {
+  white-space: pre-wrap;
+}
+
+.pdf-ocr-toolbar {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 8;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.35rem;
+  width: min(100%, 920px);
+  margin: 0 auto 0.65rem;
+  pointer-events: auto;
+}
+
+.pdf-ocr-toolbar .icon-button,
+.pdf-ocr-toolbar .secondary-button {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.pdf-ocr-toolbar .pdf-ocr-mode-button {
+  color: var(--accent);
+}
+
+.pdf-ocr-toolbar .pdf-ocr-zoom-reset {
+  width: 4.2rem;
+  min-width: 4.2rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.pdf-text-page {
+  width: min(100%, 920px);
+  margin: 0 auto;
 }
 
 .pdf-ocr-stage {
   display: grid;
-  justify-items: stretch;
+  justify-items: center;
   gap: 1rem;
   width: 100%;
+  min-width: 100%;
+  touch-action: pan-x pan-y;
 }
 
 .pdf-ocr-page {
   position: relative;
   width: 100%;
+  min-width: min(100%, 240px);
+  max-width: none;
   aspect-ratio: var(--pdf-page-width) / var(--pdf-page-height);
   background: var(--panel-strong);
   border: 1px solid var(--line);
@@ -1857,7 +2000,7 @@ html[data-max-width="full"] .reader-text {
 
 .word-token.pdf-ocr-word {
   --pdf-ocr-mark-height: clamp(1px, 8%, 3px);
-  --pdf-ocr-mark-bottom: 24%;
+  --pdf-ocr-mark-bottom: 6%;
   position: absolute;
   display: block;
   margin: 0;
@@ -2488,9 +2631,14 @@ textarea.vocab-translation-input {
 }
 
 .vocab-table td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
   white-space: nowrap;
   width: 340px;
   overflow: hidden;
+  background: var(--panel);
+  box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
 .vocab-table td:last-child .row-actions {
@@ -2513,7 +2661,11 @@ textarea.vocab-translation-input {
 }
 
 .vocab-table th:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 3;
   text-align: center;
+  box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
 .status-chip.status-new {
@@ -2835,21 +2987,58 @@ textarea.vocab-translation-input {
 
 :root.touch-controls-mode:not(.pocket-mode) .primary-button,
 :root.touch-controls-mode:not(.pocket-mode) .secondary-button,
+:root.touch-controls-mode:not(.pocket-mode) .ghost-button,
 :root.touch-controls-mode:not(.pocket-mode) .danger-button,
 :root.touch-controls-mode:not(.pocket-mode) .file-button,
-:root.touch-controls-mode:not(.pocket-mode) button {
-  min-height: 44px;
-  padding-block: 0.65rem;
+:root.touch-controls-mode:not(.pocket-mode) .toolbar-buttons button,
+:root.touch-controls-mode:not(.pocket-mode) .row-actions button,
+:root.touch-controls-mode:not(.pocket-mode) .status-button,
+:root.touch-controls-mode:not(.pocket-mode) .nav-item,
+:root.touch-controls-mode:not(.pocket-mode) .footer-action,
+:root.touch-controls-mode:not(.pocket-mode) .status-check {
+  min-width: 44px;
+  min-height: 44px !important;
+  padding-block: 0.65rem !important;
 }
 
 :root.touch-controls-mode:not(.pocket-mode) .icon-button,
-:root.touch-controls-mode:not(.pocket-mode) .theme-toggle {
+:root.touch-controls-mode:not(.pocket-mode) button.icon-button,
+:root.touch-controls-mode:not(.pocket-mode) #theme-toggle {
   width: 46px;
   min-width: 46px;
   height: 46px;
+  min-height: 46px !important;
+  padding: 0 !important;
+}
+
+:root.touch-controls-mode:not(.pocket-mode) .toast {
+  min-height: 3.2rem;
+  padding-right: 3.8rem;
+}
+
+:root.touch-controls-mode:not(.pocket-mode) .toast-close,
+:root.touch-controls-mode:not(.pocket-mode) #import-cover-clear,
+:root.touch-controls-mode:not(.pocket-mode) .edit-book-cover-clear,
+:root.touch-controls-mode:not(.pocket-mode) button[data-action="remove-image"] {
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 !important;
+  font-size: 1.05rem !important;
 }
 
 :root.touch-controls-mode:not(.pocket-mode) .toolbar-buttons,
+:root.touch-controls-mode:not(.pocket-mode) .topbar-actions,
+:root.touch-controls-mode:not(.pocket-mode) .word-actions,
+:root.touch-controls-mode:not(.pocket-mode) .book-actions,
+:root.touch-controls-mode:not(.pocket-mode) .form-actions,
+:root.touch-controls-mode:not(.pocket-mode) .row-actions,
+:root.touch-controls-mode:not(.pocket-mode) .status-options,
+:root.touch-controls-mode:not(.pocket-mode) .status-filter-options,
+:root.touch-controls-mode:not(.pocket-mode) .sm2-grades,
+:root.touch-controls-mode:not(.pocket-mode) .nav-list,
+:root.touch-controls-mode:not(.pocket-mode) .sidebar-footer,
 :root.touch-controls-mode:not(.pocket-mode) .data-action-buttons,
 :root.touch-controls-mode:not(.pocket-mode) .compact-filters {
   gap: 0.75rem;
@@ -2942,7 +3131,7 @@ textarea.vocab-translation-input {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--panel);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   transition: left 0.15s ease;
 }

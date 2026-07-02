@@ -1,6 +1,6 @@
 [package]
 name = "word-hunter"
-version = "0.3.5"
+version = "0.3.6"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
 authors = ["Word Hunter"]
 edition = "2024"
@@ -25,6 +25,7 @@ encoding_rs = "0.8"
 html-escape = "0.2"
 include_dir = "0.7"
 mime_guess = "2"
+pdf-extract = "0.12"
 percent-encoding = "2"
 rand = "0.8"
 regex = "1"
@@ -43,9 +44,6 @@ ureq = { version = "2", features = ["json"] }
 url = "2"
 zip = "2"
 
-[target.'cfg(target_os = "android")'.dependencies]
-pdf-extract = "0.12"
-
 [target.'cfg(not(target_os = "android"))'.dependencies]
 ctranslate2 = { version = "2.1.1", default-features = false, features = ["sentencepiece"] }
 ctranslate2-sys = { version = "0.1.5", features = ["ruy", "crt-dynamic"] }
@@ -53,6 +51,12 @@ edge-tts-rust = "0.1.3"
 open = "5"
 rfd = "0.15"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+gdk = "0.18"
+gdkwayland-sys = { version = "0.18", features = ["v3_24_22"] }
+gtk = "0.18"
+
 [patch.crates-io]
 ctranslate2 = { path = "vendor/ctranslate2" }
 ctranslate2-sys = { path = "vendor/ctranslate2-sys" }
+ctranslate2-src-build-support = { path = "vendor/ctranslate2-src-build-support" }

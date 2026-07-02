@@ -29,22 +29,39 @@ describe("persistence lifecycle", () => {
     const api = readFileSync(new URL("../../src/web/js/api.js", import.meta.url), "utf8");
     const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
     const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
+    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
 
     assert.match(html, /id="sync-status"/);
     assert.match(html, /id="sync-directory"/);
     assert.match(html, /id="choose-sync-directory"/);
     assert.match(html, /id="force-sync"/);
+    assert.match(html, /id="sync-conflicts-panel"/);
+    assert.match(html, /id="sync-conflicts-list"/);
+    assert.match(html, /id="recovery-status-panel"/);
+    assert.match(html, /id="recovery-status-list"/);
     assert.match(html, /data-i18n="settings\.dataFolderCloudDelay"/);
     assert.match(dom, /syncStatus = document\.getElementById\("sync-status"\)/);
     assert.match(dom, /syncDirectory = document\.getElementById\("sync-directory"\)/);
     assert.match(dom, /chooseSyncDirectory = document\.getElementById\("choose-sync-directory"\)/);
     assert.match(dom, /forceSync = document\.getElementById\("force-sync"\)/);
+    assert.match(dom, /syncConflictsPanel = document\.getElementById\("sync-conflicts-panel"\)/);
+    assert.match(dom, /syncConflictsList = document\.getElementById\("sync-conflicts-list"\)/);
+    assert.match(dom, /recoveryStatusPanel = document\.getElementById\("recovery-status-panel"\)/);
+    assert.match(dom, /recoveryStatusList = document\.getElementById\("recovery-status-list"\)/);
     assert.match(preferences, /export function setSyncStatus/);
+    assert.match(preferences, /data-conflict-resolution="keep-current"/);
+    assert.match(preferences, /data-conflict-resolution="use-conflict"/);
+    assert.match(preferences, /function renderRecoveryStatus/);
     assert.match(settings, /forceSync[\s\S]*await saveState\(\)/);
     assert.match(settings, /async function reloadActiveDataFolder/);
     assert.match(settings, /fetch\("\/__store\/load", \{ cache: "no-store" \}\)/);
     assert.match(settings, /async function syncNow/);
     assert.match(settings, /fetch\("\/__store\/sync_now"/);
+    assert.match(settings, /async function resolveSyncConflict/);
+    assert.match(settings, /fetch\("\/__store\/resolve_conflict"/);
+    assert.match(router, /"\/__store\/recovery_status"/);
+    assert.match(settings, /WordHunterAndroid\.chooseSyncFolder\(window\.WH_TOKEN \|\| ""\)/);
+    assert.match(settings, /WordHunterAndroid\.forceSyncFolder\(window\.WH_TOKEN \|\| ""\)/);
     assert.match(settings, /forceSync[\s\S]*await syncNow\(\)/);
     assert.match(settings, /syncNow\(\{ background: true, saveFirst: false \}\)/);
     assert.match(settings, /window\.addEventListener\("wordhunter:sync-saved", \(\) => scheduleBackgroundSync\(1500\)\)/);
@@ -102,6 +119,24 @@ describe("persistence lifecycle", () => {
       ["settings", "syncStatusReady"],
       ["settings", "syncStatusSaved"],
       ["settings", "syncStatusError"],
+      ["settings", "syncConflictCount"],
+      ["settings", "syncConflictDevice"],
+      ["settings", "syncConflictDeleted"],
+      ["settings", "syncConflictUpdated"],
+      ["settings", "syncConflictRefresh"],
+      ["settings", "syncConflictUnknown"],
+      ["settings", "syncConflictMeta"],
+      ["settings", "syncConflictKeepCurrent"],
+      ["settings", "syncConflictUseOther"],
+      ["settings", "syncConflictResolved"],
+      ["settings", "recoveryStatusTitle"],
+      ["settings", "recoveryPendingSave"],
+      ["settings", "recoveryPendingSaveTemp"],
+      ["settings", "recoveryPendingWipe"],
+      ["settings", "recoveryQuarantinedJournal"],
+      ["settings", "recoverySkippedRecords"],
+      ["settings", "recoveryCorruptConflicts"],
+      ["settings", "migrationComplete"],
       ["settings", "syncFolderDefault"],
       ["settings", "syncFolderPath"],
       ["settings", "chooseSyncFolder"],

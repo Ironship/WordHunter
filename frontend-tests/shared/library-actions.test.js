@@ -84,8 +84,27 @@ describe("profile library actions", () => {
     assert.deepEqual(state.customTexts, []);
     assert.deepEqual(state.archivedBookIds, []);
     assert.equal(state.profiles.fr.customTexts[0].id, "fr-custom-home");
+    assert.equal(state.profiles.fr.customTexts[0].lang, "fr");
     assert.equal(state.profiles.fr.customTexts[0].title, "Home");
     assert.match(state.profiles.fr.customTexts[0].updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("moves three-letter custom text ids without colliding in the target profile", () => {
+    state.customTexts.push({ id: "grc-custom-iliad", title: "Iliad", lang: "grc" });
+    state.profiles.la = {
+      vocab: {},
+      customTexts: [{ id: "la-custom-iliad", title: "Existing" }],
+      userBooks: [],
+      hiddenBuiltInBooks: [],
+      archivedBookIds: []
+    };
+
+    const moved = moveCustomTextToProfile("grc-custom-iliad", "la");
+
+    assert.equal(moved.oldId, "grc-custom-iliad");
+    assert.equal(moved.newId, "la-custom-iliad-2");
+    assert.equal(moved.textObj.lang, "la");
+    assert.deepEqual(state.profiles.la.customTexts.map((text) => text.id), ["la-custom-iliad", "la-custom-iliad-2"]);
   });
 
   it("moves user books to the target profile and removes the old archive id", () => {

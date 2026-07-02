@@ -34,6 +34,11 @@ impl Store {
     }
 
     pub fn upsert_text(&self, text: &Value) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.upsert_text_unlocked(text)
+    }
+
+    pub(crate) fn upsert_text_unlocked(&self, text: &Value) -> Result<(), String> {
         let id = text
             .get("id")
             .and_then(Value::as_str)
@@ -84,6 +89,11 @@ impl Store {
     }
 
     pub fn delete_text(&self, id: &str) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.delete_text_unlocked(id)
+    }
+
+    pub(crate) fn delete_text_unlocked(&self, id: &str) -> Result<(), String> {
         let safe_id = crate::paths::sanitize_id(id)?;
         let inner = self.inner.lock().unwrap();
         let path = inner.books_dir.join(safe_id);
@@ -94,9 +104,9 @@ impl Store {
         Ok(())
     }
 
-    pub fn sync_texts(&self, texts: &[Value]) -> Result<(), String> {
+    pub(crate) fn sync_texts(&self, texts: &[Value]) -> Result<(), String> {
         for text in texts {
-            self.upsert_text(text)?;
+            self.upsert_text_unlocked(text)?;
         }
         Ok(())
     }
@@ -121,10 +131,22 @@ impl Store {
         let data = base64::engine::general_purpose::STANDARD
             .decode(encoded)
             .map_err(|e| e.to_string())?;
-        self.save_book_image_bytes(book_id, img_name, &data)
+        let _guard = self.lock_writes()?;
+        self.save_book_image_bytes_unlocked(book_id, img_name, &data)
     }
 
+    #[cfg(any(not(target_os = "android"), test))]
     pub fn save_book_image_bytes(
+        &self,
+        book_id: &str,
+        img_name: &str,
+        data: &[u8],
+    ) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.save_book_image_bytes_unlocked(book_id, img_name, data)
+    }
+
+    pub(crate) fn save_book_image_bytes_unlocked(
         &self,
         book_id: &str,
         img_name: &str,

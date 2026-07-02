@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Word Hunter
+Comment=Local-first reader, vocabulary trainer, and offline translator
+Exec=word-hunter-rustified
+Icon=com.wordhunter.app
+Terminal=false
+Categories=Education;Languages;
+StartupNotify=true
+StartupWMClass=com.wordhunter.app

@@ -1,9 +1,9 @@
-import { STORAGE_KEY } from "./constants.js";
+import { STATE_SCHEMA_VERSION, STORAGE_KEY } from "./constants.js";
 
 /**
  * Build a save payload from the raw state for bridge (Tauri) communication.
  * @param {object} rawState
- * @returns {{ texts: object[], prefs: object, hiddenBooks: string[], vocab: object }}
+ * @returns {{ schemaVersion: number, texts: object[], prefs: object, hiddenBooks: string[], vocab: object }}
  */
 export function buildSavePayload(rawState) {
   const profileTexts = Object.values(rawState.profiles || {})
@@ -13,13 +13,14 @@ export function buildSavePayload(rawState) {
     return [lang, toPlain(withoutTexts)];
   }));
   return {
+    schemaVersion: STATE_SCHEMA_VERSION,
     texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
     prefs: {
       ...toPlain(rawState.preferences || {}),
       __userBooks: toPlain(rawState.userBooks || [])
     },
     hiddenBooks: toPlain(rawState.hiddenBuiltInBooks || []),
-    // ponytail: texts have their own durable store; do not serialize every book twice.
+    // Texts have their own durable store; do not serialize every book twice.
     vocab: profiles
   };
 }
@@ -30,7 +31,7 @@ export function buildSavePayload(rawState) {
  */
 export function saveToLocalStorage(rawState) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toPlain(rawState)));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(withSchemaVersion(rawState)));
   } catch (e) {
     console.error("localStorage save failed", e);
   }
@@ -91,23 +92,35 @@ export function saveSyncXhr(body) {
 
 // --- helpers (moved from state.js, used only within this module) ---
 
-function toPlain(value, seen = new WeakSet()) {
+function toPlain(value, stack = new WeakSet()) {
   value = unwrapProxy(value);
   if (value === null || typeof value !== "object") return value;
   if (value instanceof Date) return value;
-  if (seen.has(value)) return undefined;
-  seen.add(value);
+  if (stack.has(value)) return undefined;
+  stack.add(value);
 
-  if (Array.isArray(value)) {
-    return value.map((item) => toPlain(item, seen)).filter((item) => item !== undefined);
-  }
+  try {
+    if (Array.isArray(value)) {
+      return value.map((item) => toPlain(item, stack)).filter((item) => item !== undefined);
+    }
 
-  const result = {};
-  for (const [key, item] of Object.entries(value)) {
-    const plain = toPlain(item, seen);
-    if (plain !== undefined) result[key] = plain;
+    const result = {};
+    for (const [key, item] of Object.entries(value)) {
+      const plain = toPlain(item, stack);
+      if (plain !== undefined) result[key] = plain;
+    }
+    return result;
+  } finally {
+    stack.delete(value);
   }
-  return result;
+}
+
+function withSchemaVersion(value) {
+  const plain = toPlain(value);
+  if (!plain || typeof plain !== "object" || Array.isArray(plain)) {
+    return { schemaVersion: STATE_SCHEMA_VERSION };
+  }
+  return { ...plain, schemaVersion: STATE_SCHEMA_VERSION };
 }
 
 function unwrapProxy(value) {
