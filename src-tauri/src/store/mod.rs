@@ -224,8 +224,6 @@ mod tests {
 
     use super::{Store, StoreInner, copy_data_dir, record_files};
 
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
     struct AppDataGuard(Option<OsString>);
 
     impl AppDataGuard {
@@ -320,7 +318,7 @@ mod tests {
 
     #[test]
     fn relocation_merges_existing_target_without_overwriting_it() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let source = tempfile::tempdir().unwrap();
@@ -347,7 +345,7 @@ mod tests {
 
     #[test]
     fn relocation_does_not_persist_target_until_it_is_usable() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let source = tempfile::tempdir().unwrap();
@@ -363,7 +361,7 @@ mod tests {
 
     #[test]
     fn redirected_missing_data_dir_errors_instead_of_creating_empty_folder() {
-        let _lock = ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let missing = appdata.path().join("missing-cloud-folder");

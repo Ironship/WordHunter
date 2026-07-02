@@ -42,6 +42,9 @@ const APP_NAME: &str = "WordHunter";
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 const HOST: &str = "127.0.0.1";
 
+#[cfg(test)]
+pub(crate) static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if std::env::args().nth(1).as_deref() == Some("--ct2-translate") {

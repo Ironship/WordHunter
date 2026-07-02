@@ -22,9 +22,17 @@ Expected Windows layout:
 src-tauri\ocr-runtime\
   bin\wordhunter-paddleocr.exe
   bin\*.dll
+  bin\libstdc++-6.dll when the runner imports the GNU runtime
+  bin\libgcc_s_seh-1.dll and bin\libwinpthread-1.dll when provided by the same toolchain
   models\...
   models\*.onnx
 ```
+
+The desktop app executable can also import GNU runtime DLLs depending on the
+Windows Rust target used for the release build. `scripts\build.bat` copies those
+DLLs next to `Word.Hunter.portable.exe` and stages them next to the Tauri binary
+before the NSIS installer is bundled. When those DLLs are required, the build
+also passes a generated Tauri config so NSIS installs them beside the main EXE.
 
 The runner must render PDF pages to images, run PaddleOCR locally, and write a
 JSON manifest. Word Hunter calls it with:

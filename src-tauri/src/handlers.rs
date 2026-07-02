@@ -184,9 +184,11 @@ pub(crate) fn choose_sync_dir(state: &ServerState) -> Result<Option<(String, Val
     else {
         return Ok(None);
     };
+    let mut snapshot = state.store.sync_with_directory(path.clone())?;
     crate::paths::set_sync_dir(crate::APP_NAME, &path)?;
-    let snapshot = state.store.sync_with_directory(path.clone())?;
-    Ok(Some((path.to_string_lossy().into_owned(), snapshot)))
+    let path = path.to_string_lossy().into_owned();
+    snapshot["syncDir"] = Value::String(path.clone());
+    Ok(Some((path, snapshot)))
 }
 
 #[cfg(target_os = "android")]

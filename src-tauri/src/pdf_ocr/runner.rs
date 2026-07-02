@@ -23,7 +23,19 @@ pub(crate) fn gpu_status_value(status: &str) -> Value {
     }
 }
 
+pub(crate) fn platform_gpu_status_without_runner() -> Option<Value> {
+    if cfg!(windows) {
+        None
+    } else {
+        Some(gpu_status_value("unavailable"))
+    }
+}
+
 pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
+    if let Some(status) = platform_gpu_status_without_runner() {
+        return status;
+    }
+
     let Ok(runner) = find_runner(app_handle) else {
         return gpu_status_value("failed");
     };

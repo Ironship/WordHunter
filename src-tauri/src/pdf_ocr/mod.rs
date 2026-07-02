@@ -1050,15 +1050,27 @@ pub fn gpu_status(app_handle: &AppHandle) -> Value {
 #[cfg(test)]
 mod tests {
     use super::{
-        Bounds, OverlayWord, merge_words_using_plain_text, runner::gpu_status_value,
-        split_words_using_plain_text, text_gap_is_word_break,
+        Bounds, OverlayWord, merge_words_using_plain_text, runner, split_words_using_plain_text,
+        text_gap_is_word_break,
     };
 
     #[test]
     fn gpu_status_uses_safe_cpu_states() {
-        assert_eq!(gpu_status_value("ready")["status"], "ready");
-        assert_eq!(gpu_status_value("unavailable")["status"], "unavailable");
-        assert_eq!(gpu_status_value("unexpected")["status"], "failed");
+        assert_eq!(runner::gpu_status_value("ready")["status"], "ready");
+        assert_eq!(
+            runner::gpu_status_value("unavailable")["status"],
+            "unavailable"
+        );
+        assert_eq!(runner::gpu_status_value("unexpected")["status"], "failed");
+    }
+
+    #[test]
+    fn linux_gpu_status_does_not_require_ocr_runner() {
+        #[cfg(not(windows))]
+        assert_eq!(
+            runner::platform_gpu_status_without_runner().unwrap()["status"],
+            "unavailable"
+        );
     }
 
     #[test]

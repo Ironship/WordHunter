@@ -1,20 +1,102 @@
 use std::path::{Path, PathBuf};
 
-fn base_dir() -> Result<PathBuf, String> {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+fn env_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name).and_then(|value| {
+        if value.is_empty() {
+            None
+        } else {
+            Some(PathBuf::from(value))
+        }
+    })
+}
+
+fn appdata_dir() -> Option<PathBuf> {
+    env_path("APPDATA")
+}
+
+fn home_dir_path() -> Option<PathBuf> {
+    env_path("HOME")
+}
+
+fn legacy_config_dir() -> Option<PathBuf> {
+    home_dir_path().map(|home| home.join(".config"))
+}
+
+fn config_dir() -> Result<PathBuf, String> {
+    appdata_dir()
+        .or_else(|| env_path("XDG_CONFIG_HOME"))
+        .or_else(legacy_config_dir)
+        .ok_or_else(|| "could not locate user config directory".to_string())
+}
+
+fn config_file_path(app_name: &str, suffix: &str) -> Result<PathBuf, String> {
+    Ok(config_dir()?.join(format!("{app_name}-{suffix}.txt")))
+}
+
+fn legacy_config_file_path(app_name: &str, suffix: &str) -> Option<PathBuf> {
+    legacy_config_dir().map(|base| base.join(format!("{app_name}-{suffix}.txt")))
+}
+
+fn read_config_file(app_name: &str, suffix: &str) -> Result<Option<String>, String> {
+    let primary = config_file_path(app_name, suffix)?;
+    match std::fs::read_to_string(&primary) {
+        Ok(value) => return Ok(Some(value)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.to_string()),
+    }
+
+    let Some(legacy) = legacy_config_file_path(app_name, suffix) else {
+        return Ok(None);
+    };
+    if legacy == primary {
+        return Ok(None);
+    }
+    match std::fs::read_to_string(&legacy) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
+    let path = config_file_path(app_name, suffix)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let temp = path.with_extension("tmp");
+    let mut file = std::fs::File::create(&temp).map_err(|e| e.to_string())?;
+    {
+        use std::io::Write;
+        file.write_all(bytes).map_err(|e| e.to_string())?;
+        file.sync_all().map_err(|e| e.to_string())?;
+    }
+    std::fs::rename(&temp, &path).map_err(|e| e.to_string())
+}
+
+fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
+    if let Some(appdata) = appdata_dir() {
+        return Ok(appdata.join(app_name));
+    }
+
+    if let Some(legacy) = legacy_config_dir().map(|base| base.join(app_name)) {
+        if legacy.exists() {
+            return Ok(legacy);
+        }
+    }
+
+    env_path("XDG_DATA_HOME")
+        .map(|base| base.join(app_name))
+        .or_else(|| legacy_config_dir().map(|base| base.join(app_name)))
         .ok_or_else(|| "could not locate user data directory".to_string())
 }
 
 pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
-    let base = base_dir()?;
-    let redirect = base.join(format!("{app_name}-data-dir.txt"));
-    let dir = match std::fs::read_to_string(redirect) {
-        Ok(value) => {
+    let default = default_data_dir(app_name)?;
+    let dir = match read_config_file(app_name, "data-dir")? {
+        Some(value) => {
             let dir = PathBuf::from(value.trim());
             if dir.as_os_str().is_empty() {
-                base.join(app_name)
+                default
             } else if dir.is_dir() {
                 dir
             } else {
@@ -24,7 +106,7 @@ pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
                 ));
             }
         }
-        Err(_) => base.join(app_name),
+        None => default,
     };
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
@@ -33,20 +115,13 @@ pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
 #[cfg(not(target_os = "android"))]
 pub fn set_data_dir(app_name: &str, dir: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let base = base_dir()?;
-    std::fs::write(
-        base.join(format!("{app_name}-data-dir.txt")),
-        dir.to_string_lossy().as_bytes(),
-    )
-    .map_err(|e| e.to_string())
+    write_config_file(app_name, "data-dir", dir.to_string_lossy().as_bytes())
 }
 
 pub fn sync_dir(app_name: &str) -> Result<Option<PathBuf>, String> {
-    let base = base_dir()?;
-    let redirect = base.join(format!("{app_name}-sync-dir.txt"));
-    let value = match std::fs::read_to_string(redirect) {
-        Ok(value) => value,
-        Err(_) => return Ok(None),
+    let value = match read_config_file(app_name, "sync-dir")? {
+        Some(value) => value,
+        None => return Ok(None),
     };
     let dir = PathBuf::from(value.trim());
     if dir.as_os_str().is_empty() {
@@ -64,18 +139,11 @@ pub fn sync_dir(app_name: &str) -> Result<Option<PathBuf>, String> {
 #[cfg(not(target_os = "android"))]
 pub fn set_sync_dir(app_name: &str, dir: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    let base = base_dir()?;
-    std::fs::write(
-        base.join(format!("{app_name}-sync-dir.txt")),
-        dir.to_string_lossy().as_bytes(),
-    )
-    .map_err(|e| e.to_string())
+    write_config_file(app_name, "sync-dir", dir.to_string_lossy().as_bytes())
 }
 
 pub fn device_id(app_name: &str) -> Result<String, String> {
-    let base = base_dir()?;
-    let path = base.join(format!("{app_name}-device-id.txt"));
-    if let Ok(value) = std::fs::read_to_string(&path) {
+    if let Some(value) = read_config_file(app_name, "device-id")? {
         let value = value.trim();
         if !value.is_empty() {
             return Ok(value.to_string());
@@ -86,7 +154,7 @@ pub fn device_id(app_name: &str) -> Result<String, String> {
         .map(|value| value.as_millis())
         .unwrap_or(0);
     let id = format!("{}-{}", std::process::id(), millis);
-    std::fs::write(path, id.as_bytes()).map_err(|e| e.to_string())?;
+    write_config_file(app_name, "device-id", id.as_bytes())?;
     Ok(id)
 }
 
