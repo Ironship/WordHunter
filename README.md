@@ -14,7 +14,7 @@ data.
 
 ## Project Status
 
-Current release snapshot: `0.3.6`.
+Current release snapshot: `0.3.6.1`.
 
 Active targets:
 
@@ -28,6 +28,12 @@ Release `0.3.6` focuses on PDF and packaging work: PDF pages can keep their
 original background with selectable word overlays, scanned/text-layer spacing is
 more reliable, Pocket can zoom and pan PDF pages on Android, and Linux builds now
 have Flatpak packaging.
+
+Release `0.3.6.1` is a hotfix refresh for the `0.3.6` line. It rebuilds Windows
+packages with the required GNU runtime DLLs, fixes Flatpak/Linux OCR GPU
+platform detection, bundles the Flatpak CPU OCR runtime for scanned PDFs, and
+makes Flatpak sync folder selection persist only after a successful sync while
+honoring XDG config/data directories.
 
 ## What It Includes
 

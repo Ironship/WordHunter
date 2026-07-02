@@ -23,6 +23,9 @@ $OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.debug.apk"
 $OutputAndroidEmulatorDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.emulator.debug.apk"
 $OutputAndroidReleaseAab = Join-Path $Outputs "Word.Hunter.Pocket.release.aab"
 $RequiredTauriCliVersion = "2.11.4"
+$WindowsRuntimeScript = Join-Path $Root "scripts\windows-runtime.ps1"
+
+. $WindowsRuntimeScript
 
 function Write-Step([string]$Message) {
     Write-Host ""
@@ -64,6 +67,97 @@ function Invoke-WithCmakeBuildParallelLimit([scriptblock]$Action) {
             $env:CMAKE_BUILD_PARALLEL_LEVEL = $previousParallel
         } else {
             Remove-Item Env:\CMAKE_BUILD_PARALLEL_LEVEL -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-PackagedWindowsRuntimeDllNames([string]$Directory) {
+    if (-not (Test-Path -LiteralPath $Directory)) {
+        return @()
+    }
+    return @(Get-ChildItem -LiteralPath $Directory -File -ErrorAction SilentlyContinue |
+        Where-Object { $WindowsRuntimeDllNames -contains $_.Name.ToLowerInvariant() } |
+        ForEach-Object { $_.Name })
+}
+
+function Copy-AppRuntimeDlls([string]$ExecutablePath, [string]$DestinationDir) {
+    $exeDir = Split-Path -Parent $ExecutablePath
+    $runtimeDlls = Copy-RequiredWindowsRuntimeDlls `
+        -ExecutablePath $ExecutablePath `
+        -DestinationDir $DestinationDir `
+        -ExtraSearchDirs @($exeDir, (Join-Path $exeDir "deps"))
+
+    foreach ($dll in Get-PackagedWindowsRuntimeDllNames $DestinationDir) {
+        Write-Note "Bundled $dll"
+    }
+    return @($runtimeDlls)
+}
+
+function New-WindowsRuntimeTauriConfig([string[]]$RuntimeDlls, [string]$ExecutableDir) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return ""
+    }
+
+    $resources = [ordered]@{
+        "../src/assets/**/*" = "src/assets/"
+        "ocr-runtime/bin/**/*" = "ocr-runtime/bin/"
+        "ocr-runtime/models/**/*" = "ocr-runtime/models/"
+    }
+    foreach ($dll in $RuntimeDlls) {
+        $resources["target/release/$dll"] = $dll
+    }
+
+    $config = [ordered]@{
+        bundle = [ordered]@{
+            resources = $resources
+        }
+    }
+    $configPath = Join-Path $ExecutableDir "wordhunter-runtime-tauri.conf.json"
+    $config | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $configPath -Encoding UTF8
+    return $configPath
+}
+
+function Assert-NsisScriptsContainRuntimeDlls([string]$ExecutableDir, [string[]]$RuntimeDlls) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return
+    }
+    $nsisDir = Join-Path $ExecutableDir "nsis"
+    if (-not (Test-Path -LiteralPath $nsisDir)) {
+        Write-Note "NSIS script directory was not found; skipping generated script runtime DLL inspection."
+        return
+    }
+
+    $scripts = @(Get-ChildItem -LiteralPath $nsisDir -Recurse -File -Filter "installer.nsi" -ErrorAction SilentlyContinue)
+    if ($scripts.Count -eq 0) {
+        Write-Note "Generated installer.nsi was not found; skipping generated script runtime DLL inspection."
+        return
+    }
+
+    $content = ($scripts | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
+    foreach ($dll in $RuntimeDlls) {
+        if ($content -notmatch [regex]::Escape($dll)) {
+            Fail "Generated NSIS script is missing bundled runtime DLL: $dll"
+        }
+    }
+}
+
+function Assert-ArchiveContainsRuntimeDlls([string]$ArchivePath, [string[]]$RuntimeDlls) {
+    if ($RuntimeDlls.Count -eq 0) {
+        return
+    }
+    $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+    if (-not $sevenZip) {
+        $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
+    }
+    if (-not $sevenZip) {
+        Write-Note "7-Zip was not found; skipping archive runtime DLL inspection for $ArchivePath."
+        return
+    }
+
+    $listing = & $sevenZip.Source l $ArchivePath
+    foreach ($dll in $RuntimeDlls) {
+        if (-not ($listing -match [regex]::Escape($dll))) {
+            Fail "$ArchivePath is missing bundled runtime DLL: $dll"
         }
     }
 }
@@ -401,8 +495,10 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
         Fail "Rust build finished, but expected exe was not found: $RustExe"
     }
 
+    Remove-Item -LiteralPath $PortableDir -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $PortableDir
     Copy-Item -LiteralPath $RustExe -Destination $OutputPortable -Force
+    $portableRuntimeDlls = Copy-AppRuntimeDlls $RustExe $PortableDir
     $portableOcrRuntime = Join-Path $PortableDir "ocr-runtime"
     Remove-Item -LiteralPath $portableOcrRuntime -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $portableOcrRuntime
@@ -410,6 +506,7 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
         Copy-Item -LiteralPath (Join-Path $Root "src-tauri\ocr-runtime\$runtimeDir") -Destination $portableOcrRuntime -Recurse -Force
     }
     Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $OutputPortableZip -Force
+    Assert-ArchiveContainsRuntimeDlls $OutputPortableZip $portableRuntimeDlls
     Write-Host ""
     Write-Host "Done: $OutputPortableZip" -ForegroundColor Green
 }
@@ -425,13 +522,28 @@ function Build-Installer([switch]$SkipRuntime) {
     Ensure-TauriCli
 
     Invoke-WithCmakeBuildParallelLimit {
+        Invoke-External "cargo.exe" @("build", "--release", "--manifest-path", $RustManifest)
+    }
+    if (-not (Test-Path -LiteralPath $RustExe)) {
+        Fail "Rust build finished, but expected exe was not found: $RustExe"
+    }
+    $rustExeDir = Split-Path -Parent $RustExe
+    $installerRuntimeDlls = Copy-AppRuntimeDlls $RustExe $rustExeDir
+    $runtimeTauriConfig = New-WindowsRuntimeTauriConfig $installerRuntimeDlls $rustExeDir
+
+    Invoke-WithCmakeBuildParallelLimit {
         Push-Location -LiteralPath (Join-Path $Root "src-tauri")
         try {
-            Invoke-External "cargo.exe" @("tauri", "build")
+            $tauriArgs = @("tauri", "build")
+            if ($runtimeTauriConfig) {
+                $tauriArgs += @("--config", $runtimeTauriConfig)
+            }
+            Invoke-External "cargo.exe" $tauriArgs
         } finally {
             Pop-Location
         }
     }
+    Assert-NsisScriptsContainRuntimeDlls $rustExeDir $installerRuntimeDlls
 
     $installer = Get-ChildItem -LiteralPath $TauriBundleDir -Filter "*.exe" -File -ErrorAction SilentlyContinue |
         Sort-Object LastWriteTime -Descending |
@@ -441,6 +553,7 @@ function Build-Installer([switch]$SkipRuntime) {
     }
 
     Copy-Item -LiteralPath $installer.FullName -Destination $OutputInstaller -Force
+    Assert-ArchiveContainsRuntimeDlls $OutputInstaller $installerRuntimeDlls
     Write-Host ""
     Write-Host "Done: $OutputInstaller" -ForegroundColor Green
 }
