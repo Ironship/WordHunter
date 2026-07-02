@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use image::{DynamicImage, ImageFormat, RgbImage};
-use ort::execution_providers::DirectMLExecutionProvider;
 use paddle_ocr_rs::ocr_lite::OcrLite;
 use paddle_ocr_rs::ocr_result::Point;
 use pdfium_render::prelude::{PdfPage, PdfRect, PdfRenderConfig, Pdfium};
@@ -8,6 +7,9 @@ use serde::Serialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+#[cfg(windows)]
+use ort::execution_providers::DirectMLExecutionProvider;
 
 const ENGINE_NAME: &str = "pdfium-text-layer+paddleocr-rs-onnx";
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
@@ -535,17 +537,35 @@ mod tests {
 fn configure_ort(device: DeviceMode) -> Result<()> {
     // TODO(gpu): add Linux and macOS execution providers when their runtimes are bundled.
     let _ = match device {
-        DeviceMode::Auto => ort::init()
-            .with_execution_providers([DirectMLExecutionProvider::default()
-                .build()
-                .fail_silently()])
-            .commit()?,
+        DeviceMode::Auto => {
+            #[cfg(windows)]
+            {
+                ort::init()
+                    .with_execution_providers([DirectMLExecutionProvider::default()
+                        .build()
+                        .fail_silently()])
+                    .commit()?
+            }
+            #[cfg(not(windows))]
+            {
+                ort::init().commit()?
+            }
+        }
         DeviceMode::Cpu => ort::init().commit()?,
-        DeviceMode::DirectMl => ort::init()
-            .with_execution_providers([DirectMLExecutionProvider::default()
-                .build()
-                .error_on_failure()])
-            .commit()?,
+        DeviceMode::DirectMl => {
+            #[cfg(windows)]
+            {
+                ort::init()
+                    .with_execution_providers([DirectMLExecutionProvider::default()
+                        .build()
+                        .error_on_failure()])
+                    .commit()?
+            }
+            #[cfg(not(windows))]
+            {
+                bail!("DirectML is not available on this platform")
+            }
+        }
     };
     Ok(())
 }
@@ -555,7 +575,12 @@ fn write_gpu_status(args: &Args) -> Result<()> {
         .models_dir
         .clone()
         .unwrap_or(runtime_root()?.join("models"));
-    let status = if configure_ort(DeviceMode::DirectMl)
+    let gpu_device = if cfg!(windows) {
+        DeviceMode::DirectMl
+    } else {
+        DeviceMode::Cpu
+    };
+    let status = if configure_ort(gpu_device)
         .and_then(|_| load_ocr(&models_dir, args.threads).map(|_| ()))
         .is_ok()
     {
