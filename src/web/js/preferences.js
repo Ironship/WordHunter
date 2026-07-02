@@ -22,6 +22,89 @@ function getAndroidSyncFolderLabel() {
   }
 }
 
+function formatConflictRecord(record) {
+  const device = record?.deviceId ? t("settings.syncConflictDevice", { device: record.deviceId }) : "";
+  const stateLabel = record?.deleted ? t("settings.syncConflictDeleted") : t("settings.syncConflictUpdated");
+  return [stateLabel, device].filter(Boolean).join(" ");
+}
+
+function renderSyncConflicts() {
+  const conflicts = Array.isArray(state.syncConflicts) ? state.syncConflicts : [];
+  const hasConflicts = conflicts.length > 0 || Math.max(0, Number(state.syncConflictCount) || 0) > 0;
+  if (els.syncConflictsPanel) {
+    els.syncConflictsPanel.hidden = !hasConflicts;
+  }
+  if (!els.syncConflictsList) return;
+  if (!conflicts.length) {
+    els.syncConflictsList.innerHTML = hasConflicts
+      ? `<p class="muted-copy">${escapeHtml(t("settings.syncConflictRefresh"))}</p>`
+      : "";
+    return;
+  }
+  els.syncConflictsList.innerHTML = conflicts.map((conflict) => {
+    const key = conflict.key || "";
+    const kept = formatConflictRecord(conflict.kept);
+    const other = formatConflictRecord(conflict.conflict);
+    return `
+      <div class="sync-conflict-item" data-conflict-id="${escapeHtml(conflict.id)}">
+        <div>
+          <div class="sync-conflict-title">${escapeHtml(key || t("settings.syncConflictUnknown"))}</div>
+          <div class="sync-conflict-meta">${escapeHtml(t("settings.syncConflictMeta", { kept, other }))}</div>
+        </div>
+        <div class="sync-conflict-actions">
+          <button type="button" class="secondary-button" data-conflict-resolution="keep-current">${escapeHtml(t("settings.syncConflictKeepCurrent"))}</button>
+          <button type="button" class="secondary-button" data-conflict-resolution="use-conflict">${escapeHtml(t("settings.syncConflictUseOther"))}</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function recoveryIssueCount(status) {
+  if (!status || typeof status !== "object") return 0;
+  let count = Math.max(0, Number(status.skippedRecordCount) || 0)
+    + Math.max(0, Number(status.corruptConflictCount) || 0);
+  for (const key of ["pendingSaveJournal", "pendingSaveJournalTemp", "pendingWipeJournal", "quarantinedSaveJournal"]) {
+    if (status[key] === true) count += 1;
+  }
+  return count;
+}
+
+function renderRecoveryStatus() {
+  const status = state.recoveryStatus;
+  const issueCount = recoveryIssueCount(status);
+  if (els.recoveryStatusPanel) {
+    els.recoveryStatusPanel.hidden = issueCount === 0;
+  }
+  if (!els.recoveryStatusList) return;
+  if (issueCount === 0) {
+    els.recoveryStatusList.innerHTML = "";
+    return;
+  }
+  const lines = [];
+  if (status.pendingSaveJournal) lines.push(t("settings.recoveryPendingSave"));
+  if (status.pendingSaveJournalTemp) lines.push(t("settings.recoveryPendingSaveTemp"));
+  if (status.pendingWipeJournal) lines.push(t("settings.recoveryPendingWipe"));
+  if (status.quarantinedSaveJournal) lines.push(t("settings.recoveryQuarantinedJournal"));
+  if (status.skippedRecordCount > 0) {
+    lines.push(t("settings.recoverySkippedRecords", { n: status.skippedRecordCount }));
+  }
+  if (status.corruptConflictCount > 0) {
+    lines.push(t("settings.recoveryCorruptConflicts", { n: status.corruptConflictCount }));
+  }
+  const details = [
+    ...(Array.isArray(status.skippedRecords) ? status.skippedRecords : []),
+    ...(Array.isArray(status.corruptConflicts) ? status.corruptConflicts : [])
+  ].slice(0, 5);
+  els.recoveryStatusList.innerHTML = `
+    <div class="recovery-status-title">${escapeHtml(t("settings.recoveryStatusTitle", { n: issueCount }))}</div>
+    <ul class="recovery-status-lines">
+      ${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
+    </ul>
+    ${details.length ? `<div class="recovery-status-details">${details.map((item) => `<code>${escapeHtml(item.path || item.error || "")}</code>`).join("")}</div>` : ""}
+  `;
+}
+
 export function setSyncStatus(status, vars = {}) {
   syncStatus = { status, vars };
   syncSettingsControls();
@@ -197,11 +280,15 @@ export function syncSettingsControls() {
     try {
       const bytes = new Blob([JSON.stringify(state)]).size;
       const kb = (bytes / 1024).toFixed(1);
-      els.storageSummary.textContent = t("settings.storageSummary", {
+      let summary = t("settings.storageSummary", {
         words: Object.keys(state.vocab).length,
         texts: state.customTexts.length,
         kb
       });
+      if (state.migrationStatus?.status === "complete") {
+        summary += ` ${t("settings.migrationComplete")}`;
+      }
+      els.storageSummary.textContent = summary;
     } catch (error) {
       console.warn(error);
     }
@@ -221,8 +308,15 @@ export function syncSettingsControls() {
     const key = syncStatus
       ? `settings.syncStatus${syncStatus.status[0].toUpperCase()}${syncStatus.status.slice(1)}`
       : (syncDirectory ? "settings.syncStatusReady" : "settings.syncStatusDefault");
-    els.syncStatus.textContent = t(key, syncStatus?.vars);
+    let label = t(key, syncStatus?.vars);
+    const conflictCount = Math.max(0, Math.trunc(Number(state.syncConflictCount) || 0));
+    if (conflictCount > 0) {
+      label += ` ${t("settings.syncConflictCount", { n: conflictCount })}`;
+    }
+    els.syncStatus.textContent = label;
   }
+  renderSyncConflicts();
+  renderRecoveryStatus();
   if (els.forceSync) els.forceSync.disabled = typeof window.flushPendingSave !== "function";
 }
 

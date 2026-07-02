@@ -18,7 +18,16 @@ describe("Android Pocket reader", () => {
     assert.match(globalActions, /event\.composedPath/);
     assert.match(globalActions, /clickedReaderSurface/);
     assert.match(readerEvents, /touchstart/);
+    assert.match(readerEvents, /touchmove/);
     assert.match(readerEvents, /touchend/);
+    assert.match(readerEvents, /beginPdfPinch\(event\)/);
+    assert.match(readerEvents, /getPdfOcrViewMode\(\) === "overlay"/);
+    assert.match(readerEvents, /shouldReservePdfPan\(event\.target\)/);
+    assert.match(readerEvents, /setPdfOcrZoom\(nextZoom, \{ focalClientX: midpoint\.x, focalClientY: midpoint\.y, commit: false \}\)/);
+    assert.match(readerEvents, /adjustPdfOcrZoom\(direction \* pdfOcrZoomStep\(\), \{ focalClientX: event\.clientX, focalClientY: event\.clientY \}\)/);
+    assert.match(readerEvents, /event\.target\.closest\("\[data-pdf-zoom\]"\)/);
+    assert.match(readerEvents, /event\.target\.closest\("\[data-pdf-view-mode\]"\)/);
+    assert.match(readerEvents, /setPdfOcrViewMode\(pdfViewModeBtn\.dataset\.pdfViewMode\)/);
     assert.match(readerEvents, /changeReaderPage\(dx < 0 \? 1 : -1\)/);
     assert.match(wordPanel, /data-close-word-panel/);
     assert.match(wordPanel, /function bindInTextReviewControls/);
@@ -33,7 +42,10 @@ describe("Android Pocket reader", () => {
     assert.match(css, /\.pocket-mode\[data-view="reader"\] \.reader-meta > div:first-child[\s\S]*display: none/);
     assert.match(css, /#reader-view\.active \.pagination-controls[\s\S]*position: fixed/);
     assert.match(css, /\.pocket-mode \.word-token[\s\S]*touch-action: manipulation/);
-    assert.match(css, /\.pocket-mode \.word-token\.pdf-ocr-word\s*{[\s\S]*padding: 0;[\s\S]*border-radius: 5px;/);
+    assert.match(css, /\.pocket-mode \.reader-text\.pdf-ocr-reader\s*{[\s\S]*overflow: auto;[\s\S]*touch-action: pan-x pan-y;/);
+    assert.match(css, /\.pocket-mode \.reader-text\.pdf-text-layer-reader\s*{[\s\S]*padding: 0\.85rem 1rem/);
+    assert.match(css, /\.pocket-mode \.pdf-ocr-toolbar[\s\S]*top: 0\.35rem/);
+    assert.match(css, /\.pocket-mode \.word-token\.pdf-ocr-word\s*{[\s\S]*padding: 0;[\s\S]*border-radius: 5px;[\s\S]*touch-action: pan-x pan-y;/);
     assert.match(css, /\.pocket-mode \.word-token\.status-new[\s\S]*box-shadow: inset 0 -0\.28em var\(--token-new-bg/);
     assert.match(css, /\.pocket-mode \.word-token\.status-learning[\s\S]*box-shadow: inset 0 -0\.28em var\(--token-learning-bg/);
     assert.doesNotMatch(css, /\.pocket-mode \.word-token\.status-learning[\s\S]*border-bottom-color/);

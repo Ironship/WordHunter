@@ -43,8 +43,10 @@ impl BpeTokenizer {
         Ok(Self {
             codes,
             version,
-            token_regex: Regex::new(r"&apos;[\p{L}]+|&apos;|&quot;|&amp;|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]")
-                .map_err(|e| e.to_string())?,
+            token_regex: Regex::new(
+                r"&apos;[\p{L}]+|&apos;|&quot;|&amp;|[\p{L}\p{N}]+|[^\s\p{L}\p{N}]",
+            )
+            .map_err(|e| e.to_string())?,
         })
     }
 

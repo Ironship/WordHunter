@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub fn run_worker() -> i32 {
     eprintln!("CTranslate2 worker is desktop-only");

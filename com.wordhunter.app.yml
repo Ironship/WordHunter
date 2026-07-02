@@ -1,0 +1,123 @@
+app-id: com.wordhunter.app
+branch: stable
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: word-hunter-rustified
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=dri
+  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+  - --filesystem=xdg-config/gtk-3.0:ro
+  - --filesystem=xdg-config/kdeglobals:ro
+  - --filesystem=xdg-documents
+  - --filesystem=xdg-download
+  - --filesystem=host-os:ro
+
+modules:
+  - name: word-hunter
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/word-hunter/cargo
+        CARGO_NET_OFFLINE: "true"
+        CTRANSLATE2_RELEASE: "4.6.0"
+    build-commands:
+      - cargo --offline build --release --manifest-path src-tauri/Cargo.toml
+      - install -Dm755 src-tauri/target/release/word-hunter-rustified /app/bin/word-hunter-rustified
+      - install -Dm644 flatpak/com.wordhunter.app.desktop /app/share/applications/com.wordhunter.app.desktop
+      - install -Dm644 flatpak/com.wordhunter.app.metainfo.xml /app/share/metainfo/com.wordhunter.app.metainfo.xml
+      - install -Dm644 src/assets/icon-16.png /app/share/icons/hicolor/16x16/apps/com.wordhunter.app.png
+      - install -Dm644 src/assets/icon-32.png /app/share/icons/hicolor/32x32/apps/com.wordhunter.app.png
+      - install -Dm644 src/assets/icon-48.png /app/share/icons/hicolor/48x48/apps/com.wordhunter.app.png
+      - install -Dm644 src/assets/icon-64.png /app/share/icons/hicolor/64x64/apps/com.wordhunter.app.png
+      - install -Dm644 src/assets/icon-128.png /app/share/icons/hicolor/128x128/apps/com.wordhunter.app.png
+      - install -Dm644 src/assets/icon-256.png /app/share/icons/hicolor/256x256/apps/com.wordhunter.app.png
+    sources:
+      - type: dir
+        path: .
+        skip:
+          - .flatpak-builder
+          - .git
+          - .agents
+          - .codex
+          - .codex-remote-attachments
+          - build
+          - build_work
+          - dist
+          - docs/android
+          - docs/ddia-assessment.md
+          - My_Data
+          - output
+          - outputs
+          - scratch
+          - src-tauri/target
+          - src-tauri/ocr-runner/target
+          - TODO
+
+      - flatpak/cargo-sources.json
+      - type: patch
+        path: flatpak/patches/sentencepiece-sys-cstdint.patch
+
+      - type: archive
+        url: https://github.com/OpenNMT/CTranslate2/archive/refs/tags/v4.6.0.tar.gz
+        sha256: 9421d846668573466ceb713b27f71fb16fed8486ed7bdb654583c48c3c20621b
+        dest: src-tauri/target/release/CTranslate2-4.6.0
+        strip-components: 1
+      - type: archive
+        url: https://github.com/google/cpu_features/archive/8a494eb1e158ec2050e5f699a504fbc9b896a43b.tar.gz
+        sha256: 9b2019dae7608630ab985129a5c3263fc788e4f82e26965a8d8c33b8c035802e
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/cpu_features
+        strip-components: 1
+      - type: archive
+        url: https://github.com/NVIDIA/cutlass/archive/bbe579a9e3beb6ea6626d9227ec32d0dae119a49.tar.gz
+        sha256: 9fa1da6be3d2d9207b801d5768cbced59c202444a8c84b82325b0670f47f9d48
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/cutlass
+        strip-components: 1
+      - type: archive
+        url: https://github.com/jarro2783/cxxopts/archive/c74846a891b3cc3bfa992d588b1295f528d43039.tar.gz
+        sha256: 29b618401f6e29ee5a21208c5cf4d8b17e55814cc220e0ada9a798239f1944e3
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/cxxopts
+        strip-components: 1
+      - type: archive
+        url: https://github.com/google/googletest/archive/f8d7d77c06936315286eb55f8de22cd23c188571.tar.gz
+        sha256: 7ff5db23de232a39cbb5c9f5143c355885e30ac596161a6b9fc50c4538bfbf01
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/googletest
+        strip-components: 1
+      - type: archive
+        url: https://github.com/google/ruy/archive/363f252289fb7a1fba1703d99196524698cb884d.tar.gz
+        sha256: 3c2181c9134896784d5d0494e2638c43127de4da2ddf81b3a64c06311fb17432
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/ruy
+        strip-components: 1
+      - type: archive
+        url: https://github.com/pytorch/cpuinfo/archive/082deffc80ce517f81dc2f3aebe6ba671fcd09c9.tar.gz
+        sha256: 4379348ec3127b37e854a0a66f85ea1d3c606e5f3a6dce235dc9c69ce663c026
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/ruy/third_party/cpuinfo
+        strip-components: 1
+      - type: archive
+        url: https://github.com/google/googletest/archive/6c58c11d5497b6ee1df3cb400ce30deb72fc28c0.tar.gz
+        sha256: b4a7109b1a4fa078c23012078ad5bc273af24a10f8bfcaecc6111839fceeb010
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/ruy/third_party/googletest
+        strip-components: 1
+      - type: archive
+        url: https://github.com/gabime/spdlog/archive/76fb40d95455f249bd70824ecfcae7a8f0930fa3.tar.gz
+        sha256: 4530d53b86d45228a5b8982a8f4fe7d95d3ba8e1944858d3f663732c7e949cb7
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/spdlog
+        strip-components: 1
+      - type: archive
+        url: https://github.com/NVIDIA/thrust/archive/d997cd37a95b0fa2f1a0cd4697fd1188a842fbc8.tar.gz
+        sha256: 940e45a615f690f9f4adabae60c9da1956f5759b2e1ba58021c0a82897726ae0
+        dest: src-tauri/target/release/CTranslate2-4.6.0/third_party/thrust
+        strip-components: 1
+      - type: inline
+        contents: ""
+        dest: src-tauri/target/release/CTranslate2-4.6.0
+        dest-filename: submodules_downloaded

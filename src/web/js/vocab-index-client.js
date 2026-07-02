@@ -1,6 +1,8 @@
-const CACHE_KEY = "wordhunter:vocab-index:v2";
+import { STATE_SCHEMA_VERSION } from "./constants.js";
+
+const CACHE_KEY = `wordhunter:vocab-index:schema-v${STATE_SCHEMA_VERSION}`;
 const MAX_CACHE_ENTRIES = 80;
-const SIGNATURE_VERSION = "v2";
+const SIGNATURE_VERSION = `vocab-index-v${STATE_SCHEMA_VERSION}`;
 const SAMPLE_PREFIX = 1536;
 const SAMPLE_MIDDLE = 2048;
 const SAMPLE_SUFFIX = 1536;
@@ -125,7 +127,7 @@ async function fetchVocabIndex({ text, vocab, lang, algorithm, book }) {
       "Content-Type": "application/json",
       "X-WH-Token": window.WH_TOKEN || ""
     },
-    body: JSON.stringify({ text, vocab, lang, algorithm, book })
+    body: JSON.stringify({ schemaVersion: STATE_SCHEMA_VERSION, text, vocab, lang, algorithm, book })
   });
   if (!response.ok) throw new Error(`vocab_index HTTP ${response.status}`);
   return response.json();

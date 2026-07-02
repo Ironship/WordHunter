@@ -1,0 +1,30 @@
+{
+  "fr": {
+    "preferences": {
+      "dictionaryUrl": "https://dict.example/{{word}}"
+    },
+    "userBooks": [
+      {
+        "id": "fr-user-1",
+        "title": "Old Title : $b Subtitle"
+      }
+    ],
+    "hiddenBuiltInBooks": [
+      "fr-hidden"
+    ],
+    "archivedBookIds": [
+      "fr-custom-maison"
+    ],
+    "vocab": {
+      "maison": {
+        "word": "maison",
+        "translation": "house",
+        "status": "known",
+        "context": "La maison est bleue.",
+        "interval": 3,
+        "repetition": 2,
+        "efactor": 2.5
+      }
+    }
+  }
+}

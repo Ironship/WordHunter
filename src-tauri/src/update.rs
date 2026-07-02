@@ -1,8 +1,9 @@
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 pub fn check(user_agent: &str, app_version: &str) -> Value {
-    match ureq::get("https://api.github.com/repos/Ironship/WordHunter/releases/latest")
+    match crate::http::agent()
+        .get("https://api.github.com/repos/Ironship/WordHunter/releases/latest")
         .set("User-Agent", user_agent)
         .set("Accept", "application/vnd.github.v3+json")
         .call()
@@ -68,21 +69,12 @@ pub fn handle(payload: Value) -> Result<Value, String> {
         .ok_or_else(|| "missing op".to_string())?;
     match op {
         "parse_version" => {
-            let v = payload
-                .get("version")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let v = payload.get("version").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "version": v, "parts": parse_version(v) }))
         }
         "is_newer" => {
-            let latest = payload
-                .get("latest")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let current = payload
-                .get("current")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let latest = payload.get("latest").and_then(Value::as_str).unwrap_or("");
+            let current = payload.get("current").and_then(Value::as_str).unwrap_or("");
             Ok(json!({
                 "latest": latest,
                 "current": current,

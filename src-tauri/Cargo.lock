@@ -984,8 +984,6 @@ dependencies = [
 [[package]]
 name = "ctranslate2-src-build-support"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8eaf3d7a71897e4bb9248a0bd77ba9a0233f50643c89f0e1386e01ef6b1de240"
 dependencies = [
  "base64 0.22.1",
  "cmake",
@@ -6251,7 +6249,7 @@ dependencies = [
 
 [[package]]
 name = "word-hunter"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6259,6 +6257,9 @@ dependencies = [
  "ctranslate2-sys",
  "edge-tts-rust",
  "encoding_rs",
+ "gdk",
+ "gdkwayland-sys",
+ "gtk",
  "html-escape",
  "include_dir",
  "mime_guess",

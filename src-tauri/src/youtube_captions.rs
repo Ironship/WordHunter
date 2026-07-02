@@ -277,7 +277,8 @@ fn fetch_video_info(input_url: &str) -> Result<VideoInfo, String> {
 }
 
 fn fetch_text(url: &str, max_bytes: u64) -> Result<String, String> {
-    let response = ureq::get(url)
+    let response = crate::http::agent()
+        .get(url)
         .set("User-Agent", USER_AGENT)
         .set("Accept-Language", "en-US,en;q=0.8")
         .set("Cookie", "CONSENT=YES+1")

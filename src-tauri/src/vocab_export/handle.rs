@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::filter;
 use super::tsv;
@@ -32,10 +32,7 @@ fn read_statuses(payload: &Value) -> Vec<String> {
         .unwrap_or_else(|| VALID_STATUSES.iter().map(|s| s.to_string()).collect())
 }
 
-fn read_filter_opts<'a>(
-    payload: &'a Value,
-    statuses: &'a [String],
-) -> filter::FilterOptions<'a> {
+fn read_filter_opts<'a>(payload: &'a Value, statuses: &'a [String]) -> filter::FilterOptions<'a> {
     let vocab = payload.get("vocab").unwrap_or(&Value::Null);
     let query = payload.get("query").and_then(Value::as_str).unwrap_or("");
     let text_index = payload.get("textIndex");

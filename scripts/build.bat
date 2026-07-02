@@ -8,7 +8,8 @@ exit /b %ERRORLEVEL%
 # POWERSHELL_PAYLOAD
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $env:BUILD_SCRIPT
+$ScriptDir = Split-Path -Parent $env:BUILD_SCRIPT
+$Root = Split-Path -Parent $ScriptDir
 $Outputs = Join-Path $Root "outputs"
 $RustManifest = Join-Path $Root "src-tauri\Cargo.toml"
 $RustExe = Join-Path $Root "src-tauri\target\release\word-hunter-rustified.exe"
@@ -183,7 +184,7 @@ function Get-AndroidRustTarget([string]$Target) {
     switch ($Target) {
         "aarch64" { return "aarch64-linux-android" }
         "x86_64" { return "x86_64-linux-android" }
-        default { Fail "Unsupported Android target for build.bat: $Target" }
+        default { Fail "Unsupported Android target for scripts\build.bat: $Target" }
     }
 }
 
@@ -598,19 +599,19 @@ function Show-Usage {
     Write-Host "Word Hunter Rustified build"
     Write-Host ""
     Write-Host "Usage from PowerShell:"
-    Write-Host "  .\build.bat              build portable ZIP and Setup installer"
-    Write-Host "  .\build.bat all          build portable ZIP and Setup installer"
-    Write-Host "  .\build.bat installer    build outputs\Word.Hunter.Setup.exe"
-    Write-Host "  .\build.bat portable     build outputs\Word.Hunter.portable.zip"
-    Write-Host "  .\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk"
-    Write-Host "  .\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
-    Write-Host "  .\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
-    Write-Host "  .\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
-    Write-Host "  .\build.bat test         run shared, desktop, and Android frontend tests"
-    Write-Host "  .\build.bat test-shared  run shared frontend tests"
-    Write-Host "  .\build.bat test-desktop run desktop frontend tests"
-    Write-Host "  .\build.bat test-android run Android frontend tests"
-    Write-Host "  .\build.bat ocr-runtime  prepare bundled native PaddleOCR runtime"
+    Write-Host "  .\scripts\build.bat              build portable ZIP and Setup installer"
+    Write-Host "  .\scripts\build.bat all          build portable ZIP and Setup installer"
+    Write-Host "  .\scripts\build.bat installer    build outputs\Word.Hunter.Setup.exe"
+    Write-Host "  .\scripts\build.bat portable     build outputs\Word.Hunter.portable.zip"
+    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk"
+    Write-Host "  .\scripts\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
+    Write-Host "  .\scripts\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
+    Write-Host "  .\scripts\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
+    Write-Host "  .\scripts\build.bat test         run shared, desktop, and Android frontend tests"
+    Write-Host "  .\scripts\build.bat test-shared  run shared frontend tests"
+    Write-Host "  .\scripts\build.bat test-desktop run desktop frontend tests"
+    Write-Host "  .\scripts\build.bat test-android run Android frontend tests"
+    Write-Host "  .\scripts\build.bat ocr-runtime  prepare bundled native PaddleOCR runtime"
 }
 
 try {

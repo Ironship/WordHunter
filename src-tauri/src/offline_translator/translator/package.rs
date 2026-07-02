@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use zip::ZipArchive;
 
 /// URL for the Argos Translate package index.
@@ -82,7 +82,8 @@ fn legacy_packages_dir() -> Option<PathBuf> {
 
 /// Fetch the Argos package index and return a list of available packages.
 pub(crate) fn fetch_package_index() -> Result<Vec<ModelPackageInfo>, String> {
-    let response = ureq::get(ARGOS_PACKAGE_INDEX_URL)
+    let response = crate::http::agent()
+        .get(ARGOS_PACKAGE_INDEX_URL)
         .set("User-Agent", crate::proxy::USER_AGENT)
         .call()
         .map_err(|e| e.to_string())?;
@@ -135,7 +136,8 @@ fn install_package(pkg: &ModelPackageInfo) -> Result<bool, String> {
             pkg.from_code, pkg.to_code
         )
     })?;
-    let response = ureq::get(link)
+    let response = crate::http::agent()
+        .get(link)
         .set("User-Agent", crate::proxy::USER_AGENT)
         .call()
         .map_err(|e| format!("failed to download {link}: {e}"))?;
@@ -193,7 +195,9 @@ fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
         return Err("model package must contain exactly one top-level directory".to_string());
     }
     let package = entries.pop().unwrap().path();
-    let name = package.file_name().ok_or_else(|| "invalid model package directory".to_string())?;
+    let name = package
+        .file_name()
+        .ok_or_else(|| "invalid model package directory".to_string())?;
     let destination = target.join(name);
     if destination.exists() {
         return Err("model package already exists".to_string());

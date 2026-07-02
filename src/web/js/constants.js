@@ -1,5 +1,6 @@
 // App constants. Data only, no logic.
 export const STORAGE_KEY = "wordHunterStateV1";
+export const STATE_SCHEMA_VERSION = 2;
 
 export const STATUS_ORDER = ["new", "learning", "known", "ignored"];
 

@@ -1,6 +1,7 @@
 mod ebook;
 mod external_translator;
 mod handlers;
+mod http;
 #[cfg(target_os = "android")]
 #[path = "platform/android_backend/offline_translator.rs"]
 mod offline_translator;

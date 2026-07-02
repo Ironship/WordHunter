@@ -32,10 +32,7 @@ pub fn filter_entries(opts: FilterOptions<'_>) -> Vec<Value> {
     let mut entries: Vec<Value> = Vec::new();
     if let Some(obj) = opts.vocab.as_object() {
         for (word, entry) in obj {
-            let status = entry
-                .get("status")
-                .and_then(Value::as_str)
-                .unwrap_or("new");
+            let status = entry.get("status").and_then(Value::as_str).unwrap_or("new");
             if !status_set.contains(status) {
                 continue;
             }
@@ -87,11 +84,7 @@ fn entry_matches_query(word: &str, entry: &Value, query_variants: &[String]) -> 
         .any(|q| haystack_variants.iter().any(|h| h.contains(q.as_str())))
 }
 
-fn entry_in_text(
-    word: &str,
-    text_words: &Option<HashSet<String>>,
-    token_line: &str,
-) -> bool {
+fn entry_in_text(word: &str, text_words: &Option<HashSet<String>>, token_line: &str) -> bool {
     let Some(words) = text_words else {
         return true;
     };

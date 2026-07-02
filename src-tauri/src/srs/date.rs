@@ -1,4 +1,4 @@
-use time::{format_description::well_known::Rfc3339, Duration as TimeDuration, OffsetDateTime};
+use time::{Duration as TimeDuration, OffsetDateTime, format_description::well_known::Rfc3339};
 
 pub fn today_iso(date: OffsetDateTime) -> String {
     format!(

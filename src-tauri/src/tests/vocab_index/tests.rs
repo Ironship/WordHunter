@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::vocab_index;
 
@@ -43,10 +43,7 @@ fn handle_returns_words_stats() {
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
     assert_eq!(words, vec!["hello", "world", "rust"]);
-    assert_eq!(
-        result["tokenLine"].as_str().unwrap(),
-        " hello world rust "
-    );
+    assert_eq!(result["tokenLine"].as_str().unwrap(), " hello world rust ");
     assert!(result.get("signature").is_none());
 }
 

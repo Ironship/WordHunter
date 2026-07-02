@@ -1,4 +1,4 @@
-import { UI_SCALE } from "../constants.js";
+import { STATE_SCHEMA_VERSION, UI_SCALE } from "../constants.js";
 import { VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
 import { DEFAULT_LEARNING_COLORS } from "../reader-colors.js";
 
@@ -36,6 +36,7 @@ export function getDefaultDictionaryUrl(lang) {
 
 export function createDefaultState() {
   return {
+    schemaVersion: STATE_SCHEMA_VERSION,
     currentView: "library",
     currentTextId: null,
     selectedWord: null,
@@ -48,12 +49,18 @@ export function createDefaultState() {
     profiles: null,
     reviewIndex: 0,
     readerFontSize: 18,
+    readerPdfZoom: 1,
+    readerPdfViewMode: "overlay",
     readerPage: 1,
     readerPages: {},
     readerScrolls: {},
     readerScrollsPerPage: {},
     dataDirectory: "",
     syncDirectory: "",
+    syncConflictCount: 0,
+    syncConflicts: [],
+    recoveryStatus: null,
+    migrationStatus: null,
     filters: {
       libraryQuery: "",
       libraryLevel: "all",

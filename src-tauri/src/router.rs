@@ -1,12 +1,12 @@
-use include_dir::{include_dir, Dir};
-use serde_json::{json, Value};
+use include_dir::{Dir, include_dir};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tiny_http::{Method, Request};
 
 use crate::{
     ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy, response,
-    server::ServerState, srs, subtitles, tokenizer, update, vocab_export, vocab_index,
-    youtube_captions, youglish,
+    server::ServerState, srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish,
+    youtube_captions,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../src/web");
@@ -22,6 +22,12 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
         (Method::Get, "/__store/load") => response::json_response(request, state.store.snapshot()),
         (Method::Get, "/__store/data_dir") => {
             response::json_response(request, json!({ "path": state.store.dir() }))
+        }
+        (Method::Get, "/__store/sync_status") => {
+            response::json_response(request, state.store.sync_status())
+        }
+        (Method::Get, "/__store/recovery_status") => {
+            response::json_response(request, state.store.recovery_status())
         }
         (Method::Get, "/__data") => {
             crate::platform::open_path(state.store.dir());
@@ -112,9 +118,34 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                     Err(err) => response::error_response(request, 500, &err),
                 },
                 "/__store/sync_now" => match handlers::sync_now(&state) {
-                    Ok(snapshot) => response::json_response(request, json!({ "snapshot": snapshot })),
+                    Ok(snapshot) => {
+                        response::json_response(request, json!({ "snapshot": snapshot }))
+                    }
                     Err(err) => response::error_response(request, 500, &err),
                 },
+                "/__store/sync_android_staging" => match handlers::sync_android_staging(&state) {
+                    Ok(snapshot) => {
+                        response::json_response(request, json!({ "snapshot": snapshot }))
+                    }
+                    Err(err) => response::error_response(request, 500, &err),
+                },
+                "/__store/resolve_conflict" => {
+                    let payload = response::read_json(&mut request)?;
+                    let id = payload
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    let resolution = payload
+                        .get("resolution")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    match state.store.resolve_sync_conflict(id, resolution) {
+                        Ok(snapshot) => {
+                            response::json_response(request, json!({ "snapshot": snapshot }))
+                        }
+                        Err(err) => response::error_response(request, 400, &err),
+                    }
+                }
                 "/__store/upsert_text" => {
                     let payload = response::read_json(&mut request)?;
                     state.store.upsert_text(&payload)?;

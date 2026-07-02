@@ -128,12 +128,12 @@ function waitForAndroidSyncResult(startSync) {
 
 function chooseAndroidSyncFolder() {
   if (typeof window.WordHunterAndroid?.chooseSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult(() => window.WordHunterAndroid.chooseSyncFolder());
+  return waitForAndroidSyncResult(() => window.WordHunterAndroid.chooseSyncFolder(window.WH_TOKEN || ""));
 }
 
 function forceAndroidSyncFolder() {
   if (typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult(() => window.WordHunterAndroid.forceSyncFolder());
+  return waitForAndroidSyncResult(() => window.WordHunterAndroid.forceSyncFolder(window.WH_TOKEN || ""));
 }
 
 function applyBridgeSnapshot(snapshot, previousView = state.currentView || "settings") {
@@ -176,6 +176,20 @@ async function syncNow({ background = false, saveFirst = true } = {}) {
   const response = await fetch("/__store/sync_now", {
     method: "POST",
     headers: { "X-WH-Token": window.WH_TOKEN || "" }
+  });
+  if (!response.ok) throw new Error(t("toast.syncUnavailable"));
+  const result = await response.json();
+  if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
+  return true;
+}
+
+async function resolveSyncConflict(id, resolution) {
+  if (!window.__qtBridge) return false;
+  const previousView = state.currentView || "settings";
+  const response = await fetch("/__store/resolve_conflict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+    body: JSON.stringify({ id, resolution })
   });
   if (!response.ok) throw new Error(t("toast.syncUnavailable"));
   const result = await response.json();
@@ -331,6 +345,27 @@ export function bindSettingsEvents() {
       setTimeout(syncSettingsControls, 500);
     }
   });
+
+  if (els.syncConflictsList) {
+    els.syncConflictsList.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-conflict-resolution]");
+      if (!button) return;
+      const item = button.closest("[data-conflict-id]");
+      const id = item?.dataset.conflictId;
+      const resolution = button.dataset.conflictResolution;
+      if (!id || !resolution) return;
+      button.disabled = true;
+      try {
+        await resolveSyncConflict(id, resolution);
+        showToast(t("settings.syncConflictResolved"));
+      } catch (error) {
+        console.warn("resolve conflict failed", error);
+        showToast(t("toast.syncUnavailable"), "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
 
   startBackgroundSyncJob();
 

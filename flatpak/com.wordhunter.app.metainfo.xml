@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.wordhunter.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>Word Hunter</name>
+  <summary>Local-first reader and vocabulary trainer</summary>
+  <developer id="com.wordhunter">
+    <name>Word Hunter</name>
+  </developer>
+  <icon type="stock">com.wordhunter.app</icon>
+  <description>
+    <p>
+      Word Hunter is a desktop language-learning workspace for reading real
+      texts, saving vocabulary with context, and reviewing words later.
+    </p>
+    <p>
+      It supports imported text, PDFs, EPUB files, subtitles, public-domain
+      book discovery, local vocabulary storage, spaced repetition, text to
+      speech, and optional offline translation models.
+    </p>
+  </description>
+  <launchable type="desktop-id">com.wordhunter.app.desktop</launchable>
+  <url type="homepage">https://github.com/Ironship/WordHunter</url>
+  <url type="bugtracker">https://github.com/Ironship/WordHunter/issues</url>
+  <categories>
+    <category>Education</category>
+    <category>Languages</category>
+  </categories>
+  <provides>
+    <binary>word-hunter-rustified</binary>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/Ironship/WordHunter/main/docs/screenshots/pc-reader.png</image>
+      <caption>Reading view with vocabulary highlights and word details</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.3.6" date="2026-07-02">
+      <description>
+        <ul>
+          <li>Added Linux Flatpak packaging with AppStream metadata and local install helpers.</li>
+          <li>Improved PDF reading with page-background overlays, selectable words, and a clean text mode.</li>
+          <li>Improved Android Pocket PDF rendering with zooming, horizontal panning, and text-layer spacing fixes.</li>
+          <li>Hardened local-first storage, backup, recovery, and sync compatibility paths.</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

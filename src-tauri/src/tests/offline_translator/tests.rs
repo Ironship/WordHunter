@@ -34,7 +34,13 @@ fn default_labels_use_neutral_translator_name() {
 fn popup_labels_use_locale_file_copy() {
     let labels = translator_labels("en");
 
-    assert_eq!(labels.get("sourceLabel").map(String::as_str), Some("Source Text"));
-    assert_eq!(labels.get("copyBtn").map(String::as_str), Some("Copy translation"));
+    assert_eq!(
+        labels.get("sourceLabel").map(String::as_str),
+        Some("Source Text")
+    );
+    assert_eq!(
+        labels.get("copyBtn").map(String::as_str),
+        Some("Copy translation")
+    );
     assert_eq!(labels.get("copied").map(String::as_str), Some("Copied!"));
 }

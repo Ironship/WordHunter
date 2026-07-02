@@ -1,4 +1,4 @@
-use rand::{distributions::Alphanumeric, Rng};
+use rand::{Rng, distributions::Alphanumeric};
 use std::collections::HashSet;
 use std::net::TcpListener;
 use std::sync::{Arc, Mutex};

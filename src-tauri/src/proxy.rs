@@ -4,7 +4,7 @@ use url::Url;
 
 use crate::response;
 
-pub const USER_AGENT: &str = "WordHunter/0.3.5 (Tauri)";
+pub const USER_AGENT: &str = "WordHunter/0.3.6 (Tauri)";
 const MAX_PROXY_BODY: u64 = 10_485_760;
 
 /// Proxy endpoint — fetch remote resources for allowed domains only.
@@ -19,7 +19,8 @@ pub fn serve_proxy(request: Request, query: &str) -> Result<(), String> {
     if !matches!(host, "gutenberg.org" | "www.gutenberg.org" | "gutendex.com") {
         return response::error_response(request, 403, "domain not allowed");
     }
-    let resp = ureq::get(target)
+    let resp = crate::http::agent()
+        .get(target)
         .set("User-Agent", USER_AGENT)
         .call()
         .map_err(|e| e.to_string())?;

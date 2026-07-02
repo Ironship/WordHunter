@@ -6,7 +6,7 @@
 //
 // http://opensource.org/licenses/mit-license.php
 
-use std::fs::read_dir;
+use std::fs::{read_dir, read_to_string, write};
 use std::path::PathBuf;
 use std::{env, path::Path};
 
@@ -91,6 +91,72 @@ fn add_search_paths(key: &str) {
                 println!("cargo:rustc-link-search={}", v);
             });
     }
+}
+
+fn target_os() -> Os {
+    match env::var("CARGO_CFG_TARGET_OS").as_deref() {
+        Ok("windows") => Os::Win,
+        Ok("macos") => Os::Mac,
+        Ok("linux") => Os::Linux,
+        _ => {
+            if cfg!(target_os = "windows") {
+                Os::Win
+            } else if cfg!(target_os = "macos") {
+                Os::Mac
+            } else if cfg!(target_os = "linux") {
+                Os::Linux
+            } else {
+                Os::Unknown
+            }
+        }
+    }
+}
+
+fn target_is_aarch64() -> bool {
+    env::var("CARGO_CFG_TARGET_ARCH")
+        .map(|arch| arch == "aarch64")
+        .unwrap_or_else(|_| cfg!(target_arch = "aarch64"))
+}
+
+fn target_is_windows_gnu() -> bool {
+    env::var("TARGET")
+        .map(|target| target.contains("windows-gnu"))
+        .unwrap_or(false)
+}
+
+fn patch_mingw_cpu_dispatch_flags(path: impl AsRef<Path>) -> std::io::Result<()> {
+    if !target_is_windows_gnu() {
+        return Ok(());
+    }
+
+    let path = path.as_ref();
+    let original = r#"    if(WIN32)
+      ct2_compile_kernels_for_isa(avx "/arch:AVX")
+      ct2_compile_kernels_for_isa(avx2 "/arch:AVX2")
+      ct2_compile_kernels_for_isa(avx512 "/arch:AVX512")
+    else()
+      ct2_compile_kernels_for_isa(avx "-mavx")
+      ct2_compile_kernels_for_isa(avx2 "-mavx2 -mfma")
+      ct2_compile_kernels_for_isa(avx512 "-mavx512f -mavx512cd -mavx512vl -mavx512bw -mavx512dq")
+    endif()"#;
+    let patched = r#"    if(WIN32 AND MSVC)
+      ct2_compile_kernels_for_isa(avx "/arch:AVX")
+      ct2_compile_kernels_for_isa(avx2 "/arch:AVX2")
+      ct2_compile_kernels_for_isa(avx512 "/arch:AVX512")
+    else()
+      ct2_compile_kernels_for_isa(avx "-mavx")
+      ct2_compile_kernels_for_isa(avx2 "-mavx2 -mfma")
+      ct2_compile_kernels_for_isa(avx512 "-mavx512f -mavx512cd -mavx512vl -mavx512bw -mavx512dq")
+    endif()"#;
+
+    let contents = read_to_string(path)?;
+    if contents.contains(patched) {
+        return Ok(());
+    }
+    if contents.contains(original) {
+        write(path, contents.replace(original, patched))?;
+    }
+    Ok(())
 }
 
 fn get_download_link(
@@ -220,16 +286,8 @@ fn load_features() -> (
     bool,
     bool,
 ) {
-    let aarch64 = cfg!(target_arch = "aarch64");
-    let os = if cfg!(target_os = "windows") {
-        Os::Win
-    } else if cfg!(target_os = "macos") {
-        Os::Mac
-    } else if cfg!(target_os = "linux") {
-        Os::Linux
-    } else {
-        Os::Unknown
-    };
+    let aarch64 = target_is_aarch64();
+    let os = target_os();
     let mut cuda = cfg!(feature = "cuda");
     let mut cudnn = cfg!(feature = "cudnn");
     let mut cuda_dynamic_loading = cfg!(feature = "cuda-dynamic-loading");
@@ -430,6 +488,7 @@ fn main() {
         if os == Os::Win {
             patch_cmake_runtime_flags(p.join("CMakeLists.txt"), cfg!(feature = "crt-dynamic"))
                 .unwrap();
+            patch_mingw_cpu_dispatch_flags(p.join("CMakeLists.txt")).unwrap();
         }
         (
             build_native(

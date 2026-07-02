@@ -1,5 +1,5 @@
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::LazyLock;
 
 const ASS_OVERRIDE: &str = r"\{[^}]*\}";
@@ -59,7 +59,12 @@ fn strip_bom(text: &str) -> String {
 fn normalize_line(value: &str) -> String {
     let visible: String = value
         .chars()
-        .filter(|ch| !matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{2060}' | '\u{feff}'))
+        .filter(|ch| {
+            !matches!(
+                ch,
+                '\u{200b}' | '\u{200c}' | '\u{200d}' | '\u{2060}' | '\u{feff}'
+            )
+        })
         .collect();
     let cleaned = RE_ASS_OVERRIDE.replace_all(&visible, "");
     let cleaned = RE_HTML_TAG.replace_all(&cleaned, "");
@@ -207,42 +212,24 @@ pub fn handle(payload: Value) -> Result<Value, String> {
         .ok_or_else(|| "missing op".to_string())?;
     match op {
         "parse" => {
-            let name = payload
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let raw = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let name = payload.get("name").and_then(Value::as_str).unwrap_or("");
+            let raw = payload.get("text").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "text": parse_imported_text_file(name, raw) }))
         }
         "title" => {
-            let name = payload
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let name = payload.get("name").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "title": title_from_imported_file_name(name) }))
         }
         "srt" => {
-            let raw = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let raw = payload.get("text").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "text": parse_srt(raw) }))
         }
         "vtt" => {
-            let raw = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let raw = payload.get("text").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "text": parse_vtt(raw) }))
         }
         "ass" => {
-            let raw = payload
-                .get("text")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let raw = payload.get("text").and_then(Value::as_str).unwrap_or("");
             Ok(json!({ "text": parse_ass(raw) }))
         }
         other => Err(format!("unknown subtitles op: {other}")),

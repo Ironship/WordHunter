@@ -16,7 +16,13 @@ pub struct AnkiParseResult {
 pub fn clean_cell(value: &str) -> String {
     value
         .chars()
-        .map(|c| if c == '\t' || c == '\r' || c == '\n' { ' ' } else { c })
+        .map(|c| {
+            if c == '\t' || c == '\r' || c == '\n' {
+                ' '
+            } else {
+                c
+            }
+        })
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -29,12 +35,8 @@ pub fn entry_context(entry: &Value) -> String {
         .and_then(Value::as_array)
         .and_then(|arr| arr.first())
         .and_then(Value::as_str);
-    let raw = from_examples.unwrap_or_else(|| {
-        entry
-            .get("note")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-    });
+    let raw =
+        from_examples.unwrap_or_else(|| entry.get("note").and_then(Value::as_str).unwrap_or(""));
     clean_cell(raw)
 }
 
@@ -82,35 +84,17 @@ pub fn parse_anki_tsv(tsv: &str) -> AnkiParseResult {
             header_found = true;
             continue;
         }
-        let word = parts
-            .get(0)
-            .copied()
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let word = parts.get(0).copied().unwrap_or("").trim().to_string();
         if word.is_empty() {
             continue;
         }
-        let translation = parts
-            .get(1)
-            .copied()
-            .unwrap_or("")
-            .trim()
-            .to_string();
-        let context = parts
-            .get(2)
-            .copied()
-            .unwrap_or("")
-            .trim()
-            .to_string();
+        let translation = parts.get(1).copied().unwrap_or("").trim().to_string();
+        let context = parts.get(2).copied().unwrap_or("").trim().to_string();
         rows.push(AnkiRow {
             word,
             translation,
             context,
         });
     }
-    AnkiParseResult {
-        header_found,
-        rows,
-    }
+    AnkiParseResult { header_found, rows }
 }

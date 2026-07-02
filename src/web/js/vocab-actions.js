@@ -104,9 +104,12 @@ function maybeAutoSpeakFocusedWord(word) {
 
 export function setWordStatus(word, status) {
   if (!STATUS_ORDER.includes(status)) return;
+  const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word, getTextById(state.currentTextId)?.text || "");
+  const previousStatus = entry.status;
+  if (hadEntry && previousStatus === status) return;
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
-  const previousStatus = setEntryStatus(entry, status);
+  setEntryStatus(entry, status);
   if (status === "learning" && previousStatus !== "learning") scheduleFirstLearningReview(entry);
   saveState();
   renderShell();
@@ -122,7 +125,9 @@ export function setWordStatus(word, status) {
 }
 
 export function updateWordField(word, field, value) {
+  const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
+  if (hadEntry && Object.is(entry[field], value)) return;
   entry[field] = value;
   if (field === "translation") {
     delete entry.translationSource;
@@ -177,7 +182,9 @@ export function handleReviewAction(action) {
 }
 
 export function setWordImage(word, imageUrl) {
+  const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
+  if (hadEntry && Object.is(entry.imageUrl, imageUrl)) return;
   entry.imageUrl = imageUrl;
   entry.updatedAt = new Date().toISOString();
   saveState();
@@ -189,7 +196,9 @@ export function setWordImage(word, imageUrl) {
 }
 
 export function removeWordImage(word) {
+  const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
+  if (hadEntry && !Object.hasOwn(entry, "imageUrl")) return;
   delete entry.imageUrl;
   entry.updatedAt = new Date().toISOString();
   saveState();

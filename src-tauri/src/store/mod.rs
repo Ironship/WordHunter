@@ -6,13 +6,15 @@ pub mod vocab_file;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 use rusqlite::Connection;
 
+const DB_SCHEMA_VERSION: u32 = 2;
+
 pub struct Store {
     inner: Mutex<StoreInner>,
-    // ponytail: global save lock; shard only if saves become a bottleneck.
+    // Global save lock; shard only if saves become a bottleneck.
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
     device_id: String,
@@ -47,7 +49,7 @@ impl Store {
         store.init_schema()?;
         #[cfg(not(target_os = "android"))]
         store.recover_pending_save()?;
-        // ponytail: snapshot refreshes records on first load; do not block Android WebView creation here.
+        // Snapshot refreshes records on first load; do not block Android WebView creation here.
         Ok(store)
     }
 
@@ -59,17 +61,20 @@ impl Store {
         &self.device_id
     }
 
+    pub(crate) fn lock_writes(&self) -> Result<MutexGuard<'_, ()>, String> {
+        self.write_lock
+            .lock()
+            .map_err(|_| "save lock is unavailable".to_string())
+    }
+
     #[cfg(not(target_os = "android"))]
     pub fn relocate(&self, dir: PathBuf) -> Result<PathBuf, String> {
-        let _write_guard = self
-            .write_lock
-            .lock()
-            .map_err(|_| "save lock is unavailable".to_string())?;
+        let _write_guard = self.lock_writes()?;
         let current = self.dir();
         if current == dir {
             return Ok(current);
         }
-        let current_payload = self.snapshot();
+        let current_payload = self.snapshot_unlocked();
         let target_has_data = has_wordhunter_data(&dir);
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         if !target_has_data {
@@ -113,6 +118,14 @@ impl Store {
     fn init_schema(&self) -> Result<(), String> {
         let inner = self.inner.lock().unwrap();
         let conn = Self::conn(&inner)?;
+        let current_version = conn
+            .query_row("PRAGMA user_version", [], |row| row.get::<_, u32>(0))
+            .map_err(|e| e.to_string())?;
+        if current_version > DB_SCHEMA_VERSION {
+            return Err(format!(
+                "unsupported database schema version {current_version}; this build supports {DB_SCHEMA_VERSION}"
+            ));
+        }
         // WAL improves concurrency between reads/writes; busy_timeout avoids
         // "database is locked" errors under brief contention.
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;")
@@ -127,7 +140,19 @@ impl Store {
             [],
         )
         .map_err(|e| e.to_string())?;
+        if current_version < DB_SCHEMA_VERSION {
+            conn.execute_batch(&format!("PRAGMA user_version = {DB_SCHEMA_VERSION};"))
+                .map_err(|e| e.to_string())?;
+        }
         Ok(())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn db_schema_version(&self) -> Result<u32, String> {
+        let inner = self.inner.lock().unwrap();
+        let conn = Self::conn(&inner)?;
+        conn.query_row("PRAGMA user_version", [], |row| row.get::<_, u32>(0))
+            .map_err(|e| e.to_string())
     }
 }
 
@@ -195,9 +220,9 @@ mod tests {
     use std::ffi::OsString;
     use std::sync::Mutex;
 
-    use serde_json::{json, Map, Value};
+    use serde_json::{Map, Value, json};
 
-    use super::{copy_data_dir, record_files, Store, StoreInner};
+    use super::{Store, StoreInner, copy_data_dir, record_files};
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
@@ -352,5 +377,40 @@ mod tests {
 
         assert!(error.contains("configured data folder is missing"));
         assert!(!missing.exists());
+    }
+
+    #[test]
+    fn init_schema_sets_sqlite_user_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir, "local-device");
+
+        assert_eq!(store.db_schema_version().unwrap(), super::DB_SCHEMA_VERSION);
+    }
+
+    #[test]
+    fn init_schema_rejects_newer_sqlite_user_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let db_path = dir.path().join("store.sqlite");
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        conn.execute_batch("PRAGMA user_version = 999;").unwrap();
+        drop(conn);
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                db_path,
+                vocab_path: dir.path().join("vocab.json"),
+                books_dir,
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "local-device".to_string(),
+        };
+
+        let error = store.init_schema().unwrap_err();
+
+        assert!(error.contains("unsupported database schema version 999"));
+        assert_eq!(store.db_schema_version().unwrap(), 999);
     }
 }

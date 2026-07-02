@@ -110,31 +110,40 @@ function getAllLanguageCodes() {
   return [...SUPPORTED_LANGUAGES];
 }
 
+function pickLanguageCode(candidates, codes, fallback) {
+  return candidates.find((code) => codes.includes(code)) || fallback;
+}
+
+export function resolveTranslatorPair({
+  fromValue = "",
+  toValue = "",
+  learningLanguage = "",
+  locale = "",
+  allCodes = getAllLanguageCodes()
+} = {}) {
+  const codes = Array.isArray(allCodes) ? allCodes.filter(Boolean) : [];
+  const fallbackFrom = codes[0] || "";
+  const fromCode = pickLanguageCode([fromValue, learningLanguage], codes, fallbackFrom);
+
+  const fallbackTo = codes.find((code) => code !== fromCode) || fallbackFrom;
+  const toCode = pickLanguageCode([toValue, locale], codes, fallbackTo);
+
+  return { fromCode, toCode, fromCodes: codes, toCodes: codes };
+}
+
 function optionHtml(code, selected) {
   return `<option value="${escapeHtml(code)}" ${code === selected ? "selected" : ""}>${escapeHtml(languageName(code))} (${escapeHtml(code.toUpperCase())})</option>`;
 }
 
 function ensureSelectedPair() {
-  const models = getModels();
-  if (!models.length || !els.translatorFrom || !els.translatorTo) {
-    // Offline translator not available — still show languages so user can see the UI
-    const allCodes = getAllLanguageCodes();
-    return {
-      fromCode: allCodes[0] || "",
-      toCode: allCodes[1] || allCodes[0] || "",
-      fromCodes: allCodes,
-      toCodes: allCodes
-    };
-  }
-
   const allCodes = getAllLanguageCodes();
-  let fromCode = els.translatorFrom.value || state.preferences.learningLanguage || allCodes[0];
-  if (!allCodes.includes(fromCode)) fromCode = allCodes[0];
-
-  let toCode = els.translatorTo.value || state.preferences.locale || allCodes.find(c => c !== fromCode) || allCodes[0];
-  if (!allCodes.includes(toCode)) toCode = allCodes.find(c => c !== fromCode) || allCodes[0];
-
-  return { fromCode, toCode, fromCodes: allCodes, toCodes: allCodes };
+  return resolveTranslatorPair({
+    fromValue: els.translatorFrom?.value,
+    toValue: els.translatorTo?.value,
+    learningLanguage: state.preferences.learningLanguage,
+    locale: state.preferences.locale,
+    allCodes
+  });
 }
 
 export function renderTranslator() {

@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::{finite_f64, finite_i64, normalize_quality, round_to};
 

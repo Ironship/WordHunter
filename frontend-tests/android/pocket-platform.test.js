@@ -193,13 +193,27 @@ describe("Android Pocket platform", () => {
     assert.equal(document.documentElement.classList.contains("pocket-import-open"), true);
   });
 
-  it("routes Pocket PDF import through the text layer instead of OCR overlay", () => {
+  it("routes Pocket PDF import through an Android-rendered overlay", () => {
     const source = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+    const backend = readFileSync(new URL("../../src-tauri/src/platform/android_backend/pdf_ocr.rs", import.meta.url), "utf8");
 
-    assert.match(source, /const androidTextLayerOnly = isAndroidPlatform\(\);/);
-    assert.match(source, /if \(!androidTextLayerOnly && !await confirmWholeBookOcr\(\)\) return false;/);
-    assert.match(source, /androidTextLayerOnly \? "import\.parsingPdfTextLayer" : "import\.parsingPdfOcr"/);
+    assert.match(source, /const androidPdfOverlay = isAndroidPlatform\(\);/);
+    assert.match(source, /if \(!androidPdfOverlay && !await confirmWholeBookOcr\(\)\) return false;/);
+    assert.match(source, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
+    assert.match(source, /bridge\.beginPdfRender\(sessionId, data\)/);
+    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, 1400\)/);
+    assert.match(source, /"\/__book\/image"/);
     assert.match(source, /pdfOcrPages: hasOverlayPages \? pages : undefined/);
     assert.match(source, /pdfOcrEngine: hasOverlayPages \? ocrEngine : ""/);
+    assert.match(backend, /let \(pages, page_count, truncated\) = extract_overlay_pages\(&data, max_pages\)\?/);
+    assert.match(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
+    assert.match(backend, /merge_words_using_plain_text\(/);
+    assert.match(backend, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
+    assert.match(backend, /let baseline_y = position\.m32 as f32;/);
+    assert.match(backend, /let y_top = baseline_y - font_height \* 0\.82;/);
+    assert.match(backend, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
+    assert.doesNotMatch(backend, /marker_room/);
+    assert.match(backend, /"pages": pages/);
+    assert.match(backend, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
   });
 });
