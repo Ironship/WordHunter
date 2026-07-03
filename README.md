@@ -24,29 +24,6 @@ Active targets:
 Installers, portable archives, APKs, and AABs are published as GitHub Release
 assets, not tracked in the source tree.
 
-Release `0.3.6` focuses on PDF and packaging work: PDF pages can keep their
-original background with selectable word overlays, scanned/text-layer spacing is
-more reliable, Pocket can zoom and pan PDF pages on Android, and Linux builds now
-have Flatpak packaging.
-
-Release `0.3.6.1` is a hotfix refresh for the `0.3.6` line. It rebuilds Windows
-packages with the required GNU runtime DLLs, fixes Flatpak/Linux OCR GPU
-platform detection, bundles the Flatpak CPU OCR runtime for scanned PDFs, and
-makes Flatpak sync folder selection persist only after a successful sync while
-honoring XDG config/data directories.
-
-Release `0.3.6.2` collects the follow-up testing fixes for the same line. It
-adds the managed Google Drive sync coordinator through bundled rclone with
-staged cloud pulls and no remote deletes in the MVP, makes Discover follow the
-active learning profile language on desktop and Android while preserving the
-selected source, and tightens the Linux/Flatpak GTK titlebar workaround so close
-and maximize buttons keep receiving clicks in normal window mode. Interrupted
-Google Drive authorization now cleans up partial app-owned rclone remotes and
-lets the user retry from the Connect Google Drive button, and transient Google
-Drive quota/rate-limit errors during connector setup are retried before the
-connector is marked failed. Local/background sync snapshots also keep the
-visible cloud connector status instead of briefly falling back to "not
-connected" after a successful Google Drive connection.
 
 ## What It Includes
 
