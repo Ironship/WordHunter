@@ -26,6 +26,12 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
         (Method::Get, "/__store/sync_status") => {
             response::json_response(request, state.store.sync_status())
         }
+        (Method::Get, "/__store/sync_health") => {
+            response::json_response(request, handlers::sync_health())
+        }
+        (Method::Get, "/__store/cloud_sync_status") => {
+            response::json_response(request, handlers::cloud_sync_status(&state))
+        }
         (Method::Get, "/__store/recovery_status") => {
             response::json_response(request, state.store.recovery_status())
         }
@@ -115,6 +121,20 @@ pub fn handle_request(mut request: Request, state: Arc<ServerState>) -> Result<(
                         json!({ "path": path, "snapshot": snapshot }),
                     ),
                     Ok(None) => response::json_response(request, json!({ "path": null })),
+                    Err(err) => response::error_response(request, 500, &err),
+                },
+                "/__store/prepare_sync_dir" => match handlers::prepare_sync_dir(&state) {
+                    Ok(payload) => response::json_response(request, payload),
+                    Err(err) => response::error_response(request, 500, &err),
+                },
+                "/__store/cloud_sync_connect_google" => {
+                    match handlers::cloud_sync_connect_google(&state) {
+                        Ok(payload) => response::json_response(request, payload),
+                        Err(err) => response::error_response(request, 500, &err),
+                    }
+                }
+                "/__store/cloud_sync_now" => match handlers::cloud_sync_now(&state) {
+                    Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 500, &err),
                 },
                 "/__store/sync_now" => match handlers::sync_now(&state) {

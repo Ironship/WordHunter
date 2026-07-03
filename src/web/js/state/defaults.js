@@ -57,6 +57,8 @@ export function createDefaultState() {
     readerScrollsPerPage: {},
     dataDirectory: "",
     syncDirectory: "",
+    syncHealth: null,
+    cloudSyncStatus: null,
     syncConflictCount: 0,
     syncConflicts: [],
     recoveryStatus: null,
@@ -72,7 +74,7 @@ export function createDefaultState() {
       vocabStatuses: ["learning", "known"],
       vocabTextId: "all"
     },
-    discover: { query: "", source: "gutenberg", language: "de", sort: "popular", level: "", page: 1 },
+    discover: { query: "", source: "gutenberg", sort: "popular", level: "", page: 1 },
     preferences: {
       theme: "auto",
       locale: "en",

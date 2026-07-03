@@ -134,7 +134,14 @@ describe("desktop reader UX", () => {
     assert.match(desktopWindow, /const LINUX_DESKTOP_APP_ID: &str = "com\.wordhunter\.app"/);
     assert.match(desktopWindow, /set_linux_program_name\(\)/);
     assert.match(desktopWindow, /g_set_prgname\(app_id\.as_ptr\(\)\)/);
-    assert.match(desktopWindow, /install_wayland_app_id\(&window\)/);
+    assert.match(desktopWindow, /install_linux_window_workarounds\(&window\)/);
+    assert.match(desktopWindow, /allow_wayland_titlebar_button_events\(&gtk_window\)/);
+    assert.match(desktopWindow, /connect_realize\(\|gtk_window\|/);
+    assert.match(desktopWindow, /connect_map\(\|gtk_window\|/);
+    assert.match(desktopWindow, /fn relax_event_box_overlays\(widget: &gtk::Widget\)/);
+    assert.match(desktopWindow, /widget\.clone\(\)\.downcast::<gtk::EventBox>\(\)/);
+    assert.match(desktopWindow, /widget\.clone\(\)\.downcast::<gtk::Container>\(\)/);
+    assert.match(desktopWindow, /set_above_child\(false\)/);
     assert.match(desktopWindow, /gdk_wayland_window_set_application_id/);
   });
 

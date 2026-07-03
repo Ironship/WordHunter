@@ -67,6 +67,8 @@ function setupSettingsControls() {
     "prefCardStats",
     "storageSummary",
     "syncStatus",
+    "syncHealth",
+    "cloudSyncStatus",
     "syncDirectory",
     "syncConflictsPanel",
     "syncConflictsList",
@@ -126,6 +128,44 @@ describe("preferences settings summary", () => {
     assert.match(els.syncConflictsList.innerHTML, /vocab:de:haus/);
     assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="keep-current"/);
     assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="use-conflict"/);
+  });
+
+  it("renders sync folder health without requiring users to understand staging", () => {
+    resetState(null, {
+      syncDirectory: "/home/user/Documents/WordHunterSync",
+      syncHealth: { status: "needs-attention", recordCount: 12, issueCount: 2 }
+    });
+
+    syncSettingsControls();
+
+    assert.equal(els.syncHealth.hidden, false);
+    assert.match(els.syncHealth.textContent, /settings\.syncHealthNeedsAttention/);
+
+    resetState(null, { syncHealth: { status: "not-configured" } });
+    syncSettingsControls();
+
+    assert.equal(els.syncHealth.hidden, true);
+    assert.equal(els.syncHealth.textContent, "");
+  });
+
+  it("renders cloud sync status separately from the local sync folder", () => {
+    resetState(null, {
+      cloudSyncStatus: { configured: true, status: "ready", remote: "gdrive:WordHunterSync" }
+    });
+
+    syncSettingsControls();
+
+    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusReady/);
+
+    resetState(null, { cloudSyncStatus: { status: "not_configured" } });
+    syncSettingsControls();
+
+    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusDefault/);
+
+    resetState(null, { cloudSyncStatus: { supported: false, status: "not_supported" } });
+    syncSettingsControls();
+
+    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusNotSupported/);
   });
 
   it("renders recovery status details only when the backend reports issues", () => {

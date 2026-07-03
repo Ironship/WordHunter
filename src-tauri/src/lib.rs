@@ -1,3 +1,4 @@
+mod cloud_sync;
 mod ebook;
 mod external_translator;
 mod handlers;
@@ -26,6 +27,7 @@ mod server;
 mod srs;
 mod store;
 mod subtitles;
+mod sync_assistant;
 mod tokenizer;
 #[cfg(target_os = "android")]
 #[path = "platform/android_backend/tts.rs"]

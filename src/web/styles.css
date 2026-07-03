@@ -1472,6 +1472,22 @@ button.icon-button {
   padding: 0;
 }
 
+.settings-body details {
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.settings-body details summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.settings-body details .data-actions {
+  margin-top: 0.75rem;
+}
+
 .sync-conflicts-panel {
   display: grid;
   gap: 0.5rem;
