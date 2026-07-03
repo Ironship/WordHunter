@@ -37,6 +37,19 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.3.6.2" date="2026-07-03">
+      <description>
+        <ul>
+          <li>Added a managed cloud sync coordinator with a Flatpak Google Drive connector through bundled rclone; cloud pulls are staged and validated before merge, and the MVP does not delete remote files.</li>
+          <li>Recovered interrupted Google Drive authorization by clearing partial app-owned rclone remotes and showing a retryable sign-in state.</li>
+          <li>Retried transient Google Drive quota and rate-limit failures while preparing the cloud sync folder.</li>
+          <li>Kept the visible Google Drive connector status stable across local/background sync snapshots instead of falling back to not connected after a successful connection.</li>
+          <li>Removed the separate Discover language selector; book discovery now follows the active learning profile language on desktop and Android.</li>
+          <li>Fixed Discover source selection so switching to Wikipedia, Wikinews, or Wikisource is preserved across Flatpak/background sync snapshots.</li>
+          <li>Improved the Linux/Flatpak GTK titlebar workaround so close and maximize buttons keep receiving clicks in normal window mode.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.6.1" date="2026-07-02">
       <description>
         <ul>

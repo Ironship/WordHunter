@@ -506,22 +506,6 @@
                   </select>
                 </label>
                 <label>
-                  <span data-i18n="discover.language">Język</span>
-                  <select id="discover-language">
-                    <option value="de" selected data-i18n="languages.de">Niemiecki</option>
-                    <option value="en" data-i18n="languages.en">Angielski</option>
-                    <option value="fr" data-i18n="languages.fr">Francuski</option>
-                    <option value="es" data-i18n="languages.es">Hiszpański</option>
-                    <option value="pl" data-i18n="languages.pl">Polski</option>
-                    <option value="ja" data-i18n="languages.ja">Japoński</option>
-                    <option value="uk" data-i18n="languages.uk">Ukraiński</option>
-                    <option value="zh" data-i18n="languages.zh">Chiński uproszczony</option>
-                    <option value="la" data-i18n="languages.la">Łacina</option>
-                    <option value="grc" data-i18n="languages.grc">Greka starożytna</option>
-                    <option value="" data-i18n="discover.langAll">Wszystkie</option>
-                  </select>
-                </label>
-                <label>
                   <span data-i18n="discover.sort">Sortuj</span>
                   <select id="discover-sort" data-i18n-attr="title=discover.sortHint">
                     <option value="popular" data-i18n="discover.sortPopular">Popularne</option>
@@ -985,6 +969,8 @@
               <p class="muted-copy" id="data-directory"></p>
               <p class="muted-copy" id="sync-directory"></p>
               <p class="muted-copy" id="sync-status"></p>
+              <p class="muted-copy" id="sync-health"></p>
+              <p class="muted-copy" id="cloud-sync-status"></p>
               <div id="sync-conflicts-panel" class="sync-conflicts-panel" hidden>
                 <div id="sync-conflicts-list" class="sync-conflicts-list"></div>
               </div>
@@ -992,13 +978,21 @@
                 <div id="recovery-status-list" class="recovery-status-list"></div>
               </div>
               <p class="muted-copy desktop-only-setting" data-i18n="settings.dataFolderHint">Choose where WordHunter keeps its local data. Keep this folder on the device for the safest startup.</p>
-              <p class="muted-copy" data-i18n="settings.dataFolderSteps">Sync: choose a separate Google Drive, Dropbox, Nextcloud, or similar folder. WordHunter copies changes between the local data folder and that sync folder in the background.</p>
-              <p class="muted-copy" data-i18n="settings.dataFolderCloudDelay">Use a dedicated WordHunter folder, not the whole cloud drive. Cloud apps can take up to 30 minutes to upload or download new books and records; in Google Drive, mark the sync folder available offline if files do not appear.</p>
+              <p class="muted-copy" data-i18n="settings.dataFolderSteps">WordHunter can prepare its own sync folder and keep it updated from the local app data.</p>
+              <p class="muted-copy" data-i18n="settings.dataFolderCloudDelay">Cloud copies should mirror that WordHunter folder. Direct cloud mounts can be delayed or incomplete, so keep files available offline before using another device.</p>
               <div class="data-actions compact-actions">
-                <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
-                <button id="choose-sync-directory" type="button" class="secondary-button" data-i18n="settings.chooseSyncFolder">Wybierz folder synchronizacji</button>
+                <button id="prepare-sync-directory" type="button" class="primary-button" data-i18n="settings.prepareSyncFolder">Przygotuj synchronizację</button>
                 <button id="force-sync" type="button" class="secondary-button" data-i18n="settings.forceSync">Wymuś synchronizację</button>
+                <button id="connect-cloud-sync" type="button" class="secondary-button desktop-only-control" data-i18n="settings.connectGoogleDrive">Połącz Google Drive</button>
+                <button id="cloud-sync-now" type="button" class="secondary-button desktop-only-control" data-i18n="settings.cloudSyncNow">Synchronizuj chmurę</button>
               </div>
+              <details class="desktop-only-setting">
+                <summary data-i18n="settings.syncAdvanced">Zaawansowane</summary>
+                <div class="data-actions compact-actions">
+                  <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
+                  <button id="choose-sync-directory" type="button" class="secondary-button" data-i18n="settings.chooseSyncFolder">Wybierz folder synchronizacji</button>
+                </div>
+              </details>
               <p class="settings-subheading" data-i18n="settings.groupBackup">Kopie i import</p>
               <div class="data-actions">
                 <section class="data-action-row desktop-only-setting">

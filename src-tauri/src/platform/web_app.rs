@@ -42,7 +42,7 @@ pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
     let window = builder.build()?;
 
     #[cfg(target_os = "linux")]
-    install_wayland_app_id(&window);
+    install_linux_window_workarounds(&window);
 
     Ok(())
 }
@@ -56,17 +56,51 @@ fn set_linux_program_name() {
 }
 
 #[cfg(target_os = "linux")]
-fn install_wayland_app_id(window: &tauri::WebviewWindow) {
+fn install_linux_window_workarounds(window: &tauri::WebviewWindow) {
     use gtk::prelude::*;
 
     let Ok(gtk_window) = window.gtk_window() else {
         return;
     };
 
-    gtk_window.connect_realize(apply_wayland_app_id);
+    allow_wayland_titlebar_button_events(&gtk_window);
+    gtk_window.connect_realize(|gtk_window| {
+        allow_wayland_titlebar_button_events(gtk_window);
+        apply_wayland_app_id(gtk_window);
+    });
+    gtk_window.connect_map(|gtk_window| {
+        allow_wayland_titlebar_button_events(gtk_window);
+    });
 
     if gtk_window.is_realized() {
         apply_wayland_app_id(&gtk_window);
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn allow_wayland_titlebar_button_events(gtk_window: &gtk::ApplicationWindow) {
+    use gtk::prelude::*;
+
+    let Some(titlebar) = gtk_window.titlebar() else {
+        return;
+    };
+    relax_event_box_overlays(&titlebar);
+}
+
+#[cfg(target_os = "linux")]
+fn relax_event_box_overlays(widget: &gtk::Widget) {
+    use gtk::prelude::*;
+
+    if let Ok(event_box) = widget.clone().downcast::<gtk::EventBox>() {
+        if event_box.is_above_child() {
+            event_box.set_above_child(false);
+        }
+    }
+
+    if let Ok(container) = widget.clone().downcast::<gtk::Container>() {
+        for child in container.children() {
+            relax_event_box_overlays(&child);
+        }
     }
 }
 
