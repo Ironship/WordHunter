@@ -6,6 +6,7 @@ use std::thread;
 use tauri::AppHandle;
 use tiny_http::Server;
 
+use crate::cloud_sync::CloudSync;
 use crate::store::Store;
 
 pub struct ServerState {
@@ -13,6 +14,7 @@ pub struct ServerState {
     pub store: Arc<Store>,
     pub token: String,
     pub app_handle: AppHandle,
+    pub cloud_sync: CloudSync,
     pub ocr_cancellations: Mutex<HashSet<String>>,
 }
 
@@ -62,6 +64,7 @@ fn start_server_from_listener(
         store,
         token,
         app_handle,
+        cloud_sync: CloudSync::new(),
         ocr_cancellations: Mutex::new(HashSet::new()),
     });
 

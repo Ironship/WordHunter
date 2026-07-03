@@ -32,7 +32,12 @@ describe("persistence lifecycle", () => {
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
 
     assert.match(html, /id="sync-status"/);
+    assert.match(html, /id="sync-health"/);
+    assert.match(html, /id="cloud-sync-status"/);
     assert.match(html, /id="sync-directory"/);
+    assert.match(html, /id="prepare-sync-directory"/);
+    assert.match(html, /id="connect-cloud-sync"/);
+    assert.match(html, /id="cloud-sync-now"/);
     assert.match(html, /id="choose-sync-directory"/);
     assert.match(html, /id="force-sync"/);
     assert.match(html, /id="sync-conflicts-panel"/);
@@ -41,7 +46,12 @@ describe("persistence lifecycle", () => {
     assert.match(html, /id="recovery-status-list"/);
     assert.match(html, /data-i18n="settings\.dataFolderCloudDelay"/);
     assert.match(dom, /syncStatus = document\.getElementById\("sync-status"\)/);
+    assert.match(dom, /syncHealth = document\.getElementById\("sync-health"\)/);
+    assert.match(dom, /cloudSyncStatus = document\.getElementById\("cloud-sync-status"\)/);
     assert.match(dom, /syncDirectory = document\.getElementById\("sync-directory"\)/);
+    assert.match(dom, /prepareSyncDirectory = document\.getElementById\("prepare-sync-directory"\)/);
+    assert.match(dom, /connectCloudSync = document\.getElementById\("connect-cloud-sync"\)/);
+    assert.match(dom, /cloudSyncNow = document\.getElementById\("cloud-sync-now"\)/);
     assert.match(dom, /chooseSyncDirectory = document\.getElementById\("choose-sync-directory"\)/);
     assert.match(dom, /forceSync = document\.getElementById\("force-sync"\)/);
     assert.match(dom, /syncConflictsPanel = document\.getElementById\("sync-conflicts-panel"\)/);
@@ -51,15 +61,27 @@ describe("persistence lifecycle", () => {
     assert.match(preferences, /export function setSyncStatus/);
     assert.match(preferences, /data-conflict-resolution="keep-current"/);
     assert.match(preferences, /data-conflict-resolution="use-conflict"/);
+    assert.match(preferences, /function renderSyncHealth/);
+    assert.match(preferences, /function renderCloudSyncStatus/);
     assert.match(preferences, /function renderRecoveryStatus/);
     assert.match(settings, /forceSync[\s\S]*await saveState\(\)/);
     assert.match(settings, /async function reloadActiveDataFolder/);
     assert.match(settings, /fetch\("\/__store\/load", \{ cache: "no-store" \}\)/);
     assert.match(settings, /async function syncNow/);
     assert.match(settings, /fetch\("\/__store\/sync_now"/);
+    assert.match(settings, /fetch\("\/__store\/sync_health", \{ cache: "no-store" \}\)/);
+    assert.match(settings, /fetch\("\/__store\/prepare_sync_dir"/);
+    assert.match(settings, /fetch\("\/__store\/cloud_sync_status", \{ cache: "no-store" \}\)/);
+    assert.match(settings, /fetch\("\/__store\/cloud_sync_connect_google"/);
+    assert.match(settings, /fetch\("\/__store\/cloud_sync_now"/);
     assert.match(settings, /async function resolveSyncConflict/);
     assert.match(settings, /fetch\("\/__store\/resolve_conflict"/);
     assert.match(router, /"\/__store\/recovery_status"/);
+    assert.match(router, /"\/__store\/sync_health"/);
+    assert.match(router, /"\/__store\/prepare_sync_dir"/);
+    assert.match(router, /"\/__store\/cloud_sync_status"/);
+    assert.match(router, /"\/__store\/cloud_sync_connect_google"/);
+    assert.match(router, /"\/__store\/cloud_sync_now"/);
     assert.match(settings, /WordHunterAndroid\.chooseSyncFolder\(window\.WH_TOKEN \|\| ""\)/);
     assert.match(settings, /WordHunterAndroid\.forceSyncFolder\(window\.WH_TOKEN \|\| ""\)/);
     assert.match(settings, /forceSync[\s\S]*await syncNow\(\)/);
@@ -119,6 +141,23 @@ describe("persistence lifecycle", () => {
       ["settings", "syncStatusReady"],
       ["settings", "syncStatusSaved"],
       ["settings", "syncStatusError"],
+      ["settings", "cloudSyncStatusDefault"],
+      ["settings", "cloudSyncStatusReady"],
+      ["settings", "cloudSyncStatusSyncing"],
+      ["settings", "cloudSyncStatusComplete"],
+      ["settings", "cloudSyncStatusNotSupported"],
+      ["settings", "cloudSyncStatusNeedsAttention"],
+      ["settings", "cloudSyncStatusAuthRequired"],
+      ["settings", "cloudSyncStatusOffline"],
+      ["settings", "cloudSyncStatusError"],
+      ["settings", "cloudSyncStatusUnknown"],
+      ["settings", "syncHealthReady"],
+      ["settings", "syncHealthCaution"],
+      ["settings", "syncHealthNeedsAttention"],
+      ["settings", "syncHealthReadOnly"],
+      ["settings", "syncHealthMissing"],
+      ["settings", "syncHealthNotFolder"],
+      ["settings", "syncHealthUnknown"],
       ["settings", "syncConflictCount"],
       ["settings", "syncConflictDevice"],
       ["settings", "syncConflictDeleted"],
@@ -139,8 +178,15 @@ describe("persistence lifecycle", () => {
       ["settings", "migrationComplete"],
       ["settings", "syncFolderDefault"],
       ["settings", "syncFolderPath"],
+      ["settings", "prepareSyncFolder"],
+      ["settings", "connectGoogleDrive"],
+      ["settings", "cloudSyncNow"],
       ["settings", "chooseSyncFolder"],
+      ["settings", "syncAdvanced"],
       ["settings", "syncFolderChanged"],
+      ["settings", "cloudSyncConnected"],
+      ["settings", "cloudSyncUnavailable"],
+      ["settings", "cloudSyncComplete"],
       ["settings", "syncFolderMissing"],
       ["settings", "androidDataFolderFixed"],
       ["settings", "dataFolderCloudDelay"],

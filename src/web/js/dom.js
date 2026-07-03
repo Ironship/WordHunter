@@ -155,18 +155,22 @@ export function cacheElements() {
   els.dataDirectory = document.getElementById("data-directory");
   els.syncDirectory = document.getElementById("sync-directory");
   els.syncStatus = document.getElementById("sync-status");
+  els.syncHealth = document.getElementById("sync-health");
+  els.cloudSyncStatus = document.getElementById("cloud-sync-status");
   els.syncConflictsPanel = document.getElementById("sync-conflicts-panel");
   els.syncConflictsList = document.getElementById("sync-conflicts-list");
   els.recoveryStatusPanel = document.getElementById("recovery-status-panel");
   els.recoveryStatusList = document.getElementById("recovery-status-list");
   els.chooseDataDirectory = document.getElementById("choose-data-directory");
+  els.prepareSyncDirectory = document.getElementById("prepare-sync-directory");
+  els.connectCloudSync = document.getElementById("connect-cloud-sync");
+  els.cloudSyncNow = document.getElementById("cloud-sync-now");
   els.chooseSyncDirectory = document.getElementById("choose-sync-directory");
   els.forceSync = document.getElementById("force-sync");
 
   els.discoverForm = document.getElementById("discover-form");
   els.discoverQuery = document.getElementById("discover-query");
   els.discoverSource = document.getElementById("discover-source");
-  els.discoverLanguage = document.getElementById("discover-language");
   els.discoverSort = document.getElementById("discover-sort");
   els.discoverLevel = document.getElementById("discover-level");
   els.discoverResults = document.getElementById("discover-results");

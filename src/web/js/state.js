@@ -71,7 +71,7 @@ export function switchLearningLanguage(lang) {
     previousProfile.preferences.dictionaryUrl = state.preferences.dictionaryUrl;
   }
   state.preferences.learningLanguage = lang;
-  state.discover.language = lang;
+  state.discover.page = 1;
   if (!state.profiles) state.profiles = {};
   if (!state.profiles[lang]) {
     state.profiles[lang] = {

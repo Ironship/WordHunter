@@ -185,6 +185,30 @@ describe("profile save payload", () => {
     assert.equal(payload.texts[0].pdfOcrPages[0].imageName, "page-1.png");
   });
 
+  it("round-trips Discover source through bridge snapshots", () => {
+    const payload = buildSavePayload({
+      preferences: { learningLanguage: "uk" },
+      discover: { query: "kobzar", source: "wikisource", sort: "newest", level: "B1", page: 2 },
+      profiles: { uk: { vocab: {}, customTexts: [] } }
+    });
+
+    assert.deepEqual(payload.prefs.__discover, {
+      query: "kobzar",
+      source: "wikisource",
+      sort: "newest",
+      level: "B1",
+      page: 2
+    });
+
+    globalThis.window = { __qtBridge: true, __bridgeState: payload };
+    const restored = loadState();
+
+    assert.equal(restored.discover.source, "wikisource");
+    assert.equal(restored.discover.query, "kobzar");
+    assert.equal(restored.discover.page, 2);
+    assert.equal(Object.hasOwn(restored.preferences, "__discover"), false);
+  });
+
   it("loads backend snapshots when Android bridge is present", () => {
     globalThis.window = {
       WordHunterAndroid: {},

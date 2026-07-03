@@ -17,12 +17,22 @@ export function buildSavePayload(rawState) {
     texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
     prefs: {
       ...toPlain(rawState.preferences || {}),
+      __discover: toPlain(discoverPayload(rawState.discover)),
       __userBooks: toPlain(rawState.userBooks || [])
     },
     hiddenBooks: toPlain(rawState.hiddenBuiltInBooks || []),
     // Texts have their own durable store; do not serialize every book twice.
     vocab: profiles
   };
+}
+
+function discoverPayload(discover) {
+  const query = typeof discover?.query === "string" ? discover.query : "";
+  const source = typeof discover?.source === "string" ? discover.source : "";
+  const sort = typeof discover?.sort === "string" ? discover.sort : "";
+  const level = typeof discover?.level === "string" ? discover.level : "";
+  const page = Math.max(1, Math.trunc(Number(discover?.page) || 1));
+  return { query, source, sort, level, page };
 }
 
 /**

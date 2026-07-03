@@ -105,6 +105,52 @@ function renderRecoveryStatus() {
   `;
 }
 
+function renderSyncHealth() {
+  if (!els.syncHealth) return;
+  const health = state.syncHealth;
+  if (!health || typeof health !== "object" || health.status === "not-configured") {
+    els.syncHealth.textContent = "";
+    els.syncHealth.hidden = true;
+    return;
+  }
+  const records = Math.max(0, Math.trunc(Number(health.recordCount) || 0));
+  const issues = Math.max(0, Math.trunc(Number(health.issueCount) || 0));
+  const keys = {
+    ready: "settings.syncHealthReady",
+    caution: "settings.syncHealthCaution",
+    "needs-attention": "settings.syncHealthNeedsAttention",
+    "read-only": "settings.syncHealthReadOnly",
+    missing: "settings.syncHealthMissing",
+    "not-a-folder": "settings.syncHealthNotFolder"
+  };
+  els.syncHealth.hidden = false;
+  els.syncHealth.textContent = t(keys[health.status] || "settings.syncHealthUnknown", { records, issues });
+}
+
+function renderCloudSyncStatus() {
+  if (!els.cloudSyncStatus) return;
+  const status = state.cloudSyncStatus;
+  if (!status || typeof status !== "object" || status.status === "not_configured") {
+    els.cloudSyncStatus.textContent = t("settings.cloudSyncStatusDefault");
+    return;
+  }
+  const keys = {
+    ready: "settings.cloudSyncStatusReady",
+    syncing_pull: "settings.cloudSyncStatusSyncing",
+    validating: "settings.cloudSyncStatusSyncing",
+    merging: "settings.cloudSyncStatusSyncing",
+    syncing_push: "settings.cloudSyncStatusSyncing",
+    complete: "settings.cloudSyncStatusComplete",
+    not_supported: "settings.cloudSyncStatusNotSupported",
+    needs_attention: "settings.cloudSyncStatusNeedsAttention",
+    auth_required: "settings.cloudSyncStatusAuthRequired",
+    offline: "settings.cloudSyncStatusOffline",
+    error: "settings.cloudSyncStatusError"
+  };
+  const remote = typeof status.remote === "string" ? status.remote : "";
+  els.cloudSyncStatus.textContent = t(keys[status.status] || "settings.cloudSyncStatusUnknown", { remote });
+}
+
 export function setSyncStatus(status, vars = {}) {
   syncStatus = { status, vars };
   syncSettingsControls();
@@ -315,9 +361,20 @@ export function syncSettingsControls() {
     }
     els.syncStatus.textContent = label;
   }
+  renderSyncHealth();
+  renderCloudSyncStatus();
   renderSyncConflicts();
   renderRecoveryStatus();
   if (els.forceSync) els.forceSync.disabled = typeof window.flushPendingSave !== "function";
+  if (els.connectCloudSync) {
+    const supported = !isAndroidPlatform() && state.cloudSyncStatus?.supported !== false;
+    els.connectCloudSync.disabled = !supported;
+  }
+  if (els.cloudSyncNow) {
+    const configured = state.cloudSyncStatus?.configured === true || !!state.cloudSyncStatus?.remote;
+    const supported = !isAndroidPlatform() && state.cloudSyncStatus?.supported !== false;
+    els.cloudSyncNow.disabled = typeof window.flushPendingSave !== "function" || !configured || !supported;
+  }
 }
 
 export function updatePreferenceValue(key, value) {

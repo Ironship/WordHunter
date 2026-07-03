@@ -2,9 +2,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const { APP_LOCALES, DISCOVER_LANGUAGES, LEARNING_LANGUAGES } = await import("../../src/web/js/constants.js");
+const { APP_LOCALES, LEARNING_LANGUAGES } = await import("../../src/web/js/constants.js");
+const { normalizeState } = await import("../../src/web/js/state/normalize.js");
 
 const html = fs.readFileSync("src/web/index.html", "utf8");
+const discoverView = fs.readFileSync("src/web/js/views/discover.js", "utf8");
+const discoverEvents = fs.readFileSync("src/web/js/events/discover.js", "utf8");
+const defaults = fs.readFileSync("src/web/js/state/defaults.js", "utf8");
 
 function selectBody(id) {
   const match = html.match(new RegExp(`<select id="${id}"[\\s\\S]*?<\\/select>`));
@@ -29,8 +33,23 @@ describe("language selectors", () => {
     }
   });
 
-  it("offers discover languages plus all-languages search", () => {
-    assert.deepEqual(optionValues(selectBody("discover-language")), [...DISCOVER_LANGUAGES, ""]);
+  it("uses the active learning profile instead of a separate discover language selector", () => {
+    assert.equal(html.includes('id="discover-language"'), false);
+    assert.match(discoverView, /preferences\?\.learningLanguage/);
+    assert.doesNotMatch(discoverView, /state\.discover\.language/);
+    assert.doesNotMatch(discoverEvents, /discoverLanguage/);
+    assert.doesNotMatch(defaults, /language: "de"/);
+  });
+
+  it("drops legacy discover language from saved state", () => {
+    const restored = normalizeState({
+      discover: { query: "kobzar", language: "de", source: "gutenberg", page: 3 },
+      preferences: { learningLanguage: "uk" }
+    });
+
+    assert.equal(Object.hasOwn(restored.discover, "language"), false);
+    assert.equal(restored.discover.query, "kobzar");
+    assert.equal(restored.preferences.learningLanguage, "uk");
   });
 
   it("localizes new learning-language labels in every locale file", () => {

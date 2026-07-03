@@ -40,13 +40,6 @@ export function bindDiscoverEvents() {
 
     runDiscoverSearch();
   });
-  els.discoverLanguage.addEventListener("change", () => {
-    state.discover.query = els.discoverQuery.value.trim();
-    state.discover.language = els.discoverLanguage.value;
-    state.discover.page = 1;
-    saveState();
-    runDiscoverSearch();
-  });
   els.discoverSort.addEventListener("change", () => {
     state.discover.query = els.discoverQuery.value.trim();
     state.discover.sort = els.discoverSort.value;

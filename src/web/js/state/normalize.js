@@ -119,6 +119,8 @@ export function normalizeState(nextState) {
   nextState.vocab = normalizeVocabEntries(nextState.vocab);
   nextState.dataDirectory = typeof nextState.dataDirectory === "string" ? nextState.dataDirectory : "";
   nextState.syncDirectory = typeof nextState.syncDirectory === "string" ? nextState.syncDirectory : "";
+  nextState.syncHealth = isRecord(nextState.syncHealth) ? nextState.syncHealth : null;
+  nextState.cloudSyncStatus = isRecord(nextState.cloudSyncStatus) ? nextState.cloudSyncStatus : null;
   nextState.syncConflictCount = Math.max(0, Math.trunc(Number(nextState.syncConflictCount) || 0));
   nextState.syncConflicts = normalizeSyncConflicts(nextState.syncConflicts);
   nextState.recoveryStatus = normalizeRecoveryStatus(nextState.recoveryStatus);
@@ -131,6 +133,7 @@ export function normalizeState(nextState) {
     nextState.filters.vocabStatus
   );
   nextState.discover = { ...defaults.discover, ...(nextState.discover || {}) };
+  delete nextState.discover.language;
   nextState.preferences = { ...defaults.preferences, ...(nextState.preferences || {}) };
   if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "google";
   nextState.preferences.languageOnboardingDone = nextState.preferences.languageOnboardingDone === true;
@@ -214,7 +217,9 @@ export function loadState() {
       const snap = window.__bridgeState;
       const prefs = isRecord(snap.prefs) ? { ...snap.prefs } : {};
       const userBooks = prefs.__userBooks || [];
+      const discover = isRecord(prefs.__discover) ? prefs.__discover : fallback.discover;
       delete prefs.__userBooks;
+      delete prefs.__discover;
       const rawVocab = isRecord(snap.vocab) ? snap.vocab : {};
       const hasProfiles = snap.schemaVersion === STATE_SCHEMA_VERSION
         || Object.values(rawVocab).some((value) => isRecord(value) && value.vocab !== undefined);
@@ -223,6 +228,8 @@ export function loadState() {
         schemaVersion: snap.schemaVersion || fallback.schemaVersion,
         dataDirectory: typeof snap.dataDir === "string" ? snap.dataDir : "",
         syncDirectory: typeof snap.syncDir === "string" ? snap.syncDir : "",
+        syncHealth: isRecord(snap.syncHealth) ? snap.syncHealth : null,
+        cloudSyncStatus: isRecord(snap.cloudSyncStatus) ? snap.cloudSyncStatus : null,
         syncConflictCount: snap.syncConflictCount,
         syncConflicts: snap.syncConflicts,
         recoveryStatus: snap.recoveryStatus,
@@ -232,6 +239,7 @@ export function loadState() {
         hiddenBuiltInBooks: hasProfiles ? [] : stringArray(snap.hiddenBooks),
         vocab: hasProfiles ? {} : rawVocab,
         profiles: hasProfiles ? rawVocab : null,
+        discover,
         preferences: { ...fallback.preferences, ...prefs }
       };
       if (hasProfiles) {

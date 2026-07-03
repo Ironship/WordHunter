@@ -19,11 +19,14 @@ let _cachedNext = null;
 let _mwContinueToken = null;
 const FETCH_CONCURRENCY = 2;
 
+function getDiscoverLanguage() {
+  return state.preferences?.learningLanguage || "en";
+}
+
 export function renderDiscover() {
   if (!els.discoverForm) return;
   els.discoverQuery.value = state.discover.query || "";
   if (els.discoverSource) els.discoverSource.value = state.discover.source || "gutenberg";
-  els.discoverLanguage.value = state.discover.language || "de";
   els.discoverSort.value = state.discover.sort || "popular";
   if (els.discoverLevel) els.discoverLevel.value = state.discover.level || "";
 
@@ -55,16 +58,17 @@ export async function runDiscoverSearch() {
   try {
     const source = state.discover.source || "gutenberg";
     let data = { count: 0, results: [] };
+    const language = getDiscoverLanguage();
 
     if (source === "gutenberg") {
-      data = await searchGutendex(state.discover, activeSearchController.signal);
+      data = await searchGutendex({ ...state.discover, language }, activeSearchController.signal);
       if (runId !== searchRunId) return;
       lastResults = data.results || [];
       data.results = lastResults;
-  } else if (source === "wikipedia" || source === "wikinews" || source === "wikisource") {
+    } else if (source === "wikipedia" || source === "wikinews" || source === "wikisource") {
       const mw = await searchMediaWiki(
         source,
-        state.discover.language || "en",
+        language,
         state.discover.query || "",
         state.discover.page || 1,
         state.discover.sort,

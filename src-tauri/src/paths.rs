@@ -58,6 +58,14 @@ fn read_config_file(app_name: &str, suffix: &str) -> Result<Option<String>, Stri
     }
 }
 
+pub(crate) fn read_app_config(app_name: &str, suffix: &str) -> Result<Option<String>, String> {
+    read_config_file(app_name, suffix)
+}
+
+pub(crate) fn app_config_path(app_name: &str, suffix: &str) -> Result<PathBuf, String> {
+    config_file_path(app_name, suffix)
+}
+
 fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
     let path = config_file_path(app_name, suffix)?;
     if let Some(parent) = path.parent() {
@@ -71,6 +79,10 @@ fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), S
         file.sync_all().map_err(|e| e.to_string())?;
     }
     std::fs::rename(&temp, &path).map_err(|e| e.to_string())
+}
+
+pub(crate) fn write_app_config(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
+    write_config_file(app_name, suffix, bytes)
 }
 
 fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {

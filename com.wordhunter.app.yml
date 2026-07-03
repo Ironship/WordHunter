@@ -38,6 +38,7 @@ modules:
       - install -Dm755 src-tauri/ocr-runner/target/release/wordhunter-paddleocr /app/bin/ocr-runtime/bin/wordhunter-paddleocr
       - install -Dm755 src-tauri/target/flatpak-pdfium/libpdfium.so /app/bin/ocr-runtime/bin/libpdfium.so
       - install -Dm644 src-tauri/target/flatpak-ocr-models/*.onnx -t /app/bin/ocr-runtime/models/
+      - install -Dm755 src-tauri/target/flatpak-rclone/rclone /app/bin/rclone
       - install -Dm644 flatpak/com.wordhunter.app.desktop /app/share/applications/com.wordhunter.app.desktop
       - install -Dm644 flatpak/com.wordhunter.app.metainfo.xml /app/share/metainfo/com.wordhunter.app.metainfo.xml
       - install -Dm644 src/assets/icon-16.png /app/share/icons/hicolor/16x16/apps/com.wordhunter.app.png
@@ -87,6 +88,11 @@ modules:
         url: https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip
         sha256: 2fa4055b10dc4e9c1433444fe29f8d5acca2fccc0a0e86b3313caa5cc9e56b7a
         dest: src-tauri/target/flatpak-ocr-models
+      - type: archive
+        archive-type: zip
+        url: https://github.com/rclone/rclone/releases/download/v1.74.3/rclone-v1.74.3-linux-amd64.zip
+        sha256: dbee7ccd7a5d617e4ed4cd4555c16669b511abfe8d31164f61be35ac9e999bd2
+        dest: src-tauri/target/flatpak-rclone
 
       - type: archive
         url: https://github.com/OpenNMT/CTranslate2/archive/refs/tags/v4.6.0.tar.gz

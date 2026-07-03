@@ -25,7 +25,6 @@ export const UI_SCALE = {
 
 export const APP_LOCALES = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
 export const LEARNING_LANGUAGES = ["en", "de", "es", "it", "fr", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
-export const DISCOVER_LANGUAGES = ["de", "en", "fr", "es", "pl", "ja", "uk", "zh", "la", "grc"];
 export const TRANSLATOR_LANGUAGES = ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk", "zh", "la", "grc"];
 export const OFFLINE_TRANSLATOR_LANGUAGES = ["en", "pl", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"];
 

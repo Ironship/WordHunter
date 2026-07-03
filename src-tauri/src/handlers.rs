@@ -196,6 +196,41 @@ pub(crate) fn choose_sync_dir(_state: &ServerState) -> Result<Option<(String, Va
     Err("Sync folder picker is handled by the Android bridge".to_string())
 }
 
+#[cfg(not(target_os = "android"))]
+pub(crate) fn prepare_sync_dir(state: &ServerState) -> Result<Value, String> {
+    let dir = crate::sync_assistant::managed_sync_dir()?;
+    let mut snapshot = state.store.sync_with_directory(dir.clone())?;
+    crate::paths::set_sync_dir(crate::APP_NAME, &dir)?;
+    let path = dir.to_string_lossy().into_owned();
+    snapshot["syncDir"] = Value::String(path.clone());
+    Ok(serde_json::json!({
+        "path": path,
+        "snapshot": snapshot,
+        "health": crate::sync_assistant::folder_health(&dir),
+    }))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn prepare_sync_dir(_state: &ServerState) -> Result<Value, String> {
+    Err("Sync folder setup is handled by the Android bridge".to_string())
+}
+
+pub(crate) fn sync_health() -> Value {
+    crate::sync_assistant::configured_sync_health()
+}
+
+pub(crate) fn cloud_sync_status(state: &ServerState) -> Value {
+    state.cloud_sync.status()
+}
+
+pub(crate) fn cloud_sync_connect_google(state: &ServerState) -> Result<Value, String> {
+    state.cloud_sync.connect_google_drive()
+}
+
+pub(crate) fn cloud_sync_now(state: &ServerState) -> Result<Value, String> {
+    state.cloud_sync.sync_now(&state.store)
+}
+
 pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
     let dir = crate::paths::sync_dir(crate::APP_NAME)?
         .ok_or_else(|| "sync folder is not configured".to_string())?;
