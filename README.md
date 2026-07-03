@@ -288,4 +288,4 @@ license. See `COMMERCIAL-LICENSE.md` for details.
 
 ## AI USAGE
 
-# Yes frontend was writen mostly with AI. I am not frontend developer. I have used those scripts for long time  and I see value for people to use this COMPLETELY FREE and WITHOUT dependency on cloud od paid services like Readlang, Lingq, Babbel or AnkiWeb. If you would love to help then please just use it and put your thoughts. I use it every day myself.
+Yes frontend was writen mostly with AI. I am not frontend developer. I have used those scripts for long time  and I see value for people to use this COMPLETELY FREE and WITHOUT dependency on cloud or paid services like Readlang, Lingq, Babbel or AnkiWeb. If you would love to help then please just use it and put your thoughts. I use it every day myself.
