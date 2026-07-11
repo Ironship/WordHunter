@@ -2778,6 +2778,8 @@ html[data-max-width="full"] .reader-text {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
+  padding: 1rem;
+  text-align: center;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(3px);
   z-index: 10;
@@ -2830,26 +2832,90 @@ html[data-max-width="full"] .reader-text {
 }
 
 .ocr-progress-bar {
-  width: min(320px, 80%);
-  height: 6px;
-  border-radius: 4px;
-  background: var(--line);
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--line) 82%, transparent);
   overflow: hidden;
 }
 .ocr-progress-bar-fill {
   height: 100%;
-  width: 35%;
-  background: linear-gradient(90deg, var(--control-accent), var(--accent), var(--control-accent));
-  background-size: 200% 100%;
-  border-radius: 4px;
-  animation: ocr-progress-sweep 1.4s linear infinite !important;
+  width: 38%;
+  background: linear-gradient(90deg, transparent, var(--control-accent) 30%, var(--accent) 72%, transparent);
+  border-radius: 999px;
+  animation: ocr-progress-travel 1.6s ease-in-out infinite !important;
+  will-change: transform;
+  backface-visibility: hidden;
 }
-@keyframes ocr-progress-sweep {
-  to { background-position: 200% 0; }
+@keyframes ocr-progress-travel {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(275%); }
+}
+.ocr-progress-card {
+  width: min(390px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--control-accent) 28%, var(--line));
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--control-accent) 12%, transparent), transparent 58%),
+    var(--panel);
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--text) 12%, transparent);
+}
+.ocr-progress-document {
+  position: relative;
+  width: 66px;
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 20px 12px 10px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--control-accent) 38%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--control-accent) 14%, transparent);
+}
+.ocr-progress-document > span {
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+}
+.ocr-progress-document > span:nth-child(2) { width: 76%; }
+.ocr-progress-document > span:nth-child(3) { width: 88%; }
+.ocr-progress-document > span:nth-child(4) { width: 58%; }
+.ocr-progress-scan-line {
+  position: absolute;
+  z-index: 1;
+  top: 13px;
+  left: 5px;
+  right: 5px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--control-accent);
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--control-accent) 46%, transparent);
+  animation: ocr-page-scan 1.8s ease-in-out infinite !important;
+  will-change: transform;
+}
+@keyframes ocr-page-scan {
+  0%, 100% { transform: translateY(0); opacity: 0.65; }
+  50% { transform: translateY(55px); opacity: 1; }
+}
+.ocr-progress-copy p {
+  margin: 0;
+}
+.ocr-progress-copy #ocr-progress-text {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .ocr-progress-eta {
   font-size: 0.8rem;
   opacity: 0.85;
+  margin-top: 0.3rem !important;
 }
 
 .book-grid[aria-busy="true"]::after {
@@ -2874,6 +2940,10 @@ html[data-max-width="full"] .reader-text {
   max-height: min(92vh, 860px);
   padding: 0;
   overflow: hidden;
+}
+
+.pdf-correction-dialog.pdf-correction-sentence {
+  width: min(820px, calc(100vw - 2rem));
 }
 
 .pdf-correction-form {
@@ -2919,6 +2989,10 @@ html[data-max-width="full"] .reader-text {
   min-height: 360px;
   resize: vertical;
   line-height: 1.65;
+}
+
+.pdf-correction-sentence .pdf-correction-field textarea {
+  min-height: 150px;
 }
 
 .pdf-correction-status {
@@ -3677,6 +3751,7 @@ textarea.vocab-translation-input {
   .translator-progress.active .translator-progress-fill,
   .loading-bar-fill,
   .ocr-progress-bar-fill,
+  .ocr-progress-scan-line,
   .is-busy::after,
   .book-grid[aria-busy="true"]::after,
   html.app-booting body::after,

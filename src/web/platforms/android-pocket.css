@@ -20,6 +20,11 @@ html.pocket-mode {
   touch-action: manipulation;
 }
 
+/* A retained view transform traps fixed drawers below the body backdrop. */
+.pocket-mode .view.active {
+  animation: none !important;
+}
+
 .pocket-mode body::before {
   content: "";
   position: fixed;

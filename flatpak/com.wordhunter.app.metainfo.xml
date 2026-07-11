@@ -37,6 +37,31 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.3" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Fixed the Android Import drawer closing whenever a user tapped one of its controls.</li>
+          <li>Included the OCR reliability, progress animation, synchronized counters, and sentence correction fixes from the withdrawn 1.0.1 and 1.0.2 builds.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.2" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Restored the live PaddleOCR progress animation with a clearer document-scanning indicator.</li>
+          <li>Changed quick PDF sentence correction to edit and replace only the selected sentence.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.1" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Added automatic CPU recovery when accelerated PDF OCR fails at runtime.</li>
+          <li>Kept library word counters stable while synchronized book text refreshes in the background.</li>
+          <li>Updated release workflows to supported GitHub Actions runtimes and corrected Rust toolchain setup.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-07-10">
       <description>
         <ul>

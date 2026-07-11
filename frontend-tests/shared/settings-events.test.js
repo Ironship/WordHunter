@@ -232,22 +232,46 @@ describe("settings bridge snapshots", () => {
     assert.equal(state.discover.query, "kept");
   });
 
-  it("invalidates cached custom text bodies after applying a sync snapshot", () => {
+  it("keeps cached book bodies visible while refreshing a sync snapshot", async () => {
     resetState({
       customTexts: [{ id: "de-custom-sync", title: "Old metadata" }]
     });
     bookTexts.set("de-custom-sync", "stale body");
+    const previousFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = async () => ({ ok: true, json: async () => ({ text: "fresh synchronized body" }) });
+
+      applyBridgeSnapshot({
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "de" },
+        texts: [{ id: "de-custom-sync", title: "Synced metadata" }],
+        hiddenBooks: [],
+        vocab: { de: { preferences: {}, vocab: {} } }
+      }, "library");
+
+      assert.equal(bookTexts.get("de-custom-sync"), "stale body");
+      assert.equal(isBookTextCacheStale("de-custom-sync"), true);
+      assert.equal(state.customTexts[0].title, "Synced metadata");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.equal(bookTexts.get("de-custom-sync"), "fresh synchronized body");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("clears cached bodies for books removed by a sync snapshot", () => {
+    resetState({ customTexts: [{ id: "de-custom-removed", title: "Removed" }] });
+    bookTexts.set("de-custom-removed", "removed body");
 
     applyBridgeSnapshot({
       schemaVersion: STATE_SCHEMA_VERSION,
       prefs: { learningLanguage: "de" },
-      texts: [{ id: "de-custom-sync", title: "Synced metadata" }],
+      texts: [],
       hiddenBooks: [],
       vocab: { de: { preferences: {}, vocab: {} } }
     }, "library");
 
-    assert.equal(bookTexts.has("de-custom-sync"), false);
-    assert.equal(state.customTexts[0].title, "Synced metadata");
+    assert.equal(bookTexts.has("de-custom-removed"), false);
   });
 
   it("keeps an active reader body until its synchronized replacement is loaded", async () => {

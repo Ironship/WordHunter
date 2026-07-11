@@ -1,7 +1,7 @@
 import { updatePdfOcrPageText } from "../book-actions/custom-text.js";
 import { t } from "../i18n.js";
 import { escapeAttribute, escapeHtml } from "../utils.js";
-import { effectivePdfPageText, findPdfSentenceRange } from "./pdf-page-text.js";
+import { effectivePdfPageText, findPdfSentenceRange, replacePdfTextRange } from "./pdf-page-text.js";
 
 let activeCorrectionDialog = null;
 let correctionDialogCounter = 0;
@@ -13,10 +13,22 @@ export function openPdfOcrCorrection(current, pageIndex, options = {}) {
     activeCorrectionDialog.querySelector("textarea")?.focus();
     return Promise.resolve(false);
   }
+  const sourcePageText = effectivePdfPageText(page);
+  const sentenceMode = Number.isInteger(options.wordIndex);
+  const sentenceRange = sentenceMode
+    ? findPdfSentenceRange(
+      sourcePageText,
+      options.wordIndex,
+      current.lang || "en",
+      options.algorithm || "modern"
+    )
+    : null;
+  if (sentenceMode && !sentenceRange) return Promise.resolve(false);
+  const expectedUpdatedAt = current.updatedAt || null;
 
   const dialog = document.createElement("dialog");
   const titleId = `pdf-correction-title-${++correctionDialogCounter}`;
-  dialog.className = "panel pdf-correction-dialog";
+  dialog.className = `panel pdf-correction-dialog${sentenceMode ? " pdf-correction-sentence" : ""}`;
   dialog.setAttribute("aria-labelledby", titleId);
   const imageName = String(page.imageName || "");
   const imageUrl = imageName
@@ -32,8 +44,8 @@ export function openPdfOcrCorrection(current, pageIndex, options = {}) {
       <div class="pdf-correction-grid">
         ${imageUrl ? `<figure class="pdf-correction-preview"><img src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(t("reader.pdfOcrPageAlt", { n: pageIndex + 1 }))}"></figure>` : ""}
         <label class="pdf-correction-field">
-          <span>${escapeHtml(t("reader.pdfCorrectionLabel"))}</span>
-          <textarea rows="18"></textarea>
+          <span>${escapeHtml(t(sentenceMode ? "reader.pdfCorrectionSentenceLabel" : "reader.pdfCorrectionLabel"))}</span>
+          <textarea rows="${sentenceMode ? 7 : 18}"></textarea>
         </label>
       </div>
       <p class="muted-copy pdf-correction-status" role="status" aria-live="polite"></p>
@@ -50,15 +62,9 @@ export function openPdfOcrCorrection(current, pageIndex, options = {}) {
   const cancel = dialog.querySelector('[data-action="cancel"]');
   const submit = dialog.querySelector('[type="submit"]');
   const status = dialog.querySelector("[role=status]");
-  textarea.value = effectivePdfPageText(page);
-  const sentenceRange = Number.isInteger(options.wordIndex)
-    ? findPdfSentenceRange(
-      textarea.value,
-      options.wordIndex,
-      current.lang || "en",
-      options.algorithm || "modern"
-    )
-    : null;
+  textarea.value = sentenceMode
+    ? sourcePageText.slice(sentenceRange.start, sentenceRange.end)
+    : sourcePageText;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -86,8 +92,12 @@ export function openPdfOcrCorrection(current, pageIndex, options = {}) {
       cancel.disabled = true;
       status.textContent = t("reader.pdfCorrectionSaving");
       try {
-        const saved = await updatePdfOcrPageText(current.id, pageIndex, textarea.value, {
-          expectedUpdatedAt: current.updatedAt || null
+        const nextPageText = sentenceMode
+          ? replacePdfTextRange(sourcePageText, sentenceRange, textarea.value)
+          : textarea.value;
+        if (nextPageText == null) throw new Error(t("reader.pdfCorrectionFailed"));
+        const saved = await updatePdfOcrPageText(current.id, pageIndex, nextPageText, {
+          expectedUpdatedAt
         });
         if (!saved) throw new Error(t("reader.pdfCorrectionFailed"));
         finish(true);
@@ -105,10 +115,6 @@ export function openPdfOcrCorrection(current, pageIndex, options = {}) {
     });
     dialog.showModal();
     textarea.focus();
-    if (sentenceRange) {
-      textarea.setSelectionRange(sentenceRange.start, sentenceRange.end);
-      const line = textarea.value.slice(0, sentenceRange.start).split("\n").length - 1;
-      textarea.scrollTop = Math.max(0, line * 20 - textarea.clientHeight / 3);
-    }
+    textarea.setSelectionRange(0, textarea.value.length);
   });
 }

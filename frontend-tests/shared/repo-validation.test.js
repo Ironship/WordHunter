@@ -73,8 +73,10 @@ describe("repository validation wiring", () => {
     assert.equal(validate.env.WORDHUNTER_VALIDATE_CLIPPY, "1");
     assert.equal(validate.env.WORDHUNTER_VALIDATE_LICENSES, "1");
     assert.equal(stepByName(validate, "Set up Node").with["node-version"], "22");
-    assert.equal(stepByName(validate, "Set up Rust").with.toolchain, "1.88");
-    assert.equal(stepByName(validate, "Set up Rust").with.components, "rustfmt, clippy");
+    const rustSetup = stepByName(validate, "Set up Rust");
+    assert.equal(rustSetup.uses, "dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4");
+    assert.equal(rustSetup.with.toolchain, undefined);
+    assert.equal(rustSetup.with.components, "rustfmt, clippy");
     assert.equal(
       stepByName(validate, "Install pinned cargo-about").run,
       "cargo install cargo-about --version 0.9.1 --locked --features cli",
