@@ -58,7 +58,10 @@ for source, destination in (
     with open(destination, "w", encoding="utf-8") as file:
         file.write(report)
 PY
-  cmp "$tmp_dir/$name.expected" "$tmp_dir/$name.actual"
+  if ! cmp "$tmp_dir/$name.expected" "$tmp_dir/$name.actual"; then
+    diff -u "$tmp_dir/$name.expected" "$tmp_dir/$name.actual" || true
+    return 1
+  fi
 }
 
 if [[ "$mode" == "--check" ]]; then
