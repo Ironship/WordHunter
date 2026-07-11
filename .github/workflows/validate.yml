@@ -38,7 +38,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             patchelf \
             pkg-config \
-            python3
+            python3 \
+            python3-aiohttp
 
       - name: Set up Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
