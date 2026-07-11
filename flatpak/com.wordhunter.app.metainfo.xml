@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.3" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Fixed the Android Import drawer closing whenever a user tapped one of its controls.</li>
+          <li>Included the OCR reliability, progress animation, synchronized counters, and sentence correction fixes from the withdrawn 1.0.1 and 1.0.2 builds.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-07-11">
       <description>
         <ul>
