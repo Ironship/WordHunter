@@ -624,11 +624,13 @@ describe("desktop PDF reader contracts", () => {
 
   it("statically declares PDF overlay/text rendering controls", () => {
     const renderer = readFileSync(new URL("../../src/web/js/reader/pdf-ocr-renderer.js", import.meta.url), "utf8");
+    const correction = readFileSync(new URL("../../src/web/js/reader/ocr-correction.js", import.meta.url), "utf8");
     assert.match(renderer, /const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2"/);
     assert.match(renderer, /els\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
     assert.match(renderer, /function renderPdfOcrTextMode\(/);
     assert.match(renderer, /function renderPdfOcrTextTokens\(/);
-    assert.match(renderer, /overlayWordIndexes\[index\],/);
+    assert.match(renderer, /const globalIndex = overlayWordIndexes\[index\]/);
+    assert.match(renderer, /globalIndex - globalOffset/);
     assert.doesNotMatch(renderer, /globalOffset \+ index \+ 1/);
     assert.match(renderer, /separableVerbMatches\.get\(index \* 2\)/);
     assert.match(renderer, /data-pdf-view-mode="\$\{escapeAttribute\(targetMode\)\}"/);
@@ -641,6 +643,9 @@ describe("desktop PDF reader contracts", () => {
     assert.match(renderer, /icon\("sentenceEdit", 16\)/);
     assert.match(renderer, /effectivePdfPageText\(page\)/);
     assert.match(renderer, /aria-label="\$\{escapeAttribute\(raw\)\}"><\/button>`/);
+    assert.match(correction, /sourcePageText\.slice\(sentenceRange\.start, sentenceRange\.end\)/);
+    assert.match(correction, /replacePdfTextRange\(sourcePageText, sentenceRange, textarea\.value\)/);
+    assert.match(correction, /if \(sentenceMode && !sentenceRange\) return Promise\.resolve\(false\)/);
   });
 
   it("statically routes a missing desktop OCR runner to text-layer import", () => {

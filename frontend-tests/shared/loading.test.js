@@ -92,6 +92,13 @@ describe("loading state", () => {
     assert.match(styles, /\.book-grid\[aria-busy="true"\]::after/);
     assert.match(reducedMotion, /html\.app-booting body::after/);
     assert.match(reducedMotion, /\.book-grid\[aria-busy="true"\]::after/);
+    assert.match(reducedMotion, /\.ocr-progress-scan-line/);
     assert.match(bookImport, /id="ocr-progress-eta" aria-hidden="true"/);
+    assert.match(bookImport, /class="ocr-progress-document"/);
+    assert.match(bookImport, /await waitForUiPaint\(\)/);
+    assert.match(bookImport, /androidPdfOverlay \? "import\.parsingPdfTextLayer" : "import\.parsingPdfOcr"/);
+    assert.match(styles, /@keyframes ocr-progress-travel[\s\S]*transform: translateX/);
+    assert.match(styles, /@keyframes ocr-page-scan[\s\S]*transform: translateY/);
+    assert.doesNotMatch(styles, /@keyframes ocr-progress-sweep/);
   });
 });

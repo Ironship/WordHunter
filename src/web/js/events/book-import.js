@@ -134,9 +134,6 @@ function setImportLoading(visible, messageKey = "import.parsingEbook") {
       overlay = document.createElement("div");
       overlay.id = "import-loading";
       overlay.className = "section-loading";
-      overlay.style.position = "absolute";
-      overlay.style.zIndex = "10";
-      overlay.style.background = "var(--panel)";
       const form = document.getElementById("import-form");
       if (form) form.style.position = "relative", form.appendChild(overlay);
     }
@@ -153,17 +150,29 @@ function setImportLoading(visible, messageKey = "import.parsingEbook") {
 }
 
 let _ocrTimerHandle = null;
+function waitForUiPaint() {
+  if (typeof requestAnimationFrame !== "function") return Promise.resolve();
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
 function startOcrProgress(onCancel) {
   stopOcrProgress();
   const overlay = document.getElementById("import-loading");
   if (!overlay) return;
   const startedAt = Date.now();
   overlay.innerHTML = `
-    <div class="spinner" aria-hidden="true"></div>
-    <p class="muted-copy" id="ocr-progress-text"></p>
-    <div class="ocr-progress-bar"><div class="ocr-progress-bar-fill"></div></div>
-    <p class="muted-copy ocr-progress-eta" id="ocr-progress-eta" aria-hidden="true"></p>
-    <button class="secondary-button" type="button" id="ocr-cancel">${t("import.ocrCancel")}</button>
+    <div class="ocr-progress-card">
+      <div class="ocr-progress-document" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+        <i class="ocr-progress-scan-line"></i>
+      </div>
+      <div class="ocr-progress-copy">
+        <p id="ocr-progress-text"></p>
+        <p class="muted-copy ocr-progress-eta" id="ocr-progress-eta" aria-hidden="true"></p>
+      </div>
+      <div class="ocr-progress-bar" aria-hidden="true"><div class="ocr-progress-bar-fill"></div></div>
+      <button class="secondary-button" type="button" id="ocr-cancel">${t("import.ocrCancel")}</button>
+    </div>
   `;
   const textEl = () => overlay.querySelector("#ocr-progress-text");
   const etaEl = () => overlay.querySelector("#ocr-progress-eta");
@@ -180,6 +189,7 @@ function startOcrProgress(onCancel) {
   overlay.querySelector("#ocr-cancel")?.addEventListener("click", () => {
     overlay.querySelector("#ocr-cancel").disabled = true;
     if (textEl()) textEl().textContent = t("import.ocrCancelling");
+    stopOcrProgress();
     onCancel();
   });
   tick();
@@ -370,7 +380,7 @@ async function runPdfImport(file) {
   const controller = new AbortController();
   let cancelled = false;
   let requestStarted = false;
-  setImportLoading(true, "import.parsingPdfOcr");
+  setImportLoading(true, androidPdfOverlay ? "import.parsingPdfTextLayer" : "import.parsingPdfOcr");
   if (!androidPdfOverlay) {
     startOcrProgress(() => {
       cancelled = true;
@@ -385,6 +395,7 @@ async function runPdfImport(file) {
     });
   }
   try {
+    if (!androidPdfOverlay) await waitForUiPaint();
     let data = null;
     const params = new URLSearchParams({
       book_id: id,
