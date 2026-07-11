@@ -116,6 +116,7 @@ describe("Android Pocket layout", () => {
   it("defines closed and open Pocket import drawer states", () => {
     const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
+    assertDeclarations(css, ".pocket-mode .view.active", { animation: "none !important" });
     assertDeclarations(css, ".pocket-mode .import-panel", { "z-index": "80", visibility: "hidden", "pointer-events": "none" });
     assertDeclarations(css, ".pocket-mode.pocket-import-open .import-panel", { visibility: "visible", "pointer-events": "auto" });
     assertDeclarations(css, ".pocket-mode.pocket-import-open body::after", { "z-index": "75" });
