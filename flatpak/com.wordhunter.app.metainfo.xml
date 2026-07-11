@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.2" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Restored the live PaddleOCR progress animation with a clearer document-scanning indicator.</li>
+          <li>Changed quick PDF sentence correction to edit and replace only the selected sentence.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2026-07-11">
       <description>
         <ul>
