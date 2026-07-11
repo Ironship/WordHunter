@@ -37,9 +37,33 @@ cargo about generate --locked \
   src-tauri/about.hbs \
   --output-file "$tmp_dir/ocr.html"
 
+compare_report() {
+  local expected="$1"
+  local actual="$2"
+  local name="$3"
+  python3 - "$expected" "$actual" "$tmp_dir/$name.expected" "$tmp_dir/$name.actual" <<'PY'
+import re
+import sys
+
+expected_path, actual_path, normalized_expected, normalized_actual = sys.argv[1:]
+for source, destination in (
+    (expected_path, normalized_expected),
+    (actual_path, normalized_actual),
+):
+    with open(source, encoding="utf-8") as file:
+        report = file.read()
+    # Cargo metadata can expose equivalent repository URLs differently across
+    # platforms. Link targets do not affect the dependency or license content.
+    report = re.sub(r'href="[^"]*"', 'href=""', report)
+    with open(destination, "w", encoding="utf-8") as file:
+        file.write(report)
+PY
+  cmp "$tmp_dir/$name.expected" "$tmp_dir/$name.actual"
+}
+
 if [[ "$mode" == "--check" ]]; then
-  cmp THIRD-PARTY-LICENSES.html "$tmp_dir/main.html"
-  cmp OCR-THIRD-PARTY-LICENSES.html "$tmp_dir/ocr.html"
+  compare_report THIRD-PARTY-LICENSES.html "$tmp_dir/main.html" main
+  compare_report OCR-THIRD-PARTY-LICENSES.html "$tmp_dir/ocr.html" ocr
   echo "Third-party Rust license reports are up to date."
 else
   mv "$tmp_dir/main.html" THIRD-PARTY-LICENSES.html
