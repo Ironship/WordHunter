@@ -76,6 +76,15 @@ def is_cargo_config(item):
     )
 
 
+def normalize_cargo_config(item):
+    item = dict(item)
+    item["contents"] = item.get("contents", "").replace(
+        "[source]\n[source.vendored-sources]",
+        "[source.vendored-sources]",
+    )
+    return item
+
+
 def key(item):
     return (
         item.get("type", ""),
@@ -93,7 +102,7 @@ cargo_config = None
 for item in sources:
     if is_cargo_config(item):
         if cargo_config is None:
-            cargo_config = item
+            cargo_config = normalize_cargo_config(item)
         continue
     source_key = key(item)
     if source_key in seen:
