@@ -136,7 +136,7 @@ jobs:
       - name: Install Flatpak build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder ostree
+          sudo apt-get install -y --no-install-recommends elfutils flatpak flatpak-builder ostree
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Build and inspect Flatpak bundle
