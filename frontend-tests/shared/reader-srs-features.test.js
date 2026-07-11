@@ -166,8 +166,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.mobileFileHint, "string", `${locale}.import.mobileFileHint`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.2/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.2/, `${locale}.help.version`);
+      assert.match(data.help.whatsNew, /1\.0\.3/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.3/, `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });
