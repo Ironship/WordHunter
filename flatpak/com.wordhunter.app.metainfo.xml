@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.1" date="2026-07-11">
+      <description>
+        <ul>
+          <li>Added automatic CPU recovery when accelerated PDF OCR fails at runtime.</li>
+          <li>Kept library word counters stable while synchronized book text refreshes in the background.</li>
+          <li>Updated release workflows to supported GitHub Actions runtimes and corrected Rust toolchain setup.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-07-10">
       <description>
         <ul>

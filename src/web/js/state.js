@@ -98,7 +98,7 @@ export function runExclusiveStateWrite(callback) {
 
 export function applyBridgeSnapshotToState(snapshot) {
   const localUi = captureLocalUiState();
-  const previousTextIds = (state.customTexts || []).map((text) => text?.id).filter(Boolean);
+  const previousTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter(Boolean));
   if (!snapshot?.prefs?.__discover && state.discover) {
     snapshot.prefs = { ...(snapshot.prefs || {}), __discover: { ...state.discover } };
   }
@@ -109,13 +109,11 @@ export function applyBridgeSnapshotToState(snapshot) {
   const nextState = loadState();
   restoreLocalUiState(nextState, localUi);
   replaceState(nextState, { save: false });
-  const textIds = new Set([
-    ...previousTextIds,
-    ...(state.customTexts || []).map((text) => text?.id).filter(Boolean)
-  ]);
+  const currentTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter(Boolean));
+  const textIds = new Set([...previousTextIds, ...currentTextIds]);
   for (const handler of [...bridgeSnapshotHandlers]) {
     try {
-      handler({ textIds });
+      handler({ textIds, previousTextIds, currentTextIds });
     } catch (error) {
       console.warn("bridge snapshot handler failed", error);
     }
