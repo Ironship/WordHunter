@@ -28,8 +28,8 @@ Active targets:
 - Windows and Linux desktop: `Word Hunter`
 - Android: `Word Hunter Pocket`
 
-The Android APK and Linux Flatpak are published as GitHub Release assets rather
-than tracked in the source tree. Windows packages will be added later.
+The Windows setup and portable archive, Android APK, and Linux Flatpak are
+published as GitHub Release assets rather than tracked in the source tree.
 
 Release `1.0.0` marks the new compatibility baseline after breaking storage and
 sync changes. It introduces durable per-record local storage, safer recovery and
