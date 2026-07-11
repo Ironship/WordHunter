@@ -49,7 +49,7 @@ Expected JSON shape:
 {
   "pageCount": 12,
   "truncated": false,
-  "ocrEngine": "paddleocr-rs-onnx",
+  "ocrEngine": "pdfium-text-layer+paddleocr-rs-onnx",
   "pages": [
     {
       "page": 1,

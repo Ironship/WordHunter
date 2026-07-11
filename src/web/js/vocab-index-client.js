@@ -1,8 +1,9 @@
 import { STATE_SCHEMA_VERSION } from "./constants.js";
 
-const CACHE_KEY = `wordhunter:vocab-index:schema-v${STATE_SCHEMA_VERSION}`;
+export const VOCAB_INDEX_CACHE_VERSION = 1;
+const CACHE_KEY = `wordhunter:vocab-index:cache-v${VOCAB_INDEX_CACHE_VERSION}`;
 const MAX_CACHE_ENTRIES = 80;
-const SIGNATURE_VERSION = `vocab-index-v${STATE_SCHEMA_VERSION}`;
+const SIGNATURE_VERSION = `vocab-index-v${VOCAB_INDEX_CACHE_VERSION}`;
 const SAMPLE_PREFIX = 1536;
 const SAMPLE_MIDDLE = 2048;
 const SAMPLE_SUFFIX = 1536;
@@ -11,7 +12,13 @@ const MAX_FULL_SAMPLE = 4096;
 
 let cache = loadCache();
 const pending = new Map();
+const bookGenerations = new Map();
+let globalGeneration = 0;
 let saveTimer = null;
+
+function currentGeneration(bookId) {
+  return `${globalGeneration}:${bookGenerations.get(bookId || "") || 0}`;
+}
 
 function loadCache() {
   if (typeof localStorage === "undefined") return {};
@@ -110,6 +117,10 @@ function storeEntry(signature, bookId, data) {
 
 export function invalidateBookId(bookId) {
   if (!bookId) return;
+  bookGenerations.set(bookId, (bookGenerations.get(bookId) || 0) + 1);
+  for (const [signature, request] of pending) {
+    if (request.bookId === bookId) pending.delete(signature);
+  }
   let changed = false;
   for (const key of Object.keys(cache)) {
     if (cache[key]?.bookId === bookId) {
@@ -118,6 +129,14 @@ export function invalidateBookId(bookId) {
     }
   }
   if (changed) persistCache();
+}
+
+export function clearVocabIndexCache() {
+  cache = {};
+  globalGeneration += 1;
+  bookGenerations.clear();
+  pending.clear();
+  persistCache();
 }
 
 async function fetchVocabIndex({ text, vocab, lang, algorithm, book }) {
@@ -135,15 +154,19 @@ async function fetchVocabIndex({ text, vocab, lang, algorithm, book }) {
 
 export function requestVocabIndex({ text, vocab, lang, algorithm, book }) {
   const signature = computeSignature(book, text, lang, algorithm);
+  const bookId = book?.id || "";
+  const generation = currentGeneration(bookId);
   const cached = getCachedEntry(signature);
   if (cached) return Promise.resolve(cached);
-  if (pending.has(signature)) return pending.get(signature);
+  const existing = pending.get(signature);
+  if (existing?.generation === generation) return existing.promise;
 
   const promise = fetchVocabIndex({ text, vocab, lang, algorithm, book })
     .then((data) => {
-      storeEntry(signature, book?.id || "", data);
+      if (currentGeneration(bookId) !== generation) return null;
+      storeEntry(signature, bookId, data);
       window.dispatchEvent(new CustomEvent("vocab-index:loaded", {
-        detail: { signature, bookId: book?.id || "" }
+        detail: { signature, bookId }
       }));
       return getCachedEntry(signature);
     })
@@ -151,8 +174,10 @@ export function requestVocabIndex({ text, vocab, lang, algorithm, book }) {
       console.warn("vocab_index fetch failed", err);
       return null;
     })
-    .finally(() => pending.delete(signature));
+    .finally(() => {
+      if (pending.get(signature)?.promise === promise) pending.delete(signature);
+    });
 
-  pending.set(signature, promise);
+  pending.set(signature, { promise, bookId, generation });
   return promise;
 }

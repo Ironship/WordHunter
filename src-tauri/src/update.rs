@@ -24,7 +24,7 @@ pub fn check(user_agent: &str, app_version: &str) -> Value {
 }
 
 pub fn normalize_release_version(tag: &str) -> String {
-    let trimmed = tag.trim().trim_start_matches(|c| c == 'v' || c == 'V');
+    let trimmed = tag.trim().trim_start_matches(['v', 'V']);
     match Regex::new(r"\d+(?:\.\d+){1,3}") {
         Ok(regex) => regex
             .find(trimmed)

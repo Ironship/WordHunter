@@ -32,12 +32,21 @@ html.pocket-mode {
   pointer-events: none;
 }
 
-.pocket-mode.pocket-import-open body::after {
+.pocket-mode.pocket-import-open body::after,
+.pocket-mode.pocket-navigation-open body::after {
   content: "";
   position: fixed;
-  z-index: 55;
+  z-index: 75;
   inset: 0;
   background: rgba(10, 18, 14, 0.28);
+}
+
+.pocket-navigation-toggle {
+  display: none;
+}
+
+.pocket-reader-navigation-toggle {
+  display: none;
 }
 
 .pocket-mode button,
@@ -98,6 +107,7 @@ html.pocket-mode {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
+  padding-bottom: 0;
 }
 
 .pocket-mode[data-view="reader"] #reader-view.active {
@@ -121,13 +131,26 @@ html.pocket-mode {
 
 .pocket-mode .sidebar {
   position: fixed;
-  z-index: 70;
-  inset: auto 0 0;
+  z-index: 80;
+  inset: var(--pocket-statusbar-safe-top) auto 0 0;
+  width: min(84vw, 320px);
   height: auto;
-  gap: 0;
-  padding: 0.35rem max(0.45rem, env(safe-area-inset-left, 0px)) calc(0.35rem + var(--pocket-navbar-safe-bottom)) max(0.45rem, env(safe-area-inset-right, 0px));
-  border-top: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.2);
+  gap: 0.75rem;
+  padding: 1rem max(0.75rem, env(safe-area-inset-right, 0px)) calc(1rem + var(--pocket-navbar-safe-bottom)) max(0.75rem, env(safe-area-inset-left, 0px));
+  overflow-y: auto;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 16px 0 36px rgba(0, 0, 0, 0.26);
+  transform: translateX(calc(-100% - 1rem));
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.22s ease, visibility 0s linear 0.22s;
+}
+
+.pocket-mode.pocket-navigation-open .sidebar {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
 }
 
 .pocket-mode .brand,
@@ -139,24 +162,23 @@ html.pocket-mode {
 
 .pocket-mode .nav-list {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 .pocket-mode .nav-item {
   display: grid;
-  grid-template-columns: 1fr;
-  align-content: center;
-  justify-items: center;
-  gap: 0.12rem;
-  min-width: 0;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 44px;
   max-width: 100%;
   min-height: 56px;
-  padding: 0.35rem 0.15rem;
+  padding: 0.55rem 0.65rem;
   border-radius: 8px;
-  text-align: center;
-  font-size: 0.66rem;
+  text-align: left;
+  font-size: 0.9rem;
   line-height: 1.15;
   overflow: hidden;
 }
@@ -182,18 +204,50 @@ html.pocket-mode {
 }
 
 .pocket-mode .nav-item.active:not(.nav-item-locked) {
-  box-shadow: inset 0 -3px 0 var(--green);
+  box-shadow: inset 3px 0 0 var(--control-accent);
+}
+
+.pocket-mode .pocket-navigation-toggle {
+  position: fixed;
+  z-index: 66;
+  bottom: calc(0.35rem + var(--pocket-navbar-safe-bottom));
+  left: max(0.45rem, env(safe-area-inset-left, 0px));
+  display: inline-flex;
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  color: var(--sidebar-nav-ink);
+  border-color: transparent;
+  border-radius: 8px;
+  background: var(--sidebar-bg);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+
+.pocket-mode .pocket-navigation-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+.pocket-mode.pocket-navigation-open .pocket-navigation-toggle {
+  z-index: 81;
+  left: max(0.45rem, env(safe-area-inset-left, 0px));
+  color: var(--sidebar-ink);
+  background: var(--sidebar-nav-active);
+}
+
+.pocket-mode[data-view="reader"] #pocket-navigation-toggle {
+  display: none;
 }
 
 .pocket-mode .nav-item:hover:not(.active) {
   border-color: transparent;
   background: transparent;
-  color: #dfe8e1;
+  color: var(--sidebar-nav-ink);
   box-shadow: none;
 }
 
 .pocket-mode .nav-item:hover:not(.active) > .nav-icon {
-  color: #cfe0d6;
+  color: var(--sidebar-nav-icon);
   background: transparent;
 }
 
@@ -260,8 +314,36 @@ html.pocket-mode {
   display: none;
 }
 
+.pocket-mode .wizard-step-num-desktop {
+  display: none;
+}
+
+.pocket-mode .wizard-step-num-pocket {
+  display: inline;
+}
+
 .pocket-mode .desktop-only-control {
   display: none;
+}
+
+.pocket-mode .desktop-help-shortcuts {
+  display: none;
+}
+
+.pocket-mode .pocket-help-panel {
+  display: block;
+}
+
+.pocket-mode .pocket-help-body {
+  gap: 1.25rem;
+}
+
+.pocket-mode .pocket-help-body h3 {
+  margin: 0 0 0.45rem;
+}
+
+.pocket-mode .pocket-help-body p {
+  line-height: 1.65;
 }
 
 .pocket-mode .pocket-only-setting {
@@ -311,10 +393,10 @@ html.pocket-mode {
 
 .pocket-mode .import-panel {
   position: fixed;
-  z-index: 70;
+  z-index: 80;
   top: var(--pocket-statusbar-safe-top);
   right: 0;
-  bottom: calc(4.9rem + var(--pocket-navbar-safe-bottom));
+  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
   width: min(88vw, 420px);
   max-width: calc(100vw - 1.25rem);
   overflow: auto;
@@ -507,9 +589,51 @@ html.pocket-mode {
 
 .pocket-mode #reader-view .toolbar-buttons {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: fixed;
+  z-index: 65;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
+  gap: 0.25rem;
+  width: auto;
+  padding: 0.35rem max(0.45rem, env(safe-area-inset-right, 0px)) calc(0.35rem + var(--pocket-navbar-safe-bottom)) max(0.45rem, env(safe-area-inset-left, 0px));
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0;
+  background: var(--sidebar-bg);
+  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+}
+
+.pocket-mode #reader-view .toolbar-buttons button {
+  color: var(--sidebar-nav-ink);
+  border-color: transparent;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.pocket-mode #reader-view .pocket-word-navigation {
+  display: inline-flex;
   width: 100%;
+  min-width: 0;
+  height: 56px;
+}
+
+.pocket-mode #reader-view .pocket-reader-navigation-toggle {
+  display: inline-flex;
+  order: 1;
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+  color: var(--sidebar-nav-ink);
+}
+
+.pocket-mode #reader-view .pocket-word-navigation svg {
+  width: 22px;
+  height: 22px;
 }
 
 .pocket-mode #reader-view .toolbar-buttons [data-font],
@@ -517,9 +641,31 @@ html.pocket-mode {
   display: none;
 }
 
+.pocket-mode #reader-highlight-toggle {
+  order: 2;
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+}
+
+.pocket-mode #tts-play-text,
+.pocket-mode #tts-stop-text {
+  order: 3;
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+}
+
+.pocket-mode #reader-previous-word {
+  order: 4;
+}
+
+.pocket-mode #reader-next-word {
+  order: 5;
+}
+
 .pocket-mode[data-view="reader"] .reader-toolbar {
-  gap: 0.45rem;
-  padding: 0.55rem 0.75rem;
+  display: contents;
 }
 
 .pocket-mode[data-view="reader"] .reader-toolbar label {
@@ -765,18 +911,15 @@ html.pocket-mode {
 }
 
 .pocket-mode #reader-view.active .pagination-controls {
-  position: fixed;
-  z-index: 54;
-  right: 0.75rem;
-  bottom: calc(4.95rem + var(--pocket-navbar-safe-bottom));
-  left: 0.75rem;
-  margin: 0;
+  position: static;
+  z-index: auto;
+  margin: 2rem 0 0;
   padding: 0.45rem;
   flex-wrap: nowrap;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  background: var(--panel-strong);
+  box-shadow: none;
 }
 
 .pocket-mode #reader-view.active .pagination-controls .secondary-button {
@@ -805,43 +948,40 @@ html.pocket-mode {
   display: none;
 }
 
-.pocket-mode.has-selected-word #reader-view.active .reader-sidebar-wrapper {
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
   z-index: 60;
-  top: calc(100dvh - min(54vh, 460px) - 4.9rem - var(--pocket-navbar-safe-bottom));
+  top: auto;
   left: 0.75rem;
   right: 0.75rem;
-  bottom: auto;
+  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
   display: block;
-  max-height: min(54vh, 460px);
-  overflow: auto;
+  max-height: min(54vh, calc(100dvh - var(--pocket-statusbar-safe-top) - 7rem));
+  overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
   background: var(--panel);
   border-top: 1px solid var(--line);
 }
 
-.pocket-mode.has-selected-word #reader-view.active .reader-sidebar-wrapper::before {
-  content: "";
-  display: block;
-  width: 46px;
-  height: 4px;
-  margin: 0.55rem auto 0;
-  border-radius: 999px;
-  background: var(--line);
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before {
+  display: none;
 }
 
 .pocket-mode .word-panel {
   max-height: inherit;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 1rem;
   border-radius: 8px;
 }
 
 .pocket-mode .word-panel-header {
-  position: static;
+  position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.15rem 0 0.55rem;
+  padding: 0.35rem 0 0.65rem;
   background: var(--panel);
 }
 

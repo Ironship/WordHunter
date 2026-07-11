@@ -6,7 +6,7 @@ import { state } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
-import { normalizeWord } from "../tokenizer_v2.js";
+import { findGermanSeparableVerbMatches, normalizeWord } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
@@ -14,25 +14,30 @@ import { paginationHtml } from "./pagination.js";
 import { getLearningColor } from "../reader-colors.js";
 
 const CHUNK_SIZE = 500;
+let textRenderGeneration = 0;
 
-export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }) {
-  // Global index of each word in the book (1-based, -1 for non-word)
-  const globalWordIdx = new Array(tokens.length).fill(-1);
-  for (let i = 0, wc = 0; i < tokens.length; i++) {
-    if (tokens[i].type === "word") globalWordIdx[i] = ++wc;
-  }
-
-  // Build a list of multi-word phrases for fast matching
-  const multiWordVocab = Object.keys(state.vocab)
+export function renderPlainText({ current, tokens, globalWordIndexes, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }) {
+  const phrasesByFirstWord = new Map();
+  Object.keys(state.vocab)
     .filter(k => k.includes(" "))
     .map(k => ({ key: k, words: k.split(" ") }))
-    .sort((a, b) => b.words.length - a.words.length);
+    .sort((a, b) => b.words.length - a.words.length)
+    .forEach((phrase) => {
+      const candidates = phrasesByFirstWord.get(phrase.words[0]) || [];
+      candidates.push(phrase);
+      phrasesByFirstWord.set(phrase.words[0], candidates);
+    });
 
   const pageTokens = tokens.slice(pageStartIndex, pageEndIndex);
+  const separableVerbMatches = findGermanSeparableVerbMatches(
+    pageTokens,
+    state.vocab,
+    state.preferences.learningLanguage || "en"
+  );
   let index = 0;
   els.readerText.innerHTML = "";
 
-  const renderId = Date.now();
+  const renderId = ++textRenderGeneration;
   els.readerText.dataset.renderId = renderId;
 
   function renderNextChunk() {
@@ -56,6 +61,8 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
         }
       }
       updateReaderSelection();
+      els.readerText.dataset.rendering = "0";
+      els.readerText.removeAttribute("aria-busy");
       return;
     }
 
@@ -79,11 +86,10 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
       }
 
       const word = normalizeWord(part.value);
-      let matchedPhraseKey = null;
+      let matchedPhraseKey = separableVerbMatches.get(i) || null;
       let consumedTokens = 1;
 
-      for (const phrase of multiWordVocab) {
-        if (phrase.words[0] === word) {
+      for (const phrase of matchedPhraseKey ? [] : (phrasesByFirstWord.get(word) || [])) {
           let match = true;
           let tokenOffset = 1;
           let wordOffset = 1;
@@ -106,7 +112,6 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
             consumedTokens = tokenOffset;
             break;
           }
-        }
       }
 
       let status = "new";
@@ -136,7 +141,7 @@ export function renderPlainText({ current, tokens, pageStartIndex, pageEndIndex,
            htmlChunk += escapeHtml(consumedPart.value);
         } else {
            const pSelected = selected || (state.selectedWord === normalizeWord(consumedPart.value) ? "selected" : "");
-           const globalIdx = globalWordIdx[pageStartIndex + i + j];
+           const globalIdx = globalWordIndexes[pageStartIndex + i + j];
            const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
            const style = color ? ` style="--token-learning-bg:${color}"` : "";
            htmlChunk += `<button class="word-token status-${status} ${pSelected}" type="button" data-word="${dataWord}" data-word-index="${globalIdx}"${style}>${escapeHtml(consumedPart.value)}</button>`;

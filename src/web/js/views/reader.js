@@ -1,25 +1,14 @@
-// Reader view: orchestrator — binds events, re-exports from sub-modules.
-// Keeps full API compatibility: all imports from "../views/reader.js" still work.
+// Reader view: event orchestrator.
 
 import { bindSidebarResizer } from "../panel-resizer.js";
-import { state } from "../state.js";
+import { registerFrontendStateFlusher, state } from "../state.js";
 
-// Import for local use (bindReaderEvents)
-import {
-  setReaderSelectionAnchorFromToken,
-  clearReaderSelectionRange,
-  clearReaderSelection
-} from "../reader/selection.js";
+import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearReaderSelection } from "../reader/selection.js";
 
-import {
-  rememberReaderScrollPosition
-} from "../reader/scroll.js";
+import { rememberReaderScrollPosition } from "../reader/scroll.js";
+import { navigateReaderWord } from "../reader/word-navigation.js";
 
-import {
-  changeReaderPage,
-  goToReaderPage,
-  renderReader
-} from "../reader/renderer.js";
+import { changeReaderPage, goToReaderPage, renderReader } from "../reader/renderer.js";
 import {
   adjustPdfOcrZoom,
   getPdfOcrViewMode,
@@ -30,39 +19,40 @@ import {
   setPdfOcrZoom
 } from "../reader/pdf-ocr-renderer.js";
 
-// Re-export the public reader API used by the rest of the app.
-export {
-  getReaderSelectionText,
-  setReaderSelectionAnchorFromToken,
-  clearReaderSelectionRange,
-  clearReaderSelection,
-  extendReaderSelection,
-  updateReaderSelection
-} from "../reader/selection.js";
-
-export {
-  rememberReaderScrollPosition
-} from "../reader/scroll.js";
-
-export {
-  getTextById,
-  renderReader,
-  setReaderLoading,
-  clearReaderLoading
-} from "../reader/renderer.js";
-
-export {
-  renderWordPanel,
-  updateWordStatusInReader
-} from "../reader/word-panel.js";
-
 // --- Orchestrator: event binding -------------------------------------------
 
 export function bindReaderEvents() {
   import("../dom.js").then(({ els }) => {
     let lastWordPanelInteractionAt = 0;
+    let pdfWordClickTimer = null;
     const rememberWordPanelInteraction = () => {
       lastWordPanelInteractionAt = Date.now();
+    };
+    const selectReaderToken = async (token, options = {}) => {
+      if (!token?.isConnected) return;
+      if (options.openPanel && document.documentElement.classList.contains("pocket-mode")) {
+        document.documentElement.classList.add("pocket-word-panel-open");
+      }
+      window.lastActiveToken = token;
+      const { selectWord } = await import("../vocab-actions.js");
+      const { normalizeWord } = await import("../tokenizer_v2.js");
+      let wordToSelect = token.dataset.word;
+      if (options.ctrlKey && state.selectedWord && state.selectedWord !== wordToSelect) {
+        wordToSelect = state.selectedWord + " " + wordToSelect;
+      } else {
+        setReaderSelectionAnchorFromToken(token);
+      }
+      const wordIndex = options.ctrlKey ? state.selectedWordIndex : Number(token.dataset.wordIndex);
+      selectWord(wordToSelect, normalizeWord, false, wordIndex);
+    };
+    const openCurrentPdfCorrection = async (wordIndex = null) => {
+      const { getTextById } = await import("../reader/renderer.js");
+      const current = getTextById(state.currentTextId);
+      const { openPdfOcrCorrection } = await import("../reader/ocr-correction.js");
+      return openPdfOcrCorrection(current, Math.max(0, state.readerPage - 1), {
+        wordIndex,
+        algorithm: state.preferences.wordDetectionAlgorithm || "modern"
+      });
     };
     bindSidebarResizer(els.readerSidebarResizer, {
       preference: "readerSidebarWidth", cssVariable: "--reader-sidebar-width",
@@ -73,7 +63,14 @@ export function bindReaderEvents() {
       const actions = await import("../book-actions.js");
       actions.openBook(els.textSelect.value);
     });
+    els.readerPreviousWord?.addEventListener("click", () => navigateReaderWord(-1));
+    els.readerNextWord?.addEventListener("click", () => navigateReaderWord(1));
     let readerScrollSaveTimer = null;
+    registerFrontendStateFlusher(() => {
+      clearTimeout(readerScrollSaveTimer);
+      readerScrollSaveTimer = null;
+      if (state.currentView === "reader" && state.currentTextId) rememberReaderScrollPosition({ precise: true, flush: true });
+    });
     els.readerText.addEventListener("scroll", () => {
       if (els.readerText.dataset.rendering === "1") return;
       if (state.currentView !== "reader" || !state.currentTextId) return;
@@ -81,7 +78,9 @@ export function bindReaderEvents() {
       readerScrollSaveTimer = setTimeout(() => {
         const last = state.readerScrolls?.[state.currentTextId];
         if (last && last.readerPage != null && last.readerPage !== state.readerPage) return;
-        rememberReaderScrollPosition();
+        const scrollTop = Math.max(0, Math.round(els.readerText.scrollTop || 0));
+        if (last && last.readerPage === state.readerPage && Math.abs((last.scrollTop || 0) - scrollTop) < 2) return;
+        rememberReaderScrollPosition({ precise: false });
       }, 150);
     }, { passive: true });
     let swipeStart = null;
@@ -180,6 +179,41 @@ export function bindReaderEvents() {
         renderReader();
         return;
       }
+      const pdfCorrectBtn = event.target.closest("[data-pdf-correct]");
+      if (pdfCorrectBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (pdfCorrectBtn.disabled) return;
+        pdfCorrectBtn.disabled = true;
+        try {
+          if (await openCurrentPdfCorrection()) {
+            clearReaderSelection(false);
+            renderReader();
+            requestAnimationFrame(() => els.readerText.querySelector("[data-pdf-correct]")?.focus());
+          }
+        } finally {
+          if (pdfCorrectBtn.isConnected) pdfCorrectBtn.disabled = false;
+        }
+        return;
+      }
+      const pdfSentenceBtn = event.target.closest("[data-pdf-correct-sentence]");
+      if (pdfSentenceBtn) {
+        event.preventDefault();
+        event.stopPropagation();
+        const wordIndex = Number(pdfSentenceBtn.dataset.pdfPageWordIndex);
+        if (pdfSentenceBtn.disabled || !Number.isInteger(wordIndex)) return;
+        pdfSentenceBtn.disabled = true;
+        try {
+          if (await openCurrentPdfCorrection(wordIndex)) {
+            clearReaderSelection(false);
+            renderReader();
+            requestAnimationFrame(() => els.readerText.querySelector("[data-pdf-correct-sentence]")?.focus());
+          }
+        } finally {
+          if (pdfSentenceBtn.isConnected) pdfSentenceBtn.disabled = false;
+        }
+        return;
+      }
       const prevBtn = event.target.closest("#btn-prev-page");
       if (prevBtn && !prevBtn.disabled) {
         event.preventDefault();
@@ -194,28 +228,39 @@ export function bindReaderEvents() {
         changeReaderPage(1);
         return;
       }
-      if(event.target.classList.contains("word-token")) window.lastActiveToken = event.target;
       const token = event.target.closest(".word-token");
       if (token) {
         event.stopPropagation();
-        const { selectWord } = await import("../vocab-actions.js");
-        const { normalizeWord } = await import("../tokenizer_v2.js");
-        const { state } = await import("../state.js");
-        let wordToSelect = token.dataset.word;
-
-        if (event.ctrlKey && state.selectedWord && state.selectedWord !== wordToSelect) {
-          wordToSelect = state.selectedWord + " " + wordToSelect;
+        if (token.classList.contains("pdf-ocr-word") && event.detail > 0) {
+          clearTimeout(pdfWordClickTimer);
+          pdfWordClickTimer = setTimeout(() => {
+            pdfWordClickTimer = null;
+            selectReaderToken(token, { ctrlKey: event.ctrlKey, openPanel: true });
+          }, 220);
         } else {
-          setReaderSelectionAnchorFromToken(token);
+          await selectReaderToken(token, { ctrlKey: event.ctrlKey, openPanel: true });
         }
-
-        selectWord(wordToSelect, normalizeWord);
       } else {
         clearReaderSelection(true);
       }
     });
+    els.readerText.addEventListener("dblclick", async (event) => {
+      const token = event.target.closest(".pdf-ocr-word[data-pdf-page-word-index]");
+      if (!token) return;
+      event.preventDefault();
+      event.stopPropagation();
+      clearTimeout(pdfWordClickTimer);
+      pdfWordClickTimer = null;
+      const wordIndex = Number(token.dataset.pdfPageWordIndex);
+      if (!Number.isInteger(wordIndex)) return;
+      if (await openCurrentPdfCorrection(wordIndex)) {
+        clearReaderSelection(false);
+        renderReader();
+      }
+    });
     els.readerText.addEventListener("focusout", () => {
       setTimeout(() => {
+        if (document.documentElement.classList.contains("pocket-mode")) return;
         if (Date.now() - lastWordPanelInteractionAt < 700) return;
         const active = document.activeElement;
         if (!active) return;
@@ -224,22 +269,16 @@ export function bindReaderEvents() {
       }, 150);
     });
     els.readerText.addEventListener("keydown", async (event) => {
-      if (event.key === "5") {
-        const suggestBtn = els.wordPanel.querySelector("[data-suggest-word]");
-        if (suggestBtn) {
-          event.preventDefault();
-          suggestBtn.click();
-        }
-        return;
-      }
-
-      if (event.ctrlKey) return;
+      if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
       if (event.key !== "Enter" && event.key !== " " && event.code !== "Space") return;
       const token = event.target.closest(".word-token");
       if (!token) return;
 
-      const { state } = await import("../state.js");
       const isSpace = event.key === " " || event.key === "spacebar" || event.code === "Space";
+
+      if (event.key === "Enter" && state.selectedWord && document.querySelector("[data-in-text-answer]")) {
+        return;
+      }
 
       if (isSpace && state.readerSelectionRange && state.selectedWord !== token.dataset.word) {
         return;
@@ -260,7 +299,8 @@ export function bindReaderEvents() {
           setReaderSelectionAnchorFromToken(token);
       }
 
-      selectWord(wordToSelect, normalizeWord);
+      const wordIndex = event.ctrlKey ? state.selectedWordIndex : Number(token.dataset.wordIndex);
+      selectWord(wordToSelect, normalizeWord, false, wordIndex);
     });
 
     // Handle smart suggestion click
@@ -273,7 +313,7 @@ export function bindReaderEvents() {
       if (suggestBtn) {
         const { selectWord } = await import("../vocab-actions.js");
         const { normalizeWord } = await import("../tokenizer_v2.js");
-        selectWord(suggestBtn.dataset.suggestWord, normalizeWord, true);
+        selectWord(suggestBtn.dataset.suggestWord, normalizeWord, true, state.selectedWordIndex);
       }
     });
   });

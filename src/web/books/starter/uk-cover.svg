@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">1000 найуживаніших українських слів: Історії</title>
+  <desc id="desc">Обкладинка із синім вікном, сонячним небом, стежкою та квітучими соняхами.</desc>
+  <rect width="600" height="900" fill="#102a43"/>
+  <rect x="26" y="26" width="548" height="848" rx="22" fill="none" stroke="#ffd447" stroke-width="6"/>
+  <path d="M60 350h480v360H60z" fill="#f6f0df"/>
+  <path d="M82 372h436v316H82z" fill="#4da8da"/>
+  <circle cx="421" cy="456" r="67" fill="#ffd447"/>
+  <path d="M82 596c73-46 141-52 205-18 73 39 143 36 231-19v129H82z" fill="#4f9d69"/>
+  <path d="M241 688c28-64 52-104 73-120 28 19 62 59 103 120z" fill="#f6f0df"/>
+  <path d="M82 372h436v316H82zM300 372v316M82 531h436" fill="none" stroke="#102a43" stroke-width="14"/>
+  <path d="M60 350l22 22M540 350l-22 22M60 710l22-22M540 710l-22-22" stroke="#ffd447" stroke-width="8"/>
+  <g stroke="#22543d" stroke-width="8" stroke-linecap="round">
+    <path d="M143 665v-86M190 665v-111M458 665v-91"/>
+  </g>
+  <g fill="#ffd447" stroke="#7a4b00" stroke-width="4">
+    <circle cx="143" cy="570" r="24"/><circle cx="190" cy="545" r="29"/><circle cx="458" cy="565" r="25"/>
+  </g>
+  <g fill="#7a4b00">
+    <circle cx="143" cy="570" r="9"/><circle cx="190" cy="545" r="11"/><circle cx="458" cy="565" r="9"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">
+    <text x="300" y="117" font-size="78" font-weight="800">1000</text>
+    <text x="300" y="166" font-size="28" font-weight="700" letter-spacing="1">НАЙУЖИВАНІШИХ</text>
+    <text x="300" y="207" font-size="30" font-weight="700">УКРАЇНСЬКИХ СЛІВ</text>
+  </g>
+  <path d="M105 237h390" stroke="#ffd447" stroke-width="7"/>
+  <text x="300" y="304" fill="#ffd447" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="700">Історії</text>
+  <rect x="76" y="756" width="448" height="2" fill="#4da8da"/>
+  <text x="300" y="814" fill="#fff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="1.4">WORD HUNTER ORIGINALS</text>
+</svg>

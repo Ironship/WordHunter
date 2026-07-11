@@ -3,13 +3,14 @@ let youglishWidget = null;
 
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
+import { resolveTheme } from "./theme.js";
 
 let youglishApiReady = false;
 let youglishApiPromise = null;
 
 function initYouglish() {
   if (youglishWidget) return;
-  const isDark = state.preferences.theme === 'dark' || (state.preferences.theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const isDark = resolveTheme(state.preferences.theme, window.matchMedia?.('(prefers-color-scheme: dark)').matches).mode === "dark";
   const w = Math.min(640, window.innerWidth - 64);
   youglishWidget = new YG.Widget("youglish-widget", {
     width: w,

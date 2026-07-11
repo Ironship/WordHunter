@@ -18,14 +18,17 @@ fn home_dir_path() -> Option<PathBuf> {
     env_path("HOME")
 }
 
-fn legacy_config_dir() -> Option<PathBuf> {
-    home_dir_path().map(|home| home.join(".config"))
+fn xdg_config_dir() -> Option<PathBuf> {
+    env_path("XDG_CONFIG_HOME").or_else(|| home_dir_path().map(|home| home.join(".config")))
 }
 
-fn config_dir() -> Result<PathBuf, String> {
+fn xdg_data_dir() -> Option<PathBuf> {
+    env_path("XDG_DATA_HOME").or_else(|| home_dir_path().map(|home| home.join(".local/share")))
+}
+
+pub(crate) fn config_dir() -> Result<PathBuf, String> {
     appdata_dir()
-        .or_else(|| env_path("XDG_CONFIG_HOME"))
-        .or_else(legacy_config_dir)
+        .or_else(xdg_config_dir)
         .ok_or_else(|| "could not locate user config directory".to_string())
 }
 
@@ -33,54 +36,33 @@ fn config_file_path(app_name: &str, suffix: &str) -> Result<PathBuf, String> {
     Ok(config_dir()?.join(format!("{app_name}-{suffix}.txt")))
 }
 
-fn legacy_config_file_path(app_name: &str, suffix: &str) -> Option<PathBuf> {
-    legacy_config_dir().map(|base| base.join(format!("{app_name}-{suffix}.txt")))
-}
-
 fn read_config_file(app_name: &str, suffix: &str) -> Result<Option<String>, String> {
     let primary = config_file_path(app_name, suffix)?;
+    crate::store::durable::recover_replace(&primary)?;
     match std::fs::read_to_string(&primary) {
-        Ok(value) => return Ok(Some(value)),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error.to_string()),
-    }
-
-    let Some(legacy) = legacy_config_file_path(app_name, suffix) else {
-        return Ok(None);
-    };
-    if legacy == primary {
-        return Ok(None);
-    }
-    match std::fs::read_to_string(&legacy) {
         Ok(value) => Ok(Some(value)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.to_string()),
     }
 }
 
+#[cfg(not(target_os = "android"))]
 pub(crate) fn read_app_config(app_name: &str, suffix: &str) -> Result<Option<String>, String> {
     read_config_file(app_name, suffix)
 }
 
+#[cfg(not(target_os = "android"))]
 pub(crate) fn app_config_path(app_name: &str, suffix: &str) -> Result<PathBuf, String> {
     config_file_path(app_name, suffix)
 }
 
 fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
     let path = config_file_path(app_name, suffix)?;
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
-    let temp = path.with_extension("tmp");
-    let mut file = std::fs::File::create(&temp).map_err(|e| e.to_string())?;
-    {
-        use std::io::Write;
-        file.write_all(bytes).map_err(|e| e.to_string())?;
-        file.sync_all().map_err(|e| e.to_string())?;
-    }
-    std::fs::rename(&temp, &path).map_err(|e| e.to_string())
+    crate::store::durable::recover_replace(&path)?;
+    crate::store::durable::write_file_atomic(&path, bytes, true)
 }
 
+#[cfg(not(target_os = "android"))]
 pub(crate) fn write_app_config(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
     write_config_file(app_name, suffix, bytes)
 }
@@ -90,15 +72,8 @@ fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
         return Ok(appdata.join(app_name));
     }
 
-    if let Some(legacy) = legacy_config_dir().map(|base| base.join(app_name)) {
-        if legacy.exists() {
-            return Ok(legacy);
-        }
-    }
-
-    env_path("XDG_DATA_HOME")
+    xdg_data_dir()
         .map(|base| base.join(app_name))
-        .or_else(|| legacy_config_dir().map(|base| base.join(app_name)))
         .ok_or_else(|| "could not locate user data directory".to_string())
 }
 
@@ -178,11 +153,14 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn sanitize_id(id: &str) -> Result<String, String> {
+    if id.contains('/') || id.contains('\\') {
+        return Err("invalid id".to_string());
+    }
     let path = Path::new(id);
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
         return Err("invalid id".to_string());
     };
-    if name.is_empty() || name == "." || name == ".." {
+    if name.is_empty() || name == "." || name == ".." || name != id {
         return Err("invalid id".to_string());
     }
     Ok(name.to_string())

@@ -59,7 +59,6 @@ export function renderLibrary() {
   const sortReverse = state.filters.librarySortReverse || false;
   const archiveFilter = state.filters.libraryArchive || "active";
   const archivedBookIds = new Set(state.archivedBookIds || []);
-  const levelOrder = { A2: 1, B1: 2, B2: 3, C1: 4 };
   const showStats = state.preferences?.showCardStats !== false;
   const statSortKeys = new Set(["length", "known", "new", "learning", "progress"]);
   const needsStats = showStats || statSortKeys.has(sortKey);
@@ -175,8 +174,6 @@ export function renderLibrary() {
       moveButton = editBtn + `<button class="icon-button" type="button" data-action="move-book" data-iscustom="false" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.moveBook"))}">${icon("swap", 16)}</button>`;
     } else {
       removeButton = `<button class="icon-button danger-button" type="button" data-action="hide-builtin" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.removeBuiltInTitle"))}">${icon("trash", 16)}</button>`;
-      const editBtn = `<button class="icon-button" type="button" data-action="edit-custom" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>`;
-      moveButton = editBtn;
     }
     const cover = renderBookCover(book);
     const levelTag = book.level && book.level !== "custom"

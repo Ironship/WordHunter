@@ -57,9 +57,6 @@ pub(crate) fn package_roots() -> Vec<PathBuf> {
     if let Ok(dir) = packages_dir() {
         roots.push(dir);
     }
-    if let Some(legacy) = legacy_packages_dir() {
-        roots.push(legacy);
-    }
     roots
 }
 
@@ -68,16 +65,6 @@ fn packages_dir() -> Result<PathBuf, String> {
     let dir = crate::paths::data_dir(crate::APP_NAME)?.join("argos-packages");
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     Ok(dir)
-}
-
-/// Return the legacy Argos Translate packages directory, if it exists.
-fn legacy_packages_dir() -> Option<PathBuf> {
-    crate::paths::home_dir().map(|home| {
-        home.join(".local")
-            .join("share")
-            .join("argos-translate")
-            .join("packages")
-    })
 }
 
 /// Fetch the Argos package index and return a list of available packages.
@@ -173,7 +160,7 @@ fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
         if total_size > MAX_TOTAL_SIZE {
             return Err("model package is too large".to_string());
         }
-        let Some(relative) = file.enclosed_name().map(PathBuf::from) else {
+        let Some(relative) = file.enclosed_name() else {
             return Err(format!("invalid path in model package: {}", file.name()));
         };
         let destination = staging.path().join(relative);
@@ -218,4 +205,88 @@ fn json_string_array(value: Option<&Value>) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        io::{Cursor, Write},
+    };
+
+    use tempfile::tempdir;
+    use zip::{ZipWriter, write::SimpleFileOptions};
+
+    use super::extract_package;
+
+    #[test]
+    fn extracts_valid_single_directory_package() {
+        let target = tempdir().expect("target directory should be created");
+        let archive = make_zip(&[
+            ("translate-en_de/metadata.json", br#"{"from_code":"en"}"#),
+            ("translate-en_de/model/model.bin", b"model bytes"),
+        ]);
+
+        extract_package(&archive, target.path()).expect("valid package should extract");
+
+        assert_eq!(
+            fs::read(target.path().join("translate-en_de/metadata.json"))
+                .expect("metadata should exist"),
+            br#"{"from_code":"en"}"#
+        );
+        assert_eq!(
+            fs::read(target.path().join("translate-en_de/model/model.bin"))
+                .expect("model should exist"),
+            b"model bytes"
+        );
+    }
+
+    #[test]
+    fn rejects_package_paths_that_escape_staging() {
+        let root = tempdir().expect("root directory should be created");
+        let target = root.path().join("packages");
+        fs::create_dir(&target).expect("target directory should be created");
+        let archive = make_zip(&[("../../../escaped.txt", b"not allowed")]);
+
+        let error = extract_package(&archive, &target).expect_err("traversal should fail");
+
+        assert!(error.contains("invalid path"), "{error}");
+        assert!(!root.path().join("escaped.txt").exists());
+        assert!(
+            fs::read_dir(&target)
+                .expect("target should remain readable")
+                .next()
+                .is_none(),
+            "failed extraction should not leave staging data"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_top_level_package_shapes() {
+        let archives = [
+            make_zip(&[("metadata.json", b"{}")]),
+            make_zip(&[("first/model.bin", b"one"), ("second/model.bin", b"two")]),
+        ];
+
+        for archive in archives {
+            let target = tempdir().expect("target directory should be created");
+            let error = extract_package(&archive, target.path())
+                .expect_err("package shape should be rejected");
+            assert!(error.contains("exactly one top-level directory"), "{error}");
+        }
+    }
+
+    fn make_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, bytes) in entries {
+            writer
+                .start_file(*name, SimpleFileOptions::default())
+                .expect("fixture entry should start");
+            writer.write_all(bytes).expect("fixture entry should write");
+        }
+        writer
+            .finish()
+            .expect("fixture ZIP should finish")
+            .into_inner()
+    }
 }

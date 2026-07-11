@@ -17,8 +17,7 @@ export function buildSavePayload(rawState) {
     texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
     prefs: {
       ...toPlain(rawState.preferences || {}),
-      __discover: toPlain(discoverPayload(rawState.discover)),
-      __userBooks: toPlain(rawState.userBooks || [])
+      __discover: toPlain(discoverPayload(rawState.discover))
     },
     hiddenBooks: toPlain(rawState.hiddenBuiltInBooks || []),
     // Texts have their own durable store; do not serialize every book twice.
@@ -51,7 +50,7 @@ export function saveToLocalStorage(rawState) {
  * POST the payload to the backend bridge with retry.
  * @param {string} body JSON payload string
  * @param {number} maxRetries
- * @returns {Promise<void>}
+ * @returns {Promise<object>}
  */
 export async function saveWithRetry(body, maxRetries) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -64,16 +63,16 @@ export async function saveWithRetry(body, maxRetries) {
         },
         body
       });
-      if (response.ok) return;
+      if (response.ok) return await response.json().catch(() => ({ ok: true }));
       const error = new Error(`HTTP ${response.status}`);
       error.status = response.status;
       throw error;
     } catch (e) {
-      if (e.status === 409) throw e;
       if (attempt === maxRetries) throw e;
       await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
     }
   }
+  return {};
 }
 
 /**
@@ -87,10 +86,14 @@ export function saveSyncXhr(body) {
     xhr.setRequestHeader("Content-Type", "application/json");
     xhr.setRequestHeader("X-WH-Token", window.WH_TOKEN || "");
     xhr.send(body);
-    if (xhr.status === 409) {
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-conflict"));
-    } else if (xhr.status >= 200 && xhr.status < 300) {
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { time: new Date().toLocaleTimeString() } }));
+    if (xhr.status >= 200 && xhr.status < 300) {
+      let result = {};
+      try {
+        result = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch (error) {
+        console.warn("sync save response parse failed", error);
+      }
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { ...result, time: new Date().toLocaleTimeString() } }));
     } else {
       window.dispatchEvent(new CustomEvent("wordhunter:sync-error"));
     }

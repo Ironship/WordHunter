@@ -1,35 +1,75 @@
 /**
  * Reader scroll position save/restore.
  */
-import { state, saveState } from "../state.js";
+import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 
-export function rememberReaderScrollPosition() {
+function readWordIndex(token) {
+  const idx = Number.parseInt(token?.dataset?.wordIndex, 10);
+  return Number.isFinite(idx) ? idx : null;
+}
+
+function visibleWordIndexFromPoint(container) {
+  if (typeof document === "undefined" || typeof document.elementFromPoint !== "function") return null;
+
+  const rect = container.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+
+  const xs = [
+    rect.left + 20,
+    rect.left + rect.width * 0.33,
+    rect.left + rect.width * 0.5,
+    rect.right - 20
+  ].filter((x) => x > rect.left && x < rect.right);
+  const ys = [
+    rect.top + 20,
+    rect.top + rect.height * 0.25,
+    rect.top + rect.height * 0.5
+  ].filter((y) => y > rect.top && y < rect.bottom);
+
+  for (const y of ys) {
+    for (const x of xs) {
+      const token = document.elementFromPoint(x, y)?.closest?.(".word-token");
+      if (!token || !container.contains(token)) continue;
+      const idx = readWordIndex(token);
+      if (idx !== null) return idx;
+    }
+  }
+
+  return null;
+}
+
+export function rememberReaderScrollPosition({ precise = true, flush = false } = {}) {
   if (!els.readerText || !state.currentTextId) return;
   if (!state.readerScrolls) state.readerScrolls = {};
 
   const scrollTop = Math.max(0, Math.round(els.readerText.scrollTop || 0));
-  let wordIndex = null;
-  const tokens = els.readerText.querySelectorAll(".word-token");
-  const containerRect = els.readerText.getBoundingClientRect();
-  for (const token of tokens) {
-    const tr = token.getBoundingClientRect();
-    if (tr.top < containerRect.bottom && tr.bottom > containerRect.top) {
-      const idx = parseInt(token.dataset.wordIndex, 10);
-      if (!isNaN(idx)) wordIndex = idx;
-      break;
-    }
-  }
-
-  state.readerScrolls[state.currentTextId] = {
-    wordIndex: wordIndex,
-    scrollTop: scrollTop,
+  const wordIndex = precise ? visibleWordIndexFromPoint(els.readerText) : null;
+  const previous = state.readerScrolls[state.currentTextId];
+  const next = {
+    wordIndex,
+    scrollTop,
     readerPage: state.readerPage
   };
-  if (state.readerScrollsPerPage && state.readerPage) {
-    state.readerScrollsPerPage[`${state.currentTextId}-p${state.readerPage}`] = scrollTop;
+  const perPageKey = state.readerPage ? `${state.currentTextId}-p${state.readerPage}` : null;
+  const previousPerPage = perPageKey ? state.readerScrollsPerPage?.[perPageKey] : undefined;
+
+  if (
+    previous
+    && previous.wordIndex === next.wordIndex
+    && previous.scrollTop === next.scrollTop
+    && previous.readerPage === next.readerPage
+    && previousPerPage === scrollTop
+  ) {
+    if (flush) saveUiState();
+    return;
   }
-  saveState();
+
+  state.readerScrolls[state.currentTextId] = next;
+  if (state.readerScrollsPerPage && perPageKey) {
+    state.readerScrollsPerPage[perPageKey] = scrollTop;
+  }
+  if (flush) saveUiState();
 }
 
 export function restoreReaderScrollPosition(textId, saved, attempt) {
@@ -46,7 +86,7 @@ export function restoreReaderScrollPosition(textId, saved, attempt) {
   let target = 0;
   if (saved && typeof saved === "object") {
     // 1. Global word index — most precise
-    if (saved.wordIndex) {
+    if (Number.isInteger(saved.wordIndex) && saved.wordIndex >= 0) {
       const token = container.querySelector(`[data-word-index="${saved.wordIndex}"]`);
       if (token) {
         const tr = token.getBoundingClientRect();
@@ -67,5 +107,3 @@ export function restoreReaderScrollPosition(textId, saved, attempt) {
   container.scrollTop = Math.max(0, Math.min(target, maxScroll));
   container.dataset.rendering = "0";
 }
-
-

@@ -52,10 +52,11 @@ pub(crate) fn find_model_dir(from: &str, to: &str) -> Option<PathBuf> {
             if !dir.is_dir() || !dir.join("model").join("model.bin").is_file() {
                 continue;
             }
-            if let Some((model_from, model_to)) = read_model_pair(&dir) {
-                if model_from == from && model_to == to {
-                    return Some(dir);
-                }
+            if let Some((model_from, model_to)) = read_model_pair(&dir)
+                && model_from == from
+                && model_to == to
+            {
+                return Some(dir);
             }
         }
     }

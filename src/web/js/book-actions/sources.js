@@ -3,8 +3,8 @@
  */
 import { state, saveState, setLastReadTextId } from "../state.js";
 import { showToast } from "../toast.js";
-import { setView, render } from "../render.js";
-import { setReaderLoading, clearReaderLoading, renderReader } from "../views/reader.js";
+import { getNavigationEpoch, setView } from "../render.js";
+import { setReaderLoading, clearReaderLoading, renderReader } from "../reader/renderer.js";
 import { bookTexts, findBookById, loadBookText } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { cleanGutenbergText } from "../tokenizer_v2.js";
@@ -15,6 +15,11 @@ import { importCustomText } from "./custom-text.js";
 import { addUserBookToActiveProfile, findCustomText, hasUserBook } from "./profile-library.js";
 
 export async function loadFullGutenbergText(book) {
+  if (!book.gutenbergId) {
+    const { openBook } = await import("../book-actions.js");
+    await openBook(book.id);
+    return;
+  }
   const cachedId = `gutenberg-full-${book.gutenbergId}`;
   const cached = findCustomText(cachedId);
   if (cached && cached.text && cached.text.length >= 500) {
@@ -23,12 +28,12 @@ export async function loadFullGutenbergText(book) {
     state.selectedWord = null;
     setView("reader");
     saveState();
-    render();
     showToast(t("toast.loadedLocal", { title: cached.title }));
     return;
   }
   showToast(t("toast.fetchingTxt", { title: book.title }));
   setView("reader");
+  const loadingNavigationEpoch = getNavigationEpoch();
   setReaderLoading(book);
   try {
     if (book.localPath) {
@@ -37,6 +42,7 @@ export async function loadFullGutenbergText(book) {
         if (localResponse.ok) {
           const localText = (await localResponse.text()).trim();
           if (localText.length >= 500) {
+            if (loadingNavigationEpoch !== getNavigationEpoch()) return;
             bookTexts.set(book.id, localText);
             invalidateBookId(book.id);
             state.currentTextId = book.id;
@@ -44,7 +50,6 @@ export async function loadFullGutenbergText(book) {
             state.selectedWord = null;
             setView("reader");
             saveState();
-            render();
             showToast(t("toast.loadedLocal", { title: book.title }));
             return;
           }
@@ -56,20 +61,24 @@ export async function loadFullGutenbergText(book) {
     const rawText = await fetchTextWithFallback(book.textUrl);
     const cleanText = cleanGutenbergText(rawText);
     if (cleanText.length < 500) throw new Error(t("toast.textTooShort"));
-    await importCustomText(`${book.title} ${t("bookActions.fullTextSuffix")}`, cleanText, {
+    const importedId = await importCustomText(`${book.title} ${t("bookActions.fullTextSuffix")}`, cleanText, {
       id: `gutenberg-full-${book.gutenbergId}`,
       author: book.author,
       source: t("reader.sourceGutenbergTxt"),
       level: book.level,
       sourceUrl: book.pageUrl,
       textUrl: book.textUrl
-    });
+    }, false);
+    if (importedId && loadingNavigationEpoch === getNavigationEpoch()) {
+      const { openBook } = await import("../book-actions.js");
+      await openBook(importedId);
+    }
   } catch (error) {
     console.warn(error);
     showToast(t("toast.fetchTxtFailed"));
   } finally {
     clearReaderLoading();
-    renderReader();
+    if (state.currentView === "reader" && loadingNavigationEpoch === getNavigationEpoch()) renderReader();
   }
 }
 

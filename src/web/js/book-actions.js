@@ -1,25 +1,30 @@
 import { state, setLastReadTextId, getLastReadTextId } from "./state.js";
-import { setView, render } from "./render.js";
-import { rememberReaderScrollPosition, setReaderLoading, clearReaderLoading } from "./views/reader.js";
-import { bookTexts, loadBookText, findBookById } from "./books.js";
+import { getNavigationEpoch, setView } from "./render.js";
+import { setReaderLoading, clearReaderLoading } from "./reader/renderer.js";
+import { rememberReaderScrollPosition } from "./reader/scroll.js";
+import { bookTexts, findBookById, isBookTextCacheStale, loadBookText, loadCustomTextContent } from "./books.js";
 import { findCustomText, hasCustomText } from "./book-actions/profile-library.js";
 
+let openBookGeneration = 0;
+
 export async function openBook(id) {
+  const generation = ++openBookGeneration;
+  const startingNavigationEpoch = getNavigationEpoch();
+  clearReaderLoading();
   rememberReaderScrollPosition();
   state.currentTextId = id;
   setLastReadTextId(id);
   const customText = findCustomText(id);
   const isCustom = Boolean(customText);
-  if (!bookTexts.has(id)) {
+  if (!bookTexts.has(id) || isBookTextCacheStale(id)) {
     const catalogBook = findBookById(id);
     const book = customText || catalogBook;
     if (book) {
       try {
         setReaderLoading({ title: book.title || "..." });
         if (isCustom && window.__qtBridge) {
-          const res = await fetch(`/__book/text?id=${encodeURIComponent(id)}`);
-          const data = await res.json();
-          bookTexts.set(id, data.text || "");
+          await loadCustomTextContent(customText);
+          if (generation !== openBookGeneration) return false;
         } else if (isCustom && customText?.text) {
           bookTexts.set(id, customText.text);
         } else if (catalogBook) {
@@ -28,14 +33,16 @@ export async function openBook(id) {
       } catch (e) {
         console.warn("fetch text failed", e);
       } finally {
-        clearReaderLoading();
+        if (generation === openBookGeneration) clearReaderLoading();
       }
     }
   }
 
+  if (generation !== openBookGeneration || startingNavigationEpoch !== getNavigationEpoch()) return false;
+
   state.selectedWord = null;
   setView("reader");
-  render();
+  return true;
 }
 
 export function isReadableBookAvailable(id) {

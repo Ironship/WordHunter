@@ -22,6 +22,25 @@ fn clean_translation_strips_artifacts_and_normalizes_spaces() {
 #[test]
 fn default_labels_use_neutral_translator_name() {
     let labels = translator_labels("en");
+    assert_eq!(
+        labels.get("title").map(String::as_str),
+        Some("Offline Translator")
+    );
+    for key in [
+        "title",
+        "sourceLabel",
+        "targetLabel",
+        "placeholder",
+        "targetPlaceholder",
+        "footer",
+        "copyBtn",
+        "copied",
+    ] {
+        let value = labels
+            .get(key)
+            .unwrap_or_else(|| panic!("missing label {key}"));
+        assert!(!value.trim().is_empty(), "label {key} is empty");
+    }
     for (key, value) in &labels {
         assert!(
             !value.contains("Argos"),

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Mille Verba Latina Frequentissima: Fabulae</title>
+  <desc id="desc">A high-contrast cover showing an open book from which a winding road leads toward a sunlit town and hills.</desc>
+  <rect width="600" height="900" fill="#102c3a"/>
+  <rect x="24" y="24" width="552" height="852" rx="8" fill="none" stroke="#f2c14e" stroke-width="3"/>
+
+  <circle cx="300" cy="478" r="112" fill="#f2c14e"/>
+  <path d="M86 570 Q170 500 248 548 T514 540 L514 682 L86 682 Z" fill="#24746d"/>
+  <path d="M86 610 Q176 554 264 598 T514 584 L514 704 L86 704 Z" fill="#65a66f"/>
+
+  <g fill="#fff4d6" stroke="#102c3a" stroke-width="6" stroke-linejoin="round">
+    <path d="M104 646 Q202 617 293 674 L293 806 Q205 750 104 774 Z"/>
+    <path d="M496 646 Q398 617 307 674 L307 806 Q395 750 496 774 Z"/>
+  </g>
+  <path d="M300 676 C290 633 301 592 326 557 C351 522 382 512 405 479" fill="none" stroke="#fff4d6" stroke-width="20" stroke-linecap="round"/>
+  <path d="M300 676 C290 633 301 592 326 557 C351 522 382 512 405 479" fill="none" stroke="#d96545" stroke-width="7" stroke-linecap="round"/>
+
+  <g fill="#102c3a">
+    <rect x="357" y="448" width="34" height="40"/>
+    <path d="M350 448 L374 425 L398 448 Z"/>
+    <rect x="398" y="434" width="42" height="54"/>
+    <path d="M390 434 L419 404 L448 434 Z"/>
+    <rect x="444" y="452" width="29" height="36"/>
+    <path d="M438 452 L458 431 L479 452 Z"/>
+    <rect x="412" y="456" width="10" height="32" fill="#f2c14e"/>
+  </g>
+
+  <g fill="#f2c14e">
+    <circle cx="125" cy="421" r="6"/>
+    <circle cx="155" cy="392" r="4"/>
+    <circle cx="476" cy="386" r="6"/>
+    <path d="M103 466 q18 -18 36 0 q-18 -7 -36 0Z"/>
+    <path d="M456 458 q18 -18 36 0 q-18 -7 -36 0Z"/>
+  </g>
+
+  <text x="300" y="106" text-anchor="middle" fill="#f2c14e" font-family="Georgia, 'Times New Roman', serif" font-size="25" letter-spacing="5">MILLE VERBA</text>
+  <text x="300" y="154" text-anchor="middle" fill="#fff4d6" font-family="Georgia, 'Times New Roman', serif" font-size="35" font-weight="700">LATINA</text>
+  <text x="300" y="198" text-anchor="middle" fill="#fff4d6" font-family="Georgia, 'Times New Roman', serif" font-size="35" font-weight="700">FREQUENTISSIMA</text>
+  <line x1="142" y1="226" x2="458" y2="226" stroke="#d96545" stroke-width="5"/>
+  <text x="300" y="287" text-anchor="middle" fill="#f2c14e" font-family="Georgia, 'Times New Roman', serif" font-size="47" font-style="italic">Fabulae</text>
+
+  <text x="300" y="844" text-anchor="middle" fill="#fff4d6" font-family="Arial, sans-serif" font-size="17" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+</svg>

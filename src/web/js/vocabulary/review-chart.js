@@ -14,7 +14,7 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
-import { buildHeatmapActivityCounts, drawBarChart, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
+import { buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
 import { formatSrsMeta } from "./review-card.js";
 
 function diffDays(fromISO, toISO) {
@@ -41,7 +41,7 @@ export function renderReviewChart(srsEntries, today) {
       tooltip: (isoDate, count) => `${isoDate} · ${t("vocab.cardCount", { count })}`
     });
   } else {
-    els.reviewChart.innerHTML = `<div class="review-chart-frame"><canvas id="review-chart-canvas" style="width:100%;height:160px;display:block;"></canvas></div>`;
+    els.reviewChart.innerHTML = `<div class="review-chart-frame"><canvas id="review-chart-canvas" class="chart-reveal" style="width:100%;height:160px;display:block;"></canvas></div>`;
     requestAnimationFrame(() => {
       const c = document.getElementById("review-chart-canvas");
       if (!c) return;
@@ -74,16 +74,14 @@ export function renderReviewChart(srsEntries, today) {
         let bx = pad.left;
         if (overdue > 0) {
           const h = (overdue / maxVal) * ph;
-          ctx.fillStyle = red;
-          ctx.beginPath(); ctx.roundRect(bx, pad.top + ph - h, barW, h, [2,2,0,0]); ctx.fill();
+          drawChartBar(ctx, bx, pad.top + ph - h, barW, h, red, 2);
           ctx.fillStyle = ink; ctx.font = "bold 9px Inter, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
           ctx.fillText(overdue, bx + barW / 2, pad.top + ph - h - 2);
           bx += barW + 3;
         }
         for (let d = 0; d < days; d++) {
           const h = (buckets[d] / maxVal) * ph;
-          ctx.fillStyle = d === 0 ? green : blue;
-          ctx.beginPath(); ctx.roundRect(bx + d * (barW + 3), pad.top + ph - h, barW, h, [2,2,0,0]); ctx.fill();
+          drawChartBar(ctx, bx + d * (barW + 3), pad.top + ph - h, barW, h, d === 0 ? green : blue, 2);
           if (buckets[d] > 0 && barW > 10) {
             ctx.fillStyle = ink; ctx.font = "bold 9px Inter, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
             ctx.fillText(buckets[d], bx + d * (barW + 3) + barW / 2, pad.top + ph - h - 2);

@@ -33,7 +33,7 @@ describe("learning colors", () => {
     assert.equal(getLearningColor({ repetition: 4 }, { ...prefs, dynamicLearningColors: false }), "");
   });
 
-  it("migrates malformed palettes and new preferences safely", () => {
+  it("normalizes malformed palettes and boolean preferences safely", () => {
     const restored = normalizeState({
       ...createDefaultState(),
       preferences: { learningColors: ["bad", "#123456"], inTextReview: "yes", dynamicLearningColors: 1 }
@@ -60,6 +60,25 @@ describe("in-text SRS grading", () => {
     assert.match(els.reviewCard.innerHTML, /learning/);
     assert.doesNotMatch(els.reviewCard.innerHTML, /fresh/);
     els.reviewCard = previousCard;
+  });
+
+  it("does not persist unchanged review state while rendering a card", () => {
+    const previousCard = els.reviewCard;
+    const previousSetItem = localStorage.setItem;
+    let writes = 0;
+    localStorage.setItem = () => { writes += 1; };
+    els.reviewCard = { innerHTML: "" };
+    state.preferences.autoAddLearningOnly = true;
+    state.vocab = { learning: { status: "learning", nextDate: "2000-01-01" } };
+    state.reviewIndex = 0;
+
+    try {
+      renderReview();
+      assert.equal(writes, 0);
+    } finally {
+      localStorage.setItem = previousSetItem;
+      els.reviewCard = previousCard;
+    }
   });
 
   it("uses Enter to reveal and number keys to grade an in-text review", () => {
@@ -99,7 +118,8 @@ describe("in-text SRS grading", () => {
     assert.equal(isInTextReviewDue(entry, "2026-06-24"), true);
   });
 
-  for (const quality of [1, 2, 3, 4, 5]) {
+  const expectedEase = new Map([[1, 1.96], [2, 2.18], [3, 2.36], [4, 2.5], [5, 2.6]]);
+  for (const quality of expectedEase.keys()) {
     it(`routes grade ${quality} through the existing SRS scheduler`, async () => {
       state.preferences.srsAlgorithm = "sm2";
       state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } };
@@ -107,6 +127,7 @@ describe("in-text SRS grading", () => {
       assert.equal(entry.status, "learning");
       assert.equal(entry.repetition, quality < 3 ? 0 : 1);
       assert.equal(entry.interval, 1);
+      assert.equal(entry.efactor, expectedEase.get(quality));
       assert.equal(getSrsLevel(entry), quality < 3 ? 1 : 2);
       assert.ok(entry.nextDate);
     });
@@ -145,10 +166,10 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.mobileFileHint, "string", `${locale}.import.mobileFileHint`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /0\.3\.6/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.whatsNew, /PDF/, `${locale}.help.whatsNew PDF`);
-      assert.match(data.help.whatsNew, /Android/, `${locale}.help.whatsNew Android`);
-      assert.match(data.help.whatsNew, /Flatpak\/Linux/, `${locale}.help.whatsNew Flatpak`);
+      assert.match(data.help.whatsNew, /1\.0\.0/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.0/, `${locale}.help.version`);
+      assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
+      assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });
   }
 });

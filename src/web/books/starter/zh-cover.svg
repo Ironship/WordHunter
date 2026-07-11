@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="cover-title cover-desc">
+  <title id="cover-title">最常用的1000个中文词：小故事</title>
+  <desc id="cover-desc">一本高对比度的中文故事书封面，窗户、灯光、街道与翻开的书组成一个温暖的日常世界。</desc>
+  <rect width="600" height="900" fill="#12263A"/>
+  <rect x="24" y="24" width="552" height="852" rx="20" fill="none" stroke="#FFD166" stroke-width="4"/>
+  <circle cx="456" cy="353" r="76" fill="#FFD166"/>
+  <path d="M76 492 L178 394 L280 492 V690 H76 Z" fill="#F4F1DE" stroke="#12263A" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M320 476 L414 390 L508 476 V690 H320 Z" fill="#E76F51" stroke="#12263A" stroke-width="8" stroke-linejoin="round"/>
+  <rect x="126" y="526" width="62" height="72" rx="3" fill="#2A9D8F" stroke="#12263A" stroke-width="7"/>
+  <path d="M157 526 V598 M126 562 H188" stroke="#F4F1DE" stroke-width="6"/>
+  <rect x="381" y="526" width="66" height="164" rx="4" fill="#F4F1DE" stroke="#12263A" stroke-width="7"/>
+  <circle cx="430" cy="606" r="6" fill="#E76F51"/>
+  <path d="M276 690 C302 625 334 625 360 690" fill="#2A9D8F" stroke="#12263A" stroke-width="7"/>
+  <path d="M65 691 H535" stroke="#FFD166" stroke-width="11" stroke-linecap="round"/>
+  <g fill="none" stroke="#F4F1DE" stroke-width="7" stroke-linecap="round">
+    <path d="M102 728 Q199 694 287 734 Q300 741 300 760 Q300 741 313 734 Q401 694 498 728"/>
+    <path d="M102 728 V797 Q200 766 300 807 V760"/>
+    <path d="M498 728 V797 Q400 766 300 807"/>
+  </g>
+  <g fill="#FFD166">
+    <circle cx="95" cy="344" r="7"/>
+    <circle cx="127" cy="318" r="5"/>
+    <circle cx="491" cy="300" r="5"/>
+  </g>
+  <text x="300" y="108" fill="#FFD166" font-family="sans-serif" font-size="34" font-weight="700" text-anchor="middle" letter-spacing="3">最常用的</text>
+  <text x="300" y="181" fill="#FFFFFF" font-family="sans-serif" font-size="74" font-weight="800" text-anchor="middle">1000个</text>
+  <text x="300" y="247" fill="#FFFFFF" font-family="sans-serif" font-size="58" font-weight="800" text-anchor="middle">中文词</text>
+  <line x1="112" y1="275" x2="488" y2="275" stroke="#E76F51" stroke-width="9"/>
+  <text x="300" y="337" fill="#F4F1DE" font-family="sans-serif" font-size="43" font-weight="700" text-anchor="middle">小故事</text>
+  <text x="300" y="848" fill="#FFD166" font-family="sans-serif" font-size="22" font-weight="700" text-anchor="middle" letter-spacing="1">WORD HUNTER ORIGINALS</text>
+</svg>

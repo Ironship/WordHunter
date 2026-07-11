@@ -8,6 +8,7 @@ export function cacheElements() {
   els.pillLearning = document.getElementById("pill-learning");
   els.pillNew = document.getElementById("pill-new");
   els.themeToggle = document.getElementById("theme-toggle");
+  els.pocketNavigationToggle = document.getElementById("pocket-navigation-toggle");
   els.navItems = [...document.querySelectorAll(".nav-item")];
   els.translatorNavItem = document.querySelector('[data-view="translator"]');
   els.views = [...document.querySelectorAll(".view")];
@@ -43,6 +44,8 @@ export function cacheElements() {
   els.readerText = document.getElementById("reader-text");
   els.readerHighlightToggle = document.getElementById("reader-highlight-toggle");
   els.readerWordPanelToggle = document.getElementById("reader-word-panel-toggle");
+  els.readerPreviousWord = document.getElementById("reader-previous-word");
+  els.readerNextWord = document.getElementById("reader-next-word");
   els.readerFontSizeSlider = document.getElementById("reader-font-size-slider");
   els.readerFontSizeValue = document.getElementById("reader-font-size-value");
   els.trackingSummary = document.getElementById("tracking-summary");
@@ -149,6 +152,9 @@ export function cacheElements() {
   els.prefTtsRate = document.getElementById("pref-tts-rate");
   els.prefAutoTtsOnWordFocus = document.getElementById("pref-auto-tts-on-word-focus");
   els.prefTtsWordHighlight = document.getElementById("pref-tts-word-highlight");
+  els.prefStatusSoundsEnabled = document.getElementById("pref-status-sounds-enabled");
+  els.prefStatusSoundVolume = document.getElementById("pref-status-sound-volume");
+  els.prefStatusSoundVolumeLabel = document.getElementById("pref-status-sound-volume-label");
   els.prefUseEdgeTts = document.getElementById("pref-use-edge-tts");
 
   els.storageSummary = document.getElementById("storage-summary");
@@ -156,15 +162,22 @@ export function cacheElements() {
   els.syncDirectory = document.getElementById("sync-directory");
   els.syncStatus = document.getElementById("sync-status");
   els.syncHealth = document.getElementById("sync-health");
-  els.cloudSyncStatus = document.getElementById("cloud-sync-status");
+  els.syncthingStatus = document.getElementById("syncthing-status");
+  els.syncthingPeers = document.getElementById("syncthing-peers");
+  els.syncthingStart = document.getElementById("syncthing-start");
+  els.syncthingStop = document.getElementById("syncthing-stop");
+  els.syncthingPair = document.getElementById("syncthing-pair");
+  els.syncthingShowQR = document.getElementById("syncthing-show-qr");
+  els.syncthingQRDialog = document.getElementById("syncthing-qr-dialog");
+  els.syncthingQRContainer = document.getElementById("syncthing-qr-container");
+  els.syncthingQRDeviceID = document.getElementById("syncthing-qr-device-id");
+  els.syncthingQRClose = document.getElementById("syncthing-qr-close");
   els.syncConflictsPanel = document.getElementById("sync-conflicts-panel");
   els.syncConflictsList = document.getElementById("sync-conflicts-list");
   els.recoveryStatusPanel = document.getElementById("recovery-status-panel");
   els.recoveryStatusList = document.getElementById("recovery-status-list");
   els.chooseDataDirectory = document.getElementById("choose-data-directory");
   els.prepareSyncDirectory = document.getElementById("prepare-sync-directory");
-  els.connectCloudSync = document.getElementById("connect-cloud-sync");
-  els.cloudSyncNow = document.getElementById("cloud-sync-now");
   els.chooseSyncDirectory = document.getElementById("choose-sync-directory");
   els.forceSync = document.getElementById("force-sync");
 
@@ -196,4 +209,5 @@ export function cacheElements() {
   els.editBookSave = document.getElementById("edit-book-save");
 
   els.toast = document.getElementById("toast");
+  els.toastMessage = document.getElementById("toast-message");
 }

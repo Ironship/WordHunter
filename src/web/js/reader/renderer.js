@@ -4,22 +4,22 @@
  * Tokenization happens once per plain-text render pass; the resulting page total
  * is cached so that page navigation does not re-tokenize.
  */
-import { state, saveState } from "../state.js";
+import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, calcStatsPcts } from "../utils.js";
 import { t } from "../i18n.js";
-import { getTokenStats, tokenizeText } from "../tokenizer_v2.js";
+import { getTokenStats } from "../tokenizer_v2.js";
 import { getAllBooks, bookTexts } from "../books.js";
 import { renderPlainText } from "./text-renderer.js";
 import { isPdfOcrText, renderPdfOcrReader } from "./pdf-ocr-renderer.js";
 import {
-  countWordTokens,
   computeTotalPages,
   computePageSlice,
   cacheTotalPages,
   changeReaderPage,
   goToReaderPage
 } from "./pagination.js";
+import { getReaderSession } from "./session.js";
 
 export { changeReaderPage, goToReaderPage };
 
@@ -72,6 +72,7 @@ export function renderTrackingSummary(stats) {
 }
 
 let loadingBook = null;
+let readerRenderGeneration = 0;
 
 export function setReaderLoading(book) {
   loadingBook = book;
@@ -84,8 +85,11 @@ export function clearReaderLoading() {
 
 export function renderReader() {
   if (!els.readerText) return;
+  const generation = ++readerRenderGeneration;
+  delete els.readerText.dataset.renderId;
   els.readerText.classList.remove("pdf-ocr-reader", "pdf-text-layer-reader");
   if (loadingBook) {
+    els.readerText.setAttribute("aria-busy", "true");
     els.readerText.dataset.rendering = "1";
     delete els.readerText.dataset.ttsText;
     if (els.textSelect) els.textSelect.innerHTML = `<option>${escapeHtml(loadingBook.title)}</option>`;
@@ -96,7 +100,7 @@ export function renderReader() {
     if (els.progressBar) els.progressBar.style.width = "0%";
     if (els.progressBarLearning) els.progressBarLearning.style.width = "0%";
     els.readerText.innerHTML = `
-      <div class="reader-loading">
+      <div class="reader-loading" role="status" aria-live="polite" aria-atomic="true">
         <div class="spinner" aria-hidden="true"></div>
         <p class="eyebrow">${escapeHtml(t("reader.loadingEyebrow"))}</p>
         <h3>${escapeHtml(t("reader.loadingHeading", { title: loadingBook.title }))}</h3>
@@ -110,9 +114,10 @@ export function renderReader() {
     return;
   }
   const texts = getAllTexts();
-  const current = getTextById(state.currentTextId);
+  const current = texts.find((text) => text.id === state.currentTextId);
 
   if (!current) {
+    els.readerText.removeAttribute("aria-busy");
     delete els.readerText.dataset.ttsText;
     if (els.textSelect) {
       els.textSelect.innerHTML = texts.map((text) => `<option value="${escapeHtml(text.id)}">${escapeHtml(text.title)}</option>`).join("");
@@ -144,6 +149,7 @@ export function renderReader() {
   delete els.readerText.dataset.ttsText;
 
   els.readerText.dataset.rendering = "1";
+  els.readerText.setAttribute("aria-busy", "true");
   const scrollPerPageKey = state.currentTextId ? `${state.currentTextId}-p${state.readerPage}` : null;
   const savedPos = state.readerScrolls?.[current.id] || 0;
 
@@ -152,21 +158,23 @@ export function renderReader() {
     return;
   }
 
-  els.readerText.innerHTML = `<div class="reader-loading" style="padding: 2rem; text-align: center;"><div class="spinner" aria-hidden="true" style="margin: 0 auto 1rem;"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`;
+  els.readerText.innerHTML = `<div class="reader-loading" role="status" aria-live="polite" aria-atomic="true" style="padding: 2rem; text-align: center;"><div class="spinner" aria-hidden="true" style="margin: 0 auto 1rem;"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`;
 
   setTimeout(() => {
+    if (generation !== readerRenderGeneration || state.currentTextId !== current.id) return;
     // Defer again so the spinner paint is committed before heavy work
     setTimeout(() => {
+      if (generation !== readerRenderGeneration || state.currentTextId !== current.id) return;
       // 1. Tokenize once, then derive both statistics and pagination from the result.
       const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
-      const tokens = tokenizeText(current.text, state.preferences.learningLanguage || "en", wordAlgorithm);
-       const stats = getTokenStats(tokens, state.vocab);
+      const session = getReaderSession(current, state.preferences.learningLanguage || "en", wordAlgorithm);
+      const { tokens } = session;
+       const stats = getTokenStats(tokens, state.vocab, state.preferences.learningLanguage || "en");
        renderTrackingSummary(stats);
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
       const wordsPerPage = Number(state.preferences.wordsPerPage) || 1000;
-      const totalWords = countWordTokens(tokens);
-      const totalPages = computeTotalPages(totalWords, wordsPerPage);
+      const totalPages = computeTotalPages(session.totalWords, wordsPerPage);
       cacheTotalPages(current.id, totalPages);
 
       // Restore saved position for this book
@@ -180,10 +188,19 @@ export function renderReader() {
       // Save position in case it was adjusted
       if (!state.readerPages) state.readerPages = {};
       state.readerPages[current.id] = state.readerPage;
-      saveState();
+      saveUiState();
 
       const { pageStartIndex, pageEndIndex } = computePageSlice(tokens, state.readerPage, wordsPerPage);
-      renderPlainText({ current, tokens, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos });
+      renderPlainText({
+        current,
+        tokens,
+        globalWordIndexes: session.globalWordIndexes,
+        pageStartIndex,
+        pageEndIndex,
+        totalPages,
+        scrollPerPageKey,
+        savedPos
+      });
     });  // inner setTimeout for spinner paint
   }, 10);
 }

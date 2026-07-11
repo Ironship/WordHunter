@@ -148,6 +148,29 @@ a {
   font-size: clamp(1.05rem, 2vw, 1.35rem);
 }
 
+.release-warning {
+  display: grid;
+  gap: 4px;
+  max-width: 680px;
+  margin: 24px auto 0;
+  border: 1px solid rgba(242, 184, 76, 0.72);
+  border-left: 5px solid var(--amber);
+  border-radius: 8px;
+  padding: 16px 18px;
+  color: #fff8e8;
+  background: rgba(44, 30, 5, 0.82);
+  text-align: left;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.release-warning strong {
+  color: #ffd889;
+}
+
+.release-warning span {
+  color: rgba(255, 248, 232, 0.82);
+}
+
 .hero-actions,
 .download-actions {
   display: flex;

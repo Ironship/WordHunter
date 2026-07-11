@@ -8,7 +8,8 @@ $BinDir = Join-Path $RuntimeDir "bin"
 $ModelsDir = Join-Path $RuntimeDir "models"
 $CacheDir = Join-Path $SrcTauriDir "target\ocr-runtime-cache"
 $RunnerManifest = Join-Path $SrcTauriDir "ocr-runner\Cargo.toml"
-$RunnerTargetDir = Join-Path $SrcTauriDir "ocr-runner\target\release"
+$WindowsRustTarget = "x86_64-pc-windows-msvc"
+$RunnerTargetDir = Join-Path $SrcTauriDir "ocr-runner\target\$WindowsRustTarget\release"
 $RunnerExe = Join-Path $RunnerTargetDir "wordhunter-paddleocr.exe"
 $RuntimeRunnerExe = Join-Path $BinDir "wordhunter-paddleocr.exe"
 $WindowsRuntimeScript = Join-Path $RepoRoot "scripts\windows-runtime.ps1"
@@ -17,7 +18,8 @@ $WindowsRuntimeScript = Join-Path $RepoRoot "scripts\windows-runtime.ps1"
 
 $PaddleModelsUrl = "https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip"
 $PaddleModelsSha256 = "2FA4055B10DC4E9C1433444FE29F8D5ACCA2FCCC0A0E86B3313CAA5CC9E56B7A"
-$PdfiumUrl = "https://github.com/bblanchon/pdfium-binaries/releases/latest/download/pdfium-win-x64.tgz"
+$PdfiumUrl = "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F7920/pdfium-win-x64.tgz"
+$PdfiumSha256 = "BF25149815B34B00042F48A886653D469C817529DD9CCCABB4B509B6465A9526"
 
 function Write-Step([string]$Message) {
     Write-Host ""
@@ -65,19 +67,18 @@ function Test-Sha256([string]$Path, [string]$ExpectedHash) {
 }
 
 function Download-File([string]$Url, [string]$Destination, [string]$Sha256 = "") {
-    if ($Sha256 -and (Test-Sha256 $Destination $Sha256)) {
-        Write-Note "Using cached $(Split-Path -Leaf $Destination)"
-        return
+    if ([string]::IsNullOrWhiteSpace($Sha256)) {
+        throw "SHA256 checksum is required for $Url"
     }
-    if ((-not $Sha256) -and (Test-Path -LiteralPath $Destination)) {
+    if ($Sha256 -and (Test-Sha256 $Destination $Sha256)) {
         Write-Note "Using cached $(Split-Path -Leaf $Destination)"
         return
     }
 
     Write-Note "Downloading $Url"
-    Invoke-WebRequest -Uri $Url -OutFile $Destination
+    Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -ErrorAction Stop
 
-    if ($Sha256 -and -not (Test-Sha256 $Destination $Sha256)) {
+    if (-not (Test-Sha256 $Destination $Sha256)) {
         Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
         throw "SHA256 mismatch for $Destination"
     }
@@ -138,7 +139,7 @@ function Prepare-Pdfium {
 
     Write-Step "Preparing PDF renderer"
     $package = Join-Path $CacheDir "pdfium-win-x64.tgz"
-    Download-File $PdfiumUrl $package
+    Download-File $PdfiumUrl $package $PdfiumSha256
     $temp = Expand-PackageFresh $package
     try {
         $dll = Get-ChildItem -LiteralPath $temp -Recurse -File -Filter "pdfium.dll" |
@@ -157,7 +158,7 @@ function Build-Runner {
     Ensure-Cargo
     Push-Location -LiteralPath $RepoRoot
     try {
-        & cargo.exe build --release --manifest-path $RunnerManifest
+        & cargo.exe build --release --target $WindowsRustTarget --manifest-path $RunnerManifest
         if ($LASTEXITCODE -ne 0) {
             throw "cargo build failed with exit code $LASTEXITCODE"
         }
@@ -181,10 +182,14 @@ function Build-Runner {
                 Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $BinDir $_.Name) -Force
             }
     }
+    $runtimeSearchDirs = @($RunnerTargetDir, (Join-Path $RunnerTargetDir "deps"))
+    if ($env:VCToolsRedistDir) {
+        $runtimeSearchDirs += $env:VCToolsRedistDir
+    }
     Copy-RequiredWindowsRuntimeDlls `
         -ExecutablePath $RuntimeRunnerExe `
         -DestinationDir $BinDir `
-        -ExtraSearchDirs @($RunnerTargetDir, (Join-Path $RunnerTargetDir "deps")) | Out-Null
+        -ExtraSearchDirs $runtimeSearchDirs | Out-Null
     $runtimeDlls = Get-ChildItem -LiteralPath $BinDir -File -Filter "*.dll" |
         Where-Object { $_.Name -ne "pdfium.dll" }
     if (-not $runtimeDlls) {

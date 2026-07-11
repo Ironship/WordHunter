@@ -4,6 +4,8 @@ import { statusIcon } from "../icons.js";
 import { STATUS_ORDER } from "../constants.js";
 import { statusLabel, escapeHtml, escapeAttribute } from "../utils.js";
 import { getOrCreateEntry, renderVocabulary } from "../views/vocabulary.js";
+import { setEntryStatus } from "../vocabulary/entry-state.js";
+import { playStatusSound } from "../status-sounds.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { VOCAB_STATUS_FILTERS } from "./vocab-status.js";
 
@@ -140,11 +142,10 @@ export function bindWordEditorEvents() {
     if (editing) {
       const entry = state.vocab[editing];
       if (!entry) return;
-      const previousStatus = entry.status;
       const translation = addTranslationInput?.value.trim();
       if (translation !== undefined) entry.translation = translation;
-      entry.status = selectedStatus;
-      if (selectedStatus === "known" && previousStatus !== "known") entry.knownAt = now;
+      const previousStatus = setEntryStatus(entry, selectedStatus, now);
+      if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
       const example = addExampleInput?.value.trim();
       if (example) {
         entry.examples = [example, ...(entry.examples || []).filter(e => e !== example)].slice(0, 3);
@@ -156,10 +157,8 @@ export function bindWordEditorEvents() {
       const word = addWordInput?.value.trim();
       if (!word) return;
       const entry = getOrCreateEntry(word);
-      const previousStatus = entry.status;
-      entry.status = selectedStatus;
-      if (selectedStatus === "known" && previousStatus !== "known") entry.knownAt = now;
-      entry.updatedAt = now;
+      const previousStatus = setEntryStatus(entry, selectedStatus, now);
+      if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
       const translation = addTranslationInput?.value.trim();
       if (translation) entry.translation = translation;
       const example = addExampleInput?.value.trim();
@@ -176,10 +175,13 @@ export function bindWordEditorEvents() {
   addWordDialog.addEventListener("keydown", (e) => {
     if (e.target === addExampleInput && e.key === "Enter" && !e.ctrlKey && !e.metaKey) return;
     const statusShortcutMap = { "1": "new", "2": "learning", "3": "known", "4": "ignored" };
-    if (statusShortcutMap[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const statusDigit = statusShortcutMap[e.key]
+      ? e.key
+      : e.code?.match(/^(?:Digit|Numpad)([1-4])$/)?.[1];
+    if (statusDigit && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (e.target === addWordInput || e.target === addTranslationInput || e.target === addExampleInput) {
         e.preventDefault();
-        setAddWordStatus(statusShortcutMap[e.key]);
+        setAddWordStatus(statusShortcutMap[statusDigit]);
         return;
       }
     }

@@ -10,36 +10,64 @@ use crate::store::Store;
 
 const MAX_PDF_BYTES: usize = 128 * 1024 * 1024;
 const MAX_PAGES: usize = 2_000;
+const MAX_TEXT_LAYER_CHARS: usize = 2_000_000;
 const TEXT_LAYER_EMPTY: &str = "PDF_TEXT_LAYER_EMPTY";
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
 
 pub fn import(
     payload: Value,
-    _store: &Store,
+    store: &Store,
     _app_handle: &AppHandle,
     _cancellations: &Mutex<HashSet<String>>,
 ) -> Result<Value, String> {
-    let max_pages = payload
+    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
+    let data = decode_payload(data_url)?;
+    import_decoded(payload, &data, store)
+}
+
+pub fn import_bytes(
+    payload: Value,
+    data: Vec<u8>,
+    store: &Store,
+    _app_handle: &AppHandle,
+    _cancellations: &Mutex<HashSet<String>>,
+) -> Result<Value, String> {
+    if data.len() > MAX_PDF_BYTES {
+        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
+    }
+    import_decoded(payload, &data, store)
+}
+
+fn import_decoded(payload: Value, data: &[u8], store: &Store) -> Result<Value, String> {
+    let book_id = payload
+        .get("book_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "book_id required".to_string())?;
+    let requested_max_pages = payload
         .get("max_pages")
         .and_then(Value::as_u64)
-        .unwrap_or(0)
-        .min(MAX_PAGES as u64) as usize;
+        .unwrap_or(MAX_PAGES as u64);
+    let max_pages = if requested_max_pages == 0 {
+        MAX_PAGES
+    } else {
+        requested_max_pages.min(MAX_PAGES as u64) as usize
+    };
     let filename = payload
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("PDF");
-    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
-    let data = decode_payload(data_url)?;
-    let (pages, page_count, truncated) = extract_overlay_pages(&data, max_pages)?;
+    let (pages, page_count, truncated) = extract_overlay_pages(data, max_pages)?;
     let text = pages
         .iter()
         .map(|page| page.text.trim())
         .filter(|text| !text.is_empty())
         .collect::<Vec<_>>()
         .join("\n\n");
-    if readable_chars(&text) < 3 {
+    if readable_chars(&text) < 3 || pages.iter().any(|page| readable_chars(&page.text) < 3) {
         return Err(TEXT_LAYER_EMPTY.to_string());
     }
+    store.begin_book_import_assets(book_id)?;
 
     Ok(json!({
         "title": title_from_filename(filename),
@@ -101,8 +129,7 @@ fn extract_overlay_pages(
     } else {
         max_pages.min(page_count)
     };
-    let plain_text_by_page = pdf_extract::extract_text_from_mem_by_pages(data).unwrap_or_default();
-    let mut output = PositionedTextOutput::new(plain_text_by_page);
+    let mut output = PositionedTextOutput::new(Vec::new());
     for page_num in page_numbers.into_iter().take(limit) {
         pdf_extract::output_doc_page(&document, &mut output, page_num)
             .map_err(|e| format!("Could not read PDF page {page_num}: {e}"))?;
@@ -148,6 +175,7 @@ struct PositionedTextOutput {
     pages: Vec<OverlayPage>,
     current: Option<WorkingPage>,
     plain_text_by_page: Vec<String>,
+    total_chars: usize,
 }
 
 impl PositionedTextOutput {
@@ -156,6 +184,7 @@ impl PositionedTextOutput {
             pages: Vec::new(),
             current: None,
             plain_text_by_page,
+            total_chars: 0,
         }
     }
 
@@ -269,9 +298,17 @@ impl OutputDev for PositionedTextOutput {
         font_size: f64,
         text: &str,
     ) -> Result<(), OutputError> {
-        let Some(page) = self.current.as_mut() else {
+        if self.current.is_none() {
             return Ok(());
-        };
+        }
+        let char_count = text.chars().count();
+        if self.total_chars.saturating_add(char_count) > MAX_TEXT_LAYER_CHARS {
+            return Err(OutputError::IoError(std::io::Error::other(
+                "PDF text layer is too large",
+            )));
+        }
+        self.total_chars += char_count;
+        let page = self.current.as_mut().unwrap();
         let position = trm.post_transform(&page.flip_ctm);
         let font_height = transformed_font_size(trm, font_size).max(1.0) as f32;
         let glyph_width = (width * font_height as f64).max(0.5) as f32;

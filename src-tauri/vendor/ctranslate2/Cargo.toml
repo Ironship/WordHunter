@@ -51,7 +51,7 @@ version = "8.1.1"
 optional = true
 
 [dependencies.sentencepiece]
-version = "0.12.0"
+version = "0.13.1"
 optional = true
 
 [dependencies.tokenizers]

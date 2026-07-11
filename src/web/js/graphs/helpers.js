@@ -3,6 +3,7 @@
  */
 import { state } from "../state.js";
 import { t } from "../i18n.js";
+import { setElementBusy } from "../loading.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
 
 // Theme colors (initialized by updateColors)
@@ -50,11 +51,15 @@ export function canvas(id) {
   const p = c.parentElement;
   const ps = getComputedStyle(p);
   const w = Math.max(280, p.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 400;
-  const h = parseInt(getComputedStyle(c).height) || Math.round(w / 1.5);
-  c.width = w * dpr;
-  c.height = h * dpr;
+  const h = Math.round(parseFloat(getComputedStyle(c).height)) || Math.round(w / 1.5);
+  const pixelWidth = Math.max(1, Math.round(w * dpr));
+  const pixelHeight = Math.max(1, Math.round(h * dpr));
+  if (c.width !== pixelWidth || c.height !== pixelHeight) {
+    c.width = pixelWidth;
+    c.height = pixelHeight;
+  }
   const ctx = c.getContext("2d");
-  ctx.scale(dpr, dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.w = w; ctx.h = h;
   return ctx;
 }
@@ -62,12 +67,44 @@ export function canvas(id) {
 export function showTooltip(evt, tipText) {
   if (!tooltipEl) { tooltipEl = document.createElement("div"); tooltipEl.className = "chart-tooltip"; document.body.appendChild(tooltipEl); }
   tooltipEl.textContent = tipText;
-  tooltipEl.style.left = (evt.pageX + 12) + "px";
-  tooltipEl.style.top = (evt.pageY - 28) + "px";
+  tooltipEl.style.left = (evt.clientX + 14) + "px";
+  tooltipEl.style.top = (evt.clientY - 32) + "px";
   tooltipEl.style.display = "block";
 }
 
 export function hideTooltip() { if (tooltipEl) tooltipEl.style.display = "none"; }
+
+function colorWithAlpha(color, alpha) {
+  const value = String(color || "").trim();
+  const hex = value.match(/^#([0-9a-f]{6})$/i)?.[1];
+  if (hex) {
+    const channels = [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
+    return `rgba(${channels.join(",")},${alpha})`;
+  }
+  const rgb = value.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+  return rgb ? `rgba(${rgb[1]},${rgb[2]},${rgb[3]},${alpha})` : value;
+}
+
+export function drawChartBar(ctx, x, y, width, height, color, radius = 3) {
+  const visibleHeight = Math.max(height, 0.5);
+  const top = y + height - visibleHeight;
+  let fill = color;
+  if (typeof ctx.createLinearGradient === "function") {
+    const gradient = ctx.createLinearGradient(0, top, 0, top + visibleHeight);
+    gradient.addColorStop(0, colorWithAlpha(color, 0.98));
+    gradient.addColorStop(1, colorWithAlpha(color, 0.58));
+    fill = gradient;
+  }
+  ctx.save?.();
+  ctx.shadowColor = colorWithAlpha(color, 0.2);
+  ctx.shadowBlur = 7;
+  ctx.shadowOffsetY = 2;
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.roundRect(x, top, width, visibleHeight, [radius, radius, 1, 1]);
+  ctx.fill();
+  ctx.restore?.();
+}
 
 export function drawBarChart(ctx, bins, maxVal, color, pad, { minimal = false } = {}) {
   const W = ctx.w, H = ctx.h;
@@ -96,10 +133,7 @@ export function drawBarChart(ctx, bins, maxVal, color, pad, { minimal = false } 
   for (let i = 0; i < bins.length; i++) {
     const h = (bins[i].val / maxVal) * ph;
     const x = pad.left + i * (pw / bins.length) + (minimal ? 2 : 3);
-    ctx.fillStyle = bins[i].color || color;
-    ctx.beginPath();
-    ctx.roundRect(x, pad.top + ph - h, barW, Math.max(h, 0.5), [3, 3, 0, 0]);
-    ctx.fill();
+    drawChartBar(ctx, x, pad.top + ph - h, barW, h, bins[i].color || color);
     ctx.fillStyle = minimal ? text : labelMuted;
     ctx.font = "9px Inter, sans-serif";
     ctx.textAlign = "center";
@@ -122,6 +156,8 @@ export function setGraphsLoading(visible) {
       overlay.id = "graphs-loading";
       overlay.className = "section-loading";
       overlay.innerHTML = `<div class="spinner" aria-hidden="true"></div><p class="muted-copy">${t("graphs.loading")}</p>`;
+      overlay.setAttribute("role", "status");
+      overlay.setAttribute("aria-live", "polite");
       const view = document.getElementById("graphs-view");
       if (view) view.appendChild(overlay);
     }
@@ -129,6 +165,7 @@ export function setGraphsLoading(visible) {
   } else if (overlay) {
     overlay.hidden = true;
   }
+  setElementBusy(document.getElementById("graphs-view"), visible);
 }
 
 export function activityDateForHeatmap(entry) {
@@ -171,7 +208,6 @@ export function renderHeatmap(_chartEntries, options = {}) {
 export function renderStatsSummary(_chartEntries) {
   const el = document.getElementById("graphs-stats");
   if (!el) return;
-  const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   let due = 0, overdue = 0, total = 0, newCount = 0, learning = 0, known = 0, matureCount = 0;
   const today = new Date().toISOString().slice(0, 10);
   for (const e of _chartEntries || Object.values(state.vocab)) {

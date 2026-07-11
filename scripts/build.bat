@@ -12,8 +12,9 @@ $ScriptDir = Split-Path -Parent $env:BUILD_SCRIPT
 $Root = Split-Path -Parent $ScriptDir
 $Outputs = Join-Path $Root "outputs"
 $RustManifest = Join-Path $Root "src-tauri\Cargo.toml"
-$RustExe = Join-Path $Root "src-tauri\target\release\word-hunter-rustified.exe"
-$TauriBundleDir = Join-Path $Root "src-tauri\target\release\bundle\nsis"
+$WindowsRustTarget = "x86_64-pc-windows-msvc"
+$RustExe = Join-Path $Root "src-tauri\target\$WindowsRustTarget\release\word-hunter-rustified.exe"
+$TauriBundleDir = Join-Path $Root "src-tauri\target\$WindowsRustTarget\release\bundle\nsis"
 $OcrRuntimeScript = Join-Path $Root "src-tauri\ocr-runtime\prepare-runtime.ps1"
 $PortableDir = Join-Path $Outputs "Word.Hunter.portable"
 $OutputPortable = Join-Path $PortableDir "Word.Hunter.portable.exe"
@@ -24,6 +25,17 @@ $OutputAndroidEmulatorDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.emulator
 $OutputAndroidReleaseAab = Join-Path $Outputs "Word.Hunter.Pocket.release.aab"
 $RequiredTauriCliVersion = "2.11.4"
 $WindowsRuntimeScript = Join-Path $Root "scripts\windows-runtime.ps1"
+$LicenseFile = Join-Path $Root "LICENSE"
+$ThirdPartyNotices = Join-Path $Root "THIRD-PARTY-NOTICES.md"
+$ThirdPartyLicenses = Join-Path $Root "THIRD-PARTY-LICENSES.html"
+$OcrThirdPartyLicenses = Join-Path $Root "OCR-THIRD-PARTY-LICENSES.html"
+$SyncthingVersion = "2.1.0"
+$SyncthingArchive = "syncthing-windows-amd64-v$SyncthingVersion.zip"
+$SyncthingSha256 = "33DA7C8371F4A70DCF7E5F9136D71DBF5EA280D06BB99DB0D1E979B14C324DEB"
+$SyncthingDir = Join-Path $Root "src-tauri\syncthing"
+$SyncthingExe = Join-Path $SyncthingDir "syncthing.exe"
+$SyncthingLicense = Join-Path $SyncthingDir "SYNCTHING-LICENSE.txt"
+$SyncthingAuthors = Join-Path $SyncthingDir "SYNCTHING-AUTHORS.txt"
 
 . $WindowsRuntimeScript
 
@@ -44,6 +56,66 @@ function Fail([string]$Message) {
 
 function Ensure-Directory([string]$Path) {
     New-Item -ItemType Directory -Force -Path $Path | Out-Null
+}
+
+function Get-Sha256Hex([string]$Path) {
+    if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+        return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToUpperInvariant()
+    }
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace "-", "").ToUpperInvariant()
+        } finally {
+            $sha256.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
+function Test-Sha256([string]$Path, [string]$ExpectedHash) {
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+    return (Get-Sha256Hex $Path) -eq $ExpectedHash.ToUpperInvariant()
+}
+
+function Download-File([string]$Url, [string]$Destination, [string]$Sha256) {
+    if ([string]::IsNullOrWhiteSpace($Sha256)) {
+        throw "SHA256 checksum is required for $Url"
+    }
+    if (Test-Sha256 $Destination $Sha256) {
+        Write-Note "Using cached $(Split-Path -Leaf $Destination)"
+        return
+    }
+
+    Write-Note "Downloading $Url"
+    Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing -ErrorAction Stop
+
+    if (-not (Test-Sha256 $Destination $Sha256)) {
+        Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
+        throw "SHA256 mismatch for $Destination"
+    }
+}
+
+function Set-RegexOnce([string]$Text, [string]$Pattern, [string]$Replacement, [string]$Description) {
+    $matches = [regex]::Matches($Text, $Pattern)
+    if ($matches.Count -eq 0) {
+        Fail "Could not patch $Description because the expected Gradle regex did not match: $Pattern"
+    }
+    if ($matches.Count -gt 1) {
+        Fail "Could not patch $Description because the expected Gradle regex matched $($matches.Count) times: $Pattern"
+    }
+    return [regex]::Replace($Text, $Pattern, $Replacement, 1)
+}
+
+function Assert-TextContains([string]$Text, [string]$Pattern, [string]$Description) {
+    if ($Text -notmatch $Pattern) {
+        Fail "$Description assertion failed after patching."
+    }
 }
 
 function Invoke-External([string]$File, [string[]]$Arguments) {
@@ -82,10 +154,14 @@ function Get-PackagedWindowsRuntimeDllNames([string]$Directory) {
 
 function Copy-AppRuntimeDlls([string]$ExecutablePath, [string]$DestinationDir) {
     $exeDir = Split-Path -Parent $ExecutablePath
+    $runtimeSearchDirs = @($exeDir, (Join-Path $exeDir "deps"))
+    if ($env:VCToolsRedistDir) {
+        $runtimeSearchDirs += $env:VCToolsRedistDir
+    }
     $runtimeDlls = Copy-RequiredWindowsRuntimeDlls `
         -ExecutablePath $ExecutablePath `
         -DestinationDir $DestinationDir `
-        -ExtraSearchDirs @($exeDir, (Join-Path $exeDir "deps"))
+        -ExtraSearchDirs $runtimeSearchDirs
 
     foreach ($dll in Get-PackagedWindowsRuntimeDllNames $DestinationDir) {
         Write-Note "Bundled $dll"
@@ -102,9 +178,16 @@ function New-WindowsRuntimeTauriConfig([string[]]$RuntimeDlls, [string]$Executab
         "../src/assets/**/*" = "src/assets/"
         "ocr-runtime/bin/**/*" = "ocr-runtime/bin/"
         "ocr-runtime/models/**/*" = "ocr-runtime/models/"
+        "syncthing/syncthing.exe" = "syncthing.exe"
+        "syncthing/SYNCTHING-LICENSE.txt" = "SYNCTHING-LICENSE.txt"
+        "syncthing/SYNCTHING-AUTHORS.txt" = "SYNCTHING-AUTHORS.txt"
+        "../LICENSE" = "LICENSE"
+        "../THIRD-PARTY-NOTICES.md" = "THIRD-PARTY-NOTICES.md"
+        "../THIRD-PARTY-LICENSES.html" = "THIRD-PARTY-LICENSES.html"
+        "../OCR-THIRD-PARTY-LICENSES.html" = "OCR-THIRD-PARTY-LICENSES.html"
     }
     foreach ($dll in $RuntimeDlls) {
-        $resources["target/release/$dll"] = $dll
+        $resources["target/$WindowsRustTarget/release/$dll"] = $dll
     }
 
     $config = [ordered]@{
@@ -123,14 +206,12 @@ function Assert-NsisScriptsContainRuntimeDlls([string]$ExecutableDir, [string[]]
     }
     $nsisDir = Join-Path $ExecutableDir "nsis"
     if (-not (Test-Path -LiteralPath $nsisDir)) {
-        Write-Note "NSIS script directory was not found; skipping generated script runtime DLL inspection."
-        return
+        Fail "Generated NSIS script directory was not found: $nsisDir"
     }
 
     $scripts = @(Get-ChildItem -LiteralPath $nsisDir -Recurse -File -Filter "installer.nsi" -ErrorAction SilentlyContinue)
     if ($scripts.Count -eq 0) {
-        Write-Note "Generated installer.nsi was not found; skipping generated script runtime DLL inspection."
-        return
+        Fail "Generated installer.nsi was not found below: $nsisDir"
     }
 
     $content = ($scripts | ForEach-Object { Get-Content -Raw -LiteralPath $_.FullName }) -join "`n"
@@ -150,11 +231,13 @@ function Assert-ArchiveContainsRuntimeDlls([string]$ArchivePath, [string[]]$Runt
         $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
     }
     if (-not $sevenZip) {
-        Write-Note "7-Zip was not found; skipping archive runtime DLL inspection for $ArchivePath."
-        return
+        Fail "7-Zip is required to inspect $ArchivePath. Refusing to produce an unvalidated release artifact."
     }
 
     $listing = & $sevenZip.Source l $ArchivePath
+    if ($LASTEXITCODE -ne 0) {
+        Fail "7-Zip could not inspect $ArchivePath (exit code $LASTEXITCODE)."
+    }
     foreach ($dll in $RuntimeDlls) {
         if (-not ($listing -match [regex]::Escape($dll))) {
             Fail "$ArchivePath is missing bundled runtime DLL: $dll"
@@ -162,9 +245,70 @@ function Assert-ArchiveContainsRuntimeDlls([string]$ArchivePath, [string[]]$Runt
     }
 }
 
+function Assert-ArchiveContainsFile([string]$ArchivePath, [string]$ExpectedFile) {
+    $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+    if (-not $sevenZip) {
+        $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
+    }
+    if (-not $sevenZip) {
+        Fail "7-Zip is required to inspect $ArchivePath. Refusing to produce an unvalidated release artifact."
+    }
+
+    $listing = & $sevenZip.Source l $ArchivePath
+    if ($LASTEXITCODE -ne 0) {
+        Fail "7-Zip could not inspect $ArchivePath (exit code $LASTEXITCODE)."
+    }
+    if (-not ($listing -match [regex]::Escape($ExpectedFile))) {
+        Fail "$ArchivePath is missing required file: $ExpectedFile"
+    }
+}
+
+function Download-Syncthing {
+    if ((Test-Path -LiteralPath $SyncthingExe) -and
+        (Test-Path -LiteralPath $SyncthingLicense) -and
+        (Test-Path -LiteralPath $SyncthingAuthors)) {
+        return
+    }
+    Write-Step "Downloading Syncthing for Windows"
+    Ensure-Directory $SyncthingDir
+    $url = "https://github.com/syncthing/syncthing/releases/download/v$SyncthingVersion/$SyncthingArchive"
+    $zip = Join-Path $SyncthingDir $SyncthingArchive
+    Download-File $url $zip $SyncthingSha256
+    Expand-Archive -LiteralPath $zip -DestinationPath $SyncthingDir -Force
+    $subDir = Join-Path $SyncthingDir "syncthing-windows-amd64-v$SyncthingVersion"
+    if (-not (Test-Path -LiteralPath $subDir)) {
+        Fail "Syncthing archive did not contain the expected directory: $subDir"
+    }
+    $downloadedExe = Join-Path $subDir "syncthing.exe"
+    if (-not (Test-Path -LiteralPath $downloadedExe)) {
+        Fail "Syncthing archive did not contain syncthing.exe"
+    }
+    foreach ($requiredFile in @("LICENSE.txt", "AUTHORS.txt")) {
+        if (-not (Test-Path -LiteralPath (Join-Path $subDir $requiredFile))) {
+            Fail "Syncthing archive did not contain $requiredFile"
+        }
+    }
+    Move-Item -LiteralPath $downloadedExe -Destination $SyncthingExe -Force
+    Copy-Item -LiteralPath (Join-Path $subDir "LICENSE.txt") -Destination $SyncthingLicense -Force
+    Copy-Item -LiteralPath (Join-Path $subDir "AUTHORS.txt") -Destination $SyncthingAuthors -Force
+    Remove-Item -LiteralPath $subDir -Recurse -Force
+    Remove-Item -LiteralPath $zip -Force
+    Write-Host "Syncthing downloaded to $SyncthingExe" -ForegroundColor Green
+}
+
 function Ensure-Cargo {
     if (-not (Get-Command cargo.exe -ErrorAction SilentlyContinue)) {
         Fail "Cargo/Rust was not found. Install Rust from https://rustup.rs/ and open a new PowerShell window."
+    }
+}
+
+function Ensure-WindowsRustTarget {
+    $installed = & rustup.exe target list --installed 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Fail "rustup was not found. Install Rust with rustup so the Windows MSVC target can be verified."
+    }
+    if ($installed -notcontains $WindowsRustTarget) {
+        Invoke-External "rustup.exe" @("target", "add", $WindowsRustTarget)
     }
 }
 
@@ -373,6 +517,51 @@ function Sync-AndroidLauncherIcons {
     }
 }
 
+function Get-AndroidVersionInfo {
+    $config = Get-Content -Raw -LiteralPath (Join-Path $Root "src-tauri\tauri.conf.json") | ConvertFrom-Json
+    $version = [string]$config.version
+    $match = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)$')
+    if (-not $match.Success) {
+        Fail "src-tauri\tauri.conf.json version must use MAJOR.MINOR.PATCH: $version"
+    }
+
+    $major = [int64]$match.Groups[1].Value
+    $minor = [int64]$match.Groups[2].Value
+    $patch = [int64]$match.Groups[3].Value
+    if ($minor -gt 999 -or $patch -gt 999) {
+        Fail "Android versionCode formula requires MINOR and PATCH to be below 1000: $version"
+    }
+
+    $code = ($major * 1000000) + ($minor * 1000) + $patch
+    if ($code -le 0 -or $code -gt 2100000000) {
+        Fail "Android versionCode must be between 1 and 2100000000, calculated $code from $version"
+    }
+
+    [pscustomobject]@{
+        Source = $version
+        Name = $version
+        Code = $code
+    }
+}
+
+function Set-AndroidGradleVersion([string]$GradleText, [object]$VersionInfo) {
+    $GradleText = Set-RegexOnce `
+        $GradleText `
+        '(?m)^(\s*)versionCode\s*=\s*.+$' `
+        ('${1}versionCode = ' + $VersionInfo.Code) `
+        "Android versionCode"
+    $GradleText = Set-RegexOnce `
+        $GradleText `
+        '(?m)^(\s*)versionName\s*=\s*.+$' `
+        ('${1}versionName = "' + $VersionInfo.Name + '"') `
+        "Android versionName"
+
+    Assert-TextContains $GradleText ('(?m)^\s*versionCode\s*=\s*' + $VersionInfo.Code + '\s*$') "Android versionCode"
+    Assert-TextContains $GradleText ('(?m)^\s*versionName\s*=\s*"' + [regex]::Escape($VersionInfo.Name) + '"\s*$') "Android versionName"
+    Write-Note "Android versionName $($VersionInfo.Name), versionCode $($VersionInfo.Code) from $($VersionInfo.Source)"
+    return $GradleText
+}
+
 function Prepare-AndroidProject {
     Write-Step "Preparing Android project"
 
@@ -402,7 +591,6 @@ function Prepare-AndroidProject {
         <item name="android:statusBarColor">#0d1114</item>
         <item name="android:navigationBarColor">#071724</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
 "@
@@ -411,11 +599,17 @@ function Prepare-AndroidProject {
 
     $gradle = Join-Path $androidApp "build.gradle.kts"
     $gradleText = Get-Content -Raw -LiteralPath $gradle
+    $gradleText = Set-AndroidGradleVersion $gradleText (Get-AndroidVersionInfo)
     if ($gradleText -notmatch "androidx\.documentfile:documentfile:") {
         $dependency = '    implementation("androidx.documentfile:documentfile:1.0.1")'
-        $gradleText = $gradleText -replace '(\s+implementation\("androidx\.activity:activity-ktx:[^"]+"\))', "`$1`r`n$dependency"
-        Set-Content -LiteralPath $gradle -Value $gradleText -NoNewline
+        $gradleText = Set-RegexOnce `
+            $gradleText `
+            '(\s+implementation\("androidx\.activity:activity-ktx:[^"]+"\))' `
+            ('${1}' + "`r`n" + $dependency) `
+            "Android documentfile dependency"
     }
+    Assert-TextContains $gradleText 'implementation\("androidx\.documentfile:documentfile:1\.0\.1"\)' "Android documentfile dependency"
+    Set-Content -LiteralPath $gradle -Value $gradleText -NoNewline
 
     Sync-AndroidLauncherIcons
 }
@@ -478,6 +672,8 @@ Install Visual Studio Build Tools with workload:
 function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     Write-Step "Building portable package"
     Ensure-Cargo
+    Ensure-WindowsRustTarget
+    Download-Syncthing
 
     Enable-MSVC
     Ensure-Directory $Outputs
@@ -487,7 +683,7 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
 
     if (-not $SkipRustBuild) {
         Invoke-WithCmakeBuildParallelLimit {
-            Invoke-External "cargo.exe" @("build", "--release", "--manifest-path", $RustManifest)
+            Invoke-External "cargo.exe" @("build", "--release", "--target", $WindowsRustTarget, "--manifest-path", $RustManifest)
         }
     }
 
@@ -498,6 +694,12 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     Remove-Item -LiteralPath $PortableDir -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $PortableDir
     Copy-Item -LiteralPath $RustExe -Destination $OutputPortable -Force
+    Copy-Item -LiteralPath $SyncthingExe -Destination (Join-Path $PortableDir "syncthing.exe") -Force
+    Copy-Item -LiteralPath $SyncthingLicense -Destination $PortableDir -Force
+    Copy-Item -LiteralPath $SyncthingAuthors -Destination $PortableDir -Force
+    foreach ($legalFile in @($LicenseFile, $ThirdPartyNotices, $ThirdPartyLicenses, $OcrThirdPartyLicenses)) {
+        Copy-Item -LiteralPath $legalFile -Destination $PortableDir -Force
+    }
     $portableRuntimeDlls = Copy-AppRuntimeDlls $RustExe $PortableDir
     $portableOcrRuntime = Join-Path $PortableDir "ocr-runtime"
     Remove-Item -LiteralPath $portableOcrRuntime -Recurse -Force -ErrorAction SilentlyContinue
@@ -507,6 +709,15 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     }
     Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $OutputPortableZip -Force
     Assert-ArchiveContainsRuntimeDlls $OutputPortableZip $portableRuntimeDlls
+    Assert-ArchiveContainsFile $OutputPortableZip "syncthing.exe"
+    Assert-ArchiveContainsFile $OutputPortableZip "SYNCTHING-LICENSE.txt"
+    Assert-ArchiveContainsFile $OutputPortableZip "SYNCTHING-AUTHORS.txt"
+    Assert-ArchiveContainsFile $OutputPortableZip "LICENSE"
+    Assert-ArchiveContainsFile $OutputPortableZip "THIRD-PARTY-NOTICES.md"
+    Assert-ArchiveContainsFile $OutputPortableZip "THIRD-PARTY-LICENSES.html"
+    Assert-ArchiveContainsFile $OutputPortableZip "OCR-THIRD-PARTY-LICENSES.html"
+    Assert-ArchiveContainsFile $OutputPortableZip "wordhunter-paddleocr.exe"
+    Assert-ArchiveContainsFile $OutputPortableZip "pdfium.dll"
     Write-Host ""
     Write-Host "Done: $OutputPortableZip" -ForegroundColor Green
 }
@@ -514,7 +725,9 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
 function Build-Installer([switch]$SkipRuntime) {
     Write-Step "Building Windows installer"
     Ensure-Cargo
+    Ensure-WindowsRustTarget
     Enable-MSVC
+    Download-Syncthing
     Ensure-Directory $Outputs
     if (-not $SkipRuntime) {
         Build-OcrRuntime
@@ -522,7 +735,7 @@ function Build-Installer([switch]$SkipRuntime) {
     Ensure-TauriCli
 
     Invoke-WithCmakeBuildParallelLimit {
-        Invoke-External "cargo.exe" @("build", "--release", "--manifest-path", $RustManifest)
+        Invoke-External "cargo.exe" @("build", "--release", "--target", $WindowsRustTarget, "--manifest-path", $RustManifest)
     }
     if (-not (Test-Path -LiteralPath $RustExe)) {
         Fail "Rust build finished, but expected exe was not found: $RustExe"
@@ -534,7 +747,7 @@ function Build-Installer([switch]$SkipRuntime) {
     Invoke-WithCmakeBuildParallelLimit {
         Push-Location -LiteralPath (Join-Path $Root "src-tauri")
         try {
-            $tauriArgs = @("tauri", "build")
+            $tauriArgs = @("tauri", "build", "--target", $WindowsRustTarget)
             if ($runtimeTauriConfig) {
                 $tauriArgs += @("--config", $runtimeTauriConfig)
             }
@@ -554,6 +767,15 @@ function Build-Installer([switch]$SkipRuntime) {
 
     Copy-Item -LiteralPath $installer.FullName -Destination $OutputInstaller -Force
     Assert-ArchiveContainsRuntimeDlls $OutputInstaller $installerRuntimeDlls
+    Assert-ArchiveContainsFile $OutputInstaller "syncthing.exe"
+    Assert-ArchiveContainsFile $OutputInstaller "SYNCTHING-LICENSE.txt"
+    Assert-ArchiveContainsFile $OutputInstaller "SYNCTHING-AUTHORS.txt"
+    Assert-ArchiveContainsFile $OutputInstaller "LICENSE"
+    Assert-ArchiveContainsFile $OutputInstaller "THIRD-PARTY-NOTICES.md"
+    Assert-ArchiveContainsFile $OutputInstaller "THIRD-PARTY-LICENSES.html"
+    Assert-ArchiveContainsFile $OutputInstaller "OCR-THIRD-PARTY-LICENSES.html"
+    Assert-ArchiveContainsFile $OutputInstaller "wordhunter-paddleocr.exe"
+    Assert-ArchiveContainsFile $OutputInstaller "pdfium.dll"
     Write-Host ""
     Write-Host "Done: $OutputInstaller" -ForegroundColor Green
 }
@@ -689,17 +911,17 @@ function Build-AndroidReleaseAab([string]$Target = "aarch64", [string]$OutputAab
 
 function Test-FrontendShared {
     Write-Step "Frontend shared tests"
-    Invoke-External "node.exe" @("--test", "frontend-tests\shared\*.test.js")
+    Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\shared\*.test.js")
 }
 
 function Test-FrontendAndroid {
     Write-Step "Frontend Android tests"
-    Invoke-External "node.exe" @("--test", "frontend-tests\android\*.test.js")
+    Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\android\*.test.js")
 }
 
 function Test-FrontendDesktop {
     Write-Step "Frontend desktop tests"
-    Invoke-External "node.exe" @("--test", "frontend-tests\desktop\*.test.js")
+    Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\desktop\*.test.js")
 }
 
 function Test-Frontend {

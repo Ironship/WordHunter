@@ -18,6 +18,9 @@ pub(crate) fn setup(app: &mut tauri::App) -> SetupResult {
         if let Err(error) = recovery_store.recover_pending_save_guarded() {
             eprintln!("WordHunter Android pending save recovery failed: {error}");
         }
+        if let Err(error) = recovery_store.discard_abandoned_book_imports() {
+            eprintln!("WordHunter Android PDF import recovery failed: {error}");
+        }
     });
     let token = server::make_token();
     let app_handle = app.handle().clone();

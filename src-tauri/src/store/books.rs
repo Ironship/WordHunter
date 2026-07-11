@@ -1,40 +1,67 @@
 use base64::Engine;
-use serde_json::{Value, json};
-use std::io::Write;
+use serde_json::{Map, Value};
 
 use super::Store;
+use super::durable;
+use super::media_assets;
 use super::record_files;
 
-const RECORD: &str = "book.json";
-
 impl Store {
-    pub fn all_texts(&self) -> Result<Vec<Value>, String> {
+    pub(crate) fn discard_abandoned_book_imports(&self) -> Result<(), String> {
         let inner = self.inner.lock().unwrap();
-        let mut books = Vec::new();
-        if !inner.books_dir.exists() {
-            return Ok(books);
-        }
-        for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
-            let entry = entry.map_err(|e| e.to_string())?;
-            if !entry.path().is_dir() {
-                continue;
+        let mut pending_books = Vec::new();
+        if inner.books_dir.is_dir() {
+            for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
+                let entry = entry.map_err(|e| e.to_string())?;
+                if !entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+                    continue;
+                }
+                let book_dir = entry.path();
+                let marker = book_dir.join(media_assets::IMPORT_PENDING_MARKER);
+                if !marker.is_file() {
+                    continue;
+                }
+                let Some(book_id) = entry.file_name().to_str().map(str::to_owned) else {
+                    return Err("pending PDF import id is not UTF-8".to_string());
+                };
+                pending_books.push((book_id, book_dir, marker));
             }
-            match read_book(&entry.path()) {
-                Ok(Some((metadata, _))) => books.push(metadata),
-                Ok(None) => {}
-                Err(e) => {
-                    return Err(format!(
-                        "book {} is unreadable: {e}",
-                        entry.path().display()
-                    ));
+        }
+        if !pending_books.is_empty() {
+            let records = record_files::load_records(&inner.dir)?;
+            for (book_id, book_dir, marker) in pending_books {
+                let has_live_record = records
+                    .get(&format!("text:{book_id}"))
+                    .is_some_and(|record| record.deleted_at.is_none());
+                if has_live_record {
+                    media_assets::finalize_imported_book_assets(
+                        &inner.dir,
+                        &book_id,
+                        self.device_id(),
+                    )?;
+                    durable::remove_file_if_exists(&marker)?;
+                } else {
+                    std::fs::remove_dir_all(&book_dir).map_err(|e| e.to_string())?;
+                    durable::sync_parent(&book_dir)?;
+                    media_assets::discard_imported_book_assets(
+                        &inner.dir,
+                        &book_id,
+                        self.device_id(),
+                    )?;
                 }
             }
         }
-        Ok(books)
+        let path = inner.dir.join("ocr-import-staging");
+        if path.exists() {
+            std::fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+            durable::sync_parent(&path)?;
+        }
+        Ok(())
     }
 
     pub fn upsert_text(&self, text: &Value) -> Result<(), String> {
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
         self.upsert_text_unlocked(text)
     }
 
@@ -43,13 +70,14 @@ impl Store {
             .get("id")
             .and_then(Value::as_str)
             .ok_or_else(|| "text.id required".to_string())?;
-        let safe_id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
-        let book_dir = inner.books_dir.join(safe_id);
-        std::fs::create_dir_all(&book_dir).map_err(|e| e.to_string())?;
-
-        let (mut metadata, mut content) =
-            read_book(&book_dir)?.unwrap_or((json!({}), String::new()));
+        crate::paths::sanitize_id(id)?;
+        let dir = self.dir();
+        let mut metadata = existing_text_data(&dir, id)?;
+        let mut content = metadata
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_string();
         let mut incoming = text.clone();
         if let Some(obj) = incoming.as_object_mut()
             && let Some(raw) = obj
@@ -67,48 +95,166 @@ impl Store {
         {
             target.insert(key.clone(), value.clone());
         }
-        let record = json!({ "metadata": metadata, "text": content });
-        atomic_json(&book_dir.join(RECORD), &record)?;
-        let mut sync_text = text.clone();
-        if let Some(obj) = sync_text.as_object_mut() {
-            obj.entry("text".to_string())
-                .or_insert_with(|| Value::String(content));
-        }
-        record_files::upsert_text_record(&inner.dir, &sync_text, self.device_id())
+        target.insert("id".to_string(), Value::String(id.to_string()));
+        target.insert("text".to_string(), Value::String(content));
+        validate_pdf_page_assets(&dir, id, &metadata)?;
+        record_files::upsert_text_record(&dir, &metadata, self.device_id())?;
+        self.complete_pending_book_import(&dir, id)?;
+        Ok(())
     }
 
     pub fn get_text_content(&self, id: &str) -> Result<String, String> {
-        if let Some(text) = record_files::text_content(&self.dir(), id)? {
-            return Ok(text);
-        }
-        let safe_id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
-        Ok(read_book(&inner.books_dir.join(safe_id))?
-            .map(|(_, text)| text)
-            .unwrap_or_default())
+        crate::paths::sanitize_id(id)?;
+        Ok(record_files::text_content(&self.dir(), id)?.unwrap_or_default())
     }
 
     pub fn delete_text(&self, id: &str) -> Result<(), String> {
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
         self.delete_text_unlocked(id)
     }
 
     pub(crate) fn delete_text_unlocked(&self, id: &str) -> Result<(), String> {
         let safe_id = crate::paths::sanitize_id(id)?;
         let inner = self.inner.lock().unwrap();
-        let path = inner.books_dir.join(safe_id);
+        let path = inner.books_dir.join(&safe_id);
+        media_assets::tombstone_book_assets(&inner.dir, &safe_id, self.device_id())?;
         if path.exists() {
             std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
+            durable::sync_parent(&inner.books_dir)?;
         }
         record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         Ok(())
     }
 
-    pub(crate) fn sync_texts(&self, texts: &[Value]) -> Result<(), String> {
-        for text in texts {
-            self.upsert_text_unlocked(text)?;
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn discard_book_import_assets(&self, id: &str) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        let safe_id = crate::paths::sanitize_id(id)?;
+        let inner = self.inner.lock().unwrap();
+        let path = inner.dir.join("ocr-import-staging").join(&safe_id);
+        if path.exists() {
+            std::fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
+            durable::sync_parent(&path)?;
         }
         Ok(())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn save_book_import_image_bytes(
+        &self,
+        import_id: &str,
+        img_name: &str,
+        data: &[u8],
+    ) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
+        let import_id = crate::paths::sanitize_id(import_id)?;
+        let img_name = crate::paths::sanitize_id(img_name)?;
+        let inner = self.inner.lock().unwrap();
+        let import_root = inner.dir.join("ocr-import-staging").join(import_id);
+        let marker = import_root.join(media_assets::IMPORT_PENDING_MARKER);
+        if !marker.exists() {
+            durable::write_file_atomic(&marker, b"pending", false)?;
+        }
+        let path = import_root.join("images").join(img_name);
+        durable::write_file_atomic(&path, data, false)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn ensure_new_book_import_id(&self, id: &str) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.ensure_new_book_import_id_unlocked(id)
+    }
+
+    fn ensure_new_book_import_id_unlocked(&self, id: &str) -> Result<(), String> {
+        let safe_id = crate::paths::sanitize_id(id)?;
+        let inner = self.inner.lock().unwrap();
+        let has_record =
+            record_files::load_records(&inner.dir)?.contains_key(&format!("text:{id}"));
+        if has_record || inner.books_dir.join(safe_id).exists() {
+            return Err("PDF import target already exists; choose a new import id".to_string());
+        }
+        Ok(())
+    }
+
+    #[cfg(target_os = "android")]
+    pub(crate) fn begin_book_import_assets(&self, id: &str) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
+        self.ensure_new_book_import_id_unlocked(id)?;
+        let id = crate::paths::sanitize_id(id)?;
+        let inner = self.inner.lock().unwrap();
+        let marker = inner
+            .books_dir
+            .join(id)
+            .join(media_assets::IMPORT_PENDING_MARKER);
+        durable::write_file_atomic(&marker, b"pending", false)
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn finalize_book_import_assets(
+        &self,
+        temporary_id: &str,
+        final_id: &str,
+    ) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
+        self.ensure_new_book_import_id_unlocked(final_id)?;
+        let temporary_id = crate::paths::sanitize_id(temporary_id)?;
+        let final_id = crate::paths::sanitize_id(final_id)?;
+        let inner = self.inner.lock().unwrap();
+        let source = inner.dir.join("ocr-import-staging").join(&temporary_id);
+        if !source.is_dir() {
+            return Ok(());
+        }
+        let target = inner.books_dir.join(&final_id);
+        std::fs::rename(&source, &target).map_err(|e| {
+            format!(
+                "could not finalize PDF import {} as {}: {e}",
+                source.display(),
+                target.display()
+            )
+        })?;
+        if let Err(error) = durable::sync_parent(&source)
+            .and_then(|_| durable::sync_parent(&target))
+            .and_then(|_| media_assets::validate_imported_book_assets(&inner.dir, &final_id))
+        {
+            let rollback = std::fs::rename(&target, &source);
+            if rollback.is_ok() {
+                let _ = durable::sync_parent(&target);
+                let _ = durable::sync_parent(&source);
+            }
+            let manifest_cleanup =
+                media_assets::discard_imported_book_assets(&inner.dir, &final_id, self.device_id());
+            if rollback.is_err() {
+                let _ = std::fs::remove_dir_all(&target);
+                let _ = durable::sync_parent(&target);
+            }
+            return match (rollback, manifest_cleanup) {
+                (Ok(()), Ok(())) => Err(error),
+                (rollback, cleanup) => Err(format!(
+                    "{error}; PDF import rollback failed: {rollback:?}; manifest cleanup: {cleanup:?}"
+                )),
+            };
+        }
+        Ok(())
+    }
+
+    fn complete_pending_book_import(
+        &self,
+        dir: &std::path::Path,
+        book_id: &str,
+    ) -> Result<(), String> {
+        let marker = dir
+            .join("books")
+            .join(book_id)
+            .join(media_assets::IMPORT_PENDING_MARKER);
+        if !marker.is_file() {
+            return Ok(());
+        }
+        media_assets::finalize_imported_book_assets(dir, book_id, self.device_id())?;
+        durable::remove_file_if_exists(&marker)
     }
 
     pub fn save_book_image(&self, payload: &Value) -> Result<(), String> {
@@ -132,17 +278,34 @@ impl Store {
             .decode(encoded)
             .map_err(|e| e.to_string())?;
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
+        if payload
+            .get("pending_import")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            let safe_book = crate::paths::sanitize_id(book_id)?;
+            let inner = self.inner.lock().unwrap();
+            let marker = inner
+                .books_dir
+                .join(safe_book)
+                .join(media_assets::IMPORT_PENDING_MARKER);
+            if !marker.is_file() {
+                return Err("PDF import is no longer active".to_string());
+            }
+        }
         self.save_book_image_bytes_unlocked(book_id, img_name, &data)
     }
 
-    #[cfg(any(not(target_os = "android"), test))]
-    pub fn save_book_image_bytes(
+    #[cfg(test)]
+    pub(crate) fn save_book_image_bytes(
         &self,
         book_id: &str,
         img_name: &str,
         data: &[u8],
     ) -> Result<(), String> {
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
         self.save_book_image_bytes_unlocked(book_id, img_name, data)
     }
 
@@ -155,77 +318,72 @@ impl Store {
         let safe_book = crate::paths::sanitize_id(book_id)?;
         let safe_img = crate::paths::sanitize_id(img_name)?;
         let inner = self.inner.lock().unwrap();
-        let img_dir = inner.books_dir.join(safe_book).join("images");
-        std::fs::create_dir_all(&img_dir).map_err(|e| e.to_string())?;
-        std::fs::write(img_dir.join(safe_img), data).map_err(|e| e.to_string())
+        let relative = format!("books/{safe_book}/images/{safe_img}");
+        let image_path = media_assets::safe_join(&inner.dir, &relative)?;
+        let img_dir = image_path
+            .parent()
+            .ok_or_else(|| "book image path has no parent".to_string())?;
+        std::fs::create_dir_all(img_dir).map_err(|e| e.to_string())?;
+        durable::write_file_atomic(&image_path, data, false)?;
+        if inner
+            .books_dir
+            .join(&safe_book)
+            .join(media_assets::IMPORT_PENDING_MARKER)
+            .is_file()
+        {
+            return Ok(());
+        }
+        media_assets::record_saved_book_asset(
+            &inner.dir,
+            &safe_book,
+            &safe_img,
+            data,
+            self.device_id(),
+        )
     }
 
     pub fn book_image_path(&self, book: &str, img: &str) -> Result<std::path::PathBuf, String> {
         let safe_book = crate::paths::sanitize_id(book)?;
         let safe_img = crate::paths::sanitize_id(img)?;
         let inner = self.inner.lock().unwrap();
-        Ok(inner
-            .books_dir
-            .join(safe_book)
-            .join("images")
-            .join(safe_img))
+        media_assets::safe_join(&inner.dir, &format!("books/{safe_book}/images/{safe_img}"))
     }
 }
 
-fn read_book(dir: &std::path::Path) -> Result<Option<(Value, String)>, String> {
-    let record = dir.join(RECORD);
-    if record.exists() || record.with_extension("bak").exists() {
-        return parse_record(&record)
-            .or_else(|_| parse_record(&record.with_extension("bak")))
-            .map(Some);
+fn existing_text_data(dir: &std::path::Path, id: &str) -> Result<Value, String> {
+    let records = record_files::load_records(dir)?;
+    match records
+        .get(&format!("text:{id}"))
+        .filter(|record| record.deleted_at.is_none())
+    {
+        Some(record) if record.data.is_object() => Ok(record.data.clone()),
+        Some(_) => Err("stored text record is not an object".to_string()),
+        None => Ok(Value::Object(Map::new())),
     }
-    let metadata = dir.join("metadata.json");
-    if !metadata.exists() {
-        return Ok(None);
-    }
-    let metadata = serde_json::from_slice(&std::fs::read(metadata).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
-    let text = std::fs::read_to_string(dir.join("text.txt")).unwrap_or_default();
-    Ok(Some((metadata, text)))
 }
 
-fn parse_record(path: &std::path::Path) -> Result<(Value, String), String> {
-    let value: Value = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
-    let metadata = value
-        .get("metadata")
-        .cloned()
-        .filter(Value::is_object)
-        .ok_or_else(|| "record metadata is missing".to_string())?;
-    let text = value
-        .get("text")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "record text is missing".to_string())?
-        .to_string();
-    Ok((metadata, text))
-}
-
-fn atomic_json(path: &std::path::Path, value: &Value) -> Result<(), String> {
-    let tmp = path.with_extension("tmp");
-    let mut file = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-    file.write_all(&serde_json::to_vec(value).map_err(|e| e.to_string())?)
-        .map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())?;
-    if path.exists() {
-        std::fs::copy(path, path.with_extension("bak")).map_err(|e| e.to_string())?;
-    }
-    replace_with_tmp(&tmp, path)
-}
-
-fn replace_with_tmp(tmp: &std::path::Path, path: &std::path::Path) -> Result<(), String> {
-    if std::fs::rename(tmp, path).is_ok() {
+fn validate_pdf_page_assets(
+    dir: &std::path::Path,
+    id: &str,
+    metadata: &Value,
+) -> Result<(), String> {
+    let Some(pages) = metadata.get("pdfOcrPages").and_then(Value::as_array) else {
         return Ok(());
+    };
+    for page in pages {
+        let Some(image_name) = page.get("imageName").and_then(Value::as_str) else {
+            continue;
+        };
+        let image_name = crate::paths::sanitize_id(image_name)?;
+        let image = dir.join("books").join(id).join("images").join(image_name);
+        if !image.is_file() {
+            return Err(format!(
+                "PDF page image is missing for book {id}: {}",
+                image.display()
+            ));
+        }
     }
-    if path.exists() {
-        std::fs::remove_file(path)
-            .map_err(|e| format!("failed to replace locked book {}: {e}", path.display()))?;
-    }
-    std::fs::rename(tmp, path).map_err(|e| e.to_string())
+    Ok(())
 }
 
 #[cfg(test)]
@@ -235,7 +393,7 @@ mod tests {
 
     use serde_json::json;
 
-    use crate::store::{Store, StoreInner};
+    use crate::store::{Store, StoreInner, media_assets, record_files};
 
     #[test]
     fn book_record_keeps_text_and_metadata_together() {
@@ -245,8 +403,6 @@ mod tests {
         let store = Store {
             inner: Mutex::new(StoreInner {
                 dir: dir.path().to_path_buf(),
-                db_path: dir.path().join("store.sqlite"),
-                vocab_path: dir.path().join("vocab.json"),
                 books_dir: books_dir.clone(),
             }),
             write_lock: Mutex::new(()),
@@ -262,8 +418,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(store.get_text_content("book").unwrap(), "content");
-        assert_eq!(store.all_texts().unwrap()[0]["title"], "Renamed");
-        assert!(books_dir.join("book").join("book.json").is_file());
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(records["text:book"].data["title"], "Renamed");
+        assert_eq!(records["text:book"].data["text"], "content");
+        assert!(!books_dir.join("book").exists());
     }
 
     #[test]
@@ -274,9 +432,7 @@ mod tests {
         let store = Store {
             inner: Mutex::new(StoreInner {
                 dir: dir.path().to_path_buf(),
-                db_path: dir.path().join("store.sqlite"),
-                vocab_path: dir.path().join("vocab.json"),
-                books_dir,
+                books_dir: books_dir.clone(),
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
@@ -295,19 +451,197 @@ mod tests {
     }
 
     #[test]
-    fn book_record_recovers_from_backup_when_primary_was_removed() {
+    fn text_read_does_not_scan_unrelated_record_directories() {
         let dir = tempfile::tempdir().unwrap();
-        let book_dir = dir.path().join("book");
-        std::fs::create_dir_all(&book_dir).unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir,
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
+        };
+        store
+            .upsert_text(&json!({ "id": "direct-read", "text": "authoritative text" }))
+            .unwrap();
         std::fs::write(
-            book_dir.join("book.bak"),
-            r#"{"metadata":{"id":"book","title":"Backup"},"text":"safe text"}"#,
+            record_files::records_root(dir.path()).join("vocab"),
+            b"not a directory",
         )
         .unwrap();
 
-        let (metadata, text) = super::read_book(&book_dir).unwrap().unwrap();
+        assert_eq!(
+            store.get_text_content("direct-read").unwrap(),
+            "authoritative text"
+        );
+    }
 
-        assert_eq!(metadata["title"], "Backup");
-        assert_eq!(text, "safe text");
+    #[test]
+    fn failed_import_assets_can_be_discarded_without_creating_a_text_record() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir: books_dir.clone(),
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
+        };
+        store
+            .save_book_import_image_bytes("de-pdf-ocr-failed", "page.png", b"partial")
+            .unwrap();
+
+        store
+            .discard_book_import_assets("de-pdf-ocr-failed")
+            .unwrap();
+
+        assert!(
+            !dir.path()
+                .join("ocr-import-staging/de-pdf-ocr-failed")
+                .exists()
+        );
+        assert!(
+            !record_files::load_records(dir.path())
+                .unwrap()
+                .contains_key("text:de-pdf-ocr-failed")
+        );
+        assert!(
+            !dir.path()
+                .join("records/v1/assets/media-manifest.json")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn abandoned_import_staging_is_removed_during_recovery() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(dir.path().join("ocr-import-staging/abandoned/images")).unwrap();
+        std::fs::create_dir_all(books_dir.join("pending/images")).unwrap();
+        std::fs::write(
+            books_dir
+                .join("pending")
+                .join(media_assets::IMPORT_PENDING_MARKER),
+            b"pending",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.path()
+                .join("ocr-import-staging/abandoned/images/page.png"),
+            b"partial",
+        )
+        .unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir: books_dir.clone(),
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
+        };
+
+        store.discard_abandoned_book_imports().unwrap();
+
+        assert!(!dir.path().join("ocr-import-staging").exists());
+        assert!(!books_dir.join("pending").exists());
+    }
+
+    #[test]
+    fn recovery_without_pending_import_does_not_scan_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        std::fs::create_dir_all(record_files::records_root(dir.path())).unwrap();
+        std::fs::write(
+            record_files::records_root(dir.path()).join("vocab"),
+            b"not a directory",
+        )
+        .unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir,
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
+        };
+
+        store.discard_abandoned_book_imports().unwrap();
+    }
+
+    #[test]
+    fn pdf_import_rejects_an_existing_text_or_asset_id() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir,
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            device_id: "test-device".to_string(),
+        };
+        store
+            .upsert_text(&json!({ "id": "de-existing", "text": "keep" }))
+            .unwrap();
+
+        assert!(store.ensure_new_book_import_id("de-existing").is_err());
+        assert!(store.ensure_new_book_import_id("de-new").is_ok());
+        store
+            .save_book_import_image_bytes("ocr-temp", "page.png", b"page")
+            .unwrap();
+        assert!(
+            store
+                .finalize_book_import_assets("ocr-temp", "de-existing")
+                .is_err()
+        );
+        assert!(dir.path().join("ocr-import-staging/ocr-temp").is_dir());
+        assert_eq!(store.get_text_content("de-existing").unwrap(), "keep");
+        store
+            .finalize_book_import_assets("ocr-temp", "de-new")
+            .unwrap();
+        assert_eq!(
+            std::fs::read(dir.path().join("books/de-new/images/page.png")).unwrap(),
+            b"page"
+        );
+        assert!(
+            dir.path()
+                .join("books/de-new")
+                .join(media_assets::IMPORT_PENDING_MARKER)
+                .is_file()
+        );
+        assert!(
+            !dir.path()
+                .join("records/v1/assets/media-manifest.json")
+                .exists()
+        );
+        store
+            .upsert_text(&json!({
+                "id": "de-new",
+                "text": "page",
+                "pdfOcrPages": [{ "imageName": "page.png", "text": "page" }]
+            }))
+            .unwrap();
+        let manifest =
+            std::fs::read_to_string(dir.path().join("records/v1/assets/media-manifest.json"))
+                .unwrap();
+        assert!(manifest.contains("books/de-new/images/page.png"));
+        assert!(!manifest.contains("ocr-temp"));
+        assert!(
+            !dir.path()
+                .join("books/de-new")
+                .join(media_assets::IMPORT_PENDING_MARKER)
+                .exists()
+        );
     }
 }

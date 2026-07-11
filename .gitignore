@@ -4,12 +4,13 @@ build/
 build_work/
 src-tauri/target/
 src-tauri/ocr-runner/target/
-src-tauri/ocr-runner/Cargo.lock
 src-tauri/ocr-runtime/.cache/
 src-tauri/ocr-runtime/bin/*
 !src-tauri/ocr-runtime/bin/.gitkeep
 src-tauri/ocr-runtime/models/*
 !src-tauri/ocr-runtime/models/.gitkeep
+src-tauri/syncthing/*
+!src-tauri/syncthing/.gitkeep
 src-tauri/gen/
 *.spec
 
@@ -26,6 +27,9 @@ My_Data/
 # Local planning / release assessment notes
 docs/android/
 docs/ddia-assessment.md
+
+# Keep screenshots tracked
+!docs/screenshots/
 
 # Local AI/session artifacts
 .agents/

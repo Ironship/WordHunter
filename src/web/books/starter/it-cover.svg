@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title description">
+  <title id="title">Le 1000 parole italiane più frequenti: Storie</title>
+  <desc id="description">Una finestra aperta su una città italiana, con un sentiero di parole che collega case, mercato, bicicletta e mare.</desc>
+  <rect width="600" height="900" fill="#102a43"/>
+  <rect x="28" y="28" width="544" height="844" rx="22" fill="#f7d154" stroke="#fff8dc" stroke-width="5"/>
+  <rect x="58" y="58" width="484" height="242" rx="14" fill="#fffaf0"/>
+  <text x="300" y="105" text-anchor="middle" fill="#d43d2f" font-family="sans-serif" font-size="27" font-weight="700" letter-spacing="2">LE 1000 PAROLE</text>
+  <text x="300" y="145" text-anchor="middle" fill="#102a43" font-family="sans-serif" font-size="25" font-weight="700">ITALIANE PIÙ FREQUENTI</text>
+  <line x1="112" y1="170" x2="488" y2="170" stroke="#1d7a6e" stroke-width="5"/>
+  <text x="300" y="242" text-anchor="middle" fill="#102a43" font-family="serif" font-size="58" font-weight="700">Storie</text>
+
+  <path d="M58 650 Q145 545 232 610 T405 568 T542 520 V818 H58 Z" fill="#fffaf0"/>
+  <path d="M58 725 Q150 635 245 690 T425 630 T542 600" fill="none" stroke="#d43d2f" stroke-width="19" stroke-linecap="round"/>
+  <path d="M91 630 V478 H225 V630 Z" fill="#d43d2f" stroke="#102a43" stroke-width="6"/>
+  <path d="M76 482 L158 405 L240 482 Z" fill="#102a43"/>
+  <rect x="119" y="528" width="42" height="102" fill="#fffaf0"/>
+  <rect x="174" y="516" width="31" height="38" fill="#67c6d4" stroke="#102a43" stroke-width="5"/>
+  <path d="M292 565 V449 H420 V565 Z" fill="#1d7a6e" stroke="#102a43" stroke-width="6"/>
+  <path d="M278 452 L356 382 L434 452 Z" fill="#fffaf0" stroke="#102a43" stroke-width="6"/>
+  <rect x="330" y="499" width="47" height="66" fill="#f7d154"/>
+
+  <circle cx="461" cy="411" r="52" fill="#67c6d4" stroke="#102a43" stroke-width="7"/>
+  <path d="M434 411 Q461 382 488 411 Q461 440 434 411 Z" fill="#fffaf0"/>
+  <path d="M395 700 C430 660 474 667 505 699" fill="none" stroke="#102a43" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="415" cy="716" r="34" fill="none" stroke="#102a43" stroke-width="8"/>
+  <circle cx="495" cy="716" r="34" fill="none" stroke="#102a43" stroke-width="8"/>
+  <path d="M415 716 L448 674 L470 716 L433 716 L455 688 L495 716" fill="none" stroke="#102a43" stroke-width="7" stroke-linejoin="round"/>
+  <circle cx="448" cy="674" r="8" fill="#d43d2f"/>
+
+  <g fill="#102a43" font-family="sans-serif" font-size="22" font-weight="700">
+    <text x="82" y="365">casa</text>
+    <text x="265" y="350">giorno</text>
+    <text x="430" y="338">mare</text>
+    <text x="248" y="745">insieme</text>
+  </g>
+  <text x="300" y="835" text-anchor="middle" fill="#fffaf0" font-family="sans-serif" font-size="21" font-weight="700" letter-spacing="1">WORD HUNTER ORIGINALS</text>
+</svg>

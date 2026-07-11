@@ -72,8 +72,8 @@ export function getSmartSuggestionHtml(context, word) {
   const suggestText = t("reader.smartSuggest");
   const btnText = t("reader.smartSuggestBtn").replace("{word}", paramWord);
   return `
-    <div style="margin-top: 0.75rem; background: rgba(35, 105, 77, 0.05); padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--green); text-align: center;">
-      <p style="font-size: 0.75rem; color: var(--green); margin: 0 0 0.4rem 0; opacity: 0.9;">${escapeHtml(suggestText)}</p>
+    <div style="margin-top: 0.75rem; background: color-mix(in srgb, var(--control-accent) 5%, transparent); padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--control-accent); text-align: center;">
+      <p style="font-size: 0.75rem; color: var(--control-accent); margin: 0 0 0.4rem 0; opacity: 0.9;">${escapeHtml(suggestText)}</p>
       <button class="primary-button button-xs" type="button" data-suggest-word="${escapeHtml(suggestion)}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; height: auto; min-height: 24px;">
         ${escapeHtml(btnText)} <strong style="margin-left: 0.2rem">${escapeHtml(suggestion)}</strong> <span class="shortcut-badge" style="margin-left: 0.4rem; font-size: 0.7rem;">5</span>
       </button>

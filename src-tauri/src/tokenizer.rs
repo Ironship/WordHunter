@@ -163,11 +163,12 @@ fn push_modern(block: &str, _lang: &str, parts: &mut Vec<Token>) {
 fn merge_adjacent_text(parts: &mut Vec<Token>) {
     let mut merged: Vec<Token> = Vec::with_capacity(parts.len());
     for part in parts.drain(..) {
-        if let Some(last) = merged.last_mut() {
-            if last.kind == "text" && part.kind == "text" {
-                last.value.push_str(&part.value);
-                continue;
-            }
+        if let Some(last) = merged.last_mut()
+            && last.kind == "text"
+            && part.kind == "text"
+        {
+            last.value.push_str(&part.value);
+            continue;
         }
         merged.push(part);
     }

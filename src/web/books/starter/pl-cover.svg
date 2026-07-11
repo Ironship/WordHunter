@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">1000 najczęstszych polskich słów: Historyjki</title>
+  <desc id="desc">Okładka z otwartą książką, z której wyrasta jasna miejska ulica prowadząca do słońca.</desc>
+  <rect width="600" height="900" fill="#10243a"/>
+  <path d="M0 0h600v54H0zM0 846h600v54H0z" fill="#f4c542"/>
+  <circle cx="300" cy="477" r="177" fill="#173d5b"/>
+  <circle cx="300" cy="430" r="74" fill="#f4c542"/>
+  <path d="M300 365v130M235 430h130M254 384l92 92M346 384l-92 92" stroke="#fff4cf" stroke-width="8" stroke-linecap="round" opacity=".78"/>
+
+  <g fill="#f8f1dd" stroke="#10243a" stroke-width="7" stroke-linejoin="round">
+    <path d="M72 546c77-28 153-15 228 39v206c-73-49-150-60-228-28z"/>
+    <path d="M528 546c-77-28-153-15-228 39v206c73-49 150-60 228-28z"/>
+  </g>
+  <path d="M300 585v206" stroke="#d8c8a8" stroke-width="5"/>
+
+  <path d="M247 747c18-73 35-127 53-162 18 35 35 89 53 162-18 8-36 18-53 31-17-13-35-23-53-31z" fill="#e85d3f"/>
+  <path d="M289 734h22v-41h35l-46-61-46 61h35z" fill="#fff4cf"/>
+
+  <g fill="#70c1b3" stroke="#10243a" stroke-width="5">
+    <path d="M111 598h67v111h-67z"/>
+    <path d="M422 598h67v111h-67z"/>
+  </g>
+  <g fill="#f4c542">
+    <path d="M126 617h14v18h-14zM149 617h14v18h-14zM126 648h14v18h-14zM149 648h14v18h-14z"/>
+    <path d="M437 617h14v18h-14zM460 617h14v18h-14zM437 648h14v18h-14zM460 648h14v18h-14z"/>
+  </g>
+  <path d="M99 598l45-43 45 43M411 598l45-43 45 43" fill="#e85d3f" stroke="#10243a" stroke-width="6" stroke-linejoin="round"/>
+
+  <g fill="#f8f1dd" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">
+    <text x="300" y="128" font-size="78" font-weight="800" letter-spacing="2">1000</text>
+    <text x="300" y="180" font-size="31" font-weight="700">NAJCZĘSTSZYCH</text>
+    <text x="300" y="222" font-size="31" font-weight="700">POLSKICH SŁÓW</text>
+  </g>
+  <path d="M106 251h388" stroke="#f4c542" stroke-width="8"/>
+  <text x="300" y="304" fill="#f4c542" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="43" font-weight="700">Historyjki</text>
+
+  <rect x="91" y="809" width="418" height="3" fill="#70c1b3"/>
+  <text x="300" y="837" fill="#f8f1dd" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="1.5">WORD HUNTER ORIGINALS</text>
+</svg>

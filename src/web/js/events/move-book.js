@@ -29,10 +29,18 @@ export function bindMoveBookEvents() {
   const moveConfirmBtn = document.getElementById("move-book-confirm");
   if (!moveConfirmBtn) return;
 
-  moveConfirmBtn.addEventListener("click", () => {
+  moveConfirmBtn.addEventListener("click", async () => {
     const select = document.getElementById("move-book-select");
-    if (select.value && moveBookTarget) moveBookToProfile(moveBookTarget, select.value, moveBookIsCustom);
-    document.getElementById("move-book-dialog").close();
+    if (select.value && moveBookTarget) {
+      moveConfirmBtn.disabled = true;
+      try {
+        if (await moveBookToProfile(moveBookTarget, select.value, moveBookIsCustom)) {
+          document.getElementById("move-book-dialog").close();
+        }
+      } finally {
+        moveConfirmBtn.disabled = false;
+      }
+    }
   });
 
   const moveSelect = document.getElementById("move-book-select");

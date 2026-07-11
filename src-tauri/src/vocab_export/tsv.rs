@@ -84,7 +84,7 @@ pub fn parse_anki_tsv(tsv: &str) -> AnkiParseResult {
             header_found = true;
             continue;
         }
-        let word = parts.get(0).copied().unwrap_or("").trim().to_string();
+        let word = parts.first().copied().unwrap_or("").trim().to_string();
         if word.is_empty() {
             continue;
         }

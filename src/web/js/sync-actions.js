@@ -1,4 +1,4 @@
-import { state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, clearLastReadTextForLanguage } from "./state.js";
+import { applyBridgeSnapshotToState, state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
 import { STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
@@ -7,11 +7,61 @@ import { render, ensureCurrentText } from "./render.js";
 import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
 import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
 import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
+import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "./bridge-commit.js";
+import { deleteStoredText, loadBackendSnapshot, postStoreCommand } from "./store-bridge.js";
+import { assertSupportedStateSchemaVersion } from "./state/normalize.js";
+import { clearAllBookTextCaches, clearBookTextCache, loadAllBookTexts, loadAllCustomTextContents } from "./books.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
 const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
 
+function createAndroidExportRequestId() {
+  return `android-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function saveWithAndroidBridge(data, filename, mime) {
+  if (typeof window.WordHunterAndroid?.saveExport !== "function") return null;
+  return new Promise((resolve, reject) => {
+    const requestId = createAndroidExportRequestId();
+    const cleanup = () => {
+      window.removeEventListener("wordhunter:android-export", onResult);
+      clearTimeout(timeout);
+    };
+    const onResult = (event) => {
+      const detail = event.detail || {};
+      if (detail.requestId !== requestId) return;
+      if (detail.terminal === false) return;
+      cleanup();
+      if (detail.cancelled) {
+        resolve(false);
+      } else if (detail.success) {
+        resolve(true);
+      } else {
+        reject(new Error(detail.error || detail.status || "android export failed"));
+      }
+    };
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("android export timed out"));
+    }, 130000);
+
+    window.addEventListener("wordhunter:android-export", onResult);
+    try {
+      const started = window.WordHunterAndroid.saveExport(data, filename, mime, requestId);
+      if (started === false) {
+        cleanup();
+        resolve(false);
+      }
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
 async function nativeSave(data, filename, mime) {
+  const androidSaved = saveWithAndroidBridge(data, filename, mime);
+  if (androidSaved) return androidSaved;
   if (window.__qtBridge) {
     const response = await fetch("/__export/save", {
       method: "POST",
@@ -51,10 +101,7 @@ async function backupBeforeClear() {
   }
 }
 
-async function requestVocabExport(payload) {
-  if (!window.__qtBridge) {
-    throw new Error("vocab export requires native bridge");
-  }
+export async function requestVocabExport(payload) {
   const response = await fetch("/__vocab", {
     method: "POST",
     headers: WH_TOKEN_HEADER,
@@ -77,6 +124,12 @@ async function requestAnkiImport(tsv) {
   return response.json();
 }
 
+async function applyBridgeCommandResult(result, previousView) {
+  if (!window.__qtBridge) return;
+  const snapshot = result?.snapshot || await loadBackendSnapshot();
+  applyBridgeSnapshotToState(snapshot, { previousView });
+}
+
 function safeFilenamePart(value) {
   return String(value || "text")
     .normalize("NFKD")
@@ -96,7 +149,7 @@ function getSelectedVocabStatusesForExport() {
 async function loadTextIndexForExport(textId) {
   if (textId === "all") return null;
   const index = await loadTextVocabularyIndex(textId);
-  if (!index) return null;
+  if (!index) throw new Error(`text vocabulary index unavailable: ${textId}`);
   return {
     words: Array.from(index.words),
     tokenLine: index.tokenLine
@@ -116,6 +169,18 @@ function exportRequestBase(filename, format) {
     lang: state.preferences?.learningLanguage || "en",
     algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
   };
+}
+
+function hydrateImportedLibrary() {
+  Promise.all([loadAllBookTexts(), loadAllCustomTextContents()])
+    .then(() => render())
+    .catch((error) => console.warn("Imported book hydration failed", error));
+}
+
+function renderImportedState() {
+  ensureCurrentText();
+  render();
+  hydrateImportedLibrary();
 }
 
 export async function exportVocabularySelection(format) {
@@ -159,10 +224,11 @@ export function importStateFile(event) {
   }
 
   const reader = new FileReader();
-  reader.addEventListener("load", () => {
+  reader.addEventListener("load", async () => {
     try {
       const raw = String(reader.result || "{}");
       const parsed = JSON.parse(raw);
+      assertSupportedStateSchemaVersion(parsed, "import file");
       const preview = {
         words: Object.keys(parsed.vocab || {}).length,
         texts: (parsed.customTexts || []).length,
@@ -175,20 +241,41 @@ export function importStateFile(event) {
       }
 
       const imported = normalizeState({ ...createDefaultState(), ...parsed });
-      replaceState(imported);
-      ensureCurrentText();
-
       if (window.__qtBridge) {
-        fetch("/__store/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-          body: JSON.stringify(buildSavePayload(state))
-        }).catch(e => console.warn("bridge save state file failed", e));
+        const previousView = state.currentView || "settings";
+        await runExclusiveStateWrite(async () => {
+          let result;
+          try {
+            const response = await fetch("/__store/save?snapshot=1", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+              body: JSON.stringify(buildSavePayload(imported))
+            });
+            if (!response.ok) throw new Error(`import save HTTP ${response.status}`);
+            result = await response.json();
+            if (!result?.snapshot) throw new Error("import save response is missing snapshot");
+          } catch (saveError) {
+            try {
+              const snapshot = await loadBackendSnapshot();
+              clearAllBookTextCaches();
+              applyBridgeSnapshotToState(snapshot, { previousView });
+              renderImportedState();
+            } catch (reloadError) {
+              console.warn("Could not reconcile state after import failure", reloadError);
+            }
+            throw saveError;
+          }
+          clearAllBookTextCaches();
+          await applyBridgeCommandResult(result, previousView);
+        });
       } else {
-        saveState();
+        clearAllBookTextCaches();
+        replaceState(imported);
+        ensureCurrentText();
+        await saveState();
       }
 
-      render();
+      renderImportedState();
       showToast(t("toast.importDone"));
     } catch (error) {
       console.warn(error);
@@ -212,7 +299,16 @@ export async function clearWords() {
   state.reviewIndex = 0;
   resetInitialVocabKeys();
   hideReviewAnswer();
-  saveState();
+  try {
+    await saveStateAndReloadBridge(state.currentView || "settings");
+  } catch (error) {
+    console.warn("clear words save failed", error);
+    await reloadBridgeSnapshot(state.currentView || "settings").catch((reloadError) => {
+      console.warn("clear words recovery reload failed", reloadError);
+    });
+    showToast(t("toast.syncUnavailable"), "error");
+    return;
+  }
   render();
   showToast(t("toast.dataCleared"));
 }
@@ -223,14 +319,15 @@ export async function clearLibrary() {
   if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
   const removedTextIds = state.customTexts.map((text) => text.id);
+  const removedUserBookIds = state.userBooks.map((book) => book.id);
   if (window.__qtBridge) {
-    removedTextIds.forEach((id) => {
-      fetch("/__store/delete_text", {
-        method: "POST",
-        headers: WH_TOKEN_HEADER,
-        body: JSON.stringify({ id })
-      }).catch((error) => console.warn("clear library text delete failed", error));
-    });
+    try {
+      await Promise.all(removedTextIds.map((id) => deleteStoredText(id)));
+    } catch (error) {
+      console.warn("clear library text delete failed", error);
+      showToast(t("toast.syncUnavailable"), "error");
+      return;
+    }
   }
   state.customTexts = [];
   state.userBooks = [];
@@ -247,7 +344,17 @@ export async function clearLibrary() {
     state.profiles[lang].hiddenBuiltInBooks = state.hiddenBuiltInBooks;
     state.profiles[lang].archivedBookIds = state.archivedBookIds;
   }
-  saveState();
+  [...removedTextIds, ...removedUserBookIds].forEach(clearBookTextCache);
+  try {
+    await saveStateAndReloadBridge(state.currentView || "settings");
+  } catch (error) {
+    console.warn("clear library save failed", error);
+    await reloadBridgeSnapshot(state.currentView || "settings").catch((reloadError) => {
+      console.warn("clear library recovery reload failed", reloadError);
+    });
+    showToast(t("toast.syncUnavailable"), "error");
+    return;
+  }
   ensureCurrentText();
   render();
   showToast(t("toast.dataCleared"));
@@ -257,18 +364,24 @@ export async function clearLocalState() {
   const confirmed = window.confirm(t("toast.confirmClear"));
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
-  localStorage.removeItem(STORAGE_KEY);
-  replaceState(createDefaultState());
 
   if (window.__qtBridge) {
-    fetch("/__store/wipe", {
-      method: "POST",
-      headers: { "X-WH-Token": window.WH_TOKEN || "" }
-    }).catch(e => console.warn("wipe failed", e));
+    try {
+      const result = await postStoreCommand("/__store/wipe");
+      await applyBridgeCommandResult(result, state.currentView || "settings");
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn("wipe failed", error);
+      showToast(t("toast.syncUnavailable"), "error");
+      return;
+    }
   } else {
-    saveState();
+    localStorage.removeItem(STORAGE_KEY);
+    replaceState(createDefaultState());
+    await saveState();
   }
 
+  clearAllBookTextCaches();
   hideReviewAnswer();
   ensureCurrentText();
   render();

@@ -47,6 +47,8 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
         .filter(|path| !path.trim().is_empty())
         .ok_or_else(|| "EPUB does not contain a rootfile entry".to_string())?
         .to_string();
+    let rootfile = epub_href("", &rootfile)
+        .ok_or_else(|| "EPUB rootfile path escapes the archive root".to_string())?;
 
     let opf = read_zip_text(&mut archive, &rootfile, MAX_FILE_SIZE)?;
     let opf_doc = roxmltree::Document::parse(&opf).map_err(|e| e.to_string())?;
@@ -70,10 +72,10 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
                     },
                 );
             }
-        } else if node.has_tag_name("itemref") {
-            if let Some(idref) = node.attribute("idref") {
-                spine.push(idref.to_string());
-            }
+        } else if node.has_tag_name("itemref")
+            && let Some(idref) = node.attribute("idref")
+        {
+            spine.push(idref.to_string());
         }
     }
 
@@ -90,7 +92,9 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
         {
             continue;
         }
-        let path = epub_href(&opf_dir, &item.href);
+        let Some(path) = epub_href(&opf_dir, &item.href) else {
+            continue;
+        };
         if let Ok(markup) = read_zip_text(&mut archive, &path, MAX_FILE_SIZE) {
             let text = strip_xhtml_to_text(&markup);
             if !text.is_empty() {
@@ -129,6 +133,9 @@ fn read_epub_html_fallback(
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index).map_err(|e| e.to_string())?;
+        if epub_href("", file.name()).is_none() {
+            continue;
+        }
         let name = file.name().to_ascii_lowercase();
         if !(name.ends_with(".html") || name.ends_with(".htm") || name.ends_with(".xhtml")) {
             continue;
@@ -203,7 +210,7 @@ fn zip_parent_dir(path: &str) -> String {
         .unwrap_or_default()
 }
 
-pub(crate) fn epub_href(base_dir: &str, href: &str) -> String {
+pub(crate) fn epub_href(base_dir: &str, href: &str) -> Option<String> {
     let href = href.split('#').next().unwrap_or(href);
     let decoded = percent_decode_str(href).decode_utf8_lossy();
     let joined = if base_dir.is_empty() {
@@ -212,17 +219,20 @@ pub(crate) fn epub_href(base_dir: &str, href: &str) -> String {
         format!("{}/{}", base_dir.trim_end_matches('/'), decoded)
     };
     let normalized = joined.replace('\\', "/");
+    if normalized.starts_with('/') {
+        return None;
+    }
     let mut parts: Vec<String> = Vec::new();
     for part in normalized.split('/') {
         match part {
             "" | "." => {}
             ".." => {
-                parts.pop();
+                parts.pop()?;
             }
             item => parts.push(item.to_string()),
         }
     }
-    parts.join("/")
+    (!parts.is_empty()).then(|| parts.join("/"))
 }
 
 fn cover_data_url(
@@ -242,7 +252,8 @@ fn cover_data_url(
     let Some(item) = cover else {
         return Ok(String::new());
     };
-    let cover_path = epub_href(opf_dir, &item.href);
+    let cover_path = epub_href(opf_dir, &item.href)
+        .ok_or_else(|| "EPUB cover path escapes the archive root".to_string())?;
     let bytes = read_zip_bytes(archive, &cover_path, 1_500_000)?;
     let content_type = if item.media_type.starts_with("image/") {
         item.media_type.clone()

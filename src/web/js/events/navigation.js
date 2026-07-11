@@ -1,15 +1,14 @@
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { setView } from "../render.js";
+import { render, setView } from "../render.js";
 import { updatePreferenceValue, applyPreferences, themeLabel } from "../preferences.js";
-import { renderLibrary } from "../views/library.js";
-import { renderReader } from "../views/reader.js";
 import { renderReview } from "../views/vocabulary.js";
 import { showToast } from "../toast.js";
 import { t } from "../i18n.js";
 import { handleGlobalKeys, openReaderView } from "./keyboard/global-keys.js";
 import { handleReaderKeys } from "./keyboard/reader-keys.js";
 import { handleFlashcardKeys } from "./keyboard/flashcards-keys.js";
+import { nextTheme, normalizeTheme } from "../theme.js";
 
 export function bindNavigationEvents() {
   els.navItems.forEach((button) => button.addEventListener("click", () => {
@@ -23,17 +22,18 @@ export function bindNavigationEvents() {
   document.getElementById("app-reload")?.addEventListener("click", () => window.location.reload());
 
   els.themeToggle.addEventListener("click", () => {
-    const order = ["auto", "light", "dark"];
-    const next = order[(order.indexOf(state.preferences.theme || "auto") + 1) % order.length];
+    const next = nextTheme(state.preferences.theme);
     updatePreferenceValue("theme", next);
-    renderLibrary();
-    renderReader();
+    render();
     showToast(t("toast.themeChanged", { name: themeLabel(next) }));
   });
 
   document.addEventListener("keydown", handleGlobalKeydown);
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
-    if ((state.preferences?.theme || "auto") === "auto") applyPreferences();
+    if (["familiar", "alternative-familiar", "classic-auto"].includes(normalizeTheme(state.preferences?.theme))) {
+      applyPreferences();
+      render();
+    }
   });
   els.reviewReverseToggle?.addEventListener("click", () => {
     state.preferences.reviewReverse = !state.preferences.reviewReverse;
@@ -42,14 +42,26 @@ export function bindNavigationEvents() {
   });
 }
 
-function handleGlobalKeydown(event) {
+export function handleGlobalKeydown(event) {
   if (event.defaultPrevented) return;
   if (!event.key) return;
+  if (event.isComposing) return;
   const key = event.key.toLowerCase();
-  const inField = event.target?.matches?.("input, textarea, select, [contenteditable=true]");
+  const fieldSelector = "input, textarea, select, [contenteditable]:not([contenteditable=false])";
+  const activeElement = document.activeElement;
+  const inField = !!(
+    event.target?.isContentEditable
+    || event.target?.closest?.(fieldSelector)
+    || activeElement?.isContentEditable
+    || activeElement?.closest?.(fieldSelector)
+  );
 
   if ((inField || key === "escape") && handleGlobalKeys(event, key, inField)) return;
   if (inField) return;
+  if (document.querySelector("dialog[open]")) return;
+  if (event.repeat && !["arrowleft", "arrowright", "arrowup", "arrowdown", "pageup", "pagedown"].includes(key)) return;
+  const imageShortcut = event.ctrlKey && (/^[1-4]$/.test(key) || /^(?:Digit|Numpad)[1-4]$/.test(event.code || ""));
+  if (imageShortcut && handleGlobalKeys(event, key, false)) return;
   if (state.currentView === "flashcards" && handleFlashcardKeys(event, key)) return;
   if (state.currentView === "reader" && handleReaderKeys(event, key)) return;
   handleGlobalKeys(event, key, false);

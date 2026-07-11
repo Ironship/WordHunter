@@ -1,1 +1,134 @@
-[]
+[
+  {
+    "id": "starter-en-common-stories",
+    "title": "1000 Most Common English Words: Stories",
+    "author": "Word Hunter Originals",
+    "lang": "en",
+    "level": "Beginner",
+    "blurb": "Original short stories about home, school, work, travel, health, nature, and everyday community life.",
+    "localPath": "books/starter/en-stories.txt",
+    "coverPath": "books/starter/en-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-de-common-stories",
+    "title": "1000 häufigste deutsche Wörter: Geschichten",
+    "author": "Word Hunter Originals",
+    "lang": "de",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common German vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/de-stories.txt",
+    "coverPath": "books/starter/de-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-es-common-stories",
+    "title": "Las 1000 palabras más frecuentes en español: Historias",
+    "author": "Word Hunter Originals",
+    "lang": "es",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Spanish vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/es-stories.txt",
+    "coverPath": "books/starter/es-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-fr-common-stories",
+    "title": "Les 1000 mots français les plus fréquents : Histoires",
+    "author": "Word Hunter Originals",
+    "lang": "fr",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common French vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/fr-stories.txt",
+    "coverPath": "books/starter/fr-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-it-common-stories",
+    "title": "Le 1000 parole italiane più frequenti: Storie",
+    "author": "Word Hunter Originals",
+    "lang": "it",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Italian vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/it-stories.txt",
+    "coverPath": "books/starter/it-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-pl-common-stories",
+    "title": "1000 najczęstszych polskich słów: Historyjki",
+    "author": "Word Hunter Originals",
+    "lang": "pl",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Polish vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/pl-stories.txt",
+    "coverPath": "books/starter/pl-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-uk-common-stories",
+    "title": "1000 найуживаніших українських слів: Історії",
+    "author": "Word Hunter Originals",
+    "lang": "uk",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Ukrainian vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/uk-stories.txt",
+    "coverPath": "books/starter/uk-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-ru-common-stories",
+    "title": "1000 самых частых русских слов: Истории",
+    "author": "Word Hunter Originals",
+    "lang": "ru",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Russian vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/ru-stories.txt",
+    "coverPath": "books/starter/ru-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-ja-common-stories",
+    "title": "よく使う日本語1000語の物語",
+    "author": "Word Hunter Originals",
+    "lang": "ja",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Japanese vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/ja-stories.txt",
+    "coverPath": "books/starter/ja-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-zh-common-stories",
+    "title": "最常用的1000个中文词：小故事",
+    "author": "Word Hunter Originals",
+    "lang": "zh",
+    "level": "Beginner",
+    "blurb": "Original short stories built around common Chinese vocabulary and familiar everyday situations.",
+    "localPath": "books/starter/zh-stories.txt",
+    "coverPath": "books/starter/zh-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-la-common-stories",
+    "title": "Mille Verba Latina Frequentissima: Fabulae",
+    "author": "Word Hunter Originals",
+    "lang": "la",
+    "level": "Beginner",
+    "blurb": "Original short stories built around frequent Latin vocabulary and scenes from daily life.",
+    "localPath": "books/starter/la-stories.txt",
+    "coverPath": "books/starter/la-cover.svg",
+    "source": "Word Hunter Originals"
+  },
+  {
+    "id": "starter-grc-common-stories",
+    "title": "Χίλιαι Λέξεις: Μικραὶ Ἱστορίαι",
+    "author": "Word Hunter Originals",
+    "lang": "grc",
+    "level": "Beginner",
+    "blurb": "Original short stories built around frequent Ancient Greek vocabulary and scenes from daily life.",
+    "localPath": "books/starter/grc-stories.txt",
+    "coverPath": "books/starter/grc-cover.svg",
+    "source": "Word Hunter Originals"
+  }
+]

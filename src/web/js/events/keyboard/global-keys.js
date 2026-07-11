@@ -1,6 +1,6 @@
 import { state } from "../../state.js";
 import { els } from "../../dom.js";
-import { setView } from "../../render.js";
+import { getNavigationEpoch, setView } from "../../render.js";
 import { setUiScale, getUiScale } from "../../preferences.js";
 import { showToast } from "../../toast.js";
 import { t } from "../../i18n.js";
@@ -8,8 +8,30 @@ import { closeYouGlish } from "../../youglish.js";
 import { openDictionary } from "../shared.js";
 
 export async function openReaderView() {
+  const startingNavigationEpoch = getNavigationEpoch();
   const { openLastReadBook } = await import("../../book-actions.js");
+  if (startingNavigationEpoch !== getNavigationEpoch()) return false;
   await openLastReadBook();
+  return true;
+}
+
+function noCommandModifiers(event) {
+  return !event.ctrlKey && !event.altKey && !event.metaKey;
+}
+
+function plainKey(event) {
+  return noCommandModifiers(event) && !event.shiftKey;
+}
+
+function navigationKey(event, key) {
+  return event.altKey && !event.ctrlKey && !event.metaKey && (key === "?" || !event.shiftKey);
+}
+
+function activeImageSearchContainer() {
+  const prefix = state.currentView === "flashcards"
+    ? "review-image-search-results-"
+    : "image-search-results-";
+  return document.querySelector(`[id^="${prefix}"]:not(:empty)`);
 }
 
 export function handleGlobalKeys(event, key, inField) {
@@ -33,15 +55,21 @@ export function handleGlobalKeys(event, key, inField) {
 
   if (inField) return false;
 
-  if (event.ctrlKey && event.altKey && (key === "=" || key === "+" || key === "-" || key === "0")) {
+  if (event.ctrlKey && event.altKey && !event.metaKey && (key === "=" || key === "+" || key === "-" || key === "0")) {
     event.preventDefault();
     const value = setUiScale(key === "0" ? 100 : getUiScale() + (key === "-" ? -5 : 5));
     showToast(t("toast.uiScale", { n: value }));
     return true;
   }
 
-  if (event.ctrlKey && /^[1-4]$/.test(key)) {
-    const suggestion = document.querySelectorAll(".search-img-suggestion")[Number(key) - 1];
+  const imageDigit = /^[1-4]$/.test(key)
+    ? key
+    : event.code?.match(/^(?:Digit|Numpad)([1-4])$/)?.[1];
+  if (event.ctrlKey && !event.altKey && !event.metaKey && imageDigit) {
+    const container = activeImageSearchContainer();
+    const suggestion = imageDigit === "4"
+      ? container?.querySelector('[data-action="upload-image"]')
+      : container?.querySelectorAll('[data-action="save-image"]')[Number(imageDigit) - 1];
     if (suggestion) {
       event.preventDefault();
       suggestion.click();
@@ -49,7 +77,7 @@ export function handleGlobalKeys(event, key, inField) {
     }
   }
 
-  if (key === "pageup" || key === "pagedown") {
+  if (state.currentView === "reader" && plainKey(event) && (key === "pageup" || key === "pagedown")) {
     const button = document.getElementById(key === "pageup" ? "btn-prev-page" : "btn-next-page");
     if (button && !button.disabled) {
       event.preventDefault();
@@ -58,43 +86,45 @@ export function handleGlobalKeys(event, key, inField) {
     return true;
   }
 
-  if (key === "b" && event.ctrlKey) {
+  if (state.currentView === "reader" && key === "b" && event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
     event.preventDefault();
     document.getElementById("text-select")?.focus();
     return true;
   }
-  if (event.ctrlKey && (key === "=" || key === "+" || key === "-")) {
+  if (state.currentView === "reader" && event.ctrlKey && !event.altKey && !event.metaKey && (key === "=" || key === "+" || key === "-")) {
     event.preventDefault();
     document.querySelector(`button[data-font="${key === "-" ? "down" : "up"}"]`)?.click();
     return true;
   }
 
-  if (key === "g" && event.ctrlKey && state.currentView === "reader") {
+  if (key === "g" && event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && state.currentView === "reader") {
     event.preventDefault();
     const input = document.getElementById("page-jump-input");
     input?.focus();
     input?.select();
     return true;
   }
-  if (key === "t" && event.ctrlKey && event.shiftKey) {
+  if (key === "t" && event.ctrlKey && event.shiftKey && !event.altKey && !event.metaKey) {
     event.preventDefault();
     els.themeToggle?.click();
     return true;
   }
 
-  const views = { "?": "help", b: "library", d: "discover", f: "flashcards", g: "graphs", s: "settings", t: "translator", v: "vocabulary" };
-  if (key === "r") {
+  const views = { "?": "help", b: "library", d: "discover", f: "flashcards", g: "graphs", s: "settings", t: "translator", v: "vocabulary", y: "sync" };
+  if (key === "r" && navigationKey(event, key)) {
     event.preventDefault();
     openReaderView();
     return true;
   }
-  if (views[key]) {
+  if (views[key] && navigationKey(event, key)) {
+    const navItem = document.querySelector(`[data-view="${views[key]}"]`);
+    if (navItem?.disabled || navItem?.classList?.contains("nav-item-locked")) return false;
     event.preventDefault();
     setView(views[key]);
     return true;
   }
 
-  if (key === "/" && !event.ctrlKey) {
+  if (key === "/" && plainKey(event)) {
     const selector = { library: "#library-search", discover: "#discover-query", vocabulary: "#vocab-search" }[state.currentView];
     const input = selector && document.querySelector(selector);
     if (input) {
@@ -105,7 +135,7 @@ export function handleGlobalKeys(event, key, inField) {
     }
   }
 
-  if (key === "m" && state.currentView !== "reader" && state.preferences?.argosAsDict && state.preferences?.offlineTranslator) {
+  if (key === "m" && plainKey(event) && state.currentView !== "reader" && state.preferences?.argosAsDict && state.preferences?.offlineTranslator) {
     event.preventDefault();
     openDictionary("");
     return true;

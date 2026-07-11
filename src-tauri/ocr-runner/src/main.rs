@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 
 #[cfg(windows)]
 use ort::execution_providers::DirectMLExecutionProvider;
+#[cfg(target_os = "linux")]
+use ort::execution_providers::{webgpu::WebGPUDawnBackendType, WebGPUExecutionProvider};
 
 const ENGINE_NAME: &str = "pdfium-text-layer+paddleocr-rs-onnx";
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
@@ -35,6 +37,7 @@ enum DeviceMode {
     Auto,
     Cpu,
     DirectMl,
+    WebGpu,
 }
 
 impl DeviceMode {
@@ -43,7 +46,8 @@ impl DeviceMode {
             "auto" => Ok(Self::Auto),
             "cpu" => Ok(Self::Cpu),
             "directml" => Ok(Self::DirectMl),
-            _ => bail!("invalid --device: {value} (expected auto, cpu, or directml)"),
+            "webgpu" => Ok(Self::WebGpu),
+            _ => bail!("invalid --device: {value} (expected auto, cpu, directml, or webgpu)"),
         }
     }
 }
@@ -51,6 +55,7 @@ impl DeviceMode {
 #[derive(Serialize)]
 struct GpuStatus {
     status: &'static str,
+    provider: &'static str,
 }
 
 #[derive(Debug, Serialize)]
@@ -245,7 +250,7 @@ fn parse_args() -> Result<Args> {
 
 fn print_usage() {
     println!(
-        "wordhunter-paddleocr --input input.pdf --output-dir pages --json ocr.json [--lang pl] [--max-pages 0] [--device auto|cpu] (0 = all pages)\nwordhunter-paddleocr --gpu-status"
+        "wordhunter-paddleocr --input input.pdf --output-dir pages --json ocr.json [--lang pl] [--max-pages 0] [--device auto|cpu|directml|webgpu] (0 = all pages)\nwordhunter-paddleocr --gpu-status"
     );
 }
 
@@ -278,14 +283,19 @@ mod tests {
         assert_eq!(DeviceMode::parse("auto").unwrap(), DeviceMode::Auto);
         assert_eq!(DeviceMode::parse("cpu").unwrap(), DeviceMode::Cpu);
         assert_eq!(DeviceMode::parse("directml").unwrap(), DeviceMode::DirectMl);
+        assert_eq!(DeviceMode::parse("webgpu").unwrap(), DeviceMode::WebGpu);
         assert!(DeviceMode::parse("gpu").is_err());
     }
 
     #[test]
     fn serializes_gpu_status() {
         assert_eq!(
-            serde_json::to_value(GpuStatus { status: "ready" }).unwrap(),
-            json!({ "status": "ready" })
+            serde_json::to_value(GpuStatus {
+                status: "ready",
+                provider: "webgpu"
+            })
+            .unwrap(),
+            json!({ "status": "ready", "provider": "webgpu" })
         );
     }
 
@@ -300,12 +310,20 @@ mod tests {
             height: 1.0,
             confidence: 1.0,
         }]));
-        assert!(native_text_layer_is_useful(&[OcrWord {
+        assert!(!native_text_layer_is_useful(&[OcrWord {
             text: "PDF".to_string(),
             x: 0.0,
             y: 0.0,
             width: 12.0,
             height: 8.0,
+            confidence: 1.0,
+        }]));
+        assert!(native_text_layer_is_useful(&[OcrWord {
+            text: "This page has a readable native text layer.".to_string(),
+            x: 0.0,
+            y: 0.0,
+            width: 180.0,
+            height: 12.0,
             confidence: 1.0,
         }]));
     }
@@ -539,7 +557,6 @@ mod tests {
 }
 
 fn configure_ort(device: DeviceMode) -> Result<()> {
-    // TODO(gpu): add Linux and macOS execution providers when their runtimes are bundled.
     let _ = match device {
         DeviceMode::Auto => {
             #[cfg(windows)]
@@ -550,7 +567,16 @@ fn configure_ort(device: DeviceMode) -> Result<()> {
                         .fail_silently()])
                     .commit()?
             }
-            #[cfg(not(windows))]
+            #[cfg(target_os = "linux")]
+            {
+                ort::init()
+                    .with_execution_providers([WebGPUExecutionProvider::default()
+                        .with_dawn_backend_type(WebGPUDawnBackendType::Vulkan)
+                        .build()
+                        .fail_silently()])
+                    .commit()?
+            }
+            #[cfg(not(any(windows, target_os = "linux")))]
             {
                 ort::init().commit()?
             }
@@ -570,35 +596,52 @@ fn configure_ort(device: DeviceMode) -> Result<()> {
                 bail!("DirectML is not available on this platform")
             }
         }
+        DeviceMode::WebGpu => {
+            #[cfg(target_os = "linux")]
+            {
+                ort::init()
+                    .with_execution_providers([WebGPUExecutionProvider::default()
+                        .with_dawn_backend_type(WebGPUDawnBackendType::Vulkan)
+                        .build()
+                        .error_on_failure()])
+                    .commit()?
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                bail!("WebGPU is not available on this platform")
+            }
+        }
     };
     Ok(())
 }
 
 fn write_gpu_status(args: &Args) -> Result<()> {
-    if !cfg!(windows) {
-        return print_gpu_status("unavailable");
-    }
+    #[cfg(windows)]
+    let (device, provider) = (DeviceMode::DirectMl, "directml");
+    #[cfg(target_os = "linux")]
+    let (device, provider) = (DeviceMode::WebGpu, "webgpu");
+    #[cfg(not(any(windows, target_os = "linux")))]
+    return print_gpu_status("unavailable", "cpu");
 
     let models_dir = args
         .models_dir
         .clone()
         .unwrap_or(runtime_root()?.join("models"));
-    let status = if configure_ort(DeviceMode::DirectMl)
+    let ready = configure_ort(device)
         .and_then(|_| load_ocr(&models_dir, args.threads).map(|_| ()))
-        .is_ok()
-    {
-        "ready"
-    } else {
-        "unavailable"
-    };
-    print_gpu_status(status)?;
+        .is_ok();
+    print_gpu_status(
+        if ready { "ready" } else { "unavailable" },
+        if ready { provider } else { "cpu" },
+    )?;
     Ok(())
 }
 
-fn print_gpu_status(status: &'static str) -> Result<()> {
+fn print_gpu_status(status: &'static str, provider: &'static str) -> Result<()> {
     println!(
         "{}",
-        serde_json::to_string(&GpuStatus { status }).context("failed to serialize GPU status")?
+        serde_json::to_string(&GpuStatus { status, provider })
+            .context("failed to serialize GPU status")?
     );
     Ok(())
 }
@@ -744,11 +787,13 @@ fn to_rgb_image(image: DynamicImage) -> RgbImage {
     DynamicImage::ImageRgba8(image.to_rgba8()).into_rgb8()
 }
 
+type ExtractedTextLayer = (Vec<OcrLine>, Vec<OcrWord>, String);
+
 fn extract_pdf_text_layer(
     page: &PdfPage<'_>,
     image_width: u32,
     image_height: u32,
-) -> Result<Option<(Vec<OcrLine>, Vec<OcrWord>, String)>> {
+) -> Result<Option<ExtractedTextLayer>> {
     let page_text = match page.text() {
         Ok(text) => text,
         Err(_) => return Ok(None),
@@ -1356,7 +1401,7 @@ fn native_text_layer_is_useful(words: &[OcrWord]) -> bool {
         .flat_map(|word| word.text.chars())
         .filter(|ch| ch.is_alphanumeric())
         .count();
-    !words.is_empty() && readable_chars >= 3
+    !words.is_empty() && readable_chars >= 20
 }
 
 fn native_text_from_words(words: &[OcrWord]) -> String {

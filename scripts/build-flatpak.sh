@@ -8,6 +8,18 @@ manifest="${FLATPAK_MANIFEST:-com.wordhunter.app.yml}"
 build_dir="${FLATPAK_BUILD_DIR:-build/flatpak}"
 repo_dir="${FLATPAK_REPO_DIR:-outputs/flatpak-repo}"
 bundle="${FLATPAK_BUNDLE:-outputs/WordHunter.flatpak}"
+jobs="${FLATPAK_JOBS:-2}"
+artifact_inspector="$root/scripts/inspect-artifact.mjs"
+
+if [[ ! "$jobs" =~ ^[1-9][0-9]*$ ]]; then
+  echo "FLATPAK_JOBS must be a positive integer, got: $jobs" >&2
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js is required to validate the completed Flatpak bundle." >&2
+  exit 1
+fi
 
 prepare_repo() {
   if ! command -v ostree >/dev/null 2>&1; then
@@ -53,12 +65,14 @@ prepare_repo
   --user \
   --disable-rofiles-fuse \
   --force-clean \
+  --jobs="$jobs" \
   --install-deps-from=flathub \
   --repo="$repo_dir" \
   "$build_dir" \
   "$manifest"
 
 flatpak build-bundle "$repo_dir" "$bundle" com.wordhunter.app stable
+node "$artifact_inspector" flatpak "$bundle"
 
 echo "Flatpak bundle written to $bundle"
 echo "Flatpak repo written to $repo_dir"

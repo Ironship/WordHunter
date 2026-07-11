@@ -8,6 +8,8 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::Mutex,
+    thread,
+    time::Duration,
 };
 use tauri::AppHandle;
 
@@ -20,8 +22,73 @@ const MAX_PAGES: u64 = 2_000;
 const TEXT_LAYER_RENDER_WIDTH: u32 = 1400;
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
 
+struct CancellationCleanup<'a> {
+    cancellations: &'a Mutex<HashSet<String>>,
+    job_id: &'a str,
+}
+
+struct ImportContext<'a> {
+    filename: &'a str,
+    store: &'a Store,
+    asset_book_id: &'a str,
+    job_id: &'a str,
+    cancellations: &'a Mutex<HashSet<String>>,
+}
+
+struct FailedImportAssetCleanup<'a> {
+    store: &'a Store,
+    book_id: &'a str,
+    completed: bool,
+}
+
+impl Drop for CancellationCleanup<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut cancellations) = self.cancellations.lock() {
+            cancellations.remove(self.job_id);
+        }
+    }
+}
+
+impl Drop for FailedImportAssetCleanup<'_> {
+    fn drop(&mut self) {
+        if !self.completed
+            && let Err(error) = self.store.discard_book_import_assets(self.book_id)
+        {
+            eprintln!(
+                "Could not clean failed OCR assets for {}: {error}",
+                self.book_id
+            );
+        }
+    }
+}
+
 pub fn import(
     payload: Value,
+    store: &Store,
+    app_handle: &AppHandle,
+    cancellations: &Mutex<HashSet<String>>,
+) -> Result<Value, String> {
+    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
+    let data = decode_payload(data_url)?;
+    import_decoded(payload, data, store, app_handle, cancellations)
+}
+
+pub fn import_bytes(
+    payload: Value,
+    data: Vec<u8>,
+    store: &Store,
+    app_handle: &AppHandle,
+    cancellations: &Mutex<HashSet<String>>,
+) -> Result<Value, String> {
+    if data.len() > MAX_PDF_BYTES {
+        return Err("PDF is too large (max 1 GB)".to_string());
+    }
+    import_decoded(payload, data, store, app_handle, cancellations)
+}
+
+fn import_decoded(
+    payload: Value,
+    data: Vec<u8>,
     store: &Store,
     app_handle: &AppHandle,
     cancellations: &Mutex<HashSet<String>>,
@@ -36,31 +103,48 @@ pub fn import(
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| "job_id required".to_string())?;
+    let _cancellation_cleanup = CancellationCleanup {
+        cancellations,
+        job_id,
+    };
+    if cancellations
+        .lock()
+        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
+        .contains(job_id)
+    {
+        return Err("PaddleOCR import cancelled".to_string());
+    }
     let filename = payload
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("PDF OCR");
-    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
-    let data = decode_payload(data_url)?;
-
+    store.ensure_new_book_import_id(book_id)?;
+    let asset_book_id = format!("ocr-import-{:016x}", rand::random::<u64>());
+    store.ensure_new_book_import_id(&asset_book_id)?;
     let lang = requested_lang(&payload);
-    let max_pages = payload
-        .get("max_pages")
-        .and_then(Value::as_u64)
-        .unwrap_or(0)
-        .min(MAX_PAGES);
+    let max_pages = requested_max_pages(&payload);
+    let context = ImportContext {
+        filename,
+        store,
+        asset_book_id: &asset_book_id,
+        job_id,
+        cancellations,
+    };
+    let mut asset_cleanup = FailedImportAssetCleanup {
+        store,
+        book_id: &asset_book_id,
+        completed: false,
+    };
 
     let runner_path = match runner::find_runner(app_handle) {
         Ok(path) => path,
         Err(runner_error) => {
-            return import_text_layer_pdf(
-                filename,
-                &data,
-                max_pages,
-                &runner_error,
-                store,
-                book_id,
-            );
+            let result = import_text_layer_pdf(&data, max_pages, &runner_error, &context);
+            if result.is_ok() {
+                store.finalize_book_import_assets(&asset_book_id, book_id)?;
+                asset_cleanup.completed = true;
+            }
+            return result;
         }
     };
 
@@ -69,47 +153,42 @@ pub fn import(
     let pages_dir = temp.path().join("pages");
     let json_path = temp.path().join("ocr.json");
     fs::create_dir_all(&pages_dir).map_err(|e| e.to_string())?;
-    fs::write(&input_path, data).map_err(|e| e.to_string())?;
+    fs::write(&input_path, &data).map_err(|e| e.to_string())?;
 
     let result = runner::run_runner(
         &runner_path,
-        &input_path,
-        &pages_dir,
-        &json_path,
-        &lang,
-        max_pages,
-        temp.path(),
-        job_id,
-        cancellations,
+        runner::RunnerJob {
+            input_path: &input_path,
+            pages_dir: &pages_dir,
+            json_path: &json_path,
+            lang: &lang,
+            max_pages,
+            work_dir: temp.path(),
+            job_id,
+            cancellations,
+        },
     );
-    cancellations
-        .lock()
-        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-        .remove(job_id);
-    result?;
+    if let Err(runner_error) = result {
+        if runner_error.to_ascii_lowercase().contains("cancel") {
+            return Err(runner_error);
+        }
+        return Err(format!(
+            "The bundled OCR component failed while processing this PDF. Reinstall Word Hunter if the problem persists.\n{runner_error}"
+        ));
+    }
 
     let output = read_runner_output(&json_path)?;
-    let mut pages = output
-        .get("pages")
-        .and_then(Value::as_array)
-        .cloned()
-        .ok_or_else(|| "PaddleOCR runner did not return a pages array".to_string())?;
-    if pages.is_empty() {
-        return Err("PaddleOCR did not return any pages".to_string());
-    }
+    let mut pages = runner_pages(&output)?;
 
     let mut text_parts = Vec::new();
     for page in &mut pages {
-        let image_name = page
-            .get("imageName")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-            .ok_or_else(|| "PaddleOCR page is missing imageName".to_string())?;
+        ensure_not_cancelled(job_id, cancellations)?;
+        let image_name = runner_image_name(page)?;
         let safe_image_name = crate::paths::sanitize_id(image_name)?;
         let image_path = pages_dir.join(&safe_image_name);
         let image_bytes = fs::read(&image_path)
             .map_err(|e| format!("could not read OCR page image {safe_image_name}: {e}"))?;
-        store.save_book_image_bytes(book_id, &safe_image_name, &image_bytes)?;
+        store.save_book_import_image_bytes(&asset_book_id, &safe_image_name, &image_bytes)?;
         if let Some(obj) = page.as_object_mut() {
             obj.insert("imageName".to_string(), json!(safe_image_name));
         }
@@ -140,6 +219,9 @@ pub fn import(
         .unwrap_or("paddleocr-cpp");
     let title = title_from_filename(filename);
 
+    ensure_not_cancelled(job_id, cancellations)?;
+    store.finalize_book_import_assets(&asset_book_id, book_id)?;
+    asset_cleanup.completed = true;
     Ok(json!({
         "title": title,
         "text": text,
@@ -154,13 +236,12 @@ pub fn import(
 }
 
 fn import_text_layer_pdf(
-    filename: &str,
     data: &[u8],
     max_pages: u64,
     runner_error: &str,
-    store: &Store,
-    book_id: &str,
+    context: &ImportContext<'_>,
 ) -> Result<Value, String> {
+    ensure_not_cancelled(context.job_id, context.cancellations)?;
     let (pages, page_count, truncated) = extract_text_layer_overlay_pages(data, max_pages as usize)
         .map_err(|text_error| {
             format!("{runner_error}\nCould not read the PDF text layer either: {text_error}")
@@ -171,23 +252,40 @@ fn import_text_layer_pdf(
         .filter(|page| !page.is_empty())
         .collect::<Vec<_>>()
         .join("\n\n");
-    if readable_chars(&text) < 3 {
+    let incomplete_page = pages.iter().any(|page| readable_chars(&page.text) < 3);
+    if readable_chars(&text) < 3 || incomplete_page {
         return Err(format!(
-            "{runner_error}\nPDF text layer is empty; install the bundled OCR runtime to import scanned PDFs."
+            "{runner_error}\nAt least one PDF page has no readable text layer, and the bundled OCR component is unavailable. Reinstall Word Hunter if the problem persists."
         ));
     }
-    render_text_layer_page_images(data, store, book_id, &pages)
-        .map_err(|render_error| format!("{runner_error}\n{render_error}"))?;
+    let (pages, ocr_engine, experimental) = match render_text_layer_page_images(
+        data,
+        context.store,
+        context.asset_book_id,
+        &pages,
+        context.job_id,
+        context.cancellations,
+    ) {
+        Ok(()) => (pages, "pdf-text-layer+pdftoppm", true),
+        Err(render_error) => {
+            ensure_not_cancelled(context.job_id, context.cancellations)?;
+            if render_error.starts_with("Could not save PDF page background:") {
+                return Err(render_error);
+            }
+            eprintln!("PDF page backgrounds unavailable: {runner_error}; {render_error}");
+            (Vec::new(), "pdf-text-layer", false)
+        }
+    };
 
     Ok(json!({
-        "title": title_from_filename(filename),
+        "title": title_from_filename(context.filename),
         "text": text,
         "coverDataUrl": "",
         "pages": pages,
         "pageCount": page_count,
         "truncated": truncated,
-        "ocrEngine": "pdf-text-layer+pdftoppm",
-        "experimental": true,
+        "ocrEngine": ocr_engine,
+        "experimental": experimental,
         "blurb": ""
     }))
 }
@@ -207,8 +305,7 @@ fn extract_text_layer_overlay_pages(
     } else {
         max_pages.min(page_count)
     };
-    let plain_text_by_page = pdf_extract::extract_text_from_mem_by_pages(data).unwrap_or_default();
-    let mut output = PositionedTextOutput::new(plain_text_by_page);
+    let mut output = PositionedTextOutput::new(Vec::new());
     for page_num in page_numbers.into_iter().take(limit) {
         pdf_extract::output_doc_page(&document, &mut output, page_num)
             .map_err(|e| format!("Could not read PDF page {page_num}: {e}"))?;
@@ -221,13 +318,17 @@ fn render_text_layer_page_images(
     store: &Store,
     book_id: &str,
     pages: &[OverlayPage],
+    job_id: &str,
+    cancellations: &Mutex<HashSet<String>>,
 ) -> Result<(), String> {
     let renderer = find_pdftoppm()?;
     let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
     let input_path = temp.path().join("input.pdf");
     fs::write(&input_path, data).map_err(|e| e.to_string())?;
+    let mut rendered_pages = Vec::with_capacity(pages.len());
 
     for page in pages {
+        ensure_not_cancelled(job_id, cancellations)?;
         let image_stem = page
             .image_name
             .strip_suffix(".png")
@@ -249,31 +350,72 @@ fn render_text_layer_page_images(
             .arg(&output_prefix)
             .stdin(Stdio::null())
             .stdout(Stdio::null());
-        let output = command.output().map_err(|e| {
+        let stderr_path = temp.path().join(format!("{image_stem}.stderr.log"));
+        let stderr_file = fs::File::create(&stderr_path)
+            .map_err(|e| format!("Could not create PDF renderer log: {e}"))?;
+        command.stderr(Stdio::from(stderr_file));
+        let mut child = command.spawn().map_err(|e| {
             format!(
                 "Could not start PDF page renderer {}: {e}",
                 renderer.path.display()
             )
         })?;
-        if !output.status.success() {
+        let status = loop {
+            if let Err(error) = ensure_not_cancelled(job_id, cancellations) {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
+            }
+            match child.try_wait().map_err(|e| e.to_string())? {
+                Some(status) => break status,
+                None => thread::sleep(Duration::from_millis(50)),
+            }
+        };
+        let stderr = fs::read_to_string(&stderr_path).unwrap_or_default();
+        if !status.success() {
             return Err(format!(
                 "PDF page renderer failed for page {} with exit code {}.\n{}",
                 page.page,
-                output
-                    .status
+                status
                     .code()
                     .map(|code| code.to_string())
                     .unwrap_or_else(|| "unknown".to_string()),
-                String::from_utf8_lossy(&output.stderr).trim()
+                stderr.trim()
             ));
         }
 
         let image_path = output_prefix.with_extension("png");
-        let image_bytes = fs::read(&image_path)
-            .map_err(|e| format!("Could not read rendered PDF page {}: {e}", page.page))?;
-        store.save_book_image_bytes(book_id, &page.image_name, &image_bytes)?;
+        if !image_path.is_file() {
+            return Err(format!("Could not read rendered PDF page {}", page.page));
+        }
+        rendered_pages.push((&page.image_name, image_path));
     }
 
+    ensure_not_cancelled(job_id, cancellations)?;
+    for (image_name, image_path) in rendered_pages {
+        ensure_not_cancelled(job_id, cancellations)?;
+        let image_bytes = fs::read(&image_path)
+            .map_err(|e| format!("Could not read rendered PDF page {image_name}: {e}"))?;
+        store
+            .save_book_import_image_bytes(book_id, image_name, &image_bytes)
+            .map_err(|e| format!("Could not save PDF page background: {e}"))?;
+    }
+    ensure_not_cancelled(job_id, cancellations)?;
+
+    Ok(())
+}
+
+fn ensure_not_cancelled(
+    job_id: &str,
+    cancellations: &Mutex<HashSet<String>>,
+) -> Result<(), String> {
+    if cancellations
+        .lock()
+        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
+        .contains(job_id)
+    {
+        return Err("PaddleOCR import cancelled".to_string());
+    }
     Ok(())
 }
 
@@ -295,13 +437,13 @@ impl PdfToPpm {
 
 fn find_pdftoppm() -> Result<PdfToPpm, String> {
     let mut candidates = Vec::new();
-    if let Ok(path) = std::env::var("WORDHUNTER_PDFTOPPM") {
-        if !path.trim().is_empty() {
-            candidates.push(PdfToPpm {
-                path: PathBuf::from(path),
-                host_libraries: false,
-            });
-        }
+    if let Ok(path) = std::env::var("WORDHUNTER_PDFTOPPM")
+        && !path.trim().is_empty()
+    {
+        candidates.push(PdfToPpm {
+            path: PathBuf::from(path),
+            host_libraries: false,
+        });
     }
     candidates.extend([
         PdfToPpm {
@@ -359,10 +501,10 @@ fn host_library_path() -> String {
     .into_iter()
     .map(str::to_string)
     .collect::<Vec<_>>();
-    if let Ok(existing) = std::env::var("LD_LIBRARY_PATH") {
-        if !existing.trim().is_empty() {
-            paths.push(existing);
-        }
+    if let Ok(existing) = std::env::var("LD_LIBRARY_PATH")
+        && !existing.trim().is_empty()
+    {
+        paths.push(existing);
     }
     paths.join(":")
 }
@@ -1048,15 +1190,104 @@ pub fn gpu_status(app_handle: &AppHandle) -> Value {
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
+    use std::{collections::HashSet, sync::Mutex};
+
+    use base64::Engine;
+    use serde_json::json;
+
     use super::{
-        Bounds, OverlayWord, merge_words_using_plain_text, runner, split_words_using_plain_text,
+        Bounds, OverlayWord, cancel, decode_payload, decode_payload_with_limit,
+        extract_text_layer_overlay_pages, merge_words_using_plain_text, requested_max_pages,
+        runner, runner_image_name, runner_pages, split_words_using_plain_text,
         text_gap_is_word_break,
     };
 
     #[test]
+    fn pdf_payload_rejects_invalid_base64_and_enforces_decoded_limits() {
+        assert!(decode_payload("%%%not-base64%%%").is_err());
+        assert_eq!(
+            decode_payload("data:application/pdf;base64,SGk=").unwrap(),
+            b"Hi"
+        );
+
+        let encoded_over_limit = base64::engine::general_purpose::STANDARD.encode([0u8; 4]);
+        assert!(decode_payload_with_limit(&encoded_over_limit, 3).is_err());
+        assert!(decode_payload_with_limit("AAAAAAAAA", 3).is_err());
+    }
+
+    #[test]
+    fn pdf_page_limit_is_clamped() {
+        assert_eq!(requested_max_pages(&json!({})), 2_000);
+        assert_eq!(requested_max_pages(&json!({ "max_pages": 0 })), 2_000);
+        assert_eq!(requested_max_pages(&json!({ "max_pages": 12 })), 12);
+        assert_eq!(requested_max_pages(&json!({ "max_pages": 20_000 })), 2_000);
+    }
+
+    #[test]
+    fn cancel_requires_a_nonempty_job_id() {
+        let cancellations = Mutex::new(HashSet::new());
+
+        assert_eq!(
+            cancel(json!({}), &cancellations).unwrap_err(),
+            "job_id required"
+        );
+        assert_eq!(
+            cancel(json!({ "job_id": "  " }), &cancellations).unwrap_err(),
+            "job_id required"
+        );
+        cancel(json!({ "job_id": "fixture-job" }), &cancellations).unwrap();
+        assert!(cancellations.lock().unwrap().contains("fixture-job"));
+    }
+
+    #[test]
+    fn runner_result_requires_nonempty_pages_and_image_names() {
+        assert_eq!(
+            runner_pages(&json!({})).unwrap_err(),
+            "PaddleOCR runner did not return a pages array"
+        );
+        assert_eq!(
+            runner_pages(&json!({ "pages": [] })).unwrap_err(),
+            "PaddleOCR did not return any pages"
+        );
+
+        let pages = runner_pages(&json!({
+            "pages": [{ "imageName": "page-1.png", "text": "Hello" }]
+        }))
+        .unwrap();
+        assert_eq!(runner_image_name(&pages[0]).unwrap(), "page-1.png");
+        assert_eq!(
+            runner_image_name(&json!({ "imageName": "" })).unwrap_err(),
+            "PaddleOCR page is missing imageName"
+        );
+    }
+
+    #[test]
+    fn extracts_a_minimal_pdf_text_layer_without_ocr_models() {
+        let pdf = minimal_text_pdf("Fallback text");
+
+        let (pages, page_count, truncated) =
+            extract_text_layer_overlay_pages(&pdf, 0).expect("text PDF should parse");
+
+        assert_eq!(page_count, 1);
+        assert!(!truncated);
+        assert_eq!(pages.len(), 1);
+        assert_eq!(pages[0].image_name, "pdf-page-0001.png");
+        assert!(
+            pages[0].text.contains("Fallback text"),
+            "{:?}",
+            pages[0].text
+        );
+    }
+
+    #[test]
     fn gpu_status_uses_safe_cpu_states() {
         assert_eq!(runner::gpu_status_value("ready")["status"], "ready");
+        #[cfg(windows)]
+        assert_eq!(runner::gpu_status_value("ready")["provider"], "directml");
+        #[cfg(target_os = "linux")]
+        assert_eq!(runner::gpu_status_value("ready")["provider"], "webgpu");
         assert_eq!(
             runner::gpu_status_value("unavailable")["status"],
             "unavailable"
@@ -1065,8 +1296,10 @@ mod tests {
     }
 
     #[test]
-    fn linux_gpu_status_does_not_require_ocr_runner() {
-        #[cfg(not(windows))]
+    fn supported_desktop_gpu_status_requires_the_packaged_runner() {
+        #[cfg(any(windows, target_os = "linux"))]
+        assert!(runner::platform_gpu_status_without_runner().is_none());
+        #[cfg(not(any(windows, target_os = "linux")))]
         assert_eq!(
             runner::platform_gpu_status_without_runner().unwrap()["status"],
             "unavailable"
@@ -1187,20 +1420,57 @@ mod tests {
             confidence: 1.0,
         }
     }
+
+    fn minimal_text_pdf(text: &str) -> Vec<u8> {
+        assert!(text.is_ascii() && !text.chars().any(|ch| matches!(ch, '(' | ')' | '\\')));
+        let content = format!("BT /F1 18 Tf 72 720 Td ({text}) Tj ET");
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>".to_string(),
+            format!(
+                "<< /Length {} >>\nstream\n{}\nendstream",
+                content.len(),
+                content
+            ),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+        ];
+        let mut pdf = b"%PDF-1.4\n".to_vec();
+        let mut offsets = Vec::with_capacity(objects.len());
+        for (index, object) in objects.iter().enumerate() {
+            offsets.push(pdf.len());
+            pdf.extend_from_slice(format!("{} 0 obj\n{}\nendobj\n", index + 1, object).as_bytes());
+        }
+        let xref_offset = pdf.len();
+        let mut trailer = format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1);
+        for offset in offsets {
+            trailer.push_str(&format!("{offset:010} 00000 n \n"));
+        }
+        trailer.push_str(&format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF\n",
+            objects.len() + 1
+        ));
+        pdf.extend_from_slice(trailer.as_bytes());
+        pdf
+    }
 }
 
 fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {
+    decode_payload_with_limit(data_url, MAX_PDF_BYTES)
+}
+
+fn decode_payload_with_limit(data_url: &str, max_pdf_bytes: usize) -> Result<Vec<u8>, String> {
     let encoded = data_url
         .split_once(',')
         .map(|(_, data)| data)
         .unwrap_or(data_url);
-    if encoded.len() > MAX_PDF_BYTES.saturating_mul(4) / 3 + 4 {
+    if encoded.len() > max_pdf_bytes.saturating_mul(4) / 3 + 4 {
         return Err("PDF is too large (max 1 GB)".to_string());
     }
     let data = base64::engine::general_purpose::STANDARD
         .decode(encoded)
         .map_err(|e| e.to_string())?;
-    if data.len() > MAX_PDF_BYTES {
+    if data.len() > max_pdf_bytes {
         return Err("PDF is too large (max 1 GB)".to_string());
     }
     Ok(data)
@@ -1224,10 +1494,41 @@ fn requested_lang(payload: &Value) -> String {
     }
 }
 
+fn requested_max_pages(payload: &Value) -> u64 {
+    let requested = payload
+        .get("max_pages")
+        .and_then(Value::as_u64)
+        .unwrap_or(MAX_PAGES);
+    if requested == 0 {
+        MAX_PAGES
+    } else {
+        requested.min(MAX_PAGES)
+    }
+}
+
 fn read_runner_output(path: &Path) -> Result<Value, String> {
     let raw = fs::read_to_string(path)
         .map_err(|e| format!("PaddleOCR runner did not write OCR JSON: {e}"))?;
     serde_json::from_str(&raw).map_err(|e| format!("PaddleOCR runner wrote invalid JSON: {e}"))
+}
+
+fn runner_pages(output: &Value) -> Result<Vec<Value>, String> {
+    let pages = output
+        .get("pages")
+        .and_then(Value::as_array)
+        .cloned()
+        .ok_or_else(|| "PaddleOCR runner did not return a pages array".to_string())?;
+    if pages.is_empty() {
+        return Err("PaddleOCR did not return any pages".to_string());
+    }
+    Ok(pages)
+}
+
+fn runner_image_name(page: &Value) -> Result<&str, String> {
+    page.get("imageName")
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "PaddleOCR page is missing imageName".to_string())
 }
 
 fn extract_page_text(page: &Value) -> String {

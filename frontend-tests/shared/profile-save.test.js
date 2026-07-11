@@ -47,7 +47,28 @@ describe("profile save payload", () => {
     assert.deepEqual(payload.vocab.fr.vocab, { maison: { status: "known" } });
   });
 
-  it("writes raw state with an explicit schema version while keeping the legacy storage key", () => {
+  it("removes the duplicate starter text created by the old Gutenberg fallback", () => {
+    const raw = createDefaultState();
+    raw.preferences.learningLanguage = "ru";
+    raw.profiles.ru = {
+      vocab: {},
+      customTexts: [
+        { id: "gutenberg-full-undefined", title: "Duplicate full text" },
+        { id: "ru-custom-kept", title: "Keep me" }
+      ],
+      userBooks: [],
+      hiddenBuiltInBooks: [],
+      archivedBookIds: [],
+      preferences: {}
+    };
+
+    const normalized = normalizeState(raw);
+
+    assert.deepEqual(normalized.customTexts.map((text) => text.id), ["ru-custom-kept"]);
+    assert.deepEqual(normalized.profiles.ru.customTexts.map((text) => text.id), ["ru-custom-kept"]);
+  });
+
+  it("writes raw state with an explicit schema version to the current storage key", () => {
     let storedKey = "";
     let storedValue = "";
     globalThis.localStorage = {
@@ -213,6 +234,7 @@ describe("profile save payload", () => {
     globalThis.window = {
       WordHunterAndroid: {},
       __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
         dataDir: "/data/user/0/com.wordhunter.pocket/WordHunter",
         syncDir: "Google Drive",
         syncConflictCount: 3,
@@ -224,9 +246,8 @@ describe("profile save payload", () => {
           corruptConflictCount: 0,
           pendingSaveJournal: true
         },
-        migrationStatus: { status: "complete", recordsActive: true },
         prefs: { learningLanguage: "de" },
-        vocab: {},
+        vocab: { de: { vocab: {} } },
         texts: []
       }
     };
@@ -247,30 +268,13 @@ describe("profile save payload", () => {
     assert.equal(restored.recoveryStatus.skippedRecords[0].path, "records/v1/vocab/bad.json");
     assert.equal(restored.recoveryStatus.pendingSaveJournal, true);
     assert.equal(restored.recoveryStatus.pendingWipeJournal, false);
-    assert.equal(restored.migrationStatus.status, "complete");
-  });
-
-  it("keeps legacy backend snapshots in the selected learning language", () => {
-    globalThis.window = {
-      __qtBridge: true,
-      __bridgeState: {
-        prefs: { learningLanguage: "fr" },
-        vocab: { maison: { status: "known" } },
-        texts: [{ id: "legacy-book", title: "Maison", text: "texte" }]
-      }
-    };
-
-    const restored = loadState();
-
-    assert.equal(restored.profiles.fr.customTexts[0].id, "legacy-book");
-    assert.equal(restored.profiles.de, undefined);
-    assert.equal(restored.vocab.maison.status, "known");
   });
 
   it("keeps three-letter language prefixes when restoring backend texts", () => {
     globalThis.window = {
       __qtBridge: true,
       __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
         prefs: { learningLanguage: "grc" },
         vocab: { grc: { vocab: {} } },
         texts: [{ id: "grc-custom-iliad", title: "Iliad", text: "μῆνιν ἄειδε" }]
@@ -283,34 +287,56 @@ describe("profile save payload", () => {
     assert.equal(restored.profiles.grc.customTexts[0].text, "μῆνιν ἄειδε");
   });
 
-  it("normalizes historical profileless localStorage state into the active profile", () => {
-    const restored = normalizeState({
-      ...createDefaultState(),
-      schemaVersion: 1,
-      preferences: {
-        learningLanguage: "fr",
-        dictionaryUrl: "https://dict.example/{{word}}",
-        lastReadTextId: "legacy-book"
+  it("uses defaults when the localStorage cache is absent", () => {
+    globalThis.window = { __qtBridge: false };
+    globalThis.localStorage = {
+      getItem(key) {
+        assert.equal(key, STORAGE_KEY);
+        return null;
       },
-      filters: { vocabStatus: "not_ignored" },
-      vocab: {
-        maison: { word: "maison", translation: "house", status: "known" }
-      },
-      customTexts: [{ id: "legacy-book", title: "Maison", text: "texte" }],
-      userBooks: [{ id: "fr-user-1", title: "Old Title : $b Subtitle" }],
-      hiddenBuiltInBooks: ["fr-hidden"],
-      archivedBookIds: ["legacy-book"],
-      profiles: null
-    });
+      setItem() {},
+      removeItem() {}
+    };
+
+    const restored = loadState();
 
     assert.equal(restored.schemaVersion, STATE_SCHEMA_VERSION);
-    assert.equal(restored.preferences.learningLanguage, "fr");
-    assert.equal(restored.preferences.lastReadTextIds.fr, "legacy-book");
-    assert.deepEqual(restored.filters.vocabStatuses, ["new", "learning", "known"]);
-    assert.equal(restored.profiles.fr.vocab.maison.translation, "house");
-    assert.equal(restored.profiles.fr.customTexts[0].id, "legacy-book");
-    assert.equal(restored.profiles.fr.userBooks[0].id, "fr-user-1");
-    assert.deepEqual(restored.hiddenBuiltInBooks, ["fr-hidden"]);
+    assert.deepEqual(restored.vocab, {});
+  });
+
+  it("rejects future localStorage caches instead of downgrading them", () => {
+    globalThis.window = { __qtBridge: false };
+    globalThis.localStorage = {
+      getItem(key) {
+        assert.equal(key, STORAGE_KEY);
+        return JSON.stringify({
+          schemaVersion: STATE_SCHEMA_VERSION + 1,
+          preferences: { learningLanguage: "de" },
+          profiles: { de: { vocab: { future: { status: "known" } } } }
+        });
+      },
+      setItem() {},
+      removeItem() {}
+    };
+
+    const restored = loadState();
+
+    assert.equal(restored.schemaVersion, STATE_SCHEMA_VERSION);
+    assert.equal(restored.vocab.future, undefined);
+  });
+
+  it("rejects future bridge snapshots instead of overwriting current records", () => {
+    globalThis.window = {
+      __qtBridge: true,
+      __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION + 1,
+        prefs: { learningLanguage: "de" },
+        vocab: { de: { vocab: { future: { status: "known" } } } },
+        texts: []
+      }
+    };
+
+    assert.throws(() => loadState(), /schema version/);
   });
 
   it("prefers a valid bridge snapshot over stale localStorage cache", () => {

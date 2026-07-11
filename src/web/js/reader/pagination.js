@@ -3,8 +3,8 @@
  * The render pass caches its total; before that, navigation defers clamping to the render pass
  * instead of tokenizing a second time.
  */
-import { state, saveState } from "../state.js";
-import { escapeHtml } from "../utils.js";
+import { state, saveUiState } from "../state.js";
+import { escapeAttribute, escapeHtml } from "../utils.js";
 import { renderReader } from "./renderer.js";
 import { t } from "../i18n.js";
 
@@ -66,7 +66,7 @@ function applyReaderPage(next) {
   state.readerPage = next;
   if (!state.readerPages) state.readerPages = {};
   if (state.currentTextId) state.readerPages[state.currentTextId] = next;
-  saveState();
+  saveUiState();
   renderReader();
 }
 
@@ -93,7 +93,7 @@ export function goToReaderPage(page) {
 export function paginationHtml(textId, currentPage, totalPages, tFn) {
   return `
     <div class="pagination-controls">
-      <button class="secondary-button" id="btn-prev-page" ${currentPage <= 1 ? "disabled" : ""} data-i18n-attr="title=reader.prevPageTitle">
+      <button class="secondary-button" id="btn-prev-page" ${currentPage <= 1 ? "disabled" : ""} title="${escapeAttribute(tFn("reader.prevPageTitle"))}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         <kbd style="font-size:0.6rem; padding: 1px 3px; margin-left: 4px;">${escapeHtml(tFn("reader.keyPageUp"))}</kbd>
       </button>
@@ -101,7 +101,7 @@ export function paginationHtml(textId, currentPage, totalPages, tFn) {
         <input type="number" id="page-jump-input" class="page-jump-input" min="1" max="${totalPages}" value="${currentPage}" aria-label="${tFn("reader.pageJumpLabel")}">
         <span class="page-jump-total">/&thinsp;${totalPages}</span>
       </span>
-      <button class="secondary-button" id="btn-next-page" ${currentPage >= totalPages ? "disabled" : ""} data-i18n-attr="title=reader.nextPageTitle">
+      <button class="secondary-button" id="btn-next-page" ${currentPage >= totalPages ? "disabled" : ""} title="${escapeAttribute(tFn("reader.nextPageTitle"))}">
         <kbd style="font-size:0.6rem; padding: 1px 3px; margin-right: 4px;">${escapeHtml(tFn("reader.keyPageDown"))}</kbd>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </button>

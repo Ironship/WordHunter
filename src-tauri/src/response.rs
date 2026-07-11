@@ -1,5 +1,6 @@
 use serde_json::{Value, json};
 use std::collections::HashMap;
+use std::io::Read;
 use tiny_http::{Header, Request, Response, StatusCode};
 
 /// Split a URL into path and query string components.
@@ -28,20 +29,23 @@ pub fn valid_token(request: &Request, token: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Read the entire request body as raw bytes.
-pub fn read_body(request: &mut Request) -> Result<Vec<u8>, String> {
+/// Read at most `max_bytes` from a request body, rejecting oversized payloads
+/// before JSON parsing duplicates their memory.
+pub fn read_body_limited(request: &mut Request, max_bytes: usize) -> Result<Vec<u8>, String> {
     let mut body = Vec::new();
     request
         .as_reader()
+        .take((max_bytes as u64).saturating_add(1))
         .read_to_end(&mut body)
         .map_err(|e| e.to_string())?;
+    if body.len() > max_bytes {
+        return Err(format!("request body is too large (max {max_bytes} bytes)"));
+    }
     Ok(body)
 }
 
-/// Read the request body and parse it as JSON.
-/// Returns an empty object `{}` when the body is empty.
-pub fn read_json(request: &mut Request) -> Result<Value, String> {
-    let body = read_body(request)?;
+pub fn read_json_limited(request: &mut Request, max_bytes: usize) -> Result<Value, String> {
+    let body = read_body_limited(request, max_bytes)?;
     if body.is_empty() {
         return Ok(json!({}));
     }
@@ -71,7 +75,7 @@ pub fn error_response(request: Request, code: u16, message: &str) -> Result<(), 
 }
 
 /// Core response helper — send raw bytes with status code, content type,
-/// CORS headers, and optional long-lived cache control.
+/// and optional long-lived cache control.
 pub fn respond(
     request: Request,
     code: u16,
@@ -85,10 +89,6 @@ pub fn respond(
             .map_err(|e| format!("bad Content-Type header: {e:?}"))?,
     );
     response.add_header(
-        Header::from_bytes("Access-Control-Allow-Origin", "*")
-            .map_err(|e| format!("bad Access-Control-Allow-Origin header: {e:?}"))?,
-    );
-    response.add_header(
         Header::from_bytes(
             "Cache-Control",
             if cache {
@@ -99,5 +99,18 @@ pub fn respond(
         )
         .map_err(|e| format!("bad Cache-Control header: {e:?}"))?,
     );
+    for (name, value) in [
+        ("X-Content-Type-Options", "nosniff"),
+        ("Referrer-Policy", "no-referrer"),
+        ("X-Frame-Options", "DENY"),
+        (
+            "Content-Security-Policy",
+            "base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
+        ),
+    ] {
+        response.add_header(
+            Header::from_bytes(name, value).map_err(|e| format!("bad {name} header: {e:?}"))?,
+        );
+    }
     request.respond(response).map_err(|e| e.to_string())
 }

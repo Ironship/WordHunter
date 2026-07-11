@@ -23,6 +23,8 @@ finish-args:
 
 modules:
   - name: word-hunter
+    only-arches:
+      - x86_64
     buildsystem: simple
     build-options:
       append-path: /usr/lib/sdk/rust-stable/bin
@@ -36,9 +38,14 @@ modules:
       - cargo --offline build --release --manifest-path src-tauri/ocr-runner/Cargo.toml
       - install -Dm755 src-tauri/target/release/word-hunter-rustified /app/bin/word-hunter-rustified
       - install -Dm755 src-tauri/ocr-runner/target/release/wordhunter-paddleocr /app/bin/ocr-runtime/bin/wordhunter-paddleocr
+      - install -Dm755 src-tauri/target/flatpak-onnxruntime/lib/libwebgpu_dawn.so /app/lib/libwebgpu_dawn.so
       - install -Dm755 src-tauri/target/flatpak-pdfium/libpdfium.so /app/bin/ocr-runtime/bin/libpdfium.so
       - install -Dm644 src-tauri/target/flatpak-ocr-models/*.onnx -t /app/bin/ocr-runtime/models/
-      - install -Dm755 src-tauri/target/flatpak-rclone/rclone /app/bin/rclone
+      - install -Dm755 src-tauri/target/flatpak-syncthing/syncthing /app/bin/syncthing
+      - install -Dm644 src-tauri/target/flatpak-syncthing/LICENSE.txt /app/share/doc/word-hunter/SYNCTHING-LICENSE.txt
+      - install -Dm644 src-tauri/target/flatpak-syncthing/AUTHORS.txt /app/share/doc/word-hunter/SYNCTHING-AUTHORS.txt
+      - install -Dm644 LICENSE /app/share/licenses/com.wordhunter.app/LICENSE
+      - install -Dm644 THIRD-PARTY-NOTICES.md THIRD-PARTY-LICENSES.html OCR-THIRD-PARTY-LICENSES.html -t /app/share/doc/word-hunter/
       - install -Dm644 flatpak/com.wordhunter.app.desktop /app/share/applications/com.wordhunter.app.desktop
       - install -Dm644 flatpak/com.wordhunter.app.metainfo.xml /app/share/metainfo/com.wordhunter.app.metainfo.xml
       - install -Dm644 src/assets/icon-16.png /app/share/icons/hicolor/16x16/apps/com.wordhunter.app.png
@@ -53,6 +60,7 @@ modules:
         skip:
           - .flatpak-builder
           - .git
+          - .worktree
           - .agents
           - .codex
           - .codex-remote-attachments
@@ -70,13 +78,10 @@ modules:
           - TODO
 
       - flatpak/cargo-sources.json
-      - type: patch
-        path: flatpak/patches/sentencepiece-sys-cstdint.patch
-
       - type: archive
         archive-type: tar-gzip
-        url: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.22.0/x86_64-unknown-linux-gnu.tgz
-        sha256: ed1716de95974bf47ab0223ca33734a0b5a5d09a181225d0e8ed62d070aea893
+        url: https://cdn.pyke.io/0/pyke:ort-rs/ms@1.22.0/x86_64-unknown-linux-gnu+wgpu.tgz
+        sha256: d766b62a8419124d242bb02a0ab1d2407b86c39011fec6214d83d5ac304d5593
         dest: src-tauri/target/flatpak-onnxruntime
       - type: archive
         archive-type: tar-gzip
@@ -89,10 +94,11 @@ modules:
         sha256: 2fa4055b10dc4e9c1433444fe29f8d5acca2fccc0a0e86b3313caa5cc9e56b7a
         dest: src-tauri/target/flatpak-ocr-models
       - type: archive
-        archive-type: zip
-        url: https://github.com/rclone/rclone/releases/download/v1.74.3/rclone-v1.74.3-linux-amd64.zip
-        sha256: dbee7ccd7a5d617e4ed4cd4555c16669b511abfe8d31164f61be35ac9e999bd2
-        dest: src-tauri/target/flatpak-rclone
+        archive-type: tar-gzip
+        url: https://github.com/syncthing/syncthing/releases/download/v2.1.0/syncthing-linux-amd64-v2.1.0.tar.gz
+        sha256: 624c2f3303c9ed7d6f27a98ad9767ab95a7b5e453c3c5e17ce8a60f166e47011
+        dest: src-tauri/target/flatpak-syncthing
+        strip-components: 1
 
       - type: archive
         url: https://github.com/OpenNMT/CTranslate2/archive/refs/tags/v4.6.0.tar.gz

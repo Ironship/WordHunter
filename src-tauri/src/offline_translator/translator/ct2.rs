@@ -199,12 +199,14 @@ fn native_ct2_translate_direct(input: &Value) -> Result<String, String> {
 /// Load a CT2 model and tokenizer from disk, then run translation.
 fn translate_with_ct2_model(model_dir: &Path, text: &str) -> Result<String, String> {
     let ctranslate_model = model_dir.join("model");
-    let mut options = TranslationOptions::default();
-    options.max_batch_size = 1;
-    options.batch_type = BatchType::Tokens;
-    options.beam_size = 4;
-    options.length_penalty = 0.2;
-    options.replace_unknowns = true;
+    let options = TranslationOptions {
+        max_batch_size: 1,
+        batch_type: BatchType::Tokens,
+        beam_size: 4,
+        length_penalty: 0.2,
+        replace_unknowns: true,
+        ..TranslationOptions::default()
+    };
 
     let config = TranslatorConfig {
         device: Device::Cpu,

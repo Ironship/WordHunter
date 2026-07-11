@@ -91,10 +91,10 @@ fn allow_wayland_titlebar_button_events(gtk_window: &gtk::ApplicationWindow) {
 fn relax_event_box_overlays(widget: &gtk::Widget) {
     use gtk::prelude::*;
 
-    if let Ok(event_box) = widget.clone().downcast::<gtk::EventBox>() {
-        if event_box.is_above_child() {
-            event_box.set_above_child(false);
-        }
+    if let Ok(event_box) = widget.clone().downcast::<gtk::EventBox>()
+        && event_box.is_above_child()
+    {
+        event_box.set_above_child(false);
     }
 
     if let Ok(container) = widget.clone().downcast::<gtk::Container>() {
@@ -136,5 +136,5 @@ where
 }
 
 fn boxed_string(err: String) -> Box<dyn std::error::Error> {
-    Box::new(std::io::Error::new(std::io::ErrorKind::Other, err))
+    Box::new(std::io::Error::other(err))
 }

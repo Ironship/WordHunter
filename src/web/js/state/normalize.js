@@ -2,6 +2,7 @@ import { LEARNING_LANGUAGES, STATE_SCHEMA_VERSION, STATUS_ORDER, STORAGE_KEY, UI
 import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
 import { normalizeLearningColors } from "../reader-colors.js";
+import { DEFAULT_THEME, normalizeTheme } from "../theme.js";
 
 function cleanSavedCatalogTitles(items) {
   if (!Array.isArray(items)) return;
@@ -24,6 +25,21 @@ function objectArray(value) {
 
 function stringArray(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+}
+
+export class UnsupportedStateSchemaError extends Error {
+  constructor(source, version) {
+    super(`${source} schema version ${version || "missing"} is not supported`);
+    this.name = "UnsupportedStateSchemaError";
+  }
+}
+
+export function assertSupportedStateSchemaVersion(value, source = "state payload") {
+  if (!isRecord(value)) throw new UnsupportedStateSchemaError(source, "missing");
+  const version = Number(value.schemaVersion);
+  if (version !== STATE_SCHEMA_VERSION) {
+    throw new UnsupportedStateSchemaError(source, value.schemaVersion);
+  }
 }
 
 function normalizeSyncConflicts(value) {
@@ -84,14 +100,15 @@ function createEmptyProfile(lang) {
     userBooks: [],
     hiddenBuiltInBooks: [],
     archivedBookIds: [],
-    preferences: { dictionaryUrl: getDefaultDictionaryUrl(lang), dictionaryMode: "internal" }
+    preferences: { dictionaryUrl: getDefaultDictionaryUrl(lang), dictionaryMode: "internal", theme: DEFAULT_THEME }
   };
 }
 
 function normalizeProfile(rawProfile, lang) {
   const profile = isRecord(rawProfile) ? rawProfile : createEmptyProfile(lang);
   profile.vocab = normalizeVocabEntries(profile.vocab);
-  profile.customTexts = objectArray(profile.customTexts);
+  profile.customTexts = objectArray(profile.customTexts)
+    .filter((text) => text.id !== "gutenberg-full-undefined");
   profile.userBooks = objectArray(profile.userBooks);
   cleanSavedCatalogTitles(profile.userBooks);
   profile.hiddenBuiltInBooks = stringArray(profile.hiddenBuiltInBooks);
@@ -121,20 +138,24 @@ export function normalizeState(nextState) {
   nextState.syncDirectory = typeof nextState.syncDirectory === "string" ? nextState.syncDirectory : "";
   nextState.syncHealth = isRecord(nextState.syncHealth) ? nextState.syncHealth : null;
   nextState.cloudSyncStatus = isRecord(nextState.cloudSyncStatus) ? nextState.cloudSyncStatus : null;
+  nextState.syncthingStatus = isRecord(nextState.syncthingStatus) ? nextState.syncthingStatus : null;
   nextState.syncConflictCount = Math.max(0, Math.trunc(Number(nextState.syncConflictCount) || 0));
   nextState.syncConflicts = normalizeSyncConflicts(nextState.syncConflicts);
   nextState.recoveryStatus = normalizeRecoveryStatus(nextState.recoveryStatus);
-  nextState.migrationStatus = isRecord(nextState.migrationStatus) ? nextState.migrationStatus : null;
   const rawFilters = isRecord(nextState.filters) ? nextState.filters : {};
-  const hasVocabStatuses = Object.hasOwn(rawFilters, "vocabStatuses");
   nextState.filters = { ...defaults.filters, ...rawFilters };
-  nextState.filters.vocabStatuses = normalizeVocabStatusFilters(
-    hasVocabStatuses ? nextState.filters.vocabStatuses : undefined,
-    nextState.filters.vocabStatus
-  );
+  nextState.filters.vocabStatuses = normalizeVocabStatusFilters(nextState.filters.vocabStatuses);
+  for (const key of Object.keys(nextState.filters)) {
+    if (!Object.hasOwn(defaults.filters, key)) delete nextState.filters[key];
+  }
   nextState.discover = { ...defaults.discover, ...(nextState.discover || {}) };
-  delete nextState.discover.language;
-  nextState.preferences = { ...defaults.preferences, ...(nextState.preferences || {}) };
+  for (const key of Object.keys(nextState.discover)) {
+    if (!Object.hasOwn(defaults.discover, key)) delete nextState.discover[key];
+  }
+  const rawPreferences = isRecord(nextState.preferences) ? nextState.preferences : {};
+  nextState.preferences = { ...defaults.preferences, ...rawPreferences };
+  nextState.preferences.theme = normalizeTheme(rawPreferences.theme, rawPreferences.darkMode);
+  delete nextState.preferences.darkMode;
   if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "google";
   nextState.preferences.languageOnboardingDone = nextState.preferences.languageOnboardingDone === true;
   nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
@@ -143,12 +164,19 @@ export function normalizeState(nextState) {
   nextState.preferences.readerWordPanelVisible = nextState.preferences.readerWordPanelVisible !== false;
   nextState.preferences.touchControls = nextState.preferences.touchControls === true;
   nextState.preferences.inTextReview = nextState.preferences.inTextReview === true;
-  nextState.preferences.ttsWordHighlight = nextState.preferences.ttsWordHighlight === true;
+  nextState.preferences.ttsWordHighlight = rawPreferences.ttsWordHighlightDefaultVersion === 1
+    && typeof rawPreferences.ttsWordHighlight === "boolean"
+    ? rawPreferences.ttsWordHighlight
+    : true;
+  nextState.preferences.ttsWordHighlightDefaultVersion = 1;
+  nextState.preferences.statusSoundsEnabled = nextState.preferences.statusSoundsEnabled !== false;
+  nextState.preferences.statusSoundVolume = clamp(Number(nextState.preferences.statusSoundVolume) || 0, 0, 1);
   nextState.preferences.dynamicLearningColors = nextState.preferences.dynamicLearningColors === true;
   nextState.preferences.learningColors = normalizeLearningColors(nextState.preferences.learningColors);
   nextState.preferences.lastReadTextIds = nextState.preferences.lastReadTextIds && typeof nextState.preferences.lastReadTextIds === "object" && !Array.isArray(nextState.preferences.lastReadTextIds)
     ? nextState.preferences.lastReadTextIds : {};
-  nextState.readerFontSize = clamp(Number(nextState.readerFontSize) || 18, 14, 28);
+  nextState.readerFontSize = clamp(Number(rawPreferences.readerFontSize ?? nextState.readerFontSize) || 18, 14, 28);
+  nextState.preferences.readerFontSize = nextState.readerFontSize;
   nextState.readerPdfZoom = clamp(Number(nextState.readerPdfZoom) || 1, 0.75, 3);
   nextState.readerPdfViewMode = nextState.readerPdfViewMode === "text" ? "text" : "overlay";
   nextState.preferences.uiScale = clamp(Math.round(Number(nextState.preferences.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
@@ -158,31 +186,16 @@ export function normalizeState(nextState) {
   nextState.readerScrollsPerPage = nextState.readerScrollsPerPage && typeof nextState.readerScrollsPerPage === "object" && !Array.isArray(nextState.readerScrollsPerPage)
     ? nextState.readerScrollsPerPage : {};
   nextState.readerSelectionRange = null;
+  nextState.selectedWordIndex = Number.isInteger(nextState.selectedWordIndex) && nextState.selectedWordIndex >= 0
+    ? nextState.selectedWordIndex
+    : null;
 
   if (!nextState.preferences.learningLanguage) nextState.preferences.learningLanguage = "de";
-  if (nextState.currentTextId && !nextState.preferences.lastReadTextIds[nextState.preferences.learningLanguage]) {
-    nextState.preferences.lastReadTextIds[nextState.preferences.learningLanguage] = nextState.currentTextId;
-  }
-  // Singular key is a migration path for existing installations.
-  if (nextState.preferences.lastReadTextId && !nextState.preferences.lastReadTextIds[nextState.preferences.learningLanguage]) {
-    nextState.preferences.lastReadTextIds[nextState.preferences.learningLanguage] = nextState.preferences.lastReadTextId;
-  }
 
-  const legacyLang = nextState.preferences.learningLanguage || "de";
   if (!isRecord(nextState.profiles)) {
-    nextState.profiles = {
-      [legacyLang]: {
-        vocab: nextState.vocab,
-        customTexts: nextState.customTexts,
-        userBooks: nextState.userBooks,
-        hiddenBuiltInBooks: nextState.hiddenBuiltInBooks,
-        archivedBookIds: nextState.archivedBookIds,
-        preferences: { dictionaryUrl: nextState.preferences.dictionaryUrl || getDefaultDictionaryUrl(legacyLang) }
-      }
-    };
+    nextState.profiles = defaults.profiles;
   }
   nextState.profiles = normalizeProfiles(nextState.profiles);
-
   const lang = nextState.preferences.learningLanguage;
   if (!nextState.profiles[lang]) {
     nextState.profiles[lang] = createEmptyProfile(lang);
@@ -215,14 +228,11 @@ export function loadState() {
   if ((window.__qtBridge || window.WordHunterAndroid) && window.__bridgeState) {
     try {
       const snap = window.__bridgeState;
+      assertSupportedStateSchemaVersion(snap, "bridge snapshot");
       const prefs = isRecord(snap.prefs) ? { ...snap.prefs } : {};
-      const userBooks = prefs.__userBooks || [];
       const discover = isRecord(prefs.__discover) ? prefs.__discover : fallback.discover;
-      delete prefs.__userBooks;
       delete prefs.__discover;
       const rawVocab = isRecord(snap.vocab) ? snap.vocab : {};
-      const hasProfiles = snap.schemaVersion === STATE_SCHEMA_VERSION
-        || Object.values(rawVocab).some((value) => isRecord(value) && value.vocab !== undefined);
       const merged = {
         ...fallback,
         schemaVersion: snap.schemaVersion || fallback.schemaVersion,
@@ -230,23 +240,23 @@ export function loadState() {
         syncDirectory: typeof snap.syncDir === "string" ? snap.syncDir : "",
         syncHealth: isRecord(snap.syncHealth) ? snap.syncHealth : null,
         cloudSyncStatus: isRecord(snap.cloudSyncStatus) ? snap.cloudSyncStatus : null,
+        syncthingStatus: isRecord(snap.syncthingStatus) ? snap.syncthingStatus : null,
         syncConflictCount: snap.syncConflictCount,
         syncConflicts: snap.syncConflicts,
         recoveryStatus: snap.recoveryStatus,
-        migrationStatus: isRecord(snap.migrationStatus) ? snap.migrationStatus : null,
-        customTexts: hasProfiles ? [] : objectArray(snap.texts),
-        userBooks: hasProfiles ? [] : objectArray(userBooks),
-        hiddenBuiltInBooks: hasProfiles ? [] : stringArray(snap.hiddenBooks),
-        vocab: hasProfiles ? {} : rawVocab,
-        profiles: hasProfiles ? rawVocab : null,
+        customTexts: [],
+        userBooks: [],
+        hiddenBuiltInBooks: stringArray(snap.hiddenBooks),
+        vocab: {},
+        profiles: rawVocab,
         discover,
         preferences: { ...fallback.preferences, ...prefs }
       };
-      if (hasProfiles) {
-        merged.profiles = normalizeProfiles(merged.profiles);
-      }
-      if (hasProfiles && Array.isArray(snap.texts)) {
-        for (const profile of Object.values(merged.profiles)) {
+      if (Array.isArray(snap.texts)) {
+        for (const [profileLang, rawProfile] of objectEntries(merged.profiles)) {
+          const profile = isRecord(rawProfile)
+            ? rawProfile
+            : (merged.profiles[profileLang] = createEmptyProfile(profileLang));
           profile.customTexts = [];
         }
         for (const text of objectArray(snap.texts)) {
@@ -255,18 +265,25 @@ export function loadState() {
           const match = textId.match(/^([a-z]{2,3})-/);
           const prefixLang = match && LEARNING_LANGUAGES.includes(match[1]) ? match[1] : "";
           const targetLang = text.lang || prefixLang || merged.preferences.learningLanguage || "de";
-          const profile = merged.profiles[targetLang] || (merged.profiles[targetLang] = createEmptyProfile(targetLang));
+          const profile = isRecord(merged.profiles[targetLang])
+            ? merged.profiles[targetLang]
+            : (merged.profiles[targetLang] = createEmptyProfile(targetLang));
+          if (!Array.isArray(profile.customTexts)) profile.customTexts = [];
           profile.customTexts.push(text);
         }
       }
       return normalizeState(merged);
     } catch (error) {
-      console.warn("Bridge state load failed, falling back to localStorage", error);
+      console.warn("Bridge state load failed", error);
+      throw error;
     }
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? normalizeState({ ...fallback, ...JSON.parse(raw) }) : fallback;
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    assertSupportedStateSchemaVersion(parsed, "localStorage cache");
+    return normalizeState({ ...fallback, ...parsed });
   } catch (error) {
     console.warn("Failed to read localStorage", error);
     return fallback;

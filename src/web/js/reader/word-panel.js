@@ -15,10 +15,13 @@ import { getSmartSuggestionHtml } from "./smart-suggest.js";
 import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
+import { canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { beginElementBusy } from "../loading.js";
 
 let inTextReviewWord = "";
 let inTextAnswerVisible = false;
 let inTextReviewCompleted = false;
+let contextTranslationGeneration = 0;
 
 function isTransientReaderRangeSelection() {
   const text = getReaderSelectionText();
@@ -99,6 +102,39 @@ function bindInTextReviewControls(currentText, word, entry, hasSmartSuggestion) 
   }));
 }
 
+function bindContextTranslation(word, context) {
+  const button = els.wordPanel.querySelector("[data-translate-context]");
+  const output = els.wordPanel.querySelector("[data-context-translation]");
+  if (!button || !output || !context) return;
+  button.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    if (!canUseTranslationProvider()) {
+      output.hidden = false;
+      output.textContent = t("translator.providerUnavailable");
+      return;
+    }
+    const generation = ++contextTranslationGeneration;
+    const releaseBusy = beginElementBusy(button, { disable: true });
+    output.hidden = false;
+    output.textContent = t("translator.translating");
+    try {
+      const result = await translateText(
+        context,
+        state.preferences.learningLanguage || "en",
+        state.preferences.locale || "en"
+      );
+      if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
+      output.innerHTML = `<strong>${escapeHtml(t("reader.contextTranslationLabel"))}</strong> ${escapeHtml(result.translated || "")}`;
+    } catch (error) {
+      if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
+      console.warn("Context translation failed", error);
+      output.textContent = t("translator.error");
+    } finally {
+      releaseBusy();
+    }
+  });
+}
+
 export function renderWordPanel(currentText) {
   const word = state.selectedWord;
   if (!word) {
@@ -115,14 +151,15 @@ export function renderWordPanel(currentText) {
   const isTransientRange = isTransientReaderRangeSelection();
   const entry = isTransientRange
     ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
-    : getOrCreateEntry(word, currentText.text);
+    : getOrCreateEntry(word, currentText.text, state.selectedWordIndex);
   resetInTextReview(word);
-  const context = entry.examples?.[0] || getSentenceForWord(
+  const context = getSentenceForWord(
     currentText.text,
     word,
     state.preferences.learningLanguage || "en",
-    state.preferences.wordDetectionAlgorithm || "modern"
-  );
+    state.preferences.wordDetectionAlgorithm || "modern",
+    state.selectedWordIndex
+  ) || entry.examples?.[0] || "";
 
   const smartSuggestionHtml = getSmartSuggestionHtml(context, word);
 
@@ -157,7 +194,7 @@ export function renderWordPanel(currentText) {
       ${entry.imageUrl ? `
         <div class="word-image-preview" style="margin-top: 1rem; text-align: center; position: relative; display: inline-block; width: 100%;">
           <img src="${escapeAttribute(entry.imageUrl)}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
-          <button type="button" data-action="remove-image" data-word="${escapeHtml(word)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: white; cursor: pointer;">×</button>
+          <button type="button" data-action="remove-image" data-word="${escapeHtml(word)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: var(--panel); cursor: pointer;">×</button>
         </div>
       ` : `
         <div class="word-image-search" style="margin-top: 1rem; text-align: center;">
@@ -169,7 +206,11 @@ export function renderWordPanel(currentText) {
           <div id="image-search-results-${escapeHtml(word)}" style="margin-top: 0.25rem;"></div>
         </div>
       `}
-      <div class="context-box">${escapeHtml(context || t("reader.noContext"))}</div>
+      <div class="context-box">
+        <span>${escapeHtml(context || t("reader.noContext"))}</span>
+        ${context ? `<button class="ghost-button button-xs context-translate-button" type="button" data-translate-context>${icon("swap", 14)} ${escapeHtml(t("reader.translateContext"))}</button>` : ""}
+        <p class="context-translation" data-context-translation role="status" aria-live="polite" hidden></p>
+      </div>
       <div class="word-actions">
         <button class="secondary-button" type="button" data-dict-word="${escapeHtml(word)}" title="${escapeAttribute(t("vocab.openDictionary"))}">${icon("book", 18)}<span class="shortcut-badge">M</span></button>
         <button class="secondary-button" type="button" data-tts-word="${escapeHtml(word)}" title="${escapeAttribute(t("reader.ttsWordTitle"))}">${icon("speaker", 18)}<span class="shortcut-badge">${escapeHtml(t("reader.keySpace"))}</span></button>
@@ -179,6 +220,7 @@ export function renderWordPanel(currentText) {
     </div>
   `;
   bindInTextReviewControls(currentText, word, entry, !!smartSuggestionHtml);
+  bindContextTranslation(word, context);
 }
 
 export function updateWordStatusInReader(word, status, options = {}) {

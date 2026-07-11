@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-const { activityDateForHeatmap, buildHeatmapActivityCounts } = await import("../../src/web/js/graphs/helpers.js");
+const { buildHeatmapActivityCounts } = await import("../../src/web/js/graphs/helpers.js");
 const { buildContributionMonthLabels } = await import("../../src/web/js/views/heatmap.js");
 
 describe("shared heatmap", () => {
@@ -16,13 +16,6 @@ describe("shared heatmap", () => {
       { label: "Jul", week: 1 },
       { label: "Aug", week: 3 }
     ]);
-  });
-
-  it("uses review activity before add date", () => {
-    assert.equal(activityDateForHeatmap({
-      addedAt: "2026-06-01T00:00:00.000Z",
-      lastReviewedAt: "2026-06-20T00:00:00.000Z"
-    }), "2026-06-20T00:00:00.000Z");
   });
 
   it("counts the same non-ignored vocabulary activity for every heatmap", () => {

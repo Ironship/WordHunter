@@ -1,22 +1,10 @@
 import { state } from "../../state.js";
-import { clearReaderSelection, setReaderSelectionAnchorFromToken, extendReaderSelection } from "../../views/reader.js";
+import { clearReaderSelection, extendReaderSelection } from "../../reader/selection.js";
 import { speakWord } from "../../tts.js";
 import { setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
 import { openYouGlish } from "../../youglish.js";
-
-function readerTokens() {
-  return Array.from(document.getElementById("reader-text")?.querySelectorAll(".word-token") || []);
-}
-
-function selectToken(token, anchor = true) {
-  token.focus();
-  window.lastActiveToken = token;
-  if (anchor) setReaderSelectionAnchorFromToken(token);
-  import("../../vocab-actions.js").then((actions) => {
-    import("../../tokenizer_v2.js").then((tokenizer) => actions.selectWord(token.dataset.word, tokenizer.normalizeWord));
-  });
-}
+import { navigateReaderWord, readerTokens, selectReaderToken } from "../../reader/word-navigation.js";
 
 function focusSelectedWordField(field) {
   if (!state.selectedWord) return;
@@ -28,6 +16,8 @@ function focusSelectedWordField(field) {
 }
 
 export function handleReaderKeys(event, key) {
+  const plainKey = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+  const exactCtrl = event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
   if (key === "escape") {
     const active = document.activeElement;
     if (active?.classList.contains("word-token")) active.blur();
@@ -44,18 +34,18 @@ export function handleReaderKeys(event, key) {
   }
 
   const isSpace = key === " " || key === "spacebar" || event.code === "Space";
-  if (key === "x" && state.selectedWord) {
+  if (key === "x" && plainKey && state.selectedWord) {
     event.preventDefault();
     const tokens = readerTokens();
     const index = tokens.indexOf(window.lastActiveToken);
     import("../../vocab-actions.js").then((actions) => {
       actions.deleteWord(state.selectedWord);
-      if (index !== -1 && index + 1 < tokens.length) selectToken(tokens[index + 1], false);
+      if (index !== -1 && index + 1 < tokens.length) selectReaderToken(tokens[index + 1], false);
     });
     return true;
   }
 
-  if (isSpace && event.ctrlKey) {
+  if (isSpace && exactCtrl) {
     event.preventDefault();
     import("../../tts.js").then((tts) => {
       if (window.speechSynthesis?.speaking) {
@@ -95,15 +85,15 @@ export function handleReaderKeys(event, key) {
     return true;
   }
 
-  if (key === "enter" && event.ctrlKey) {
+  if (key === "enter" && exactCtrl) {
     event.preventDefault();
     const tokens = readerTokens();
-    const token = state.selectedWord ? tokens.find((item) => item.dataset.word === state.selectedWord) : tokens[0];
-    if (token) selectToken(token);
+    const token = tokens[0];
+    if (token) selectReaderToken(token);
     return true;
   }
 
-  if ((key === "arrowup" || key === "arrowdown") && event.ctrlKey && document.activeElement?.classList.contains("word-token")) {
+  if ((key === "arrowup" || key === "arrowdown") && exactCtrl && document.activeElement?.classList.contains("word-token")) {
     event.preventDefault();
     const tokens = readerTokens();
     const index = tokens.indexOf(document.activeElement);
@@ -112,7 +102,7 @@ export function handleReaderKeys(event, key) {
     for (let next = index + direction; next >= 0 && next < tokens.length; next += direction) {
       const rect = tokens[next].getBoundingClientRect();
       if (direction > 0 ? rect.top >= activeRect.bottom - 4 : rect.bottom <= activeRect.top + 4) {
-        selectToken(tokens[next]);
+        selectReaderToken(tokens[next]);
         break;
       }
     }
@@ -120,65 +110,77 @@ export function handleReaderKeys(event, key) {
   }
 
   if (key === "arrowleft" || key === "arrowright") {
-    if (event.shiftKey) {
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       extendReaderSelection(key === "arrowleft" ? "left" : "right");
       return true;
     }
-    if (document.activeElement?.classList.contains("word-token")) {
+    if (plainKey && document.activeElement?.classList.contains("word-token")) {
       event.preventDefault();
-      const tokens = readerTokens();
-      const next = tokens.indexOf(document.activeElement) + (key === "arrowleft" ? -1 : 1);
-      if (tokens[next]) selectToken(tokens[next]);
+      navigateReaderWord(key === "arrowleft" ? -1 : 1);
       return true;
     }
   }
 
-  if (!state.selectedWord) return false;
+  if (!state.selectedWord) {
+    if (plainKey && (key === "i" || key === "m" || key === "y")) {
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  }
   const showInTextAnswer = document.querySelector("[data-in-text-answer]");
-  if (key === "enter" && showInTextAnswer) {
+  if (key === "enter" && plainKey && showInTextAnswer) {
     event.preventDefault();
     showInTextAnswer.click();
     return true;
   }
-  const reviewDigit = /^[1-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([1-5])/)?.[1];
+  const reviewDigit = plainKey && (/^[1-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([1-5])/)?.[1]);
   const inTextGrade = reviewDigit && document.querySelector(`[data-in-text-grade="${reviewDigit}"]`);
   if (inTextGrade) {
     event.preventDefault();
     inTextGrade.click();
     return true;
   }
-  if (key === "c" && event.ctrlKey) {
+  if (key === "5" && plainKey) {
+    const suggestion = document.querySelector("#word-panel [data-suggest-word]");
+    if (suggestion) {
+      event.preventDefault();
+      suggestion.click();
+      return true;
+    }
+  }
+  if (key === "c" && exactCtrl) {
     if (hasNativeTextSelection()) return true;
     event.preventDefault();
     copySelectedWordToClipboard();
     return true;
   }
 
-  const digit = event.code?.match(/Digit([1-4])|Numpad([1-4])/)?.slice(1).find(Boolean);
-  const status = ({ 1: "new", 2: "learning", 3: "known", 4: "ignored" })[key] || ({ 1: "new", 2: "learning", 3: "known", 4: "ignored" })[digit];
+  const digit = plainKey && event.code?.match(/Digit([1-4])|Numpad([1-4])/)?.slice(1).find(Boolean);
+  const status = plainKey && (({ 1: "new", 2: "learning", 3: "known", 4: "ignored" })[key] || ({ 1: "new", 2: "learning", 3: "known", 4: "ignored" })[digit]);
   if (status) {
     event.preventDefault();
     setWordStatus(state.selectedWord, status);
     return true;
   }
-  if (key === "e" || key === "n") {
+  if (plainKey && (key === "e" || key === "n")) {
     event.preventDefault();
     focusSelectedWordField(key === "e" ? "translation" : "note");
     return true;
   }
-  if (key === "i") {
+  if (key === "i" && plainKey) {
     event.preventDefault();
     document.querySelector(`[data-action="search-image"][data-word="${CSS.escape(state.selectedWord)}"]`)?.click();
     return true;
   }
-  if (key === "m" || key === "y") {
+  if (plainKey && (key === "m" || key === "y")) {
     event.preventDefault();
     const text = getSelectedReaderActionText();
     if (key === "m") openDictionary(text); else openYouGlish(text);
     return true;
   }
-  if (isSpace && !event.ctrlKey) {
+  if (isSpace && plainKey) {
     event.preventDefault();
     speakWord(getSelectedReaderActionText());
     return true;
