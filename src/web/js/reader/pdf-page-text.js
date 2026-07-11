@@ -164,6 +164,16 @@ export function findPdfSentenceRange(text, wordIndex, lang = "en", algorithm = "
   return { start, end };
 }
 
+export function replacePdfTextRange(text, range, replacement) {
+  const source = String(text || "");
+  const start = range?.start;
+  const end = range?.end;
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start > end || end > source.length) {
+    return null;
+  }
+  return `${source.slice(0, start)}${String(replacement ?? "")}${source.slice(end)}`;
+}
+
 export function effectivePdfPageText(page) {
   if (page && Object.hasOwn(page, "correctedText")) {
     return String(page.correctedText || "").trim();

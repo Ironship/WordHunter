@@ -137,14 +137,18 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
     globalOffset
   );
   const wordsHtml = pageWords
-    .map((word, index) => renderPdfOcrWord(
-      word,
-      page,
-      overlayWordIndexes[index],
-      current,
-      separableVerbMatches.get(index * 2),
-      index
-    ))
+    .map((word, index) => {
+      const globalIndex = overlayWordIndexes[index];
+      const pageWordIndex = Number.isInteger(globalIndex) ? globalIndex - globalOffset : null;
+      return renderPdfOcrWord(
+        word,
+        page,
+        globalIndex,
+        current,
+        separableVerbMatches.get(index * 2),
+        pageWordIndex
+      );
+    })
     .join("");
   const zoom = getPdfOcrZoom();
   const { stageWidthPercent, pageWidthPercent } = pdfOcrZoomLayout(zoom);

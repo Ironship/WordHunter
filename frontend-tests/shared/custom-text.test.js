@@ -35,7 +35,8 @@ const { importCustomText, updatePdfOcrPageText } = await import("../../src/web/j
 const {
   countEffectivePdfPageWords,
   findPdfSentenceRange,
-  reconcilePdfPageWords
+  reconcilePdfPageWords,
+  replacePdfTextRange
 } = await import("../../src/web/js/reader/pdf-page-text.js");
 const { bindBookImportEvents } = await import("../../src/web/js/events/book-import.js");
 const { getOrCreateEntry } = await import("../../src/web/js/views/vocabulary.js");
@@ -191,6 +192,17 @@ describe("custom text import", () => {
     const text = "The bank is closed. We walked by the river bank after lunch.";
     const range = findPdfSentenceRange(text, 9, "en", "modern");
     assert.equal(text.slice(range.start, range.end), "We walked by the river bank after lunch.");
+  });
+
+  it("replaces only the selected occurrence of an identical sentence", () => {
+    const text = "Same sentence. Same sentence. Tail.";
+    const range = findPdfSentenceRange(text, 2, "en", "modern");
+    assert.equal(text.slice(range.start, range.end), "Same sentence.");
+    assert.equal(
+      replacePdfTextRange(text, range, "Fixed sentence."),
+      "Same sentence. Fixed sentence. Tail."
+    );
+    assert.equal(replacePdfTextRange(text, { start: -1, end: 2 }, "bad"), null);
   });
 
   it("allows false OCR on the only page to be cleared", async () => {
