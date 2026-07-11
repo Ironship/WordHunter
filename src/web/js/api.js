@@ -64,7 +64,8 @@ export async function saveWithRetry(body, maxRetries) {
         body
       });
       if (response.ok) return await response.json().catch(() => ({ ok: true }));
-      const error = new Error(`HTTP ${response.status}`);
+      const detail = (await response.text()).trim();
+      const error = new Error(detail || `HTTP ${response.status}`);
       error.status = response.status;
       throw error;
     } catch (e) {

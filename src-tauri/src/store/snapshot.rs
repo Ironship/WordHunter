@@ -190,6 +190,7 @@ impl Store {
         self.records_snapshot()?;
         self.write_sync_journal(&sync_dir, "snapshotted-local")?;
         let now = record_files::now_millis();
+        record_files::ingest_syncthing_conflict_copies(&sync_dir, self.device_id())?;
 
         let local_records = record_files::load_sync_records(&local_dir)?;
         let remote_records = record_files::load_sync_records(&sync_dir)?;

@@ -115,6 +115,9 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
         for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
+            if is_syncthing_conflict_path(&path) {
+                continue;
+            }
             let is_json = path.extension().and_then(|value| value.to_str()) == Some("json");
             let is_backup = path.extension().and_then(|value| value.to_str()) == Some("bak");
             let path = if is_json {
@@ -145,6 +148,58 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
 pub(crate) fn load_sync_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, String> {
     let records = load_records(dir)?;
     Ok(sync_records(&records))
+}
+
+pub(crate) fn ingest_syncthing_conflict_copies(
+    dir: &Path,
+    device_id: &str,
+) -> Result<usize, String> {
+    let root = records_root(dir);
+    let mut paths = Vec::new();
+    for kind_dir in RECORD_DIRS {
+        let record_dir = root.join(kind_dir);
+        if !record_dir.exists() {
+            continue;
+        }
+        paths.extend(
+            std::fs::read_dir(&record_dir)
+                .map_err(|e| e.to_string())?
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| is_syncthing_conflict_path(path)),
+        );
+    }
+    paths.sort();
+
+    let mut ingested = 0;
+    for path in paths {
+        if path.extension().and_then(|value| value.to_str()) == Some("bak")
+            && path.with_extension("json").exists()
+        {
+            continue;
+        }
+        let conflict_record = read_syncthing_conflict_file(&path)?;
+        let canonical_path = record_path(dir, &conflict_record);
+        let current_record =
+            if canonical_path.exists() || canonical_path.with_extension("bak").exists() {
+                Some(read_record_file(&canonical_path)?)
+            } else {
+                None
+            };
+        let incoming = BTreeMap::from([(conflict_record.key.clone(), conflict_record)]);
+        let current = current_record
+            .map(|record| BTreeMap::from([(record.key.clone(), record)]))
+            .unwrap_or_default();
+        let merged = merge_records(&BTreeMap::new(), incoming, current, device_id, now_millis());
+        write_records(dir, &merged.records)?;
+        write_conflicts(dir, &merged.conflicts)?;
+        durable::remove_file_if_exists(&path)?;
+        if path.extension().and_then(|value| value.to_str()) == Some("json") {
+            durable::remove_file_if_exists(&path.with_extension("bak"))?;
+        }
+        ingested += 1;
+    }
+    Ok(ingested)
 }
 
 pub(crate) fn sync_records(records: &BTreeMap<String, SyncRecord>) -> BTreeMap<String, SyncRecord> {
@@ -946,6 +1001,39 @@ fn read_record_file(path: &Path) -> Result<SyncRecord, String> {
 }
 
 fn parse_record_file(path: &Path) -> Result<SyncRecord, String> {
+    parse_record_file_with_stem(path, None)
+}
+
+fn read_syncthing_conflict_file(path: &Path) -> Result<SyncRecord, String> {
+    match parse_syncthing_conflict_file(path) {
+        Ok(record) => Ok(record),
+        Err(primary) => {
+            let backup = path.with_extension("bak");
+            if path.extension().and_then(|value| value.to_str()) == Some("json") && backup.exists()
+            {
+                parse_syncthing_conflict_file(&backup).map_err(|backup_error| {
+                    format!(
+                        "{primary}; backup {} is also unusable: {backup_error}",
+                        backup.display()
+                    )
+                })
+            } else {
+                Err(primary)
+            }
+        }
+    }
+}
+
+fn parse_syncthing_conflict_file(path: &Path) -> Result<SyncRecord, String> {
+    let canonical_stem = syncthing_conflict_canonical_stem(path)
+        .ok_or_else(|| format!("{} is not a Syncthing conflict copy", path.display()))?;
+    parse_record_file_with_stem(path, Some(&canonical_stem))
+}
+
+fn parse_record_file_with_stem(
+    path: &Path,
+    actual_stem_override: Option<&str>,
+) -> Result<SyncRecord, String> {
     let raw = std::fs::read(path).map_err(|e| format!("could not read {}: {e}", path.display()))?;
     let value: Value = serde_json::from_slice(&raw)
         .map_err(|e| format!("record {} is corrupt: {e}", path.display()))?;
@@ -964,10 +1052,11 @@ fn parse_record_file(path: &Path) -> Result<SyncRecord, String> {
         ));
     }
     let expected_name = stable_hash(&record.key);
-    let actual_name = path
-        .file_stem()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default();
+    let actual_name = actual_stem_override.unwrap_or_else(|| {
+        path.file_stem()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default()
+    });
     if actual_name != expected_name {
         return Err(format!(
             "record {} has a noncanonical filename",
@@ -975,6 +1064,25 @@ fn parse_record_file(path: &Path) -> Result<SyncRecord, String> {
         ));
     }
     Ok(record)
+}
+
+fn is_syncthing_conflict_path(path: &Path) -> bool {
+    syncthing_conflict_canonical_stem(path).is_some()
+}
+
+fn syncthing_conflict_canonical_stem(path: &Path) -> Option<String> {
+    let name = path.file_name()?.to_str()?;
+    let stem = name
+        .strip_suffix(".json")
+        .or_else(|| name.strip_suffix(".bak"))?;
+    let (canonical, suffix) = stem.split_once(".sync-conflict-")?;
+    if canonical.len() != 16
+        || !canonical.bytes().all(|byte| byte.is_ascii_hexdigit())
+        || suffix.is_empty()
+    {
+        return None;
+    }
+    Some(canonical.to_string())
 }
 
 fn atomic_json(path: &Path, value: &Value, keep_backup: bool) -> Result<(), String> {
@@ -1226,6 +1334,24 @@ fn scan_record_problems(dir: &Path, limit: usize) -> ScanProblems {
             .collect::<Vec<_>>();
         paths.sort();
         for path in paths {
+            if is_syncthing_conflict_path(&path) {
+                let has_primary = path.extension().and_then(|value| value.to_str()) == Some("bak")
+                    && path.with_extension("json").exists();
+                if has_primary {
+                    continue;
+                }
+                if let Err(error) = read_syncthing_conflict_file(&path) {
+                    problems.total += 1;
+                    if problems.items.len() < limit {
+                        problems.items.push(json!({
+                            "path": display_relative(&dir, &path),
+                            "kind": kind_dir.trim_end_matches('s'),
+                            "error": error,
+                        }));
+                    }
+                }
+                continue;
+            }
             let extension = path.extension().and_then(|value| value.to_str());
             let record_path = match extension {
                 Some("json") => path,
@@ -1687,10 +1813,11 @@ mod tests {
 
     use super::{
         FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, conflict_count, conflict_summaries,
-        fingerprints, load_records, load_sync_records, merge_records, parse_record,
-        payload_to_records, read_record_file, record_path, records_to_mobile_snapshot_payload,
-        records_to_payload, records_to_snapshot_payload, recovery_status, tombstone_all,
-        write_conflicts, write_records,
+        fingerprints, ingest_syncthing_conflict_copies, live_record, load_records,
+        load_sync_records, merge_records, parse_record, payload_to_records, read_record_file,
+        record_path, record_value, records_to_mobile_snapshot_payload, records_to_payload,
+        records_to_snapshot_payload, recovery_status, stable_hash, tombstone_all, write_conflicts,
+        write_record, write_records,
     };
 
     fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
@@ -1946,6 +2073,43 @@ mod tests {
         );
         assert_eq!(status["corruptConflictCount"], 1);
         assert_eq!(status["corruptConflicts"][0]["path"], "conflicts/bad.json");
+    }
+
+    #[test]
+    fn syncthing_conflict_copy_is_merged_into_wordhunter_conflicts() {
+        let dir = tempfile::tempdir().unwrap();
+        let key = "vocab:de:haus".to_string();
+        let current = live_record(
+            key.clone(),
+            "vocab",
+            json!({ "translation": "house" }),
+            "desktop",
+            1,
+        );
+        let incoming = live_record(key, "vocab", json!({ "translation": "home" }), "phone", 2);
+        write_record(dir.path(), &current).unwrap();
+        let conflict_path = record_path(dir.path(), &current).with_file_name(format!(
+            "{}.sync-conflict-20260711-030832-PHONE.json",
+            stable_hash(&current.key)
+        ));
+        std::fs::write(
+            &conflict_path,
+            serde_json::to_vec(&record_value(&incoming)).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(recovery_status(dir.path())["skippedRecordCount"], 0);
+        assert_eq!(
+            ingest_syncthing_conflict_copies(dir.path(), "desktop").unwrap(),
+            1
+        );
+
+        assert!(!conflict_path.exists());
+        assert_eq!(
+            load_records(dir.path()).unwrap()[&current.key].data["translation"],
+            "home"
+        );
+        assert_eq!(conflict_count(dir.path()).unwrap(), 1);
     }
 
     #[test]
