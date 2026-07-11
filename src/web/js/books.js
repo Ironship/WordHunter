@@ -147,14 +147,6 @@ function fetchCustomTextContent(text) {
   return promise;
 }
 
-async function refreshCustomTextContent(text) {
-  if (!text?.id || !window.__qtBridge) return "";
-  const promise = fetchCustomTextContent(text);
-  const generation = textCacheGenerationById.get(text.id) || 0;
-  await promise;
-  return (textCacheGenerationById.get(text.id) || 0) === generation ? generation : null;
-}
-
 export function loadAllCustomTextContents() {
   const texts = state.customTexts || [];
   const batchGeneration = allTextCacheGeneration;
@@ -180,6 +172,12 @@ export function clearBookTextCache(id) {
   invalidateBookId(id);
 }
 
+function markBookTextCacheStale(id) {
+  textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
+  textLoadingById.delete(id);
+  staleBookTextIds.add(id);
+}
+
 export function clearAllBookTextCaches() {
   allTextCacheGeneration += 1;
   bookTextsLoadingPromise = null;
@@ -195,25 +193,28 @@ export function isBookTextCacheStale(id) {
   return staleBookTextIds.has(id);
 }
 
-registerBridgeSnapshotHandler(({ textIds }) => {
-  const activeId = state.currentTextId;
-  for (const id of textIds || []) {
-    if (id !== activeId) clearBookTextCache(id);
+registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds }) => {
+  for (const id of previousTextIds || []) {
+    if (!currentTextIds?.has(id)) clearBookTextCache(id);
   }
-  if (!activeId || !textIds?.has(activeId)) return;
-  const activeText = (state.customTexts || []).find((text) => text.id === activeId);
-  if (!activeText || !window.__qtBridge) {
-    clearBookTextCache(activeId);
-    return;
+  if (!window.__qtBridge) return;
+
+  const texts = state.customTexts || [];
+  for (const text of texts) {
+    if (text?.id) markBookTextCacheStale(text.id);
   }
-  invalidateBookId(activeId);
-  refreshCustomTextContent(activeText)
-    .then(async (generation) => {
-      if (generation == null) return;
-      if (state.currentView !== "reader" || state.currentTextId !== activeId) return;
+
+  loadAllCustomTextContents()
+    .then(async () => {
+      if (state.currentView === "library") {
+        const { renderLibrary } = await import("./views/library.js");
+        renderLibrary();
+        return;
+      }
+      const activeId = state.currentTextId;
+      if (state.currentView !== "reader" || !activeId || !currentTextIds?.has(activeId)) return;
       const { renderReader } = await import("./reader/renderer.js");
-      if ((textCacheGenerationById.get(activeId) || 0) !== generation) return;
       renderReader();
     })
-    .catch((error) => console.warn(`Failed to refresh active custom text ${activeId}:`, error));
+    .catch((error) => console.warn("Failed to refresh synchronized custom texts:", error));
 });
