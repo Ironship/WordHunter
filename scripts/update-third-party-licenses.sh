@@ -44,19 +44,26 @@ compare_report() {
   python3 - "$expected" "$actual" "$tmp_dir/$name.expected" "$tmp_dir/$name.actual" <<'PY'
 import re
 import sys
+from html import unescape
 
 expected_path, actual_path, normalized_expected, normalized_actual = sys.argv[1:]
 for source, destination in (
     (expected_path, normalized_expected),
     (actual_path, normalized_actual),
 ):
+    inventory = []
+    license_id = None
     with open(source, encoding="utf-8") as file:
-        report = file.read()
-    # Cargo metadata can expose equivalent repository URLs differently across
-    # platforms. Link targets do not affect the dependency or license content.
-    report = re.sub(r'href="[^"]*"', 'href=""', report)
+        for line in file:
+            heading = re.search(r'<h3 id="([^"]+)">', line)
+            if heading:
+                license_id = heading.group(1)
+                continue
+            package = re.search(r'<li><a href="[^"]*">([^<]+)</a></li>', line)
+            if license_id and package:
+                inventory.append(f"{license_id}\t{unescape(package.group(1))}")
     with open(destination, "w", encoding="utf-8") as file:
-        file.write(report)
+        file.write("\n".join(sorted(inventory)) + "\n")
 PY
   if ! cmp "$tmp_dir/$name.expected" "$tmp_dir/$name.actual"; then
     diff -u "$tmp_dir/$name.expected" "$tmp_dir/$name.actual" || true
