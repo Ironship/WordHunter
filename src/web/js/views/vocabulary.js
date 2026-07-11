@@ -15,7 +15,7 @@ export function hideReviewAnswer() {
   reviewAnswerVisible = false;
 }
 
-export function getOrCreateEntry(word, text = "") {
+export function getOrCreateEntry(word, text = "", wordIndex = null) {
   if (!Object.hasOwn(state.vocab, word)) {
     state.vocab[word] = {
       status: "new",
@@ -40,7 +40,8 @@ export function getOrCreateEntry(word, text = "") {
     text,
     word,
     state.preferences.learningLanguage || "en",
-    state.preferences.wordDetectionAlgorithm || "modern"
+    state.preferences.wordDetectionAlgorithm || "modern",
+    wordIndex
   );
   if (context && !state.vocab[word].examples?.includes(context)) {
     state.vocab[word].examples = [context, ...(state.vocab[word].examples || [])].slice(0, 3);

@@ -2,6 +2,7 @@ import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { state } from "../state.js";
 import { showToast } from "../toast.js";
+import { setElementBusy } from "../loading.js";
 import { escapeHtml } from "../utils.js";
 import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
 import { TRANSLATOR_LANGUAGES } from "../constants.js";
@@ -10,6 +11,16 @@ import { TRANSLATOR_LANGUAGES } from "../constants.js";
 const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
 
 let translateTimer = null;
+let translateGeneration = 0;
+
+function setTranslatorBusy(busy) {
+  if (els.translatorStatus) {
+    if (busy) els.translatorStatus.dataset.busy = "true";
+    else delete els.translatorStatus.dataset.busy;
+  }
+  els.translatorProgress?.classList.toggle("active", busy);
+  setElementBusy(document.getElementById("translator-view"), busy);
+}
 
 function modelKey(model) {
   return `${model.from}:${model.to}`;
@@ -192,10 +203,12 @@ function updateTranslatorFlags(fromCode, toCode) {
 
 async function translateNow() {
   if (!els.translatorSource || !els.translatorResult) return;
+  const generation = ++translateGeneration;
   const text = els.translatorSource.value.trim();
   if (!text) {
     els.translatorResult.value = "";
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.ready");
+    setTranslatorBusy(false);
     return;
   }
 
@@ -203,6 +216,7 @@ async function translateNow() {
   const provider = activeTranslationProvider();
   if (!canUseTranslationProvider()) {
     showToast(t("translator.providerUnavailable"), "error");
+    setTranslatorBusy(false);
     return;
   }
 
@@ -216,6 +230,7 @@ async function translateNow() {
         downloadBtn.addEventListener("click", () => openDownloadDialog(pair.fromCode, pair.toCode));
       }
     }
+    setTranslatorBusy(false);
     return;
   }
 
@@ -223,19 +238,20 @@ async function translateNow() {
     els.translatorStatus.dataset.busy = "true";
     els.translatorStatus.textContent = t("translator.translating");
   }
-  if (els.translatorProgress) els.translatorProgress.classList.add("active");
+  setTranslatorBusy(true);
 
   try {
     const data = await translateText(text, pair.fromCode, pair.toCode);
+    if (generation !== translateGeneration) return;
     els.translatorResult.value = data.translated || "";
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.done");
   } catch (error) {
+    if (generation !== translateGeneration) return;
     console.error("Translator error", error);
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.error");
     showToast(t("translator.error"), "error");
   } finally {
-    if (els.translatorStatus) delete els.translatorStatus.dataset.busy;
-    if (els.translatorProgress) els.translatorProgress.classList.remove("active");
+    if (generation === translateGeneration) setTranslatorBusy(false);
   }
 }
 

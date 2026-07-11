@@ -17,14 +17,30 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 pub(crate) static GPU_STATUS: OnceLock<Value> = OnceLock::new();
 
 pub(crate) fn gpu_status_value(status: &str) -> Value {
+    let provider = if status != "ready" {
+        "cpu"
+    } else if cfg!(windows) {
+        "directml"
+    } else if cfg!(target_os = "linux") {
+        "webgpu"
+    } else {
+        "cpu"
+    };
+    gpu_status_value_with_provider(status, provider)
+}
+
+pub(crate) fn gpu_status_value_with_provider(status: &str, provider: &str) -> Value {
     match status {
-        "ready" | "unavailable" => json!({ "status": status }),
-        _ => json!({ "status": "failed" }),
+        "ready" if matches!(provider, "directml" | "webgpu") => {
+            json!({ "status": status, "provider": provider })
+        }
+        "unavailable" => json!({ "status": status, "provider": "cpu" }),
+        _ => json!({ "status": "failed", "provider": "cpu" }),
     }
 }
 
 pub(crate) fn platform_gpu_status_without_runner() -> Option<Value> {
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "linux")) {
         None
     } else {
         Some(gpu_status_value("unavailable"))
@@ -60,15 +76,18 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
     if !output.status.success() {
         return gpu_status_value("failed");
     }
-    let status = serde_json::from_slice::<Value>(&output.stdout)
-        .ok()
-        .and_then(|value| {
-            value
-                .get("status")
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-        });
-    gpu_status_value(status.as_deref().unwrap_or("failed"))
+    let parsed = serde_json::from_slice::<Value>(&output.stdout).ok();
+    let status = parsed
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        .unwrap_or("failed");
+    let provider = parsed
+        .as_ref()
+        .and_then(|value| value.get("provider"))
+        .and_then(Value::as_str)
+        .unwrap_or("cpu");
+    gpu_status_value_with_provider(status, provider)
 }
 
 fn runner_name() -> &'static str {
@@ -99,10 +118,10 @@ pub(crate) fn find_runner(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 fn runner_candidates(app_handle: &AppHandle) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
-    if let Ok(path) = std::env::var("WORDHUNTER_PADDLEOCR_RUNNER") {
-        if !path.trim().is_empty() {
-            candidates.push(PathBuf::from(path));
-        }
+    if let Ok(path) = std::env::var("WORDHUNTER_PADDLEOCR_RUNNER")
+        && !path.trim().is_empty()
+    {
+        candidates.push(PathBuf::from(path));
     }
 
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
@@ -137,34 +156,35 @@ fn runner_candidates(app_handle: &AppHandle) -> Vec<PathBuf> {
     candidates
 }
 
-pub(crate) fn run_runner(
-    runner: &Path,
-    input_path: &Path,
-    pages_dir: &Path,
-    json_path: &Path,
-    lang: &str,
-    max_pages: u64,
-    work_dir: &Path,
-    job_id: &str,
-    cancellations: &Mutex<HashSet<String>>,
-) -> Result<(), String> {
-    let stdout_path = work_dir.join("paddleocr.stdout.log");
-    let stderr_path = work_dir.join("paddleocr.stderr.log");
+pub(crate) struct RunnerJob<'a> {
+    pub input_path: &'a Path,
+    pub pages_dir: &'a Path,
+    pub json_path: &'a Path,
+    pub lang: &'a str,
+    pub max_pages: u64,
+    pub work_dir: &'a Path,
+    pub job_id: &'a str,
+    pub cancellations: &'a Mutex<HashSet<String>>,
+}
+
+pub(crate) fn run_runner(runner: &Path, job: RunnerJob<'_>) -> Result<(), String> {
+    let stdout_path = job.work_dir.join("paddleocr.stdout.log");
+    let stderr_path = job.work_dir.join("paddleocr.stderr.log");
     let stdout = File::create(&stdout_path).map_err(|e| e.to_string())?;
     let stderr = File::create(&stderr_path).map_err(|e| e.to_string())?;
 
     let mut command = Command::new(runner);
     command
         .arg("--input")
-        .arg(input_path)
+        .arg(job.input_path)
         .arg("--output-dir")
-        .arg(pages_dir)
+        .arg(job.pages_dir)
         .arg("--json")
-        .arg(json_path)
+        .arg(job.json_path)
         .arg("--lang")
-        .arg(lang)
+        .arg(job.lang)
         .arg("--max-pages")
-        .arg(max_pages.to_string())
+        .arg(job.max_pages.to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
@@ -182,10 +202,11 @@ pub(crate) fn run_runner(
         .map_err(|e| format!("could not start PaddleOCR runner {}: {e}", runner.display()))?;
     let deadline = Instant::now() + Duration::from_secs(60 * 60);
     loop {
-        if cancellations
+        if job
+            .cancellations
             .lock()
             .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-            .contains(job_id)
+            .contains(job.job_id)
         {
             let _ = child.kill();
             let _ = child.wait();

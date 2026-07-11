@@ -61,13 +61,9 @@ export function renderContributionHeatmap(target, options = {}) {
   ];
 
   function color(count) {
-    const s = getComputedStyle(document.documentElement);
-    if (count === 0) return s.getPropertyValue("--panel-strong").trim() || "#f0f3ef";
+    if (count === 0) return "var(--panel-strong)";
     const ratio = Math.min(1, count / maxCount);
-    const r = 70 + Math.round(ratio * 110);
-    const g = 150 + Math.round(ratio * 85);
-    const b = 90 + Math.round(ratio * 60);
-    return `rgb(${r},${g},${b})`;
+    return `color-mix(in srgb, var(--control-accent) ${Math.round(22 + ratio * 78)}%, var(--panel-strong))`;
   }
 
   const MONTHS = t("graphs.monthLabels").split("|");
@@ -80,12 +76,15 @@ export function renderContributionHeatmap(target, options = {}) {
   }
   html += '<span style="visibility:hidden;">' + escapeHtml(MONTHS[0]) + '</span></div>';
   html += '<div class="heatmap-grid">';
-  for (const week of weeks) {
+  for (let weekIndex = 0; weekIndex < weeks.length; weekIndex += 1) {
+    const week = weeks[weekIndex];
     html += '<div class="heatmap-week">';
-    for (const day of week) {
+    for (let dayIndex = 0; dayIndex < week.length; dayIndex += 1) {
+      const day = week[dayIndex];
       const c = color(day.count);
       const tip = tooltip ? tooltip(day.date, day.count) : `${day.date} · ${day.count}`;
-      html += `<div class="heatmap-cell" style="background:${c};" title="${escapeAttribute(tip)}"></div>`;
+      const delay = Math.min(weekIndex * 6 + dayIndex * 2, 320);
+      html += `<div class="heatmap-cell" style="--heatmap-delay:${delay}ms;background:${c};" title="${escapeAttribute(tip)}"></div>`;
     }
     html += '</div>';
   }

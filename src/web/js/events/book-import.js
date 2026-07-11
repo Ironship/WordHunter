@@ -12,11 +12,16 @@ import {
   saveEditedBook
 } from "../book-actions.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
+import { beginElementBusy, setElementBusy } from "../loading.js";
+import { deleteStoredText } from "../store-bridge.js";
 
 let pendingCoverDataUrl = "";
 let pendingImportMeta = {};
 let youtubeTracks = [];
 let youtubeTracksUrl = "";
+const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
+const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+let pdfImportRunning = false;
 
 function resetCoverPreview() {
   pendingCoverDataUrl = "";
@@ -53,13 +58,12 @@ function slugFromFileName(name) {
 }
 
 async function readFileAsBase64(file) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  return btoa(binary);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")), { once: true });
+    reader.addEventListener("error", () => reject(reader.error || new Error("Could not read PDF")), { once: true });
+    reader.readAsDataURL(file);
+  });
 }
 
 function parseAndroidPdfRenderResponse(raw, fallbackMessage) {
@@ -109,7 +113,8 @@ async function renderAndSaveAndroidPdfPages(data, bookId, pages) {
         body: JSON.stringify({
           book_id: bookId,
           img_name: page.imageName,
-          base64_data: rendered.dataUrl
+          base64_data: rendered.dataUrl,
+          pending_import: true
         })
       });
       if (!response.ok) {
@@ -135,12 +140,16 @@ function setImportLoading(visible, messageKey = "import.parsingEbook") {
       const form = document.getElementById("import-form");
       if (form) form.style.position = "relative", form.appendChild(overlay);
     }
+    overlay.setAttribute("role", "status");
+    overlay.setAttribute("aria-live", "polite");
+    overlay.setAttribute("aria-atomic", "true");
     overlay.innerHTML = `<div class="spinner" aria-hidden="true"></div><p class="muted-copy">${t(messageKey)}</p>`;
     overlay.hidden = false;
   } else {
     const ov = document.getElementById("import-loading");
     if (ov) ov.hidden = true;
   }
+  setElementBusy(document.getElementById("import-form"), visible);
 }
 
 let _ocrTimerHandle = null;
@@ -153,7 +162,7 @@ function startOcrProgress(onCancel) {
     <div class="spinner" aria-hidden="true"></div>
     <p class="muted-copy" id="ocr-progress-text"></p>
     <div class="ocr-progress-bar"><div class="ocr-progress-bar-fill"></div></div>
-    <p class="muted-copy ocr-progress-eta" id="ocr-progress-eta"></p>
+    <p class="muted-copy ocr-progress-eta" id="ocr-progress-eta" aria-hidden="true"></p>
     <button class="secondary-button" type="button" id="ocr-cancel">${t("import.ocrCancel")}</button>
   `;
   const textEl = () => overlay.querySelector("#ocr-progress-text");
@@ -170,7 +179,7 @@ function startOcrProgress(onCancel) {
   };
   overlay.querySelector("#ocr-cancel")?.addEventListener("click", () => {
     overlay.querySelector("#ocr-cancel").disabled = true;
-    if (etaEl()) etaEl().textContent = t("import.ocrCancelling");
+    if (textEl()) textEl().textContent = t("import.ocrCancelling");
     onCancel();
   });
   tick();
@@ -186,7 +195,7 @@ function stopOcrProgress() {
 
 function setYoutubeImportLoading(loading, statusKey = "import.youtubeLoading") {
   if (els.importYoutubeLoad) {
-    els.importYoutubeLoad.disabled = loading;
+    setElementBusy(els.importYoutubeLoad, loading, { disable: true });
     els.importYoutubeLoad.textContent = t(loading ? statusKey : (youtubeTracks.length ? "import.youtubeImportSelected" : "import.youtubeLoad"));
   }
   if (loading && els.importYoutubeStatus) els.importYoutubeStatus.textContent = t(statusKey);
@@ -336,9 +345,23 @@ function confirmWholeBookOcr() {
 }
 
 async function importPdfFile(file) {
+  if (pdfImportRunning) throw new Error(t("toast.pdfImportBusy"));
+  pdfImportRunning = true;
+  try {
+    return await runPdfImport(file);
+  } finally {
+    pdfImportRunning = false;
+  }
+}
+
+async function runPdfImport(file) {
   const androidPdfOverlay = isAndroidPlatform();
   if (!window.__qtBridge && !androidPdfOverlay) {
     throw new Error(t("toast.pdfOcrRequiresApp"));
+  }
+  const maxBytes = androidPdfOverlay ? MAX_POCKET_PDF_BYTES : MAX_DESKTOP_PDF_BYTES;
+  if (Number(file?.size) > maxBytes) {
+    throw new Error(t("toast.pdfTooLarge", { mb: Math.floor(maxBytes / (1024 * 1024)) }));
   }
   if (!androidPdfOverlay && !await confirmWholeBookOcr()) return false;
   const lang = state.preferences.learningLanguage || "en";
@@ -357,26 +380,25 @@ async function importPdfFile(file) {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
           body: JSON.stringify({ job_id: jobId })
-        });
+        }).catch((error) => console.warn("PDF OCR cancellation request failed", error));
       }
     });
   }
   try {
-    const data = await readFileAsBase64(file);
-    if (cancelled) return false;
+    let data = null;
+    const params = new URLSearchParams({
+      book_id: id,
+      job_id: jobId,
+      filename: file.name || t("import.importedPdfTitle"),
+      lang,
+      max_pages: "0"
+    });
     requestStarted = true;
-    const response = await fetch("/__import/pdf_ocr", {
+    const response = await fetch(`/__import/pdf_ocr/raw?${params}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+      headers: { "Content-Type": "application/pdf", "X-WH-Token": window.WH_TOKEN || "" },
       signal: controller.signal,
-      body: JSON.stringify({
-        book_id: id,
-        job_id: jobId,
-        filename: file.name || t("import.importedPdfTitle"),
-        data,
-        lang,
-        max_pages: 0
-      })
+      body: file
     });
     if (!response.ok) {
       const message = await response.text().catch(() => "");
@@ -393,6 +415,7 @@ async function importPdfFile(file) {
     const ocrEngine = imported.ocrEngine || "PaddleOCR";
     const hasOverlayPages = pages.length > 0;
     if (androidPdfOverlay && hasOverlayPages) {
+      data = await readFileAsBase64(file);
       await renderAndSaveAndroidPdfPages(data, id, pages);
     }
     const blurb = hasOverlayPages
@@ -400,7 +423,7 @@ async function importPdfFile(file) {
         ? t("import.pdfOcrBlurbTruncated", { processed: pages.length, total: pageCount, engine: ocrEngine })
         : t("import.pdfOcrBlurb", { pages: pages.length, engine: ocrEngine })
       : t("import.pdfTextLayerBlurb", { pages: pageCount });
-    await importCustomText(imported.title || titleFromImportedFileName(file.name || t("import.importedPdfTitle")), text, {
+    const importedId = await importCustomText(imported.title || titleFromImportedFileName(file.name || t("import.importedPdfTitle")), text, {
       id,
       blurb,
       coverDataUrl: hasOverlayPages && pages[0]?.imageName ? `/__media?book=${encodeURIComponent(id)}&img=${encodeURIComponent(pages[0].imageName)}` : "",
@@ -409,8 +432,12 @@ async function importPdfFile(file) {
       pdfOcrPageCount: hasOverlayPages ? pageCount : 0,
       experimental: hasOverlayPages
     });
+    if (!importedId) throw new Error(t("toast.importFailed"));
     return true;
   } catch (error) {
+    await deleteStoredText(id).catch((cleanupError) => {
+      console.warn("Failed to clean incomplete PDF import", cleanupError);
+    });
     if (cancelled) {
       showToast(t("import.ocrCancelled"));
       return false;
@@ -523,11 +550,14 @@ function bindImportFormEvents() {
     els.importFile.addEventListener("change", async () => {
       const file = els.importFile.files?.[0];
       if (!file) return;
+      const releaseBusy = beginElementBusy(els.importFile.closest?.(".file-button"));
       try {
         if (await loadImportFile(file) !== false) showToast(t("toast.fileLoaded", { name: file.name }));
       } catch (err) {
         console.warn(err);
         showToast(err?.message?.trim() || t("toast.fileError"));
+      } finally {
+        releaseBusy();
       }
     });
   }
@@ -549,6 +579,10 @@ function bindImportFormEvents() {
 
   els.importForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const submitButton = event.submitter || document.getElementById("import-submit");
+    if (submitButton?.disabled) return;
+    const releaseButton = beginElementBusy(submitButton, { disable: true });
+    const releaseForm = beginElementBusy(els.importForm);
     const meta = {
       ...pendingImportMeta,
       author: els.importAuthor?.value || pendingImportMeta.author,
@@ -558,13 +592,17 @@ function bindImportFormEvents() {
     const levelVal = els.importLevel?.value;
     if (levelVal) meta.level = levelVal;
     try {
-      await importCustomText(els.importTitle.value, els.importText.value, meta);
+      const importedId = await importCustomText(els.importTitle.value, els.importText.value, meta);
+      if (!importedId) return;
       els.importForm.reset();
       clearPendingImportMeta();
       resetYoutubeTracks(true);
       resetCoverPreview();
     } catch (e) {
       console.error("import custom text failed", e);
+    } finally {
+      releaseForm();
+      releaseButton();
     }
   });
 }

@@ -2,11 +2,11 @@
  * PDF-OCR reader rendering: page image + word overlay, layout estimation,
  * per-page text extraction, word-token emission.
  */
-import { state, saveState } from "../state.js";
+import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { t } from "../i18n.js";
-import { normalizeWord, getTextStats, tokenizeText } from "../tokenizer_v2.js";
+import { findGermanSeparableVerbMatches, normalizeWord, getTokenStats, tokenizeText } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
@@ -14,6 +14,8 @@ import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
 import { getLearningColor } from "../reader-colors.js";
 import { icon } from "../icons.js";
+import { countEffectivePdfPageWords, effectivePdfPageText, reconcilePdfPageWords } from "./pdf-page-text.js";
+import { getReaderSession } from "./session.js";
 
 const PDF_OCR_LAYOUT_FONT = `"Times New Roman", Georgia, serif`;
 const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2";
@@ -37,7 +39,7 @@ export function getPdfOcrViewMode() {
 export function setPdfOcrViewMode(value, options = {}) {
   const mode = value === "text" ? "text" : "overlay";
   if (state.readerPdfViewMode !== mode) state.readerPdfViewMode = mode;
-  if (options.commit !== false) saveState();
+  if (options.commit !== false) saveUiState();
   return mode;
 }
 
@@ -49,7 +51,7 @@ export function setPdfOcrZoom(value, options = {}) {
   if (state.readerPdfZoom !== zoom) state.readerPdfZoom = zoom;
   applyPdfOcrZoomToDom(zoom);
   if (anchor) restorePdfOcrZoomAnchor(container, page, anchor);
-  if (options.commit !== false) saveState();
+  if (options.commit !== false) saveUiState();
   return zoom;
 }
 
@@ -67,7 +69,8 @@ export function pdfOcrZoomStep() {
 
 export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
-  const stats = getTextStats(current.text, state.vocab, state.preferences.learningLanguage || "en", wordAlgorithm);
+  const session = getReaderSession(current, state.preferences.learningLanguage || "en", wordAlgorithm);
+  const stats = getTokenStats(session.tokens, state.vocab, state.preferences.learningLanguage || "en");
   renderTrackingSummary(stats);
   els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
@@ -80,12 +83,19 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   state.readerPage = clamp(Math.round(state.readerPage) || 1, 1, totalPages);
   if (!state.readerPages) state.readerPages = {};
   state.readerPages[current.id] = state.readerPage;
-  saveState();
+  saveUiState();
 
   const pageIndex = state.readerPage - 1;
   const page = pages[pageIndex] || pages[0] || {};
-  els.readerText.dataset.ttsText = getPdfOcrPageText(page);
-  const globalOffset = pages.slice(0, pageIndex).reduce((sum, item) => sum + countPdfOcrWords(item), 0);
+  els.readerText.dataset.ttsText = effectivePdfPageText(page);
+  const globalOffset = pages.slice(0, pageIndex).reduce(
+    (sum, item) => sum + countEffectivePdfPageWords(
+      item,
+      state.preferences.learningLanguage || "en",
+      wordAlgorithm
+    ),
+    0
+  );
   const viewMode = getPdfOcrViewMode();
   const overlayMode = viewMode === "overlay";
   els.readerText.classList.toggle("pdf-ocr-reader", overlayMode);
@@ -98,8 +108,43 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
 
   const imageName = page.imageName || "";
   const imageUrl = `/__media?book=${encodeURIComponent(current.id)}&img=${encodeURIComponent(imageName)}`;
-  const wordsHtml = getPdfOcrPageWords(page)
-    .map((word, index) => renderPdfOcrWord(word, page, globalOffset + index + 1, current))
+  const sourcePageWords = getPdfOcrPageWords(page);
+  const pageWords = Object.hasOwn(page, "correctedText")
+    ? reconcilePdfPageWords(
+      sourcePageWords,
+      effectivePdfPageText(page),
+      state.preferences.learningLanguage || "en",
+      wordAlgorithm
+    )
+    : sourcePageWords;
+  const overlayTokens = pageWords.flatMap((word) => {
+    const raw = String(word?.text || "");
+    return [
+      { type: "word", value: raw },
+      { type: "text", value: raw.match(/[.!?;,\n\r]+$/u)?.[0] || " " }
+    ];
+  });
+  const separableVerbMatches = findGermanSeparableVerbMatches(
+    overlayTokens,
+    state.vocab,
+    state.preferences.learningLanguage || "en"
+  );
+  const overlayWordIndexes = mapPdfOverlayWordIndexes(
+    pageWords,
+    effectivePdfPageText(page),
+    state.preferences.learningLanguage || "en",
+    wordAlgorithm,
+    globalOffset
+  );
+  const wordsHtml = pageWords
+    .map((word, index) => renderPdfOcrWord(
+      word,
+      page,
+      overlayWordIndexes[index],
+      current,
+      separableVerbMatches.get(index * 2),
+      index
+    ))
     .join("");
   const zoom = getPdfOcrZoom();
   const { stageWidthPercent, pageWidthPercent } = pdfOcrZoomLayout(zoom);
@@ -132,10 +177,12 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
     }
   }
   updateReaderSelection();
+  els.readerText.dataset.rendering = "0";
+  els.readerText.removeAttribute("aria-busy");
 }
 
 function renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPerPageKey, savedPos) {
-  const pageText = getPdfOcrPageText(page);
+  const pageText = effectivePdfPageText(page);
   const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
   const tokens = tokenizeText(pageText, state.preferences.learningLanguage || "en", wordAlgorithm);
   const textHtml = renderPdfOcrTextTokens(tokens, globalOffset);
@@ -162,26 +209,35 @@ function renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPer
     }
   }
   updateReaderSelection();
+  els.readerText.dataset.rendering = "0";
+  els.readerText.removeAttribute("aria-busy");
 }
 
 function renderPdfOcrTextTokens(tokens, globalOffset) {
   let html = "";
   let wordCount = 0;
-  for (const token of tokens) {
+  const separableVerbMatches = findGermanSeparableVerbMatches(
+    tokens,
+    state.vocab,
+    state.preferences.learningLanguage || "en"
+  );
+  for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+    const token = tokens[tokenIndex];
     if (token.type !== "word") {
       html += escapeHtml(token.value || "");
       continue;
     }
 
-    wordCount += 1;
     const raw = String(token.value || "");
     const word = normalizeWord(raw);
-    const entry = state.vocab[word];
+    const dataWord = separableVerbMatches.get(tokenIndex) || word;
+    const entry = state.vocab[dataWord];
     const status = entry ? entry.status : "new";
-    const selected = state.selectedWord === word ? "selected" : "";
+    const selected = state.selectedWord === dataWord ? "selected" : "";
     const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
     const style = color ? ` style="--token-learning-bg:${color}"` : "";
-    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalOffset + wordCount}"${style}>${escapeHtml(raw)}</button>`;
+    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-word-index="${globalOffset + wordCount}"${style}>${escapeHtml(raw)}</button>`;
+    wordCount += 1;
   }
   return html;
 }
@@ -210,8 +266,13 @@ function renderPdfOcrToolbar(zoom, viewMode) {
       ${icon(textMode ? "fileImage" : "fileText", 16)}
     </button>
   `;
+  const correctButton = `
+    <button type="button" class="icon-button pdf-ocr-correct-button" data-pdf-correct title="${escapeAttribute(t("reader.pdfCorrectText"))}" aria-label="${escapeAttribute(t("reader.pdfCorrectText"))}">
+      ${icon("edit", 16)}
+    </button>
+  `;
   if (textMode) {
-    return `<div class="pdf-ocr-toolbar" aria-label="${escapeAttribute(t("reader.pdfViewModeLabel"))}">${modeButton}</div>`;
+    return `<div class="pdf-ocr-toolbar" aria-label="${escapeAttribute(t("reader.pdfViewModeLabel"))}">${correctButton}${modeButton}</div>`;
   }
 
   const percent = `${Math.round(zoom * 100)}%`;
@@ -219,6 +280,10 @@ function renderPdfOcrToolbar(zoom, viewMode) {
   const inDisabled = zoom >= PDF_OCR_ZOOM_MAX - 0.001 ? " disabled" : "";
   return `
     <div class="pdf-ocr-toolbar" aria-label="${escapeAttribute(t("reader.pdfZoomLabel"))}">
+      ${correctButton}
+      <button type="button" class="icon-button pdf-ocr-sentence-button" data-pdf-correct-sentence title="${escapeAttribute(t("reader.pdfCorrectSentence"))}" aria-label="${escapeAttribute(t("reader.pdfCorrectSentence"))}" disabled>
+        ${icon("sentenceEdit", 16)}
+      </button>
       ${modeButton}
       <button type="button" class="icon-button pdf-ocr-zoom-button" data-pdf-zoom="out" title="${escapeAttribute(t("reader.pdfZoomOut"))}" aria-label="${escapeAttribute(t("reader.pdfZoomOut"))}"${outDisabled}>${icon("minus", 16)}</button>
       <button type="button" class="secondary-button pdf-ocr-zoom-reset" data-pdf-zoom="reset" title="${escapeAttribute(t("reader.pdfZoomReset"))}" aria-label="${escapeAttribute(t("reader.pdfZoomReset"))}"><span data-pdf-zoom-value>${escapeHtml(percent)}</span></button>
@@ -277,33 +342,42 @@ function getPdfOcrPageWords(page) {
   return [];
 }
 
-function getPdfOcrPageText(page) {
-  const text = String(page?.text || "").trim();
-  if (text) return text;
-
-  const lines = Array.isArray(page?.lines) ? page.lines : [];
-  const lineText = lines
-    .map((line) => String(line?.text || "").trim())
-    .filter(Boolean);
-  if (lineText.length) return lineText.join("\n");
-
-  const words = Array.isArray(page?.words) ? page.words : [];
-  return words
-    .map((word) => String(word?.text || "").trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
-function countPdfOcrWords(page) {
-  const pageWords = Array.isArray(page?.words)
-    ? page.words.filter((word) => String(word?.text || "").trim())
-    : [];
-  if (pageWords.length) return pageWords.length;
-
-  const lines = Array.isArray(page?.lines) ? page.lines : [];
-  const fromLines = lines.reduce((sum, line) => sum + splitPdfOcrTextRuns(line?.text).length, 0);
-  if (fromLines > 0) return fromLines;
-  return 0;
+export function mapPdfOverlayWordIndexes(pageWords, pageText, lang, algorithm, globalOffset = 0) {
+  const overlayWords = (pageWords || []).map((word) => normalizeWord(word?.text || ""));
+  const correctedWords = tokenizeText(pageText, lang, algorithm)
+    .filter((token) => token.type === "word")
+    .map((token) => normalizeWord(token.value));
+  const result = new Array(overlayWords.length).fill(null);
+  if (overlayWords.length === correctedWords.length
+    && overlayWords.every((word, index) => word && word === correctedWords[index])) {
+    return overlayWords.map((_, index) => globalOffset + index);
+  }
+  const columns = correctedWords.length + 1;
+  const cells = (overlayWords.length + 1) * columns;
+  if (cells > 4_000_000) return result;
+  const lengths = new Uint32Array(cells);
+  for (let left = overlayWords.length - 1; left >= 0; left -= 1) {
+    for (let right = correctedWords.length - 1; right >= 0; right -= 1) {
+      const index = left * columns + right;
+      lengths[index] = overlayWords[left] && overlayWords[left] === correctedWords[right]
+        ? lengths[(left + 1) * columns + right + 1] + 1
+        : Math.max(lengths[(left + 1) * columns + right], lengths[index + 1]);
+    }
+  }
+  let left = 0;
+  let right = 0;
+  while (left < overlayWords.length && right < correctedWords.length) {
+    if (overlayWords[left] && overlayWords[left] === correctedWords[right]) {
+      result[left] = globalOffset + right;
+      left += 1;
+      right += 1;
+    } else if (lengths[(left + 1) * columns + right] >= lengths[left * columns + right + 1]) {
+      left += 1;
+    } else {
+      right += 1;
+    }
+  }
+  return result;
 }
 
 function layoutPdfOcrLineWords(line, page) {
@@ -431,11 +505,11 @@ function usesLegacyPdfTextLayerBounds(page, current) {
   return engine.includes("pdf-text-layer") || engine.includes("pdfium-text-layer");
 }
 
-function renderPdfOcrWord(item, page, globalIndex, current) {
+function renderPdfOcrWord(item, page, globalIndex, current, matchedWord = "", pageWordIndex = null) {
   const raw = String(item?.text || "").trim();
   if (!raw) return "";
   const { pageWidth, pageHeight, x, y, width, height } = pdfOcrRect(item, page, current);
-  const word = normalizeWord(raw);
+  const word = matchedWord || normalizeWord(raw);
   const entry = state.vocab[word];
   const status = entry ? entry.status : "new";
   const selected = state.selectedWord === word ? "selected" : "";
@@ -448,5 +522,7 @@ function renderPdfOcrWord(item, page, globalIndex, current) {
     color && `--token-learning-bg:${color}`
   ].filter(Boolean).join(";");
 
-  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-word-index="${globalIndex}" style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
+  const indexAttribute = Number.isInteger(globalIndex) ? ` data-word-index="${globalIndex}"` : "";
+  const pageIndexAttribute = Number.isInteger(pageWordIndex) ? ` data-pdf-page-word-index="${pageWordIndex}"` : "";
+  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}"${indexAttribute}${pageIndexAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
 }

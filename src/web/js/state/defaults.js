@@ -1,12 +1,10 @@
 import { STATE_SCHEMA_VERSION, UI_SCALE } from "../constants.js";
 import { VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
 import { DEFAULT_LEARNING_COLORS } from "../reader-colors.js";
+import { DEFAULT_THEME } from "../theme.js";
 
-export function normalizeVocabStatusFilters(value, legacyValue) {
+export function normalizeVocabStatusFilters(value) {
   if (Array.isArray(value)) return value.filter((status) => VOCAB_STATUS_FILTERS.includes(status));
-  if (legacyValue === "all") return [...VOCAB_STATUS_FILTERS];
-  if (legacyValue === "not_ignored") return ["new", "learning", "known"];
-  if (VOCAB_STATUS_FILTERS.includes(legacyValue)) return [legacyValue];
   return [...VOCAB_STATUS_FILTERS];
 }
 
@@ -35,18 +33,27 @@ export function getDefaultDictionaryUrl(lang) {
 }
 
 export function createDefaultState() {
+  const defaultProfile = {
+    vocab: {},
+    customTexts: [],
+    userBooks: [],
+    hiddenBuiltInBooks: [],
+    archivedBookIds: [],
+    preferences: { dictionaryUrl: getDefaultDictionaryUrl("de"), dictionaryMode: "internal", theme: DEFAULT_THEME }
+  };
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
     currentView: "library",
     currentTextId: null,
     selectedWord: null,
+    selectedWordIndex: null,
     readerSelectionRange: null,
-    customTexts: [],
-    userBooks: [],
-    hiddenBuiltInBooks: [],
-    archivedBookIds: [],
-    vocab: {},
-    profiles: null,
+    customTexts: defaultProfile.customTexts,
+    userBooks: defaultProfile.userBooks,
+    hiddenBuiltInBooks: defaultProfile.hiddenBuiltInBooks,
+    archivedBookIds: defaultProfile.archivedBookIds,
+    vocab: defaultProfile.vocab,
+    profiles: { de: defaultProfile },
     reviewIndex: 0,
     readerFontSize: 18,
     readerPdfZoom: 1,
@@ -59,10 +66,10 @@ export function createDefaultState() {
     syncDirectory: "",
     syncHealth: null,
     cloudSyncStatus: null,
+    syncthingStatus: null,
     syncConflictCount: 0,
     syncConflicts: [],
     recoveryStatus: null,
-    migrationStatus: null,
     filters: {
       libraryQuery: "",
       libraryLevel: "all",
@@ -70,16 +77,16 @@ export function createDefaultState() {
       librarySortReverse: false,
       libraryArchive: "active",
       vocabQuery: "",
-      vocabStatus: "all",
       vocabStatuses: ["learning", "known"],
       vocabTextId: "all"
     },
     discover: { query: "", source: "gutenberg", sort: "popular", level: "", page: 1 },
     preferences: {
-      theme: "auto",
+      theme: DEFAULT_THEME,
       locale: "en",
       languageOnboardingDone: false,
       readerFont: "serif",
+      readerFontSize: 18,
       readerLineHeight: "normal",
       highlightTokens: true,
       hideKnownIgnored: true,
@@ -91,7 +98,7 @@ export function createDefaultState() {
       showCardStats: true,
       showCovers: true,
       learningLanguage: "de",
-      dictionaryUrl: "",
+      dictionaryUrl: defaultProfile.preferences.dictionaryUrl,
       dictionaryMode: "internal",
       readerTextAlign: "left",
       readerMaxWidth: "wide",
@@ -102,7 +109,10 @@ export function createDefaultState() {
       librarySidebarWidth: 360,
       ttsRate: "normal",
       autoTtsOnWordFocus: true,
-      ttsWordHighlight: false,
+      ttsWordHighlight: true,
+      ttsWordHighlightDefaultVersion: 1,
+      statusSoundsEnabled: true,
+      statusSoundVolume: 0.55,
       reviewReverse: false,
       srsAlgorithm: "fsrs",
       removalBehavior: "ignored",

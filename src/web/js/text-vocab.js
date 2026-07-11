@@ -53,19 +53,22 @@ export function getTextVocabularyIndex(textId) {
 }
 
 export async function loadTextVocabularyIndex(textId) {
-  const textRecord = getVocabularyTextById(textId);
-  if (!textRecord) return null;
-  const lang = state.preferences.learningLanguage || "en";
-  const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
-  const text = textRecord.text || "";
-  const book = { id: textRecord.id };
-  const entry = await requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
-  if (!entry) return null;
-  return {
-    text: textRecord,
-    words: new Set(entry.words),
-    tokenLine: entry.tokenLine
-  };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const textRecord = getVocabularyTextById(textId);
+    if (!textRecord) return null;
+    const lang = state.preferences.learningLanguage || "en";
+    const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+    const text = textRecord.text || "";
+    const book = { id: textRecord.id };
+    const entry = await requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
+    if (!entry) continue;
+    return {
+      text: textRecord,
+      words: new Set(entry.words),
+      tokenLine: entry.tokenLine
+    };
+  }
+  return null;
 }
 
 export function entryAppearsInText(word, textIndex) {

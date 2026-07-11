@@ -33,6 +33,7 @@ export function applyPlatformUi() {
 
   document.documentElement.style.setProperty("--ui-scale", "1");
   document.documentElement.style.zoom = "1";
+  bindPocketNavigationDrawer();
   bindPocketImportDrawer();
 
   const importFile = document.getElementById("import-file");
@@ -45,6 +46,39 @@ export function applyPlatformUi() {
   provider?.querySelectorAll('option[value="offline"], option[value="lmstudio"]').forEach((option) => {
     option.disabled = true;
     option.hidden = true;
+  });
+}
+
+function bindPocketNavigationDrawer() {
+  const root = document.documentElement;
+  if (root.dataset.pocketNavigationDrawerBound === "true") return;
+  const panel = document.getElementById("app-navigation");
+  const toggles = [
+    document.getElementById("pocket-navigation-toggle"),
+    document.getElementById("reader-pocket-navigation-toggle")
+  ].filter(Boolean);
+  if (!panel || !toggles.length) return;
+  root.dataset.pocketNavigationDrawerBound = "true";
+
+  const setOpen = (open) => {
+    root.classList.toggle("pocket-navigation-open", open);
+    toggles.forEach((toggle) => toggle.setAttribute("aria-expanded", String(open)));
+  };
+
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => setOpen(!root.classList.contains("pocket-navigation-open")));
+  });
+  document.querySelectorAll?.(".nav-item").forEach((button) => {
+    button.addEventListener("click", () => setOpen(false));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setOpen(false);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!root.classList.contains("pocket-navigation-open")) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest("#app-navigation, #pocket-navigation-toggle, #reader-pocket-navigation-toggle")) return;
+    setOpen(false);
   });
 }
 

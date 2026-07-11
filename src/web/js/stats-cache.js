@@ -96,7 +96,9 @@ export function getCachedTextStats(book, text, vocab, lang = "en", algorithm = "
 
   const worker = getStatsWorker();
   if (worker) {
-    if (activeTextStats?.signature !== signature && !pendingTextStats.has(signature)) {
+    const activeJobIsCurrent = activeTextStats?.signature === signature
+      && activeTextStats.vocabVersion === vocabVersion;
+    if (!activeJobIsCurrent && !pendingTextStats.has(signature)) {
       pendingTextStats.set(signature, {
         id: `${signature}|${Date.now()}`,
         signature,

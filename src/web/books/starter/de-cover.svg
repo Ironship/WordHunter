@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">1000 häufigste deutsche Wörter: Geschichten</title>
+  <desc id="desc">Ein offenes Buch wird zu einer leuchtenden Stadt mit Wegen, Häusern, Bäumen und einem Fahrrad.</desc>
+  <defs>
+    <linearGradient id="night" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#101a43"/>
+      <stop offset="1" stop-color="#263b74"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8db"/>
+      <stop offset="1" stop-color="#f4d98b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#07102d" flood-opacity=".5"/>
+    </filter>
+  </defs>
+
+  <rect width="600" height="900" fill="url(#night)"/>
+  <path d="M0 0h600v22H0z" fill="#f5c842"/>
+  <path d="M0 878h600v22H0z" fill="#ef5b45"/>
+
+  <g fill="#fff8db" opacity=".8">
+    <circle cx="62" cy="280" r="3"/>
+    <circle cx="520" cy="244" r="4"/>
+    <circle cx="558" cy="340" r="2.5"/>
+    <circle cx="108" cy="374" r="2.5"/>
+    <path d="M493 300l4 10 10 4-10 4-4 10-4-10-10-4 10-4z"/>
+    <path d="M86 322l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/>
+  </g>
+
+  <text x="300" y="88" text-anchor="middle" fill="#f5c842" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="4">WORD HUNTER ORIGINALS</text>
+  <text x="300" y="160" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="84" font-weight="800">1000</text>
+  <text x="300" y="210" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="37" font-weight="700">häufigste deutsche</text>
+  <text x="300" y="264" text-anchor="middle" fill="#f5c842" font-family="Arial, Helvetica, sans-serif" font-size="51" font-weight="800" letter-spacing="1">WÖRTER</text>
+
+  <g filter="url(#shadow)">
+    <path d="M74 682Q176 638 298 690V820Q184 760 74 798z" fill="url(#page)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M526 682Q424 638 302 690V820Q416 760 526 798z" fill="url(#page)" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M300 691v129" fill="none" stroke="#be8b3d" stroke-width="5"/>
+  </g>
+
+  <path d="M300 687C290 622 268 569 224 519S150 434 157 373" fill="none" stroke="#f5c842" stroke-width="15" stroke-linecap="round"/>
+  <path d="M300 687C319 617 356 573 408 533s77-83 70-141" fill="none" stroke="#ef5b45" stroke-width="15" stroke-linecap="round"/>
+  <path d="M300 687C302 601 299 525 300 392" fill="none" stroke="#5ad1b2" stroke-width="15" stroke-linecap="round"/>
+
+  <g stroke="#101a43" stroke-width="6" stroke-linejoin="round">
+    <path d="M126 559h113v109H126z" fill="#ef5b45"/>
+    <path d="M113 559l70-62 70 62z" fill="#fff8db"/>
+    <path d="M161 604h44v64h-44z" fill="#f5c842"/>
+    <path d="M362 570h122v99H362z" fill="#5ad1b2"/>
+    <path d="M350 570l73-69 73 69z" fill="#fff8db"/>
+    <path d="M400 608h45v61h-45z" fill="#f5c842"/>
+    <path d="M263 479h75v190h-75z" fill="#f5c842"/>
+    <path d="M253 479l47-46 48 46z" fill="#ef5b45"/>
+    <path d="M286 523h29v37h-29zM286 586h29v37h-29z" fill="#fff8db"/>
+  </g>
+
+  <g fill="#5ad1b2" stroke="#101a43" stroke-width="5">
+    <circle cx="105" cy="642" r="28"/>
+    <circle cx="94" cy="614" r="23"/>
+    <circle cx="120" cy="612" r="25"/>
+    <path d="M106 635v55" fill="none"/>
+    <circle cx="504" cy="642" r="28"/>
+    <circle cx="493" cy="614" r="23"/>
+    <circle cx="519" cy="612" r="25"/>
+    <path d="M505 635v55" fill="none"/>
+  </g>
+
+  <g transform="translate(235 728)" fill="none" stroke="#101a43" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="40" r="21"/>
+    <circle cx="103" cy="40" r="21"/>
+    <path d="M22 40l31-39 19 39H22zm50 0h31L83 8H53m20-16h22"/>
+  </g>
+
+  <rect x="55" y="829" width="490" height="2" fill="#fff8db" opacity=".45"/>
+  <text x="300" y="860" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="4">GESCHICHTEN</text>
+</svg>
