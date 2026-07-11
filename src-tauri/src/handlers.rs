@@ -199,6 +199,7 @@ pub(crate) fn choose_sync_dir(state: &ServerState) -> Result<Option<(String, Val
     };
     let mut snapshot = state.store.sync_with_directory(path.clone())?;
     crate::paths::set_sync_dir(crate::APP_NAME, &path)?;
+    state.syncthing.configure_folder_if_running(&path)?;
     let path = path.to_string_lossy().into_owned();
     snapshot["syncDir"] = Value::String(path.clone());
     Ok(Some((path, snapshot)))
@@ -214,6 +215,7 @@ pub(crate) fn prepare_sync_dir(state: &ServerState) -> Result<Value, String> {
     let dir = crate::sync_assistant::managed_sync_dir()?;
     let mut snapshot = state.store.sync_with_directory(dir.clone())?;
     crate::paths::set_sync_dir(crate::APP_NAME, &dir)?;
+    state.syncthing.configure_folder_if_running(&dir)?;
     let path = dir.to_string_lossy().into_owned();
     snapshot["syncDir"] = Value::String(path.clone());
     Ok(serde_json::json!({

@@ -159,9 +159,11 @@ impl SyncthingManager {
             .flatten()
             .unwrap_or_default();
 
-        if let Ok(folder_path) = crate::sync_assistant::managed_sync_dir() {
-            let _ = set_folder_via_api(port, &api_key, &folder_path);
-        }
+        let folder_path = match crate::paths::sync_dir(crate::APP_NAME).ok().flatten() {
+            Some(path) => path,
+            None => crate::sync_assistant::managed_sync_dir()?,
+        };
+        set_folder_via_api(port, &api_key, &folder_path)?;
 
         eprintln!("[syncthing] started on port {port}, device ID: {device_id}");
         Ok(self.status())
@@ -189,6 +191,18 @@ impl SyncthingManager {
         clear_port();
         eprintln!("[syncthing] stopped");
         Ok(self.status())
+    }
+
+    #[cfg(not(target_os = "android"))]
+    pub(crate) fn configure_folder_if_running(&self, path: &Path) -> Result<(), String> {
+        let Some(api_key) = load_api_key()? else {
+            return Ok(());
+        };
+        let port = load_port().unwrap_or(DEFAULT_GUI_PORT);
+        if !is_syncthing_reachable(port, &api_key).unwrap_or(false) {
+            return Ok(());
+        }
+        set_folder_via_api(port, &api_key, path)
     }
 
     #[cfg(target_os = "android")]

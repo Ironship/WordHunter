@@ -54,6 +54,7 @@ export function setView(viewName) {
   saveUiState();
   renderShell();
   renderView(viewName);
+  window.dispatchEvent(new CustomEvent("wordhunter:view-changed", { detail: { view: viewName } }));
 }
 
 export function getNavigationEpoch() {

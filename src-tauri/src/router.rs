@@ -217,15 +217,22 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Post, _) => match path.as_str() {
             "/__store/save" => {
                 let payload = read_json_or_400!(request);
-                state.store.bulk_save(payload)?;
-                if response::parse_query(&query)
-                    .get("snapshot")
-                    .map(String::as_str)
-                    == Some("1")
-                {
-                    response::json_response(request, json!({ "snapshot": state.store.snapshot() }))
-                } else {
-                    response::no_content(request)
+                match state.store.bulk_save(payload) {
+                    Ok(()) => {
+                        if response::parse_query(&query)
+                            .get("snapshot")
+                            .map(String::as_str)
+                            == Some("1")
+                        {
+                            response::json_response(
+                                request,
+                                json!({ "snapshot": state.store.snapshot() }),
+                            )
+                        } else {
+                            response::no_content(request)
+                        }
+                    }
+                    Err(error) => response::error_response(request, 500, &error),
                 }
             }
             "/__store/choose_data_dir" => match handlers::choose_data_dir(&state) {

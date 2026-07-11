@@ -228,7 +228,10 @@ export async function syncNow({ background = false, saveFirst = true } = {}) {
     method: "POST",
     headers: { "X-WH-Token": window.WH_TOKEN || "" }
   });
-  if (!response.ok) throw new Error(t("toast.syncUnavailable"));
+  if (!response.ok) {
+    const detail = (await response.text()).trim();
+    throw new Error(detail || t("toast.syncUnavailable"));
+  }
   const result = await response.json();
   if (result.snapshot) applyBridgeSnapshot(result.snapshot);
   if (!background) refreshSyncHealth();
@@ -272,7 +275,11 @@ function startBackgroundSyncJob() {
     if (!backgroundSyncRunning) scheduleBackgroundSync(5000);
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") scheduleBackgroundSync(2000);
+    if (document.visibilityState === "visible") {
+      scheduleBackgroundSync(2000);
+      refreshSyncHealth();
+      refreshSyncthingStatus();
+    }
   });
   window.setInterval(() => scheduleBackgroundSync(0, { saveFirst: true }), 15 * 60 * 1000);
 }
@@ -548,7 +555,7 @@ export function bindSettingsEvents() {
     } catch (error) {
       console.error(error);
       setSyncStatus("Error");
-      showToast(t("toast.syncUnavailable"), "error");
+      showToast(error.message || t("toast.syncUnavailable"), "error");
     } finally {
       setElementBusy(els.forceSync, false, { disable: true });
       setTimeout(syncSettingsControls, 500);
@@ -577,6 +584,11 @@ export function bindSettingsEvents() {
   }
 
   startBackgroundSyncJob();
+  window.addEventListener("wordhunter:view-changed", (event) => {
+    if (event.detail?.view !== "sync") return;
+    refreshSyncHealth();
+    refreshSyncthingStatus();
+  });
   refreshSyncHealth();
   refreshSyncthingStatus();
 
