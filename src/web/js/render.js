@@ -1,20 +1,22 @@
 // Render orchestrator.
-import { state, saveState, getLastReadTextId } from "./state.js";
+import { state, saveUiState, getLastReadTextId } from "./state.js";
 import { renderShell } from "./views/shell.js";
 import { renderLibrary } from "./views/library.js";
-import { renderReader, updateReaderSelection, rememberReaderScrollPosition } from "./views/reader.js";
+import { renderReader, getTextById } from "./reader/renderer.js";
+import { updateReaderSelection } from "./reader/selection.js";
+import { rememberReaderScrollPosition } from "./reader/scroll.js";
 import { renderVocabulary, renderReview } from "./views/vocabulary.js";
-import { renderDiscover, cancelAllStatsFetches } from "./views/discover.js";
+import { renderDiscover } from "./views/discover.js";
 import { renderGraphs } from "./views/graphs.js";
 import { renderTranslator } from "./views/translator.js";
 import { syncSettingsControls } from "./preferences.js";
-import { getTextById } from "./views/reader.js";
 import { t } from "./i18n.js";
 import { els } from "./dom.js";
 import { applyPlatformUi, isAndroidPlatform } from "./platform.js";
 
 let ocrGpuStatus;
 let ocrGpuProbe;
+let navigationEpoch = 0;
 
 const VIEW_RENDERERS = {
   library: () => renderLibrary(),
@@ -24,6 +26,7 @@ const VIEW_RENDERERS = {
   graphs: () => renderGraphs(),
   discover: () => renderDiscover(),
   translator: () => renderTranslator(),
+  sync: () => { syncSettingsControls(); applyPlatformUi(); },
   settings: () => { syncSettingsControls(); applyPlatformUi(); if (!isAndroidPlatform()) refreshOcrGpuStatus(); },
   help: null
 };
@@ -39,6 +42,7 @@ export function render() {
 }
 
 export function setView(viewName) {
+  navigationEpoch += 1;
   if (state.currentView === "reader" && viewName !== "reader") {
     rememberReaderScrollPosition();
     if (state.currentTextId) {
@@ -46,13 +50,14 @@ export function setView(viewName) {
       state.readerPages[state.currentTextId] = state.readerPage;
     }
   }
-  if (state.currentView === "discover" && viewName !== "discover") {
-    cancelAllStatsFetches();
-  }
   state.currentView = viewName;
-  saveState();
+  saveUiState();
   renderShell();
   renderView(viewName);
+}
+
+export function getNavigationEpoch() {
+  return navigationEpoch;
 }
 
 function refreshOcrGpuStatus() {
@@ -60,8 +65,11 @@ function refreshOcrGpuStatus() {
     ocrGpuProbe = fetch("/__ocr/gpu-status")
       .then((response) => response.ok ? response.json() : { status: "failed" })
       .catch(() => ({ status: "failed" }))
-      .then(({ status }) => {
-        ocrGpuStatus = status === "ready" || status === "unavailable" ? status : "failed";
+      .then(({ status, provider }) => {
+        ocrGpuStatus = {
+          status: status === "ready" || status === "unavailable" ? status : "failed",
+          provider: provider === "webgpu" || provider === "directml" ? provider : "cpu"
+        };
         renderOcrGpuStatus();
       });
   }
@@ -69,11 +77,11 @@ function refreshOcrGpuStatus() {
 }
 
 function renderOcrGpuStatus() {
-  const key = ocrGpuStatus === "ready"
-    ? "settings.ocrGpuReady"
-    : ocrGpuStatus === "unavailable"
+  const key = ocrGpuStatus?.status === "ready"
+    ? (ocrGpuStatus.provider === "webgpu" ? "settings.ocrGpuReadyWebGpu" : "settings.ocrGpuReady")
+    : ocrGpuStatus?.status === "unavailable"
       ? "settings.ocrGpuUnavailable"
-      : ocrGpuStatus === "failed"
+      : ocrGpuStatus?.status === "failed"
         ? "settings.ocrGpuFailed"
         : "settings.ocrGpuChecking";
   if (els.ocrGpuStatus) els.ocrGpuStatus.textContent = t(key);
@@ -85,14 +93,14 @@ export function ensureCurrentText() {
   if (lastTextId && getTextById(lastTextId)) {
     state.currentTextId = lastTextId;
     state.selectedWord = null;
-    saveState();
+    saveUiState();
     return;
   }
   const shouldSave = Boolean(state.currentTextId || state.selectedWord || state.currentView === "reader");
   state.currentTextId = null;
   state.selectedWord = null;
   if (state.currentView === "reader") state.currentView = "library";
-  if (shouldSave) saveState();
+  if (shouldSave) saveUiState();
 }
 
 export { updateReaderSelection };

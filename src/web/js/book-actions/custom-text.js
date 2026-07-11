@@ -1,20 +1,23 @@
 /**
  * Custom text import/removal and slug helper.
  */
-import { state, saveState, clearLastReadTextId } from "../state.js";
+import { state, clearLastReadTextId } from "../state.js";
 import { showToast } from "../toast.js";
-import { bookTexts } from "../books.js";
+import { bookTexts, clearBookTextCache } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { parseTagList } from "../utils.js";
 import { t } from "../i18n.js";
 import { render, ensureCurrentText } from "../render.js";
 import { renderLibrary } from "../views/library.js";
+import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "../bridge-commit.js";
+import { deleteStoredText, upsertStoredText } from "../store-bridge.js";
 import {
   clearCurrentBookSelectionIfMatches,
   findCustomText,
   removeCustomTextFromActiveProfile,
   upsertCustomText
 } from "./profile-library.js";
+import { buildPdfDocumentText, effectivePdfPageText, reconcilePdfPageWords } from "../reader/pdf-page-text.js";
 
 export function slugify(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -55,23 +58,30 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
     customText.text = cleanText; // Save locally if no backend
   }
 
-  bookTexts.set(id, cleanText);
-  invalidateBookId(id);
-
-  upsertCustomText(customText);
-
   if (window.__qtBridge) {
-    const payload = { ...customText, text: cleanText };
     try {
-      await fetch("/__store/upsert_text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify(payload)
-      });
-    } catch(e) { console.warn("upsert_text failed", e); }
+      await upsertStoredText({ ...customText, text: cleanText });
+    } catch (error) {
+      console.warn("upsert_text failed", error);
+      showToast(t("toast.importFailed"), "error");
+      return null;
+    }
   }
 
-  saveState();
+  bookTexts.set(id, cleanText);
+  invalidateBookId(id);
+  upsertCustomText(customText);
+
+  try {
+    await saveStateAndReloadBridge(state.currentView || "library");
+  } catch (error) {
+    console.warn("custom text profile save failed", error);
+    await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+      console.warn("custom text recovery reload failed", reloadError);
+    });
+    showToast(t("toast.syncUnavailable"), "error");
+    return null;
+  }
   showToast(t("toast.textAdded"));
   if (openAfterImport) {
     const { openBook } = await import("../book-actions.js");
@@ -82,22 +92,92 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   return id;
 }
 
-export function removeCustomText(id) {
+export async function updatePdfOcrPageText(id, pageIndex, correctedText, options = {}) {
+  const existing = findCustomText(id, { coerce: true });
+  if (!existing || !Array.isArray(existing.pdfOcrPages) || !existing.pdfOcrPages[pageIndex]) return false;
+  if (Object.hasOwn(options, "expectedUpdatedAt")
+    && (existing.updatedAt || null) !== (options.expectedUpdatedAt || null)) return false;
+
+  const pages = existing.pdfOcrPages.map((page, index) => {
+    if (index !== pageIndex) return { ...page };
+    const next = { ...page };
+    const corrected = String(correctedText || "").trim();
+    const originalPage = { ...page };
+    delete originalPage.correctedText;
+    const original = effectivePdfPageText(originalPage);
+    next.words = reconcilePdfPageWords(
+      Array.isArray(page.words) ? page.words : [],
+      corrected,
+      state.preferences.learningLanguage || "en",
+      state.preferences.wordDetectionAlgorithm || "modern"
+    );
+    if (corrected === original) delete next.correctedText;
+    else next.correctedText = corrected;
+    return next;
+  });
+  const text = buildPdfDocumentText(pages);
+
+  const updated = {
+    ...existing,
+    pdfOcrPages: pages,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    if (window.__qtBridge) await upsertStoredText({ ...updated, text }, { allowEmpty: true });
+  } catch (error) {
+    console.warn("PDF OCR correction upsert failed", error);
+    return false;
+  }
+
+  if (!window.__qtBridge) updated.text = text;
+  bookTexts.set(id, text);
+  invalidateBookId(id);
+  upsertCustomText(updated);
+  try {
+    await saveStateAndReloadBridge(state.currentView || "reader");
+  } catch (error) {
+    console.warn("PDF OCR correction profile save failed", error);
+    await reloadBridgeSnapshot(state.currentView || "reader").catch((reloadError) => {
+      console.warn("PDF OCR correction recovery reload failed", reloadError);
+    });
+    const recovered = findCustomText(id, { coerce: true });
+    return effectivePdfPageText(recovered?.pdfOcrPages?.[pageIndex]) === String(correctedText || "").trim();
+  }
+  return true;
+}
+
+export async function removeCustomText(id) {
+  const existing = findCustomText(id);
+  if (!existing) return;
+  if (window.__qtBridge) {
+    try {
+      await deleteStoredText(id);
+    } catch (error) {
+      console.warn("delete_text failed", error);
+      showToast(t("toast.syncUnavailable"), "error");
+      return;
+    }
+  }
+
   const textObj = removeCustomTextFromActiveProfile(id);
   if (!textObj) return;
-  invalidateBookId(id);
+  clearBookTextCache(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
 
-  if (window.__qtBridge) {
-    fetch("/__store/delete_text", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: JSON.stringify({ id: id })
-    }).catch(e => console.warn("delete_text failed", e));
+  try {
+    await saveStateAndReloadBridge(state.currentView || "library");
+  } catch (error) {
+    console.warn("delete_text profile save failed", error);
+    if (window.__qtBridge) {
+      await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+        console.warn("delete_text recovery reload failed", reloadError);
+      });
+    }
+    showToast(t("toast.syncUnavailable"), "error");
+    return;
   }
 
-  saveState();
   render();
   showToast(t("toast.textRemoved"));
 }

@@ -1,2 +1,0 @@
-La maison est bleue.
-Elle reste lisible apres migration.

@@ -14,7 +14,7 @@ macOS and iOS are intentionally outside the current layout.
 
 - `src/web/` contains the shared HTML, JavaScript, i18n, flags, and base CSS.
 - `src-tauri/src/` contains shared Rust handlers, storage, SRS, tokenization, subtitles, and export logic.
-- `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Linux placeholders, Android APK/AAB builds, and frontend tests.
+- `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Android APK/AAB builds, and frontend tests. Linux packages use `scripts/build-flatpak.sh`.
 
 ## Web platform layers
 

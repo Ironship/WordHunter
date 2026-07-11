@@ -8,6 +8,8 @@ import { renderLibrary } from "../views/library.js";
 import { bookTexts, clearBookTextCache } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { t } from "../i18n.js";
+import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "../bridge-commit.js";
+import { deleteStoredText, upsertStoredText } from "../store-bridge.js";
 import {
   archiveBookId,
   clearCurrentBookSelectionIfMatches,
@@ -15,6 +17,7 @@ import {
   hideBuiltInBookId,
   moveCustomTextToProfile,
   moveUserBookToProfile,
+  planCustomTextMove,
   removeUserBookFromActiveProfile
 } from "./profile-library.js";
 
@@ -34,44 +37,69 @@ export function unarchiveBook(id) {
   showToast(t("toast.bookUnarchived"));
 }
 
-export function moveBookToProfile(id, targetLang, isCustom) {
+async function loadCustomTextBodyForMove(id, textObj) {
+  const cached = bookTexts.get(id);
+  if (typeof cached === "string" && cached.trim()) return cached;
+  if (typeof textObj?.text === "string" && textObj.text.trim()) return textObj.text;
+  if (!window.__qtBridge) return "";
+  const response = await fetch(`/__book/text?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`/__book/text HTTP ${response.status}`);
+  const data = await response.json();
+  const body = typeof data.text === "string" ? data.text : "";
+  if (!body.trim()) throw new Error("custom text body is empty");
+  return body;
+}
+
+export async function moveBookToProfile(id, targetLang, isCustom) {
   const currentLang = state.preferences.learningLanguage;
-  if (currentLang === targetLang) return;
+  if (currentLang === targetLang) return false;
 
   if (isCustom) {
+    const planned = planCustomTextMove(id, targetLang);
+    if (!planned) return false;
+    let textBody = "";
+    try {
+      textBody = await loadCustomTextBodyForMove(id, planned.textObj);
+      if (window.__qtBridge) {
+        await upsertStoredText({ ...planned.textObj, text: textBody });
+        await deleteStoredText(id);
+      }
+    } catch (error) {
+      console.warn("move custom text backend write failed", error);
+      showToast(t("toast.syncUnavailable"), "error");
+      return false;
+    }
     const moved = moveCustomTextToProfile(id, targetLang);
-    if (!moved) return;
+    if (!moved) return false;
     const { textObj, newId } = moved;
+    if (!window.__qtBridge) textObj.text = textBody;
+    if (textBody) bookTexts.set(newId, textBody);
+    bookTexts.delete(id);
     invalidateBookId(id);
     invalidateBookId(newId);
 
     if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
     clearLastReadTextId(id);
-
-    if (window.__qtBridge) {
-      const textObjForSave = { ...textObj, text: bookTexts.get(newId) || bookTexts.get(id) || "" };
-      fetch("/__store/upsert_text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify(textObjForSave)
-      }).catch(e => console.warn("move_text upsert failed", e));
-
-      fetch("/__store/delete_text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({ id: id })
-      }).catch(e => console.warn("move_text delete failed", e));
-    }
   } else {
     const bookObj = moveUserBookToProfile(id, targetLang);
-    if (!bookObj) return;
+    if (!bookObj) return false;
     if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
     clearLastReadTextId(id);
   }
 
-  saveState();
+  try {
+    await saveStateAndReloadBridge(state.currentView || "library");
+  } catch (error) {
+    console.warn("move book profile save failed", error);
+    await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+      console.warn("move book recovery reload failed", reloadError);
+    });
+    showToast(t("toast.syncUnavailable"), "error");
+    return false;
+  }
   render();
   showToast(t("toast.bookMoved"));
+  return true;
 }
 
 export function removeUserBook(id) {

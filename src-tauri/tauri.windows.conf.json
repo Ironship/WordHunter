@@ -1,6 +1,18 @@
 {
   "bundle": {
     "targets": ["nsis"],
+    "resources": {
+      "../src/assets/**/*": "src/assets/",
+      "ocr-runtime/bin/**/*": "ocr-runtime/bin/",
+      "ocr-runtime/models/**/*": "ocr-runtime/models/",
+      "syncthing/syncthing.exe": "syncthing.exe",
+      "syncthing/SYNCTHING-LICENSE.txt": "SYNCTHING-LICENSE.txt",
+      "syncthing/SYNCTHING-AUTHORS.txt": "SYNCTHING-AUTHORS.txt",
+      "../LICENSE": "LICENSE",
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md",
+      "../THIRD-PARTY-LICENSES.html": "THIRD-PARTY-LICENSES.html",
+      "../OCR-THIRD-PARTY-LICENSES.html": "OCR-THIRD-PARTY-LICENSES.html"
+    },
     "windows": {
       "nsis": {
         "installMode": "perMachine",

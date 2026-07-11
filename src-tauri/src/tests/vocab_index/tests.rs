@@ -48,13 +48,20 @@ fn handle_returns_words_stats() {
 }
 
 #[test]
-fn handle_uses_default_lang_and_algorithm() {
+fn handle_uses_default_lang_and_modern_algorithm() {
     let payload = json!({
-        "text": "alpha beta alpha",
+        "text": "well-known well",
         "vocab": {},
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
     assert_eq!(result["unique"], 2);
+    let words: Vec<&str> = result["words"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|word| word.as_str().unwrap())
+        .collect();
+    assert_eq!(words, vec!["well", "known"]);
 }
 
 #[test]

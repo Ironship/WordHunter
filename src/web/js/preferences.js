@@ -1,5 +1,5 @@
 // User preferences: theme, font, size — reads and saves state, updates DOM.
-import { state, saveState, createDefaultState } from "./state.js";
+import { state, saveState, createDefaultState, getDefaultDictionaryUrl } from "./state.js";
 import { APP_LOCALES, FONT_STACKS, LEARNING_LANGUAGES, LINE_HEIGHTS, UI_SCALE } from "./constants.js";
 import { els } from "./dom.js";
 import { clamp, escapeHtml } from "./utils.js";
@@ -7,7 +7,9 @@ import { t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
 import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
+import { applyTheme, nextTheme, normalizeTheme } from "./theme.js";
 import { isAndroidPlatform } from "./platform.js";
+import { themeIcon } from "./icons.js";
 
 let syncStatus = null;
 
@@ -136,19 +138,95 @@ function renderCloudSyncStatus() {
   }
   const keys = {
     ready: "settings.cloudSyncStatusReady",
-    syncing_pull: "settings.cloudSyncStatusSyncing",
-    validating: "settings.cloudSyncStatusSyncing",
-    merging: "settings.cloudSyncStatusSyncing",
-    syncing_push: "settings.cloudSyncStatusSyncing",
+    syncing: "settings.cloudSyncStatusSyncing",
     complete: "settings.cloudSyncStatusComplete",
     not_supported: "settings.cloudSyncStatusNotSupported",
+    "needs-attention": "settings.cloudSyncStatusNeedsAttention",
     needs_attention: "settings.cloudSyncStatusNeedsAttention",
     auth_required: "settings.cloudSyncStatusAuthRequired",
     offline: "settings.cloudSyncStatusOffline",
     error: "settings.cloudSyncStatusError"
   };
-  const remote = typeof status.remote === "string" ? status.remote : "";
-  els.cloudSyncStatus.textContent = t(keys[status.status] || "settings.cloudSyncStatusUnknown", { remote });
+  els.cloudSyncStatus.textContent = t(keys[status.status] || "settings.cloudSyncStatusUnknown", {
+    remote: status.remote || ""
+  });
+}
+
+function renderSyncthingStatus() {
+  if (!els.syncthingStatus) return;
+  const st = state.syncthingStatus;
+  if (!st) {
+    els.syncthingStatus.textContent = t("settings.syncthingNotConfigured");
+    if (els.syncthingPeers) els.syncthingPeers.textContent = "";
+    return;
+  }
+  if (!st.running) {
+    els.syncthingStatus.textContent = t("settings.syncthingStopped");
+    if (els.syncthingPeers) els.syncthingPeers.textContent = "";
+    return;
+  }
+  const deviceId = st.deviceId || "";
+  const peerCount = Array.isArray(st.peers) ? st.peers.filter((peer) => peer.connected).length : 0;
+  const folderOk = st.folderOk ? "✓" : "✗";
+  els.syncthingStatus.textContent = t("settings.syncthingRunning", { deviceId: deviceId.slice(0, 14) + "…", folderOk });
+  if (els.syncthingPeers) {
+    els.syncthingPeers.textContent = peerCount > 0
+      ? t("settings.syncthingPeers", { count: peerCount })
+      : t("settings.syncthingNoPeers");
+  }
+}
+
+function renderSyncthingWizard() {
+  const st = state.syncthingStatus;
+  const hasSyncDir = !!(state.syncDirectory || getAndroidSyncFolderLabel());
+  const running = st?.running === true;
+  const peers = Array.isArray(st?.peers) ? st.peers : [];
+  const connectedPeers = peers.filter(p => p.connected);
+  const steps = document.querySelectorAll(".syncthing-wizard-step[data-step]");
+
+  steps.forEach(step => {
+    const num = parseInt(step.dataset.step, 10);
+    step.classList.remove("syncthing-wizard-step-active", "syncthing-wizard-step-done");
+
+    if (num === 1) {
+      if (hasSyncDir) {
+        step.classList.add("syncthing-wizard-step-done");
+      } else {
+        step.classList.add("syncthing-wizard-step-active");
+      }
+    } else if (num === 2) {
+      if (running) {
+        step.classList.add("syncthing-wizard-step-done");
+      } else if (hasSyncDir) {
+        step.classList.add("syncthing-wizard-step-active");
+      }
+    } else if (num === 3) {
+      if (connectedPeers.length > 0) {
+        step.classList.add("syncthing-wizard-step-done");
+      } else if (running) {
+        step.classList.add("syncthing-wizard-step-active");
+      }
+    } else if (num === 4) {
+      if (connectedPeers.length > 0 && peers.length > 0) {
+        step.classList.add("syncthing-wizard-step-done");
+      }
+    }
+  });
+
+  const finalStep = document.getElementById("syncthing-running-step");
+  if (finalStep) {
+    finalStep.hidden = !running;
+    if (running) {
+      const statusEl = document.getElementById("syncthing-final-status");
+      if (statusEl) {
+        const deviceId = st.deviceId || "";
+        const peerNames = connectedPeers.map(p => p.name || p.deviceId).join(", ");
+        statusEl.textContent = connectedPeers.length > 0
+          ? t("settings.syncWizFinalActive", { deviceId: deviceId.slice(0, 14) + "…", peers: peerNames })
+          : t("settings.syncWizFinalNoPeers", { deviceId: deviceId.slice(0, 14) + "…" });
+      }
+    }
+  }
 }
 
 export function setSyncStatus(status, vars = {}) {
@@ -157,19 +235,21 @@ export function setSyncStatus(status, vars = {}) {
 }
 
 export function themeLabel(theme) {
-  if (theme === "dark") return t("toast.themeDark");
-  if (theme === "light") return t("toast.themeLight");
-  return t("toast.themeAuto");
+  const labels = {
+    familiar: "toast.themeFamiliar",
+    "alternative-familiar": "toast.themeAlternativeFamiliar",
+    "classic-auto": "toast.themeClassicAuto",
+    "classic-light": "toast.themeClassicLight",
+    "classic-dark": "toast.themeClassicDark"
+  };
+  return t(labels[normalizeTheme(theme)]);
 }
 
 export function applyPreferences() {
   const prefs = state.preferences || {};
-  const theme = prefs.theme || "auto";
-  const resolved = theme === "auto"
-    ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-    : theme;
-  document.documentElement.dataset.theme = resolved;
-  document.documentElement.dataset.themePref = theme;
+  const theme = normalizeTheme(prefs.theme);
+  if (prefs.theme !== theme) prefs.theme = theme;
+  applyTheme(theme);
 
   const fontKey = FONT_STACKS[prefs.readerFont] ? prefs.readerFont : "serif";
   const lineKey = LINE_HEIGHTS[prefs.readerLineHeight] ? prefs.readerLineHeight : "normal";
@@ -197,14 +277,16 @@ export function applyPreferences() {
   document.documentElement.style.zoom = String(uiScale / 100);
 
   if (els.themeToggle) {
-    const glyph = theme === "dark" ? "☀" : theme === "light" ? "☽" : "◑";
-    els.themeToggle.textContent = glyph;
-    els.themeToggle.title = t("toast.themeChanged", { name: themeLabel(theme) });
+    const next = nextTheme(theme);
+    els.themeToggle.innerHTML = themeIcon(next);
+    els.themeToggle.dataset.nextTheme = next;
+    els.themeToggle.title = `${t("topbar.themeToggle")}: ${themeLabel(next)}`;
+    els.themeToggle.setAttribute("aria-label", els.themeToggle.title);
   }
 }
 
 export function syncSettingsControls() {
-  if (els.prefTheme) els.prefTheme.value = state.preferences.theme || "auto";
+  if (els.prefTheme) els.prefTheme.value = normalizeTheme(state.preferences.theme);
   els.prefLocales?.forEach((control) => { control.value = state.preferences.locale || "pl"; });
   els.prefLearningLanguages?.forEach((control) => { control.value = state.preferences.learningLanguage || "en"; });
 
@@ -251,6 +333,15 @@ export function syncSettingsControls() {
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
   if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
   if (els.prefTtsWordHighlight) els.prefTtsWordHighlight.checked = prefs.ttsWordHighlight === true;
+  if (els.prefStatusSoundsEnabled) els.prefStatusSoundsEnabled.checked = prefs.statusSoundsEnabled !== false;
+  const statusSoundPercent = Math.round(clamp(Number(prefs.statusSoundVolume) || 0, 0, 1) * 100);
+  if (els.prefStatusSoundVolume) {
+    els.prefStatusSoundVolume.value = String(statusSoundPercent);
+    els.prefStatusSoundVolume.disabled = prefs.statusSoundsEnabled === false;
+  }
+  if (els.prefStatusSoundVolumeLabel) {
+    els.prefStatusSoundVolumeLabel.textContent = t("settings.statusSoundVolume", { n: statusSoundPercent });
+  }
   if (els.prefRemovalBehavior) els.prefRemovalBehavior.value = prefs.removalBehavior || "ignored";
   if (els.ankiExportStatusFilters?.length) {
     const selected = Array.isArray(prefs.ankiExportStatuses) && prefs.ankiExportStatuses.length
@@ -304,6 +395,8 @@ export function syncSettingsControls() {
     const enabled = canUseTranslationProvider();
     els.prefAutoTranslateRow.style.opacity = enabled ? "1" : "0.5";
     els.prefAutoTranslateRow.style.pointerEvents = enabled ? "auto" : "none";
+    els.prefAutoTranslateRow.setAttribute("aria-disabled", String(!enabled));
+    if (els.prefAutoTranslate) els.prefAutoTranslate.disabled = !enabled;
   }
   if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = prefs.offlineTranslator === true;
   if (els.prefArgosAsDict) {
@@ -312,6 +405,8 @@ export function syncSettingsControls() {
       const enabled = provider === "offline" && prefs.offlineTranslator === true;
       els.prefArgosAsDictRow.style.opacity = enabled ? "1" : "0.5";
       els.prefArgosAsDictRow.style.pointerEvents = enabled ? "auto" : "none";
+      els.prefArgosAsDictRow.setAttribute("aria-disabled", String(!enabled));
+      els.prefArgosAsDict.disabled = !enabled;
     }
   }
   els.prefCardStats.checked = prefs.showCardStats !== false;
@@ -322,7 +417,7 @@ export function syncSettingsControls() {
   if (els.prefColorLearning) els.prefColorLearning.value = prefs.colorLearning || "#ffb84d";
   if (els.prefColorKnown) els.prefColorKnown.value = prefs.colorKnown || "#8ce99a";
   if (els.prefColorIgnored) els.prefColorIgnored.value = prefs.colorIgnored || "#ced4da";
-  if (els.storageSummary) {
+  if (els.storageSummary && state.currentView === "settings") {
     try {
       const bytes = new Blob([JSON.stringify(state)]).size;
       const kb = (bytes / 1024).toFixed(1);
@@ -331,9 +426,6 @@ export function syncSettingsControls() {
         texts: state.customTexts.length,
         kb
       });
-      if (state.migrationStatus?.status === "complete") {
-        summary += ` ${t("settings.migrationComplete")}`;
-      }
       els.storageSummary.textContent = summary;
     } catch (error) {
       console.warn(error);
@@ -363,22 +455,38 @@ export function syncSettingsControls() {
   }
   renderSyncHealth();
   renderCloudSyncStatus();
+  renderSyncthingStatus();
+  renderSyncthingWizard();
   renderSyncConflicts();
   renderRecoveryStatus();
-  if (els.forceSync) els.forceSync.disabled = typeof window.flushPendingSave !== "function";
-  if (els.connectCloudSync) {
-    const supported = !isAndroidPlatform() && state.cloudSyncStatus?.supported !== false;
-    els.connectCloudSync.disabled = !supported;
+  if (els.forceSync) els.forceSync.disabled = typeof window.flushAllPendingFrontendState !== "function";
+  if (els.syncthingStart) {
+    const running = state.syncthingStatus?.running === true;
+    els.syncthingStart.disabled = running || typeof window.flushAllPendingFrontendState !== "function";
   }
-  if (els.cloudSyncNow) {
-    const configured = state.cloudSyncStatus?.configured === true || !!state.cloudSyncStatus?.remote;
-    const supported = !isAndroidPlatform() && state.cloudSyncStatus?.supported !== false;
-    els.cloudSyncNow.disabled = typeof window.flushPendingSave !== "function" || !configured || !supported;
+  if (els.syncthingStop) {
+    const running = state.syncthingStatus?.running === true;
+    els.syncthingStop.disabled = !running;
+  }
+  if (els.syncthingPair) {
+    const running = state.syncthingStatus?.running === true;
+    els.syncthingPair.disabled = !running;
+  }
+  if (els.syncthingShowQR) {
+    const running = state.syncthingStatus?.running === true;
+    els.syncthingShowQR.disabled = !running || !state.syncthingStatus?.deviceId;
   }
 }
 
 export function updatePreferenceValue(key, value) {
   state.preferences[key] = value;
+  if (["dictionaryUrl", "dictionaryMode"].includes(key)) {
+    const profile = state.profiles?.[state.preferences.learningLanguage];
+    if (profile) {
+      profile.preferences = profile.preferences || {};
+      profile.preferences[key] = value;
+    }
+  }
   saveState();
   applyPreferences();
 }
@@ -386,7 +494,22 @@ export function updatePreferenceValue(key, value) {
 export function resetPreferences() {
   const defaults = createDefaultState();
   const lastReadTextIds = state.preferences?.lastReadTextIds || {};
-  state.preferences = { ...defaults.preferences, lastReadTextIds };
+  const learningLanguage = state.preferences?.learningLanguage || defaults.preferences.learningLanguage;
+  const profilePreferences = state.profiles?.[learningLanguage]?.preferences || {};
+  state.preferences = {
+    ...defaults.preferences,
+    learningLanguage,
+    dictionaryUrl: profilePreferences.dictionaryUrl || getDefaultDictionaryUrl(learningLanguage),
+    dictionaryMode: profilePreferences.dictionaryMode || "internal",
+    lastReadTextIds
+  };
+  if (state.profiles?.[learningLanguage]) {
+    state.profiles[learningLanguage].preferences = {
+      ...(state.profiles[learningLanguage].preferences || {}),
+      dictionaryUrl: state.preferences.dictionaryUrl,
+      dictionaryMode: state.preferences.dictionaryMode,
+    };
+  }
   state.readerFontSize = defaults.readerFontSize;
   saveState();
   applyPreferences();
@@ -395,6 +518,7 @@ export function resetPreferences() {
 
 export function setReaderFontSize(value) {
   state.readerFontSize = clamp(Number(value) || 18, 14, 28);
+  state.preferences.readerFontSize = state.readerFontSize;
   saveState();
   applyPreferences();
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize });

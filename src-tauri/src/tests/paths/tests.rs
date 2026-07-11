@@ -1,4 +1,4 @@
-use super::{data_dir, device_id, sanitize_id, set_sync_dir, sync_dir};
+use super::{data_dir, device_id, read_app_config, sanitize_id, set_sync_dir, sync_dir};
 use std::ffi::OsString;
 
 struct EnvGuard {
@@ -37,7 +37,8 @@ impl Drop for EnvGuard {
 #[test]
 fn sanitizes_ids_to_file_names() {
     assert_eq!(sanitize_id("book-1").unwrap(), "book-1");
-    assert_eq!(sanitize_id("../book-1").unwrap(), "book-1");
+    assert!(sanitize_id("../book-1").is_err());
+    assert!(sanitize_id("folder\\book-1").is_err());
     assert!(sanitize_id("..").is_err());
 }
 
@@ -68,7 +69,83 @@ fn stores_sync_redirect_in_xdg_config_home() {
 }
 
 #[test]
-fn defaults_data_dir_to_xdg_data_home_when_no_legacy_dir_exists() {
+fn config_write_keeps_backup_of_previous_value() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+
+    set_sync_dir("WordHunter", first.path()).unwrap();
+    set_sync_dir("WordHunter", second.path()).unwrap();
+
+    assert_eq!(
+        std::fs::read_to_string(xdg_config.path().join("WordHunter-sync-dir.txt")).unwrap(),
+        second.path().to_string_lossy()
+    );
+    assert_eq!(
+        std::fs::read_to_string(xdg_config.path().join("WordHunter-sync-dir.bak")).unwrap(),
+        first.path().to_string_lossy()
+    );
+}
+
+#[test]
+fn config_read_recovers_missing_primary_from_backup() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let sync = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+    let primary = xdg_config.path().join("WordHunter-sync-dir.txt");
+    let backup = xdg_config.path().join("WordHunter-sync-dir.bak");
+    std::fs::write(&backup, sync.path().to_string_lossy().as_bytes()).unwrap();
+
+    assert_eq!(
+        sync_dir("WordHunter").unwrap(),
+        Some(sync.path().to_path_buf())
+    );
+    assert_eq!(
+        std::fs::read_to_string(primary).unwrap(),
+        sync.path().to_string_lossy()
+    );
+    assert!(backup.is_file());
+}
+
+#[test]
+fn config_read_completes_interrupted_temp_replace_when_primary_is_missing() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+    let primary = xdg_config.path().join("WordHunter-device-id.txt");
+    let temp = xdg_config.path().join("WordHunter-device-id.tmp");
+    std::fs::write(&temp, b"device-from-temp").unwrap();
+
+    assert_eq!(
+        read_app_config("WordHunter", "device-id")
+            .unwrap()
+            .as_deref(),
+        Some("device-from-temp")
+    );
+    assert!(primary.is_file());
+    assert!(!temp.exists());
+}
+
+#[test]
+fn defaults_data_dir_to_xdg_data_home() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
@@ -85,13 +162,13 @@ fn defaults_data_dir_to_xdg_data_home_when_no_legacy_dir_exists() {
 }
 
 #[test]
-fn keeps_existing_legacy_config_data_dir() {
+fn defaults_data_dir_to_xdg_data_home_even_when_config_dir_has_app_folder() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
     let xdg_data = tempfile::tempdir().unwrap();
-    let legacy = home.path().join(".config/WordHunter");
-    std::fs::create_dir_all(&legacy).unwrap();
+    let config_app_folder = home.path().join(".config/WordHunter");
+    std::fs::create_dir_all(&config_app_folder).unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
     let _home = EnvGuard::set("HOME", home.path());
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
@@ -99,21 +176,22 @@ fn keeps_existing_legacy_config_data_dir() {
 
     let dir = data_dir("WordHunter").unwrap();
 
-    assert_eq!(dir, legacy);
-    assert!(!xdg_data.path().join("WordHunter").exists());
+    assert_eq!(dir, xdg_data.path().join("WordHunter"));
+    assert!(dir.is_dir());
+    assert_ne!(dir, config_app_folder);
 }
 
 #[test]
-fn reads_legacy_sync_redirect_when_xdg_config_redirect_is_missing() {
+fn ignores_home_config_redirect_when_xdg_config_home_is_explicit() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
     let xdg_data = tempfile::tempdir().unwrap();
     let sync = tempfile::tempdir().unwrap();
-    let legacy_config = home.path().join(".config");
-    std::fs::create_dir_all(&legacy_config).unwrap();
+    let home_config = home.path().join(".config");
+    std::fs::create_dir_all(&home_config).unwrap();
     std::fs::write(
-        legacy_config.join("WordHunter-sync-dir.txt"),
+        home_config.join("WordHunter-sync-dir.txt"),
         sync.path().to_string_lossy().as_bytes(),
     )
     .unwrap();
@@ -122,10 +200,74 @@ fn reads_legacy_sync_redirect_when_xdg_config_redirect_is_missing() {
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
+    assert_eq!(sync_dir("WordHunter").unwrap(), None);
+}
+
+#[test]
+fn config_reads_fallback_to_home_config_when_xdg_config_home_is_unset() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let sync = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(home.path().join(".config")).unwrap();
+    std::fs::write(
+        home.path().join(".config/WordHunter-sync-dir.txt"),
+        sync.path().to_string_lossy().as_bytes(),
+    )
+    .unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::unset("XDG_CONFIG_HOME");
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+
     assert_eq!(
         sync_dir("WordHunter").unwrap(),
         Some(sync.path().to_path_buf())
     );
+}
+
+#[test]
+fn config_reads_fail_without_appdata_xdg_config_home_or_home() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::unset("HOME");
+    let _xdg_config = EnvGuard::unset("XDG_CONFIG_HOME");
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+
+    let error = sync_dir("WordHunter").unwrap_err();
+
+    assert!(error.contains("could not locate user config directory"));
+}
+
+#[test]
+fn data_dir_fallbacks_to_home_local_share_when_xdg_data_home_is_unset() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::unset("XDG_DATA_HOME");
+
+    let dir = data_dir("WordHunter").unwrap();
+
+    assert_eq!(dir, home.path().join(".local/share/WordHunter"));
+    assert!(dir.is_dir());
+}
+
+#[test]
+fn data_dir_fails_without_appdata_xdg_data_home_or_home() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::unset("APPDATA");
+    let _home = EnvGuard::unset("HOME");
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::unset("XDG_DATA_HOME");
+
+    let error = data_dir("WordHunter").unwrap_err();
+
+    assert!(error.contains("could not locate user data directory"));
 }
 
 #[test]

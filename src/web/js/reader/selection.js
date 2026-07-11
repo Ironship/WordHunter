@@ -1,7 +1,7 @@
 /**
  * Reader text selection: word tokens, ranges, and visual highlighting.
  */
-import { state, saveState } from "../state.js";
+import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { normalizeWord } from "../tokenizer_v2.js";
 import { getTextById } from "./renderer.js";
@@ -83,15 +83,17 @@ export function setReaderSelectionAnchorFromToken(token) {
 export function clearReaderSelectionRange(renderSelection = false) {
   if (!state.readerSelectionRange) return;
   state.readerSelectionRange = null;
-  saveState();
+  saveUiState();
   if (renderSelection) updateReaderSelection();
 }
 
 export function clearReaderSelection(renderSelection = false) {
+  document.documentElement.classList.remove("pocket-word-panel-open");
   if (!state.selectedWord && !state.readerSelectionRange) return;
   state.selectedWord = null;
+  state.selectedWordIndex = null;
   state.readerSelectionRange = null;
-  saveState();
+  saveUiState();
   renderShell();
   if (renderSelection) updateReaderSelection();
 }
@@ -118,14 +120,14 @@ export function extendReaderSelection(direction) {
   if (!text) return false;
 
   state.selectedWord = normalizeWord(text);
-  saveState();
+  saveUiState();
   window.lastActiveToken = tokens[nextFocus];
   tokens[nextFocus].focus({ preventScroll: true });
   updateReaderSelection();
   return true;
 }
 
-export function updateReaderSelection() {
+export function updateReaderSelection(options = {}) {
   if (!els.readerText) return;
   const current = getTextById(state.currentTextId);
   if (!current) return;
@@ -146,5 +148,14 @@ export function updateReaderSelection() {
     }
   });
 
-  renderWordPanel(current);
+  const sentenceButton = els.readerText.querySelector("[data-pdf-correct-sentence]");
+  if (sentenceButton) {
+    const selectedOcrWord = tokens.find((token) => token.classList.contains("selected")
+      && Number.isInteger(Number(token.dataset.pdfPageWordIndex)));
+    sentenceButton.disabled = !selectedOcrWord;
+    if (selectedOcrWord) sentenceButton.dataset.pdfPageWordIndex = selectedOcrWord.dataset.pdfPageWordIndex;
+    else delete sentenceButton.dataset.pdfPageWordIndex;
+  }
+
+  if (options.renderPanel !== false) renderWordPanel(current);
 }

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Χίλιαι Λέξεις: Μικραὶ Ἱστορίαι</title>
+  <desc id="desc">A high-contrast cover showing a lamp illuminating a winding path from a small house toward an open book.</desc>
+  <rect width="600" height="900" fill="#10182b"/>
+  <path d="M0 0h600v42H0zM0 858h600v42H0z" fill="#e9b949"/>
+  <circle cx="300" cy="410" r="218" fill="#182743" stroke="#e9b949" stroke-width="3"/>
+  <circle cx="300" cy="410" r="184" fill="none" stroke="#607fa3" stroke-width="2" stroke-dasharray="3 13"/>
+
+  <text x="300" y="112" fill="#f8f2df" text-anchor="middle" font-family="serif" font-size="48" font-weight="700" letter-spacing="1">Χίλιαι Λέξεις</text>
+  <path d="M105 139h390" stroke="#e9b949" stroke-width="4"/>
+  <text x="300" y="180" fill="#dce8f2" text-anchor="middle" font-family="serif" font-size="31">Μικραὶ Ἱστορίαι</text>
+
+  <!-- A single golden path joins everyday places to the light of reading. -->
+  <path d="M99 591C169 548 190 504 248 493C311 480 360 526 421 476C463 442 475 391 467 339" fill="none" stroke="#e9b949" stroke-width="18" stroke-linecap="round"/>
+  <path d="M99 591C169 548 190 504 248 493C311 480 360 526 421 476C463 442 475 391 467 339" fill="none" stroke="#fff0a6" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- House and tree -->
+  <path d="M74 499l73-61 74 61v94H74z" fill="#f8f2df" stroke="#10182b" stroke-width="6"/>
+  <path d="M59 503l88-76 89 76" fill="none" stroke="#e05b40" stroke-width="18" stroke-linejoin="round"/>
+  <rect x="129" y="529" width="39" height="64" rx="2" fill="#182743"/>
+  <rect x="88" y="514" width="25" height="27" fill="#607fa3"/>
+  <circle cx="225" cy="425" r="38" fill="#4d8c69"/>
+  <circle cx="253" cy="441" r="32" fill="#68a577"/>
+  <path d="M239 458v57" stroke="#7a4b32" stroke-width="13" stroke-linecap="round"/>
+
+  <!-- Lamp -->
+  <path d="M421 347h94l-10 67c-4 26-22 43-37 43s-33-17-37-43z" fill="#e05b40" stroke="#f8f2df" stroke-width="6"/>
+  <path d="M443 342c0-23 10-47 25-66 15 19 25 43 25 66" fill="#e9b949" stroke="#fff0a6" stroke-width="5"/>
+  <path d="M468 328c-9-14-3-27 0-35 7 12 10 25 0 35z" fill="#fff8ce"/>
+  <path d="M451 457h34v44h-34zM430 501h76" fill="#f8f2df" stroke="#f8f2df" stroke-width="7" stroke-linejoin="round"/>
+
+  <!-- Open book -->
+  <path d="M164 675c49-25 91-20 136 10v112c-45-30-87-35-136-10z" fill="#f8f2df" stroke="#e9b949" stroke-width="5"/>
+  <path d="M436 675c-49-25-91-20-136 10v112c45-30 87-35 136-10z" fill="#f8f2df" stroke="#e9b949" stroke-width="5"/>
+  <path d="M300 685v112" stroke="#10182b" stroke-width="4"/>
+  <path d="M187 711c35-12 62-8 89 7M187 739c35-12 62-8 89 7M413 711c-35-12-62-8-89 7M413 739c-35-12-62-8-89 7" fill="none" stroke="#607fa3" stroke-width="5" stroke-linecap="round"/>
+
+  <text x="300" y="838" fill="#f8f2df" text-anchor="middle" font-family="sans-serif" font-size="21" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+</svg>

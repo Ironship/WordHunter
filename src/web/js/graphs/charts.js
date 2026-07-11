@@ -5,7 +5,7 @@ import { state } from "../state.js";
 import { t } from "../i18n.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
-  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart
+  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar
 } from "./helpers.js";
 
 const CEFR_THRESHOLDS = {
@@ -253,8 +253,7 @@ export function renderDueForecast(_chartEntries, options = {}) {
   let bx = pad.left + 1;
   if (overdue > 0) {
     const oh = (overdue / maxVal) * ph;
-    ctx.fillStyle = red;
-    ctx.beginPath(); ctx.roundRect(bx, pad.top + ph - oh, barW, oh, [2, 2, 0, 0]); ctx.fill();
+    drawChartBar(ctx, bx, pad.top + ph - oh, barW, oh, red, 2);
     hotAreas.push({ x: bx, y: pad.top + ph - oh, w: barW, h: oh, label: overdue + ' ' + t("graphs.cards") });
     bx += barW + 3;
   }
@@ -263,8 +262,7 @@ export function renderDueForecast(_chartEntries, options = {}) {
     const h = (buckets[d] / maxVal) * ph;
     const x = bx + d * (barW + 3);
     const y = pad.top + ph - h;
-    ctx.fillStyle = d === 0 ? green : blue;
-    ctx.beginPath(); ctx.roundRect(x, y, barW, h, [2, 2, 0, 0]); ctx.fill();
+    drawChartBar(ctx, x, y, barW, h, d === 0 ? green : blue, 2);
     hotAreas.push({ x, y, w: barW, h, label: buckets[d] + ' ' + t("graphs.cards") });
   }
   ctx.fillStyle = labelMuted; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
@@ -354,7 +352,7 @@ export function renderStatusDonut(_chartEntries) {
           const sa = s.start < -Math.PI / 2 ? s.start + Math.PI * 2 : s.start;
           const ea = s.end < -Math.PI / 2 ? s.end + Math.PI * 2 : s.end;
           if (a >= sa && a <= ea) {
-            import("../render.js").then(m => { state.filters.vocabStatus = s.status; m.setView("vocabulary"); });
+            import("../render.js").then(m => { state.filters.vocabStatuses = [s.status]; m.setView("vocabulary"); });
             return;
           }
         }
@@ -463,10 +461,7 @@ export function renderDayOfWeek(_chartEntries) {
   for (let i = 0; i < 7; i++) {
     const h = (counts[i] / maxVal) * ph;
     const x = pad.left + i * (pw / 7) + 3;
-    ctx.fillStyle = `hsl(${210 + i * 15}, 70%, ${40 + (counts[i] / maxVal) * 25}%)`;
-    ctx.beginPath();
-    ctx.roundRect(x, pad.top + ph - h, barW, Math.max(h, 0.5), [3, 3, 0, 0]);
-    ctx.fill();
+    drawChartBar(ctx, x, pad.top + ph - h, barW, h, i === 0 ? green : blue);
     if (counts[i] > 0) {
       ctx.fillStyle = text; ctx.font = "bold 10px Inter, sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "bottom";

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Les 1000 mots français les plus fréquents : Histoires</title>
+  <desc id="desc">Couverture bleu nuit avec une porte jaune ouverte sur un chemin, des feuilles et une ville lumineuse.</desc>
+  <rect width="600" height="900" fill="#10243d"/>
+  <path d="M0 0h600v18H0zM0 882h600v18H0z" fill="#f4c542"/>
+  <circle cx="510" cy="110" r="70" fill="#183b5d"/>
+  <circle cx="88" cy="750" r="118" fill="#183b5d"/>
+
+  <text x="52" y="92" fill="#f9f4e8" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">LES</text>
+  <text x="48" y="198" fill="#f4c542" font-family="Arial, Helvetica, sans-serif" font-size="112" font-weight="800">1000</text>
+  <text x="52" y="247" fill="#f9f4e8" font-family="Arial, Helvetica, sans-serif" font-size="38" font-weight="700">MOTS FRANÇAIS</text>
+  <text x="52" y="286" fill="#bcd9df" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" letter-spacing="1">LES PLUS FRÉQUENTS</text>
+  <line x1="52" y1="312" x2="548" y2="312" stroke="#f4c542" stroke-width="4"/>
+
+  <!-- An open book becomes a doorway and a path into an everyday town. -->
+  <path d="M78 699 Q187 655 292 706 L292 821 Q185 775 78 811Z" fill="#f9f4e8"/>
+  <path d="M522 699 Q413 655 308 706 L308 821 Q415 775 522 811Z" fill="#dcebed"/>
+  <path d="M292 706 Q300 696 308 706V821Q300 813 292 821Z" fill="#f4c542"/>
+  <path d="M126 715Q205 696 270 728M112 743Q200 722 267 752M104 773Q194 747 256 775" fill="none" stroke="#7896a5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M474 715Q395 696 330 728M488 743Q400 722 333 752M496 773Q406 747 344 775" fill="none" stroke="#7896a5" stroke-width="4" stroke-linecap="round"/>
+
+  <rect x="198" y="388" width="204" height="286" rx="4" fill="#071626" stroke="#f9f4e8" stroke-width="8"/>
+  <path d="M221 409h158v265H221z" fill="#f4c542"/>
+  <path d="M379 409 274 447v227h105z" fill="#f9a23a"/>
+  <circle cx="296" cy="542" r="8" fill="#10243d"/>
+
+  <path d="M274 674C298 626 320 600 353 574C389 545 431 526 484 516V674Z" fill="#6bbf8a"/>
+  <path d="M274 674C304 628 329 603 362 579C398 553 435 537 484 528" fill="none" stroke="#f9f4e8" stroke-width="20" stroke-linecap="round"/>
+  <path d="M414 500v-51h34v38h26v-71h43v86" fill="#e35d5d" stroke="#10243d" stroke-width="5" stroke-linejoin="round"/>
+  <path d="m407 450 24-24 24 24M465 417l30-28 30 28" fill="#f4c542" stroke="#10243d" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="483" y="447" width="12" height="22" fill="#f9f4e8"/>
+  <circle cx="426" cy="546" r="14" fill="#f4c542"/>
+  <path d="M426 560v38M426 573l-18 18M426 573l18 18" stroke="#10243d" stroke-width="7" stroke-linecap="round"/>
+
+  <path d="M127 455c23-18 41-7 49 12-23 5-39 0-49-12ZM157 423c18-21 37-14 49 2-19 11-36 10-49-2ZM111 502c20-19 39-11 49 7-21 8-38 5-49-7Z" fill="#6bbf8a"/>
+  <path d="M177 524c-20-31-27-67-20-106" fill="none" stroke="#6bbf8a" stroke-width="6" stroke-linecap="round"/>
+
+  <rect x="51" y="333" width="146" height="44" rx="22" fill="#e35d5d"/>
+  <text x="124" y="364" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="800">HISTOIRES</text>
+  <text x="300" y="861" text-anchor="middle" fill="#f9f4e8" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="600" letter-spacing="1">WORD HUNTER ORIGINALS</text>
+</svg>

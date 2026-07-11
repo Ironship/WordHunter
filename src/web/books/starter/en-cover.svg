@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="cover-title cover-desc">
+  <title id="cover-title">1000 Most Common English Words: Stories</title>
+  <desc id="cover-desc">A high-contrast book cover showing an open book whose pages become a river through a town, garden, and home under a rising sun.</desc>
+  <rect width="600" height="900" fill="#10243E"/>
+  <rect x="24" y="24" width="552" height="852" rx="18" fill="none" stroke="#F7D65A" stroke-width="4"/>
+
+  <circle cx="300" cy="390" r="98" fill="#F7D65A"/>
+  <path d="M78 548 Q156 476 236 526 Q302 566 372 516 Q446 463 522 536 L522 675 L78 675 Z" fill="#1B6E78"/>
+  <path d="M90 544 Q164 494 232 538 Q300 582 370 530 Q438 480 510 535" fill="none" stroke="#F5F1E8" stroke-width="13" stroke-linecap="round"/>
+
+  <g fill="#F5F1E8" stroke="#10243E" stroke-width="6" stroke-linejoin="round">
+    <path d="M99 490 L155 440 L211 490 V570 H99 Z"/>
+    <path d="M373 471 L425 426 L477 471 V555 H373 Z"/>
+  </g>
+  <rect x="136" y="514" width="38" height="56" fill="#D85140"/>
+  <rect x="397" y="490" width="25" height="26" fill="#1B6E78"/>
+  <rect x="440" y="490" width="25" height="26" fill="#1B6E78"/>
+  <path d="M425 426 V386" stroke="#F5F1E8" stroke-width="8" stroke-linecap="round"/>
+  <path d="M401 399 H449" stroke="#F5F1E8" stroke-width="8" stroke-linecap="round"/>
+
+  <g stroke="#10243E" stroke-width="6" stroke-linecap="round">
+    <path d="M269 506 V427"/>
+    <path d="M332 505 V421"/>
+  </g>
+  <g fill="#55A96B" stroke="#10243E" stroke-width="5">
+    <circle cx="246" cy="423" r="35"/>
+    <circle cx="282" cy="405" r="42"/>
+    <circle cx="314" cy="415" r="36"/>
+    <circle cx="348" cy="399" r="43"/>
+  </g>
+
+  <path d="M120 655 Q210 620 300 662 Q390 704 480 655 L480 775 Q390 809 300 766 Q210 724 120 775 Z" fill="#F5F1E8" stroke="#10243E" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M300 662 V766" stroke="#10243E" stroke-width="5"/>
+  <path d="M142 677 Q216 651 278 678 M142 704 Q216 678 278 704 M322 678 Q386 650 458 677 M322 704 Q386 676 458 703" fill="none" stroke="#1B6E78" stroke-width="7" stroke-linecap="round"/>
+  <path d="M282 764 Q300 718 318 764" fill="#5BBBD0"/>
+
+  <text x="300" y="102" fill="#F7D65A" font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="700" text-anchor="middle" letter-spacing="3">1000 MOST COMMON</text>
+  <text x="300" y="163" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="53" font-weight="800" text-anchor="middle">ENGLISH WORDS</text>
+  <line x1="112" y1="194" x2="488" y2="194" stroke="#D85140" stroke-width="8"/>
+  <text x="300" y="259" fill="#FFFFFF" font-family="Georgia, Times New Roman, serif" font-size="66" font-weight="700" text-anchor="middle">Stories</text>
+  <text x="300" y="312" fill="#F5F1E8" font-family="Arial, Helvetica, sans-serif" font-size="20" text-anchor="middle" letter-spacing="4">EVERYDAY LIVES, SHARED PATHS</text>
+  <text x="300" y="840" fill="#F7D65A" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" text-anchor="middle" letter-spacing="2">WORD HUNTER ORIGINALS</text>
+</svg>

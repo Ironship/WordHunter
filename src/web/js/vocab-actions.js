@@ -3,7 +3,8 @@ import { STATUS_ORDER } from "./constants.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render, updateReaderSelection } from "./render.js";
-import { getTextById, updateWordStatusInReader } from "./views/reader.js";
+import { getTextById } from "./reader/renderer.js";
+import { updateWordStatusInReader } from "./reader/word-panel.js";
 import { renderShell } from "./views/shell.js";
 import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, toggleReviewAnswer } from "./views/vocabulary.js";
 import { renderLibrary } from "./views/library.js";
@@ -11,6 +12,7 @@ import { speakWord } from "./tts.js";
 import { canUseTranslationProvider, translateText } from "./translation-provider.js";
 import { scheduleFirstLearningReview } from "./sm2.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
+import { playStatusSound } from "./status-sounds.js";
 
 let lastAutoTtsFocusKey = "";
 
@@ -24,6 +26,9 @@ async function maybeAutoTranslateWord(word, entry) {
     const fromLang = state.preferences.learningLanguage || "en";
     const toLang = state.preferences.locale || "pl";
     const data = await translateText(word, fromLang, toLang);
+    if (state.vocab[word] !== entry
+      || String(entry.translation || "").trim()
+      || entry.translationAutoRejected === true) return false;
     const translated = String(data.translated || "").trim();
     if (translated && translated !== word) {
       entry.translation = translated;
@@ -44,27 +49,29 @@ async function maybeAutoTranslateWord(word, entry) {
   return false;
 }
 
-export function selectWord(rawWord, normalizeFn, preserveScroll = false) {
+export function selectWord(rawWord, normalizeFn, preserveScroll = false, wordIndex = null) {
   const word = normalizeFn(rawWord);
   if (!word) return;
   const current = getTextById(state.currentTextId);
   const isFresh = !Object.hasOwn(state.vocab, word);
-  const entry = getOrCreateEntry(word, current?.text || "");
+  state.selectedWord = word;
+  state.selectedWordIndex = Number.isInteger(wordIndex) && wordIndex >= 0 ? wordIndex : null;
+  const entry = getOrCreateEntry(word, current?.text || "", state.selectedWordIndex);
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   let statusChanged = false;
   if (isFresh && state.preferences?.autoLearnOnClick) {
     setEntryStatus(entry, "learning");
+    playStatusSound("learning");
     scheduleFirstLearningReview(entry);
     statusChanged = true;
   }
-  state.selectedWord = word;
   saveState();
   renderShell();
   updateReaderSelection();
   maybeAutoSpeakFocusedWord(word);
   
   if (word.includes(" ") && isFresh) {
-    import("./views/reader.js").then(({ renderReader }) => {
+    import("./reader/renderer.js").then(({ renderReader }) => {
       const scrollY = preserveScroll ? window.scrollY : 0;
       const readerScrollTop = preserveScroll ? (document.getElementById("reader-text")?.scrollTop || 0) : 0;
       renderReader();
@@ -110,6 +117,7 @@ export function setWordStatus(word, status) {
   if (hadEntry && previousStatus === status) return;
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   setEntryStatus(entry, status);
+  if (previousStatus !== status) playStatusSound(status);
   if (status === "learning" && previousStatus !== "learning") scheduleFirstLearningReview(entry);
   saveState();
   renderShell();

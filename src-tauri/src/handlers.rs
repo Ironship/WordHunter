@@ -1,4 +1,6 @@
 use serde_json::Value;
+#[cfg(target_os = "android")]
+use serde_json::json;
 use std::path::{Component, Path};
 use std::{fs, path::PathBuf};
 #[cfg(target_os = "android")]
@@ -12,7 +14,8 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
         .get_file("index.html")
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
-    let bootstrap = bootstrap_script(&state.token);
+    let snapshot = state.store.snapshot();
+    let bootstrap = bootstrap_script(&state.token, Some(&snapshot));
     if let Some(pos) = html.find("<head>") {
         html.insert_str(
             pos + "<head>".len(),
@@ -30,19 +33,26 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     )
 }
 
-pub(crate) fn bootstrap_script(token: &str) -> String {
-    // Escape the token so it is safe to embed inside a double-quoted JS string within
-    // a <script> block. The token is currently alphanumeric, but this guards against
-    // future changes and DOM-based XSS via `"</script>"` or quote injection.
-    let escaped = token
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace("</", "<\\/");
+fn escape_inline_json(value: &Value) -> String {
+    serde_json::to_string(value)
+        .expect("serializing a JSON value cannot fail")
+        .replace("</", "<\\/")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
+}
+
+pub(crate) fn bootstrap_script(token: &str, snapshot: Option<&Value>) -> String {
+    let escaped = escape_inline_json(&Value::String(token.to_string()));
+    let snapshot = snapshot
+        .map(escape_inline_json)
+        .unwrap_or_else(|| "null".to_string());
     format!(
         r#"
 (function() {{
   window.__qtBridge = true;
-  window.WH_TOKEN = "{escaped}";
+  window.WH_TOKEN = {escaped};
+  const bridgeSnapshot = {snapshot};
+  if (bridgeSnapshot !== null) window.__bridgeState = bridgeSnapshot;
   const origFetch = window.fetch.bind(window);
   window.fetch = function(input, init) {{
     try {{
@@ -60,12 +70,11 @@ pub(crate) fn bootstrap_script(token: &str) -> String {
     )
 }
 
-pub(crate) fn serve_static(
-    request: Request,
-    _state: &ServerState,
-    path: &str,
-) -> Result<(), String> {
-    let relative = sanitize_relative_path(path.trim_start_matches('/'))?;
+pub(crate) fn serve_static(request: Request, path: &str) -> Result<(), String> {
+    let relative = match sanitize_relative_path(path.trim_start_matches('/')) {
+        Ok(relative) => relative,
+        Err(error) => return response::error_response(request, 400, &error),
+    };
     let asset_path = relative.to_string_lossy().replace('\\', "/");
     let Some(file) = crate::router::WEB_ASSETS.get_file(&asset_path) else {
         return response::error_response(request, 404, "not found");
@@ -162,6 +171,10 @@ pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, Str
     else {
         return Ok(None);
     };
+    let _ocr_guard = state
+        .ocr_slot
+        .try_lock()
+        .map_err(|_| "Cannot move the data folder while a PDF import is running".to_string())?;
     let path = state.store.relocate(path)?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }
@@ -219,16 +232,28 @@ pub(crate) fn sync_health() -> Value {
     crate::sync_assistant::configured_sync_health()
 }
 
-pub(crate) fn cloud_sync_status(state: &ServerState) -> Value {
-    state.cloud_sync.status()
+pub(crate) fn syncthing_status(state: &ServerState) -> Value {
+    state.syncthing.status()
 }
 
-pub(crate) fn cloud_sync_connect_google(state: &ServerState) -> Result<Value, String> {
-    state.cloud_sync.connect_google_drive()
+pub(crate) fn syncthing_start(state: &ServerState) -> Result<Value, String> {
+    state.syncthing.start()
 }
 
-pub(crate) fn cloud_sync_now(state: &ServerState) -> Result<Value, String> {
-    state.cloud_sync.sync_now(&state.store)
+pub(crate) fn syncthing_stop(state: &ServerState) -> Result<Value, String> {
+    state.syncthing.stop()
+}
+
+pub(crate) fn syncthing_device_qr(state: &ServerState) -> Result<String, String> {
+    state.syncthing.device_qr_svg()
+}
+
+pub(crate) fn syncthing_pair(
+    state: &ServerState,
+    device_id: &str,
+    device_name: &str,
+) -> Result<Value, String> {
+    state.syncthing.pair_device(device_id, device_name)
 }
 
 pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
@@ -238,27 +263,47 @@ pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
 }
 
 #[cfg(target_os = "android")]
-pub(crate) fn sync_android_staging(state: &ServerState) -> Result<Value, String> {
+pub(crate) fn sync_android_staging(state: &ServerState, payload: &Value) -> Result<Value, String> {
+    let request_id = payload
+        .get("requestId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "Android sync requestId is required".to_string())?;
+    let request_id = crate::paths::sanitize_id(request_id)?;
     let cache_dir = state
         .app_handle
         .path()
         .app_cache_dir()
         .map_err(|e| e.to_string())?;
-    let staging_root = cache_dir.join("wordhunter-sync-staging");
+    let staging_parent = cache_dir.join("wordhunter-sync-staging");
+    let staging_root = staging_parent.join(request_id);
     let incoming_dir = staging_root.join("incoming");
 
+    let staging_parent = std::fs::canonicalize(&staging_parent)
+        .map_err(|_| "Android sync staging parent is unavailable".to_string())?;
     let staging_root = std::fs::canonicalize(&staging_root)
         .map_err(|_| "Android sync staging folder is unavailable".to_string())?;
     let incoming_dir = std::fs::canonicalize(&incoming_dir)
         .map_err(|_| "Android sync input folder is unavailable".to_string())?;
-    if !incoming_dir.starts_with(&staging_root) {
+    if !staging_root.starts_with(&staging_parent) || !incoming_dir.starts_with(&staging_root) {
         return Err("Android sync staging path is invalid".to_string());
     }
 
-    state.store.sync_with_directory(incoming_dir)
+    state.store.recover_pending_save_guarded()?;
+    let local_dir = state.store.dir();
+    state.store.sync_with_directory(incoming_dir.clone())?;
+    Ok(json!({
+        "status": "synced",
+        "health": {
+            "staging": crate::sync_assistant::folder_health(&incoming_dir),
+            "local": crate::sync_assistant::folder_health(&local_dir),
+        }
+    }))
 }
 
 #[cfg(not(target_os = "android"))]
-pub(crate) fn sync_android_staging(_state: &ServerState) -> Result<Value, String> {
+pub(crate) fn sync_android_staging(
+    _state: &ServerState,
+    _payload: &Value,
+) -> Result<Value, String> {
     Err("Android staged sync is only available on Word Hunter Pocket".to_string())
 }

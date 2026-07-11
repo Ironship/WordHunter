@@ -1,6 +1,16 @@
 $ErrorActionPreference = "Stop"
 
-$WindowsRuntimeDllNames = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")
+$WindowsRuntimeDllNames = @(
+    "libstdc++-6.dll",
+    "libgcc_s_seh-1.dll",
+    "libwinpthread-1.dll",
+    "concrt140.dll",
+    "msvcp140.dll",
+    "msvcp140_1.dll",
+    "msvcp140_2.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll"
+)
 
 function Add-UniqueWindowsRuntimePath([System.Collections.Generic.List[string]]$Paths, [string]$Path) {
     if ([string]::IsNullOrWhiteSpace($Path)) {
@@ -193,10 +203,10 @@ function Copy-RequiredWindowsRuntimeDlls(
 
     if ($missing.Count -gt 0) {
         throw @"
-The executable imports these GNU runtime DLLs, but they were not found:
+The executable imports these compiler runtime DLLs, but they were not found:
   $($missing -join "`n  ")
 
-Install MSYS2/MinGW-w64 or build with an MSVC Rust target, then rerun the Windows package build.
+Install the matching Visual C++ Redistributable or MSYS2/MinGW-w64 toolchain, then rerun the Windows package build.
 Do not publish Windows artifacts until these DLLs are present next to the executable that imports them.
 "@
     }

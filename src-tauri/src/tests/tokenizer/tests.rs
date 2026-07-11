@@ -48,14 +48,48 @@ fn image_markers_become_image_tokens() {
 
 #[test]
 fn adjacent_text_segments_collapse() {
-    let parts = tokenize("a, b; c", "en", Some("classic"));
-    assert_eq!(parts.len(), 5);
-    let merged: Vec<&str> = parts
-        .iter()
-        .filter(|p| p.kind == "text")
-        .map(|p| p.value.as_str())
-        .collect();
-    assert_eq!(merged, vec![", ", "; "]);
+    let mut parts = vec![
+        Token {
+            kind: "word".into(),
+            value: "a".into(),
+        },
+        Token {
+            kind: "text".into(),
+            value: ",".into(),
+        },
+        Token {
+            kind: "text".into(),
+            value: " ".into(),
+        },
+        Token {
+            kind: "text".into(),
+            value: ";".into(),
+        },
+        Token {
+            kind: "word".into(),
+            value: "b".into(),
+        },
+    ];
+
+    merge_adjacent_text(&mut parts);
+
+    assert_eq!(
+        parts,
+        vec![
+            Token {
+                kind: "word".into(),
+                value: "a".into(),
+            },
+            Token {
+                kind: "text".into(),
+                value: ", ;".into(),
+            },
+            Token {
+                kind: "word".into(),
+                value: "b".into(),
+            },
+        ]
+    );
 }
 
 #[test]
@@ -108,6 +142,12 @@ fn resolve_algorithm_defaults_to_modern() {
     assert_eq!(resolve_algorithm(None), "modern");
     assert_eq!(resolve_algorithm(Some("")), "modern");
     assert_eq!(resolve_algorithm(Some("classic")), "classic");
+
+    let default = tokenize("well-known", "en", None);
+    let modern = tokenize("well-known", "en", Some("modern"));
+    let classic = tokenize("well-known", "en", Some("classic"));
+    assert_eq!(default, modern);
+    assert_ne!(default, classic);
 }
 
 #[test]

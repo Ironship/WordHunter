@@ -1,17 +1,18 @@
-import { state, saveState, replaceState } from "../state.js";
+import { applyBridgeSnapshotToState, flushAllPendingFrontendState, state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { t, loadLocale, applyTranslations } from "../i18n.js";
 import { render } from "../render.js";
 import { renderLibrary } from "../views/library.js";
-import { renderReader } from "../views/reader.js";
+import { renderReader } from "../reader/renderer.js";
 import { renderReview } from "../views/vocabulary.js";
 import { renderDiscover } from "../views/discover.js";
 import { applyPreferences, setSyncStatus, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
 import { showToast } from "../toast.js";
 import { exportState, importStateFile, clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv } from "../sync-actions.js";
-import { loadState } from "../state/normalize.js";
 import { switchLearningLanguage } from "../state.js";
+import { loadBackendSnapshot } from "../store-bridge.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
+import { setElementBusy } from "../loading.js";
 import { isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslatorTextPreference } from "../translator-preferences.js";
@@ -59,6 +60,7 @@ function confirmDataFolderChange() {
     return paragraph;
   }));
   dialog.querySelector('[data-action="cancel"]').textContent = t("moveBook.cancel");
+  dialog.querySelector('[data-action="confirm"]').textContent = t("onboarding.continue");
 
   return new Promise((resolve) => {
     const cancelButton = dialog.querySelector('[data-action="cancel"]');
@@ -88,33 +90,45 @@ function confirmDataFolderChange() {
   });
 }
 
+function createAndroidSyncRequestId() {
+  return `android-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function waitForAndroidSyncResult(startSync) {
   if (typeof startSync !== "function") return null;
 
   return new Promise((resolve, reject) => {
+    const requestId = createAndroidSyncRequestId();
     const cleanup = () => {
       window.removeEventListener("wordhunter:android-sync-folder", onResult);
       clearTimeout(timeout);
     };
     const onResult = (event) => {
-      cleanup();
       const detail = event.detail || {};
+      if (detail.requestId !== requestId) return;
+      if (detail.path) {
+        state.syncDirectory = detail.path;
+      }
+      if (detail.health && typeof detail.health === "object") state.syncHealth = detail.health;
+      if (detail.path || detail.health) syncSettingsControls();
+      if (detail.terminal === false) return;
+      cleanup();
       if (detail.cancelled) {
         resolve(null);
       } else if (detail.success) {
         resolve(detail);
       } else {
-        reject(new Error(detail.error || t("settings.dataFolderChangeFailed")));
+        reject(new Error(detail.error || detail.status || t("settings.syncFolderChangeFailed")));
       }
     };
     const timeout = setTimeout(() => {
       cleanup();
-      reject(new Error(t("settings.dataFolderChangeFailed")));
-    }, 120000);
+      reject(new Error(t("settings.syncFolderChangeFailed")));
+    }, 190000);
 
     window.addEventListener("wordhunter:android-sync-folder", onResult);
     try {
-      const started = startSync();
+      const started = startSync(requestId);
       if (started === false) {
         cleanup();
         resolve(null);
@@ -128,40 +142,32 @@ function waitForAndroidSyncResult(startSync) {
 
 function chooseAndroidSyncFolder() {
   if (typeof window.WordHunterAndroid?.chooseSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult(() => window.WordHunterAndroid.chooseSyncFolder(window.WH_TOKEN || ""));
+  return waitForAndroidSyncResult((requestId) => window.WordHunterAndroid.chooseSyncFolder(window.WH_TOKEN || "", requestId));
 }
 
 function forceAndroidSyncFolder() {
   if (typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult(() => window.WordHunterAndroid.forceSyncFolder(window.WH_TOKEN || ""));
+  return waitForAndroidSyncResult((requestId) => window.WordHunterAndroid.forceSyncFolder(window.WH_TOKEN || "", requestId));
 }
 
-function hasCloudSyncStatus(snapshot) {
-  return snapshot?.cloudSyncStatus && typeof snapshot.cloudSyncStatus === "object" && !Array.isArray(snapshot.cloudSyncStatus);
+function showSyncFolderError(error) {
+  const fallback = t("settings.syncFolderChangeFailed");
+  const detail = error instanceof Error ? error.message.trim() : "";
+  showToast(detail && detail !== fallback
+    ? t("settings.syncFolderChangeFailedDetail", { error: detail })
+    : fallback, "error");
 }
 
-export function applyBridgeSnapshot(snapshot, previousView = state.currentView || "settings") {
-  const previousCloudSyncStatus = hasCloudSyncStatus(state) ? { ...state.cloudSyncStatus } : null;
-  if (!snapshot?.prefs?.__discover && state.discover) {
-    snapshot.prefs = { ...(snapshot.prefs || {}), __discover: { ...state.discover } };
-  }
-  if (!hasCloudSyncStatus(snapshot) && previousCloudSyncStatus) {
-    snapshot.cloudSyncStatus = previousCloudSyncStatus;
-  }
-  window.__bridgeState = snapshot;
-  const nextState = loadState();
-  nextState.currentView = previousView;
-  replaceState(nextState, { save: false });
+export function applyBridgeSnapshot(snapshot) {
+  applyBridgeSnapshotToState(snapshot, { previousView: state.currentView || "settings" });
   syncSettingsControls();
   render();
 }
 
 async function reloadActiveDataFolder() {
   if (!window.__qtBridge) return;
-  const previousView = state.currentView || "settings";
-  const response = await fetch("/__store/load", { cache: "no-store" });
-  if (!response.ok) throw new Error(t("toast.syncUnavailable"));
-  applyBridgeSnapshot(await response.json(), previousView);
+  await flushAllPendingFrontendState();
+  applyBridgeSnapshot(await loadBackendSnapshot());
 }
 
 async function refreshSyncHealth() {
@@ -176,33 +182,42 @@ async function refreshSyncHealth() {
   }
 }
 
-async function refreshCloudSyncStatus() {
+async function refreshSyncthingStatus() {
   if (!window.__qtBridge) return;
   try {
-    const response = await fetch("/__store/cloud_sync_status", { cache: "no-store" });
+    const response = await fetch("/__syncthing/status", { cache: "no-store" });
     if (!response.ok) return;
-    state.cloudSyncStatus = await response.json();
+    state.syncthingStatus = await response.json();
     syncSettingsControls();
   } catch (error) {
-    console.warn("Cloud sync status check failed", error);
+    console.warn("Syncthing status check failed", error);
   }
 }
 
-async function syncNow({ background = false, saveFirst = true } = {}) {
+export async function syncNow({ background = false, saveFirst = true } = {}) {
   if (!window.__qtBridge && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return false;
   if (!state.syncDirectory && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") {
     if (!background) showToast(t("settings.syncFolderMissing"), "error");
     return false;
   }
-  const previousView = state.currentView || "settings";
-  if (saveFirst) await saveState();
-  const androidResult = await forceAndroidSyncFolder();
+  if (saveFirst) await flushAllPendingFrontendState();
+  let androidResult;
+  try {
+    androidResult = await forceAndroidSyncFolder();
+  } catch (error) {
+    // A SAF export can fail after Rust committed the merge. Reloading prevents a
+    // subsequent stale frontend save from deleting records imported by that merge.
+    try {
+      applyBridgeSnapshot(await loadBackendSnapshot());
+    } catch (reloadError) {
+      console.warn("Could not reload data after Android sync failure", reloadError);
+    }
+    throw error;
+  }
   if (androidResult) {
-    const snapshotResponse = await fetch("/__store/load", { cache: "no-store" });
-    if (!snapshotResponse.ok) throw new Error(t("settings.dataFolderChangeFailed"));
-    const snapshot = await snapshotResponse.json();
+    const snapshot = await loadBackendSnapshot();
     snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-    applyBridgeSnapshot(snapshot, previousView);
+    applyBridgeSnapshot(snapshot);
     return true;
   }
   if (androidResult === null && typeof window.WordHunterAndroid?.forceSyncFolder === "function") {
@@ -215,14 +230,13 @@ async function syncNow({ background = false, saveFirst = true } = {}) {
   });
   if (!response.ok) throw new Error(t("toast.syncUnavailable"));
   const result = await response.json();
-  if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
+  if (result.snapshot) applyBridgeSnapshot(result.snapshot);
   if (!background) refreshSyncHealth();
   return true;
 }
 
 async function resolveSyncConflict(id, resolution) {
   if (!window.__qtBridge) return false;
-  const previousView = state.currentView || "settings";
   const response = await fetch("/__store/resolve_conflict", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
@@ -230,40 +244,59 @@ async function resolveSyncConflict(id, resolution) {
   });
   if (!response.ok) throw new Error(t("toast.syncUnavailable"));
   const result = await response.json();
-  if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
+  if (result.snapshot) applyBridgeSnapshot(result.snapshot);
   return true;
 }
 
 function startBackgroundSyncJob() {
   if (syncIntervalStarted) return;
   syncIntervalStarted = true;
+  let pendingSaveFirst = false;
   const runBackgroundSync = () => {
     if (document.visibilityState === "hidden") return;
     if (backgroundSyncRunning) return;
+    const saveFirst = pendingSaveFirst;
+    pendingSaveFirst = false;
     backgroundSyncRunning = true;
-    syncNow({ background: true, saveFirst: false })
+    syncNow({ background: true, saveFirst })
       .catch((error) => console.warn("Background sync failed", error))
       .finally(() => { backgroundSyncRunning = false; });
   };
-  const scheduleBackgroundSync = (delayMs = 0) => {
+  const scheduleBackgroundSync = (delayMs = 0, { saveFirst = false } = {}) => {
+    pendingSaveFirst ||= saveFirst;
     clearTimeout(backgroundSyncTimer);
     backgroundSyncTimer = window.setTimeout(runBackgroundSync, delayMs);
   };
-  scheduleBackgroundSync(0);
-  window.addEventListener("wordhunter:sync-saved", () => scheduleBackgroundSync(1500));
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") scheduleBackgroundSync(0);
+  scheduleBackgroundSync(30000);
+  window.addEventListener("wordhunter:sync-saved", () => {
+    if (!backgroundSyncRunning) scheduleBackgroundSync(5000);
   });
-  window.setInterval(() => scheduleBackgroundSync(0), 15 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleBackgroundSync(2000);
+  });
+  window.setInterval(() => scheduleBackgroundSync(0, { saveFirst: true }), 15 * 60 * 1000);
 }
 
 function bindPreferenceControls() {
   document.querySelectorAll("[data-pref]").forEach((control) => {
-    control.addEventListener("change", () => {
+    control.addEventListener("change", async () => {
+      const key = control.dataset.pref;
+      const value = control.type === "checkbox"
+        ? control.checked
+        : key === "statusSoundVolume"
+          ? Number(control.value) / 100
+          : control.value;
       updatePreferenceValue(
-        control.dataset.pref,
-        control.type === "checkbox" ? control.checked : control.value
+        key,
+        value
       );
+      if (key === "statusSoundsEnabled" || key === "statusSoundVolume") {
+        syncSettingsControls();
+        if (state.preferences.statusSoundsEnabled && state.preferences.statusSoundVolume > 0) {
+          const { playStatusSound } = await import("../status-sounds.js");
+          playStatusSound(key === "statusSoundsEnabled" ? "new" : "known");
+        }
+      }
     });
   });
 }
@@ -301,24 +334,24 @@ export function bindSettingsEvents() {
   if (exportBtn) exportBtn.addEventListener("click", exportState);
 
   if (els.chooseDataDirectory) els.chooseDataDirectory.addEventListener("click", async () => {
+    if (isAndroidPlatform()) {
+      showToast(t("settings.androidDataFolderFixed"));
+      return;
+    }
+    setElementBusy(els.chooseDataDirectory, true, { disable: true });
     try {
-      if (isAndroidPlatform()) {
-        showToast(t("settings.androidDataFolderFixed"));
-        return;
-      }
       if (!await confirmDataFolderChange()) return;
-      window.flushPendingSave?.();
+      await flushAllPendingFrontendState();
 
       const response = await fetch("/__store/choose_data_dir", {
         method: "POST",
         headers: { "X-WH-Token": window.WH_TOKEN || "" }
       });
-      if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
+      if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();
       if (result.path) {
         if (result.snapshot) {
-          window.__bridgeState = result.snapshot;
-          replaceState(loadState(), { save: false });
+          applyBridgeSnapshot(result.snapshot, state.currentView || "settings");
         } else {
           state.dataDirectory = result.path;
         }
@@ -329,20 +362,20 @@ export function bindSettingsEvents() {
       }
     } catch (error) {
       console.error(error);
-      showToast(t("settings.dataFolderChangeFailed"), "error");
+      showSyncFolderError(error);
+    } finally {
+      setElementBusy(els.chooseDataDirectory, false, { disable: true });
     }
   });
 
   if (els.prepareSyncDirectory) els.prepareSyncDirectory.addEventListener("click", async () => {
-    els.prepareSyncDirectory.disabled = true;
+    setElementBusy(els.prepareSyncDirectory, true, { disable: true });
     try {
-      await saveState();
+      await flushAllPendingFrontendState();
       const previousView = state.currentView || "settings";
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
-        const snapshotResponse = await fetch("/__store/load", { cache: "no-store" });
-        if (!snapshotResponse.ok) throw new Error(t("settings.dataFolderChangeFailed"));
-        const snapshot = await snapshotResponse.json();
+        const snapshot = await loadBackendSnapshot();
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
         applyBridgeSnapshot(snapshot, previousView);
         setSyncStatus("Ready");
@@ -355,7 +388,7 @@ export function bindSettingsEvents() {
         method: "POST",
         headers: { "X-WH-Token": window.WH_TOKEN || "" }
       });
-      if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
+      if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();
       if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
       if (result.path) state.syncDirectory = result.path;
@@ -365,69 +398,118 @@ export function bindSettingsEvents() {
       showToast(t("settings.syncFolderChanged"));
     } catch (error) {
       console.error(error);
-      showToast(t("settings.dataFolderChangeFailed"), "error");
+      showSyncFolderError(error);
     } finally {
-      els.prepareSyncDirectory.disabled = false;
+      setElementBusy(els.prepareSyncDirectory, false, { disable: true });
     }
   });
 
-  if (els.connectCloudSync) els.connectCloudSync.addEventListener("click", async () => {
-    els.connectCloudSync.disabled = true;
+  if (els.syncthingStart) els.syncthingStart.addEventListener("click", async () => {
+    setElementBusy(els.syncthingStart, true, { disable: true });
     try {
-      const response = await fetch("/__store/cloud_sync_connect_google", {
+      const response = await fetch("/__syncthing/start", {
         method: "POST",
         headers: { "X-WH-Token": window.WH_TOKEN || "" }
       });
       if (!response.ok) throw new Error(await response.text());
-      state.cloudSyncStatus = await response.json();
+      state.syncthingStatus = await response.json();
       syncSettingsControls();
-      showToast(t("settings.cloudSyncConnected"));
+      showToast(t("settings.syncthingStarted"));
     } catch (error) {
       console.error(error);
-      await refreshCloudSyncStatus();
-      showToast(t("settings.cloudSyncUnavailable"), "error");
+      showToast(error.message || t("settings.syncthingError"), "error");
     } finally {
-      els.connectCloudSync.disabled = false;
+      setElementBusy(els.syncthingStart, false, { disable: true });
+      refreshSyncthingStatus();
     }
   });
 
-  if (els.cloudSyncNow) els.cloudSyncNow.addEventListener("click", async () => {
-    els.cloudSyncNow.disabled = true;
+  if (els.syncthingStop) els.syncthingStop.addEventListener("click", async () => {
+    setElementBusy(els.syncthingStop, true, { disable: true });
     try {
-      await saveState();
-      const previousView = state.currentView || "settings";
-      const response = await fetch("/__store/cloud_sync_now", {
+      const response = await fetch("/__syncthing/stop", {
         method: "POST",
         headers: { "X-WH-Token": window.WH_TOKEN || "" }
       });
       if (!response.ok) throw new Error(await response.text());
-      const result = await response.json();
-      if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
-      if (result.health) state.syncHealth = result.health;
-      if (result.status) state.cloudSyncStatus = result.status;
-      setSyncStatus("Saved", { time: new Date().toLocaleTimeString() });
+      state.syncthingStatus = await response.json();
       syncSettingsControls();
-      showToast(t("settings.cloudSyncComplete"));
+      showToast(t("settings.syncthingStopped"));
     } catch (error) {
       console.error(error);
-      setSyncStatus("Error");
-      await refreshCloudSyncStatus();
-      showToast(t("settings.cloudSyncUnavailable"), "error");
+      showToast(error.message || t("settings.syncthingError"), "error");
     } finally {
-      els.cloudSyncNow.disabled = false;
-      syncSettingsControls();
+      setElementBusy(els.syncthingStop, false, { disable: true });
+      refreshSyncthingStatus();
     }
   });
+
+  if (els.syncthingPair) els.syncthingPair.addEventListener("click", async () => {
+    const deviceId = prompt(t("settings.syncthingPairPrompt"));
+    if (!deviceId) return;
+    const deviceName = prompt(t("settings.syncthingPairNamePrompt")) || deviceId;
+    setElementBusy(els.syncthingPair, true, { disable: true });
+    try {
+      const response = await fetch("/__syncthing/pair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({ deviceId, deviceName })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      state.syncthingStatus = await response.json();
+      syncSettingsControls();
+      showToast(t("settings.syncthingPaired"));
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || t("settings.syncthingError"), "error");
+    } finally {
+      setElementBusy(els.syncthingPair, false, { disable: true });
+      refreshSyncthingStatus();
+    }
+  });
+
+  if (els.syncthingShowQR) els.syncthingShowQR.addEventListener("click", async () => {
+    setElementBusy(els.syncthingShowQR, true, { disable: true });
+    try {
+      const qrResponse = await fetch("/__syncthing/qr", { cache: "no-store" });
+      if (!qrResponse.ok) throw new Error(await qrResponse.text());
+      const svg = await qrResponse.text();
+      const statusResponse = await fetch("/__syncthing/status", { cache: "no-store" });
+      const st = statusResponse.ok ? await statusResponse.json() : {};
+      if (els.syncthingQRContainer) els.syncthingQRContainer.innerHTML = svg;
+      if (els.syncthingQRDeviceID) {
+        els.syncthingQRDeviceID.textContent = st.deviceId
+          ? `ID: ${st.deviceId}`
+          : "";
+      }
+      if (els.syncthingQRDialog && typeof els.syncthingQRDialog.showModal === "function") {
+        els.syncthingQRDialog.showModal();
+      }
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || t("settings.syncthingError"), "error");
+    } finally {
+      setElementBusy(els.syncthingShowQR, false, { disable: true });
+    }
+  });
+
+  if (els.syncthingQRClose) els.syncthingQRClose.addEventListener("click", () => {
+    if (els.syncthingQRDialog) els.syncthingQRDialog.close();
+  });
+  if (els.syncthingQRDialog) {
+    els.syncthingQRDialog.addEventListener("click", (event) => {
+      if (event.target === els.syncthingQRDialog) els.syncthingQRDialog.close();
+    });
+  }
 
   if (els.chooseSyncDirectory) els.chooseSyncDirectory.addEventListener("click", async () => {
+    setElementBusy(els.chooseSyncDirectory, true, { disable: true });
     try {
-      await saveState();
+      await flushAllPendingFrontendState();
       const previousView = state.currentView || "settings";
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
-        const snapshotResponse = await fetch("/__store/load", { cache: "no-store" });
-        if (!snapshotResponse.ok) throw new Error(t("settings.dataFolderChangeFailed"));
-        const snapshot = await snapshotResponse.json();
+        const snapshot = await loadBackendSnapshot();
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
         applyBridgeSnapshot(snapshot, previousView);
         setSyncStatus("Ready");
@@ -453,11 +535,13 @@ export function bindSettingsEvents() {
     } catch (error) {
       console.error(error);
       showToast(t("settings.dataFolderChangeFailed"), "error");
+    } finally {
+      setElementBusy(els.chooseSyncDirectory, false, { disable: true });
     }
   });
 
   if (els.forceSync) els.forceSync.addEventListener("click", async () => {
-    els.forceSync.disabled = true;
+    setElementBusy(els.forceSync, true, { disable: true });
     try {
       const synced = await syncNow();
       if (synced) setSyncStatus("Saved", { time: new Date().toLocaleTimeString() });
@@ -466,6 +550,7 @@ export function bindSettingsEvents() {
       setSyncStatus("Error");
       showToast(t("toast.syncUnavailable"), "error");
     } finally {
+      setElementBusy(els.forceSync, false, { disable: true });
       setTimeout(syncSettingsControls, 500);
     }
   });
@@ -478,7 +563,7 @@ export function bindSettingsEvents() {
       const id = item?.dataset.conflictId;
       const resolution = button.dataset.conflictResolution;
       if (!id || !resolution) return;
-      button.disabled = true;
+      setElementBusy(button, true, { disable: true });
       try {
         await resolveSyncConflict(id, resolution);
         showToast(t("settings.syncConflictResolved"));
@@ -486,23 +571,23 @@ export function bindSettingsEvents() {
         console.warn("resolve conflict failed", error);
         showToast(t("toast.syncUnavailable"), "error");
       } finally {
-        button.disabled = false;
+        setElementBusy(button, false, { disable: true });
       }
     });
   }
 
   startBackgroundSyncJob();
   refreshSyncHealth();
-  refreshCloudSyncStatus();
+  refreshSyncthingStatus();
 
   const checkUpdatesBtn = document.getElementById("check-updates");
   if (checkUpdatesBtn) checkUpdatesBtn.addEventListener("click", async () => {
-    checkUpdatesBtn.disabled = true;
+    setElementBusy(checkUpdatesBtn, true, { disable: true });
     try {
       const { checkForUpdates } = await import("../update-checker.js");
       await checkForUpdates({ manual: true });
     } finally {
-      checkUpdatesBtn.disabled = false;
+      setElementBusy(checkUpdatesBtn, false, { disable: true });
     }
   });
 
@@ -540,7 +625,6 @@ export function bindSettingsEvents() {
     });
   }
 
-  els.prefTheme.addEventListener("change", () => { updatePreferenceValue("theme", els.prefTheme.value); renderLibrary(); renderReader(); });
   els.prefLocales?.forEach((control) => {
     control.addEventListener("change", async () => {
       const value = control.value;
@@ -548,6 +632,7 @@ export function bindSettingsEvents() {
       saveState();
       await loadLocale(value);
       applyTranslations();
+      applyPreferences();
       syncSettingsControls();
       render();
       showToast(t("toast.languageChanged", { name: t(`languages.${value}`) }));
@@ -556,6 +641,7 @@ export function bindSettingsEvents() {
   els.prefLearningLanguages?.forEach((control) => {
     control.addEventListener("change", () => {
       switchLearningLanguage(control.value);
+      applyPreferences();
       syncSettingsControls();
       render();
       showToast(t("toast.learningLanguageChanged"));
@@ -671,7 +757,8 @@ export function bindSettingsEvents() {
         return;
       }
       
-      els.argosDownloadConfirm.disabled = true;
+      setElementBusy(els.argosDownloadConfirm, true, { disable: true });
+      setElementBusy(els.argosDownloadDialog, true);
       els.argosDownloadConfirm.textContent = t("toast.downloadingWait");
       
       try {
@@ -711,7 +798,8 @@ export function bindSettingsEvents() {
         const { renderTranslator } = await import("../views/translator.js");
         renderTranslator();
       } finally {
-        els.argosDownloadConfirm.disabled = false;
+        setElementBusy(els.argosDownloadDialog, false);
+        setElementBusy(els.argosDownloadConfirm, false, { disable: true });
         els.argosDownloadConfirm.textContent = t("settings.argosDownloadConfirm");
       }
     });

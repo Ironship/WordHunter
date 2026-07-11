@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Las 1000 palabras más frecuentes en español: Historias</title>
+  <desc id="desc">Cubierta azul y amarilla con un libro abierto del que nace una ciudad llena de escenas cotidianas.</desc>
+  <rect width="600" height="900" fill="#09243d"/>
+  <path d="M0 0h600v28H0zM0 872h600v28H0z" fill="#ffd34e"/>
+  <circle cx="504" cy="104" r="58" fill="#ffd34e"/>
+  <circle cx="504" cy="104" r="39" fill="#ff6b4a"/>
+
+  <text x="54" y="104" fill="#ffd34e" font-family="sans-serif" font-size="26" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+  <text x="54" y="181" fill="#ffffff" font-family="sans-serif" font-size="33" font-weight="700">LAS</text>
+  <text x="50" y="285" fill="#ffd34e" font-family="sans-serif" font-size="112" font-weight="900">1000</text>
+  <text x="54" y="336" fill="#ffffff" font-family="sans-serif" font-size="35" font-weight="700">PALABRAS MÁS</text>
+  <text x="54" y="382" fill="#ffffff" font-family="sans-serif" font-size="35" font-weight="700">FRECUENTES</text>
+  <text x="54" y="425" fill="#a9dff5" font-family="sans-serif" font-size="29">EN ESPAÑOL</text>
+
+  <!-- A winding path links small everyday places to the open book. -->
+  <path d="M78 585C145 528 185 551 242 506S354 455 517 480" fill="none" stroke="#ff6b4a" stroke-width="16" stroke-linecap="round"/>
+  <path d="M83 585C148 533 189 557 246 513S357 465 516 488" fill="none" stroke="#ffd34e" stroke-width="4" stroke-dasharray="10 14" stroke-linecap="round"/>
+
+  <g stroke="#09243d" stroke-width="5" stroke-linejoin="round">
+    <path d="M102 516v-78l53-39 53 39v78z" fill="#f4f0df"/>
+    <path d="M128 516v-52h32v52M97 440l58-43 58 43" fill="none"/>
+    <path d="M141 440h29v29h-29z" fill="#76c7c0"/>
+
+    <path d="M261 474v-101h92v101z" fill="#ff6b4a"/>
+    <path d="M251 374h112l-17-29h-78z" fill="#ffd34e"/>
+    <path d="M281 399h51M281 421h51M281 443h51" fill="none" stroke="#ffffff" stroke-width="8"/>
+
+    <path d="M409 470v-75h91v75z" fill="#a9dff5"/>
+    <path d="M397 397l57-44 59 44" fill="#f4f0df"/>
+    <circle cx="455" cy="422" r="19" fill="#ffd34e"/>
+    <path d="M455 404v36M437 422h36" fill="none"/>
+  </g>
+
+  <g fill="#76c7c0" stroke="#09243d" stroke-width="5">
+    <circle cx="74" cy="505" r="17"/>
+    <path d="M74 522v45M53 545h42M74 567l-17 31M74 567l20 31" fill="none"/>
+    <circle cx="532" cy="449" r="17"/>
+    <path d="M532 466v47M510 488h44M532 513l-18 31M532 513l20 31" fill="none"/>
+  </g>
+
+  <path d="M54 650c76-25 154-16 246 33 92-49 170-58 246-33v157c-80-24-157-13-246 35-89-48-166-59-246-35z" fill="#f4f0df" stroke="#ffd34e" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M300 683v159" stroke="#09243d" stroke-width="6"/>
+  <path d="M86 687c57-12 111-2 166 26M86 725c57-12 111-2 166 26M86 763c57-12 111-2 166 26M348 713c55-28 109-38 166-26M348 751c55-28 109-38 166-26M348 789c55-28 109-38 166-26" fill="none" stroke="#76c7c0" stroke-width="7" stroke-linecap="round"/>
+
+  <rect x="177" y="573" width="246" height="64" rx="32" fill="#ff6b4a"/>
+  <text x="300" y="617" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="39" font-weight="900" letter-spacing="2">HISTORIAS</text>
+  <text x="300" y="858" text-anchor="middle" fill="#a9dff5" font-family="sans-serif" font-size="21" letter-spacing="2">LEER · VIVIR · APRENDER</text>
+</svg>

@@ -1,0 +1,103 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "feat/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Repository validation (tests, clippy, licenses)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      WORDHUNTER_VALIDATE_CLIPPY: "1"
+      WORDHUNTER_VALIDATE_LICENSES: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            libgtk-3-dev \
+            libwayland-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            patchelf \
+            pkg-config \
+            python3
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
+        with:
+          toolchain: "1.88"
+          components: rustfmt, clippy
+
+      - name: Install pinned cargo-about
+        run: cargo install cargo-about --version 0.9.1 --locked --features cli
+
+      - name: Validate
+        run: ./scripts/validate.sh
+
+  android-debug:
+    name: Compile Android debug APK
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+
+      - name: Set up Java
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Install Android SDK and NDK packages
+        shell: pwsh
+        run: |
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
+        with:
+          toolchain: "1.88"
+          targets: aarch64-linux-android
+
+      - name: Install pinned Tauri CLI
+        run: cargo install tauri-cli --version 2.11.4 --locked
+
+      - name: Build Android debug APK through the release recipe
+        shell: cmd
+        run: scripts\build.bat apk
+
+      - name: Inspect Android debug APK
+        run: node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.debug.apk --abi arm64-v8a

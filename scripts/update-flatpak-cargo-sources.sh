@@ -4,6 +4,16 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
+mode="update"
+if [[ "${1:-}" == "--check" ]]; then
+  mode="check"
+elif [[ "${1:-}" == "--update" || "${1:-}" == "" ]]; then
+  mode="update"
+else
+  echo "Usage: $0 [--check|--update]" >&2
+  exit 2
+fi
+
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
@@ -23,13 +33,31 @@ generate_sources() {
   fi
 }
 
+ensure_lockfile() {
+  local manifest="$1"
+  local lockfile="$2"
+
+  if [[ -f "$lockfile" ]]; then
+    return
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "$lockfile is missing and cargo is required to generate it." >&2
+    exit 1
+  fi
+
+  echo "$lockfile is missing; generating it from $manifest."
+  cargo generate-lockfile --manifest-path "$manifest"
+}
+
 main_sources="$tmpdir/cargo-sources-main.json"
 ocr_sources="$tmpdir/cargo-sources-ocr-runner.json"
+merged_sources="$tmpdir/cargo-sources.json"
 
+ensure_lockfile src-tauri/ocr-runner/Cargo.toml src-tauri/ocr-runner/Cargo.lock
 generate_sources src-tauri/Cargo.lock "$main_sources"
 generate_sources src-tauri/ocr-runner/Cargo.lock "$ocr_sources"
 
-python3 - "$main_sources" "$ocr_sources" flatpak/cargo-sources.json <<'PY'
+python3 - "$main_sources" "$ocr_sources" "$merged_sources" <<'PY'
 import json
 import sys
 
@@ -80,3 +108,16 @@ with open(output_path, "w", encoding="utf-8") as f:
     json.dump(merged, f, indent=4)
     f.write("\n")
 PY
+
+if [[ "$mode" == "check" ]]; then
+  if ! diff -u flatpak/cargo-sources.json "$merged_sources"; then
+    echo
+    echo "flatpak/cargo-sources.json is out of date." >&2
+    echo "Run ./scripts/update-flatpak-cargo-sources.sh and commit the result." >&2
+    exit 1
+  fi
+  echo "flatpak/cargo-sources.json is up to date."
+else
+  cp "$merged_sources" flatpak/cargo-sources.json
+  echo "Updated flatpak/cargo-sources.json."
+fi

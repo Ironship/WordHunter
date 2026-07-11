@@ -1,16 +1,22 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use super::Store;
+use super::durable;
+use super::media_assets;
 use super::record_files;
 
 const SNAPSHOT_SCHEMA_VERSION: u64 = 2;
-const MIGRATION_STATUS_SCHEMA_VERSION: u64 = 1;
-const MIGRATION_STATUS_FILE: &str = "migration-status.json";
-const MIGRATION_BACKUP_DIR: &str = "migration-backups";
-const LEGACY_TO_RECORDS_MIGRATION: &str = "legacy-to-records-v1";
+const SAVE_JOURNAL_FORMAT: u64 = 2;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PendingRecovery {
+    None,
+    Save,
+    Wipe,
+}
 
 impl Store {
     fn save_journal_path(&self) -> std::path::PathBuf {
@@ -21,48 +27,70 @@ impl Store {
         self.inner.lock().unwrap().dir.join("wipe-journal.json")
     }
 
-    fn migration_status_path(&self) -> std::path::PathBuf {
-        self.inner.lock().unwrap().dir.join(MIGRATION_STATUS_FILE)
+    fn sync_journal_path(&self) -> std::path::PathBuf {
+        self.inner.lock().unwrap().dir.join("sync-journal.json")
     }
 
     pub(crate) fn recover_pending_save(&self) -> Result<(), String> {
+        self.recover_pending_operations().map(|_| ())
+    }
+
+    fn recover_pending_operations(&self) -> Result<PendingRecovery, String> {
         if self.recover_pending_wipe()? {
-            return Ok(());
+            return Ok(PendingRecovery::Wipe);
         }
         let journal = self.save_journal_path();
         let temp = journal.with_extension("tmp");
-        let path = if journal.exists() {
-            journal
-        } else if temp.exists() {
-            temp
-        } else {
-            return Ok(());
-        };
-        let payload = std::fs::read(&path)
-            .map_err(|e| format!("could not read interrupted save journal: {e}"))?;
-        let payload = match serde_json::from_slice(&payload) {
-            Ok(value) => value,
-            Err(error) => {
-                quarantine_journal(&path)?;
-                eprintln!("interrupted save journal is corrupt: {error}");
-                return Ok(());
+        if !journal.exists() && !temp.exists() {
+            return Ok(PendingRecovery::None);
+        }
+        for path in [journal.as_path(), temp.as_path()] {
+            if !path.exists() {
+                continue;
             }
-        };
-        self.commit_bulk_save(&payload)?;
-        std::fs::remove_file(path).map_err(|e| e.to_string())
+            let payload = std::fs::read(path)
+                .map_err(|e| format!("could not read interrupted save journal: {e}"))?;
+            let journal_value: Value = match serde_json::from_slice(&payload) {
+                Ok(value) => value,
+                Err(error) => {
+                    quarantine_journal(path)?;
+                    eprintln!("interrupted save journal is corrupt: {error}");
+                    continue;
+                }
+            };
+            let current_base = self.base_records.lock().unwrap().clone();
+            let (payload, base, saved_at) = match decode_save_journal(&journal_value, current_base)
+            {
+                Ok(journal) => journal,
+                Err(error) => {
+                    quarantine_journal(path)?;
+                    eprintln!("interrupted save journal is invalid: {error}");
+                    continue;
+                }
+            };
+            self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+            remove_if_exists(&journal)?;
+            remove_if_exists(&temp)?;
+            return Ok(PendingRecovery::Save);
+        }
+        Ok(PendingRecovery::None)
     }
 
     fn recover_pending_wipe(&self) -> Result<bool, String> {
         let journal = self.wipe_journal_path();
-        if !journal.exists() {
+        let temp = journal.with_extension("tmp");
+        if !journal.exists() && !temp.exists() {
             return Ok(false);
         }
+        let path = if journal.exists() { &journal } else { &temp };
         eprintln!("[store] completing interrupted wipe");
         self.write_wipe_tombstones()?;
-        self.remove_legacy_state_after_wipe()?;
+        self.cleanup_after_wipe()?;
         remove_if_exists(self.save_journal_path())?;
         remove_if_exists(self.save_journal_path().with_extension("tmp"))?;
-        std::fs::remove_file(journal).map_err(|e| e.to_string())?;
+        remove_if_exists(path)?;
+        remove_if_exists(journal)?;
+        remove_if_exists(temp)?;
         Ok(true)
     }
 
@@ -72,151 +100,99 @@ impl Store {
         self.recover_pending_save()
     }
 
-    fn apply_bulk_save(&self, payload: &Value) -> Result<(), String> {
-        if let Some(vocab) = payload.get("vocab") {
-            self.save_vocab(vocab)?;
-        }
-        if let Some(texts) = payload.get("texts").and_then(Value::as_array) {
-            self.sync_texts(texts)?;
-        }
-        if let Some(prefs) = payload.get("prefs").and_then(Value::as_object) {
-            self.set_prefs(prefs)?;
-        }
-        if let Some(hidden) = payload.get("hiddenBooks").and_then(Value::as_array) {
-            self.set_hidden_books(hidden)?;
-        }
-        Ok(())
-    }
-
-    fn legacy_snapshot(&self) -> Value {
-        // Collect data, but also gather any component errors so the frontend can warn
-        // the user instead of silently presenting an empty state (which masks data loss).
-        let mut errors: Vec<String> = Vec::new();
-
-        let texts = match self.all_texts() {
-            Ok(v) => Value::Array(v),
-            Err(e) => {
-                errors.push(format!("texts: {e}"));
-                Value::Array(Vec::new())
-            }
-        };
-        let prefs = match self.all_prefs() {
-            Ok(v) => v,
-            Err(e) => {
-                errors.push(format!("prefs: {e}"));
-                json!({})
-            }
-        };
-        let hidden_books = match self.hidden_books() {
-            Ok(v) => Value::Array(v.into_iter().map(Value::from).collect()),
-            Err(e) => {
-                errors.push(format!("hiddenBooks: {e}"));
-                Value::Array(Vec::new())
-            }
-        };
-        let vocab = match self.load_vocab() {
-            Ok(v) => v,
-            Err(e) => {
-                errors.push(format!("vocab: {e}"));
-                json!({})
-            }
-        };
-
-        // Surface component failures via stderr so they aren't silently swallowed.
-        for err in &errors {
-            eprintln!("[snapshot] failed to load {err}");
-        }
-
-        json!({
-            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
-            "dataDir": self.dir(),
-            "texts": texts,
-            "prefs": prefs,
-            "hiddenBooks": hidden_books,
-            "vocab": vocab,
-            "errors": errors,
-        })
-    }
-
     pub fn snapshot(&self) -> Value {
         let _guard = match self.lock_writes() {
             Ok(guard) => guard,
-            Err(error) => return add_snapshot_error(self.legacy_snapshot(), error),
+            Err(error) => return add_snapshot_error(empty_snapshot(self.dir()), error),
         };
+        if let Err(error) = self.recover_pending_save() {
+            return add_snapshot_error(empty_snapshot(self.dir()), format!("recovery: {error}"));
+        }
         self.snapshot_unlocked()
     }
 
     pub(crate) fn snapshot_unlocked(&self) -> Value {
-        let legacy = self.legacy_snapshot();
-        let mut snapshot = match self.records_snapshot(&legacy) {
+        let mut snapshot = match self.records_snapshot() {
             Ok(snapshot) => snapshot,
-            Err(error) => add_snapshot_error(legacy, format!("records: {error}")),
+            Err(error) => {
+                add_snapshot_error(empty_snapshot(self.dir()), format!("records: {error}"))
+            }
         };
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &self.dir());
         add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
-        add_migration_status_to_snapshot(&mut snapshot, self.migration_status());
         snapshot
     }
 
     pub fn bulk_save(&self, payload: Value) -> Result<(), String> {
         let _guard = self.lock_writes()?;
-        let journal = self.save_journal_path();
-        if journal.exists() {
-            quarantine_journal(&journal)?;
+        match self.recover_pending_operations()? {
+            PendingRecovery::None => {}
+            PendingRecovery::Save => {
+                self.base_records.lock().unwrap().clear();
+            }
+            PendingRecovery::Wipe => {
+                return Err("pending wipe was recovered; reload before saving".to_string());
+            }
         }
-        let temp = journal.with_extension("tmp");
-        let bytes = serde_json::to_vec(&payload).map_err(|e| e.to_string())?;
-        let mut file = std::fs::File::create(&temp).map_err(|e| e.to_string())?;
-        use std::io::Write;
-        file.write_all(&bytes).map_err(|e| e.to_string())?;
-        file.sync_all().map_err(|e| e.to_string())?;
-        std::fs::rename(&temp, &journal).map_err(|e| e.to_string())?;
+        validate_snapshot_payload_schema(&payload)?;
+        let base = self.base_records.lock().unwrap().clone();
+        let saved_at = record_files::now_millis();
+        let journal = self.save_journal_path();
+        durable::write_json_atomic(
+            &journal,
+            &encode_save_journal(&payload, &base, saved_at),
+            false,
+            false,
+        )?;
 
-        self.commit_bulk_save(&payload)?;
-        std::fs::remove_file(journal).map_err(|e| e.to_string())
+        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        remove_if_exists(journal)
     }
 
-    pub(crate) fn commit_bulk_save(&self, payload: &Value) -> Result<(), String> {
-        let now = record_files::now_millis();
+    fn commit_bulk_save_with_context(
+        &self,
+        payload: &Value,
+        base: &record_files::Fingerprints,
+        now: u128,
+    ) -> Result<(), String> {
+        validate_snapshot_payload_schema(payload)?;
         let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
         let current = record_files::load_records(&self.dir())?;
-        let base = self.base_records.lock().unwrap().clone();
-        record_files::prepare_local_records(&mut incoming, &base, self.device_id(), now);
-        let merged = record_files::merge_records(&base, incoming, current, self.device_id(), now);
+        record_files::prepare_local_records(&mut incoming, base, self.device_id(), now);
+        let incoming_fingerprints = record_files::fingerprints(&incoming);
+        let merged = record_files::merge_records(base, incoming, current, self.device_id(), now);
         record_files::write_records(&self.dir(), &merged.records)?;
         record_files::write_conflicts(&self.dir(), &merged.conflicts)?;
-        let merged_payload = record_files::records_to_payload(&self.dir(), &merged.records);
-        self.apply_bulk_save(&merged_payload)?;
-        *self.base_records.lock().unwrap() = record_files::fingerprints(&merged.records);
+        *self.base_records.lock().unwrap() =
+            acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
         Ok(())
     }
 
     #[cfg(not(target_os = "android"))]
     pub(crate) fn seed_or_refresh_records(&self) -> Result<(), String> {
-        let legacy = self.legacy_snapshot();
-        self.records_snapshot(&legacy).map(|_| ())
+        self.records_snapshot().map(|_| ())
     }
 
     pub fn sync_with_directory(&self, sync_dir: PathBuf) -> Result<Value, String> {
+        self.sync_with_directory_inner(sync_dir)
+    }
+
+    fn sync_with_directory_inner(&self, sync_dir: PathBuf) -> Result<Value, String> {
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
         std::fs::create_dir_all(&sync_dir).map_err(|e| e.to_string())?;
 
         let local_dir = self.dir();
-        let legacy = self.legacy_snapshot();
-        self.records_snapshot(&legacy)?;
+        record_files::prune_sync_folder_private_records(&sync_dir)?;
+        self.write_sync_journal(&sync_dir, "start")?;
+        self.records_snapshot()?;
+        self.write_sync_journal(&sync_dir, "snapshotted-local")?;
         let now = record_files::now_millis();
 
-        let mut local_records = record_files::load_records(&local_dir)?;
-        if record_files::revive_same_device_tombstone_backups(
-            &local_dir,
-            &mut local_records,
-            self.device_id(),
-        )? {
-            record_files::write_records(&local_dir, &local_records)?;
-        }
-        let remote_records = record_files::load_records(&sync_dir)?;
+        let local_records = record_files::load_sync_records(&local_dir)?;
+        let remote_records = record_files::load_sync_records(&sync_dir)?;
         let merged = record_files::merge_records(
             &BTreeMap::new(),
             local_records,
@@ -225,24 +201,29 @@ impl Store {
             now,
         );
 
+        record_files::sync_resolved_conflict_markers(&local_dir, &sync_dir)?;
+        self.write_sync_journal(&sync_dir, "merged-records")?;
         record_files::write_records(&local_dir, &merged.records)?;
         record_files::write_conflicts(&local_dir, &merged.conflicts)?;
+        self.write_sync_journal(&sync_dir, "wrote-local-records")?;
         record_files::write_records(&sync_dir, &merged.records)?;
         record_files::write_conflicts(&sync_dir, &merged.conflicts)?;
+        self.write_sync_journal(&sync_dir, "wrote-remote-records")?;
 
-        copy_media_assets(&sync_dir, &local_dir)?;
-        let merged_payload = record_files::records_to_payload(&local_dir, &merged.records);
-        self.apply_bulk_save(&merged_payload)?;
-        copy_media_assets(&local_dir, &sync_dir)?;
+        copy_media_assets(&sync_dir, &local_dir, self.device_id())?;
+        self.write_sync_journal(&sync_dir, "synced-media")?;
 
         let applied_records = record_files::load_records(&local_dir)?;
-        record_files::write_records(&sync_dir, &applied_records)?;
+        let applied_sync_records = record_files::sync_records(&applied_records);
+        record_files::write_records(&sync_dir, &applied_sync_records)?;
+        record_files::prune_sync_folder_private_records(&sync_dir)?;
+        self.write_sync_journal(&sync_dir, "verified-records")?;
         *self.base_records.lock().unwrap() = record_files::fingerprints(&applied_records);
         let mut snapshot = snapshot_payload(&local_dir, &applied_records);
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &local_dir);
         add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
-        add_migration_status_to_snapshot(&mut snapshot, self.migration_status());
+        self.clear_sync_journal()?;
         Ok(snapshot)
     }
 
@@ -257,6 +238,9 @@ impl Store {
         status["pendingSaveJournalTemp"] =
             Value::Bool(self.save_journal_path().with_extension("tmp").exists());
         status["pendingWipeJournal"] = Value::Bool(self.wipe_journal_path().exists());
+        status["pendingWipeJournalTemp"] =
+            Value::Bool(self.wipe_journal_path().with_extension("tmp").exists());
+        status["pendingSyncJournal"] = Value::Bool(self.sync_journal_path().exists());
         status["quarantinedSaveJournal"] = Value::Bool(dir.join("save-journal.bad").exists());
         status
     }
@@ -269,258 +253,206 @@ impl Store {
             _ => return Err("unsupported conflict resolution".to_string()),
         };
         let dir = self.dir();
-        record_files::resolve_conflict(&dir, id, use_conflict)?;
+        record_files::resolve_conflict(
+            &dir,
+            id,
+            use_conflict,
+            self.device_id(),
+            record_files::now_millis(),
+        )?;
         let records = record_files::load_records(&dir)?;
-        if use_conflict {
-            let payload = record_files::records_to_payload(&dir, &records);
-            self.apply_bulk_save(&payload)?;
-        }
         *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
         let mut snapshot = snapshot_payload(&dir, &records);
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &dir);
         add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
-        add_migration_status_to_snapshot(&mut snapshot, self.migration_status());
         Ok(snapshot)
     }
 
-    fn migration_status(&self) -> Value {
-        let path = self.migration_status_path();
-        if let Ok(raw) = std::fs::read(&path) {
-            if let Ok(status) = serde_json::from_slice::<Value>(&raw) {
-                return status;
-            }
-        }
-        let records_active = record_files::has_records(&self.dir());
-        json!({
-            "schemaVersion": MIGRATION_STATUS_SCHEMA_VERSION,
-            "migration": LEGACY_TO_RECORDS_MIGRATION,
-            "status": if records_active { "records-active" } else { "not-needed" },
-            "recordsActive": records_active,
-            "legacySourcesPreservedInPlace": false,
-            "legacyBackup": Value::Null,
-        })
-    }
-
-    fn records_snapshot(&self, legacy: &Value) -> Result<Value, String> {
+    fn records_snapshot(&self) -> Result<Value, String> {
         let dir = self.dir();
-        let mut records = record_files::load_records(&dir)?;
-        let mut changed = record_files::revive_same_device_tombstone_backups(
-            &dir,
-            &mut records,
-            self.device_id(),
-        )?;
-        // Legacy JSON has no per-record clock, so seed it older than synced records.
-        let mut legacy_records = record_files::payload_to_records(legacy, self.device_id(), 1);
-        self.hydrate_text_records(&mut legacy_records)?;
-        let legacy_record_count = legacy_records.len();
-        for (key, record) in legacy_records {
-            let Some(existing) = records.get_mut(&key) else {
-                records.insert(key, record);
-                changed = true;
-                continue;
-            };
-            if existing.deleted_at.is_some()
-                && existing.device_id == self.device_id()
-                && record.deleted_at.is_none()
-            {
-                *existing = record;
-                changed = true;
-            } else if record_files::merge_missing_text_metadata(existing, &record) {
-                changed = true;
-            }
-        }
-        if changed {
-            record_files::write_records(&dir, &records)?;
-        }
-        if legacy_record_count > 0 && !records.is_empty() {
-            self.ensure_legacy_migration_status(legacy_record_count);
-        }
+        let records = record_files::load_records(&dir)?;
         *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
         if records.is_empty() {
-            return Ok(legacy.clone());
+            return Ok(empty_snapshot(dir));
         }
-        let mut snapshot = snapshot_payload(&dir, &records);
-        if let Some(errors) = legacy.get("errors").and_then(Value::as_array) {
-            snapshot["errors"] = Value::Array(errors.clone());
-        }
-        Ok(snapshot)
-    }
-
-    fn ensure_legacy_migration_status(&self, legacy_record_count: usize) {
-        let status_path = self.migration_status_path();
-        let previous_status = read_json_file(&status_path);
-        if let Some(status) = previous_status.as_ref() {
-            if migration_backup_complete(status) {
-                return;
-            }
-        }
-        let now = record_files::now_millis().to_string();
-        let created_at = previous_status
-            .as_ref()
-            .and_then(|status| status.get("createdAt"))
-            .and_then(Value::as_str)
-            .unwrap_or(&now);
-        let legacy_backup = self.backup_legacy_sources();
-        let status = json!({
-            "schemaVersion": MIGRATION_STATUS_SCHEMA_VERSION,
-            "migration": LEGACY_TO_RECORDS_MIGRATION,
-            "status": "complete",
-            "recordsActive": true,
-            "legacySourcesPreservedInPlace": true,
-            "createdAt": created_at,
-            "updatedAt": now,
-            "legacyRecordCount": legacy_record_count,
-            "legacyBackup": legacy_backup,
-        });
-        if let Err(error) = write_json_atomically(&status_path, &status) {
-            eprintln!("[migration] failed to write migration status: {error}");
-        }
-    }
-
-    fn backup_legacy_sources(&self) -> Value {
-        let dir = self.dir();
-        let backup_dir = dir
-            .join(MIGRATION_BACKUP_DIR)
-            .join(LEGACY_TO_RECORDS_MIGRATION);
-        let mut copied = Vec::new();
-        let mut errors = Vec::new();
-        if let Err(error) = std::fs::create_dir_all(&backup_dir) {
-            errors.push(format!("create backup dir: {error}"));
-        } else {
-            for name in [
-                "store.sqlite",
-                "store.sqlite-wal",
-                "store.sqlite-shm",
-                "vocab.json",
-                "vocab.bak",
-            ] {
-                let source = dir.join(name);
-                if !source.is_file() {
-                    continue;
-                }
-                match std::fs::copy(&source, backup_dir.join(name)) {
-                    Ok(_) => copied.push(Value::String(name.to_string())),
-                    Err(error) => errors.push(format!("{name}: {error}")),
-                }
-            }
-        }
-        let ok = errors.is_empty();
-        json!({
-            "ok": ok,
-            "path": backup_dir.to_string_lossy(),
-            "copiedFiles": copied,
-            "errors": errors,
-            "legacySourcesPreservedInPlace": true,
-            "booksDirectoryPreservedInPlace": dir.join("books").is_dir(),
-        })
+        Ok(snapshot_payload(&dir, &records))
     }
 
     pub fn wipe(&self) -> Result<(), String> {
         let _guard = self.lock_writes()?;
+        self.recover_pending_save()?;
         self.write_wipe_journal()?;
         self.write_wipe_tombstones()?;
-        self.remove_legacy_state_after_wipe()?;
-        std::fs::remove_file(self.wipe_journal_path()).map_err(|e| e.to_string())?;
+        self.cleanup_after_wipe()?;
+        self.discard_abandoned_book_imports()?;
+        remove_if_exists(self.wipe_journal_path())?;
         Ok(())
     }
 
     fn write_wipe_journal(&self) -> Result<(), String> {
         let journal = self.wipe_journal_path();
-        let temp = journal.with_extension("tmp");
-        let bytes = serde_json::to_vec(&json!({
-            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
-            "op": "wipe",
-            "deviceId": self.device_id(),
-            "createdAt": record_files::now_millis().to_string(),
-        }))
-        .map_err(|e| e.to_string())?;
-        let mut file = std::fs::File::create(&temp).map_err(|e| e.to_string())?;
-        use std::io::Write;
-        file.write_all(&bytes).map_err(|e| e.to_string())?;
-        file.sync_all().map_err(|e| e.to_string())?;
-        std::fs::rename(&temp, &journal).map_err(|e| e.to_string())
+        durable::write_json_atomic(
+            &journal,
+            &json!({
+                "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+                "op": "wipe",
+                "deviceId": self.device_id(),
+                "createdAt": record_files::now_millis().to_string(),
+            }),
+            false,
+            false,
+        )
     }
 
     fn write_wipe_tombstones(&self) -> Result<(), String> {
-        let legacy = self.legacy_snapshot();
-        self.records_snapshot(&legacy)?;
         let records = record_files::tombstone_all(&self.dir(), self.device_id())?;
+        media_assets::tombstone_all(&self.dir(), self.device_id())?;
         *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
         Ok(())
     }
 
-    fn remove_legacy_state_after_wipe(&self) -> Result<(), String> {
+    fn cleanup_after_wipe(&self) -> Result<(), String> {
         let inner = self.inner.lock().unwrap();
         record_files::remove_record_backups(&inner.dir)?;
-        let conn = Self::conn(&inner)?;
-        conn.execute("DELETE FROM prefs", [])
-            .map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM hidden_books", [])
-            .map_err(|e| e.to_string())?;
-        if inner.vocab_path.exists() {
-            std::fs::remove_file(&inner.vocab_path).map_err(|e| e.to_string())?;
-        }
-        let bak_path = inner.vocab_path.with_extension("bak");
-        if bak_path.exists() {
-            std::fs::remove_file(bak_path).map_err(|e| e.to_string())?;
-        }
-        if inner.books_dir.exists() {
-            for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
-                let entry = entry.map_err(|e| e.to_string())?;
-                if entry.path().is_dir() {
-                    std::fs::remove_dir_all(entry.path()).map_err(|e| e.to_string())?;
-                }
-            }
-        }
-        let migration_status = inner.dir.join(MIGRATION_STATUS_FILE);
-        remove_if_exists(&migration_status)?;
-        remove_if_exists(migration_status.with_extension("tmp"))?;
-        let migration_backups = inner.dir.join(MIGRATION_BACKUP_DIR);
-        if migration_backups.exists() {
-            std::fs::remove_dir_all(migration_backups).map_err(|e| e.to_string())?;
+        let import_staging = inner.dir.join("ocr-import-staging");
+        if import_staging.exists() {
+            std::fs::remove_dir_all(&import_staging).map_err(|e| e.to_string())?;
+            durable::sync_parent(&import_staging)?;
         }
         Ok(())
+    }
+
+    fn write_sync_journal(&self, sync_dir: &Path, phase: &str) -> Result<(), String> {
+        let journal = self.sync_journal_path();
+        durable::write_json_atomic(
+            &journal,
+            &json!({
+                "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+                "op": "sync",
+                "phase": phase,
+                "syncDir": sync_dir,
+                "deviceId": self.device_id(),
+                "updatedAt": record_files::now_millis().to_string(),
+            }),
+            true,
+            true,
+        )
+    }
+
+    fn clear_sync_journal(&self) -> Result<(), String> {
+        remove_if_exists(self.sync_journal_path())
     }
 }
 
 fn quarantine_journal(path: &Path) -> Result<(), String> {
     let bad = path.with_extension("bad");
-    let _ = std::fs::remove_file(&bad);
-    std::fs::rename(path, &bad).map_err(|e| e.to_string())
+    let _ = durable::remove_file_if_exists(&bad);
+    std::fs::rename(path, &bad).map_err(|e| e.to_string())?;
+    durable::sync_parent(&bad)
 }
 
 fn remove_if_exists(path: impl AsRef<Path>) -> Result<(), String> {
-    let path = path.as_ref();
-    if path.exists() {
-        std::fs::remove_file(path).map_err(|e| e.to_string())?;
+    durable::remove_file_if_exists(path.as_ref())
+}
+
+fn validate_snapshot_payload_schema(payload: &Value) -> Result<(), String> {
+    let schema_version = payload
+        .get("schemaVersion")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "schemaVersion is missing".to_string())?;
+    if schema_version != SNAPSHOT_SCHEMA_VERSION {
+        return Err(format!("unsupported schemaVersion: {schema_version}"));
     }
     Ok(())
 }
 
-fn write_json_atomically(path: &Path, value: &Value) -> Result<(), String> {
-    let temp = path.with_extension("tmp");
-    let bytes = serde_json::to_vec_pretty(value).map_err(|e| e.to_string())?;
-    let mut file = std::fs::File::create(&temp).map_err(|e| e.to_string())?;
-    use std::io::Write;
-    file.write_all(&bytes).map_err(|e| e.to_string())?;
-    file.sync_all().map_err(|e| e.to_string())?;
-    std::fs::rename(&temp, path).map_err(|e| e.to_string())
+fn encode_save_journal(
+    payload: &Value,
+    base: &record_files::Fingerprints,
+    saved_at: u128,
+) -> Value {
+    let base_records = base
+        .iter()
+        .map(|(key, fingerprint)| {
+            (
+                key.clone(),
+                json!({
+                    "hash": fingerprint.hash,
+                    "causal": fingerprint.causal,
+                }),
+            )
+        })
+        .collect::<Map<String, Value>>();
+    json!({
+        "journalFormat": SAVE_JOURNAL_FORMAT,
+        "savedAt": saved_at.to_string(),
+        "baseRecords": base_records,
+        "payload": payload,
+    })
 }
 
-fn read_json_file(path: &Path) -> Option<Value> {
-    let raw = std::fs::read(path).ok()?;
-    serde_json::from_slice::<Value>(&raw).ok()
-}
-
-fn migration_backup_complete(status: &Value) -> bool {
-    status.get("migration").and_then(Value::as_str) == Some(LEGACY_TO_RECORDS_MIGRATION)
-        && status.get("status").and_then(Value::as_str) == Some("complete")
-        && status
-            .get("legacyBackup")
-            .and_then(|backup| backup.get("ok"))
-            .and_then(Value::as_bool)
-            == Some(true)
+fn decode_save_journal(
+    journal: &Value,
+    legacy_base: record_files::Fingerprints,
+) -> Result<(Value, record_files::Fingerprints, u128), String> {
+    if journal.get("journalFormat").is_none() {
+        validate_snapshot_payload_schema(journal)?;
+        return Ok((journal.clone(), legacy_base, record_files::now_millis()));
+    }
+    let format = journal
+        .get("journalFormat")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "save journal format is invalid".to_string())?;
+    if format != SAVE_JOURNAL_FORMAT {
+        return Err(format!("unsupported save journal format: {format}"));
+    }
+    let payload = journal
+        .get("payload")
+        .cloned()
+        .ok_or_else(|| "save journal payload is missing".to_string())?;
+    validate_snapshot_payload_schema(&payload)?;
+    let saved_at = journal
+        .get("savedAt")
+        .and_then(|value| {
+            value
+                .as_str()
+                .and_then(|text| text.parse::<u128>().ok())
+                .or_else(|| value.as_u64().map(u128::from))
+        })
+        .ok_or_else(|| "save journal timestamp is invalid".to_string())?;
+    let base_values = journal
+        .get("baseRecords")
+        .and_then(Value::as_object)
+        .ok_or_else(|| "save journal base is invalid".to_string())?;
+    let mut base = record_files::Fingerprints::new();
+    for (key, value) in base_values {
+        let hash = value
+            .get("hash")
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("save journal base hash is invalid for {key}"))?;
+        let causal_values = value
+            .get("causal")
+            .and_then(Value::as_object)
+            .ok_or_else(|| format!("save journal causal clock is invalid for {key}"))?;
+        let causal = causal_values
+            .iter()
+            .map(|(device, counter)| {
+                counter
+                    .as_u64()
+                    .map(|counter| (device.clone(), counter))
+                    .ok_or_else(|| format!("save journal causal value is invalid for {key}"))
+            })
+            .collect::<Result<_, _>>()?;
+        base.insert(
+            key.clone(),
+            record_files::RecordFingerprint {
+                hash: hash.to_string(),
+                causal,
+            },
+        );
+    }
+    Ok((payload, base, saved_at))
 }
 
 fn add_sync_dir_to_snapshot(snapshot: &mut Value) {
@@ -545,20 +477,19 @@ fn add_recovery_status_to_snapshot(snapshot: &mut Value, status: Value) {
     snapshot["recoveryStatus"] = status;
 }
 
-fn add_migration_status_to_snapshot(snapshot: &mut Value, status: Value) {
-    snapshot["migrationStatus"] = status;
-}
-
-fn copy_media_assets(from_root: &Path, to_root: &Path) -> Result<(), String> {
-    copy_tree_filtered(&from_root.join("books"), &to_root.join("books"), true)?;
+fn copy_media_assets(sync_dir: &Path, local_dir: &Path, device_id: &str) -> Result<(), String> {
+    media_assets::sync_book_assets(local_dir, sync_dir, device_id)?;
     copy_tree_filtered(
-        &from_root.join("argos-packages"),
-        &to_root.join("argos-packages"),
-        false,
+        &sync_dir.join("argos-packages"),
+        &local_dir.join("argos-packages"),
+    )?;
+    copy_tree_filtered(
+        &local_dir.join("argos-packages"),
+        &sync_dir.join("argos-packages"),
     )
 }
 
-fn copy_tree_filtered(from: &Path, to: &Path, skip_book_records: bool) -> Result<(), String> {
+fn copy_tree_filtered(from: &Path, to: &Path) -> Result<(), String> {
     if !from.exists() {
         return Ok(());
     }
@@ -567,26 +498,11 @@ fn copy_tree_filtered(from: &Path, to: &Path, skip_book_records: bool) -> Result
         let entry = entry.map_err(|e| e.to_string())?;
         let source = entry.path();
         let name = entry.file_name();
-        let name_text = name.to_string_lossy();
-        if skip_book_records
-            && matches!(
-                name_text.as_ref(),
-                "book.json" | "book.bak" | "metadata.json" | "text.txt"
-            )
-        {
-            continue;
-        }
         let target = to.join(&name);
         if source.is_dir() {
-            copy_tree_filtered(&source, &target, skip_book_records)?;
+            copy_tree_filtered(&source, &target)?;
         } else if source.is_file() && should_copy_file(&source, &target)? {
-            std::fs::create_dir_all(
-                target
-                    .parent()
-                    .ok_or_else(|| "target path has no parent".to_string())?,
-            )
-            .map_err(|e| e.to_string())?;
-            std::fs::copy(&source, &target).map_err(|e| e.to_string())?;
+            durable::copy_file_atomic(&source, &target, false)?;
         }
     }
     Ok(())
@@ -622,15 +538,53 @@ fn snapshot_payload(
     record_files::records_to_snapshot_payload(dir, records)
 }
 
+fn acknowledged_frontend_base(
+    previous: &record_files::Fingerprints,
+    incoming: &record_files::Fingerprints,
+    merged: &BTreeMap<String, record_files::SyncRecord>,
+) -> record_files::Fingerprints {
+    let merged_fingerprints = record_files::fingerprints(merged);
+    let mut next = previous.clone();
+    let known_keys = previous
+        .keys()
+        .chain(incoming.keys())
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
+
+    for key in known_keys {
+        match incoming.get(&key) {
+            Some(incoming_record) => {
+                if let Some(merged_record) = merged_fingerprints
+                    .get(&key)
+                    .filter(|record| record.hash == incoming_record.hash)
+                {
+                    next.insert(key, merged_record.clone());
+                }
+            }
+            None => {
+                let deletion_was_applied = merged
+                    .get(&key)
+                    .map(|record| record.deleted_at.is_some())
+                    .unwrap_or(true);
+                if deletion_was_applied {
+                    next.remove(&key);
+                }
+            }
+        }
+    }
+    next
+}
+
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use std::collections::BTreeMap;
-    use std::path::PathBuf;
-    use std::sync::{Arc, Mutex, mpsc};
+    use std::sync::{Arc, Barrier, Mutex, mpsc};
     use std::time::Duration;
 
     use serde_json::{Map, Value, json};
 
+    use crate::store::snapshot::{SNAPSHOT_SCHEMA_VERSION, encode_save_journal};
     use crate::store::{Store, StoreInner, record_files};
 
     fn store_at(dir: &tempfile::TempDir) -> Store {
@@ -640,19 +594,15 @@ mod tests {
     fn store_at_with_device(dir: &tempfile::TempDir, device_id: &str) -> Store {
         let books_dir = dir.path().join("books");
         std::fs::create_dir_all(&books_dir).unwrap();
-        let store = Store {
+        Store {
             inner: Mutex::new(StoreInner {
                 dir: dir.path().to_path_buf(),
-                db_path: dir.path().join("store.sqlite"),
-                vocab_path: dir.path().join("vocab.json"),
                 books_dir,
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: device_id.to_string(),
-        };
-        store.init_schema().unwrap();
-        store
+        }
     }
 
     fn profile_payload(word: &str, translation: &str) -> Value {
@@ -662,6 +612,7 @@ mod tests {
             json!({ "word": word, "translation": translation, "status": "learning" }),
         );
         json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "texts": [],
             "prefs": { "learningLanguage": "de" },
             "hiddenBooks": [],
@@ -686,6 +637,7 @@ mod tests {
             );
         }
         json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "texts": [],
             "prefs": { "learningLanguage": "de" },
             "hiddenBooks": [],
@@ -699,195 +651,6 @@ mod tests {
                 }
             }
         })
-    }
-
-    fn user_book_count(payload: &Value) -> usize {
-        payload["vocab"]["de"]
-            .get("userBooks")
-            .and_then(Value::as_array)
-            .map(Vec::len)
-            .unwrap_or(0)
-    }
-
-    fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
-        entries
-            .iter()
-            .map(|(device, counter)| ((*device).to_string(), *counter))
-            .collect()
-    }
-
-    #[test]
-    fn snapshot_seeds_record_files_without_removing_legacy_files() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        std::fs::write(
-            dir.path().join("vocab.json"),
-            r#"{"de":{"vocab":{"haus":{"word":"haus","translation":"house"}}}}"#,
-        )
-        .unwrap();
-        std::fs::create_dir_all(dir.path().join("books/de-custom-note")).unwrap();
-        std::fs::write(
-            dir.path().join("books/de-custom-note/book.json"),
-            r#"{"metadata":{"id":"de-custom-note","title":"Note","lang":"de"},"text":"Hallo Welt"}"#,
-        )
-        .unwrap();
-
-        let snapshot = store.snapshot();
-
-        assert!(dir.path().join("vocab.json").is_file());
-        assert!(dir.path().join("records/v1/vocab").is_dir());
-        assert!(snapshot["texts"][0].get("text").is_none());
-        assert_eq!(
-            store.get_text_content("de-custom-note").unwrap(),
-            "Hallo Welt"
-        );
-        assert_eq!(
-            snapshot["vocab"]["de"]["vocab"]["haus"]["translation"],
-            "house"
-        );
-    }
-
-    #[test]
-    fn snapshot_migrates_historical_legacy_fixture_copy_forward() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        std::fs::write(
-            dir.path().join("vocab.json"),
-            include_str!("fixtures/legacy-0.3.5-vocab.json"),
-        )
-        .unwrap();
-        let book_dir = dir.path().join("books/fr-custom-maison");
-        std::fs::create_dir_all(&book_dir).unwrap();
-        std::fs::write(
-            book_dir.join("metadata.json"),
-            include_str!("fixtures/legacy-0.3.5-book-metadata.json"),
-        )
-        .unwrap();
-        std::fs::write(
-            book_dir.join("text.txt"),
-            include_str!("fixtures/legacy-0.3.5-book-text.txt"),
-        )
-        .unwrap();
-
-        let snapshot = store.snapshot();
-        let records = record_files::load_records(dir.path()).unwrap();
-
-        assert_eq!(snapshot["migrationStatus"]["status"], "complete");
-        assert_eq!(
-            snapshot["vocab"]["fr"]["vocab"]["maison"]["status"],
-            "known"
-        );
-        assert_eq!(snapshot["texts"][0]["id"], "fr-custom-maison");
-        assert_eq!(
-            store.get_text_content("fr-custom-maison").unwrap(),
-            include_str!("fixtures/legacy-0.3.5-book-text.txt")
-        );
-        assert!(records.contains_key("profile:fr"));
-        assert!(records.contains_key("vocab:fr:maison"));
-        assert!(records.contains_key("text:fr-custom-maison"));
-        assert!(records.contains_key("book:fr:fr-user-1"));
-        assert!(dir.path().join("vocab.json").is_file());
-        assert!(book_dir.join("metadata.json").is_file());
-        assert!(book_dir.join("text.txt").is_file());
-    }
-
-    #[test]
-    fn snapshot_revives_same_device_tombstones_when_local_legacy_data_exists() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        std::fs::write(
-            dir.path().join("vocab.json"),
-            r#"{"de":{"vocab":{"haus":{"word":"haus","translation":"house"}}}}"#,
-        )
-        .unwrap();
-        std::fs::create_dir_all(dir.path().join("books/de-custom-note")).unwrap();
-        std::fs::write(
-            dir.path().join("books/de-custom-note/book.json"),
-            r#"{"metadata":{"id":"de-custom-note","title":"Note","lang":"de"},"text":"Hallo Welt"}"#,
-        )
-        .unwrap();
-        let mut tombstones = BTreeMap::new();
-        tombstones.insert(
-            "text:de-custom-note".to_string(),
-            record_files::SyncRecord {
-                key: "text:de-custom-note".to_string(),
-                kind: "text".to_string(),
-                data: Value::Null,
-                updated_at: 10,
-                deleted_at: Some(10),
-                device_id: "test-device".to_string(),
-                causal: causal(&[("test-device", 10)]),
-            },
-        );
-        tombstones.insert(
-            "vocab:de:haus".to_string(),
-            record_files::SyncRecord {
-                key: "vocab:de:haus".to_string(),
-                kind: "vocab".to_string(),
-                data: Value::Null,
-                updated_at: 10,
-                deleted_at: Some(10),
-                device_id: "test-device".to_string(),
-                causal: causal(&[("test-device", 10)]),
-            },
-        );
-        record_files::write_records(dir.path(), &tombstones).unwrap();
-
-        let snapshot = store.snapshot();
-
-        assert_eq!(snapshot["texts"][0]["id"], "de-custom-note");
-        assert_eq!(
-            store.get_text_content("de-custom-note").unwrap(),
-            "Hallo Welt"
-        );
-        assert_eq!(
-            snapshot["vocab"]["de"]["vocab"]["haus"]["translation"],
-            "house"
-        );
-    }
-
-    #[test]
-    fn snapshot_restores_missing_media_metadata_from_local_book_record() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        std::fs::create_dir_all(dir.path().join("books/de-custom-cover")).unwrap();
-        std::fs::write(
-            dir.path().join("books/de-custom-cover/book.json"),
-            r#"{"metadata":{"id":"de-custom-cover","title":"Cover","coverDataUrl":"data:image/jpeg;base64,cover","coverUrl":"https://example.test/cover.jpg","pdfOcrEngine":"paddleocr","pdfOcrPageCount":1,"pdfOcrPages":[{"imageName":"page-1.png","width":100,"height":200,"lines":[]}]},"text":"Hallo Welt"}"#,
-        )
-        .unwrap();
-        let records = record_files::payload_to_records(
-            &json!({
-                "texts": [{ "id": "de-custom-cover", "title": "Cover", "text": "Hallo Welt" }],
-                "prefs": { "learningLanguage": "de" },
-                "hiddenBooks": [],
-                "vocab": { "de": { "preferences": {}, "vocab": {} } }
-            }),
-            "remote-device",
-            1,
-        );
-        record_files::write_records(dir.path(), &records).unwrap();
-
-        let snapshot = store.snapshot();
-
-        assert_eq!(
-            snapshot["texts"][0]["coverDataUrl"],
-            "data:image/jpeg;base64,cover"
-        );
-        let records = record_files::load_records(dir.path()).unwrap();
-        assert_eq!(
-            records["text:de-custom-cover"].data["coverDataUrl"],
-            "data:image/jpeg;base64,cover"
-        );
-        assert_eq!(
-            records["text:de-custom-cover"].data["coverUrl"],
-            "https://example.test/cover.jpg"
-        );
-        assert_eq!(
-            records["text:de-custom-cover"].data["pdfOcrPages"][0]["imageName"],
-            "page-1.png"
-        );
-        assert_eq!(records["text:de-custom-cover"].data["pdfOcrPageCount"], 1);
     }
 
     #[test]
@@ -911,6 +674,56 @@ mod tests {
 
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["neu"]["translation"],
+            "new"
+        );
+    }
+
+    #[test]
+    fn repeated_stale_save_keeps_cloud_record_this_app_did_not_see() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let original = profile_payload("alt", "old");
+        store.bulk_save(original.clone()).unwrap();
+        let _ = store.snapshot();
+
+        let cloud_payload = profile_payload("neu", "new");
+        let cloud_record = record_files::payload_to_records(&cloud_payload, "cloud-device", 1)
+            .remove("vocab:de:neu")
+            .unwrap();
+        let mut records = record_files::load_records(dir.path()).unwrap();
+        records.insert(cloud_record.key.clone(), cloud_record);
+        record_files::write_records(dir.path(), &records).unwrap();
+
+        store.bulk_save(original.clone()).unwrap();
+        store.bulk_save(original).unwrap();
+
+        assert_eq!(
+            store.snapshot()["vocab"]["de"]["vocab"]["neu"]["translation"],
+            "new"
+        );
+    }
+
+    #[test]
+    fn repeated_stale_save_keeps_newer_cloud_version() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let original = profile_payload("wort", "old");
+        store.bulk_save(original.clone()).unwrap();
+        let _ = store.snapshot();
+
+        let cloud_payload = profile_payload("wort", "new");
+        let cloud_record = record_files::payload_to_records(&cloud_payload, "cloud-device", 1)
+            .remove("vocab:de:wort")
+            .unwrap();
+        let mut records = record_files::load_records(dir.path()).unwrap();
+        records.insert(cloud_record.key.clone(), cloud_record);
+        record_files::write_records(dir.path(), &records).unwrap();
+
+        store.bulk_save(original.clone()).unwrap();
+        store.bulk_save(original).unwrap();
+
+        assert_eq!(
+            store.snapshot()["vocab"]["de"]["vocab"]["wort"]["translation"],
             "new"
         );
     }
@@ -975,12 +788,15 @@ mod tests {
             .as_str()
             .unwrap()
             .to_string();
+        store
+            .bulk_save(profile_payload("wort", "newer-local"))
+            .unwrap();
 
         let snapshot = store.resolve_sync_conflict(&id, "keep-current").unwrap();
 
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
-            "local"
+            "newer-local"
         );
         assert_eq!(store.sync_status()["conflictCount"].as_u64(), Some(0));
         assert!(
@@ -1011,14 +827,81 @@ mod tests {
             .as_str()
             .unwrap()
             .to_string();
+        store
+            .bulk_save(profile_payload("wort", "newer-local"))
+            .unwrap();
+        let current_causal = record_files::load_records(dir.path()).unwrap()["vocab:de:wort"]
+            .causal
+            .clone();
 
         let snapshot = store.resolve_sync_conflict(&id, "use-conflict").unwrap();
+        let resolved = record_files::load_records(dir.path()).unwrap();
 
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
             "cloud"
         );
+        for (device, counter) in current_causal {
+            assert!(resolved["vocab:de:wort"].causal.get(&device) >= Some(&counter));
+        }
         assert_eq!(store.sync_status()["conflictCount"].as_u64(), Some(0));
+    }
+
+    #[test]
+    fn resolved_conflict_marker_prunes_remote_conflict_on_next_sync() {
+        let pc = tempfile::tempdir().unwrap();
+        let phone = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let pc_store = store_at_with_device(&pc, "pc-device");
+        let phone_store = store_at_with_device(&phone, "phone-device");
+        pc_store.bulk_save(profile_payload("wort", "base")).unwrap();
+        pc_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        pc_store.bulk_save(profile_payload("wort", "pc")).unwrap();
+        phone_store
+            .bulk_save(profile_payload("wort", "phone"))
+            .unwrap();
+        phone_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        pc_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        assert_eq!(pc_store.sync_status()["conflictCount"].as_u64(), Some(1));
+        assert_eq!(record_files::conflict_count(remote.path()).unwrap(), 1);
+
+        let id = pc_store.sync_status()["conflicts"][0]["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let resolved = pc_store.resolve_sync_conflict(&id, "use-conflict").unwrap();
+        let selected_translation = resolved["vocab"]["de"]["vocab"]["wort"]["translation"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        pc_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        let converged = pc_store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        assert_eq!(pc_store.sync_status()["conflictCount"].as_u64(), Some(0));
+        assert_eq!(phone_store.sync_status()["conflictCount"].as_u64(), Some(0));
+        assert_eq!(record_files::conflict_count(remote.path()).unwrap(), 0);
+        assert_eq!(
+            converged["vocab"]["de"]["vocab"]["wort"]["translation"],
+            selected_translation
+        );
+        assert!(remote.path().join("records/v1/resolved-conflicts").is_dir());
     }
 
     #[test]
@@ -1028,6 +911,9 @@ mod tests {
         let store = Arc::new(store_at(&dir));
         let guard = store.lock_writes().unwrap();
         let (tx, rx) = mpsc::channel();
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (attempting_tx, attempting_rx) = mpsc::channel();
+        let start = Arc::new(Barrier::new(7));
 
         for (name, task) in [
             (
@@ -1076,7 +962,13 @@ mod tests {
             ),
         ] {
             let tx = tx.clone();
+            let ready_tx = ready_tx.clone();
+            let attempting_tx = attempting_tx.clone();
+            let start = Arc::clone(&start);
             std::thread::spawn(move || {
+                ready_tx.send(name).unwrap();
+                start.wait();
+                attempting_tx.send(name).unwrap();
                 let result = task();
                 tx.send((name, result)).unwrap();
             });
@@ -1086,12 +978,25 @@ mod tests {
             let store = Arc::clone(&store);
             let remote = remote.path().to_path_buf();
             let tx = tx.clone();
+            let ready_tx = ready_tx.clone();
+            let attempting_tx = attempting_tx.clone();
+            let start = Arc::clone(&start);
             std::thread::spawn(move || {
+                ready_tx.send("sync_with_directory").unwrap();
+                start.wait();
+                attempting_tx.send("sync_with_directory").unwrap();
                 let result = store.sync_with_directory(remote).map(|_| ());
                 tx.send(("sync_with_directory", result)).unwrap();
             });
         }
 
+        for _ in 0..6 {
+            ready_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        }
+        start.wait();
+        for _ in 0..6 {
+            attempting_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        }
         assert!(rx.recv_timeout(Duration::from_millis(150)).is_err());
         drop(guard);
 
@@ -1123,103 +1028,7 @@ mod tests {
     }
 
     #[test]
-    fn first_snapshot_migrates_legacy_state_copy_forward_with_backup_manifest() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        let mut prefs = Map::new();
-        prefs.insert("learningLanguage".to_string(), json!("de"));
-        prefs.insert("theme".to_string(), json!("dark"));
-        store.set_prefs(&prefs).unwrap();
-        store
-            .save_vocab(&json!({
-                "de": {
-                    "preferences": {},
-                    "userBooks": [],
-                    "hiddenBuiltInBooks": [],
-                    "archivedBookIds": [],
-                    "vocab": {
-                        "haus": {
-                            "word": "haus",
-                            "translation": "house",
-                            "status": "known"
-                        }
-                    }
-                }
-            }))
-            .unwrap();
-
-        let snapshot = store.snapshot();
-        let status_path = store.migration_status_path();
-        let status: Value = serde_json::from_slice(&std::fs::read(&status_path).unwrap()).unwrap();
-        let backup_path = PathBuf::from(
-            status["legacyBackup"]["path"]
-                .as_str()
-                .expect("backup path"),
-        );
-        let records = record_files::load_records(dir.path()).unwrap();
-
-        assert_eq!(snapshot["migrationStatus"]["status"], "complete");
-        assert_eq!(status["status"], "complete");
-        assert_eq!(status["migration"], super::LEGACY_TO_RECORDS_MIGRATION);
-        assert_eq!(status["recordsActive"], true);
-        assert_eq!(status["legacySourcesPreservedInPlace"], true);
-        assert!(records.contains_key("profile:de"));
-        assert!(records.contains_key("vocab:de:haus"));
-        assert!(records.contains_key("pref:theme"));
-        assert!(dir.path().join("vocab.json").is_file());
-        assert!(dir.path().join("store.sqlite").is_file());
-        assert!(backup_path.join("vocab.json").is_file());
-        assert!(backup_path.join("store.sqlite").is_file());
-        assert_eq!(status["legacyBackup"]["ok"], true);
-        assert_eq!(
-            status["legacyBackup"]["legacySourcesPreservedInPlace"],
-            true
-        );
-        assert_eq!(
-            status["legacyBackup"]["booksDirectoryPreservedInPlace"],
-            true
-        );
-
-        let mut retry_status = status.clone();
-        retry_status["legacyBackup"]["ok"] = Value::Bool(false);
-        retry_status["legacyBackup"]["path"] = Value::String("stale-backup-path".to_string());
-        std::fs::write(&status_path, serde_json::to_vec(&retry_status).unwrap()).unwrap();
-        let retried_snapshot = store.snapshot();
-        let retried_status: Value =
-            serde_json::from_slice(&std::fs::read(&status_path).unwrap()).unwrap();
-        assert_eq!(retried_snapshot["migrationStatus"]["status"], "complete");
-        assert_eq!(retried_status["legacyBackup"]["ok"], true);
-        assert_eq!(
-            retried_status["legacyBackup"]["path"],
-            status["legacyBackup"]["path"]
-        );
-
-        let second_snapshot = store.snapshot();
-        let second_status: Value =
-            serde_json::from_slice(&std::fs::read(&status_path).unwrap()).unwrap();
-        assert_eq!(second_snapshot["migrationStatus"]["status"], "complete");
-        assert_eq!(
-            second_status["legacyBackup"]["path"],
-            status["legacyBackup"]["path"]
-        );
-
-        store.wipe().unwrap();
-        assert!(!status_path.exists());
-        assert!(!backup_path.exists());
-        assert!(!dir.path().join(super::MIGRATION_BACKUP_DIR).exists());
-        let after_wipe_snapshot = store.snapshot();
-        let after_wipe_records = record_files::load_records(dir.path()).unwrap();
-        assert!(
-            after_wipe_snapshot["vocab"]["de"]["vocab"]
-                .as_object()
-                .map(|vocab| !vocab.contains_key("haus"))
-                .unwrap_or(true)
-        );
-        assert!(after_wipe_records["vocab:de:haus"].deleted_at.is_some());
-    }
-
-    #[test]
-    fn recover_pending_wipe_completes_tombstones_before_legacy_cleanup() {
+    fn recover_pending_wipe_completes_tombstones_before_save_recovery() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
         store.bulk_save(profile_payload("alt", "old")).unwrap();
@@ -1241,36 +1050,6 @@ mod tests {
     }
 
     #[test]
-    fn wipe_tombstones_legacy_only_state_before_removing_it() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir);
-        store
-            .save_vocab(&json!({
-                "de": {
-                    "preferences": {},
-                    "userBooks": [],
-                    "hiddenBuiltInBooks": [],
-                    "archivedBookIds": [],
-                    "vocab": {
-                        "legacy": {
-                            "word": "legacy",
-                            "translation": "old",
-                            "status": "known"
-                        }
-                    }
-                }
-            }))
-            .unwrap();
-
-        store.wipe().unwrap();
-
-        let records = record_files::load_records(dir.path()).unwrap();
-        assert!(records["profile:de"].deleted_at.is_some());
-        assert!(records["vocab:de:legacy"].deleted_at.is_some());
-        assert!(!dir.path().join("vocab.json").exists());
-    }
-
-    #[test]
     fn corrupt_save_journal_is_quarantined_instead_of_blocking_startup() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
@@ -1289,24 +1068,106 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_recovers_pending_save_before_first_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&profile_payload("ocalony", "saved")).unwrap(),
+        )
+        .unwrap();
+
+        let snapshot = store.snapshot();
+
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["ocalony"]["translation"],
+            "saved"
+        );
+        assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
+    fn versioned_save_journal_recovers_a_deletion_after_restart() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store
+            .bulk_save(profile_payload("usun", "delete me"))
+            .unwrap();
+        let _ = store.snapshot();
+        let base = store.base_records.lock().unwrap().clone();
+        let journal = encode_save_journal(&profile_payload_words(&[]), &base, 10);
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&journal).unwrap(),
+        )
+        .unwrap();
+
+        let recovered = store_at(&dir);
+        recovered.recover_pending_save().unwrap();
+
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert!(records["vocab:de:usun"].deleted_at.is_some());
+        assert!(
+            recovered.snapshot()["vocab"]["de"]["vocab"]
+                .get("usun")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn versioned_save_journal_keeps_its_original_timestamp() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(profile_payload("wort", "base")).unwrap();
+        let _ = store.snapshot();
+        let base = store.base_records.lock().unwrap().clone();
+        let journal = encode_save_journal(&profile_payload("wort", "stale local"), &base, 10);
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&journal).unwrap(),
+        )
+        .unwrap();
+        let cloud_payload = profile_payload("wort", "new cloud");
+        let mut cloud_record = record_files::payload_to_records(&cloud_payload, "cloud-device", 20)
+            .remove("vocab:de:wort")
+            .unwrap();
+        cloud_record.updated_at = 20;
+        record_files::write_records(
+            dir.path(),
+            &BTreeMap::from([(cloud_record.key.clone(), cloud_record)]),
+        )
+        .unwrap();
+
+        let recovered = store_at(&dir);
+        recovered.recover_pending_save().unwrap();
+
+        assert_eq!(
+            recovered.snapshot()["vocab"]["de"]["vocab"]["wort"]["translation"],
+            "new cloud"
+        );
+    }
+
+    #[test]
     fn snapshot_reports_pending_recovery_journals() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
         std::fs::write(store.save_journal_path(), "{}").unwrap();
         std::fs::write(store.save_journal_path().with_extension("tmp"), "{}").unwrap();
         std::fs::write(store.wipe_journal_path(), "{}").unwrap();
+        std::fs::write(store.wipe_journal_path().with_extension("tmp"), "{}").unwrap();
         std::fs::write(dir.path().join("save-journal.bad"), "{").unwrap();
 
-        let snapshot = store.snapshot();
+        let status = store.recovery_status();
 
-        assert_eq!(snapshot["recoveryStatus"]["pendingSaveJournal"], true);
-        assert_eq!(snapshot["recoveryStatus"]["pendingSaveJournalTemp"], true);
-        assert_eq!(snapshot["recoveryStatus"]["pendingWipeJournal"], true);
-        assert_eq!(snapshot["recoveryStatus"]["quarantinedSaveJournal"], true);
+        assert_eq!(status["pendingSaveJournal"], true);
+        assert_eq!(status["pendingSaveJournalTemp"], true);
+        assert_eq!(status["pendingWipeJournal"], true);
+        assert_eq!(status["pendingWipeJournalTemp"], true);
+        assert_eq!(status["quarantinedSaveJournal"], true);
     }
 
     #[test]
-    fn bulk_save_quarantines_stale_journal_before_writing_new_one() {
+    fn bulk_save_recovers_pending_journal_without_treating_it_as_seen_base() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
         std::fs::write(
@@ -1318,13 +1179,53 @@ mod tests {
         store.bulk_save(profile_payload("nowy", "new")).unwrap();
         let snapshot = store.snapshot();
 
-        assert!(dir.path().join("save-journal.bad").is_file());
-        assert!(snapshot["vocab"]["de"]["vocab"]["stary"].is_null());
+        assert!(!dir.path().join("save-journal.bad").is_file());
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["stary"]["translation"],
+            "stale"
+        );
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["nowy"]["translation"],
             "new"
         );
         assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
+    fn bulk_save_rejects_future_payload_schema_without_overwriting_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(profile_payload("alt", "old")).unwrap();
+        let mut future = profile_payload("neu", "new");
+        future["schemaVersion"] = Value::from(SNAPSHOT_SCHEMA_VERSION + 1);
+
+        let error = store.bulk_save(future).unwrap_err();
+        let snapshot = store.snapshot();
+
+        assert!(error.contains("unsupported schemaVersion"));
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["alt"]["translation"],
+            "old"
+        );
+        assert!(snapshot["vocab"]["de"]["vocab"]["neu"].is_null());
+    }
+
+    #[test]
+    fn recovered_pending_wipe_blocks_stale_first_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(profile_payload("alt", "old")).unwrap();
+        store.write_wipe_journal().unwrap();
+
+        let error = store
+            .bulk_save(profile_payload("revived", "bad"))
+            .unwrap_err();
+        let snapshot = store.snapshot();
+
+        assert!(error.contains("pending wipe was recovered"));
+        assert!(snapshot["vocab"]["de"]["vocab"]["alt"].is_null());
+        assert!(snapshot["vocab"]["de"]["vocab"]["revived"].is_null());
+        assert!(!store.wipe_journal_path().exists());
     }
 
     #[test]
@@ -1352,6 +1253,81 @@ mod tests {
             "remote"
         );
         assert!(remote.path().join("records/v1/vocab").is_dir());
+    }
+
+    #[test]
+    fn sync_directory_keeps_preferences_local_and_out_of_sync_folder() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        let mut local_payload = profile_payload("lokal", "local");
+        local_payload["prefs"]["locale"] = json!("pl");
+        store.bulk_save(local_payload).unwrap();
+
+        let mut remote_payload = profile_payload("fern", "remote");
+        remote_payload["prefs"]["locale"] = json!("en");
+        let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
+        record_files::write_records(remote.path(), &remote_records).unwrap();
+
+        let snapshot = store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        let local_records = record_files::load_records(local.path()).unwrap();
+        let remote_records = record_files::load_records(remote.path()).unwrap();
+
+        assert_eq!(snapshot["prefs"]["locale"], "pl");
+        assert!(local_records.contains_key("pref:locale"));
+        assert!(!remote_records.contains_key("pref:locale"));
+        assert!(!remote_records.contains_key("pref:learningLanguage"));
+        assert!(!remote.path().join("records/v1/prefs").exists());
+    }
+
+    #[test]
+    fn sync_directory_recovers_pending_save_before_first_merge() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&profile_payload("lokal", "local")).unwrap(),
+        )
+        .unwrap();
+        let remote_payload = profile_payload("fern", "remote");
+        let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
+        record_files::write_records(remote.path(), &remote_records).unwrap();
+
+        let snapshot = store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["lokal"]["translation"],
+            "local"
+        );
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["fern"]["translation"],
+            "remote"
+        );
+        assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
+    fn sync_directory_clears_resumed_sync_journal_after_idempotent_retry() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        store.bulk_save(profile_payload("lokal", "local")).unwrap();
+        store
+            .write_sync_journal(remote.path(), "wrote-local-records")
+            .unwrap();
+
+        store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        assert!(!store.sync_journal_path().exists());
+        let remote_records = record_files::load_records(remote.path()).unwrap();
+        assert!(remote_records.contains_key("vocab:de:lokal"));
     }
 
     #[test]
@@ -1394,51 +1370,7 @@ mod tests {
     }
 
     #[test]
-    fn sync_directory_keeps_remote_user_book_tombstone_over_legacy_profile_copy() {
-        let local = tempfile::tempdir().unwrap();
-        let remote = tempfile::tempdir().unwrap();
-        let store = store_at(&local);
-        std::fs::write(
-            local.path().join("vocab.json"),
-            serde_json::to_string(&json!({
-                "de": {
-                    "preferences": {},
-                    "userBooks": [{ "id": "user-1", "title": "Old Book" }],
-                    "hiddenBuiltInBooks": [],
-                    "archivedBookIds": [],
-                    "vocab": {}
-                }
-            }))
-            .unwrap(),
-        )
-        .unwrap();
-        let remote_records = [(
-            "book:de:user-1".to_string(),
-            record_files::SyncRecord {
-                key: "book:de:user-1".to_string(),
-                kind: "book".to_string(),
-                data: Value::Null,
-                updated_at: 2,
-                deleted_at: Some(2),
-                device_id: "remote-device".to_string(),
-                causal: causal(&[("remote-device", 2)]),
-            },
-        )]
-        .into_iter()
-        .collect();
-        record_files::write_records(remote.path(), &remote_records).unwrap();
-
-        let snapshot = store
-            .sync_with_directory(remote.path().to_path_buf())
-            .unwrap();
-        let local_records = record_files::load_records(local.path()).unwrap();
-
-        assert_eq!(user_book_count(&snapshot), 0);
-        assert_eq!(local_records["book:de:user-1"].deleted_at, Some(2));
-    }
-
-    #[test]
-    fn sync_directory_copies_remote_book_media_without_copying_book_record() {
+    fn sync_directory_copies_remote_book_media() {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
         let store = store_at(&local);
@@ -1466,9 +1398,61 @@ mod tests {
             std::fs::read(local.path().join("books/de-custom-media/images/cover.jpg")).unwrap(),
             b"cover"
         );
-        let book =
-            std::fs::read_to_string(local.path().join("books/de-custom-media/book.json")).unwrap();
-        assert!(book.contains("Media"));
+        let local_records = record_files::load_records(local.path()).unwrap();
+        assert_eq!(local_records["text:de-custom-media"].data["title"], "Media");
+    }
+
+    #[test]
+    fn sync_directory_uses_asset_hash_when_same_size_content_differs() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        store
+            .save_book_image_bytes("de-custom-media", "cover.jpg", b"aaaa")
+            .unwrap();
+        let remote_image_dir = remote.path().join("books/de-custom-media/images");
+        std::fs::create_dir_all(&remote_image_dir).unwrap();
+        std::fs::write(remote_image_dir.join("cover.jpg"), b"bbbb").unwrap();
+
+        store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        assert_eq!(
+            std::fs::read(local.path().join("books/de-custom-media/images/cover.jpg")).unwrap(),
+            b"bbbb"
+        );
+    }
+
+    #[test]
+    fn sync_directory_propagates_book_media_tombstones() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        store
+            .save_book_image_bytes("de-custom-media", "cover.jpg", b"cover")
+            .unwrap();
+        store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        assert!(
+            remote
+                .path()
+                .join("books/de-custom-media/images/cover.jpg")
+                .is_file()
+        );
+
+        store.delete_text("de-custom-media").unwrap();
+        store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+
+        assert!(
+            !remote
+                .path()
+                .join("books/de-custom-media/images/cover.jpg")
+                .exists()
+        );
     }
 
     #[test]
@@ -1492,6 +1476,18 @@ mod tests {
     }
 }
 
+fn empty_snapshot(dir: PathBuf) -> Value {
+    json!({
+        "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+        "dataDir": dir,
+        "texts": [],
+        "prefs": {},
+        "hiddenBooks": [],
+        "vocab": {},
+        "errors": [],
+    })
+}
+
 fn add_snapshot_error(mut snapshot: Value, error: String) -> Value {
     eprintln!("[snapshot] failed to load {error}");
     if let Some(errors) = snapshot.get_mut("errors").and_then(Value::as_array_mut) {
@@ -1505,20 +1501,22 @@ impl Store {
         &self,
         records: &mut BTreeMap<String, record_files::SyncRecord>,
     ) -> Result<(), String> {
+        let current = record_files::load_records(&self.dir())?;
         for record in records.values_mut().filter(|record| record.kind == "text") {
             let has_text = record.data.get("text").and_then(Value::as_str).is_some();
             if has_text {
                 continue;
             }
-            let Some(id) = record.key.strip_prefix("text:") else {
+            let Some(text) = current
+                .get(&record.key)
+                .filter(|current| current.deleted_at.is_none())
+                .and_then(|current| current.data.get("text"))
+                .and_then(Value::as_str)
+            else {
                 continue;
             };
-            let text = self.get_text_content(id)?;
-            if text.is_empty() {
-                continue;
-            }
             if let Some(obj) = record.data.as_object_mut() {
-                obj.insert("text".to_string(), Value::String(text));
+                obj.insert("text".to_string(), Value::String(text.to_string()));
             }
         }
         Ok(())

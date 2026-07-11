@@ -14,16 +14,27 @@ data.
 
 ## Project Status
 
-Current release snapshot: `0.3.6.2`.
+Current release: `1.0.0`.
+
+> [!WARNING]
+> **Back up your Word Hunter words and library before installing version 1.0.0.**
+> This release changes the storage and synchronization compatibility baseline.
+> Use the in-app JSON export and keep a separate copy of your current Word Hunter
+> data folder before upgrading, especially if more than one device uses the same
+> sync folder.
 
 Active targets:
 
 - Windows and Linux desktop: `Word Hunter`
 - Android: `Word Hunter Pocket`
 
-Installers, portable archives, APKs, and AABs are published as GitHub Release
-assets, not tracked in the source tree.
+The Android APK and Linux Flatpak are published as GitHub Release assets rather
+than tracked in the source tree. Windows packages will be added later.
 
+Release `1.0.0` marks the new compatibility baseline after breaking storage and
+sync changes. It introduces durable per-record local storage, safer recovery and
+cross-device merging, guided Syncthing setup on desktop, Android sync staging,
+and refreshed packaging and platform validation.
 
 ## What It Includes
 
@@ -72,11 +83,29 @@ and provider.
 
 ## Feature Walkthrough
 
+### Themes
+
+Settings offers Familiar, Alternative familiar, and Word Hunter Classic themes.
+Familiar is the default and uses a cool blue palette. Alternative familiar uses
+aubergine and orange. Both follow the system light/dark preference; Classic
+preserves the previous Word Hunter appearance and also provides explicit light
+and dark variants. Existing theme preferences are migrated without changing
+books, vocabulary, or reading progress.
+
 ### Library, Import, and OCR
 
 The library collects imported texts, public-domain books, OCR/PDF entries, and
 reading progress in one place. Desktop keeps the full import workflow visible,
 including pasted text, ebooks, subtitles, and scanned PDF/OCR imports.
+Desktop packages use the bundled local OCR runtime and models; users do not need
+to install an OCR engine or language pack. Pocket uses Android's application and
+PDF capabilities locally. Documents are not sent to a new remote OCR service.
+OCR can be cancelled, and recognized page text can be corrected while reading
+without replacing the original PDF or page overlay.
+
+Encrypted, corrupt, unsupported, or empty PDFs can still be rejected. A damaged
+desktop package with a missing OCR runner or model reports that packaging/runtime
+problem instead of silently returning an incomplete OCR result.
 
 <img src="docs/screenshots/pc-library.png" width="860" alt="Word Hunter desktop library with import panel">
 
@@ -153,7 +182,9 @@ sync.
 ## Sync and Backups
 
 Word Hunter does not require an account or a central server. The app stores data
-locally and can copy changes through a folder chosen by the user.
+locally and can copy changes through a folder chosen by the user. Desktop builds
+bundle Syncthing 2.1.0 as a separate MPL-2.0 executable; Android uses a folder
+shared with a separately installed Syncthing client.
 
 - Desktop can use a local data folder and an optional sync folder.
 - Android keeps local data inside the app and lets the user pick a separate sync
@@ -162,6 +193,9 @@ locally and can copy changes through a folder chosen by the user.
   materials.
 - Deleted books and words stay deleted after sync instead of returning from an
   older device copy.
+- Concurrent changes to the same record are retained as visible conflicts rather
+  than being silently discarded; the Settings sync panel allows the retained
+  version to be reviewed and resolved.
 - Cloud folders can be delayed. When using Google Drive or similar providers,
   use a dedicated Word Hunter folder and wait until cloud upload/download is
   complete before opening another device.
@@ -180,12 +214,25 @@ macOS and iOS are not active targets right now.
 ### Requirements
 
 - Rust `1.88` or newer with Cargo.
+- Node.js `22` or newer for frontend and packaging validation tests.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
+- Python 3 and `curl` when refreshing or checking Flatpak Cargo sources.
 - OCR runtime/model assets only when preparing desktop OCR support.
 
 ### Common Commands
+
+Full repository validation is a single command:
+
+```bash
+./scripts/validate.sh
+```
+
+It runs `git diff --check`, JSON/i18n parsing, frontend tests, Flatpak
+`cargo-sources.json` drift detection, Rust formatting, Rust tests for the main
+Tauri crate and OCR runner, and non-blocking `cargo clippy` reports when
+available.
 
 ```powershell
 .\scripts\build.bat test         # run shared, desktop, and Android frontend tests
@@ -202,6 +249,11 @@ Rust backend tests can also be run directly:
 ```powershell
 cargo test --manifest-path src-tauri\Cargo.toml
 ```
+
+Android Pocket release builds derive `versionName` and monotonic `versionCode`
+from the `MAJOR.MINOR.PATCH` value in `src-tauri/tauri.conf.json`. Version
+`1.0.0` becomes `versionName 1.0.0` and `versionCode 1000000`; see
+`docs/release-validation.md` before changing the release version scheme.
 
 ### Flatpak
 
@@ -228,12 +280,20 @@ list with:
 ./scripts/update-flatpak-cargo-sources.sh
 ```
 
+To check for drift without rewriting the file, run:
+
+```bash
+./scripts/update-flatpak-cargo-sources.sh --check
+```
+
 The build script writes distributable files to `outputs/`. That directory is
 generated output, not source.
 
 ## Repository Layout
 
 - `src/web/` - shared frontend application code.
+- `src/web/js/reader/` - focused reader session, rendering, word navigation, PDF
+  page text, and OCR correction modules.
 - `src/web/platforms/` - platform-specific frontend styling and behavior.
 - `src-tauri/` - Tauri 2 Rust backend, commands, OCR/import logic, and platform
   config.
@@ -242,6 +302,38 @@ generated output, not source.
 - `docs/` - public documentation and screenshots.
 - `.cargo/` - Cargo configuration used by the workspace.
 - `scripts/build.bat` - Windows convenience entrypoint for tests and release artifacts.
+
+## Technology and Third-Party Licenses
+
+Word Hunter uses a Rust backend and a shared HTML/CSS/JavaScript interface in a
+Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
+Android System WebView. Desktop translation and OCR can use CTranslate2,
+SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
+providers. OCR uses DirectML on Windows and WebGPU/Vulkan on Linux, with a safe
+CPU fallback. Desktop sync uses the separately bundled Syncthing executable.
+The Flatpak routes file dialogs through XDG Desktop Portal and can use the
+active GTK theme extension, so KDE sessions receive their portal dialogs and
+the matching Breeze GTK styling when that extension is installed.
+
+Word Hunter data is stored as local record files and JSON snapshots; the current
+application does not use SQLite. The built-in scheduler is Word Hunter's own
+implementation inspired by published SM-2 and FSRS concepts, not the official
+FSRS library or the proprietary SuperMemo application.
+
+The shared WebView UI is an explicit architecture choice for feature and
+accessibility parity across desktop and Pocket. JavaScript owns DOM rendering and
+latency-sensitive interaction state. Rust owns storage merge/recovery, parsing,
+local HTTP validation, and desktop OCR, while the Android adapter owns SAF and
+platform PDF boundaries. CPU-heavy frontend statistics use workers and explicit
+caches instead of moving DOM work across the bridge.
+
+The project license is in `LICENSE`. Principal native components, model sources,
+service integrations, exact source links, and redistribution terms are listed in
+`THIRD-PARTY-NOTICES.md`. Full license texts for the locked Rust dependency
+graphs are generated into `THIRD-PARTY-LICENSES.html` and
+`OCR-THIRD-PARTY-LICENSES.html`; all four files are included in release packages.
+After changing either Rust lockfile, install `cargo-about` and refresh the
+reports with `./scripts/update-third-party-licenses.sh`.
 
 ## Privacy and Data Ownership
 

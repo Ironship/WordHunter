@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pl" class="app-booting">
+<html lang="pl" class="app-booting" data-theme="light" data-color-theme="familiar">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,8 +7,35 @@
   <title data-i18n="app.title">Word Hunter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <meta name="theme-color" content="#0d1114">
-  <style>html.app-booting,html.app-booting body{background:#0d1114;color-scheme:dark}</style>
+  <meta name="theme-color" content="#0067a8">
+  <script>
+    (function() {
+      try {
+        var saved = window.__bridgeState;
+        if (!saved) saved = JSON.parse(localStorage.getItem("wordHunterStateV2") || "null");
+        var prefs = saved && saved.prefs ? saved.prefs : saved && saved.preferences ? saved.preferences : {};
+        var aliases = { auto: "classic-auto", light: "classic-light", dark: "classic-dark" };
+        var theme = aliases[prefs.theme] || prefs.theme;
+        if (!theme && typeof prefs.darkMode === "boolean") theme = prefs.darkMode ? "classic-dark" : "classic-light";
+        if (!["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"].includes(theme)) theme = "familiar";
+        var systemDark = !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var family = theme === "familiar" || theme === "alternative-familiar" ? theme : "classic";
+        var mode = theme === "classic-dark" || ((theme === "classic-auto" || family !== "classic") && systemDark) ? "dark" : "light";
+        var color = family === "familiar" ? (mode === "dark" ? "#00395d" : "#0067a8")
+          : family === "alternative-familiar" ? (mode === "dark" ? "#2c001e" : "#5e2750")
+          : mode === "dark" ? "#0d1114" : "#17201c";
+        var root = document.documentElement;
+        root.dataset.theme = mode;
+        root.dataset.themePref = theme;
+        root.dataset.colorTheme = family;
+        root.style.setProperty("--boot-bg", color);
+        root.style.background = color;
+        root.style.colorScheme = mode;
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", color);
+      } catch (_error) {}
+    })();
+  </script>
+  <style>html.app-booting,html.app-booting body{width:100%;height:100%;min-height:100%;margin:0;overflow:hidden;background:var(--boot-bg,#0067a8);color-scheme:inherit}html.app-booting .app-shell{visibility:hidden}</style>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -31,7 +58,10 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar" data-i18n-attr="aria-label=app.navAriaLabel" aria-label="Navigation">
+    <button type="button" id="pocket-navigation-toggle" class="icon-button pocket-navigation-toggle" aria-expanded="false" aria-controls="app-navigation" data-i18n-attr="title=app.navAriaLabel,aria-label=app.navAriaLabel" aria-label="Navigation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <aside class="sidebar" id="app-navigation" data-i18n-attr="aria-label=app.navAriaLabel" aria-label="Navigation">
       <div class="brand">
         <div style="width: 100%;">
           <strong data-i18n="app.title">Word Hunter</strong>
@@ -78,47 +108,52 @@
         <button class="nav-item active" type="button" data-view="library" data-i18n-attr="title=nav.library">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"/><path d="M4 17h14"/><path d="M9 7h6"/></svg></span>
           <span data-i18n="nav.library">Biblioteka</span>
-          <span class="shortcut-badge">B</span>
+          <span class="shortcut-badge">Alt+B</span>
         </button>
         <button class="nav-item" type="button" data-view="reader" data-i18n-attr="title=nav.reader">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/></svg></span>
           <span data-i18n="nav.reader">Czytnik</span>
-          <span class="shortcut-badge">R</span>
+          <span class="shortcut-badge">Alt+R</span>
         </button>
         <button class="nav-item nav-item-locked" type="button" data-view="translator" data-i18n-attr="title=nav.translator">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg></span>
           <span data-i18n="nav.translator">Tłumacz</span>
-          <span class="shortcut-badge">T</span>
+          <span class="shortcut-badge">Alt+T</span>
         </button>
         <button class="nav-item" type="button" data-view="discover" data-i18n-attr="title=nav.discover">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
           <span data-i18n="nav.discover">Odkrywaj</span>
-          <span class="shortcut-badge">D</span>
+          <span class="shortcut-badge">Alt+D</span>
         </button>
         <button class="nav-item" type="button" data-view="vocabulary" data-i18n-attr="title=nav.vocabulary">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h13"/><path d="M4 12h13"/><path d="M4 18h9"/><circle cx="20" cy="18" r="2"/></svg></span>
           <span data-i18n="nav.vocabulary">Słownictwo</span>
-          <span class="shortcut-badge">V</span>
+          <span class="shortcut-badge">Alt+V</span>
         </button>
         <button class="nav-item" type="button" data-view="flashcards" data-i18n-attr="title=nav.flashcards">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v13c0 .6.4 1 1 1h14"/><path d="M7 3h13c.6 0 1 .4 1 1v13c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V4c0-.6.4-1 1-1z"/></svg></span>
           <span data-i18n="nav.flashcards">Fiszki</span>
-          <span class="shortcut-badge">F</span>
+          <span class="shortcut-badge">Alt+F</span>
         </button>
         <button class="nav-item" type="button" data-view="graphs" data-i18n-attr="title=nav.graphs">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="3" height="9" rx="1"/><rect x="10" y="7" width="3" height="14" rx="1"/><rect x="17" y="3" width="3" height="18" rx="1"/></svg></span>
           <span data-i18n="nav.graphs">Wykresy</span>
-          <span class="shortcut-badge">G</span>
+          <span class="shortcut-badge">Alt+G</span>
+        </button>
+        <button class="nav-item" type="button" data-view="sync" data-i18n-attr="title=nav.sync">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M16 16h5v5"/></svg></span>
+          <span data-i18n="nav.sync">Synchronizacja</span>
+          <span class="shortcut-badge">Alt+Y</span>
         </button>
         <button class="nav-item" type="button" data-view="settings" data-i18n-attr="title=nav.settings">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
           <span data-i18n="nav.settings">Ustawienia</span>
-          <span class="shortcut-badge">S</span>
+          <span class="shortcut-badge">Alt+S</span>
         </button>
         <button class="nav-item" type="button" data-view="help" data-i18n-attr="title=nav.help">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-.7.6-1.7 1-1.7 2.2"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></svg></span>
           <span data-i18n="nav.help">Pomoc</span>
-          <span class="shortcut-badge">?</span>
+          <span class="shortcut-badge">Alt+?</span>
         </button>
       </nav>
 
@@ -139,7 +174,9 @@
           <button class="icon-button" type="button" id="app-reload" aria-label="Reload app" data-i18n-attr="title=app.reload,aria-label=app.reload">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
-          <button class="icon-button" type="button" id="theme-toggle" data-i18n-attr="title=topbar.themeToggle,aria-label=topbar.themeToggle">☽</button>
+          <button class="icon-button" type="button" id="theme-toggle" data-i18n-attr="title=topbar.themeToggle,aria-label=topbar.themeToggle">
+            <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 5 5-5 5-5-5 5-5Z" fill="currentColor" opacity=".28"></path><path d="m12 11 5 5-5 5-5-5 5-5Z"></path></svg>
+          </button>
         </div>
       </header>
 
@@ -206,7 +243,7 @@
               </div>
               <button type="button" id="library-import-toggle" class="secondary-button pocket-import-toggle" aria-expanded="false" data-i18n="import.heading" data-i18n-attr="title=import.heading,aria-label=import.heading">Import</button>
             </div>
-            <div class="book-grid" id="book-list"></div>
+            <div class="book-grid" id="book-list" aria-busy="false"></div>
           </section>
 
           <div id="library-sidebar-resizer" class="panel-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=library.resizeImportPanel"></div>
@@ -264,7 +301,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
-              <button class="primary-button" type="submit" data-i18n="import.submit">Dodaj do biblioteki</button>
+              <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Dodaj do biblioteki</button>
             </form>
             <section class="youtube-import-section" aria-labelledby="youtube-import-heading">
               <h3 id="youtube-import-heading" data-i18n="import.youtubeHeading">YouTube subtitles</h3>
@@ -290,7 +327,16 @@
                 <span style="display: flex; align-items: center; gap: 0.5rem;"><span data-i18n="reader.textLabel">Tekst</span> <span class="shortcut-badge">Ctrl+B</span></span>
                 <select id="text-select"></select>
               </label>
-              <div class="toolbar-buttons" data-i18n-attr="aria-label=reader.fontSizeLabel">
+              <div class="toolbar-buttons" role="group" data-i18n-attr="aria-label=reader.controlsLabel">
+                <button type="button" id="reader-pocket-navigation-toggle" class="icon-button pocket-reader-navigation-toggle" aria-expanded="false" aria-controls="app-navigation" data-i18n-attr="title=app.navAriaLabel,aria-label=app.navAriaLabel" aria-label="Navigation">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <button type="button" id="reader-previous-word" class="icon-button pocket-word-navigation" data-i18n-attr="title=reader.previousWord,aria-label=reader.previousWord" aria-label="Previous word">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button type="button" id="reader-next-word" class="icon-button pocket-word-navigation" data-i18n-attr="title=reader.nextWord,aria-label=reader.nextWord" aria-label="Next word">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
                 <button type="button" data-font="down" data-i18n-attr="title=reader.fontDown">A-</button>
                 <div class="reader-zoom-slider" data-i18n-attr="title=reader.fontSizeLabel">
                   <input id="reader-font-size-slider" type="range" min="14" max="28" step="1" data-i18n-attr="aria-label=reader.fontSizeLabel" aria-label="Font size">
@@ -343,6 +389,7 @@
               <span data-i18n-html="help.focusHint1">Wciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby wejść w tekst</span>
               <span data-i18n-html="help.focusHint2"><kbd>←</kbd> <kbd>→</kbd> do nawigacji po słowach</span>
               <span data-i18n-html="help.focusHint3"><kbd>Ctrl</kbd>+<kbd>Spacja</kbd> czytaj zdanie</span>
+              <span data-i18n-html="help.focusHint4"><kbd>I</kbd> dodaj obrazek</span>
               <span data-i18n-html="help.focusHint5"><kbd>Ctrl</kbd>+<kbd>C</kbd> kopiuj słowo</span>
               <span data-i18n-html="help.focusHint6"><kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> zaznacz wiele słów</span>
             </div>
@@ -389,7 +436,7 @@
               </label>
             </div>
             <div class="translator-actions">
-              <p class="muted-copy" id="translator-status" data-i18n="translator.ready">Gotowy do tłumaczenia.</p>
+              <p class="muted-copy" id="translator-status" role="status" aria-live="polite" aria-atomic="true" data-i18n="translator.ready">Gotowy do tłumaczenia.</p>
               <div class="translator-progress" id="translator-progress"><div class="translator-progress-fill"></div></div>
             </div>
           </section>
@@ -542,7 +589,7 @@
               </button>
             </form>
             <div class="discover-toolbar" id="discover-toolbar" hidden>
-              <div class="discover-status" id="discover-status" data-i18n="discover.selectionHint">Zaznacz książki, żeby pobrać kilka naraz.</div>
+              <div class="discover-status" id="discover-status" role="status" aria-live="polite" aria-atomic="true" data-i18n="discover.selectionHint">Zaznacz książki, żeby pobrać kilka naraz.</div>
               <div class="toolbar-buttons">
                 <button class="secondary-button" type="button" id="discover-select-all" data-i18n="discover.selectAll">Zaznacz wszystkie</button>
                 <button class="secondary-button" type="button" id="discover-clear" data-i18n="discover.clearSelection">Wyczyść</button>
@@ -601,11 +648,16 @@
             <div class="settings-body">
               <p class="settings-subheading" data-i18n="settings.groupLanguage">Język i interfejs</p>
               <label class="setting-row">
-                <span data-i18n="settings.theme">Motyw</span>
-                <select id="pref-theme">
-                  <option value="auto" data-i18n="settings.themeAuto">Automatyczny (systemowy)</option>
-                  <option value="light" data-i18n="settings.themeLight">Jasny</option>
-                  <option value="dark" data-i18n="settings.themeDark">Ciemny</option>
+                <span>
+                  <span data-i18n="settings.theme">Motyw</span>
+                  <small data-i18n="settings.themeHint">Motyw jest wspólny dla wszystkich języków. Warianty Familiar dopasowują tryb jasny lub ciemny do systemu.</small>
+                </span>
+                <select id="pref-theme" data-pref="theme">
+                  <option value="familiar" data-i18n="settings.themeFamiliar">Familiar theme</option>
+                  <option value="alternative-familiar" data-i18n="settings.themeAlternativeFamiliar">Alternative familiar</option>
+                  <option value="classic-auto" data-i18n="settings.themeClassicAuto">Word Hunter Classic (systemowy)</option>
+                  <option value="classic-light" data-i18n="settings.themeClassicLight">Word Hunter Classic (jasny)</option>
+                  <option value="classic-dark" data-i18n="settings.themeClassicDark">Word Hunter Classic (ciemny)</option>
                 </select>
               </label>
               <label class="setting-row language-setting-row">
@@ -677,10 +729,10 @@
               <label class="setting-row">
                 <span data-i18n="settings.statusColors">Kolory statusów</span>
                 <div class="color-pickers-group">
-                  <input type="color" id="pref-color-new" class="color-picker-lg" data-i18n-attr="title=vocab.statusNew">
-                  <input type="color" id="pref-color-learning" class="color-picker-lg" data-i18n-attr="title=vocab.statusLearning">
-                  <input type="color" id="pref-color-known" class="color-picker-lg" data-i18n-attr="title=vocab.statusKnown">
-                  <input type="color" id="pref-color-ignored" class="color-picker-lg" data-i18n-attr="title=vocab.statusIgnored">
+                  <input type="color" id="pref-color-new" class="color-picker-lg" data-i18n-attr="title=vocab.statusNew,aria-label=vocab.statusNew">
+                  <input type="color" id="pref-color-learning" class="color-picker-lg" data-i18n-attr="title=vocab.statusLearning,aria-label=vocab.statusLearning">
+                  <input type="color" id="pref-color-known" class="color-picker-lg" data-i18n-attr="title=vocab.statusKnown,aria-label=vocab.statusKnown">
+                  <input type="color" id="pref-color-ignored" class="color-picker-lg" data-i18n-attr="title=vocab.statusIgnored,aria-label=vocab.statusIgnored">
                 </div>
               </label>
               <label class="setting-row toggle-row">
@@ -819,6 +871,18 @@
                   <small data-i18n="settings.autoLearnHint">Pierwsze kliknięcie nieznanego słowa od razu zapisuje je jako „Uczę się”, zamiast zostawiać jako „Nowe”.</small>
                 </span>
                 <input id="pref-auto-learn" type="checkbox" data-pref="autoLearnOnClick">
+              </label>
+              <p class="settings-subheading" data-i18n="settings.groupFeedbackSounds">Dźwięki informacji zwrotnej</p>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.statusSounds">Dźwięki zmiany statusu</span>
+                  <small data-i18n="settings.statusSoundsHint">Odtwarza inny krótki dźwięk dla statusów Nowe, Uczę się, Znane i Ignorowane.</small>
+                </span>
+                <input id="pref-status-sounds-enabled" type="checkbox" data-pref="statusSoundsEnabled">
+              </label>
+              <label class="setting-row">
+                <span id="pref-status-sound-volume-label" data-i18n="settings.statusSoundVolume">Głośność dźwięków statusu: 55%</span>
+                <input id="pref-status-sound-volume" type="range" min="0" max="100" step="5" data-pref="statusSoundVolume" aria-labelledby="pref-status-sound-volume-label">
               </label>
               <p class="settings-subheading" data-i18n="settings.groupTts">Czytanie głosem</p>
               <label class="setting-row">
@@ -964,35 +1028,12 @@
               <h2 id="data-heading" data-i18n="settings.dataHeading">Import i eksport</h2>
             </div>
             <div class="settings-body">
-              <p class="settings-subheading" data-i18n="settings.groupSync">Synchronizacja</p>
+              <p class="settings-subheading" data-i18n="settings.groupLocalData">Dane na tym urządzeniu</p>
               <p class="muted-copy" id="storage-summary"></p>
               <p class="muted-copy" id="data-directory"></p>
-              <p class="muted-copy" id="sync-directory"></p>
-              <p class="muted-copy" id="sync-status"></p>
-              <p class="muted-copy" id="sync-health"></p>
-              <p class="muted-copy" id="cloud-sync-status"></p>
-              <div id="sync-conflicts-panel" class="sync-conflicts-panel" hidden>
-                <div id="sync-conflicts-list" class="sync-conflicts-list"></div>
+              <div class="data-actions compact-actions desktop-only-setting">
+                <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
               </div>
-              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
-                <div id="recovery-status-list" class="recovery-status-list"></div>
-              </div>
-              <p class="muted-copy desktop-only-setting" data-i18n="settings.dataFolderHint">Choose where WordHunter keeps its local data. Keep this folder on the device for the safest startup.</p>
-              <p class="muted-copy" data-i18n="settings.dataFolderSteps">WordHunter can prepare its own sync folder and keep it updated from the local app data.</p>
-              <p class="muted-copy" data-i18n="settings.dataFolderCloudDelay">Cloud copies should mirror that WordHunter folder. Direct cloud mounts can be delayed or incomplete, so keep files available offline before using another device.</p>
-              <div class="data-actions compact-actions">
-                <button id="prepare-sync-directory" type="button" class="primary-button" data-i18n="settings.prepareSyncFolder">Przygotuj synchronizację</button>
-                <button id="force-sync" type="button" class="secondary-button" data-i18n="settings.forceSync">Wymuś synchronizację</button>
-                <button id="connect-cloud-sync" type="button" class="secondary-button desktop-only-control" data-i18n="settings.connectGoogleDrive">Połącz Google Drive</button>
-                <button id="cloud-sync-now" type="button" class="secondary-button desktop-only-control" data-i18n="settings.cloudSyncNow">Synchronizuj chmurę</button>
-              </div>
-              <details class="desktop-only-setting">
-                <summary data-i18n="settings.syncAdvanced">Zaawansowane</summary>
-                <div class="data-actions compact-actions">
-                  <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
-                  <button id="choose-sync-directory" type="button" class="secondary-button" data-i18n="settings.chooseSyncFolder">Wybierz folder synchronizacji</button>
-                </div>
-              </details>
               <p class="settings-subheading" data-i18n="settings.groupBackup">Kopie i import</p>
               <div class="data-actions">
                 <section class="data-action-row desktop-only-setting">
@@ -1010,7 +1051,7 @@
                     <p data-i18n="settings.backupHint">JSON zawiera ustawienia, profile językowe, bazę słów, własne teksty i ukryte książki. Import JSON zastępuje aktualny stan aplikacji danymi z pliku.</p>
                   </div>
                   <div class="data-action-buttons">
-                    <button class="primary-button desktop-only-control" type="button" id="export-state" data-i18n="settings.exportJson">Eksportuj JSON</button>
+                    <button class="primary-button" type="button" id="export-state" data-i18n="settings.exportJson">Eksportuj JSON</button>
                     <label class="file-button">
                       <span data-i18n="settings.importJson">Importuj JSON</span>
                       <input id="import-state" type="file" accept="application/json">
@@ -1022,7 +1063,7 @@
                   <div class="data-action-copy">
                     <h3 data-i18n="settings.ankiTitle">Wymiana słówek z Anki</h3>
                     <p data-i18n="settings.ankiHint">TSV eksportuje tylko słowa, tłumaczenia i pierwszy kontekst. Import TSV dopisuje lub aktualizuje słówka, ale nie przenosi ustawień, książek ani profili.</p>
-                    <fieldset class="status-filter-field anki-export-statuses desktop-only-setting">
+                    <fieldset class="status-filter-field anki-export-statuses">
                       <legend data-i18n="settings.ankiExportStatuses">Eksportowane statusy</legend>
                       <div class="status-filter-options">
                         <label class="status-check">
@@ -1046,7 +1087,7 @@
                     </fieldset>
                   </div>
                   <div class="data-action-buttons">
-                    <button class="primary-button desktop-only-control" type="button" id="export-anki-tsv" data-i18n="settings.exportAnkiTsv">Eksportuj do Anki (TSV)</button>
+                    <button class="primary-button" type="button" id="export-anki-tsv" data-i18n="settings.exportAnkiTsv">Eksportuj do Anki (TSV)</button>
                     <label class="file-button">
                       <span data-i18n="settings.importAnkiTsv">Importuj z Anki (TSV)</span>
                       <input id="import-anki-tsv" type="file" accept=".tsv,.txt">
@@ -1090,14 +1131,215 @@
         </div>
       </section>
 
+      <section class="view" id="sync-view" data-title-key="nav.sync">
+        <div class="settings-grid sync-page-grid">
+          <section class="panel sync-guide-panel" aria-labelledby="sync-guide-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="syncGuide.eyebrow">Synchronizacja PC i Android</p>
+              <h2 id="sync-guide-heading" data-i18n="syncGuide.heading">Instrukcja krok po kroku</h2>
+            </div>
+            <div class="settings-body sync-guide-body">
+              <p class="muted-copy" data-i18n="syncGuide.intro">Ta zakładka przeprowadza przez synchronizację między komputerem i Androidem. Word Hunter nie wymaga konta; urządzenia wymieniają pliki przez folder WordHunterSync.</p>
+              <div class="sync-guide-note" data-i18n="syncGuide.sourceOfTruth">Najważniejsze: lokalne dane aplikacji są głównym źródłem prawdy. Folder Syncthing jest kopią do wymiany między urządzeniami. Na Androidzie Word Hunter najpierw przygotowuje dane do scalenia, robi bezpieczny merge, a dopiero potem odsyła wynik do folderu.</div>
+
+              <div class="sync-guide-section">
+                <h3 data-i18n="syncGuide.beforeTitle">Zanim zaczniesz</h3>
+                <ol class="sync-guide-list">
+                  <li data-i18n="syncGuide.before1">Zrób ręczny eksport JSON w Ustawieniach, jeśli przenosisz ważne dane po raz pierwszy.</li>
+                  <li data-i18n="syncGuide.before2">Na każdym urządzeniu zamknij inne aplikacje, które mogłyby edytować folder WordHunterSync.</li>
+                  <li data-i18n="syncGuide.before3">Użyj jednego, pustego folderu tylko dla Word Huntera. Nie wkładaj tam zdjęć, dokumentów ani innych kopii zapasowych.</li>
+                  <li data-i18n="syncGuide.before4">Jeśli korzystasz z chmury lub Syncthing, poczekaj na status „up to date” przed otwarciem drugiego urządzenia.</li>
+                  <li data-i18n="syncGuide.before5">Nie wybieraj lokalnego folderu danych aplikacji jako folderu synchronizacji. To mają być dwa różne miejsca.</li>
+                </ol>
+              </div>
+
+              <div class="sync-guide-section desktop-only-setting">
+                <h3 data-i18n="syncGuide.pcTitle">PC: przygotowanie folderu i Syncthing</h3>
+                <ol class="sync-guide-list">
+                  <li data-i18n="syncGuide.pc1">Kliknij „Przygotuj folder Syncthing”. Word Hunter utworzy lub zaktualizuje folder WordHunterSync.</li>
+                  <li data-i18n="syncGuide.pc2">Sprawdź w statusie, czy folder synchronizacji jest wybrany i czy kondycja folderu jest gotowa.</li>
+                  <li data-i18n="syncGuide.pc3">Kliknij „Uruchom Syncthing”. Wersja PC ma Syncthing wbudowany w aplikację.</li>
+                  <li data-i18n="syncGuide.pc4">Kliknij „Pokaż mój kod QR” i zostaw okno otwarte, jeśli chcesz zeskanować PC z telefonu.</li>
+                  <li data-i18n="syncGuide.pc5">Na telefonie w Syncthing-Fork dodaj nowe urządzenie przez kod QR albo ręcznie wpisz Device ID z PC.</li>
+                  <li data-i18n="syncGuide.pc6">Gdy telefon zapyta o folder, wskaż lub utwórz folder WordHunterSync na telefonie.</li>
+                  <li data-i18n="syncGuide.pc7">Na PC zaakceptuj nowe urządzenie, jeśli Syncthing o to poprosi.</li>
+                  <li data-i18n="syncGuide.pc8">Zostaw Word Hunter i Syncthing otwarte, aż Syncthing pokaże, że folder jest zsynchronizowany.</li>
+                  <li data-i18n="syncGuide.pc9">Dopiero wtedy otwórz Word Hunter Pocket na Androidzie i wykonaj synchronizację folderu.</li>
+                </ol>
+              </div>
+
+              <div class="sync-guide-section">
+                <h3 data-i18n="syncGuide.androidTitle">Android: Word Hunter Pocket</h3>
+                <ol class="sync-guide-list">
+                  <li data-i18n="syncGuide.android1">Zainstaluj Syncthing-Fork z Play Store albo F-Droid. Sama aplikacja Word Hunter Pocket nie uruchamia Syncthing.</li>
+                  <li data-i18n="syncGuide.android2">W Syncthing-Fork sparuj telefon z PC przez kod QR albo Device ID.</li>
+                  <li data-i18n="syncGuide.android3">W Syncthing-Fork ustaw folder WordHunterSync na telefonie i poczekaj, aż pliki się pobiorą.</li>
+                  <li data-i18n="syncGuide.android4">Otwórz Word Hunter Pocket i przejdź do tej zakładki Synchronizacja.</li>
+                  <li data-i18n="syncGuide.android5">Kliknij wybór folderu synchronizacji i wskaż dokładnie ten folder, którego używa Syncthing-Fork.</li>
+                  <li data-i18n="syncGuide.android6">Android pokaże systemowy ekran wyboru folderu. Potwierdź dostęp do całego folderu, nie do pojedynczego pliku.</li>
+                  <li data-i18n="syncGuide.android7">Word Hunter sprawdzi, czy może czytać, zapisywać i usuwać plik testowy w tym folderze.</li>
+                  <li data-i18n="syncGuide.android8">Po udanym sprawdzeniu aplikacja skopiuje folder do stagingu, wykona merge i wyśle wynik z powrotem.</li>
+                  <li data-i18n="syncGuide.android9">Po zakończeniu wróć do Syncthing-Fork i poczekaj, aż wyśle zmiany na PC.</li>
+                  <li data-i18n="syncGuide.android10">Na PC kliknij „Scal dane teraz” albo poczekaj na automatyczne scalanie w tle.</li>
+                </ol>
+              </div>
+
+              <div class="sync-guide-section">
+                <h3 data-i18n="syncGuide.verifyTitle">Po czym poznasz, że działa</h3>
+                <ol class="sync-guide-list">
+                  <li data-i18n="syncGuide.verify1">W statusie folderu powinno być widać wybrany folder WordHunterSync.</li>
+                  <li data-i18n="syncGuide.verify2">Syncthing na PC powinien pokazać połączone urządzenie.</li>
+                  <li data-i18n="syncGuide.verify3">Syncthing-Fork na Androidzie powinien pokazać folder jako aktualny.</li>
+                  <li data-i18n="syncGuide.verify4">Nowe słowo dodane na PC powinno pojawić się na Androidzie po synchronizacji obu stron.</li>
+                  <li data-i18n="syncGuide.verify5">Nowy tekst dodany na Androidzie powinien pojawić się na PC po synchronizacji obu stron.</li>
+                  <li data-i18n="syncGuide.verify6">Jeśli pojawi się konflikt, nie kasuj folderu. Użyj panelu konfliktów w tej zakładce.</li>
+                </ol>
+              </div>
+
+              <div class="sync-guide-section">
+                <h3 data-i18n="syncGuide.troubleTitle">Gdy coś nie działa</h3>
+                <ol class="sync-guide-list">
+                  <li data-i18n="syncGuide.trouble1">Jeśli Android nie widzi zmian, otwórz Syncthing-Fork i sprawdź, czy folder jest „up to date”.</li>
+                  <li data-i18n="syncGuide.trouble2">Jeśli PC nie widzi telefonu, upewnij się, że oba urządzenia są w tej samej sieci albo mają dostęp do internetu.</li>
+                  <li data-i18n="syncGuide.trouble3">Jeśli folder jest tylko do odczytu, wybierz inny folder albo napraw uprawnienia w systemowym pickerze Androida.</li>
+                  <li data-i18n="syncGuide.trouble4">Jeśli widzisz stare dane, najpierw poczekaj na Syncthing, potem kliknij „Scal dane teraz” w Word Hunter.</li>
+                  <li data-i18n="syncGuide.trouble5">Nie naprawiaj problemu przez ręczne kopiowanie plików z folderu aplikacji. Używaj folderu WordHunterSync.</li>
+                  <li data-i18n="syncGuide.trouble6">Jeśli masz dwa telefony, dodawaj je pojedynczo i sprawdzaj po każdym urządzeniu, czy dane są aktualne.</li>
+                  <li data-i18n="syncGuide.trouble7">Przed dużymi zmianami, importem wielu książek albo testami nowego telefonu zrób eksport JSON.</li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="sync-actions-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.groupSync">Synchronizacja</p>
+              <h2 id="sync-actions-heading" data-i18n="syncGuide.actionsHeading">Folder i połączenie</h2>
+            </div>
+            <div class="settings-body">
+              <p class="muted-copy" id="sync-directory"></p>
+              <p class="muted-copy" id="sync-status" role="status" aria-live="polite" aria-atomic="true"></p>
+              <p class="muted-copy" id="sync-health"></p>
+              <div class="data-actions compact-actions">
+                <button id="prepare-sync-directory" type="button" class="primary-button" data-i18n="settings.prepareSyncFolder">Przygotuj folder Syncthing</button>
+                <button id="force-sync" type="button" class="secondary-button" data-i18n="settings.forceSync">Scal dane teraz</button>
+              </div>
+
+              <div id="sync-conflicts-panel" class="sync-conflicts-panel" hidden>
+                <div id="sync-conflicts-list" class="sync-conflicts-list"></div>
+              </div>
+              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
+                <div id="recovery-status-list" class="recovery-status-list"></div>
+              </div>
+
+              <div id="syncthing-setup-wizard" class="syncthing-wizard">
+                <div class="syncthing-wizard-step" data-step="1">
+                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num"><span class="wizard-step-num-desktop">1</span><span class="wizard-step-num-pocket">1</span></span></div>
+                  <div class="syncthing-wizard-step-body">
+                    <strong data-i18n="settings.syncWizStep1Title">Przygotuj folder synchronizacji</strong>
+                    <p class="muted-copy" data-i18n="settings.syncWizStep1Desc">WordHunter utworzy folder WordHunterSync i skopiuje tam twoje dane. To jest wspólny folder między urządzeniami.</p>
+                  </div>
+                </div>
+
+                <div class="syncthing-wizard-step desktop-only-setting" data-step="2">
+                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num">2</span></div>
+                  <div class="syncthing-wizard-step-body">
+                    <strong data-i18n="settings.syncWizStep2Title">Uruchom Syncthing</strong>
+                    <p class="muted-copy" data-i18n="settings.syncWizStep2Desc">Syncthing automatycznie synchronizuje pliki między urządzeniami. WordHunter może uruchomić go w tle.</p>
+                    <div class="data-actions compact-actions">
+                      <button id="syncthing-start" type="button" class="primary-button" data-i18n="settings.syncthingStart">Uruchom Syncthing</button>
+                      <button id="syncthing-stop" type="button" class="secondary-button" data-i18n="settings.syncthingStop">Zatrzymaj Syncthing</button>
+                    </div>
+                    <p class="muted-copy" id="syncthing-status" style="margin-top:0.5rem;"></p>
+                    <p class="muted-copy" id="syncthing-peers"></p>
+                  </div>
+                </div>
+
+                <div class="syncthing-wizard-step desktop-only-setting" data-step="3">
+                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num">3</span></div>
+                  <div class="syncthing-wizard-step-body">
+                    <strong data-i18n="settings.syncWizStep3Title">Połącz drugie urządzenie</strong>
+                    <p class="muted-copy" data-i18n="settings.syncWizStep3Desc">Zeskanuj kod QR na drugim urządzeniu lub wpisz ręcznie ID urządzenia. Oba urządzenia muszą mieć uruchomiony Syncthing.</p>
+                    <div class="data-actions compact-actions">
+                      <button id="syncthing-show-qr" type="button" class="primary-button" data-i18n="settings.syncthingShowQR">Pokaż mój kod QR</button>
+                      <button id="syncthing-pair" type="button" class="secondary-button" data-i18n="settings.syncthingPair">Dodaj urządzenie ręcznie</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="syncthing-wizard-step" data-step="4">
+                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num"><span class="wizard-step-num-desktop">4</span><span class="wizard-step-num-pocket">2</span></span></div>
+                  <div class="syncthing-wizard-step-body">
+                    <strong data-i18n="settings.syncWizStep4Title">Na Androidzie</strong>
+                    <p class="muted-copy" data-i18n="settings.syncWizStep4Desc">WordHunter Pocket nie ma wbudowanego Syncthing. Zainstaluj Syncthing Fork na telefonie, a kod QR lub Device ID weź z WordHuntera na PC.</p>
+                    <ol class="syncthing-android-steps">
+                      <li data-i18n="settings.syncWizAndroid1">Zainstaluj Syncthing Fork z Play Store lub F-Droid.</li>
+                      <li data-i18n="settings.syncWizAndroid2">Otwórz Syncthing Fork i kliknij + w zakładce Urządzenia.</li>
+                      <li data-i18n="settings.syncWizAndroid3">Na PC otwórz WordHunter > Synchronizacja, uruchom Syncthing i kliknij Pokaż mój kod QR. Zeskanuj ten kod albo wpisz Device ID PC.</li>
+                      <li data-i18n="settings.syncWizAndroid4">W WordHunter Pocket przygotuj folder synchronizacji i wybierz ten sam folder co w Syncthing.</li>
+                      <li data-i18n="settings.syncWizAndroid5">Gotowe. Dane będą synchronizowane automatycznie.</li>
+                    </ol>
+                  </div>
+                </div>
+                <div id="syncthing-running-step" class="sync-guide-note" hidden>
+                  <p id="syncthing-final-status" class="muted-copy" role="status" aria-live="polite"></p>
+                </div>
+              </div>
+
+              <details class="desktop-only-setting">
+                <summary data-i18n="settings.syncAdvanced">Zaawansowane</summary>
+                <div class="data-actions compact-actions">
+                  <button id="choose-sync-directory" type="button" class="secondary-button" data-i18n="settings.chooseSyncFolder">Wybierz folder synchronizacji</button>
+                </div>
+              </details>
+            </div>
+          </section>
+        </div>
+
+        <dialog id="syncthing-qr-dialog" class="panel syncthing-qr-dialog" aria-labelledby="syncthing-qr-title">
+          <div class="panel-header">
+            <h2 id="syncthing-qr-title" data-i18n="settings.syncthingQRTitle">Kod QR urządzenia</h2>
+          </div>
+          <div class="settings-body" style="text-align:center;">
+            <div id="syncthing-qr-container" style="margin:1rem 0;min-height:320px;display:flex;align-items:center;justify-content:center;"></div>
+            <p class="muted-copy" id="syncthing-qr-device-id"></p>
+            <p class="muted-copy" data-i18n="settings.syncthingQRHint">Zeskanuj ten kod w Syncthing na drugim urządzeniu.</p>
+            <button type="button" class="primary-button" id="syncthing-qr-close" data-i18n="settings.syncthingQRClose">Zamknij</button>
+          </div>
+        </dialog>
+      </section>
+
       <section class="view" id="help-view" data-title-key="nav.help">
         <div class="settings-grid">
-          <section class="panel" aria-labelledby="help-heading">
+          <section class="panel pocket-only-setting pocket-help-panel" aria-labelledby="pocket-help-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="help.pocketEyebrow">Word Hunter Pocket</p>
+              <h2 id="pocket-help-heading" data-i18n="help.pocketHeading">Korzystanie z wersji Android</h2>
+            </div>
+            <div class="settings-body pocket-help-body">
+              <p class="muted-copy" data-i18n="help.pocketIntro"></p>
+              <div>
+                <h3 data-i18n="help.pocketControlsTitle"></h3>
+                <p class="muted-copy" data-i18n-html="help.pocketControlsBody"></p>
+              </div>
+              <div>
+                <h3 data-i18n="help.pocketSyncTitle"></h3>
+                <p class="muted-copy" data-i18n-html="help.pocketSyncBody"></p>
+              </div>
+              <div>
+                <h3 data-i18n="help.pocketLimitsTitle"></h3>
+                <p class="muted-copy" data-i18n-html="help.pocketLimitsBody"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel desktop-help-shortcuts" aria-labelledby="help-heading">
             <div class="panel-header stacked">
               <p class="eyebrow" data-i18n="help.eyebrow">Pomoc</p>
               <h2 id="help-heading" data-i18n="help.heading">Skróty klawiszowe</h2>
             </div>
             <div class="settings-body" style="gap: 2rem;">
+              <p class="muted-copy" data-i18n="help.shortcutScope"></p>
               <div>
                 <h3 data-i18n="help.navTitle" style="margin-top: 0;"></h3>
                 <div style="line-height: 2;">
@@ -1109,8 +1351,13 @@
                     <li data-i18n-html="help.navKeys.vocab"></li>
                     <li data-i18n-html="help.navKeys.flashcards"></li>
                     <li data-i18n-html="help.navKeys.graphs"></li>
+                    <li data-i18n-html="help.navKeys.sync"></li>
                     <li data-i18n-html="help.navKeys.settings"></li>
                     <li data-i18n-html="help.navKeys.help"></li>
+                    <li data-i18n-html="help.navKeys.search"></li>
+                    <li data-i18n-html="help.navKeys.theme"></li>
+                    <li data-i18n-html="help.navKeys.offlineDictionary"></li>
+                    <li data-i18n-html="help.navKeys.escape"></li>
                   </ul>
                 </div>
               </div>
@@ -1125,6 +1372,7 @@
                     <li data-i18n-html="help.readerKeys.page"></li>
                     <li data-i18n-html="help.readerKeys.imgSuggest"></li>
                     <li data-i18n-html="help.readerKeys.inTextReview"></li>
+                    <li data-i18n-html="help.readerKeys.activate"></li>
                   </ul>
                 </div>
                 
@@ -1164,6 +1412,13 @@
                     <li data-i18n-html="help.flashcardsKeys.dict"></li>
                     <li data-i18n-html="help.flashcardsKeys.youglish"></li>
                     <li data-i18n-html="help.flashcardsKeys.searchImage"></li>
+                  </ul>
+                </div>
+                <h3 data-i18n="help.editorTitle" style="margin-top: 1rem;"></h3>
+                <div style="line-height: 2;">
+                  <ul style="margin: 0;">
+                    <li data-i18n-html="help.editorKeys.word"></li>
+                    <li data-i18n-html="help.editorKeys.book"></li>
                   </ul>
                 </div>
               </div>
@@ -1222,6 +1477,8 @@
                 <li data-i18n-html="help.creditOfflineTranslator"></li>
                 <li data-i18n-html="help.creditPyside"></li>
                 <li data-i18n-html="help.creditInter"></li>
+                <li data-i18n-html="help.creditSync"></li>
+                <li data-i18n-html="help.creditNotices"></li>
               </ul>
             </div>
           </section>
@@ -1238,7 +1495,7 @@
                 <li data-i18n-html="help.contactIssues"></li>
                 <li data-i18n-html="help.contactAuthor"></li>
                 <li data-i18n-html="help.contactLicense"></li>
-                <li data-i18n-html="help.whatsNew" style="color: var(--accent);"></li>
+                <li data-i18n-html="help.whatsNew" style="color: var(--accent-ink);"></li>
                 <li data-i18n-html="help.version"></li>
               </ul>
             </div>
@@ -1249,6 +1506,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite">
+    <span id="toast-message"></span>
     <button type="button" class="toast-close" id="toast-close" data-i18n-attr="aria-label=reader.close" aria-label="Close">×</button>
   </div>
 
@@ -1389,9 +1647,9 @@
     </div>
   </dialog>
 
-  <dialog id="argos-download-dialog" class="panel" style="width: 90vw; max-width: 500px;">
+  <dialog id="argos-download-dialog" class="panel" style="width: 90vw; max-width: 500px;" aria-labelledby="argos-download-title">
     <div class="panel-header">
-      <h2 data-i18n="settings.argosDownloadTitle">Pobierz modele offline</h2>
+      <h2 id="argos-download-title" data-i18n="settings.argosDownloadTitle">Pobierz modele offline</h2>
     </div>
     <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
       <p class="muted-copy" data-i18n="settings.argosDownloadHint">Pobiera lokalne pakiety tłumaczeń dla wybranych języków, w tym pary z angielskim i językiem nauki, jeśli są dostępne.</p>
@@ -1439,6 +1697,7 @@
     <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
       <p id="update-message" data-i18n="update.message" style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted);">Word Hunter {version} is available! (You have {current})</p>
       <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+        <button id="update-dismiss" class="ghost-button" data-i18n="update.dismiss">Later</button>
         <button id="update-skip" class="secondary-button" data-i18n="update.skipLabel">Skip this version</button>
         <button id="update-disable" class="secondary-button" data-i18n="update.disableUpdates">Don't remind me again</button>
         <button id="update-open" class="primary-button" data-i18n="update.openReleases">See what's new</button>
