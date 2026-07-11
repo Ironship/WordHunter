@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
+import { findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
 
 describe("token stats", () => {
   it("counts each token occurrence by vocabulary status", () => {
@@ -15,7 +15,50 @@ describe("token stats", () => {
       .filter((part) => part.type === "word")
       .map((part) => part.value);
 
-    assert.ok(words.length >= 1);
-    assert.equal(words.join(""), "中文学习");
+    assert.deepEqual(words, ["中文", "学习"]);
+    assert.deepEqual(getTokenStats(tokenizeText("中文学习", "zh"), { 中文: { status: "known" } }), {
+      unique: 2, known: 1, learning: 0, ignored: 0, new: 1
+    });
+  });
+
+  it("returns context for the selected repeated word occurrence", () => {
+    const text = "The first bank is closed. We sat by the river bank at noon.";
+
+    assert.equal(
+      getSentenceForWord(text, "bank", "en", "modern", 10),
+      "We sat by the river bank at noon."
+    );
+    assert.equal(
+      getSentenceForWord(text, "bank", "en", "modern", 2),
+      "The first bank is closed."
+    );
+  });
+
+  it("treats separated German verb parts as one vocabulary phrase", () => {
+    const tokens = tokenizeText("Ich rufe dich an. Danach kommt er an.", "de");
+    const vocab = { "rufe an": { status: "known" } };
+    const matches = findGermanSeparableVerbMatches(tokens, vocab, "de");
+    const matchedWords = [...matches.keys()].map((index) => tokens[index].value.toLowerCase());
+
+    assert.deepEqual(matchedWords, ["rufe", "an"]);
+    assert.deepEqual(getTokenStats(tokens, vocab, "de"), {
+      unique: 7,
+      known: 2,
+      learning: 0,
+      ignored: 0,
+      new: 6
+    });
+  });
+
+  it("does not join German verb parts across a clause boundary", () => {
+    const tokens = tokenizeText("Ich rufe dich, danach kommt er an.", "de");
+    assert.equal(findGermanSeparableVerbMatches(tokens, { "rufe an": { status: "known" } }, "de").size, 0);
+  });
+
+  it("uses either clicked part of a separated German verb for sentence context", () => {
+    const text = "Ich rufe dich an. Später rufe ich wieder an.";
+    assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 1), "Ich rufe dich an.");
+    assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 3), "Ich rufe dich an.");
+    assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 5), "Später rufe ich wieder an.");
   });
 });

@@ -44,6 +44,13 @@ export async function checkForUpdates({ manual = false } = {}) {
     if (msgEl) msgEl.textContent = t("update.message", { version: data.latest, current: data.current });
     if (titleEl) titleEl.textContent = t("update.title");
 
+    const dismissBtn = document.getElementById("update-dismiss");
+    if (dismissBtn) {
+      const newBtn = dismissBtn.cloneNode(true);
+      dismissBtn.replaceWith(newBtn);
+      newBtn.addEventListener("click", () => dialog.close());
+    }
+
     // "Skip this version" — save and close, won't show again until next release
     const skipBtn = document.getElementById("update-skip");
     if (skipBtn) {

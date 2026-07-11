@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">1000 самых частых русских слов: Истории</title>
+  <desc id="desc">Обложка с ярким окном, дорожкой из страниц и домашними предметами, которые складываются в небольшой город.</desc>
+  <rect width="600" height="900" fill="#102A43"/>
+  <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#FFD166" stroke-width="5"/>
+  <circle cx="300" cy="468" r="190" fill="#0B7285"/>
+  <circle cx="300" cy="468" r="150" fill="#F8F5E7"/>
+
+  <g fill="#F8F5E7" text-anchor="middle" font-family="sans-serif">
+    <text x="300" y="126" font-size="82" font-weight="800">1000</text>
+    <text x="300" y="176" font-size="30" font-weight="700" letter-spacing="1">САМЫХ ЧАСТЫХ</text>
+    <text x="300" y="216" font-size="30" font-weight="700" letter-spacing="1">РУССКИХ СЛОВ</text>
+  </g>
+  <path d="M102 242H498" stroke="#FFD166" stroke-width="7" stroke-linecap="round"/>
+  <text x="300" y="294" fill="#FFD166" text-anchor="middle" font-family="serif" font-size="46" font-weight="700">Истории</text>
+
+  <g stroke="#102A43" stroke-width="7" stroke-linejoin="round">
+    <path d="M190 387h220v197H190z" fill="#FFD166"/>
+    <path d="M215 412h70v68h-70zM315 412h70v68h-70zM215 505h70v54h-70zM315 505h70v54h-70z" fill="#E9F5F2"/>
+    <path d="M177 387l123-93 123 93z" fill="#EF8354"/>
+    <path d="M279 584h42v86h-42z" fill="#EF8354"/>
+  </g>
+  <circle cx="300" cy="642" r="6" fill="#FFD166"/>
+
+  <g fill="#F8F5E7" stroke="#102A43" stroke-width="6" stroke-linejoin="round">
+    <path d="M70 698c76-25 153-10 230 45v105c-75-45-151-57-230-31z"/>
+    <path d="M530 698c-76-25-153-10-230 45v105c75-45 151-57 230-31z"/>
+  </g>
+  <path d="M300 743v105" stroke="#0B7285" stroke-width="5"/>
+  <path d="M170 731c24-43 42-83 55-120 28 28 48 64 60 108-42-7-80-3-115 12z" fill="#78C091" stroke="#102A43" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M430 731c-24-43-42-83-55-120-28 28-48 64-60 108 42-7 80-3 115 12z" fill="#78C091" stroke="#102A43" stroke-width="6" stroke-linejoin="round"/>
+
+  <rect x="104" y="852" width="392" height="2" fill="#FFD166"/>
+  <text x="300" y="841" fill="#F8F5E7" text-anchor="middle" font-family="sans-serif" font-size="19" font-weight="700" letter-spacing="1.4">WORD HUNTER ORIGINALS</text>
+</svg>

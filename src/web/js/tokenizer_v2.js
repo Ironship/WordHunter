@@ -92,11 +92,77 @@ export function normalizeSearchVariants(value) {
   return Array.from(new Set([raw, german, ascii]));
 }
 
-function getClassicSentenceForWord(text, word) {
+const GERMAN_SEPARABLE_PREFIXES = new Set([
+  "ab", "an", "auf", "aus", "bei", "ein", "fest", "her", "herein", "hin", "hinaus",
+  "los", "mit", "nach", "vor", "vorbei", "weg", "weiter", "zu", "zurück", "zusammen",
+  "dran", "drauf", "raus", "rein", "rüber", "runter"
+]);
+
+export function findGermanSeparableVerbMatches(tokens, vocab, lang = "en") {
+  const matches = new Map();
+  if (lang !== "de") return matches;
+  const candidates = new Map();
+  for (const key of Object.keys(vocab || {})) {
+    const parts = key.split(/\s+/).map(normalizeWord).filter(Boolean);
+    if (parts.length !== 2 || !GERMAN_SEPARABLE_PREFIXES.has(parts[1])) continue;
+    const values = candidates.get(parts[0]) || [];
+    values.push({ key, prefix: parts[1] });
+    candidates.set(parts[0], values);
+  }
+  if (!candidates.size) return matches;
+
+  const clauses = [];
+  let clause = [];
+  tokens.forEach((token, tokenIndex) => {
+    if (token.type === "word") clause.push({ tokenIndex, word: normalizeWord(token.value) });
+    if (token.type === "text" && /[.!?;,\n\r]/u.test(token.value)) {
+      if (clause.length) clauses.push(clause);
+      clause = [];
+    }
+  });
+  if (clause.length) clauses.push(clause);
+
+  for (const words of clauses) {
+    if (words.length < 2) continue;
+    const prefix = words.at(-1);
+    for (let index = words.length - 2; index >= 0 && words.length - index <= 12; index--) {
+      const candidate = (candidates.get(words[index].word) || [])
+        .find((value) => value.prefix === prefix.word);
+      if (!candidate) continue;
+      matches.set(words[index].tokenIndex, candidate.key);
+      matches.set(prefix.tokenIndex, candidate.key);
+      break;
+    }
+  }
+  return matches;
+}
+
+function getWordCharacterIndex(text, word, lang, algorithm, wordIndex) {
+  if (!Number.isInteger(wordIndex) || wordIndex < 0) return null;
+  const expectedParts = normalizeWord(word).split(/\s+/).filter(Boolean);
+  let characterIndex = 0;
+  let currentWordIndex = 0;
+  for (const part of tokenizeText(text, lang, algorithm)) {
+    const partIndex = text.indexOf(part.value, characterIndex);
+    if (partIndex < 0) return null;
+    characterIndex = partIndex + part.value.length;
+    if (part.type !== "word") continue;
+    if (currentWordIndex === wordIndex) {
+      return expectedParts.includes(normalizeWord(part.value))
+        ? { characterIndex: partIndex, word: part.value }
+        : null;
+    }
+    currentWordIndex++;
+  }
+  return null;
+}
+
+function getClassicSentenceForWord(text, word, preferredIndex = -1) {
   if (!text || !word) return "";
 
   const lowerText = text.toLowerCase();
   const lowerWord = word.toLowerCase();
+  const normalizedWord = normalizeWord(word);
   const wordLen = lowerWord.length;
 
   const isLetter = (char) => {
@@ -104,7 +170,7 @@ function getClassicSentenceForWord(text, word) {
     return /\p{L}/u.test(char);
   };
 
-  let index = lowerText.indexOf(lowerWord);
+  let index = preferredIndex >= 0 ? preferredIndex : lowerText.indexOf(lowerWord);
   let limit = 10;
 
   while (index !== -1 && limit-- > 0) {
@@ -133,7 +199,7 @@ function getClassicSentenceForWord(text, word) {
 
       const sentence = text.slice(start, end).trim();
       if (sentence) {
-        if (tokenizeText(sentence, "en", "classic").some(part => part.type === "word" && normalizeWord(part.value) === word)) {
+        if (tokenizeText(sentence, "en", "classic").some(part => part.type === "word" && normalizeWord(part.value) === normalizedWord)) {
           return sentence;
         }
       }
@@ -145,14 +211,18 @@ function getClassicSentenceForWord(text, word) {
   return "";
 }
 
-export function getSentenceForWord(text, word, lang = "en", algorithm = "modern") {
+export function getSentenceForWord(text, word, lang = "en", algorithm = "modern", wordIndex = null) {
+  const indexedMatch = getWordCharacterIndex(text, word, lang, algorithm, wordIndex);
+  const preferredIndex = indexedMatch?.characterIndex ?? -1;
+  const contextWord = indexedMatch?.word || word;
   if (resolveTokenizerAlgorithm(algorithm) === "classic") {
-    return getClassicSentenceForWord(text, word);
+    return getClassicSentenceForWord(text, contextWord, preferredIndex);
   }
-  if (!text || !word) return "";
+  if (!text || !contextWord) return "";
   
   const lowerText = text.toLowerCase();
-  const lowerWord = word.toLowerCase();
+  const lowerWord = contextWord.toLowerCase();
+  const normalizedContextWord = normalizeWord(contextWord);
   const wordLen = lowerWord.length;
   
   const isLetter = (char) => {
@@ -166,9 +236,7 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
   const MAX_CONTEXT_CHARS = 100;
 
   const isEndPunct = (char) => char === '.' || char === '!' || char === '?' || char === '。' || char === '！' || char === '？';
-  const isParagraphBreak = (char, nextChar) => char === '\n' && (nextChar === '\n' || nextChar === '\r');
-
-  let index = lowerText.indexOf(lowerWord);
+  let index = preferredIndex >= 0 ? preferredIndex : lowerText.indexOf(lowerWord);
   let limit = 50;
   
   while (index !== -1 && limit-- > 0) {
@@ -235,7 +303,7 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
       
       const sentence = text.slice(start, end).trim();
       if (sentence) {
-        if (tokenizeText(sentence, lang, algorithm).some(part => part.type === "word" && normalizeWord(part.value) === word)) {
+        if (tokenizeText(sentence, lang, algorithm).some(part => part.type === "word" && normalizeWord(part.value) === normalizedContextWord)) {
           return sentence;
         }
       }
@@ -255,16 +323,32 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
   return "";
 }
 
-export function getTokenStats(tokens, vocab) {
+export function getTokenStats(tokens, vocab, lang = "en") {
   const words = tokens.filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean);
   const phrases = Object.entries(vocab || {})
     .filter(([word]) => word.includes(" "))
     .map(([word, entry]) => ({ words: word.split(/\s+/), status: entry?.status || "new" }))
     .sort((a, b) => b.words.length - a.words.length);
+  const phrasesByFirstWord = new Map();
+  for (const phrase of phrases) {
+    const values = phrasesByFirstWord.get(phrase.words[0]) || [];
+    values.push(phrase);
+    phrasesByFirstWord.set(phrase.words[0], values);
+  }
   const statuses = words.map((word) => vocab?.[word]?.status || "new");
   for (let i = 0; i < words.length; i += 1) {
-    const phrase = phrases.find(({ words: phraseWords }) => phraseWords.every((word, offset) => words[i + offset] === word));
+    const phrase = (phrasesByFirstWord.get(words[i]) || [])
+      .find(({ words: phraseWords }) => phraseWords.every((word, offset) => words[i + offset] === word));
     if (phrase) phrase.words.forEach((_word, offset) => { statuses[i + offset] = phrase.status; });
+  }
+  const wordIndexByTokenIndex = new Map();
+  let wordIndex = 0;
+  tokens.forEach((token, tokenIndex) => {
+    if (token.type === "word") wordIndexByTokenIndex.set(tokenIndex, wordIndex++);
+  });
+  for (const [tokenIndex, key] of findGermanSeparableVerbMatches(tokens, vocab, lang)) {
+    const index = wordIndexByTokenIndex.get(tokenIndex);
+    if (index !== undefined) statuses[index] = vocab?.[key]?.status || "new";
   }
   const stats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
   statuses.forEach((status) => { stats[["known", "learning", "ignored"].includes(status) ? status : "new"] += 1; });
@@ -272,7 +356,7 @@ export function getTokenStats(tokens, vocab) {
 }
 
 export function getTextStats(text, vocab, lang = "en", algorithm = "modern") {
-  return getTokenStats(tokenizeText(text, lang, algorithm), vocab);
+  return getTokenStats(tokenizeText(text, lang, algorithm), vocab, lang);
 }
 
 export function cleanGutenbergText(rawText) {

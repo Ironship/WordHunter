@@ -2,13 +2,9 @@
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
-import { renderCardStat, renderCardCount } from "../icons.js";
 import { t, getLocale } from "../i18n.js";
 import { searchGutendex } from "../discover/gutendex.js";
 import { searchMediaWiki } from "../discover/mediawiki.js";
-import { discoverStats, cancelAllStatsFetches, queueStatsFetch } from "../discover/stats.js";
-
-export { cancelAllStatsFetches };
 
 let lastResults = [];
 const selected = new Set();
@@ -146,8 +142,6 @@ function renderResults(data) {
     if (book.source === "wikinews") sourceTag = t("discover.sourceWikinews");
     if (book.source === "wikisource") sourceTag = t("discover.sourceWikisource");
 
-    const stats = discoverStats.get(id);
-    const statsBlock = isGutenberg ? renderStatsBlock(id, stats) : "";
     const downloads = book.download_count ? `<span class="tag tag-soft">${escapeHtml(t("discover.downloads", { n: book.download_count.toLocaleString(localeTag) }))}</span>` : "";
 
     return `
@@ -164,7 +158,6 @@ function renderResults(data) {
             <p>${escapeHtml(author)}${authorYears ? ` · ${escapeHtml(authorYears)}` : ""}</p>
           </div>
           ${summary ? `<p class="book-summary">${escapeHtml(summary.slice(0, 200))}${summary.length > 200 ? "…" : ""}</p>` : ""}
-          ${statsBlock}
           <div class="book-actions" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
             <label class="discover-check" style="margin: 0;">
               <input type="checkbox" data-discover-check="${escapeAttribute(id)}" ${isSelected ? "checked" : ""}>
@@ -195,10 +188,6 @@ function renderPagination() {
     `<span class="page-label">${page}</span>`,
     `<button class="secondary-button" data-page="${page + 1}" ${!_cachedNext ? "disabled" : ""}>${escapeHtml(t("discover.next"))}</button>`
   ].join("");
-}
-
-function renderStatsBlock(id, stats) {
-  return `<div class="stats-block">—</div>`;
 }
 
 function renderUserBooks() {
@@ -296,9 +285,7 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen } = {}) {
     _cachedPrev,
     _cachedNext,
     _mwContinueToken,
-    discoverStats,
     FETCH_CONCURRENCY,
-    queueStatsFetch,
     setStatus,
     renderResults,
     renderPagination,

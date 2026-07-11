@@ -1,9 +1,10 @@
 // Shared helpers used by both events.js barrel and navigation.js submodule.
 import { state } from "../state.js";
 import { t } from "../i18n.js";
-import { getReaderSelectionText } from "../views/reader.js";
+import { getReaderSelectionText } from "../reader/selection.js";
 import { showToast } from "../toast.js";
 import { openAndroidUrl } from "../platform.js";
+import { resolveTheme } from "../theme.js";
 
 export function hasNativeTextSelection() {
   const selection = window.getSelection?.();
@@ -18,7 +19,7 @@ export async function openDictionary(word) {
   if (state.preferences?.argosAsDict && state.preferences?.offlineTranslator) {
     const fromLang = state.preferences.learningLanguage || "en";
     const toLang = state.preferences.locale || "pl";
-    const theme = state.preferences.theme || "auto";
+    const theme = resolveTheme(state.preferences.theme, window.matchMedia?.("(prefers-color-scheme: dark)").matches).mode;
     const locale = state.preferences.locale || "pl";
     const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme}&locale=${locale}`;
     const dictUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("translator.argosTitle"))}`;

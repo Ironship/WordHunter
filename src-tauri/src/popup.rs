@@ -51,10 +51,10 @@ pub fn serve_open_dict(
                 if let Some(existing) = handle.get_webview_window(INTERNAL_POPUP_LABEL) {
                     let _ = existing.set_title(&title);
                     let _ = existing.unminimize();
-                    if let Ok(parsed) = Url::parse(&target_for_nav) {
-                        if let Err(err) = existing.navigate(parsed) {
-                            eprintln!("popup navigate failed: {err}");
-                        }
+                    if let Ok(parsed) = Url::parse(&target_for_nav)
+                        && let Err(err) = existing.navigate(parsed)
+                    {
+                        eprintln!("popup navigate failed: {err}");
                     }
                     if let Some((x, y)) = center {
                         let _ =

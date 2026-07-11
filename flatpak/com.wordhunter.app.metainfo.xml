@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.0" date="2026-07-10">
+      <description>
+        <ul>
+          <li>Established a new compatibility baseline after breaking storage and synchronization changes.</li>
+          <li>Added durable per-record local storage, safer recovery, and deterministic cross-device conflict handling.</li>
+          <li>Added guided Syncthing setup on desktop and staged folder synchronization on Android.</li>
+          <li>Refreshed Windows, Android, and x86_64 Flatpak packaging, validation, and third-party license notices.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.3.6.2" date="2026-07-03">
       <description>
         <ul>
@@ -55,7 +65,7 @@
         <ul>
           <li>Fixed Flatpak sync folder selection so the chosen folder is stored only after a successful sync and uses XDG config/data locations.</li>
           <li>Fixed Flatpak/Linux OCR GPU platform detection for more reliable startup diagnostics.</li>
-          <li>Bundled the Flatpak CPU OCR runner, PDFium library, and PaddleOCR models so scanned-PDF OCR works in the Linux package.</li>
+          <li>Bundled WebGPU/Vulkan OCR acceleration with a safe CPU fallback, PDFium, and PaddleOCR models for scanned PDFs on Linux.</li>
           <li>Refreshed Windows packaging so installer and portable builds include the required GNU runtime DLLs.</li>
         </ul>
       </description>

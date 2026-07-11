@@ -117,16 +117,24 @@ export function removeUserBookFromActiveProfile(id) {
   return state.userBooks.splice(idx, 1)[0];
 }
 
-export function moveCustomTextToProfile(id, targetLang) {
-  const textObj = removeCustomTextFromActiveProfile(id);
+export function planCustomTextMove(id, targetLang) {
+  const textObj = findCustomText(id);
   if (!textObj) return null;
-  const targetProfile = ensureProfile(targetLang);
   const newId = uniqueCustomTextId(withLanguagePrefix(id, targetLang));
-  textObj.id = newId;
-  textObj.lang = targetLang;
-  textObj.updatedAt = new Date().toISOString();
-  targetProfile.customTexts.push(textObj);
-  return { textObj, oldId: id, newId };
+  return {
+    oldId: id,
+    newId,
+    textObj: { ...textObj, id: newId, lang: targetLang, updatedAt: new Date().toISOString() }
+  };
+}
+
+export function moveCustomTextToProfile(id, targetLang) {
+  const planned = planCustomTextMove(id, targetLang);
+  if (!planned) return null;
+  removeCustomTextFromActiveProfile(id);
+  const targetProfile = ensureProfile(targetLang);
+  targetProfile.customTexts.push(planned.textObj);
+  return planned;
 }
 
 export function moveUserBookToProfile(id, targetLang) {

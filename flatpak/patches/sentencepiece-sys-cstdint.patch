@@ -1,9 +1,0 @@
-diff --git a/cargo/vendor/sentencepiece-sys-0.12.0/source/src/sentencepiece_processor.h b/cargo/vendor/sentencepiece-sys-0.12.0/source/src/sentencepiece_processor.h
---- a/cargo/vendor/sentencepiece-sys-0.12.0/source/src/sentencepiece_processor.h
-+++ b/cargo/vendor/sentencepiece-sys-0.12.0/source/src/sentencepiece_processor.h
-@@ -20,4 +20,5 @@
- #include <cstring>
-+#include <cstdint>
- #include <memory>
- #include <string>
- #include <string_view>

@@ -41,7 +41,7 @@ describe("language selectors", () => {
     assert.doesNotMatch(defaults, /language: "de"/);
   });
 
-  it("drops legacy discover language from saved state", () => {
+  it("drops unknown discover fields from saved state", () => {
     const restored = normalizeState({
       discover: { query: "kobzar", language: "de", source: "gutenberg", page: 3 },
       preferences: { learningLanguage: "uk" }

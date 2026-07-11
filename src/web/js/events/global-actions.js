@@ -1,5 +1,5 @@
-import { state } from "../state.js";
-import { clearReaderSelection } from "../views/reader.js";
+import { registerFrontendStateFlusher, state } from "../state.js";
+import { clearReaderSelection } from "../reader/selection.js";
 import { gradeReview, loadMoreVocab, removeFromSrs } from "../views/vocabulary.js";
 import {
   deleteWord,
@@ -61,6 +61,7 @@ function handleUploadImageInput(uploadFileInput) {
 function handleGlobalClick(event) {
   const closeWordPanelBtn = event.target.closest("[data-close-word-panel]");
   if (closeWordPanelBtn) {
+    document.documentElement.classList.remove("pocket-word-panel-open");
     clearReaderSelection(true);
     return;
   }
@@ -77,7 +78,9 @@ function handleGlobalClick(event) {
   const clickPath = event.composedPath?.() || [];
   const clickedReaderSurface = event.target.closest("#reader-text, #word-panel")
     || clickPath.some((node) => node?.id === "reader-text" || node?.id === "word-panel");
-  if (state.currentView === "reader" && !clickedReaderSurface) {
+  if (state.currentView === "reader"
+    && !document.documentElement.classList.contains("pocket-mode")
+    && !clickedReaderSurface) {
     clearReaderSelection(true);
   }
 
@@ -123,9 +126,6 @@ function handleGlobalClick(event) {
     if (fileInput) fileInput.click();
   }
 
-  const uploadFileInput = event.target.closest("[data-upload-image]");
-  if (uploadFileInput) handleUploadImageInput(uploadFileInput);
-
   const searchImageBtn = event.target.closest("[data-action='search-image']");
   if (searchImageBtn) {
     const word = searchImageBtn.dataset.word;
@@ -156,8 +156,14 @@ function handleGlobalClick(event) {
   if (loadMoreVocabBtn) loadMoreVocab();
 }
 
+export function handleGlobalChange(event) {
+  const uploadFileInput = event.target.closest?.("[data-upload-image]");
+  if (uploadFileInput) handleUploadImageInput(uploadFileInput);
+}
+
 let _wordFieldSaveTimer = null;
 let _pendingWordField = null;
+let wordFieldFlusherRegistered = false;
 
 function scheduleWordFieldSave(word, field, value) {
   _pendingWordField = { word, field, value };
@@ -169,6 +175,8 @@ function scheduleWordFieldSave(word, field, value) {
 }
 
 function flushWordFieldSave() {
+  clearTimeout(_wordFieldSaveTimer);
+  _wordFieldSaveTimer = null;
   if (_pendingWordField) {
     const { word, field, value } = _pendingWordField;
     _pendingWordField = null;
@@ -193,7 +201,12 @@ function handleWordFieldBlur(event) {
 }
 
 export function bindGlobalActionEvents() {
+  if (!wordFieldFlusherRegistered) {
+    wordFieldFlusherRegistered = true;
+    registerFrontendStateFlusher(flushWordFieldSave);
+  }
   document.addEventListener("click", handleGlobalClick);
+  document.addEventListener("change", handleGlobalChange);
   document.addEventListener("input", handleWordFieldInput);
   document.addEventListener("focusout", handleWordFieldBlur);
 }

@@ -8,6 +8,7 @@ const ICONS = {
   eyeOff: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`,
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 1 1 2 2v2"></path></svg>`,
   edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+  sentenceEdit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h12M3 11h9M3 16h6"></path><path d="m14 17 5.6-5.6a1.4 1.4 0 0 1 2 2L16 19l-3 1 1-3Z"></path></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
   plus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
   minus: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>`,
@@ -25,6 +26,11 @@ const ICONS = {
   fileText: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M8 13h8"></path><path d="M8 17h6"></path></svg>`,
   fileImage: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><circle cx="10" cy="13" r="2"></circle><path d="m20 17-2.1-2.1a2 2 0 0 0-2.8 0L9 21"></path></svg>`,
   cards: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="14" height="14" rx="2"></rect><path d="M3 7v12a2 2 0 0 0 2 2h12"></path><path d="M11 9h6"></path><path d="M11 13h4"></path></svg>`,
+  themeFamiliar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3" fill="currentColor" opacity=".85"></circle><circle cx="16" cy="8" r="3"></circle><circle cx="8" cy="16" r="3"></circle><circle cx="16" cy="16" r="3" fill="currentColor" opacity=".35"></circle></svg>`,
+  themeAlternativeFamiliar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3 5 5-5 5-5-5 5-5Z" fill="currentColor" opacity=".28"></path><path d="m12 11 5 5-5 5-5-5 5-5Z"></path></svg>`,
+  themeClassicAuto: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor" stroke="none" opacity=".32"></path><path d="M4 12h16"></path></svg>`,
+  themeClassicLight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="currentColor" opacity=".25"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>`,
+  themeClassicDark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2Z" fill="currentColor" opacity=".28"></path></svg>`,
 };
 
 export function icon(name, size = 18, extraClass = "") {
@@ -33,6 +39,19 @@ export function icon(name, size = 18, extraClass = "") {
   const sizeStyle = `width:${size}px;height:${size}px`;
   const cls = extraClass ? ` class="${extraClass}"` : "";
   return svg.replace("<svg", `<svg style="${sizeStyle}"${cls}`);
+}
+
+const THEME_ICONS = Object.freeze({
+  familiar: "themeFamiliar",
+  "alternative-familiar": "themeAlternativeFamiliar",
+  "classic-auto": "themeClassicAuto",
+  "classic-light": "themeClassicLight",
+  "classic-dark": "themeClassicDark"
+});
+
+export function themeIcon(theme, size = 18) {
+  return icon(THEME_ICONS[theme] || THEME_ICONS.familiar, size, "theme-toggle-icon")
+    .replace("<svg", '<svg aria-hidden="true" focusable="false"');
 }
 
 const STATUS_ICONS = {

@@ -1,16 +1,12 @@
 pub mod books;
-pub mod db;
+pub(crate) mod durable;
+pub(crate) mod media_assets;
 pub mod record_files;
 pub mod snapshot;
-pub mod vocab_file;
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
-
-use rusqlite::Connection;
-
-const DB_SCHEMA_VERSION: u32 = 2;
 
 pub struct Store {
     inner: Mutex<StoreInner>,
@@ -23,32 +19,25 @@ pub struct Store {
 #[derive(Clone)]
 struct StoreInner {
     pub dir: PathBuf,
-    pub db_path: PathBuf,
-    pub vocab_path: PathBuf,
     pub books_dir: PathBuf,
 }
 
 impl Store {
     pub fn new(app_name: &str) -> Result<Self, String> {
         let dir = crate::paths::data_dir(app_name)?;
-        let db_path = dir.join("store.sqlite");
-        let vocab_path = dir.join("vocab.json");
         let books_dir = dir.join("books");
         std::fs::create_dir_all(&books_dir).map_err(|e| e.to_string())?;
         let store = Self {
-            inner: Mutex::new(StoreInner {
-                dir,
-                db_path,
-                vocab_path,
-                books_dir,
-            }),
+            inner: Mutex::new(StoreInner { dir, books_dir }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: crate::paths::device_id(app_name)?,
         };
-        store.init_schema()?;
         #[cfg(not(target_os = "android"))]
-        store.recover_pending_save()?;
+        {
+            store.recover_pending_save()?;
+            store.discard_abandoned_book_imports()?;
+        }
         // Snapshot refreshes records on first load; do not block Android WebView creation here.
         Ok(store)
     }
@@ -74,31 +63,27 @@ impl Store {
         if current == dir {
             return Ok(current);
         }
-        let current_payload = self.snapshot_unlocked();
+        self.discard_abandoned_book_imports()?;
         let target_has_data = has_wordhunter_data(&dir);
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        validate_data_dir_layout(&dir)?;
         if !target_has_data {
             copy_data_dir(&current, &dir)?;
+        } else {
+            merge_data_dir(&current, &dir, self.device_id())?;
         }
         let previous_inner = self.inner.lock().unwrap().clone();
         let previous_base_records = self.base_records.lock().unwrap().clone();
         {
             let mut inner = self.inner.lock().unwrap();
-            inner.db_path = dir.join("store.sqlite");
-            inner.vocab_path = dir.join("vocab.json");
             inner.books_dir = dir.join("books");
             inner.dir = dir.clone();
         }
         let result = (|| -> Result<(), String> {
             std::fs::create_dir_all(dir.join("books")).map_err(|e| e.to_string())?;
-            self.init_schema()?;
             self.recover_pending_save()?;
-            if target_has_data {
-                self.base_records.lock().unwrap().clear();
-                self.commit_bulk_save(&current_payload)?;
-            } else {
-                self.seed_or_refresh_records()?;
-            }
+            self.base_records.lock().unwrap().clear();
+            self.seed_or_refresh_records()?;
             crate::paths::set_data_dir(crate::APP_NAME, &dir)?;
             Ok(())
         })();
@@ -110,66 +95,10 @@ impl Store {
         }
         Ok(dir)
     }
-
-    fn conn(inner: &StoreInner) -> Result<Connection, String> {
-        Connection::open(&inner.db_path).map_err(|e| e.to_string())
-    }
-
-    fn init_schema(&self) -> Result<(), String> {
-        let inner = self.inner.lock().unwrap();
-        let conn = Self::conn(&inner)?;
-        let current_version = conn
-            .query_row("PRAGMA user_version", [], |row| row.get::<_, u32>(0))
-            .map_err(|e| e.to_string())?;
-        if current_version > DB_SCHEMA_VERSION {
-            return Err(format!(
-                "unsupported database schema version {current_version}; this build supports {DB_SCHEMA_VERSION}"
-            ));
-        }
-        // WAL improves concurrency between reads/writes; busy_timeout avoids
-        // "database is locked" errors under brief contention.
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;")
-            .map_err(|e| e.to_string())?;
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS prefs (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
-            [],
-        )
-        .map_err(|e| e.to_string())?;
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS hidden_books (id TEXT PRIMARY KEY)",
-            [],
-        )
-        .map_err(|e| e.to_string())?;
-        if current_version < DB_SCHEMA_VERSION {
-            conn.execute_batch(&format!("PRAGMA user_version = {DB_SCHEMA_VERSION};"))
-                .map_err(|e| e.to_string())?;
-        }
-        Ok(())
-    }
-
-    #[cfg(test)]
-    pub(crate) fn db_schema_version(&self) -> Result<u32, String> {
-        let inner = self.inner.lock().unwrap();
-        let conn = Self::conn(&inner)?;
-        conn.query_row("PRAGMA user_version", [], |row| row.get::<_, u32>(0))
-            .map_err(|e| e.to_string())
-    }
 }
 
 #[cfg(not(target_os = "android"))]
 fn copy_data_dir(from: &std::path::Path, to: &std::path::Path) -> Result<(), String> {
-    for name in [
-        "store.sqlite",
-        "store.sqlite-wal",
-        "store.sqlite-shm",
-        "vocab.json",
-        "vocab.bak",
-    ] {
-        let source = from.join(name);
-        if source.is_file() {
-            std::fs::copy(&source, to.join(name)).map_err(|e| e.to_string())?;
-        }
-    }
     for name in ["books", "argos-packages", "records"] {
         let source = from.join(name);
         if source.is_dir() {
@@ -180,13 +109,32 @@ fn copy_data_dir(from: &std::path::Path, to: &std::path::Path) -> Result<(), Str
 }
 
 #[cfg(not(target_os = "android"))]
-fn has_wordhunter_data(dir: &std::path::Path) -> bool {
-    if ["store.sqlite", "vocab.json", "vocab.bak"]
-        .iter()
-        .any(|name| dir.join(name).exists())
-    {
-        return true;
+fn merge_data_dir(
+    from: &std::path::Path,
+    to: &std::path::Path,
+    device_id: &str,
+) -> Result<(), String> {
+    let source_records = record_files::load_records(from)?;
+    let target_records = record_files::load_records(to)?;
+    let merged = record_files::merge_records(
+        &BTreeMap::new(),
+        source_records,
+        target_records,
+        device_id,
+        record_files::now_millis(),
+    );
+    record_files::write_records(to, &merged.records)?;
+    record_files::write_conflicts(to, &merged.conflicts)?;
+    media_assets::merge_book_assets_into(from, to, device_id)?;
+    let source_packages = from.join("argos-packages");
+    if source_packages.is_dir() {
+        copy_tree(&source_packages, &to.join("argos-packages"))?;
     }
+    Ok(())
+}
+
+#[cfg(not(target_os = "android"))]
+fn has_wordhunter_data(dir: &std::path::Path) -> bool {
     if record_files::has_records(dir) {
         return true;
     }
@@ -197,6 +145,20 @@ fn has_wordhunter_data(dir: &std::path::Path) -> bool {
                 .map(|mut entries| entries.next().is_some())
                 .unwrap_or(false)
     })
+}
+
+#[cfg(not(target_os = "android"))]
+fn validate_data_dir_layout(dir: &std::path::Path) -> Result<(), String> {
+    for name in ["books", "argos-packages"] {
+        let path = dir.join(name);
+        if path.exists() && !path.is_dir() {
+            return Err(format!(
+                "configured data folder has a file where WordHunter needs a folder: {}",
+                path.display()
+            ));
+        }
+    }
+    record_files::validate_records_layout(dir)
 }
 
 #[cfg(not(target_os = "android"))]
@@ -222,7 +184,7 @@ mod tests {
 
     use serde_json::{Map, Value, json};
 
-    use super::{Store, StoreInner, copy_data_dir, record_files};
+    use super::{Store, StoreInner, copy_data_dir, media_assets, merge_data_dir, record_files};
 
     struct AppDataGuard(Option<OsString>);
 
@@ -250,19 +212,15 @@ mod tests {
     fn store_at(dir: &tempfile::TempDir, device_id: &str) -> Store {
         let books_dir = dir.path().join("books");
         std::fs::create_dir_all(&books_dir).unwrap();
-        let store = Store {
+        Store {
             inner: Mutex::new(StoreInner {
                 dir: dir.path().to_path_buf(),
-                db_path: dir.path().join("store.sqlite"),
-                vocab_path: dir.path().join("vocab.json"),
                 books_dir,
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: device_id.to_string(),
-        };
-        store.init_schema().unwrap();
-        store
+        }
     }
 
     fn profile_payload(word: &str, translation: &str) -> Value {
@@ -272,6 +230,7 @@ mod tests {
             json!({ "word": word, "translation": translation, "status": "learning" }),
         );
         json!({
+            "schemaVersion": 2,
             "texts": [],
             "prefs": { "learningLanguage": "de" },
             "hiddenBooks": [],
@@ -291,9 +250,8 @@ mod tests {
     fn relocation_copies_state_and_book_files() {
         let source = tempfile::tempdir().unwrap();
         let target = tempfile::tempdir().unwrap();
-        std::fs::write(source.path().join("vocab.json"), "{}").unwrap();
-        std::fs::create_dir_all(source.path().join("books/one")).unwrap();
-        std::fs::write(source.path().join("books/one/text.txt"), "hello").unwrap();
+        std::fs::create_dir_all(source.path().join("books/one/images")).unwrap();
+        std::fs::write(source.path().join("books/one/images/cover.jpg"), "cover").unwrap();
         std::fs::create_dir_all(source.path().join("argos-packages")).unwrap();
         std::fs::write(source.path().join("argos-packages/model.bin"), "model").unwrap();
         std::fs::create_dir_all(source.path().join("records/v1/prefs")).unwrap();
@@ -301,14 +259,7 @@ mod tests {
 
         copy_data_dir(source.path(), target.path()).unwrap();
 
-        assert_eq!(
-            std::fs::read_to_string(target.path().join("vocab.json")).unwrap(),
-            "{}"
-        );
-        assert_eq!(
-            std::fs::read_to_string(target.path().join("books/one/text.txt")).unwrap(),
-            "hello"
-        );
+        assert!(target.path().join("books/one/images/cover.jpg").is_file());
         assert_eq!(
             std::fs::read_to_string(target.path().join("argos-packages/model.bin")).unwrap(),
             "model"
@@ -344,6 +295,84 @@ mod tests {
     }
 
     #[test]
+    fn relocation_into_existing_target_keeps_source_text_and_media() {
+        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+        let appdata = tempfile::tempdir().unwrap();
+        let _appdata = AppDataGuard::set(appdata.path());
+        let source = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        let store = store_at(&source, "local-device");
+        store
+            .upsert_text(&json!({
+                "id": "de-custom-source",
+                "title": "Source text",
+                "text": "Full source-only body"
+            }))
+            .unwrap();
+        store
+            .save_book_image_bytes("de-custom-source", "cover.png", b"source-cover")
+            .unwrap();
+        let target_records = record_files::payload_to_records(
+            &profile_payload("chmura", "cloud"),
+            "cloud-device",
+            1,
+        );
+        record_files::write_records(target.path(), &target_records).unwrap();
+
+        store.relocate(target.path().to_path_buf()).unwrap();
+
+        assert_eq!(
+            store.get_text_content("de-custom-source").unwrap(),
+            "Full source-only body"
+        );
+        assert_eq!(
+            std::fs::read(
+                store
+                    .book_image_path("de-custom-source", "cover.png")
+                    .unwrap()
+            )
+            .unwrap(),
+            b"source-cover"
+        );
+        assert_eq!(
+            store.snapshot()["vocab"]["de"]["vocab"]["chmura"]["translation"],
+            "cloud"
+        );
+    }
+
+    #[test]
+    fn relocation_media_merge_never_applies_target_tombstones_to_source() {
+        let source = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap();
+        let source_store = store_at(&source, "source-device");
+        let target_store = store_at(&target, "target-device");
+        source_store
+            .save_book_image_bytes("de-custom-source", "cover.png", b"source-cover")
+            .unwrap();
+        target_store
+            .save_book_image_bytes("de-custom-source", "cover.png", b"old-cover")
+            .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        media_assets::tombstone_book_assets(target.path(), "de-custom-source", "target-device")
+            .unwrap();
+
+        merge_data_dir(source.path(), target.path(), "source-device").unwrap();
+
+        assert!(
+            source
+                .path()
+                .join("books/de-custom-source/images/cover.png")
+                .is_file()
+        );
+        assert!(
+            !target
+                .path()
+                .join("books/de-custom-source/images/cover.png")
+                .exists()
+        );
+    }
+
+    #[test]
     fn relocation_does_not_persist_target_until_it_is_usable() {
         let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
         let appdata = tempfile::tempdir().unwrap();
@@ -351,7 +380,7 @@ mod tests {
         let source = tempfile::tempdir().unwrap();
         let target = tempfile::tempdir().unwrap();
         let store = store_at(&source, "local-device");
-        std::fs::create_dir(target.path().join("store.sqlite")).unwrap();
+        std::fs::write(target.path().join("records"), "not a dir").unwrap();
 
         assert!(store.relocate(target.path().to_path_buf()).is_err());
 
@@ -375,40 +404,5 @@ mod tests {
 
         assert!(error.contains("configured data folder is missing"));
         assert!(!missing.exists());
-    }
-
-    #[test]
-    fn init_schema_sets_sqlite_user_version() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = store_at(&dir, "local-device");
-
-        assert_eq!(store.db_schema_version().unwrap(), super::DB_SCHEMA_VERSION);
-    }
-
-    #[test]
-    fn init_schema_rejects_newer_sqlite_user_version() {
-        let dir = tempfile::tempdir().unwrap();
-        let books_dir = dir.path().join("books");
-        std::fs::create_dir_all(&books_dir).unwrap();
-        let db_path = dir.path().join("store.sqlite");
-        let conn = rusqlite::Connection::open(&db_path).unwrap();
-        conn.execute_batch("PRAGMA user_version = 999;").unwrap();
-        drop(conn);
-        let store = Store {
-            inner: Mutex::new(StoreInner {
-                dir: dir.path().to_path_buf(),
-                db_path,
-                vocab_path: dir.path().join("vocab.json"),
-                books_dir,
-            }),
-            write_lock: Mutex::new(()),
-            base_records: Mutex::new(BTreeMap::new()),
-            device_id: "local-device".to_string(),
-        };
-
-        let error = store.init_schema().unwrap_err();
-
-        assert!(error.contains("unsupported database schema version 999"));
-        assert_eq!(store.db_schema_version().unwrap(), 999);
     }
 }

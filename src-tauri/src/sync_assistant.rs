@@ -1,8 +1,11 @@
 use serde_json::{Value, json};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(not(target_os = "android"))]
+use std::path::PathBuf;
 
 use crate::store::record_files;
 
+#[cfg(not(target_os = "android"))]
 const MANAGED_SYNC_FOLDER: &str = "WordHunterSync";
 
 #[cfg(not(target_os = "android"))]
@@ -11,11 +14,6 @@ pub(crate) fn managed_sync_dir() -> Result<PathBuf, String> {
         return Ok(home.join("Documents").join(MANAGED_SYNC_FOLDER));
     }
     Err("could not locate the user home folder".to_string())
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn managed_sync_dir() -> Result<PathBuf, String> {
-    Err("managed desktop sync folder is not available on Android".to_string())
 }
 
 pub(crate) fn configured_sync_health() -> Value {

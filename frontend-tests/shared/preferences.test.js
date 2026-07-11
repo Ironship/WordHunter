@@ -65,6 +65,9 @@ function setupSettingsControls() {
     "prefHighlight",
     "prefAutoLearn",
     "prefCardStats",
+    "prefStatusSoundsEnabled",
+    "prefStatusSoundVolume",
+    "prefStatusSoundVolumeLabel",
     "storageSummary",
     "syncStatus",
     "syncHealth",
@@ -79,11 +82,10 @@ function setupSettingsControls() {
   }
 }
 
-function resetState(migrationStatus, extra = {}) {
+function resetState(extra = {}) {
   const defaults = createDefaultState();
   replaceState({
     ...defaults,
-    migrationStatus,
     preferences: { ...defaults.preferences, locale: "en", learningLanguage: "de" },
     vocab: { haus: { status: "known" } },
     customTexts: [{ id: "de-custom-note", title: "Note" }],
@@ -96,21 +98,21 @@ describe("preferences settings summary", () => {
     setupSettingsControls();
   });
 
-  it("surfaces completed storage migration status only when complete", () => {
-    resetState({ status: "complete", recordsActive: true });
+  it("synchronizes status sound mute and volume controls", () => {
+    resetState();
+    state.preferences.statusSoundsEnabled = false;
+    state.preferences.statusSoundVolume = 0.3;
+
     syncSettingsControls();
 
-    assert.match(els.storageSummary.textContent, /settings\.migrationComplete/);
-
-    resetState({ status: "records-active", recordsActive: true });
-    syncSettingsControls();
-
-    assert.doesNotMatch(els.storageSummary.textContent, /settings\.migrationComplete/);
-    assert.equal(state.migrationStatus.status, "records-active");
+    assert.equal(els.prefStatusSoundsEnabled.checked, false);
+    assert.equal(els.prefStatusSoundVolume.value, "30");
+    assert.equal(els.prefStatusSoundVolume.disabled, true);
+    assert.equal(els.prefStatusSoundVolumeLabel.textContent, "settings.statusSoundVolume");
   });
 
   it("renders actionable sync conflict details when the backend exposes them", () => {
-    resetState(null, {
+    resetState({
       syncConflictCount: 1,
       syncConflicts: [{
         id: "1234-conflict",
@@ -131,7 +133,7 @@ describe("preferences settings summary", () => {
   });
 
   it("renders sync folder health without requiring users to understand staging", () => {
-    resetState(null, {
+    resetState({
       syncDirectory: "/home/user/Documents/WordHunterSync",
       syncHealth: { status: "needs-attention", recordCount: 12, issueCount: 2 }
     });
@@ -141,7 +143,7 @@ describe("preferences settings summary", () => {
     assert.equal(els.syncHealth.hidden, false);
     assert.match(els.syncHealth.textContent, /settings\.syncHealthNeedsAttention/);
 
-    resetState(null, { syncHealth: { status: "not-configured" } });
+    resetState({ syncHealth: { status: "not-configured" } });
     syncSettingsControls();
 
     assert.equal(els.syncHealth.hidden, true);
@@ -149,7 +151,7 @@ describe("preferences settings summary", () => {
   });
 
   it("renders cloud sync status separately from the local sync folder", () => {
-    resetState(null, {
+    resetState({
       cloudSyncStatus: { configured: true, status: "ready", remote: "gdrive:WordHunterSync" }
     });
 
@@ -157,19 +159,19 @@ describe("preferences settings summary", () => {
 
     assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusReady/);
 
-    resetState(null, { cloudSyncStatus: { status: "not_configured" } });
+    resetState({ cloudSyncStatus: { status: "not_configured" } });
     syncSettingsControls();
 
     assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusDefault/);
 
-    resetState(null, { cloudSyncStatus: { supported: false, status: "not_supported" } });
+    resetState({ cloudSyncStatus: { supported: false, status: "not_supported" } });
     syncSettingsControls();
 
     assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusNotSupported/);
   });
 
   it("renders recovery status details only when the backend reports issues", () => {
-    resetState(null, {
+    resetState({
       recoveryStatus: {
         schemaVersion: 1,
         skippedRecordCount: 1,
@@ -188,7 +190,7 @@ describe("preferences settings summary", () => {
     assert.match(els.recoveryStatusList.innerHTML, /settings\.recoveryCorruptConflicts/);
     assert.match(els.recoveryStatusList.innerHTML, /records\/v1\/vocab\/bad\.json/);
 
-    resetState(null, { recoveryStatus: { schemaVersion: 1 } });
+    resetState({ recoveryStatus: { schemaVersion: 1 } });
     syncSettingsControls();
 
     assert.equal(els.recoveryStatusPanel.hidden, true);

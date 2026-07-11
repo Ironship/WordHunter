@@ -14,9 +14,6 @@
     ]
   },
   "bundle": {
-    "resources": [
-      "../src/assets/**/*"
-    ],
     "android": {
       "minSdkVersion": 24
     }

@@ -1,6 +1,6 @@
 [package]
 name = "word-hunter"
-version = "0.3.6+2"
+version = "1.0.0"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
 authors = ["Word Hunter"]
 edition = "2024"
@@ -30,9 +30,9 @@ percent-encoding = "2"
 rand = "0.8"
 regex = "1"
 roxmltree = "0.20"
-rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
@@ -40,6 +40,7 @@ tiny_http = "0.12"
 tokio = { version = "1", features = ["rt", "time"] }
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
+qrcode = "0.14"
 ureq = { version = "2", features = ["json"] }
 url = "2"
 zip = "2"

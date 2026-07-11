@@ -10,6 +10,7 @@ import { applyReviewNative, isDue, todayISO } from "../sm2.js";
 import { renderVocabulary } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
+import { playStatusSound } from "../status-sounds.js";
 
 import { reviewAnswerVisible } from "../views/vocabulary.js";
 
@@ -41,8 +42,11 @@ export function renderReview() {
     return;
   }
 
-  state.reviewIndex = clamp(state.reviewIndex || 0, 0, reviewWords.length - 1);
-  saveState();
+  const reviewIndex = clamp(state.reviewIndex || 0, 0, reviewWords.length - 1);
+  if (reviewIndex !== state.reviewIndex) {
+    state.reviewIndex = reviewIndex;
+    saveState();
+  }
   const card = reviewWords[state.reviewIndex];
   const grades = [0, 1, 2, 3, 4, 5];
   const ratingButtons = grades.map((q) => `
@@ -91,7 +95,7 @@ export function renderReview() {
     imageHtml = `
       <div class="review-image" style="margin-top: 0.5rem; text-align: center; position: relative; display: inline-block;">
         <img src="${escapeAttribute(card.imageUrl)}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
-        <button type="button" data-action="remove-image" data-word="${escapeAttribute(card.word)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: white; cursor: pointer;">×</button>
+        <button type="button" data-action="remove-image" data-word="${escapeAttribute(card.word)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: var(--panel); cursor: pointer;">×</button>
       </div>
     `;
   } else {
@@ -189,7 +193,8 @@ export async function applyReviewGrade(word, quality) {
   if (quality >= 4 && entry.repetition >= 2) status = "known";
   else if (quality < 3) status = "learning";
   else if (entry.status === "new") status = "learning";
-  setEntryStatus(entry, status, updatedAt);
+  const previousStatus = setEntryStatus(entry, status, updatedAt);
+  if (previousStatus !== status) playStatusSound(status);
   saveState();
   return entry;
 }
@@ -206,7 +211,8 @@ export async function gradeReview(word, quality) {
 export function removeFromSrs(word) {
   const entry = state.vocab[word];
   if (!entry) return;
-  setEntryStatus(entry, "ignored");
+  const previousStatus = setEntryStatus(entry, "ignored");
+  if (previousStatus !== "ignored") playStatusSound("ignored");
   saveState();
   state.reviewIndex = 0;
   renderReview();

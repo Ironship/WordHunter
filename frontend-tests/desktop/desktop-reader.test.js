@@ -12,116 +12,529 @@ const flatpakDesktop = readFileSync(new URL("../../flatpak/com.wordhunter.app.de
 const flatpakMeta = readFileSync(new URL("../../flatpak/com.wordhunter.app.metainfo.xml", import.meta.url), "utf8");
 const flatpakManifest = readFileSync(new URL("../../com.wordhunter.app.yml", import.meta.url), "utf8");
 
-describe("desktop reader UX", () => {
-  it("keeps a desktop-only reader focus mode behind a user preference", async () => {
-    const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-    const { normalizeState } = await import("../../src/web/js/state/normalize.js");
+function attribute(openingTag, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = openingTag.match(new RegExp(`\\s${escaped}(?:="([^"]*)")?(?=\\s|/?>)`, "i"));
+  return match ? (match[1] ?? "") : null;
+}
 
-    assert.match(html, /class="setting-row toggle-row desktop-only-setting"[\s\S]*id="pref-reader-focus-mode"/);
-    assert.match(css, /:root\.reader-focus-mode:not\(\.pocket-mode\)\[data-view="reader"\] \.topbar/);
-    assert.match(css, /:root\.reader-focus-mode:not\(\.pocket-mode\)\[data-view="reader"\] \.reader-meta/);
-    assert.match(css, /:root\.reader-focus-mode:not\(\.pocket-mode\)\[data-view="reader"\] \.focus-hint/);
-    assert.equal(createDefaultState().preferences.readerFocusMode, false);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { readerFocusMode: "yes" } }).preferences.readerFocusMode, false);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { readerFocusMode: true } }).preferences.readerFocusMode, true);
+function openingTag(element) {
+  return element.match(/^<[^>]+>/)?.[0] || "";
+}
+
+function extractElementAt(source, match) {
+  const tag = match[1].toLowerCase();
+  if (["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"].includes(tag)) {
+    return match[0];
+  }
+  const tokenPattern = new RegExp(`<\\/?${tag}\\b[^>]*>`, "gi");
+  tokenPattern.lastIndex = match.index;
+  let depth = 0;
+  for (const token of source.matchAll(tokenPattern)) {
+    if (token[0].startsWith("</")) depth -= 1;
+    else if (!token[0].endsWith("/>")) depth += 1;
+    if (depth === 0) return source.slice(match.index, token.index + token[0].length);
+  }
+  assert.fail(`unclosed <${tag}> element`);
+}
+
+function findElement(source, predicate, tagName = "[a-z][\\w:-]*") {
+  const pattern = new RegExp(`<(${tagName})\\b[^>]*>`, "gi");
+  for (const match of source.matchAll(pattern)) {
+    if (predicate(match[0])) return extractElementAt(source, match);
+  }
+  return null;
+}
+
+function elementByAttribute(source, name, value, tagName) {
+  const element = findElement(source, (tag) => attribute(tag, name) === value, tagName);
+  assert.ok(element, `<${tagName || "element"}> with ${name}="${value}" should exist`);
+  return element;
+}
+
+function elementById(source, id) {
+  return elementByAttribute(source, "id", id);
+}
+
+function elementByClass(source, className, tagName) {
+  const element = findElement(source, (tag) => (attribute(tag, "class") || "").split(/\s+/).includes(className), tagName);
+  assert.ok(element, `<${tagName || "element"}> with class ${className} should exist`);
+  return element;
+}
+
+function containingElementById(source, tagName, id) {
+  const targetPattern = /<([a-z][\w:-]*)\b[^>]*>/gi;
+  const target = [...source.matchAll(targetPattern)].find((match) => attribute(match[0], "id") === id);
+  assert.ok(target, `element #${id} should exist`);
+  const candidates = [];
+  const pattern = new RegExp(`<(${tagName})\\b[^>]*>`, "gi");
+  for (const match of source.matchAll(pattern)) {
+    if (match.index > target.index) break;
+    const element = extractElementAt(source, match);
+    if (match.index + element.length >= target.index + target[0].length) candidates.push(element);
+  }
+  assert.ok(candidates.length, `<${tagName}> containing #${id} should exist`);
+  return candidates.at(-1);
+}
+
+function hasClass(element, className) {
+  return (attribute(openingTag(element), "class") || "").split(/\s+/).includes(className);
+}
+
+function cssRules(source) {
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "");
+  return [...stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => {
+    const declarations = {};
+    for (const declaration of match[2].matchAll(/(?:^|;)\s*([\w-]+)\s*:\s*([^;]+?)\s*(?=;|$)/g)) {
+      declarations[declaration[1]] = declaration[2].trim();
+    }
+    return {
+      selectors: match[1].split(",").map((selector) => selector.trim()),
+      declarations
+    };
+  });
+}
+
+function cssDeclarations(source, selector) {
+  const matches = cssRules(source).filter((rule) => rule.selectors.includes(selector));
+  assert.ok(matches.length, `CSS selector ${selector} should exist`);
+  return Object.assign({}, ...matches.map((rule) => rule.declarations));
+}
+
+function hasCssSelector(source, selector) {
+  return cssRules(source).some((rule) => rule.selectors.includes(selector));
+}
+
+function tomlSection(source, heading) {
+  const start = source.indexOf(`[${heading}]`);
+  assert.ok(start >= 0, `TOML section [${heading}] should exist`);
+  const next = source.indexOf("\n[", start + heading.length + 2);
+  return source.slice(start, next < 0 ? source.length : next);
+}
+
+function fakeClassList(initial = []) {
+  const values = new Set(initial);
+  return {
+    add(...names) { names.forEach((name) => values.add(name)); },
+    remove(...names) { names.forEach((name) => values.delete(name)); },
+    contains(name) { return values.has(name); },
+    toggle(name, force) {
+      const enabled = force === undefined ? !values.has(name) : Boolean(force);
+      if (enabled) values.add(name); else values.delete(name);
+      return enabled;
+    }
+  };
+}
+
+function control(extra = {}) {
+  const listeners = new Map();
+  const attributes = {};
+  return {
+    checked: false,
+    classList: fakeClassList(),
+    dataset: {},
+    disabled: false,
+    hidden: false,
+    id: "",
+    innerHTML: "",
+    style: {},
+    textContent: "",
+    value: "",
+    addEventListener(type, listener) { listeners.set(type, listener); },
+    listener(type) { return listeners.get(type); },
+    setAttribute(name, value) { attributes[name] = String(value); },
+    getAttribute(name) { return attributes[name] ?? null; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+    ...extra
+  };
+}
+
+const documentListeners = new Map();
+const rootStyle = {
+  zoom: "1",
+  values: new Map(),
+  setProperty(name, value) { this.values.set(name, value); }
+};
+globalThis.window = {
+  __qtBridge: false,
+  location: { search: "" },
+  addEventListener() {},
+  removeEventListener() {},
+  dispatchEvent() {},
+  matchMedia() { return { matches: false, addEventListener() {} }; },
+  setTimeout,
+  clearTimeout
+};
+globalThis.localStorage = {
+  getItem() { return null; },
+  setItem() {},
+  removeItem() {}
+};
+globalThis.CustomEvent = class CustomEvent {
+  constructor(type, init) { this.type = type; this.detail = init?.detail; }
+};
+globalThis.document = {
+  activeElement: null,
+  body: { classList: fakeClassList(), contains() { return false; } },
+  documentElement: {
+    dataset: { platform: "desktop" },
+    style: rootStyle,
+    classList: fakeClassList()
+  },
+  addEventListener(type, listener) {
+    const listeners = documentListeners.get(type) || [];
+    listeners.push(listener);
+    documentListeners.set(type, listeners);
+  },
+  getElementById() { return null; },
+  querySelector() { return null; },
+  querySelectorAll() { return []; }
+};
+globalThis.requestAnimationFrame = (callback) => callback();
+
+const { els } = await import("../../src/web/js/dom.js");
+const { createDefaultState, normalizeState, replaceState, state } = await import("../../src/web/js/state.js");
+const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../src/web/js/preferences.js");
+const { bindGlobalActionEvents } = await import("../../src/web/js/events/global-actions.js");
+const { bindReaderEvents } = await import("../../src/web/js/views/reader.js");
+const {
+  getPdfOcrViewMode,
+  getPdfOcrZoom,
+  setPdfOcrViewMode,
+  setPdfOcrZoom
+} = await import("../../src/web/js/reader/pdf-ocr-renderer.js");
+
+function setupPreferenceControls() {
+  els.prefLocales = [];
+  els.prefLearningLanguages = [];
+  els.ankiExportStatusFilters = [];
+  els.prefLearningColors = [];
+  for (const key of ["prefFont", "prefLineHeight", "prefFontSize", "prefHighlight", "prefAutoLearn", "prefCardStats"]) {
+    els[key] = control();
+  }
+  els.prefReaderFocusMode = control();
+  els.prefReaderWordPanelVisible = control();
+  els.prefTouchControls = control();
+  els.prefTtsWordHighlight = control();
+  els.readerHighlightToggle = control();
+  els.readerWordPanelToggle = control();
+}
+
+function setupShellControls() {
+  els.navItems = [];
+  els.views = [];
+  els.pageTitle = control();
+  els.overallCount = control();
+  els.pillKnown = control();
+  els.pillLearning = control();
+  els.pillNew = control();
+}
+
+function resetBehaviorState(extra = {}) {
+  const defaults = createDefaultState();
+  replaceState({
+    ...defaults,
+    ...extra,
+    preferences: { ...defaults.preferences, ...(extra.preferences || {}) }
+  }, { save: false });
+  document.documentElement.dataset.platform = "desktop";
+  document.documentElement.classList = fakeClassList();
+  setupPreferenceControls();
+  setupShellControls();
+}
+
+describe("desktop reader behavior", () => {
+  it("normalizes persisted desktop reader preferences", () => {
+    const defaults = createDefaultState().preferences;
+    assert.equal(defaults.readerFocusMode, false);
+    assert.equal(defaults.readerWordPanelVisible, true);
+    assert.equal(defaults.touchControls, false);
+    assert.equal(defaults.ttsWordHighlight, true);
+    assert.equal(defaults.statusSoundsEnabled, true);
+
+    const normalized = normalizeState({
+      ...createDefaultState(),
+      preferences: {
+        readerFocusMode: "yes",
+        readerWordPanelVisible: "no",
+        touchControls: "true",
+        ttsWordHighlight: "true"
+      }
+    }).preferences;
+    assert.equal(normalized.readerFocusMode, false);
+    assert.equal(normalized.readerWordPanelVisible, true);
+    assert.equal(normalized.touchControls, false);
+    assert.equal(normalized.ttsWordHighlight, true);
   });
 
-  it("wires the focus-mode preference through DOM cache, settings events, and CSS class application", () => {
-    const dom = readFileSync(new URL("../../src/web/js/dom.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
+  it("applies desktop preferences to classes and synchronized controls", () => {
+    resetBehaviorState();
 
-    assert.match(dom, /prefReaderFocusMode = document\.getElementById\("pref-reader-focus-mode"\)/);
-    assert.match(html, /id="pref-reader-focus-mode"[^>]*data-pref="readerFocusMode"/);
-    assert.match(settings, /querySelectorAll\("\[data-pref\]"\)/);
-    assert.match(settings, /updatePreferenceValue\(\s*control\.dataset\.pref,[\s\S]*control\.type === "checkbox" \? control\.checked : control\.value/);
-    assert.match(preferences, /classList\.toggle\("reader-focus-mode", prefs\.readerFocusMode === true && !isAndroidPlatform\(\)\)/);
-    assert.match(preferences, /prefReaderFocusMode[\s\S]*checked = prefs\.readerFocusMode === true/);
+    updatePreferenceValue("readerFocusMode", true);
+    updatePreferenceValue("readerWordPanelVisible", false);
+    updatePreferenceValue("touchControls", true);
+    updatePreferenceValue("ttsWordHighlight", true);
+    syncSettingsControls();
+
+    assert.equal(state.preferences.readerFocusMode, true);
+    assert.equal(state.preferences.readerWordPanelVisible, false);
+    assert.equal(state.preferences.touchControls, true);
+    assert.equal(state.preferences.ttsWordHighlight, true);
+    assert.equal(document.documentElement.classList.contains("reader-focus-mode"), true);
+    assert.equal(document.documentElement.classList.contains("reader-word-panel-hidden"), true);
+    assert.equal(document.documentElement.classList.contains("touch-controls-mode"), true);
+    assert.equal(els.prefReaderFocusMode.checked, true);
+    assert.equal(els.prefReaderWordPanelVisible.checked, false);
+    assert.equal(els.prefTouchControls.checked, true);
+    assert.equal(els.prefTtsWordHighlight.checked, true);
+
+    document.documentElement.dataset.platform = "android";
+    applyPreferences();
+    assert.equal(document.documentElement.classList.contains("reader-focus-mode"), false);
+    assert.equal(document.documentElement.classList.contains("reader-word-panel-hidden"), false);
+    assert.equal(document.documentElement.classList.contains("touch-controls-mode"), false);
   });
 
-  it("adds a desktop word-panel toggle and keeps the setting persistent", async () => {
-    const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-    const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-    const dom = readFileSync(new URL("../../src/web/js/dom.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
-    const globalActions = readFileSync(new URL("../../src/web/js/events/global-actions.js", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
-    const wordPanelToggle = html.match(/<button[^>]*id="reader-word-panel-toggle"[\s\S]*?<\/button>/)?.[0] || "";
+  it("executes reader toolbar preference toggles", () => {
+    resetBehaviorState();
+    bindGlobalActionEvents();
+    const click = documentListeners.get("click").at(-1);
+    const eventFor = (id) => ({
+      composedPath() { return []; },
+      target: { closest(selector) { return selector === `#${id}` ? this : null; } }
+    });
 
-    assert.match(html, /id="reader-word-panel-toggle"[\s\S]*desktop-only-control/);
-    assert.doesNotMatch(wordPanelToggle, /<svg/);
-    assert.match(wordPanelToggle, /&gt;&gt;/);
-    assert.match(html, /id="pref-reader-word-panel-visible"/);
-    assert.match(css, /:root\.reader-word-panel-hidden:not\(\.pocket-mode\)\[data-view="reader"\] \.reader-grid/);
-    assert.match(css, /\.reader-sidebar-resizer,[\s\S]*\.reader-sidebar-wrapper\s*{\s*display: none;/);
-    assert.match(dom, /readerWordPanelToggle = document\.getElementById\("reader-word-panel-toggle"\)/);
-    assert.match(dom, /prefReaderWordPanelVisible = document\.getElementById\("pref-reader-word-panel-visible"\)/);
-    assert.match(html, /id="pref-reader-word-panel-visible"[^>]*data-pref="readerWordPanelVisible"/);
-    assert.match(settings, /querySelectorAll\("\[data-pref\]"\)/);
-    assert.match(globalActions, /reader-word-panel-toggle[\s\S]*updatePreferenceValue\("readerWordPanelVisible", state\.preferences\.readerWordPanelVisible === false\)/);
-    assert.match(preferences, /classList\.toggle\("reader-word-panel-hidden", prefs\.readerWordPanelVisible === false && !isAndroidPlatform\(\)\)/);
-    assert.match(preferences, /readerWordPanelToggle[\s\S]*aria-pressed/);
-    assert.match(preferences, /textContent = t\(visible \? "settings\.readerWordPanelHideControl" : "settings\.readerWordPanelShowControl"\)/);
-    assert.equal(createDefaultState().preferences.readerWordPanelVisible, true);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { readerWordPanelVisible: false } }).preferences.readerWordPanelVisible, false);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { readerWordPanelVisible: "no" } }).preferences.readerWordPanelVisible, true);
+    click(eventFor("reader-highlight-toggle"));
+    assert.equal(state.preferences.highlightTokens, false);
+    assert.equal(document.documentElement.classList.contains("no-token-highlight"), true);
+    assert.equal(els.readerHighlightToggle.getAttribute("aria-pressed"), "false");
+
+    click(eventFor("reader-word-panel-toggle"));
+    assert.equal(state.preferences.readerWordPanelVisible, false);
+    assert.equal(document.documentElement.classList.contains("reader-word-panel-hidden"), true);
+    assert.equal(els.readerWordPanelToggle.getAttribute("aria-pressed"), "false");
   });
 
-  it("keeps the desktop word panel open while its controls are used", () => {
-    const readerEvents = readFileSync(new URL("../../src/web/js/views/reader.js", import.meta.url), "utf8");
+  it("keeps reader selection while the word panel receives focus", async () => {
+    resetBehaviorState({ currentView: "reader", selectedWord: "wort" });
+    const readerText = control({ dataset: {}, querySelectorAll() { return []; } });
+    const wordPanel = control();
+    els.readerSidebarResizer = null;
+    els.textSelect = control();
+    els.readerText = readerText;
+    els.wordPanel = wordPanel;
 
-    assert.match(readerEvents, /lastWordPanelInteractionAt/);
-    assert.match(readerEvents, /els\.wordPanel\.addEventListener\("pointerdown", rememberWordPanelInteraction\)/);
-    assert.match(readerEvents, /Date\.now\(\) - lastWordPanelInteractionAt < 700/);
-    assert.match(readerEvents, /active\.closest\?\.\("#reader-text \.word-token, #word-panel"\)/);
+    bindReaderEvents();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    const originalNow = Date.now;
+    const originalSetTimeout = globalThis.setTimeout;
+    let now = 1_000;
+    Date.now = () => now;
+    globalThis.setTimeout = (callback) => { callback(); return 0; };
+    document.activeElement = { closest() { return null; } };
+    try {
+      wordPanel.listener("pointerdown")();
+      readerText.listener("focusout")();
+      assert.equal(state.selectedWord, "wort");
+
+      now = 2_000;
+      readerText.listener("focusout")();
+      assert.equal(state.selectedWord, null);
+    } finally {
+      Date.now = originalNow;
+      globalThis.setTimeout = originalSetTimeout;
+    }
+  });
+});
+
+describe("desktop reader markup and style contracts", () => {
+  it("declares desktop-only focus, panel, touch, and TTS controls", () => {
+    for (const [id, preference] of [
+      ["pref-reader-focus-mode", "readerFocusMode"],
+      ["pref-reader-word-panel-visible", "readerWordPanelVisible"],
+      ["pref-touch-controls", "touchControls"],
+      ["pref-tts-word-highlight", "ttsWordHighlight"]
+    ]) {
+      const input = elementById(html, id);
+      assert.equal(attribute(openingTag(input), "data-pref"), preference);
+    }
+    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(html, "label", "pref-touch-controls"), "desktop-only-setting"), true);
+
+    const panelToggle = elementById(html, "reader-word-panel-toggle");
+    assert.equal(hasClass(panelToggle, "desktop-only-control"), true);
+    assert.doesNotMatch(panelToggle, /<svg\b/);
+    assert.match(panelToggle, /&gt;&gt;/);
+    assert.equal(attribute(openingTag(elementById(html, "reader-highlight-toggle")), "aria-pressed"), "true");
   });
 
-  it("adds a reader highlight toggle wired to the existing highlight preference", () => {
-    const dom = readFileSync(new URL("../../src/web/js/dom.js", import.meta.url), "utf8");
-    const globalActions = readFileSync(new URL("../../src/web/js/events/global-actions.js", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
-
-    assert.match(html, /id="reader-highlight-toggle"[\s\S]*aria-pressed="true"/);
-    assert.match(dom, /readerHighlightToggle = document\.getElementById\("reader-highlight-toggle"\)/);
-    assert.match(globalActions, /reader-highlight-toggle[\s\S]*updatePreferenceValue\("highlightTokens", state\.preferences\.highlightTokens === false\)/);
-    assert.match(preferences, /readerHighlightToggle[\s\S]*aria-pressed/);
-    assert.match(css, /#reader-highlight-toggle\[aria-pressed="true"\],[\s\S]*#reader-word-panel-toggle\[aria-pressed="true"\]/);
+  it("scopes focus and word-panel layout rules to desktop reader state", () => {
+    for (const selector of [
+      ':root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .topbar',
+      ':root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-meta',
+      ':root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .focus-hint'
+    ]) {
+      assert.equal(cssDeclarations(css, selector).display, "none");
+    }
+    assert.equal(
+      cssDeclarations(css, ':root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-grid')["grid-template-columns"],
+      "minmax(0, 1fr)"
+    );
+    assert.equal(
+      cssDeclarations(css, ':root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-resizer').display,
+      "none"
+    );
+    assert.equal(
+      cssDeclarations(css, ':root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-wrapper').display,
+      "none"
+    );
+    assert.equal(cssDeclarations(css, '#reader-highlight-toggle[aria-pressed="true"]')["border-color"], "var(--control-accent)");
+    assert.equal(cssDeclarations(css, '#reader-word-panel-toggle[aria-pressed="true"]')["border-color"], "var(--control-accent)");
   });
 
-  it("adds larger desktop controls as an explicit laptop/tablet option", async () => {
-    const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-    const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-    const dom = readFileSync(new URL("../../src/web/js/dom.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
-
-    assert.match(html, /class="setting-row toggle-row desktop-only-setting"[\s\S]*id="pref-touch-controls"/);
-    assert.match(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) \.primary-button/);
-    assert.match(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) \.nav-item/);
-    assert.match(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) \.status-check/);
-    assert.match(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) \.toast-close/);
-    assert.match(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) button\[data-action="remove-image"\]/);
-    assert.doesNotMatch(css, /:root\.touch-controls-mode:not\(\.pocket-mode\) button\s*{/);
-    assert.match(css, /min-height: 44px/);
-    assert.match(dom, /prefTouchControls = document\.getElementById\("pref-touch-controls"\)/);
-    assert.match(html, /id="pref-touch-controls"[^>]*data-pref="touchControls"/);
-    assert.match(settings, /querySelectorAll\("\[data-pref\]"\)/);
-    assert.match(preferences, /classList\.toggle\("touch-controls-mode", prefs\.touchControls === true && !isAndroidPlatform\(\)\)/);
-    assert.equal(createDefaultState().preferences.touchControls, false);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { touchControls: true } }).preferences.touchControls, true);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { touchControls: "true" } }).preferences.touchControls, false);
+  it("limits the larger-control option to selected desktop controls", () => {
+    for (const selector of [
+      ":root.touch-controls-mode:not(.pocket-mode) .primary-button",
+      ":root.touch-controls-mode:not(.pocket-mode) .nav-item",
+      ":root.touch-controls-mode:not(.pocket-mode) .status-check"
+    ]) {
+      assert.equal(cssDeclarations(css, selector)["min-height"], "44px !important");
+    }
+    for (const selector of [
+      ":root.touch-controls-mode:not(.pocket-mode) .toast-close",
+      ':root.touch-controls-mode:not(.pocket-mode) button[data-action="remove-image"]'
+    ]) {
+      assert.equal(cssDeclarations(css, selector).width, "44px !important");
+      assert.equal(cssDeclarations(css, selector).height, "44px !important");
+    }
+    assert.equal(
+      cssDeclarations(css, ':root.touch-controls-mode:not(.pocket-mode) .book-actions [data-action="read-sample"]')["min-width"],
+      "max-content"
+    );
+    assert.equal(hasCssSelector(css, ":root.touch-controls-mode:not(.pocket-mode) button"), false);
   });
 
-  it("keeps form controls themed in WebKitGTK dark mode", () => {
-    assert.match(css, /:root\s*{[\s\S]*color-scheme: light/);
-    assert.match(css, /:root\[data-theme="dark"\]\s*{[\s\S]*color-scheme: dark/);
-    assert.match(css, /input,\s*select,\s*textarea\s*{[\s\S]*background: var\(--panel\)/);
-    assert.match(css, /select\s*{[\s\S]*-webkit-appearance: none/);
-    assert.match(css, /select\s*{[\s\S]*background-image: var\(--select-arrow\)/);
-    assert.match(css, /select option,\s*select optgroup\s*{[\s\S]*background: var\(--panel\)/);
-    assert.doesNotMatch(css, /input,\s*select,\s*textarea\s*{[\s\S]*background:\s*#ffffff/);
+  it("keeps form-control colors explicit for WebKitGTK dark mode", () => {
+    assert.equal(cssDeclarations(css, ":root")["color-scheme"], "light");
+    assert.equal(cssDeclarations(css, ':root[data-theme="dark"]')["color-scheme"], "dark");
+    for (const selector of ["input", "select", "textarea"]) {
+      assert.equal(cssDeclarations(css, selector).background, "var(--panel)");
+    }
+    const select = cssDeclarations(css, "select");
+    assert.equal(select["-webkit-appearance"], "none");
+    assert.equal(select["background-image"], "var(--select-arrow)");
+    assert.equal(cssDeclarations(css, "select option").background, "var(--panel)");
+    assert.equal(cssDeclarations(css, "select optgroup").background, "var(--panel)");
   });
 
+  it("declares desktop discovery, Help, and language navigation", () => {
+    elementByAttribute(html, "data-view", "discover", "button");
+    elementById(html, "discover-view");
+    elementByAttribute(elementById(html, "discover-view"), "value", "gutenberg", "option");
+    elementByAttribute(html, "data-view", "help", "button");
+    elementById(html, "help-view");
+    elementById(html, "pref-locale-sidebar");
+    elementById(html, "pref-learning-language-sidebar");
+    elementByAttribute(html, "data-language-flag", "locale", "img");
+    elementByAttribute(html, "data-language-flag", "learning", "img");
+  });
+
+  it("keeps long navigation labels separate from shortcut badges", () => {
+    const label = cssDeclarations(css, ".nav-item > span:not(.nav-icon):not(.shortcut-badge)");
+    assert.equal(label["min-width"], "0");
+    assert.equal(label["overflow-wrap"], "anywhere");
+    const badge = cssDeclarations(css, ".nav-item > .shortcut-badge");
+    assert.equal(badge["justify-self"], "end");
+    assert.equal(badge["white-space"], "nowrap");
+    assert.equal(badge["margin-left"], "0");
+  });
+
+  it("statically suppresses Pocket drawer controls outside Pocket mode", () => {
+    assert.equal(hasClass(elementById(html, "library-import-toggle"), "pocket-import-toggle"), true);
+    assert.equal(hasClass(elementById(html, "library-import-close"), "pocket-drawer-close"), true);
+    assert.equal(hasClass(elementById(html, "pocket-navigation-toggle"), "pocket-navigation-toggle"), true);
+    assert.equal(hasClass(elementById(html, "reader-pocket-navigation-toggle"), "pocket-reader-navigation-toggle"), true);
+    assert.equal(cssDeclarations(css, ":root:not(.pocket-mode) button.pocket-import-toggle").display, "none");
+    assert.equal(cssDeclarations(css, ":root:not(.pocket-mode) button.pocket-drawer-close").display, "none");
+    assert.equal(cssDeclarations(css, ":root:not(.pocket-mode) button.pocket-navigation-toggle").display, "none");
+    assert.equal(cssDeclarations(css, ":root:not(.pocket-mode) button.pocket-reader-navigation-toggle").display, "none");
+  });
+
+  it("defines a compact desktop library-filter layout", () => {
+    const header = cssDeclarations(css, ".library-panel > .panel-header");
+    assert.equal(header.display, "flex");
+    assert.equal(header["align-items"], "flex-end");
+    assert.equal(header["flex-wrap"], "nowrap");
+    assert.equal(cssDeclarations(css, "button.library-filters-toggle").display, "none");
+    const filters = cssDeclarations(css, ".library-panel .compact-filters");
+    assert.equal(filters["flex-wrap"], "nowrap");
+    assert.equal(filters["align-items"], "flex-end");
+    assert.equal(filters["min-width"], "0");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode .library-filters-toggle").display, "inline-flex");
+  });
+
+  it("keeps Settings and Sync as separate structural sections", () => {
+    const settingsSection = elementById(html, "settings-view");
+    const syncSection = elementById(html, "sync-view");
+    for (const key of ["groupLanguage", "groupLearningDisplay", "groupReader", "groupTts", "groupLocalData", "groupBackup"]) {
+      elementByAttribute(settingsSection, "data-i18n", `settings.${key}`);
+    }
+    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "sync-directory"), null);
+    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "syncthing-setup-wizard"), null);
+    assert.equal(attribute(openingTag(syncSection), "data-title-key"), "nav.sync");
+    elementByAttribute(syncSection, "data-i18n", "settings.groupSync");
+    assert.equal(cssDeclarations(css, ".settings-subheading")["text-transform"], "uppercase");
+  });
+
+  it("defines a scrollable edit-book dialog layout", () => {
+    const dialog = elementById(html, "edit-book-dialog");
+    assert.equal(hasClass(dialog, "edit-book-dialog"), true);
+    elementByClass(dialog, "edit-book-body", "div");
+    elementById(dialog, "edit-book-save");
+    assert.equal(hasClass(elementById(dialog, "edit-book-cover-clear"), "edit-book-cover-clear"), true);
+    assert.deepEqual(
+      { display: cssDeclarations(css, ".edit-book-dialog[open]").display, direction: cssDeclarations(css, ".edit-book-dialog[open]")["flex-direction"] },
+      { display: "flex", direction: "column" }
+    );
+    assert.equal(cssDeclarations(css, ".edit-book-body")["overflow-y"], "auto");
+    assert.equal(cssDeclarations(css, ".edit-book-actions").position, "sticky");
+    const clear = cssDeclarations(css, ".edit-book-cover-clear");
+    assert.equal(clear.width, "24px");
+    assert.equal(clear.height, "24px");
+    assert.equal(clear["aspect-ratio"], "1");
+  });
+
+  it("defines sticky desktop vocabulary action columns with Pocket overrides", () => {
+    const table = cssDeclarations(css, ".vocab-table");
+    assert.equal(table["min-width"], "1260px");
+    assert.equal(table["table-layout"], "fixed");
+    assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(4)").width, "320px");
+    assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(5)").width, "340px");
+    const actions = cssDeclarations(css, ".vocab-table td:last-child");
+    assert.equal(actions.position, "sticky");
+    assert.equal(actions.right, "0");
+    assert.equal(actions.width, "340px");
+    assert.equal(cssDeclarations(css, ".vocab-table th:last-child").position, "sticky");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table td:last-child").position, "static");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table th:last-child").right, "auto");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table")["min-width"], "0");
+    assert.match(desktopWindow, /\.min_inner_size\(960\.0, 640\.0\)/);
+  });
+
+  it("defines status-specific SRS hover colors", () => {
+    assert.equal(cssDeclarations(css, ".sm2-grades .status-button.sm2-grade-1:hover").background, "var(--red-soft)");
+    assert.equal(cssDeclarations(css, ".sm2-grades .status-button.sm2-grade-3:hover").background, "var(--amber-soft)");
+    assert.equal(cssDeclarations(css, ".sm2-grades .status-button.sm2-grade-5:hover").background, "var(--green-soft)");
+    assert.match(cssDeclarations(css, ".sm2-grades .status-button.sm2-grade-1:hover")["border-color"], /var\(--red\)/);
+    assert.equal(hasCssSelector(css, ':root[data-theme="dark"] .sm2-grades .status-button.sm2-grade-1:hover'), false);
+    assert.equal(hasCssSelector(css, ".sm2-grade:hover"), false);
+  });
+});
+
+describe("desktop platform contracts", () => {
   it("keeps Linux windows matched to the Word Hunter desktop icon", () => {
     assert.equal(tauriConfig.identifier, "com.wordhunter.app");
     assert.equal(tauriConfig.app.enableGTKAppId, true);
@@ -130,7 +543,7 @@ describe("desktop reader UX", () => {
     assert.match(flatpakMeta, /<icon type="stock">com\.wordhunter\.app<\/icon>/);
     assert.match(flatpakMeta, /<category>Education<\/category>/);
     assert.match(flatpakMeta, /<category>Languages<\/category>/);
-    assert.match(cargoToml, /\[target\.'cfg\(target_os = "linux"\)'\.dependencies\][\s\S]*gdkwayland-sys = \{ version = "0\.18", features = \["v3_24_22"\] \}/);
+    assert.match(tomlSection(cargoToml, "target.'cfg(target_os = \"linux\")'.dependencies"), /gdkwayland-sys = \{ version = "0\.18", features = \["v3_24_22"\] \}/);
     assert.match(desktopWindow, /const LINUX_DESKTOP_APP_ID: &str = "com\.wordhunter\.app"/);
     assert.match(desktopWindow, /set_linux_program_name\(\)/);
     assert.match(desktopWindow, /g_set_prgname\(app_id\.as_ptr\(\)\)/);
@@ -144,180 +557,121 @@ describe("desktop reader UX", () => {
     assert.match(desktopWindow, /set_above_child\(false\)/);
     assert.match(desktopWindow, /gdk_wayland_window_set_application_id/);
   });
+});
 
-  it("wires optional TTS word highlighting without enabling it by default", async () => {
-    const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-    const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-    const dom = readFileSync(new URL("../../src/web/js/dom.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
-
-    assert.match(html, /id="pref-tts-word-highlight"/);
-    assert.match(dom, /prefTtsWordHighlight = document\.getElementById\("pref-tts-word-highlight"\)/);
-    assert.match(html, /id="pref-tts-word-highlight"[^>]*data-pref="ttsWordHighlight"/);
-    assert.match(settings, /querySelectorAll\("\[data-pref\]"\)/);
-    assert.match(preferences, /prefTtsWordHighlight[\s\S]*checked = prefs\.ttsWordHighlight === true/);
-    assert.match(css, /\.word-token\.tts-current-word[\s\S]*outline: 2px solid var\(--amber\)/);
-    assert.equal(createDefaultState().preferences.ttsWordHighlight, false);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { ttsWordHighlight: true } }).preferences.ttsWordHighlight, true);
-    assert.equal(normalizeState({ ...createDefaultState(), preferences: { ttsWordHighlight: "true" } }).preferences.ttsWordHighlight, false);
-  });
-
-  it("keeps desktop language, Help, and Gutenberg discovery visible outside Pocket-only navigation", () => {
-    assert.match(html, /data-view="discover"/);
-    assert.match(html, /id="discover-view"/);
-    assert.match(html, /option value="gutenberg"/);
-    assert.match(html, /data-view="help"/);
-    assert.match(html, /id="help-view"/);
-    assert.match(html, /id="pref-locale-sidebar"/);
-    assert.match(html, /id="pref-learning-language-sidebar"/);
-    assert.match(html, /data-language-flag="locale"/);
-    assert.match(html, /data-language-flag="learning"/);
-  });
-
-  it("keeps Pocket-only library drawer controls hidden on desktop", () => {
-    assert.match(html, /id="library-import-toggle"[\s\S]*pocket-import-toggle/);
-    assert.match(html, /id="library-import-close"[\s\S]*pocket-drawer-close/);
-    assert.match(css, /:root:not\(\.pocket-mode\) button\.pocket-import-toggle,[\s\S]*:root:not\(\.pocket-mode\) button\.pocket-drawer-close\s*{\s*display: none;/);
-  });
-
-  it("keeps desktop library filters in one compact header row", () => {
-    assert.match(css, /\.library-panel > \.panel-header\s*{[\s\S]*display: flex;[\s\S]*align-items: flex-end;[\s\S]*flex-wrap: nowrap;/);
-    assert.match(css, /button\.library-filters-toggle\s*{\s*display: none;/);
-    assert.match(css, /\.library-panel \.compact-filters\s*{[\s\S]*flex-wrap: nowrap;[\s\S]*align-items: flex-end;[\s\S]*min-width: 0;/);
-    assert.match(pocketCss, /\.pocket-mode \.library-filters-toggle[\s\S]*display: inline-flex/);
-  });
-
-  it("ships desktop reader focus copy in every locale", () => {
-    for (const code of ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"]) {
-      const dict = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${code}.json`, import.meta.url), "utf8"));
-      assert.equal(typeof dict.settings.readerFocusMode, "string", `${code}.settings.readerFocusMode`);
-      assert.equal(typeof dict.settings.readerFocusModeHint, "string", `${code}.settings.readerFocusModeHint`);
-      assert.equal(typeof dict.settings.readerWordPanelVisible, "string", `${code}.settings.readerWordPanelVisible`);
-      assert.equal(typeof dict.settings.readerWordPanelVisibleHint, "string", `${code}.settings.readerWordPanelVisibleHint`);
-      assert.equal(typeof dict.settings.readerWordPanelHideControl, "string", `${code}.settings.readerWordPanelHideControl`);
-      assert.equal(typeof dict.settings.readerWordPanelShowControl, "string", `${code}.settings.readerWordPanelShowControl`);
-      assert.equal(typeof dict.settings.touchControls, "string", `${code}.settings.touchControls`);
-      assert.equal(typeof dict.settings.touchControlsHint, "string", `${code}.settings.touchControlsHint`);
-      assert.equal(typeof dict.settings.ttsWordHighlight, "string", `${code}.settings.ttsWordHighlight`);
-      assert.equal(typeof dict.settings.ttsWordHighlightHint, "string", `${code}.settings.ttsWordHighlightHint`);
-      for (const key of ["groupLanguage", "groupLearningDisplay", "groupReader", "groupTts", "groupSync", "groupBackup"]) {
-        assert.equal(typeof dict.settings[key], "string", `${code}.settings.${key}`);
+describe("desktop PDF reader contracts", () => {
+  it("executes PDF view-mode and bounded zoom preferences", () => {
+    resetBehaviorState();
+    const stage = { style: {} };
+    const page = { style: {}, getBoundingClientRect() { return { width: 0, height: 0 }; } };
+    const zoomValue = { textContent: "" };
+    const zoomOut = { disabled: false };
+    const zoomIn = { disabled: false };
+    els.readerText = {
+      getBoundingClientRect() { return { left: 0, top: 0, width: 800, height: 600 }; },
+      querySelector(selector) {
+        return {
+          ".pdf-ocr-stage": stage,
+          ".pdf-ocr-page": page,
+          "[data-pdf-zoom-value]": zoomValue,
+          "[data-pdf-zoom='out']": zoomOut,
+          "[data-pdf-zoom='in']": zoomIn
+        }[selector] || null;
       }
-    }
+    };
+
+    assert.equal(getPdfOcrViewMode(), "overlay");
+    assert.equal(setPdfOcrViewMode("text", { commit: false }), "text");
+    assert.equal(getPdfOcrViewMode(), "text");
+    assert.equal(setPdfOcrViewMode("invalid", { commit: false }), "overlay");
+
+    assert.equal(setPdfOcrZoom(99, { commit: false }), 3);
+    assert.equal(getPdfOcrZoom(), 3);
+    assert.equal(stage.style.width, "300.00%");
+    assert.equal(page.style.width, "100.00%");
+    assert.equal(zoomValue.textContent, "300%");
+    assert.equal(zoomIn.disabled, true);
+
+    assert.equal(setPdfOcrZoom(0, { commit: false }), 0.75);
+    assert.equal(stage.style.width, "100.00%");
+    assert.equal(page.style.width, "75.00%");
+    assert.equal(zoomOut.disabled, true);
   });
 
-  it("visibly splits Settings into platform-relevant groups", () => {
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupLanguage"/);
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupLearningDisplay"/);
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupReader"/);
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupTts"/);
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupSync"/);
-    assert.match(html, /class="settings-subheading" data-i18n="settings\.groupBackup"/);
-    assert.match(css, /\.settings-subheading[\s\S]*text-transform: uppercase/);
+  it("declares compact OCR markers and overlay/text layouts", () => {
+    assert.equal(cssDeclarations(css, ".word-token.status-new")["box-shadow"], "inset 0 -0.28em var(--token-new-bg, var(--amber-soft))");
+    assert.equal(cssDeclarations(css, ".pdf-ocr-toolbar").position, "sticky");
+    assert.equal(cssDeclarations(css, ".pdf-ocr-toolbar")["justify-content"], "flex-end");
+    assert.equal(cssDeclarations(css, ".reader-text.pdf-text-layer-reader")["white-space"], "pre-wrap");
+    assert.equal(cssDeclarations(css, ".pdf-text-page").width, "min(100%, 920px)");
+    assert.equal(cssDeclarations(css, ".pdf-text-page").margin, "0 auto");
+    assert.equal(cssDeclarations(css, ".pdf-ocr-stage")["justify-items"], "center");
+    assert.equal(cssDeclarations(css, ".pdf-ocr-stage")["touch-action"], "pan-x pan-y");
+    const word = cssDeclarations(css, ".word-token.pdf-ocr-word");
+    assert.equal(word["--pdf-ocr-mark-height"], "clamp(1px, 8%, 3px)");
+    assert.equal(word["--pdf-ocr-mark-bottom"], "6%");
+    assert.equal(word["box-shadow"], "none !important");
+    assert.equal(word["font-size"], "0");
+    assert.equal(word["line-height"], "0");
+    const marker = cssDeclarations(css, ".word-token.pdf-ocr-word::after");
+    assert.equal(marker.bottom, "var(--pdf-ocr-mark-bottom)");
+    assert.equal(marker.height, "var(--pdf-ocr-mark-height)");
+    assert.equal(marker["border-radius"], "999px");
+    assert.equal(cssDeclarations(css, ".word-token.pdf-ocr-word.status-new::after").background, "var(--token-new-bg, var(--amber-soft))");
+    assert.equal(findElement(html, (tag) => attribute(tag, "id") === "reader-pdf-ocr-line-spacing-slider"), null);
+    assert.equal(hasCssSelector(css, ".reader-ocr-line"), false);
   });
 
-  it("keeps the desktop edit-book dialog controls visible and the cover clear button square", () => {
-    assert.match(html, /id="edit-book-dialog" class="panel edit-book-dialog"/);
-    assert.match(html, /class="settings-body edit-book-body"/);
-    assert.match(html, /class="edit-book-actions"[\s\S]*id="edit-book-save"/);
-    assert.match(html, /id="edit-book-cover-clear" class="edit-book-cover-clear"/);
-    assert.match(css, /\.edit-book-dialog\[open\]\s*{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
-    assert.match(css, /\.edit-book-body\s*{[\s\S]*overflow-y: auto;/);
-    assert.match(css, /\.edit-book-actions\s*{[\s\S]*position: sticky;[\s\S]*bottom: 0;/);
-    assert.match(css, /\.edit-book-cover-clear\s*{[\s\S]*width: 24px;[\s\S]*height: 24px;[\s\S]*aspect-ratio: 1;/);
+  it("statically declares PDF overlay/text rendering controls", () => {
+    const renderer = readFileSync(new URL("../../src/web/js/reader/pdf-ocr-renderer.js", import.meta.url), "utf8");
+    assert.match(renderer, /const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2"/);
+    assert.match(renderer, /els\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
+    assert.match(renderer, /function renderPdfOcrTextMode\(/);
+    assert.match(renderer, /function renderPdfOcrTextTokens\(/);
+    assert.match(renderer, /overlayWordIndexes\[index\],/);
+    assert.doesNotMatch(renderer, /globalOffset \+ index \+ 1/);
+    assert.match(renderer, /separableVerbMatches\.get\(index \* 2\)/);
+    assert.match(renderer, /data-pdf-view-mode="\$\{escapeAttribute\(targetMode\)\}"/);
+    assert.match(renderer, /data-pdf-zoom="out"/);
+    assert.match(renderer, /data-pdf-zoom="reset"/);
+    assert.match(renderer, /data-pdf-zoom="in"/);
+    assert.match(renderer, /data-pdf-correct/);
+    assert.match(renderer, /data-pdf-correct-sentence/);
+    assert.match(renderer, /data-pdf-page-word-index/);
+    assert.match(renderer, /icon\("sentenceEdit", 16\)/);
+    assert.match(renderer, /effectivePdfPageText\(page\)/);
+    assert.match(renderer, /aria-label="\$\{escapeAttribute\(raw\)\}"><\/button>`/);
   });
 
-  it("keeps desktop vocabulary actions visible over examples in narrow windows", () => {
-    assert.match(css, /\.vocab-table\s*{[\s\S]*min-width: 1260px;[\s\S]*table-layout: fixed;/);
-    assert.match(css, /\.vocab-table th:nth-child\(4\)\s*{\s*width: 320px;\s*}/);
-    assert.match(css, /\.vocab-table th:nth-child\(5\)\s*{\s*width: 340px;\s*}/);
-    assert.match(css, /\.vocab-table td:last-child\s*{[\s\S]*position: sticky;[\s\S]*right: 0;[\s\S]*width: 340px;/);
-    assert.match(css, /\.vocab-table th:last-child\s*{[\s\S]*position: sticky;[\s\S]*right: 0;/);
-    assert.match(pocketCss, /\.pocket-mode \.vocab-table th:last-child,\s*\.pocket-mode \.vocab-table td:last-child\s*{[\s\S]*position: static;[\s\S]*right: auto;/);
-    assert.match(pocketCss, /\.pocket-mode \.vocab-table\s*{[\s\S]*min-width: 0;/);
-    assert.match(desktopWindow, /\.min_inner_size\(960\.0, 640\.0\)/);
-  });
-
-  it("keeps in-text SRS grade colors visible on desktop hover", () => {
-    assert.doesNotMatch(css, /\.sm2-grade:hover\s*{[\s\S]*background: var\(--panel-strong\)/);
-    assert.match(css, /\.sm2-grades \.status-button\.sm2-grade-1:hover[\s\S]*background: var\(--red-soft\)/);
-    assert.match(css, /\.sm2-grades \.status-button\.sm2-grade-3:hover[\s\S]*background: var\(--amber-soft\)/);
-    assert.match(css, /\.sm2-grades \.status-button\.sm2-grade-5:hover[\s\S]*background: var\(--green-soft\)/);
-    assert.match(css, /:root\[data-theme="dark"\] \.sm2-grades \.status-button\.sm2-grade-1:hover/);
-  });
-
-  it("keeps PDF OCR marks compact without rendering OCR text", () => {
-    const pdfOcrRenderer = readFileSync(new URL("../../src/web/js/reader/pdf-ocr-renderer.js", import.meta.url), "utf8");
-    const defaults = readFileSync(new URL("../../src/web/js/state/defaults.js", import.meta.url), "utf8");
-    const normalize = readFileSync(new URL("../../src/web/js/state/normalize.js", import.meta.url), "utf8");
-
-    assert.match(css, /\.word-token\.status-new\s*{[\s\S]*box-shadow: inset 0 -0\.28em var\(--token-new-bg, var\(--amber-soft\)\);/);
-    assert.match(css, /\.pdf-ocr-toolbar\s*{[\s\S]*position: sticky;[\s\S]*justify-content: flex-end;/);
-    assert.match(css, /\.reader-text\.pdf-text-layer-reader\s*{[\s\S]*white-space: pre-wrap;/);
-    assert.match(css, /\.pdf-text-page\s*{[\s\S]*width: min\(100%, 920px\);[\s\S]*margin: 0 auto;/);
-    assert.match(css, /\.pdf-ocr-stage\s*{[\s\S]*justify-items: center;[\s\S]*touch-action: pan-x pan-y;/);
-    assert.match(css, /\.pdf-ocr-page\s*{[\s\S]*min-width: min\(100%, 240px\);[\s\S]*max-width: none;/);
-    assert.match(css, /\.word-token\.pdf-ocr-word\s*{[\s\S]*--pdf-ocr-mark-height: clamp\(1px, 8%, 3px\);[\s\S]*--pdf-ocr-mark-bottom: 6%;[\s\S]*box-shadow: none !important;[\s\S]*font-size: 0;[\s\S]*line-height: 0;/);
-    assert.match(css, /\.word-token\.pdf-ocr-word::after\s*{[\s\S]*bottom: var\(--pdf-ocr-mark-bottom\);[\s\S]*height: var\(--pdf-ocr-mark-height\);[\s\S]*border-radius: 999px;/);
-    assert.doesNotMatch(css, /\.word-token\.pdf-ocr-word::after\s*{[\s\S]*bottom: 0;[\s\S]*height: clamp\(2px, 16%, 6px\);/);
-    assert.doesNotMatch(css, /\.word-token\.pdf-ocr-word::after\s*{[\s\S]*bottom: calc\(-1 \* var\(--pdf-ocr-mark-offset\)\);/);
-    assert.match(css, /\.word-token\.pdf-ocr-word\.status-new::after\s*{[\s\S]*background: var\(--token-new-bg, var\(--amber-soft\)\);/);
-    assert.match(defaults, /readerPdfZoom: 1/);
-    assert.match(defaults, /readerPdfViewMode: "overlay"/);
-    assert.match(normalize, /nextState\.readerPdfZoom = clamp\(Number\(nextState\.readerPdfZoom\) \|\| 1, 0\.75, 3\)/);
-    assert.match(normalize, /nextState\.readerPdfViewMode = nextState\.readerPdfViewMode === "text" \? "text" : "overlay"/);
-    assert.match(pdfOcrRenderer, /if \(pageWords\.length\) return pageWords;/);
-    assert.match(pdfOcrRenderer, /PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2"/);
-    assert.match(pdfOcrRenderer, /PDF_OCR_ZOOM_MIN = 0\.75/);
-    assert.match(pdfOcrRenderer, /PDF_OCR_ZOOM_MAX = 3/);
-    assert.match(pdfOcrRenderer, /export function setPdfOcrViewMode\(value, options = \{\}\)/);
-    assert.match(pdfOcrRenderer, /els\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
-    assert.match(pdfOcrRenderer, /function renderPdfOcrTextMode\(current, page, globalOffset, totalPages, scrollPerPageKey, savedPos\)/);
-    assert.match(pdfOcrRenderer, /<div class="pdf-text-page" aria-label="\$\{escapeAttribute\(t\("reader\.pdfTextPageLabel"/);
-    assert.match(pdfOcrRenderer, /export function setPdfOcrZoom\(value, options = \{\}\)/);
-    assert.match(pdfOcrRenderer, /function pdfOcrZoomLayout\(zoom\)/);
-    assert.match(pdfOcrRenderer, /stageScale = Math\.max\(1, normalized\)/);
-    assert.match(pdfOcrRenderer, /pageScale = normalized \/ stageScale/);
-    assert.match(pdfOcrRenderer, /data-pdf-view-mode="\$\{escapeAttribute\(targetMode\)\}"/);
-    assert.match(pdfOcrRenderer, /data-pdf-zoom="out"/);
-    assert.match(pdfOcrRenderer, /data-pdf-zoom="reset"/);
-    assert.match(pdfOcrRenderer, /data-pdf-zoom="in"/);
-    assert.match(pdfOcrRenderer, /<div class="pdf-ocr-stage" style="width:\$\{stageWidthPercent\}%;">/);
-    assert.match(pdfOcrRenderer, /stage\.style\.width = `\$\{layout\.stageWidthPercent\}%`/);
-    assert.match(pdfOcrRenderer, /width:\$\{pageWidthPercent\}%/);
-    assert.match(pdfOcrRenderer, /usesLegacyPdfTextLayerBounds\(page, current\)/);
-    assert.match(pdfOcrRenderer, /engine\.includes\("pdf-text-layer"\) \|\| engine\.includes\("pdfium-text-layer"\)/);
-    assert.match(pdfOcrRenderer, /aria-label="\$\{escapeAttribute\(raw\)\}"><\/button>`/);
-    assert.match(pdfOcrRenderer, /function renderPdfOcrTextTokens\(tokens, globalOffset\)[\s\S]*\$\{escapeHtml\(raw\)\}/);
-    assert.doesNotMatch(html, /reader-pdf-ocr-line-spacing-slider/);
-    assert.doesNotMatch(css, /reader-ocr-line/);
-    for (const code of ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"]) {
-      const dict = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${code}.json`, import.meta.url), "utf8"));
-      for (const key of ["pdfZoomLabel", "pdfZoomIn", "pdfZoomOut", "pdfZoomReset", "pdfViewModeLabel", "pdfShowText", "pdfShowBackground", "pdfTextPageLabel"]) {
-        assert.equal(typeof dict.reader[key], "string", `${code}.reader.${key}`);
-      }
-    }
-  });
-
-  it("falls back to a rendered PDF text layer when the desktop OCR runner is unavailable", () => {
-    const pdfOcrBackend = readFileSync(new URL("../../src-tauri/src/pdf_ocr/mod.rs", import.meta.url), "utf8");
-
-    assert.match(cargoToml, /\[dependencies\][\s\S]*pdf-extract = "0\.12"/);
+  it("statically routes a missing desktop OCR runner to text-layer import", () => {
+    const backend = readFileSync(new URL("../../src-tauri/src/pdf_ocr/mod.rs", import.meta.url), "utf8");
+    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
+    const response = readFileSync(new URL("../../src-tauri/src/response.rs", import.meta.url), "utf8");
+    const server = readFileSync(new URL("../../src-tauri/src/server.rs", import.meta.url), "utf8");
+    const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
+    const importer = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+    assert.match(tomlSection(cargoToml, "dependencies"), /pdf-extract = "0\.12"/);
     assert.match(flatpakManifest, /--filesystem=host-os:ro/);
-    assert.match(pdfOcrBackend, /Err\(runner_error\) => \{[\s\S]*import_text_layer_pdf\(\s*filename,\s*&data,\s*max_pages,\s*&runner_error,\s*store,\s*book_id,\s*\)/);
-    assert.match(pdfOcrBackend, /pdf_extract::output_doc_page\(&document, &mut output, page_num\)/);
-    assert.match(pdfOcrBackend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
-    assert.match(pdfOcrBackend, /merge_words_using_plain_text\(/);
-    assert.match(pdfOcrBackend, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
-    assert.match(pdfOcrBackend, /let baseline_y = position\.m32 as f32;/);
-    assert.match(pdfOcrBackend, /let y_top = baseline_y - font_height \* 0\.82;/);
-    assert.match(pdfOcrBackend, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
-    assert.doesNotMatch(pdfOcrBackend, /marker_room/);
-    assert.match(pdfOcrBackend, /render_text_layer_page_images\(data, store, book_id, &pages\)/);
-    assert.match(pdfOcrBackend, /PathBuf::from\("\/run\/host\/usr\/bin\/pdftoppm"\)/);
-    assert.match(pdfOcrBackend, /store\.save_book_image_bytes\(book_id, &page\.image_name, &image_bytes\)/);
-    assert.match(pdfOcrBackend, /"ocrEngine": "pdf-text-layer\+pdftoppm"/);
-    assert.match(pdfOcrBackend, /"pages": pages/);
+    assert.match(backend, /let result = import_text_layer_pdf\(/);
+    assert.match(backend, /pdf_extract::output_doc_page\(&document, &mut output, page_num\)/);
+    assert.doesNotMatch(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
+    assert.match(backend, /merge_words_using_plain_text\(/);
+    assert.match(backend, /const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2"/);
+    assert.match(backend, /render_text_layer_page_images\([\s\S]*context\.store,[\s\S]*context\.asset_book_id,[\s\S]*&pages,[\s\S]*context\.job_id,[\s\S]*context\.cancellations/);
+    assert.match(backend, /PathBuf::from\("\/run\/host\/usr\/bin\/pdftoppm"\)/);
+    assert.match(backend, /save_book_import_image_bytes\(book_id, image_name, &image_bytes\)/);
+    assert.match(backend, /\(Vec::new\(\), "pdf-text-layer", false\)/);
+    assert.match(backend, /if let Err\(runner_error\) = result/);
+    assert.match(router, /Err\(error\) => response::error_response\(request, 422, &error\)/);
+    assert.match(router, /state\.ocr_slot\.try_lock\(\)/);
+    assert.match(router, /"\/__import\/pdf_ocr\/raw"/);
+    assert.match(router, /read_body_limited\(&mut request, MAX_RAW_PDF_BODY\)/);
+    assert.match(router, /"\/__store\/wipe"[\s\S]*state\.ocr_slot\.try_lock\(\)/);
+    assert.match(response, /pub fn read_json_limited\(/);
+    assert.match(server, /pub ocr_slot: Mutex<\(\)>/);
+    assert.match(handlers, /Cannot move the data folder while a PDF import is running/);
+    assert.match(importer, /catch \(error\) \{\s*await deleteStoredText\(id\)/);
+    assert.match(importer, /body: file/);
+    assert.match(importer, /`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);
   });
 });

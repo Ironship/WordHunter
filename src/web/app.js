@@ -6,8 +6,7 @@ import { applyPreferences, setSyncStatus, syncSettingsControls } from "./js/pref
 import { loadBooksCatalog, loadAllBookTexts, loadAllCustomTextContents } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
-import { saveState, state, replaceState } from "./js/state.js";
-import { loadState } from "./js/state/normalize.js";
+import { applyBridgeSnapshotToState, flushFrontendStateBuffers, saveState, state } from "./js/state.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
@@ -31,7 +30,7 @@ window.addEventListener("unhandledrejection", function(event) {
 });
 
 function flushPendingStateBeforeExit() {
-  if (typeof window.flushWordFieldSave === "function") window.flushWordFieldSave();
+  flushFrontendStateBuffers();
   if (isAndroidPlatform()) {
     saveState();
     return;
@@ -65,8 +64,16 @@ window.addEventListener("vocab-index:loaded", () => {
   if (state.currentView === "vocabulary") { renderVocabulary(); renderReview(); }
 });
 
+let libraryStatsRenderPending = false;
 window.addEventListener("text-stats:loaded", () => {
-  if (state.currentView === "library") renderLibrary();
+  if (state.currentView !== "library" || libraryStatsRenderPending) return;
+  libraryStatsRenderPending = true;
+  const renderStats = () => {
+    libraryStatsRenderPending = false;
+    if (state.currentView === "library") renderLibrary();
+  };
+  if (window.requestAnimationFrame) window.requestAnimationFrame(renderStats);
+  else setTimeout(renderStats, 0);
 });
 
 let graphResizeTimer = null;
@@ -94,17 +101,18 @@ async function loadBridgeStateBeforeRender() {
   if (!window.__qtBridge || window.__bridgeState) return;
   const response = await fetch("/__store/load", { cache: "no-store" });
   if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
-  window.__bridgeState = await response.json();
-  replaceState(loadState(), { save: false });
+  applyBridgeSnapshotToState(await response.json(), { previousView: state.currentView || "library" });
 }
 
 function scheduleLibraryStatsHydration() {
   const hydrate = () => {
+    els.bookList?.setAttribute("aria-busy", "true");
     Promise.all([loadAllBookTexts(), loadAllCustomTextContents()])
       .then(() => {
         if (state.currentView === "library") render();
       })
-      .catch((error) => console.warn("Nie wszystkie książki załadowane:", error));
+      .catch((error) => console.warn("Nie wszystkie książki załadowane:", error))
+      .finally(() => els.bookList?.setAttribute("aria-busy", "false"));
   };
   if ("requestIdleCallback" in window) {
     window.requestIdleCallback(hydrate, { timeout: 3000 });
@@ -131,6 +139,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
     await loadBridgeStateBeforeRender();
+    applyPreferences();
     await loadLocale(state.preferences?.locale || "en");
     applyTranslations();
     applyPlatformUi();
@@ -152,7 +161,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
     
   import("./js/update-checker.js").then(m => m.checkForUpdates());
-
-  const reloadBtn = document.getElementById("app-reload");
-  if (reloadBtn) reloadBtn.addEventListener("click", () => window.location.reload());
 });

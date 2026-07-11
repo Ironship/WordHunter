@@ -1,7 +1,7 @@
 {
   "$schema": "./gen/schemas/desktop-schema.json",
   "productName": "Word Hunter",
-  "version": "0.3.6+2",
+  "version": "1.0.0",
   "identifier": "com.wordhunter.app",
   "build": {
     "frontendDist": "../src/web"
@@ -10,21 +10,24 @@
     "windows": [],
     "enableGTKAppId": true,
     "security": {
-      "csp": null
+      "csp": "base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
     }
   },
   "bundle": {
     "active": true,
+    "licenseFile": "../LICENSE",
     "icon": [
       "../src/assets/icon-32.png",
       "../src/assets/icon-128.png",
       "../src/assets/icon-256.png",
       "../src/assets/icon.ico"
     ],
-    "resources": [
-      "../src/assets/**/*",
-      "ocr-runtime/bin/**/*",
-      "ocr-runtime/models/**/*"
-    ]
+    "resources": {
+      "../src/assets/**/*": "src/assets/",
+      "../LICENSE": "LICENSE",
+      "../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md",
+      "../THIRD-PARTY-LICENSES.html": "THIRD-PARTY-LICENSES.html",
+      "../OCR-THIRD-PARTY-LICENSES.html": "OCR-THIRD-PARTY-LICENSES.html"
+    }
   }
 }

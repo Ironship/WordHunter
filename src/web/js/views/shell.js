@@ -6,7 +6,9 @@ import { t } from "../i18n.js";
 
 export function renderShell() {
   document.documentElement.dataset.view = state.currentView;
-  document.documentElement.classList.toggle("has-selected-word", state.currentView === "reader" && Boolean(state.selectedWord));
+  const hasSelectedReaderWord = state.currentView === "reader" && Boolean(state.selectedWord);
+  document.documentElement.classList.toggle("has-selected-word", hasSelectedReaderWord);
+  if (!hasSelectedReaderWord) document.documentElement.classList.remove("pocket-word-panel-open");
   els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.currentView));
   els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.currentView}-view`));
   const activeView = els.views.find((view) => view.id === `${state.currentView}-view`);

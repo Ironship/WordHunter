@@ -7,8 +7,14 @@ license = "AGPL-3.0-or-later"
 [dependencies]
 anyhow = "1.0"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
-ort = { version = "=2.0.0-rc.10", default-features = false, features = ["download-binaries", "copy-dylibs", "ndarray", "directml"] }
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["download-binaries", "copy-dylibs", "ndarray"] }
 paddle-ocr-rs = "0.6"
 pdfium-render = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+[target.'cfg(windows)'.dependencies]
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["directml"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ort = { version = "=2.0.0-rc.10", default-features = false, features = ["webgpu"] }
