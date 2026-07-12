@@ -135,6 +135,8 @@
     "coverRemove": "Remove cover",
     "submit": "Add to library",
     "importedPdfTitle": "Imported PDF",
+    "pdfPocketScanTitle": "Scanned PDFs need the PC version",
+    "pdfPocketScanBody": "Word Hunter Pocket can import PDFs that already contain selectable text. This file appears to be scanned. Import it in Word Hunter on your PC for OCR, then sync it to Pocket.",
     "defaultAuthor": "Custom import",
     "blurb": "Custom import",
     "coverPasteHint": "Click to select or paste ",
