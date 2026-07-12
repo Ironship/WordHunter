@@ -14,7 +14,7 @@ data.
 
 ## Project Status
 
-Current release: `1.0.3`.
+Current release: `1.0.4`.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
