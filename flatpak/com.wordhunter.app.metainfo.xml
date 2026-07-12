@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.4" date="2026-07-12">
+      <description>
+        <ul>
+          <li>Fixed Windows saves and startup recovery failing with access denied while synchronizing backup files.</li>
+          <li>Made Pocket clearly explain when a scanned PDF requires desktop OCR before synchronization.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-07-11">
       <description>
         <ul>
