@@ -16,6 +16,8 @@ data.
 
 Current release: `1.0.4`.
 
+Website: [ironship.github.io/WordHunter-site](https://ironship.github.io/WordHunter-site/).
+
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
 > This release changes the storage and synchronization compatibility baseline.
