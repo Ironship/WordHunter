@@ -134,6 +134,8 @@
     "coverRemove": "Retirer le couvercle",
     "submit": "Ajouter à la bibliothèque",
     "importedPdfTitle": "PDF importé",
+    "pdfPocketScanTitle": "Les PDF numérisés nécessitent la version PC",
+    "pdfPocketScanBody": "Word Hunter Pocket peut importer les PDF qui contiennent déjà du texte sélectionnable. Ce fichier semble être numérisé. Importez-le dans Word Hunter sur votre PC pour effectuer l’OCR, puis synchronisez-le avec Pocket.",
     "defaultAuthor": "Propre importation",
     "blurb": "Propre importation",
     "coverPasteHint": "Cliquez pour sélectionner ou coller ",

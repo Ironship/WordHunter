@@ -372,6 +372,10 @@ describe("Android Pocket platform", () => {
     assert.match(source, /new FileReader\(\)/);
     assert.match(source, /fetch\(`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);
     assert.match(source, /MAX_POCKET_PDF_BYTES = 32 \* 1024 \* 1024/);
+    assert.match(source, /error\?\.message === POCKET_PDF_SCAN_ERROR/);
+    assert.match(source, /showPocketPdfScanDialog\(\)/);
+    assert.match(source, /dialog\.showModal\(\)/);
+    assert.match(source, /const blurb = androidPdfOverlay[\s\S]*t\("import\.pdfTextLayerBlurb"/);
     assert.match(source, /"\/__book\/image"/);
     assert.match(source, /pdfOcrPages: hasOverlayPages \? pages : undefined/);
     assert.match(source, /pdfOcrEngine: hasOverlayPages \? ocrEngine : ""/);
