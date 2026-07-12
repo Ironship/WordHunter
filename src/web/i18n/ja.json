@@ -134,6 +134,8 @@
     "coverRemove": "表紙を削除",
     "submit": "ライブラリに追加",
     "importedPdfTitle": "インポートしたPDF",
+    "pdfPocketScanTitle": "スキャンPDFにはPC版が必要です",
+    "pdfPocketScanBody": "Word Hunter Pocketでインポートできるのは、選択可能なテキストを含むPDFです。このファイルはスキャン画像のようです。PC版Word HunterでOCRを実行してインポートし、その後Pocketと同期してください。",
     "defaultAuthor": "カスタムインポート",
     "blurb": "カスタムインポート",
     "coverPasteHint": "クリックして選択するか、貼り付けてください ",

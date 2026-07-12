@@ -21,6 +21,7 @@ let youtubeTracks = [];
 let youtubeTracksUrl = "";
 const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
 const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+const POCKET_PDF_SCAN_ERROR = "PDF_TEXT_LAYER_EMPTY";
 let pdfImportRunning = false;
 
 function resetCoverPreview() {
@@ -354,11 +355,53 @@ function confirmWholeBookOcr() {
   });
 }
 
+function showPocketPdfScanDialog() {
+  const dialog = document.getElementById("pocket-pdf-scan-warning") || (() => {
+    const next = document.createElement("dialog");
+    next.id = "pocket-pdf-scan-warning";
+    next.className = "panel ocr-confirm-dialog";
+    next.setAttribute("aria-labelledby", "pocket-pdf-scan-warning-title");
+    next.innerHTML = `
+      <div class="panel-header"><h2 id="pocket-pdf-scan-warning-title"></h2></div>
+      <div class="ocr-confirm-body">
+        <p class="muted-copy"></p>
+        <div class="ocr-confirm-actions">
+          <button class="primary-button" type="button" data-action="close"></button>
+        </div>
+      </div>`;
+    document.body.appendChild(next);
+    return next;
+  })();
+  dialog.querySelector("h2").textContent = t("import.pdfPocketScanTitle");
+  dialog.querySelector("p").textContent = t("import.pdfPocketScanBody");
+  dialog.querySelector('[data-action="close"]').textContent = t("reader.close");
+
+  return new Promise((resolve) => {
+    const finish = (event) => {
+      event?.preventDefault();
+      dialog.close();
+      dialog.removeEventListener("cancel", finish);
+      closeButton.removeEventListener("click", finish);
+      resolve();
+    };
+    const closeButton = dialog.querySelector('[data-action="close"]');
+    dialog.addEventListener("cancel", finish);
+    closeButton.addEventListener("click", finish);
+    dialog.showModal();
+  });
+}
+
 async function importPdfFile(file) {
   if (pdfImportRunning) throw new Error(t("toast.pdfImportBusy"));
   pdfImportRunning = true;
   try {
     return await runPdfImport(file);
+  } catch (error) {
+    if (error?.message === POCKET_PDF_SCAN_ERROR) {
+      await showPocketPdfScanDialog();
+      return false;
+    }
+    throw error;
   } finally {
     pdfImportRunning = false;
   }
@@ -413,8 +456,8 @@ async function runPdfImport(file) {
     });
     if (!response.ok) {
       const message = await response.text().catch(() => "");
-      if (message.trim() === "PDF_TEXT_LAYER_EMPTY") {
-        throw new Error(t("toast.pdfPocketScanRequiresPc"));
+      if (message.trim() === POCKET_PDF_SCAN_ERROR) {
+        throw new Error(POCKET_PDF_SCAN_ERROR);
       }
       throw new Error(message || `HTTP ${response.status}`);
     }
@@ -429,11 +472,13 @@ async function runPdfImport(file) {
       data = await readFileAsBase64(file);
       await renderAndSaveAndroidPdfPages(data, id, pages);
     }
-    const blurb = hasOverlayPages
-      ? imported.truncated
-        ? t("import.pdfOcrBlurbTruncated", { processed: pages.length, total: pageCount, engine: ocrEngine })
-        : t("import.pdfOcrBlurb", { pages: pages.length, engine: ocrEngine })
-      : t("import.pdfTextLayerBlurb", { pages: pageCount });
+    const blurb = androidPdfOverlay
+      ? t("import.pdfTextLayerBlurb", { pages: pageCount })
+      : hasOverlayPages
+        ? imported.truncated
+          ? t("import.pdfOcrBlurbTruncated", { processed: pages.length, total: pageCount, engine: ocrEngine })
+          : t("import.pdfOcrBlurb", { pages: pages.length, engine: ocrEngine })
+        : t("import.pdfTextLayerBlurb", { pages: pageCount });
     const importedId = await importCustomText(imported.title || titleFromImportedFileName(file.name || t("import.importedPdfTitle")), text, {
       id,
       blurb,

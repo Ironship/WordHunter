@@ -134,6 +134,8 @@
     "coverRemove": "Rimuovere la copertura",
     "submit": "Aggiungi alla libreria",
     "importedPdfTitle": "PDF importato",
+    "pdfPocketScanTitle": "I PDF scansionati richiedono la versione PC",
+    "pdfPocketScanBody": "Word Hunter Pocket può importare PDF che contengono già testo selezionabile. Questo file sembra essere una scansione. Importalo in Word Hunter sul PC per eseguire l’OCR, quindi sincronizzalo con Pocket.",
     "defaultAuthor": "Propria importazione",
     "blurb": "Propria importazione",
     "coverPasteHint": "Fai clic per selezionare o incollare ",
