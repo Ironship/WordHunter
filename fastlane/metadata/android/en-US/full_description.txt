@@ -1,0 +1,16 @@
+Word Hunter Pocket is a reader and vocabulary-learning workspace for Android.
+
+Import text, EPUB files, subtitles, and PDFs that contain a text layer. Words
+selected while reading can be saved with their translation and source context,
+then reviewed with flashcards and spaced repetition.
+
+Books, vocabulary, settings, and progress are stored locally. A folder selected
+by the user can be used to synchronize data with Word Hunter on a computer.
+
+No account is required. Optional features such as public-domain book discovery,
+online dictionaries, translation providers, Wikipedia image search, YouTube
+subtitles, and YouGlish pronunciation examples contact third-party services when
+used.
+
+Scanned PDFs require OCR in the desktop version before they are synchronized to
+Pocket.
