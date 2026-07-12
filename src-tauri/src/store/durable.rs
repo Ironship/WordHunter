@@ -135,6 +135,7 @@ pub(crate) fn remove_file_if_exists(path: &Path) -> Result<(), String> {
 pub(crate) fn sync_file(path: &Path) -> Result<(), String> {
     let file = std::fs::OpenOptions::new()
         .read(true)
+        .write(true)
         .open(path)
         .map_err(|e| format!("could not open {} for sync: {e}", path.display()))?;
     file.sync_all()
