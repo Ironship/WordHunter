@@ -21,7 +21,7 @@
     </p>
   </description>
   <launchable type="desktop-id">com.wordhunter.app.desktop</launchable>
-  <url type="homepage">https://github.com/Ironship/WordHunter</url>
+  <url type="homepage">https://ironship.github.io/WordHunter-site/</url>
   <url type="bugtracker">https://github.com/Ironship/WordHunter/issues</url>
   <categories>
     <category>Education</category>

@@ -12,6 +12,25 @@ The project is built around one idea: read real texts, click words you want to
 learn, keep the context, and review them later without losing control of your
 data.
 
+## Installation
+
+The recommended package-manager channels are being added. Until their reviews
+are complete, use the files from the
+[latest GitHub release](https://github.com/Ironship/WordHunter/releases/latest).
+
+- **Windows - WinGet (work in progress):** the package submission is under
+  review. Once accepted, install with
+  `winget install --exact --id Ironship.WordHunter`.
+- **Android - F-Droid (work in progress):** inclusion is being prepared for
+  `com.wordhunter.pocket`. Until it is available, use the APK from GitHub
+  Releases.
+- **Linux - Flatpak:** download `WordHunter.flatpak` from GitHub Releases and
+  run `flatpak install --user ./WordHunter.flatpak`.
+- **Windows - direct download:** choose `Word.Hunter.Setup.exe` or the portable
+  ZIP from GitHub Releases.
+
+Project website: https://ironship.github.io/WordHunter-site/
+
 ## Project Status
 
 Current release: `1.0.4`.
