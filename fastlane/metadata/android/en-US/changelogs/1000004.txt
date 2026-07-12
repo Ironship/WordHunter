@@ -1,0 +1,2 @@
+Scanned PDFs now show a clear message explaining that desktop OCR is required.
+Pocket PDF imports are correctly described as text-layer imports.
