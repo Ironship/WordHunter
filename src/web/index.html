@@ -380,7 +380,7 @@
 
           <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
           <div class="reader-sidebar-wrapper">
-            <aside class="panel word-panel" id="word-panel" aria-live="polite">
+            <aside class="panel word-panel" id="word-panel" aria-live="polite" data-i18n-attr="aria-label=reader.wordPanelEyebrow">
               <div class="empty-state">
                 <p class="eyebrow" data-i18n="reader.wordPanelEyebrow">Słowo</p>
                 <h2 data-i18n="reader.wordPanelHeading">Kliknij słowo w czytniku</h2>
@@ -841,6 +841,11 @@
                 </span>
                 <input id="pref-reader-word-panel-visible" type="checkbox" data-pref="readerWordPanelVisible">
               </label>
+              <div class="word-panel-items-setting">
+                <p id="word-panel-items-heading" class="settings-subheading" data-i18n="settings.wordPanelItemsHeading"></p>
+                <p id="word-panel-items-hint" class="muted-copy" data-i18n="settings.wordPanelItemsHint"></p>
+                <ol id="pref-selected-word-panel-items" class="word-panel-item-list" aria-labelledby="word-panel-items-heading" aria-describedby="word-panel-items-hint"></ol>
+              </div>
               <label class="setting-row">
                 <span data-i18n="settings.wordsPerPage">Słowa na stronę</span>
                 <select id="pref-words-per-page">

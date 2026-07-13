@@ -32,7 +32,7 @@ describe("Android Pocket reader", () => {
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };
-    const { countWordTokens, computePageSlice, computeTotalPages } = await import("../../src/web/js/reader/pagination.js");
+    const { countWordTokens, computePageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
     const tokens = [
       { type: "word", text: "One" },
       { type: "space", text: " " },
@@ -54,13 +54,13 @@ describe("Android Pocket reader", () => {
   });
 
   it("declares Pocket reader touch and word-panel integration hooks", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const globalActions = readFileSync(new URL("../../src/web/js/events/global-actions.js", import.meta.url), "utf8");
-    const readerEvents = readFileSync(new URL("../../src/web/js/views/reader.js", import.meta.url), "utf8");
-    const wordPanel = readFileSync(new URL("../../src/web/js/reader/word-panel.js", import.meta.url), "utf8");
-    const selection = readFileSync(new URL("../../src/web/js/reader/selection.js", import.meta.url), "utf8");
-    const shell = readFileSync(new URL("../../src/web/js/views/shell.js", import.meta.url), "utf8");
-    const navigation = readFileSync(new URL("../../src/web/js/reader/word-navigation.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const globalActions = readFileSync(new URL("../../dist/web/js/events/global-actions.js", import.meta.url), "utf8");
+    const readerEvents = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
+    const wordPanel = readFileSync(new URL("../../dist/web/js/reader/word-panel.js", import.meta.url), "utf8");
+    const selection = readFileSync(new URL("../../dist/web/js/reader/selection.js", import.meta.url), "utf8");
+    const shell = readFileSync(new URL("../../dist/web/js/views/shell.js", import.meta.url), "utf8");
+    const navigation = readFileSync(new URL("../../dist/web/js/reader/word-navigation.js", import.meta.url), "utf8");
 
     assert.doesNotMatch(html, /id="reader-vocab-list"/);
     assert.doesNotMatch(globalActions, /reader-vocab-list/);
@@ -82,7 +82,7 @@ describe("Android Pocket reader", () => {
     assert.match(html, /id="pocket-navigation-toggle"/);
     assert.match(html, /id="reader-pocket-navigation-toggle"/);
     assert.doesNotMatch(html, /id="reader-pocket-panel-toggle"/);
-    assert.match(shell, /if \(!hasSelectedReaderWord\) document\.documentElement\.classList\.remove\("pocket-word-panel-open"\)/);
+    assert.match(shell, /if \(!hasSelectedReaderWord\)\s*document\.documentElement\.classList\.remove\("pocket-word-panel-open"\)/);
     assert.match(readerEvents, /options\.openPanel && document\.documentElement\.classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /openPanel: true/);
     assert.match(navigation, /classList\.remove\("pocket-word-panel-open"\)/);
@@ -95,9 +95,8 @@ describe("Android Pocket reader", () => {
     assert.match(navigation, /currentIndex === -1 \? \(step > 0 \? 0 : tokens\.length - 1\)/);
     assert.match(readerEvents, /changeReaderPage\(dx < 0 \? 1 : -1\)/);
     assert.match(wordPanel, /data-close-word-panel/);
-    assert.match(wordPanel, /class="secondary-button pocket-word-dictionary"/);
-    assert.match(wordPanel, /pocket-word-dictionary[^>]+data-dict-word/);
-    assert.match(wordPanel, /pocket-word-dictionary[^>]+aria-label/);
+    assert.doesNotMatch(wordPanel, /pocket-word-dictionary/);
+    assert.equal((wordPanel.match(/data-dict-word=/g) || []).length, 1);
     assert.match(globalActions, /dataset\.dictWord/);
     assert.match(wordPanel, /function bindInTextReviewControls/);
     assert.match(wordPanel, /refreshInTextReview\(entry\)/);
@@ -107,8 +106,8 @@ describe("Android Pocket reader", () => {
   });
 
   it("defines scoped Pocket reader layout and status declarations", () => {
-    const sharedCss = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const sharedCss = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, '.pocket-mode[data-view="reader"] .main-panel', { overflow: "hidden", "padding-bottom": "0" });
     assertDeclarations(css, '.pocket-mode[data-view="reader"] .topbar', { display: "none" });
@@ -134,16 +133,15 @@ describe("Android Pocket reader", () => {
     assertDeclarations(css, '.pocket-mode[data-view="reader"] .reader-toolbar', { display: "contents" });
     assert.equal(css.includes("#reader-view #reader-vocab-list"), false);
     const openPanel = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper");
-    assert.equal(openPanel.top, "auto");
+    assert.equal(openPanel.top, "calc(var(--pocket-statusbar-safe-top) + 0.5rem)");
     assert.match(openPanel.bottom, /^calc\(4\.6rem/);
-    assert.match(openPanel["max-height"], /^min\(54vh/);
+    assert.equal(openPanel["max-height"], undefined);
     assert.equal(openPanel.overflow, "hidden");
-    assertDeclarations(css, ".pocket-mode .word-panel", { "overflow-y": "auto" });
+    assertDeclarations(css, ".pocket-mode .word-panel", { height: "100%", "max-height": "100%", "overflow-y": "auto" });
     assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "sticky" });
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });
-    assertDeclarations(css, ".pocket-word-dictionary", { display: "none" });
-    assertDeclarations(css, ".pocket-mode .status-options > .pocket-word-dictionary", { display: "inline-flex", "grid-column": "1 / -1", width: "100%" });
-    assertDeclarations(css, ".pocket-mode #word-panel .word-actions > [data-dict-word]", { display: "none" });
+    assert.equal(css.includes("pocket-word-dictionary"), false);
+    assertDeclarations(css, ".pocket-mode #word-panel .word-actions .secondary-button", { flex: "1 1 44px", "min-width": "44px" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-1", { background: "var(--red-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-3", { background: "var(--amber-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-5", { background: "var(--green-soft)" });

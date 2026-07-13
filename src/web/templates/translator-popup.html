@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="{{theme}}" data-color-theme="{{color_theme}}">
+<html lang="{{locale}}" data-theme="{{theme}}" data-color-theme="{{color_theme}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -110,16 +110,16 @@
         <label class="lang-group">
             <span>{{title}}</span>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <img id="flag-from" class="flag-icon" src="{{base_url}}/flags/{{from_code}}.svg" alt="Source language flag" title="Source language flag" onerror="this.style.display='none'">
-                <select id="from-lang" title="Source language" aria-label="Source language">{{from_options}}</select>
+                <img id="flag-from" class="flag-icon" src="{{base_url}}/flags/{{from_code}}.svg" alt="" onerror="this.style.display='none'">
+                <select id="from-lang" title="{{from_label}}" aria-label="{{from_label}}">{{from_options}}</select>
             </div>
         </label>
         <span style="color: var(--popup-muted); font-size: 1.2rem; font-weight: 300; margin-top: 1.1rem;">→</span>
         <label class="lang-group">
             <span>&nbsp;</span>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <img id="flag-to" class="flag-icon" src="{{base_url}}/flags/{{to_code}}.svg" alt="Target language flag" title="Target language flag" onerror="this.style.display='none'">
-                <select id="to-lang" title="Target language" aria-label="Target language">{{to_options}}</select>
+                <img id="flag-to" class="flag-icon" src="{{base_url}}/flags/{{to_code}}.svg" alt="" onerror="this.style.display='none'">
+                <select id="to-lang" title="{{to_label}}" aria-label="{{to_label}}">{{to_options}}</select>
             </div>
         </label>
     </div>

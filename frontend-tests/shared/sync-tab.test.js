@@ -2,9 +2,9 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-const pocketCss = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+const pocketCss = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 const localeCodes = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
 
 function attribute(openingTag, name) {
@@ -103,6 +103,7 @@ function fakeClassList(initial = []) {
 
 function control(extra = {}) {
   const listeners = new Map();
+  const attributes = new Map();
   return {
     checked: false,
     classList: fakeClassList(),
@@ -116,7 +117,8 @@ function control(extra = {}) {
     value: "",
     addEventListener(type, listener) { listeners.set(type, listener); },
     listener(type) { return listeners.get(type); },
-    setAttribute() {},
+    setAttribute(name, value) { attributes.set(name, String(value)); },
+    getAttribute(name) { return attributes.get(name) ?? null; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
     ...extra
@@ -157,10 +159,10 @@ globalThis.document = {
   querySelectorAll() { return []; }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { handleGlobalKeys } = await import("../../src/web/js/events/keyboard/global-keys.js");
-const { bindNavigationEvents } = await import("../../src/web/js/events/navigation.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
+const { bindNavigationEvents } = await import("../../dist/web/js/events/navigation.js");
 
 function setupRenderControls() {
   const syncNav = control({ dataset: { view: "sync" } });
@@ -307,7 +309,7 @@ describe("Sync wizard contracts", () => {
     }
 
     for (const code of localeCodes) {
-      const dict = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${code}.json`, import.meta.url), "utf8"));
+      const dict = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${code}.json`, import.meta.url), "utf8"));
       for (let step = 1; step <= 4; step += 1) {
         assert.doesNotMatch(dict.settings[`syncWizStep${step}Title`], /^\s*\d+\.\s+/, `${code} wizard title ${step}`);
       }
@@ -353,7 +355,7 @@ describe("Sync wizard contracts", () => {
   it("keeps localized Android instructions independent of hidden desktop step 3", () => {
     const hiddenDesktopStepRef = /(?:step|krok\w*|schritt|étape|paso|passaggio|шаг\w*|крок\w*|ステップ)\s*3/i;
     for (const code of localeCodes) {
-      const dict = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${code}.json`, import.meta.url), "utf8"));
+      const dict = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${code}.json`, import.meta.url), "utf8"));
       const pocketWizardCopy = [
         dict.settings.syncWizStep4Desc,
         dict.settings.syncWizAndroid1,

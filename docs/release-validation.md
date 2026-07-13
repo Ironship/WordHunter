@@ -9,7 +9,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 ./scripts/validate.sh
 ```
 
-It checks whitespace, CSS and selected JavaScript boundaries, parses tracked
+It checks whitespace, CSS and the complete TypeScript frontend, parses tracked
 JSON and i18n locales, runs all Node tests,
 checks Flatpak Cargo source and third-party license report drift, verifies Rust
 formatting, runs both Rust test suites, and runs Clippy for both crates. Clippy
@@ -58,15 +58,24 @@ or replace assets on an already-published GitHub Release.
 ## Android Version Code
 
 Android builds derive `versionName` and `versionCode` from
-`src-tauri/tauri.conf.json`. For a Tauri version `MAJOR.MINOR.PATCH`:
+`src-tauri/tauri.conf.json`. Accepted versions are `MAJOR.MINOR.PATCH` and
+`MAJOR.MINOR.PATCH-rc.N`:
 
-- `versionName` is `MAJOR.MINOR.PATCH`.
-- `versionCode` is `MAJOR * 1000000 + MINOR * 1000 + PATCH`.
+- `versionName` keeps the complete version, including `-rc.N`.
+- The base is `MAJOR * 1000000 + MINOR * 1000 + PATCH`.
+- RC `versionCode` is `base * 100 + N`, where `N` is 1 through 98.
+- Stable `versionCode` is `base * 100 + 99`, so the final build supersedes
+  every release candidate for the same version.
 
 Keep `MINOR` and `PATCH` below 1000. The build rejects values outside Android's
 positive signed 32-bit application-version range. Do not use SemVer build
 metadata for releases because Tauri's direct Android build does not map it to a
 distinct version code.
+
+Prerelease APK/AAB files are test artifacts and must not be submitted to a
+stable store track. The GitHub update checker uses the stable-only
+`releases/latest` endpoint, so publishing a GitHub prerelease does not prompt
+users running a stable Word Hunter build.
 
 The nightly/release validation AAB is unsigned unless `WH_ANDROID_*` signing
 variables are supplied to the Windows recipe. Google Play publication still

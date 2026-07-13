@@ -101,7 +101,7 @@ async function loadAppHarness() {
   const noOp = () => {};
   const asyncNoOp = async () => {};
 
-  await evaluateWithMocks("../../src/web/app.js", {
+  await evaluateWithMocks("../../dist/web/app.js", {
     "./js/dom.js": { cacheElements: noOp, els: {} },
     "./js/toast.js": { showToast: noOp },
     "./js/events.js": { bindEvents: noOp },
@@ -207,7 +207,7 @@ describe("persistence lifecycle", () => {
         this.detail = init?.detail;
       }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -253,7 +253,7 @@ describe("persistence lifecycle", () => {
       syncHealth: null,
       syncthingStatus: null
     };
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -285,7 +285,7 @@ describe("persistence lifecycle", () => {
       preferences: { theme: "familiar" },
       profiles: {}
     };
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -317,7 +317,7 @@ describe("persistence lifecycle", () => {
     class CustomEvent {
       constructor(type, init) { this.type = type; this.detail = init?.detail; }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -356,7 +356,7 @@ describe("persistence lifecycle", () => {
     class CustomEvent {
       constructor(type, init) { this.type = type; this.detail = init?.detail; }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -389,11 +389,11 @@ describe("persistence lifecycle", () => {
   });
 
   it("keeps sync UI, endpoint, and event contracts", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../src/web/app.js", import.meta.url), "utf8");
-    const autosave = readFileSync(new URL("../../src/web/js/state/autosave.js", import.meta.url), "utf8");
-    const api = readFileSync(new URL("../../src/web/js/api.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
+    const autosave = readFileSync(new URL("../../dist/web/js/state/autosave.js", import.meta.url), "utf8");
+    const api = readFileSync(new URL("../../dist/web/js/api.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
 
     for (const id of [
@@ -434,9 +434,9 @@ describe("persistence lifecycle", () => {
   });
 
   it("keeps startup boot CSS scoped and removes the boot state after initialization", async () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../src/web/app.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
     assert.ok(html.includes('<meta name="theme-color" content="#0067a8">'));
@@ -508,7 +508,7 @@ describe("persistence lifecycle", () => {
       }
     }
     const noOp = () => {};
-    const actions = await evaluateWithMocks("../../src/web/js/sync-actions.js", {
+    const actions = await evaluateWithMocks("../../dist/web/js/sync-actions.js", {
       "./state.js": {
         applyBridgeSnapshotToState: noOp,
         state,
@@ -593,7 +593,7 @@ describe("persistence lifecycle", () => {
   });
 
   it("ships sync safety copy in every locale", () => {
-    const localeDir = new URL("../../src/web/i18n/", import.meta.url);
+    const localeDir = new URL("../../dist/web/i18n/", import.meta.url);
     const required = [
       ["settings", "syncStatusDefault"],
       ["settings", "syncStatusReady"],

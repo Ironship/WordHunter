@@ -6,7 +6,7 @@ import vm from "node:vm";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
-const webRoot = path.join(repoRoot, "src", "web");
+const webRoot = path.join(repoRoot, "dist", "web");
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

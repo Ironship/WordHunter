@@ -4,6 +4,10 @@ use super::*;
 fn normalizes_release_tags() {
     assert_eq!(normalize_release_version("v0.2.7.6"), "0.2.7.6");
     assert_eq!(normalize_release_version("release-1.2.3"), "1.2.3");
+    assert_eq!(
+        normalize_release_version("WordHunter1.0.5-rc.1"),
+        "1.0.5-rc.1"
+    );
     assert_eq!(normalize_release_version("nightly"), "nightly");
 }
 
@@ -33,6 +37,16 @@ fn compares_versions() {
         !is_newer("0.2.99", "0.3"),
         "longer base with smaller trailing must lose to shorter head"
     );
+    assert!(is_newer("1.0.5-rc.2", "1.0.5-rc.1"));
+    assert!(is_newer("1.0.5", "1.0.5-rc.2"));
+    assert!(!is_newer("1.0.5-rc.1", "1.0.5"));
+    assert!(!is_newer("1.0.5-rc.1", "1.0.5-rc.1"));
+}
+
+#[test]
+fn checks_only_the_latest_stable_github_release() {
+    assert!(LATEST_STABLE_RELEASE_URL.ends_with("/releases/latest"));
+    assert!(!LATEST_STABLE_RELEASE_URL.contains("per_page"));
 }
 
 #[test]

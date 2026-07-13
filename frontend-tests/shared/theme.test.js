@@ -15,11 +15,11 @@ const {
   nextTheme,
   normalizeTheme,
   resolveTheme
-} = await import("../../src/web/js/theme.js");
-const { loadState, normalizeState } = await import("../../src/web/js/state/normalize.js");
-const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-const { STATE_SCHEMA_VERSION } = await import("../../src/web/js/constants.js");
-const { themeIcon } = await import("../../src/web/js/icons.js");
+} = await import("../../dist/web/js/theme.js");
+const { loadState, normalizeState } = await import("../../dist/web/js/state/normalize.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { STATE_SCHEMA_VERSION } = await import("../../dist/web/js/constants.js");
+const { themeIcon } = await import("../../dist/web/js/icons.js");
 
 function themeBlock(styles, selector) {
   const start = styles.indexOf(`${selector} {`);
@@ -143,7 +143,7 @@ describe("named themes", () => {
   });
 
   it("defines complete, contrasting light and dark named palettes", () => {
-    const styles = readFileSync(new URL("../../src/web/theme.css", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
     const selectors = [
       ':root[data-color-theme="familiar"]',
       ':root[data-color-theme="alternative-familiar"]',
@@ -164,8 +164,8 @@ describe("named themes", () => {
   });
 
   it("wires the Settings selector to all themes and themed control colors", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     assert.match(html, /<link rel="stylesheet" href="theme\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="styles\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="platforms\/android-pocket\.css[^>]*>/);
@@ -185,10 +185,10 @@ describe("named themes", () => {
   });
 
   it("keeps theme-sensitive component overrides visible and palette-driven", () => {
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const pocket = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    const charts = readFileSync(new URL("../../src/web/js/graphs/charts.js", import.meta.url), "utf8");
-    const helpers = readFileSync(new URL("../../src/web/js/graphs/helpers.js", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const pocket = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const charts = readFileSync(new URL("../../dist/web/js/graphs/charts.js", import.meta.url), "utf8");
+    const helpers = readFileSync(new URL("../../dist/web/js/graphs/helpers.js", import.meta.url), "utf8");
     assert.match(styles, /\.nav-item\.active:not\(\.nav-item-locked\)[^}]*var\(--sidebar-active-accent\)/s);
     assert.match(styles, /\.book-card\.archived\s*\{[^}]*border-style:\s*dashed/s);
     assert.doesNotMatch(themeBlock(styles, ".book-card.archived"), /opacity/);
@@ -199,8 +199,8 @@ describe("named themes", () => {
   });
 
   it("propagates named themes to the offline translator with contrasting button ink", () => {
-    const sharedEvents = readFileSync(new URL("../../src/web/js/events/shared.js", import.meta.url), "utf8");
-    const popup = readFileSync(new URL("../../src/web/templates/translator-popup.html", import.meta.url), "utf8");
+    const sharedEvents = readFileSync(new URL("../../dist/web/js/events/shared.js", import.meta.url), "utf8");
+    const popup = readFileSync(new URL("../../dist/web/templates/translator-popup.html", import.meta.url), "utf8");
     assert.match(sharedEvents, /family=\$\{theme\.family\}/);
     assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
     assert.match(popup, /<link rel="stylesheet" href="\/theme\.css[^>]*>/);

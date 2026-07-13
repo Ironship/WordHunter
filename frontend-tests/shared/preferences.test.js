@@ -34,9 +34,10 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, normalizeState, replaceState, state } = await import("../../src/web/js/state.js");
-const { syncSettingsControls } = await import("../../src/web/js/preferences.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { syncSettingsControls } = await import("../../dist/web/js/preferences.js");
+const { renderWordPanel } = await import("../../dist/web/js/reader/word-panel.js");
 
 function control() {
   return {
@@ -46,6 +47,7 @@ function control() {
     textContent: "",
     value: "",
     setAttribute() {},
+    querySelector() { return null; },
     querySelectorAll() { return []; }
   };
 }
@@ -67,6 +69,7 @@ function setupSettingsControls() {
     "prefCardStats",
     "prefCardStatsMode",
     "prefCardStatsModeRow",
+    "prefSelectedWordPanelItems",
     "prefStatusSoundsEnabled",
     "prefStatusSoundVolume",
     "prefStatusSoundVolumeLabel",
@@ -130,6 +133,107 @@ describe("preferences settings summary", () => {
     assert.equal(raw.preferences.cardStatsMode, "percentages");
     raw.preferences.cardStatsMode = "invalid";
     assert.equal(normalizeState(raw).preferences.cardStatsMode, "percentages");
+  });
+
+  it("uses the issue #57 selected-word panel order and clones it per default state", () => {
+    const first = createDefaultState();
+    const second = createDefaultState();
+    assert.deepEqual(first.preferences.selectedWordPanelItems, [
+      { id: "status", visible: true },
+      { id: "dictionary", visible: true },
+      { id: "speech", visible: true },
+      { id: "youglish", visible: true },
+      { id: "remove", visible: true },
+      { id: "suggestion", visible: true },
+      { id: "translation", visible: true },
+      { id: "note", visible: true },
+      { id: "image", visible: true },
+      { id: "context", visible: true },
+      { id: "copy", visible: false },
+      { id: "edit", visible: false }
+    ]);
+    assert.notStrictEqual(first.preferences.selectedWordPanelItems, second.preferences.selectedWordPanelItems);
+    assert.notStrictEqual(first.preferences.selectedWordPanelItems[0], second.preferences.selectedWordPanelItems[0]);
+  });
+
+  it("normalizes selected-word panel items without breaking old preferences", () => {
+    const defaults = createDefaultState();
+    const oldPreferences = { ...defaults.preferences };
+    delete oldPreferences.selectedWordPanelItems;
+    const restoredOldState = normalizeState({ ...defaults, preferences: oldPreferences });
+    assert.deepEqual(restoredOldState.preferences.selectedWordPanelItems, createDefaultState().preferences.selectedWordPanelItems);
+
+    const restored = normalizeState({
+      ...createDefaultState(),
+      preferences: {
+        ...createDefaultState().preferences,
+        selectedWordPanelItems: [
+          { id: "note", visible: false },
+          { id: "unknown", visible: false },
+          null,
+          { id: "status", visible: "false" },
+          { id: "note", visible: true },
+          "dictionary"
+        ]
+      }
+    });
+    assert.deepEqual(restored.preferences.selectedWordPanelItems.slice(0, 2), [
+      { id: "note", visible: false },
+      { id: "status", visible: true }
+    ]);
+    assert.equal(restored.preferences.selectedWordPanelItems.length, 12);
+    assert.deepEqual(new Set(restored.preferences.selectedWordPanelItems.map((item) => item.id)).size, 12);
+
+    const malformed = createDefaultState();
+    malformed.preferences.selectedWordPanelItems = { id: "note", visible: false };
+    const normalizedMalformed = normalizeState(malformed).preferences.selectedWordPanelItems;
+    assert.deepEqual(normalizedMalformed, createDefaultState().preferences.selectedWordPanelItems);
+    assert.notStrictEqual(normalizedMalformed, createDefaultState().preferences.selectedWordPanelItems);
+  });
+
+  it("renders ordered visibility and movement controls with disabled endpoints", () => {
+    resetState();
+    syncSettingsControls();
+    const html = els.prefSelectedWordPanelItems.innerHTML;
+    assert.ok(html.indexOf('data-word-panel-setting-item="status"') < html.indexOf('data-word-panel-setting-item="dictionary"'));
+    assert.match(html, /data-word-panel-item-visible="copy"[^>]*aria-label=/);
+    assert.match(html, /data-word-panel-item-move="status" data-direction="up" disabled/);
+    assert.match(html, /data-word-panel-item-move="edit" data-direction="down" disabled/);
+  });
+
+  it("renders configured panel items in order without hidden editable controls", () => {
+    resetState();
+    els.wordPanel = control();
+    state.selectedWord = "haus";
+    state.selectedWordIndex = 4;
+    state.readerSelectionRange = null;
+    state.vocab.haus = { status: "known", translation: "house", note: "noun", examples: [] };
+    state.preferences.selectedWordPanelItems = [
+      { id: "note", visible: true },
+      { id: "dictionary", visible: true },
+      { id: "speech", visible: true },
+      { id: "translation", visible: false },
+      { id: "status", visible: false },
+      { id: "youglish", visible: false },
+      { id: "remove", visible: false },
+      { id: "suggestion", visible: false },
+      { id: "image", visible: false },
+      { id: "context", visible: false },
+      { id: "copy", visible: false },
+      { id: "edit", visible: false }
+    ];
+
+    renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
+    const html = els.wordPanel.innerHTML;
+    assert.ok(html.indexOf('data-word-panel-item="note"') < html.indexOf('data-word-panel-item="dictionary"'));
+    assert.ok(html.indexOf('data-word-panel-item="dictionary"') < html.indexOf('data-word-panel-item="speech"'));
+    assert.equal((html.match(/class="word-actions"/g) || []).length, 1);
+    assert.doesNotMatch(html, /data-word-field="translation"/);
+    assert.doesNotMatch(html, /data-word-panel-item="status"/);
+
+    state.preferences.selectedWordPanelItems[0].visible = false;
+    renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
+    assert.doesNotMatch(els.wordPanel.innerHTML, /data-word-field="note"/);
   });
 
   it("renders actionable sync conflict details when the backend exposes them", () => {

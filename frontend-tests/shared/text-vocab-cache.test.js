@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent() {} };
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 
-const { state } = await import("../../src/web/js/state.js");
-const { invalidateBookId } = await import("../../src/web/js/vocab-index-client.js");
-const { loadTextVocabularyIndex } = await import("../../src/web/js/text-vocab.js");
+const { state } = await import("../../dist/web/js/state.js");
+const { invalidateBookId } = await import("../../dist/web/js/vocab-index-client.js");
+const { loadTextVocabularyIndex } = await import("../../dist/web/js/text-vocab.js");
 
 describe("text vocabulary cache", () => {
   it("retries with a fresh index when the active request is invalidated", async () => {

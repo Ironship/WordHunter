@@ -5,7 +5,7 @@ globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.CustomEvent = class CustomEvent {};
 
-const { state, switchLearningLanguage } = await import("../../src/web/js/state.js");
+const { state, switchLearningLanguage } = await import("../../dist/web/js/state.js");
 
 describe("learning language switch", () => {
   it("fills missing profile collections before activating the profile", () => {

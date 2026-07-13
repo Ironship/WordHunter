@@ -33,7 +33,13 @@ Project website: https://ironship.github.io/WordHunter-site/
 
 ## Project Status
 
-Current release: `1.0.4`.
+Current stable release: `1.0.4`. Current test prerelease: `1.0.5-rc.1`.
+
+> [!CAUTION]
+> **Version 1.0.5-rc.1 is intended only for testing and may contain bugs.**
+> Back up your Word Hunter data before installing it. GitHub prereleases are
+> excluded from the in-app stable update notification and are not distributed
+> through stable package-manager channels.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
@@ -61,6 +67,7 @@ and refreshed packaging and platform validation.
   library imports.
 - Vocabulary states, spaced-repetition review, TTS, keyboard shortcuts, and
   reading progress.
+- Configurable selected-word panels with per-item visibility and ordering.
 - PDF reading with OCR/text-layer support, page-background overlays, and a clean
   text mode for focused reading.
 - Translation and dictionary tools with language-aware handling for modern and
@@ -240,7 +247,7 @@ macOS and iOS are not active targets right now.
 
 - Rust `1.88` or newer with Cargo.
 - Node.js `22` or newer for frontend and packaging validation tests.
-- npm dependencies installed with `npm ci` for read-only CSS and JavaScript checks.
+- npm dependencies installed with `npm ci` for CSS checks and the TypeScript build.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
@@ -261,8 +268,8 @@ Then run the full repository gate:
 ./scripts/validate.sh
 ```
 
-It runs `git diff --check`, JSON/i18n parsing, Stylelint, no-emit JavaScript
-type checks, frontend tests, Flatpak
+It runs `git diff --check`, JSON/i18n parsing, Stylelint, a deterministic
+TypeScript frontend build and type check, frontend tests against `dist/web`, Flatpak
 `cargo-sources.json` drift detection, Rust formatting, Rust tests for the main
 Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 
@@ -279,12 +286,13 @@ Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 Rust backend tests can also be run directly:
 
 ```powershell
+npm run build:frontend
 cargo test --manifest-path src-tauri\Cargo.toml
 ```
 
 Android Pocket release builds derive `versionName` and monotonic `versionCode`
-from the `MAJOR.MINOR.PATCH` value in `src-tauri/tauri.conf.json`. Version
-`1.0.0` becomes `versionName 1.0.0` and `versionCode 1000000`; see
+from stable or `-rc.N` SemVer values in `src-tauri/tauri.conf.json`. Stable
+builds sort after every release candidate for the same version; see
 `docs/release-validation.md` before changing the release version scheme.
 
 ### Flatpak
@@ -324,6 +332,7 @@ generated output, not source.
 ## Repository Layout
 
 - `src/web/` - shared frontend application code.
+- `dist/web/` - generated, untracked browser JavaScript and copied web assets.
 - `src/web/js/reader/` - focused reader session, rendering, word navigation, PDF
   page text, and OCR correction modules.
 - `src/web/platforms/` - platform-specific frontend styling and behavior.
@@ -337,7 +346,7 @@ generated output, not source.
 
 ## Technology and Third-Party Licenses
 
-Word Hunter uses a Rust backend and a shared HTML/CSS/JavaScript interface in a
+Word Hunter uses a Rust backend and a shared HTML/CSS/TypeScript interface in a
 Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
 Android System WebView. Desktop translation and OCR can use CTranslate2,
 SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
@@ -353,7 +362,7 @@ implementation inspired by published SM-2 and FSRS concepts, not the official
 FSRS library or the proprietary SuperMemo application.
 
 The shared WebView UI is an explicit architecture choice for feature and
-accessibility parity across desktop and Pocket. JavaScript owns DOM rendering and
+accessibility parity across desktop and Pocket. TypeScript owns DOM rendering and
 latency-sensitive interaction state. Rust owns storage merge/recovery, parsing,
 local HTTP validation, and desktop OCR, while the Android adapter owns SAF and
 platform PDF boundaries. CPU-heavy frontend statistics use workers and explicit

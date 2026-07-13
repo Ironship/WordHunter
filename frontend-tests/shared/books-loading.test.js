@@ -17,11 +17,11 @@ globalThis.document = {
   addEventListener() {}
 };
 
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../src/web/js/books.js");
-const { els } = await import("../../src/web/js/dom.js");
-const { openBook } = await import("../../src/web/js/book-actions.js");
-const { setView } = await import("../../src/web/js/render.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../dist/web/js/books.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { openBook } = await import("../../dist/web/js/book-actions.js");
+const { setView } = await import("../../dist/web/js/render.js");
 
 Object.assign(els, {
   navItems: [],
@@ -35,7 +35,7 @@ Object.assign(els, {
 
 describe("built-in starter catalog", () => {
   it("ships one original text and cover with at least 1,000 word segments per language", () => {
-    const catalog = JSON.parse(readFileSync(new URL("../../src/web/books/index.json", import.meta.url), "utf8"));
+    const catalog = JSON.parse(readFileSync(new URL("../../dist/web/books/index.json", import.meta.url), "utf8"));
     const languages = ["en", "de", "es", "fr", "it", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
 
     assert.equal(catalog.length, languages.length);
@@ -51,8 +51,8 @@ describe("built-in starter catalog", () => {
       assert.equal(book.textUrl, undefined);
       assert.equal(book.coverPath, `books/starter/${book.lang}-cover.svg`);
 
-      const text = readFileSync(new URL(`../../src/web/${book.localPath}`, import.meta.url), "utf8");
-      const cover = readFileSync(new URL(`../../src/web/${book.coverPath}`, import.meta.url), "utf8");
+      const text = readFileSync(new URL(`../../dist/web/${book.localPath}`, import.meta.url), "utf8");
+      const cover = readFileSync(new URL(`../../dist/web/${book.coverPath}`, import.meta.url), "utf8");
       const words = [...new Intl.Segmenter(book.lang, { granularity: "word" }).segment(text)]
         .filter((part) => part.isWordLike)
         .map((part) => part.segment.toLocaleLowerCase(book.lang));

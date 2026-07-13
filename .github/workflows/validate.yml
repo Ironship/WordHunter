@@ -63,7 +63,7 @@ jobs:
       - name: Install pinned cargo-about
         run: cargo install cargo-about --version 0.9.1 --locked --features cli
 
-      - name: Validate
+      - name: Validate repository (build frontend before tests)
         run: ./scripts/validate.sh
 
   android-debug:
@@ -103,7 +103,7 @@ jobs:
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
 
-      - name: Build Android debug APK through the release recipe
+      - name: Build frontend and Android debug APK through the release recipe
         shell: cmd
         run: scripts\build.bat apk
 

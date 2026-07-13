@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const { beginElementBusy, setElementBusy, withElementBusy } = await import("../../src/web/js/loading.js");
+const { beginElementBusy, setElementBusy, withElementBusy } = await import("../../dist/web/js/loading.js");
 
 function fakeElement({ disabled = false } = {}) {
   const classes = new Set();
@@ -81,9 +81,9 @@ describe("loading state", () => {
   });
 
   it("keeps long-running status visible and respects reduced motion", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const bookImport = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const bookImport = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     const reducedMotion = styles.slice(styles.indexOf("@media (prefers-reduced-motion: reduce)"));
 
     for (const id of ["translator-status", "discover-status", "sync-status"]) {

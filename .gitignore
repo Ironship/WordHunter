@@ -19,6 +19,7 @@ node_modules/
 outputs/
 output/
 dist/
+frontend-dist/
 
 # Temporary local helper scripts / experiments
 scratch/

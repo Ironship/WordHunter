@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-const { searchMediaWiki } = await import("../../src/web/js/discover/mediawiki.js");
+const { searchMediaWiki } = await import("../../dist/web/js/discover/mediawiki.js");
 
 describe("MediaWiki discovery sources", () => {
   it("routes Ancient Greek Wikisource searches through Greek Wikisource", async () => {

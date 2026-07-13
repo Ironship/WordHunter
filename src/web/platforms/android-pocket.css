@@ -474,6 +474,25 @@ html.pocket-mode {
   overflow-wrap: anywhere;
 }
 
+.pocket-mode .word-panel-item-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.pocket-mode .word-panel-item-visibility {
+  min-height: 44px;
+}
+
+.pocket-mode .word-panel-item-visibility input {
+  height: 20px;
+  min-height: 20px;
+}
+
+.pocket-mode .word-panel-item-order-actions .secondary-button {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
 .pocket-mode .data-actions {
   padding: 0;
 }
@@ -962,12 +981,11 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
   z-index: 60;
-  top: auto;
+  top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
   left: 0.75rem;
   right: 0.75rem;
   bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
   display: block;
-  max-height: min(54vh, calc(100dvh - var(--pocket-statusbar-safe-top) - 7rem));
   overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
@@ -980,7 +998,9 @@ html.pocket-mode {
 }
 
 .pocket-mode .word-panel {
-  max-height: inherit;
+  box-sizing: border-box;
+  height: 100%;
+  max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1001,18 +1021,16 @@ html.pocket-mode {
   flex: 0 0 auto;
 }
 
-.pocket-word-dictionary {
-  display: none;
+.pocket-mode #word-panel .word-actions .secondary-button {
+  flex: 1 1 44px;
+  min-width: 44px;
 }
 
-.pocket-mode .status-options > .pocket-word-dictionary {
-  display: inline-flex;
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-.pocket-mode #word-panel .word-actions > [data-dict-word] {
-  display: none;
+.pocket-mode #word-panel .word-image-remove {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
 }
 
 .pocket-mode .word-form {

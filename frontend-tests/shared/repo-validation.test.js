@@ -1,9 +1,16 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { parseSimpleYaml } from "../../scripts/inspect-artifact.mjs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+
+function filesBelow(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    return entry.isDirectory() ? filesBelow(child) : [child];
+  });
+}
 
 function activeShellLines(source) {
   const lines = [];
@@ -91,11 +98,11 @@ describe("repository validation wiring", () => {
       stepByName(validate, "Install pinned cargo-about").run,
       "cargo install cargo-about --version 0.9.1 --locked --features cli",
     );
-    assert.equal(stepByName(validate, "Validate").run, "./scripts/validate.sh");
+    assert.equal(stepByName(validate, "Validate repository (build frontend before tests)").run, "./scripts/validate.sh");
 
     assert.equal(android["runs-on"], "windows-2022");
     assert.equal(stepByName(android, "Set up Rust").with.targets, "aarch64-linux-android");
-    assert.equal(stepByName(android, "Build Android debug APK through the release recipe").run, "scripts\\build.bat apk");
+    assert.equal(stepByName(android, "Build frontend and Android debug APK through the release recipe").run, "scripts\\build.bat apk");
     assert.match(stepByName(android, "Inspect Android debug APK").run, /inspect-artifact\.mjs android/);
     const prCommands = validate.steps.map((step) => step.run ?? "").join("\n");
     assert.doesNotMatch(prCommands, /build-flatpak|build\.bat all|tauri build/);
@@ -115,15 +122,15 @@ describe("repository validation wiring", () => {
       stepByName(frontendValidation, "Install frontend validation dependencies").run,
       "npm ci --ignore-scripts --no-audit --no-fund",
     );
-    assert.equal(stepByName(frontendValidation, "Validate frontend sources").run, "npm run check:frontend");
+    assert.equal(stepByName(frontendValidation, "Build and validate frontend sources").run, "npm run check:frontend");
     assert.match(stepByName(frontendValidation, "Validate frontend behavior and repository data").run, /validate-json-i18n[\s\S]*--test/);
-    assert.match(stepByName(workflow.jobs.android, "Build APK and AAB through the release recipe").run, /build\.bat apk aab/);
+    assert.match(stepByName(workflow.jobs.android, "Build frontend, APK, and AAB through the release recipe").run, /build\.bat apk aab/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.apk --abi arm64-v8a/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.aab --abi arm64-v8a/);
-    assert.match(stepByName(workflow.jobs.windows, "Build Windows release packages").run, /build\.bat all/);
+    assert.match(stepByName(workflow.jobs.windows, "Build frontend and Windows release packages").run, /build\.bat all/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-portable/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-nsis/);
-    assert.equal(stepByName(workflow.jobs.flatpak, "Build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
+    assert.equal(stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
     for (const name of ["android", "windows", "flatpak"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
@@ -133,10 +140,10 @@ describe("repository validation wiring", () => {
     }
   });
 
-  it("keeps frontend validation pinned, read-only, and outside shipped assets", () => {
+  it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {
     const packageJson = JSON.parse(read("../../package.json"));
     const lockfile = JSON.parse(read("../../package-lock.json"));
-    const tsconfig = JSON.parse(read("../../tsconfig.check-js.json"));
+    const tsconfig = JSON.parse(read("../../tsconfig.json"));
     const stylelint = read("../../stylelint.config.mjs");
     const gitignore = read("../../.gitignore");
     const flatpak = parseSimpleYaml(read("../../com.wordhunter.app.yml"));
@@ -146,20 +153,45 @@ describe("repository validation wiring", () => {
     assert.deepEqual(lockfile.packages[""].devDependencies, packageJson.devDependencies);
     assert.equal(lockfile.lockfileVersion, 3);
     for (const version of Object.values(packageJson.devDependencies)) assert.match(version, /^\d+\.\d+\.\d+$/);
-    assert.equal(tsconfig.compilerOptions.noEmit, true);
-    assert.equal(tsconfig.compilerOptions.checkJs, false);
-    assert.equal(packageJson.scripts["check:js"], "tsc --project tsconfig.check-js.json");
+    assert.equal(tsconfig.compilerOptions.rootDir, "src/web");
+    assert.equal(tsconfig.compilerOptions.outDir, "dist/web");
+    assert.equal(tsconfig.compilerOptions.noEmitOnError, true);
+    assert.equal(tsconfig.compilerOptions.strict, true);
+    assert.equal(tsconfig.compilerOptions.noImplicitAny, true);
+    assert.equal(tsconfig.compilerOptions.strictNullChecks, false);
+    assert.ok(tsconfig.include.includes("src/web/**/*.ts"));
+    assert.equal(packageJson.scripts["build:frontend"], "node scripts/build-frontend.mjs");
+    assert.equal(packageJson.scripts["check:ts"], "tsc --project tsconfig.json --noEmit");
+    for (const suite of ["frontend", "shared", "desktop", "android"]) {
+      const command = packageJson.scripts[`test:${suite}`];
+      assert.match(command, /^npm run build:frontend && node --experimental-vm-modules --test /);
+    }
+    assert.match(packageJson.scripts["test:frontend"], /frontend-tests\/shared\/\*\.test\.js/);
+    assert.match(packageJson.scripts["test:frontend"], /frontend-tests\/desktop\/\*\.test\.js/);
+    assert.match(packageJson.scripts["test:frontend"], /frontend-tests\/android\/\*\.test\.js/);
     assert.doesNotMatch(packageJson.scripts["check:frontend"], /--fix|postcss|sass/);
     assert.doesNotMatch(packageJson.scripts["lint:css"], /--fix|--cache|--output-file/);
     assert.match(stylelint, /postcss-html/);
     assert.match(gitignore, /^node_modules\/$/m);
     const source = flatpak.modules[0].sources.find((item) => item.type === "dir");
     assert.ok(source.skip.includes("node_modules"));
-    for (const file of tsconfig.files.filter((value) => value.endsWith(".js"))) {
-      const sourceText = read(`../../${file}`);
-      assert.match(sourceText, /^\/\/ @ts-check/);
-      assert.doesNotMatch(sourceText, /@ts-(?:ignore|nocheck)/);
-    }
+  });
+
+  it("ships only compiled JavaScript and rejects stale native frontend builds", () => {
+    const sourceFiles = filesBelow(new URL("../../src/web/", import.meta.url));
+    const outputFiles = filesBelow(new URL("../../dist/web/", import.meta.url));
+    const buildScript = read("../../scripts/build-frontend.mjs");
+    const rustBuild = read("../../src-tauri/build.rs");
+
+    assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".ts")).length, 87);
+    assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".js")).length, 0);
+    assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".js")).length, 87);
+    assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".ts")).length, 0);
+    assert.match(read("../../dist/web/.wordhunter-build.sha256"), /^[0-9a-f]{64}\s*$/);
+    assert.match(buildScript, /\.web-build-\$\{process\.pid\}/);
+    assert.match(buildScript, /await rename\(temporaryDir, outputDir\)/);
+    assert.match(rustBuild, /compiled frontend is stale/);
+    assert.match(rustBuild, /frontend_source_hash/);
   });
 
   it("keeps reviewable docs tracked while generated runtime payloads stay ignored", () => {

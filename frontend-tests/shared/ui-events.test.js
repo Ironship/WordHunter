@@ -29,8 +29,8 @@ globalThis.document = {
   },
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { showToast } = await import("../../src/web/js/toast.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { showToast } = await import("../../dist/web/js/toast.js");
 
 describe("shared UI event behavior", () => {
   it("updates toast text without replacing its close control", () => {
@@ -65,8 +65,8 @@ describe("shared UI event behavior", () => {
       }
     };
 
-    const { state } = await import("../../src/web/js/state.js");
-    const { handleGlobalChange } = await import("../../src/web/js/events/global-actions.js");
+    const { state } = await import("../../dist/web/js/state.js");
+    const { handleGlobalChange } = await import("../../dist/web/js/events/global-actions.js");
     state.currentView = "library";
     delete state.vocab.example;
     const input = {
@@ -93,7 +93,7 @@ describe("shared UI event behavior", () => {
     };
 
     try {
-      const { requestVocabExport } = await import("../../src/web/js/sync-actions.js");
+      const { requestVocabExport } = await import("../../dist/web/js/sync-actions.js");
       const result = await requestVocabExport({ op: "export" });
       assert.equal(request.url, "/__vocab");
       assert.equal(request.options.method, "POST");
@@ -109,7 +109,7 @@ describe("shared UI event behavior", () => {
     const requests = [];
     window.__qtBridge = true;
     delete window.WordHunterAndroid;
-    const { state } = await import("../../src/web/js/state.js");
+    const { state } = await import("../../dist/web/js/state.js");
     state.syncDirectory = "/sync";
     globalThis.fetch = async (url) => {
       requests.push(url);
@@ -117,7 +117,7 @@ describe("shared UI event behavior", () => {
     };
 
     try {
-      const { syncNow } = await import("../../src/web/js/events/settings.js");
+      const { syncNow } = await import("../../dist/web/js/events/settings.js");
       assert.equal(await syncNow({ background: true, saveFirst: false }), true);
       assert.deepEqual(requests, ["/__store/sync_now"]);
     } finally {

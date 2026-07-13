@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { classifyTokenOccurrences, findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
+import { classifyTokenOccurrences, findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../dist/web/js/tokenizer_v2.js";
 
 describe("token stats", () => {
   it("counts each token occurrence by vocabulary status", () => {

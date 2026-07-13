@@ -6,14 +6,14 @@ globalThis.window = { dispatchEvent: () => {}, __qtBridge: false };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.document = { addEventListener: () => {}, getElementById: () => null };
 
-const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING_COLORS } = await import("../../src/web/js/reader-colors.js");
-const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../src/web/js/sm2.js");
-const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-const { state } = await import("../../src/web/js/state.js");
-const { applyReviewGrade, renderReview } = await import("../../src/web/js/vocabulary/review-card.js");
-const { handleReaderKeys } = await import("../../src/web/js/events/keyboard/reader-keys.js");
-const { els } = await import("../../src/web/js/dom.js");
+const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING_COLORS } = await import("../../dist/web/js/reader-colors.js");
+const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../dist/web/js/sm2.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
+const { state } = await import("../../dist/web/js/state.js");
+const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
+const { els } = await import("../../dist/web/js/dom.js");
 
 describe("learning colors", () => {
   it("enables learning colors, in-text reviews, and learning-only flashcards by default", () => {
@@ -156,7 +156,7 @@ describe("in-text SRS grading", () => {
 describe("new interface copy", () => {
   for (const locale of ["en", "pl", "de", "es", "fr", "it", "ja", "ru", "uk"]) {
     it(`${locale} has every in-text review label`, () => {
-      const data = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${locale}.json`, import.meta.url)));
+      const data = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${locale}.json`, import.meta.url)));
       for (const key of ["dynamicLearningColors", "dynamicLearningColorsHint", "learningColorPalette", "learningColorLevel", "inTextReview", "inTextReviewHint"]) {
         assert.equal(typeof data.settings[key], "string", `${locale}.settings.${key}`);
       }
@@ -168,8 +168,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.4/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.4/, `${locale}.help.version`);
+      assert.match(data.help.whatsNew, /1\.0\.5-rc\.1/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.5-rc\.1/, `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });
