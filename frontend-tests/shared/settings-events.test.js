@@ -54,16 +54,16 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const {
   bookTexts,
   clearBookTextCache,
   isBookTextCacheStale,
   loadCustomTextContent
-} = await import("../../src/web/js/books.js");
-const { applyBridgeSnapshot } = await import("../../src/web/js/events/settings.js");
-const { syncSettingsControls } = await import("../../src/web/js/preferences.js");
+} = await import("../../dist/web/js/books.js");
+const { applyBridgeSnapshot } = await import("../../dist/web/js/events/settings.js");
+const { syncSettingsControls } = await import("../../dist/web/js/preferences.js");
 
 function control(extra = {}) {
   return {

@@ -12,7 +12,8 @@ macOS and iOS are intentionally outside the current layout.
 
 ## Shared code
 
-- `src/web/` contains the shared HTML, JavaScript, i18n, flags, and base CSS.
+- `src/web/` contains the shared HTML, TypeScript, i18n, flags, and base CSS.
+- `dist/web/` is the generated, untracked browser runtime embedded by Tauri.
 - `src-tauri/src/` contains shared Rust handlers, storage, SRS, tokenization, subtitles, and export logic.
 - `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Android APK/AAB builds, and frontend tests. Linux packages use `scripts/build-flatpak.sh`.
 
@@ -20,7 +21,7 @@ macOS and iOS are intentionally outside the current layout.
 
 - `src/web/styles.css` is the shared desktop-first stylesheet.
 - `src/web/platforms/android-pocket.css` contains Android/Pocket-only layout overrides for `.pocket-mode`.
-- `src/web/js/platform.js` detects Android/Pocket and applies mobile-only UI behavior.
+- `src/web/js/platform.ts` detects Android/Pocket and applies mobile-only UI behavior.
 
 ## Native platform layers
 

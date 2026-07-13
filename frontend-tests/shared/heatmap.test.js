@@ -4,8 +4,8 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-const { buildHeatmapActivityCounts } = await import("../../src/web/js/graphs/helpers.js");
-const { buildContributionMonthLabels } = await import("../../src/web/js/views/heatmap.js");
+const { buildHeatmapActivityCounts } = await import("../../dist/web/js/graphs/helpers.js");
+const { buildContributionMonthLabels } = await import("../../dist/web/js/views/heatmap.js");
 
 describe("shared heatmap", () => {
   it("does not overlap adjacent starting month labels", () => {

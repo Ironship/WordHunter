@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const { clearReaderSession, getReaderSession } = await import("../../src/web/js/reader/session.js");
+const { clearReaderSession, getReaderSession } = await import("../../dist/web/js/reader/session.js");
 
 describe("reader token session", () => {
   it("reuses tokenization across page renders and invalidates on meaningful inputs", () => {
@@ -20,8 +20,8 @@ describe("reader token session", () => {
   });
 
   it("clears stale book loading before cached opens and permits empty OCR corrections", () => {
-    const bookActions = readFileSync(new URL("../../src/web/js/book-actions.js", import.meta.url), "utf8");
-    const correction = readFileSync(new URL("../../src/web/js/reader/ocr-correction.js", import.meta.url), "utf8");
+    const bookActions = readFileSync(new URL("../../dist/web/js/book-actions.js", import.meta.url), "utf8");
+    const correction = readFileSync(new URL("../../dist/web/js/reader/ocr-correction.js", import.meta.url), "utf8");
     assert.ok(bookActions.indexOf("clearReaderLoading();") < bookActions.indexOf("if (!bookTexts.has(id) ||"));
     assert.doesNotMatch(correction, /<textarea[^>]*required/);
   });

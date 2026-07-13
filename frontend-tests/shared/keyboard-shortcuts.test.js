@@ -14,6 +14,16 @@ globalThis.localStorage = {
   setItem() {},
   removeItem() {}
 };
+class FakeElement {
+  static [Symbol.hasInstance](value) {
+    return value !== null && typeof value === "object";
+  }
+}
+globalThis.HTMLElement = FakeElement;
+globalThis.HTMLButtonElement = FakeElement;
+globalThis.HTMLDialogElement = FakeElement;
+globalThis.HTMLInputElement = FakeElement;
+globalThis.HTMLSelectElement = FakeElement;
 globalThis.document = {
   activeElement: null,
   body: { contains() { return false; } },
@@ -28,13 +38,13 @@ globalThis.document = {
   querySelectorAll() { return []; }
 };
 
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { handleGlobalKeydown } = await import("../../src/web/js/events/navigation.js");
-const { handleGlobalKeys } = await import("../../src/web/js/events/keyboard/global-keys.js");
-const { handleReaderKeys } = await import("../../src/web/js/events/keyboard/reader-keys.js");
-const { findCurrentReaderToken } = await import("../../src/web/js/reader/word-navigation.js");
-const { handleFlashcardKeys } = await import("../../src/web/js/events/keyboard/flashcards-keys.js");
-const { els } = await import("../../src/web/js/dom.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { handleGlobalKeydown } = await import("../../dist/web/js/events/navigation.js");
+const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
+const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
+const { findCurrentReaderToken } = await import("../../dist/web/js/reader/word-navigation.js");
+const { handleFlashcardKeys } = await import("../../dist/web/js/events/keyboard/flashcards-keys.js");
+const { els } = await import("../../dist/web/js/dom.js");
 Object.assign(els, {
   navItems: [],
   views: [],
@@ -184,7 +194,7 @@ describe("keyboard shortcut dispatch", () => {
 
     assert.equal(findCurrentReaderToken([first, selected]), selected);
 
-    const readerKeys = readFileSync(new URL("../../src/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
+    const readerKeys = readFileSync(new URL("../../dist/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
     assert.match(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
   });
 });
@@ -194,7 +204,7 @@ describe("keyboard shortcut documentation", () => {
 
   it("documents every shared shortcut group in every locale", () => {
     for (const locale of locales) {
-      const data = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${locale}.json`, import.meta.url)));
+      const data = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${locale}.json`, import.meta.url)));
       assert.ok(data.help.shortcutScope, `${locale}.help.shortcutScope`);
       assert.match(data.help.navKeys.settings, /<kbd>Alt<\/kbd>/, `${locale}.help.navKeys.settings`);
       for (const key of ["search", "theme", "offlineDictionary", "escape"]) {
@@ -208,8 +218,8 @@ describe("keyboard shortcut documentation", () => {
   });
 
   it("keeps Reader bubbling and pagination tooltip fixes wired", () => {
-    const reader = readFileSync(new URL("../../src/web/js/views/reader.js", import.meta.url), "utf8");
-    const pagination = readFileSync(new URL("../../src/web/js/reader/pagination.js", import.meta.url), "utf8");
+    const reader = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
+    const pagination = readFileSync(new URL("../../dist/web/js/reader/pagination.js", import.meta.url), "utf8");
     assert.match(reader, /event\.key === "Enter" && state\.selectedWord && document\.querySelector\("\[data-in-text-answer\]"\)/);
     assert.doesNotMatch(reader, /event\.key === "5"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.prevPageTitle"\)\)\}"/);

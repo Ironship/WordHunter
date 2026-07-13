@@ -85,6 +85,7 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
     let replacements = [
         ("{{theme}}", escape_attr(theme)),
         ("{{color_theme}}", escape_attr(family)),
+        ("{{locale}}", escape_attr(&locale)),
         (
             "{{title}}",
             escape_html(
@@ -98,6 +99,14 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         ("{{to_code}}", escape_attr(&to_code)),
         ("{{from_options}}", from_options),
         ("{{to_options}}", to_options),
+        (
+            "{{from_label}}",
+            escape_attr(labels.get("from").unwrap_or(&"Source language".to_string())),
+        ),
+        (
+            "{{to_label}}",
+            escape_attr(labels.get("to").unwrap_or(&"Target language".to_string())),
+        ),
         (
             "{{source_label}}",
             escape_html(

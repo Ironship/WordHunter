@@ -1,18 +1,18 @@
 # Frontend reliability audit
 
 This document records the critical frontend boundaries and the implementation
-checklist for validation-only CSS and JavaScript tooling. The production
-frontend remains the source under `src/web`; no generated frontend bundle is
-shipped.
+checklist for CSS validation and the TypeScript frontend build. Production
+source remains under `src/web`; generated browser assets are emitted to
+`dist/web` and embedded by the native host.
 
 ## Non-negotiable boundaries
 
-- [x] Keep Tauri pointed directly at `src/web`.
+- [x] Point Tauri and the embedded router at generated `dist/web`.
 - [x] Keep runtime theme switching based on CSS custom properties.
 - [x] Keep first-paint theme application synchronous to avoid a light/dark flash.
-- [x] Keep validation tools read-only: no CSS transformation and no JS emission.
+- [x] Keep CSS validation read-only and TypeScript emission deterministic.
 - [x] Keep npm dependencies out of Windows, Android, and Flatpak packages.
-- [x] Keep `scripts/build.bat` release targets independent of `node_modules`.
+- [x] Restore pinned frontend dependencies before release builds when needed.
 - [x] Treat localStorage, HTTP bridge responses, and Android bridge data as untrusted.
 - [x] Preserve WebView2, WebKitGTK, and Android System WebView compatibility rules.
 
@@ -20,17 +20,17 @@ shipped.
 
 | Boundary | Source of truth | Required protection |
 | --- | --- | --- |
-| Theme names and resolution | `src/web/js/theme.js` | JSDoc unions and parity tests |
+| Theme names and resolution | `src/web/js/theme.ts` | TypeScript unions and parity tests |
 | Theme palettes | `src/web/theme.css` | Stylelint and contrast contracts |
 | First paint | `src/web/index.html` | Synchronous boot and parity tests |
-| Runtime theme application | `src/web/js/preferences.js` | No full Reader rerender |
-| State defaults | `src/web/js/state/defaults.js` | checkJs |
-| Untrusted state normalization | `src/web/js/state/normalize.js` | checkJs and migration tests |
-| Live state replacement | `src/web/js/state.js` | Replacement event tests |
-| Outbound persistence payload | `src/web/js/api.js` | checkJs wire types |
-| Native store requests | `src/web/js/store-bridge.js` | unknown response boundary |
-| Bridge commit/reload | `src/web/js/bridge-commit.js` | checked call signatures |
-| Android bridge detection | `src/web/js/platform.js` | ambient bridge declarations |
+| Runtime theme application | `src/web/js/preferences.ts` | No full Reader rerender |
+| State defaults | `src/web/js/state/defaults.ts` | TypeScript and normalization tests |
+| Untrusted state normalization | `src/web/js/state/normalize.ts` | unknown boundaries and migration tests |
+| Live state replacement | `src/web/js/state.ts` | Replacement event tests |
+| Outbound persistence payload | `src/web/js/api.ts` | typed wire payloads |
+| Native store requests | `src/web/js/store-bridge.ts` | unknown response boundary |
+| Bridge commit/reload | `src/web/js/bridge-commit.ts` | checked call signatures |
+| Android bridge detection | `src/web/js/platform.ts` | ambient bridge declarations |
 | Popup theme rendering | `src/web/templates/translator-popup.html` | shared palette and Rust template test |
 | Repository validation | `scripts/validate.sh` | one read-only frontend gate |
 | Pull request validation | `.github/workflows/validate.yml` | pinned npm install and gate |
@@ -65,15 +65,15 @@ shipped.
 - [x] Fix baseline findings instead of broadly disabling rules.
 - [x] Do not add Sass, Autoprefixer, CSS minification, or `--fix` to CI.
 
-### JavaScript validation
+### TypeScript migration
 
-- [x] Add a no-emit `tsconfig.check-js.json`.
+- [x] Replace transitional checkJs with a repository-pinned TypeScript build.
 - [x] Add ambient declarations outside the shipped web assets.
-- [x] Opt in only critical theme, state, persistence, and bridge modules.
+- [x] Convert all 87 shipped browser runtime modules to `.ts`.
 - [x] Keep fetched and injected snapshots typed as `unknown` until validation.
 - [x] Resolve bridge call-signature drift rather than suppressing it.
 - [x] Do not add broad `@ts-ignore` or `@ts-nocheck` directives.
-- [x] Do not convert runtime `.js` modules to `.ts` in this stage.
+- [x] Test emitted browser modules and assets from `dist/web`.
 
 ### CI and packaging
 
@@ -82,7 +82,7 @@ shipped.
 - [x] Add one validation prerequisite job to artifact validation.
 - [x] Run the repository gate for `release/**` pushes.
 - [x] Run frontend tests and JSON validation before artifact packaging.
-- [x] Keep package jobs free of npm installation.
+- [x] Build `dist/web` before every Windows, Android, and Flatpak package.
 - [x] Exclude `node_modules` from Git and Flatpak directory sources.
 - [x] Document bootstrap and validation commands.
 
@@ -93,15 +93,14 @@ shipped.
 - [x] Assert the popup does not contain copied named palettes.
 - [x] Assert theme changes do not rerender Reader content.
 - [x] Assert bridge legacy theme migration before defaults are applied.
-- [x] Assert tooling is no-emit, read-only, pinned, and wired into CI.
+- [x] Assert tooling is pinned and the generated build is wired into CI.
 - [x] Run frontend module linking, shared, desktop, and Android tests.
 - [x] Run JSON/i18n validation and `git diff --check`.
 
 ## Deferred work
 
 - [ ] Add rendered computed-style screenshots after choosing a pinned browser matrix.
-- [ ] Opt additional native event consumers into checkJs one module at a time.
-- [ ] Consider stricter indexed-access checks after the first typed boundary is stable.
+- [ ] Consider stricter null and indexed-access checks after the migration stabilizes.
 - [ ] Consider a generated theme manifest only if boot/runtime parity regresses again.
 - [ ] Pin the external Flatpak Cargo generator and its Python dependency floor.
 - [ ] Add a local Flatpak preflight that verifies the Flathub remote.
@@ -114,7 +113,7 @@ improvements above.
 
 - `npm ci --ignore-scripts --no-audit --no-fund`: passed with Node 22.
 - `npm run check:frontend`: Stylelint and TypeScript no-emit checks passed.
-- Full Node frontend suite: 268 tests passed, 0 failed.
+- Full Node frontend suite: 293 tests passed, 0 failed.
 - JSON/i18n validation: 18 JSON files and 9 locales passed.
 - `git diff --check`: passed.
 - Runtime frontend source: reduced by removing duplicated palettes and dead bridge arguments.

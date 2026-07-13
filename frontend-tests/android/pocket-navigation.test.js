@@ -79,7 +79,7 @@ function elementSource(html, tagName) {
 
 describe("Android Pocket navigation", () => {
   it("declares settings and onboarding language controls", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
 
     openingTagByAttribute(html, "select", "id", "pref-locale-settings");
     openingTagByAttribute(html, "select", "id", "pref-learning-language-settings");
@@ -89,8 +89,8 @@ describe("Android Pocket navigation", () => {
   });
 
   it("includes Discover and Sync in the Pocket navigation drawer", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     openingTagByAttribute(html, "button", "data-view", "discover");
     openingTagByAttribute(html, "button", "data-view", "sync");
@@ -105,10 +105,10 @@ describe("Android Pocket navigation", () => {
   });
 
   it("declares the Pocket-only Help entry and hides its bottom-nav duplicate", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const navigation = readFileSync(new URL("../../src/web/js/events/navigation.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const navigation = readFileSync(new URL("../../dist/web/js/events/navigation.js", import.meta.url), "utf8");
     const helpButton = openingTagByAttribute(html, "button", "data-open-view", "help");
     const helpRow = ancestorOpeningTag(html, helpButton, "div");
 
@@ -120,8 +120,8 @@ describe("Android Pocket navigation", () => {
   });
 
   it("replaces desktop shortcuts with localized Pocket guidance on Android", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
     const pocketHeading = openingTagByAttribute(html, "h2", "id", "pocket-help-heading");
     const pocketPanel = ancestorOpeningTag(html, pocketHeading, "section");
     const desktopHeading = openingTagByAttribute(html, "h2", "id", "help-heading");
@@ -136,15 +136,15 @@ describe("Android Pocket navigation", () => {
       "pocketSyncTitle", "pocketSyncBody", "pocketLimitsTitle", "pocketLimitsBody"
     ];
     for (const code of ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk"]) {
-      const dict = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${code}.json`, import.meta.url), "utf8"));
+      const dict = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${code}.json`, import.meta.url), "utf8"));
       for (const key of requiredKeys) assert.ok(dict.help[key], `${code}.help.${key}`);
       assert.doesNotMatch(dict.help.pocketControlsBody, /<kbd>/, `${code} Pocket help must not describe keyboard shortcuts`);
     }
   });
 
   it("declares an Enter-key search handler for the mobile keyboard", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const discoverEvents = readFileSync(new URL("../../src/web/js/events/discover.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const discoverEvents = readFileSync(new URL("../../dist/web/js/events/discover.js", import.meta.url), "utf8");
     const query = openingTagByAttribute(html, "input", "id", "discover-query");
 
     assert.equal(query.attributes.enterkeyhint, "search");
@@ -154,7 +154,7 @@ describe("Android Pocket navigation", () => {
   });
 
   it("declares remote fonts as a preload with a noscript fallback", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const noscript = elementSource(html, "noscript");
     const runtimeHtml = html.replace(noscript, "");
     const runtimeFontLinks = openingTags(runtimeHtml, "link").filter(({ attributes }) => attributes.href?.startsWith("https://fonts.googleapis.com/"));
@@ -168,8 +168,8 @@ describe("Android Pocket navigation", () => {
   });
 
   it("declares the topbar reload binding", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const navigation = readFileSync(new URL("../../src/web/js/events/navigation.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const navigation = readFileSync(new URL("../../dist/web/js/events/navigation.js", import.meta.url), "utf8");
 
     openingTagByAttribute(html, "button", "id", "app-reload");
     assert.match(navigation, /document\.getElementById\("app-reload"\)\?\.addEventListener\("click", \(\) => window\.location\.reload\(\)\);/);

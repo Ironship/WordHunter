@@ -1,8 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { getReaderSession } from "../../src/web/js/reader/session.js";
-import { getTextStats, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
-import { calcRoundedStatsPcts } from "../../src/web/js/utils.js";
+import { getReaderSession } from "../../dist/web/js/reader/session.js";
+import { getTextStats, getTokenStats, tokenizeText } from "../../dist/web/js/tokenizer_v2.js";
+import { calcRoundedStatsPcts } from "../../dist/web/js/utils.js";
 
 const CORE_TEXT = "Alpha alpha beta gamma delta epsilon. New York new york. well-known don't 42. [IMG:cover.png] alpha.";
 const CORE_VOCAB = {

@@ -36,6 +36,7 @@ $SyncthingDir = Join-Path $Root "src-tauri\syncthing"
 $SyncthingExe = Join-Path $SyncthingDir "syncthing.exe"
 $SyncthingLicense = Join-Path $SyncthingDir "SYNCTHING-LICENSE.txt"
 $SyncthingAuthors = Join-Path $SyncthingDir "SYNCTHING-AUTHORS.txt"
+$script:FrontendBuilt = $false
 
 . $WindowsRuntimeScript
 
@@ -141,6 +142,33 @@ function Invoke-WithCmakeBuildParallelLimit([scriptblock]$Action) {
             Remove-Item Env:\CMAKE_BUILD_PARALLEL_LEVEL -ErrorAction SilentlyContinue
         }
     }
+}
+
+function Ensure-FrontendBuild {
+    if ($script:FrontendBuilt) {
+        return
+    }
+
+    Write-Step "Building pinned TypeScript frontend"
+    if (-not (Get-Command node.exe -ErrorAction SilentlyContinue)) {
+        Fail "Node.js was not found. Install Node.js 22+ so dist\web can be built."
+    }
+    if (-not (Get-Command npm.cmd -ErrorAction SilentlyContinue)) {
+        Fail "npm was not found. Install it with Node.js 22+ so frontend dependencies can be restored."
+    }
+
+    $typescriptCompiler = Join-Path $Root "node_modules\typescript\bin\tsc"
+    Push-Location -LiteralPath $Root
+    try {
+        if (-not (Test-Path -LiteralPath $typescriptCompiler)) {
+            Invoke-External "npm.cmd" @("ci", "--ignore-scripts", "--no-audit", "--no-fund")
+        }
+        Invoke-External "npm.cmd" @("run", "build:frontend")
+    } finally {
+        Pop-Location
+    }
+
+    $script:FrontendBuilt = $true
 }
 
 function Get-PackagedWindowsRuntimeDllNames([string]$Directory) {
@@ -520,9 +548,9 @@ function Sync-AndroidLauncherIcons {
 function Get-AndroidVersionInfo {
     $config = Get-Content -Raw -LiteralPath (Join-Path $Root "src-tauri\tauri.conf.json") | ConvertFrom-Json
     $version = [string]$config.version
-    $match = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)$')
+    $match = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$')
     if (-not $match.Success) {
-        Fail "src-tauri\tauri.conf.json version must use MAJOR.MINOR.PATCH: $version"
+        Fail "src-tauri\tauri.conf.json version must use MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N: $version"
     }
 
     $major = [int64]$match.Groups[1].Value
@@ -532,7 +560,15 @@ function Get-AndroidVersionInfo {
         Fail "Android versionCode formula requires MINOR and PATCH to be below 1000: $version"
     }
 
-    $code = ($major * 1000000) + ($minor * 1000) + $patch
+    $baseCode = ($major * 1000000) + ($minor * 1000) + $patch
+    $releaseOrdinal = 99
+    if ($match.Groups[4].Success) {
+        $releaseOrdinal = [int64]$match.Groups[4].Value
+        if ($releaseOrdinal -lt 1 -or $releaseOrdinal -gt 98) {
+            Fail "Android release-candidate ordinal must be between 1 and 98: $version"
+        }
+    }
+    $code = ($baseCode * 100) + $releaseOrdinal
     if ($code -le 0 -or $code -gt 2100000000) {
         Fail "Android versionCode must be between 1 and 2100000000, calculated $code from $version"
     }
@@ -671,6 +707,7 @@ Install Visual Studio Build Tools with workload:
 
 function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     Write-Step "Building portable package"
+    Ensure-FrontendBuild
     Ensure-Cargo
     Ensure-WindowsRustTarget
     Download-Syncthing
@@ -724,6 +761,7 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
 
 function Build-Installer([switch]$SkipRuntime) {
     Write-Step "Building Windows installer"
+    Ensure-FrontendBuild
     Ensure-Cargo
     Ensure-WindowsRustTarget
     Enable-MSVC
@@ -790,6 +828,7 @@ function Build-OcrRuntime {
 
 function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $OutputAndroidDebugApk) {
     Write-Step "Building Android debug APK"
+    Ensure-FrontendBuild
     Ensure-Directory $Outputs
     Ensure-AndroidToolchain (Get-AndroidRustTarget $Target)
     Ensure-AndroidProject
@@ -891,6 +930,7 @@ Set these environment variables and retry:
 
 function Build-AndroidReleaseAab([string]$Target = "aarch64", [string]$OutputAab = $OutputAndroidReleaseAab, [switch]$RequireSigning) {
     Write-Step "Building Android release AAB"
+    Ensure-FrontendBuild
     Ensure-Directory $Outputs
     Ensure-AndroidToolchain (Get-AndroidRustTarget $Target)
     Ensure-AndroidProject
@@ -910,16 +950,19 @@ function Build-AndroidReleaseAab([string]$Target = "aarch64", [string]$OutputAab
 }
 
 function Test-FrontendShared {
+    Ensure-FrontendBuild
     Write-Step "Frontend shared tests"
     Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\shared\*.test.js")
 }
 
 function Test-FrontendAndroid {
+    Ensure-FrontendBuild
     Write-Step "Frontend Android tests"
     Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\android\*.test.js")
 }
 
 function Test-FrontendDesktop {
+    Ensure-FrontendBuild
     Write-Step "Frontend desktop tests"
     Invoke-External "node.exe" @("--experimental-vm-modules", "--test", "frontend-tests\desktop\*.test.js")
 }

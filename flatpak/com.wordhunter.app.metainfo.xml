@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.1" date="2026-07-13" type="development">
+      <description>
+        <ul>
+          <li>Test prerelease: migrate the browser runtime to TypeScript with a deterministic generated frontend.</li>
+          <li>Add configurable visibility and ordering for selected-word panel sections and actions.</li>
+          <li>Move Pocket word actions higher and improve theme, state, dialog, and drawer reliability.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-07-12">
       <description>
         <ul>

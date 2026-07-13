@@ -42,6 +42,7 @@ elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
   run git diff --check HEAD^..HEAD
 fi
 run node scripts/validate-json-i18n.mjs
+# check:frontend builds dist/web before frontend behavior tests run.
 run npm run check:frontend
 run node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js
 run ./scripts/update-flatpak-cargo-sources.sh --check

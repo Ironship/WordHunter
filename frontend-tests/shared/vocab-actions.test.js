@@ -44,9 +44,9 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { setWordStatus, updateWordField } = await import("../../src/web/js/vocab-actions.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
 
 function vocabEntry(overrides = {}) {
   return {

@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-const { setEntryStatus } = await import("../../src/web/js/vocabulary/entry-state.js");
+const { setEntryStatus } = await import("../../dist/web/js/vocabulary/entry-state.js");
 
 describe("vocabulary entry state helpers", () => {
   it("sets knownAt only on the first known transition", () => {

@@ -20,7 +20,7 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const {
   archiveBookId,
   clearCurrentBookSelectionIfMatches,
@@ -29,7 +29,7 @@ const {
   moveCustomTextToProfile,
   moveUserBookToProfile,
   removeCustomTextFromActiveProfile
-} = await import("../../src/web/js/book-actions/profile-library.js");
+} = await import("../../dist/web/js/book-actions/profile-library.js");
 
 function resetLibraryState() {
   const defaults = createDefaultState();

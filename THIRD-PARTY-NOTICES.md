@@ -1,7 +1,7 @@
 # Word Hunter Third-Party Notices
 
 This document describes the principal third-party technologies used or
-distributed by Word Hunter 1.0.4. Word Hunter itself is licensed under
+distributed by Word Hunter 1.0.5-rc.1. Word Hunter itself is licensed under
 AGPL-3.0-or-later; the complete license is distributed as `LICENSE`.
 
 The exact Rust dependency license texts generated from the locked dependency
@@ -13,7 +13,7 @@ graphs are distributed as:
 The corresponding source for this release, including build instructions and
 lockfiles, is available at:
 
-https://github.com/Ironship/WordHunter/tree/WordHunter1.0.4
+https://github.com/Ironship/WordHunter/tree/WordHunter1.0.5-rc.1
 
 ## Application Platform
 
@@ -21,7 +21,7 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.0.4
 | --- | --- | --- | --- |
 | Rust | Application backend and native libraries | Apache-2.0 OR MIT | https://www.rust-lang.org/ |
 | Tauri 2 | Desktop and Android application shell | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri |
-| HTML, CSS, JavaScript | Shared user interface | Web standards; Word Hunter code is AGPL-3.0-or-later | https://github.com/Ironship/WordHunter |
+| HTML, CSS, TypeScript | Shared user interface | Web standards; Word Hunter code is AGPL-3.0-or-later | https://github.com/Ironship/WordHunter |
 | AndroidX and Material Components | Android application integration and controls | Apache-2.0 | https://source.android.com/ and https://github.com/material-components/material-components-android |
 | Microsoft Edge WebView2 | Windows system WebView and loader | Microsoft Edge WebView2 SDK license; loader sources use the repository's stated license | https://github.com/MicrosoftEdge/WebView2Samples and https://developer.microsoft.com/microsoft-edge/webview2/ |
 | WebKitGTK and GTK | Linux system WebView and desktop toolkit | LGPL-2.1-or-later for the principal libraries; supplied by the system or Flatpak runtime | https://webkitgtk.org/ and https://www.gtk.org/ |

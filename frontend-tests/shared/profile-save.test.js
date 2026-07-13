@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-const { buildSavePayload, saveToLocalStorage } = await import("../../src/web/js/api.js");
-const { STATE_SCHEMA_VERSION, STORAGE_KEY } = await import("../../src/web/js/constants.js");
-const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-const { loadState, normalizeState } = await import("../../src/web/js/state/normalize.js");
+const { buildSavePayload, saveToLocalStorage } = await import("../../dist/web/js/api.js");
+const { STATE_SCHEMA_VERSION, STORAGE_KEY } = await import("../../dist/web/js/constants.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { loadState, normalizeState } = await import("../../dist/web/js/state/normalize.js");
 
 describe("profile save payload", () => {
   it("keeps books, texts, and vocabulary from every language profile", () => {

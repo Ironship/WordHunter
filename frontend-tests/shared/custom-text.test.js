@@ -27,21 +27,30 @@ globalThis.CustomEvent = class CustomEvent {
     this.detail = init?.detail;
   }
 };
+class FakeElement {
+  static [Symbol.hasInstance](value) {
+    return value !== null && typeof value === "object";
+  }
+}
+globalThis.Element = FakeElement;
+globalThis.HTMLButtonElement = FakeElement;
+globalThis.HTMLDialogElement = FakeElement;
+globalThis.HTMLTextAreaElement = FakeElement;
 
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { bookTexts } = await import("../../src/web/js/books.js");
-const { els } = await import("../../src/web/js/dom.js");
-const { importCustomText, updatePdfOcrPageText } = await import("../../src/web/js/book-actions/custom-text.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { bookTexts } = await import("../../dist/web/js/books.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { importCustomText, updatePdfOcrPageText } = await import("../../dist/web/js/book-actions/custom-text.js");
 const {
   countEffectivePdfPageWords,
   findPdfSentenceRange,
   reconcilePdfPageWords,
   replacePdfTextRange
-} = await import("../../src/web/js/reader/pdf-page-text.js");
-const { bindBookImportEvents } = await import("../../src/web/js/events/book-import.js");
-const { getOrCreateEntry } = await import("../../src/web/js/views/vocabulary.js");
-const { mapPdfOverlayWordIndexes } = await import("../../src/web/js/reader/pdf-ocr-renderer.js");
-const { upsertStoredText } = await import("../../src/web/js/store-bridge.js");
+} = await import("../../dist/web/js/reader/pdf-page-text.js");
+const { bindBookImportEvents } = await import("../../dist/web/js/events/book-import.js");
+const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
+const { mapPdfOverlayWordIndexes } = await import("../../dist/web/js/reader/pdf-ocr-renderer.js");
+const { upsertStoredText } = await import("../../dist/web/js/store-bridge.js");
 
 function busyElement(extra = {}) {
   return {

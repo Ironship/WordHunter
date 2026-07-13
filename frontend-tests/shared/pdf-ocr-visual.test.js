@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const css = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
 
 function cssPercentVariable(name) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

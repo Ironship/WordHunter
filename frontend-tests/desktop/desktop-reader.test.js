@@ -2,11 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
+const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
 const css = ["theme.css", "styles.css"]
-  .map((file) => readFileSync(new URL(`../../src/web/${file}`, import.meta.url), "utf8"))
+  .map((file) => readFileSync(new URL(`../../dist/web/${file}`, import.meta.url), "utf8"))
   .join("\n");
-const pocketCss = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+const pocketCss = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 const desktopWindow = readFileSync(new URL("../../src-tauri/src/platform/web_app.rs", import.meta.url), "utf8");
 const cargoToml = readFileSync(new URL("../../src-tauri/Cargo.toml", import.meta.url), "utf8");
 const tauriConfig = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
@@ -176,6 +176,16 @@ globalThis.localStorage = {
 globalThis.CustomEvent = class CustomEvent {
   constructor(type, init) { this.type = type; this.detail = init?.detail; }
 };
+class FakeElement {
+  static [Symbol.hasInstance](value) {
+    return value !== null && typeof value === "object";
+  }
+}
+globalThis.Element = FakeElement;
+globalThis.HTMLElement = FakeElement;
+globalThis.HTMLButtonElement = FakeElement;
+globalThis.HTMLInputElement = FakeElement;
+globalThis.HTMLSelectElement = FakeElement;
 globalThis.document = {
   activeElement: null,
   body: { classList: fakeClassList(), contains() { return false; } },
@@ -195,17 +205,17 @@ globalThis.document = {
 };
 globalThis.requestAnimationFrame = (callback) => callback();
 
-const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, normalizeState, replaceState, state } = await import("../../src/web/js/state.js");
-const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../src/web/js/preferences.js");
-const { bindGlobalActionEvents } = await import("../../src/web/js/events/global-actions.js");
-const { bindReaderEvents } = await import("../../src/web/js/views/reader.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../dist/web/js/preferences.js");
+const { bindGlobalActionEvents } = await import("../../dist/web/js/events/global-actions.js");
+const { bindReaderEvents } = await import("../../dist/web/js/views/reader.js");
 const {
   getPdfOcrViewMode,
   getPdfOcrZoom,
   setPdfOcrViewMode,
   setPdfOcrZoom
-} = await import("../../src/web/js/reader/pdf-ocr-renderer.js");
+} = await import("../../dist/web/js/reader/pdf-ocr-renderer.js");
 
 function setupPreferenceControls() {
   els.prefLocales = [];
@@ -625,10 +635,10 @@ describe("desktop PDF reader contracts", () => {
   });
 
   it("statically declares PDF overlay/text rendering controls", () => {
-    const renderer = readFileSync(new URL("../../src/web/js/reader/pdf-ocr-renderer.js", import.meta.url), "utf8");
-    const correction = readFileSync(new URL("../../src/web/js/reader/ocr-correction.js", import.meta.url), "utf8");
+    const renderer = readFileSync(new URL("../../dist/web/js/reader/pdf-ocr-renderer.js", import.meta.url), "utf8");
+    const correction = readFileSync(new URL("../../dist/web/js/reader/ocr-correction.js", import.meta.url), "utf8");
     assert.match(renderer, /const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2"/);
-    assert.match(renderer, /els\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
+    assert.match(renderer, /readerEls\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
     assert.match(renderer, /function renderPdfOcrTextMode\(/);
     assert.match(renderer, /function renderPdfOcrTextTokens\(/);
     assert.match(renderer, /const globalIndex = overlayWordIndexes\[index\]/);
@@ -647,7 +657,7 @@ describe("desktop PDF reader contracts", () => {
     assert.match(renderer, /aria-label="\$\{escapeAttribute\(raw\)\}"><\/button>`/);
     assert.match(correction, /sourcePageText\.slice\(sentenceRange\.start, sentenceRange\.end\)/);
     assert.match(correction, /replacePdfTextRange\(sourcePageText, sentenceRange, textarea\.value\)/);
-    assert.match(correction, /if \(sentenceMode && !sentenceRange\) return Promise\.resolve\(false\)/);
+    assert.match(correction, /if \(sentenceMode && !sentenceRange\)\s*return Promise\.resolve\(false\)/);
   });
 
   it("statically routes a missing desktop OCR runner to text-layer import", () => {
@@ -656,7 +666,7 @@ describe("desktop PDF reader contracts", () => {
     const response = readFileSync(new URL("../../src-tauri/src/response.rs", import.meta.url), "utf8");
     const server = readFileSync(new URL("../../src-tauri/src/server.rs", import.meta.url), "utf8");
     const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
-    const importer = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importer = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     assert.match(tomlSection(cargoToml, "dependencies"), /pdf-extract = "0\.12"/);
     assert.match(flatpakManifest, /--filesystem=host-os:ro/);
     assert.match(backend, /let result = import_text_layer_pdf\(/);

@@ -13,8 +13,8 @@ const {
   normalizeTranslationProvider,
   normalizeTranslatorTextPreference,
   resolveProfileTranslationPair
-} = await import("../../src/web/js/translator-preferences.js");
-const { resolveTranslatorPair } = await import("../../src/web/js/views/translator.js");
+} = await import("../../dist/web/js/translator-preferences.js");
+const { resolveTranslatorPair } = await import("../../dist/web/js/views/translator.js");
 
 describe("translator preferences helpers", () => {
   it("keeps existing provider fallback rules explicit", () => {

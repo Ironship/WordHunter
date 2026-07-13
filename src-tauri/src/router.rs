@@ -9,7 +9,7 @@ use crate::{
     youtube_captions,
 };
 
-pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../src/web");
+pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
 
 macro_rules! read_json_or_400 {
     ($request:ident) => {

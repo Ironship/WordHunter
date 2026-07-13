@@ -33,7 +33,7 @@ jobs:
       - name: Install frontend validation dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Validate frontend sources
+      - name: Build and validate frontend sources
         run: npm run check:frontend
 
       - name: Validate frontend behavior and repository data
@@ -79,7 +79,7 @@ jobs:
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
 
-      - name: Build APK and AAB through the release recipe
+      - name: Build frontend, APK, and AAB through the release recipe
         shell: cmd
         run: scripts\build.bat apk aab
 
@@ -127,7 +127,7 @@ jobs:
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
 
-      - name: Build Windows release packages
+      - name: Build frontend and Windows release packages
         shell: cmd
         run: scripts\build.bat all
 
@@ -166,7 +166,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends elfutils flatpak flatpak-builder ostree
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      - name: Build and inspect Flatpak bundle
+      - name: Build frontend, then build and inspect Flatpak bundle
         run: ./scripts/build-flatpak.sh
 
       - name: Reinspect Flatpak bundle at the CI boundary

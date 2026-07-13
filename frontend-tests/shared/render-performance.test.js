@@ -95,7 +95,7 @@ describe("render performance guards", () => {
         throw new Error("elementFromPoint should not run for an imprecise save");
       }
     };
-    const { rememberReaderScrollPosition } = await evaluateWithMocks("../../src/web/js/reader/scroll.js", {
+    const { rememberReaderScrollPosition } = await evaluateWithMocks("../../dist/web/js/reader/scroll.js", {
       "../state.js": { state, saveUiState: () => { flushes++; } },
       "../dom.js": { els: { readerText } }
     }, { document, setTimeout });
@@ -143,7 +143,7 @@ describe("render performance guards", () => {
       readerScrolls: { "text-1": { readerPage: 2, scrollTop: 100 } }
     };
     const noOp = () => {};
-    const { bindReaderEvents } = await evaluateWithMocks("../../src/web/js/views/reader.js", {
+    const { bindReaderEvents } = await evaluateWithMocks("../../dist/web/js/views/reader.js", {
       "../panel-resizer.js": { bindSidebarResizer: noOp },
       "../state.js": {
         registerFrontendStateFlusher(callback) { frontendFlusher = callback; },
@@ -171,6 +171,19 @@ describe("render performance guards", () => {
     }, {
       window: {},
       document: { activeElement: null },
+      Element: class FakeElement {},
+      HTMLElement: class FakeHtmlElement {
+        static [Symbol.hasInstance](value) {
+          return value !== null && typeof value === "object";
+        }
+      },
+      HTMLButtonElement: class FakeButtonElement {},
+      HTMLInputElement: class FakeInputElement {},
+      HTMLSelectElement: class FakeSelectElement {
+        static [Symbol.hasInstance](value) {
+          return value !== null && typeof value === "object";
+        }
+      },
       setTimeout,
       clearTimeout,
       console
@@ -238,7 +251,7 @@ describe("render performance guards", () => {
     const state = { preferences: { graphRange: "recent" }, vocab: { haus: { status: "known" } } };
     const chart = (name) => () => chartCalls.push(name);
     const noOp = () => {};
-    const { renderGraphs } = await evaluateWithMocks("../../src/web/js/views/graphs.js", {
+    const { renderGraphs } = await evaluateWithMocks("../../dist/web/js/views/graphs.js", {
       "../state.js": { state, saveState: noOp },
       "../i18n.js": { t: (key) => key },
       "../graphs/helpers.js": {
@@ -299,7 +312,7 @@ describe("render performance guards", () => {
       width: 0,
       getContext: () => context
     };
-    const { canvas } = await evaluateWithMocks("../../src/web/js/graphs/helpers.js", {
+    const { canvas } = await evaluateWithMocks("../../dist/web/js/graphs/helpers.js", {
       "../state.js": { state: { vocab: {} } },
       "../i18n.js": { t: (key) => key },
       "../loading.js": { setElementBusy() {} },

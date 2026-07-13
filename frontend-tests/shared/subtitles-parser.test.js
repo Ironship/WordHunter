@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-const { parseImportedTextFile } = await import("../../src/web/js/subtitles.js");
+const { parseImportedTextFile } = await import("../../dist/web/js/subtitles.js");
 
 describe("subtitle parser", () => {
   it("strips YouTube VTT metadata and zero-width markers", () => {
