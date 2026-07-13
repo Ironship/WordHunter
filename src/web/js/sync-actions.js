@@ -124,10 +124,10 @@ async function requestAnkiImport(tsv) {
   return response.json();
 }
 
-async function applyBridgeCommandResult(result, previousView) {
+async function applyBridgeCommandResult(result) {
   if (!window.__qtBridge) return;
   const snapshot = result?.snapshot || await loadBackendSnapshot();
-  applyBridgeSnapshotToState(snapshot, { previousView });
+  applyBridgeSnapshotToState(snapshot);
 }
 
 function safeFilenamePart(value) {
@@ -242,7 +242,6 @@ export function importStateFile(event) {
 
       const imported = normalizeState({ ...createDefaultState(), ...parsed });
       if (window.__qtBridge) {
-        const previousView = state.currentView || "settings";
         await runExclusiveStateWrite(async () => {
           let result;
           try {
@@ -258,7 +257,7 @@ export function importStateFile(event) {
             try {
               const snapshot = await loadBackendSnapshot();
               clearAllBookTextCaches();
-              applyBridgeSnapshotToState(snapshot, { previousView });
+              applyBridgeSnapshotToState(snapshot);
               renderImportedState();
             } catch (reloadError) {
               console.warn("Could not reconcile state after import failure", reloadError);
@@ -266,7 +265,7 @@ export function importStateFile(event) {
             throw saveError;
           }
           clearAllBookTextCaches();
-          await applyBridgeCommandResult(result, previousView);
+          await applyBridgeCommandResult(result);
         });
       } else {
         clearAllBookTextCaches();
@@ -300,10 +299,10 @@ export async function clearWords() {
   resetInitialVocabKeys();
   hideReviewAnswer();
   try {
-    await saveStateAndReloadBridge(state.currentView || "settings");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("clear words save failed", error);
-    await reloadBridgeSnapshot(state.currentView || "settings").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear words recovery reload failed", reloadError);
     });
     showToast(t("toast.syncUnavailable"), "error");
@@ -346,10 +345,10 @@ export async function clearLibrary() {
   }
   [...removedTextIds, ...removedUserBookIds].forEach(clearBookTextCache);
   try {
-    await saveStateAndReloadBridge(state.currentView || "settings");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("clear library save failed", error);
-    await reloadBridgeSnapshot(state.currentView || "settings").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear library recovery reload failed", reloadError);
     });
     showToast(t("toast.syncUnavailable"), "error");
@@ -368,7 +367,7 @@ export async function clearLocalState() {
   if (window.__qtBridge) {
     try {
       const result = await postStoreCommand("/__store/wipe");
-      await applyBridgeCommandResult(result, state.currentView || "settings");
+      await applyBridgeCommandResult(result);
       localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
       console.warn("wipe failed", error);

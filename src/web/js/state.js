@@ -1,6 +1,8 @@
+// @ts-check
+
 import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
-import { loadState } from "./state/normalize.js";
+import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { OTHER_PROFILE_ID } from "./constants.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
@@ -97,11 +99,16 @@ export function runExclusiveStateWrite(callback) {
   return autosave.runExclusiveWrite(callback);
 }
 
+/** @param {unknown} snapshot */
 export function applyBridgeSnapshotToState(snapshot) {
+  assertSupportedStateSchemaVersion(snapshot, "bridge snapshot");
   const localUi = captureLocalUiState();
   const previousTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter(Boolean));
-  if (!snapshot?.prefs?.__discover && state.discover) {
-    snapshot.prefs = { ...(snapshot.prefs || {}), __discover: { ...state.discover } };
+  const snapshotPreferences = snapshot.prefs !== null && typeof snapshot.prefs === "object" && !Array.isArray(snapshot.prefs)
+    ? /** @type {WhRecord} */ (snapshot.prefs)
+    : {};
+  if (!snapshotPreferences.__discover && state.discover) {
+    snapshot.prefs = { ...snapshotPreferences, __discover: { ...state.discover } };
   }
   if (!snapshot?.cloudSyncStatus && state.cloudSyncStatus) {
     snapshot.cloudSyncStatus = clonePlain(rawState().cloudSyncStatus);

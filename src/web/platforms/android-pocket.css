@@ -191,7 +191,6 @@ html.pocket-mode {
 .pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge) {
   max-width: 100%;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .pocket-mode .nav-item > .nav-icon {
@@ -494,6 +493,7 @@ html.pocket-mode {
 
 .pocket-mode .status-check {
   width: 100%;
+  min-height: 44px;
   gap: 0.4rem;
   white-space: normal;
 }
@@ -509,10 +509,6 @@ html.pocket-mode {
   min-width: 0;
   overflow-wrap: anywhere;
   line-height: 1.15;
-}
-
-.pocket-mode .status-check {
-  min-height: 44px;
 }
 
 .pocket-mode .data-action-buttons,

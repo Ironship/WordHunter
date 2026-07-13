@@ -1,0 +1,19 @@
+{
+  "name": "word-hunter-validation",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.7.0"
+  },
+  "scripts": {
+    "lint:css": "stylelint --max-warnings 0 \"src/web/**/*.{css,html}\"",
+    "check:js": "tsc --project tsconfig.check-js.json",
+    "check:frontend": "npm run lint:css && npm run check:js"
+  },
+  "devDependencies": {
+    "postcss-html": "1.8.1",
+    "stylelint": "16.26.1",
+    "stylelint-config-recommended": "17.0.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -153,7 +153,7 @@ describe("Android Pocket layout", () => {
     assert.equal(css.includes('.pocket-mode:not([data-view="reader"]) .topbar'), false);
     assertDeclarations(css, ".pocket-mode .nav-list", { "grid-template-columns": "minmax(0, 1fr)", "align-items": "stretch" });
     assertDeclarations(css, ".pocket-mode .nav-item", { "grid-template-columns": "30px minmax(0, 1fr)", "max-width": "100%", overflow: "hidden" });
-    assertDeclarations(css, ".pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge)", { "overflow-wrap": "anywhere", "word-break": "break-word" });
+    assertDeclarations(css, ".pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge)", { "overflow-wrap": "anywhere" });
   });
 
   it("defines finger-sized Pocket flashcard and toggle controls", () => {
@@ -166,7 +166,7 @@ describe("Android Pocket layout", () => {
   });
 
   it("meets WCAG AA contrast for common Pocket theme text pairs", () => {
-    const css = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../src/web/theme.css", import.meta.url), "utf8");
     const light = declarationBlock(css, ":root");
     const dark = declarationBlock(css, ':root[data-theme="dark"]');
 

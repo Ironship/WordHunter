@@ -5,10 +5,12 @@
 Run the repository gate before cutting release artifacts:
 
 ```bash
+npm ci --ignore-scripts --no-audit --no-fund
 ./scripts/validate.sh
 ```
 
-It checks whitespace, parses tracked JSON and i18n locales, runs all Node tests,
+It checks whitespace, CSS and selected JavaScript boundaries, parses tracked
+JSON and i18n locales, runs all Node tests,
 checks Flatpak Cargo source and third-party license report drift, verifies Rust
 formatting, runs both Rust test suites, and runs Clippy for both crates. Clippy
 is required by CI and by default locally. A local diagnostic run can explicitly

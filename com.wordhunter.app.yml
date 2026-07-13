@@ -34,8 +34,8 @@ modules:
         CTRANSLATE2_RELEASE: "4.6.0"
         ORT_LIB_LOCATION: /run/build/word-hunter/src-tauri/target/flatpak-onnxruntime
     build-commands:
-      - cargo --offline build --release --manifest-path src-tauri/Cargo.toml
-      - cargo --offline build --release --manifest-path src-tauri/ocr-runner/Cargo.toml
+      - cargo --offline --locked build --release --manifest-path src-tauri/Cargo.toml
+      - cargo --offline --locked build --release --manifest-path src-tauri/ocr-runner/Cargo.toml
       - install -Dm755 src-tauri/target/release/word-hunter-rustified /app/bin/word-hunter-rustified
       - install -Dm755 src-tauri/ocr-runner/target/release/wordhunter-paddleocr /app/bin/ocr-runtime/bin/wordhunter-paddleocr
       - install -Dm755 src-tauri/target/flatpak-onnxruntime/lib/libwebgpu_dawn.so /app/lib/libwebgpu_dawn.so
@@ -70,6 +70,7 @@ modules:
           - docs/android
           - docs/ddia-assessment.md
           - My_Data
+          - node_modules
           - output
           - outputs
           - scratch

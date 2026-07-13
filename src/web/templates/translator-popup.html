@@ -4,98 +4,45 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{title}}</title>
+    <script>
+        (() => {
+            if (document.documentElement.dataset.theme !== "auto" || !window.matchMedia) return;
+            const media = window.matchMedia("(prefers-color-scheme: dark)");
+            const apply = () => { document.documentElement.dataset.theme = media.matches ? "dark" : "light"; };
+            apply();
+            if (typeof media.addEventListener === "function") media.addEventListener("change", apply);
+            else if (typeof media.addListener === "function") media.addListener(apply);
+        })();
+    </script>
+    <link rel="stylesheet" href="/theme.css?v=20260713-theme-audit">
     <style>
         :root {
-            --bg: #f7f9f6;
-            --panel: #ffffff;
-            --panel-strong: #f0f3ef;
-            --ink: #1a201d;
-            --muted: #6b726e;
-            --line: #e2e8e4;
-            --green: #297a5b;
-            --green-hover: #1e5a3f;
-            --button-ink: #ffffff;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-            --radius: 8px;
-            color-scheme: light;
+            --popup-accent: #297a5b;
+            --popup-accent-soft: var(--control-accent-soft);
+            --popup-accent-ink: var(--control-accent-ink);
+            --popup-accent-hover: #1e5a3f;
+            --popup-muted: #6b726e;
         }
         :root[data-theme="dark"] {
-            --bg: #0d1114;
-            --panel: #151a1e;
-            --panel-strong: #1e252a;
-            --ink: #eaeff2;
-            --muted: #8b98a0;
-            --line: #29343d;
-            --green: #4fb38e;
-            --green-hover: #6cc8a5;
-            --button-ink: #082018;
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-            color-scheme: dark;
+            --popup-accent: var(--control-accent);
+            --popup-accent-hover: #6cc8a5;
+            --popup-muted: var(--muted);
         }
         :root[data-color-theme="familiar"] {
-            --bg: #f3f8fc;
-            --panel: #ffffff;
-            --panel-strong: #e6f2fa;
-            --ink: #17232d;
-            --muted: #526674;
-            --line: #cbdde9;
-            --green: #0067a8;
-            --green-hover: #005a95;
-            --button-ink: #ffffff;
-            --shadow: 0 6px 22px rgba(0, 79, 130, 0.1), 0 1px 3px rgba(0, 79, 130, 0.08);
+            --popup-accent: var(--control-accent);
+            --popup-accent-hover: #005a95;
+            --popup-muted: var(--muted);
         }
         :root[data-color-theme="alternative-familiar"] {
-            --bg: #f6f4f2;
-            --panel: #ffffff;
-            --panel-strong: #eee9ec;
-            --ink: #2d252b;
-            --muted: #6a5c65;
-            --line: #ded5db;
-            --green: #a33a15;
-            --green-hover: #7f2d10;
-            --button-ink: #ffffff;
-            --shadow: 0 6px 22px rgba(44, 0, 30, 0.1), 0 1px 3px rgba(44, 0, 30, 0.08);
+            --popup-accent: var(--control-accent);
+            --popup-accent-hover: #7f2d10;
+            --popup-muted: var(--muted);
         }
         :root[data-color-theme="familiar"][data-theme="dark"] {
-            --bg: #081923;
-            --panel: #0d2635;
-            --panel-strong: #123449;
-            --ink: #eff8fd;
-            --muted: #a8c6d8;
-            --line: #28536b;
-            --green: #65c8f5;
-            --green-hover: #8bd8f8;
-            --button-ink: #00395d;
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-            color-scheme: dark;
+            --popup-accent-hover: #8bd8f8;
         }
         :root[data-color-theme="alternative-familiar"][data-theme="dark"] {
-            --bg: #160b13;
-            --panel: #21101c;
-            --panel-strong: #2d1727;
-            --ink: #fff4fb;
-            --muted: #c9afc0;
-            --line: #523349;
-            --green: #ff9b77;
-            --green-hover: #ffb49a;
-            --button-ink: #2c001e;
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
-            color-scheme: dark;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root[data-theme="auto"] {
-                --bg: #0d1114;
-                --panel: #151a1e;
-                --panel-strong: #1e252a;
-                --ink: #eaeff2;
-                --muted: #8b98a0;
-                --line: #29343d;
-                --green: #4fb38e;
-                --green-hover: #6cc8a5;
-                --button-ink: #082018;
-                --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-                color-scheme: dark;
-            }
+            --popup-accent-hover: #ffb49a;
         }
         * { box-sizing: border-box; }
         html, body { height: 100%; margin: 0; padding: 0; background: var(--bg); overflow: hidden; }
@@ -107,7 +54,7 @@
         }
         .toolbar { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; flex-wrap: wrap; }
         .lang-group { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 140px; }
-        .lang-group > span { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
+        .lang-group > span { font-size: 0.7rem; color: var(--popup-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
         .flag-icon { width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
         select {
             background: var(--panel-strong); color: var(--ink);
@@ -115,11 +62,11 @@
             padding: 0.5rem 0.75rem; width: 100%;
             outline: none; cursor: pointer; font-size: 0.95rem;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b98a0' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-image: var(--select-arrow);
             background-repeat: no-repeat; background-position: right 0.75rem center;
             background-size: 14px;
         }
-        select:focus { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
+        select:focus { border-color: var(--popup-accent); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); box-shadow: 0 0 0 3px color-mix(in srgb, var(--popup-accent) 20%, transparent); }
         select option { background: var(--panel); color: var(--ink); }
         .editor-box { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
         textarea {
@@ -128,26 +75,26 @@
             font-size: 1.05rem; resize: none; outline: none;
             line-height: 1.55; font-family: inherit;
         }
-        textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
-        textarea[readonly] { color: var(--green); background: var(--bg); }
-        .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
+        textarea:focus { border-color: var(--popup-accent); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); box-shadow: 0 0 0 3px color-mix(in srgb, var(--popup-accent) 20%, transparent); }
+        textarea[readonly] { color: var(--popup-accent); background: var(--bg); }
+        .label { font-size: 0.7rem; color: var(--popup-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
         .footer { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0 0.25rem; border-top: 1px solid var(--line); flex-shrink: 0; }
-        .engine-info { font-size: 0.75rem; color: var(--muted); }
+        .engine-info { font-size: 0.75rem; color: var(--popup-muted); }
         .primary-button {
             display: inline-flex; align-items: center; justify-content: center;
             gap: 0.5rem; height: 38px; padding: 0 1.5rem;
-            background: var(--green); color: var(--button-ink);
-            border: 1px solid var(--green); border-radius: 6px;
+            background: var(--popup-accent); color: var(--popup-accent-ink);
+            border: 1px solid var(--popup-accent); border-radius: 6px;
             font-size: 0.9rem; font-weight: 500; cursor: pointer;
         }
-        .primary-button:hover { background: var(--green-hover); border-color: var(--green-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+        .primary-button:hover { background: var(--popup-accent-hover); border-color: var(--popup-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
         .primary-button:active { transform: translateY(0); }
         .primary-button svg { width: 1.2rem; height: 1.2rem; stroke-width: 2; }
         .translator-progress { width: 100%; height: 4px; border-radius: 3px; background: var(--line); overflow: hidden; opacity: 0; transition: opacity 0.25s; }
         .translator-progress.active { opacity: 1; }
         .translator-progress-fill {
             width: 30%; height: 100%;
-            background: linear-gradient(90deg, var(--green), #6bcbab, var(--green));
+            background: linear-gradient(90deg, var(--popup-accent), var(--popup-accent-soft), var(--popup-accent));
             border-radius: 3px;
             animation: translator-progress-slide 1.2s ease-in-out infinite;
         }
@@ -167,7 +114,7 @@
                 <select id="from-lang" title="Source language" aria-label="Source language">{{from_options}}</select>
             </div>
         </label>
-        <span style="color: var(--muted); font-size: 1.2rem; font-weight: 300; margin-top: 1.1rem;">→</span>
+        <span style="color: var(--popup-muted); font-size: 1.2rem; font-weight: 300; margin-top: 1.1rem;">→</span>
         <label class="lang-group">
             <span>&nbsp;</span>
             <div style="display: flex; align-items: center; gap: 0.5rem;">

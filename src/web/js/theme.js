@@ -1,12 +1,16 @@
+// @ts-check
+
+/** @type {WhThemeName} */
 export const DEFAULT_THEME = "familiar";
 
+/** @type {readonly WhThemeName[]} */
 export const THEME_ORDER = ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"];
 
-const THEME_ALIASES = Object.freeze({
-  auto: "classic-auto",
-  light: "classic-light",
-  dark: "classic-dark"
-});
+const THEME_ALIASES = new Map([
+  ["auto", "classic-auto"],
+  ["light", "classic-light"],
+  ["dark", "classic-dark"]
+]);
 
 const VALID_THEMES = new Set([
   "familiar",
@@ -16,14 +20,25 @@ const VALID_THEMES = new Set([
   "classic-dark"
 ]);
 
+/**
+ * @param {unknown} value
+ * @param {unknown} [legacyDarkMode]
+ * @returns {WhThemeName}
+ */
 export function normalizeTheme(value, legacyDarkMode) {
   if ((value === undefined || value === null || value === "") && typeof legacyDarkMode === "boolean") {
     return legacyDarkMode ? "classic-dark" : "classic-light";
   }
-  const normalized = THEME_ALIASES[value] || value;
-  return VALID_THEMES.has(normalized) ? normalized : DEFAULT_THEME;
+  const candidate = typeof value === "string" ? value : "";
+  const normalized = THEME_ALIASES.get(candidate) || candidate;
+  return VALID_THEMES.has(normalized) ? /** @type {WhThemeName} */ (normalized) : DEFAULT_THEME;
 }
 
+/**
+ * @param {unknown} value
+ * @param {boolean} [prefersDark]
+ * @returns {WhResolvedTheme}
+ */
 export function resolveTheme(value, prefersDark = false) {
   const theme = normalizeTheme(value);
   if (theme === "familiar") {
@@ -38,12 +53,22 @@ export function resolveTheme(value, prefersDark = false) {
   return { theme, family: "classic", mode, color: mode === "dark" ? "#0d1114" : "#f7f9f6" };
 }
 
+/**
+ * @param {unknown} value
+ * @returns {WhThemeName}
+ */
 export function nextTheme(value) {
   const theme = normalizeTheme(value);
   const index = THEME_ORDER.indexOf(theme);
   return THEME_ORDER[(index + 1) % THEME_ORDER.length];
 }
 
+/**
+ * @param {unknown} value
+ * @param {HTMLElement} [root]
+ * @param {boolean} [prefersDark]
+ * @returns {WhResolvedTheme}
+ */
 export function applyTheme(value, root = document.documentElement, prefersDark) {
   const systemDark = prefersDark ?? Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
   const resolved = resolveTheme(value, systemDark);

@@ -143,7 +143,7 @@ describe("named themes", () => {
   });
 
   it("defines complete, contrasting light and dark named palettes", () => {
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../src/web/theme.css", import.meta.url), "utf8");
     const selectors = [
       ':root[data-color-theme="familiar"]',
       ':root[data-color-theme="alternative-familiar"]',
@@ -166,6 +166,11 @@ describe("named themes", () => {
   it("wires the Settings selector to all themes and themed control colors", () => {
     const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    assert.match(html, /<link rel="stylesheet" href="theme\.css[^>]*>/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css[^>]*>/);
+    assert.match(html, /<link rel="stylesheet" href="platforms\/android-pocket\.css[^>]*>/);
+    assert.ok(html.indexOf("theme.css") < html.indexOf("styles.css"));
+    assert.ok(html.indexOf("styles.css") < html.indexOf("platforms/android-pocket.css"));
     assert.match(html, /id="pref-theme" data-pref="theme"/);
     for (const theme of ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"]) {
       assert.match(html, new RegExp(`option value="${theme}"`));
@@ -198,9 +203,14 @@ describe("named themes", () => {
     const popup = readFileSync(new URL("../../src/web/templates/translator-popup.html", import.meta.url), "utf8");
     assert.match(sharedEvents, /family=\$\{theme\.family\}/);
     assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
-    assert.match(popup, /data-color-theme="familiar"/);
-    assert.match(popup, /data-color-theme="alternative-familiar"/);
-    assert.match(popup, /\.primary-button[^}]*color:\s*var\(--button-ink\)/s);
+    assert.match(popup, /<link rel="stylesheet" href="\/theme\.css[^>]*>/);
+    assert.ok(popup.indexOf("/theme.css") < popup.indexOf("<style>"));
+    assert.doesNotMatch(popup, /--(?:bg|panel|panel-strong|ink|muted|line|shadow):\s*#/);
+    assert.match(popup, /--popup-accent:\s*#297a5b/);
+    assert.match(popup, /dataset\.theme\s*!==\s*"auto"/);
+    assert.match(popup, /media\.addListener\(apply\)/);
+    assert.match(popup, /\.primary-button[^}]*color:\s*var\(--popup-accent-ink\)/s);
+    assert.match(popup, /box-shadow:[^;]*rgba\([^;]+;\s*box-shadow:[^;]*color-mix/s);
     assert.doesNotMatch(popup, /\.engine-info[^}]*opacity:/s);
   });
 });

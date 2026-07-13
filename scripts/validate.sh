@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 local_node_dir="${WORDHUNTER_LOCAL_NODE_DIR:-}"
-if [[ -n "$local_node_dir" && -x "$local_node_dir/node" ]]; then
+if [[ -n "$local_node_dir" && ( -x "$local_node_dir/node" || -x "$local_node_dir/node.exe" ) ]]; then
   export PATH="$local_node_dir:$PATH"
 fi
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -21,13 +21,28 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm was not found. Install it with Node.js 22+ or set WORDHUNTER_LOCAL_NODE_DIR." >&2
+  exit 1
+fi
+
 if ! command -v cargo >/dev/null 2>&1; then
   echo "cargo was not found. Install Rust 1.88+ with rustup." >&2
   exit 1
 fi
 
 run git diff --check
+diff_base="${WORDHUNTER_DIFF_BASE:-}"
+if [[ "$diff_base" =~ ^0+$ ]]; then
+  diff_base=""
+fi
+if [[ -n "$diff_base" ]] && git cat-file -e "$diff_base^{commit}" 2>/dev/null; then
+  run git diff --check "$diff_base"..HEAD
+elif git rev-parse --verify HEAD^ >/dev/null 2>&1; then
+  run git diff --check HEAD^..HEAD
+fi
 run node scripts/validate-json-i18n.mjs
+run npm run check:frontend
 run node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js
 run ./scripts/update-flatpak-cargo-sources.sh --check
 if [[ "${WORDHUNTER_VALIDATE_LICENSES:-1}" != "0" ]]; then

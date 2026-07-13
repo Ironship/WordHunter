@@ -158,8 +158,8 @@ describe("OCR runtime packaging", () => {
 
     const commands = module["build-commands"];
     for (const expected of [
-      "cargo --offline build --release --manifest-path src-tauri/Cargo.toml",
-      "cargo --offline build --release --manifest-path src-tauri/ocr-runner/Cargo.toml",
+      "cargo --offline --locked build --release --manifest-path src-tauri/Cargo.toml",
+      "cargo --offline --locked build --release --manifest-path src-tauri/ocr-runner/Cargo.toml",
     ]) {
       assert.ok(commands.includes(expected));
     }
