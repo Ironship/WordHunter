@@ -60,6 +60,6 @@ hidden behind local assertions.
 - [x] TypeScript emits the complete frontend with no diagnostics.
 - [x] Stylelint and JSON/i18n validation pass.
 - [x] Shared, desktop, and Android frontend suites pass against `dist/web`.
-- [ ] Cargo formatting, tests, and clippy continue to pass.
+- [x] Cargo formatting, tests, and clippy continue to pass.
 - [x] Windows, Android, and Flatpak release recipes consume `dist/web`.
 - [x] Independent review confirms feature parity and no source/runtime drift.
