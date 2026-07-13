@@ -366,6 +366,7 @@ declare global {
     flushPendingSave?: () => void;
     flushAllPendingFrontendState?: () => Promise<void>;
     flushWordFieldSave?: () => void;
+    wordHunterBootRejectionHandler?: (event: PromiseRejectionEvent) => void;
     lastActiveToken?: HTMLElement | null;
   }
 }

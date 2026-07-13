@@ -183,10 +183,14 @@ describe("repository validation wiring", () => {
     const buildScript = read("../../scripts/build-frontend.mjs");
     const rustBuild = read("../../src-tauri/build.rs");
 
-    assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".ts")).length, 87);
+    assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".ts")).length, 89);
     assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".js")).length, 0);
-    assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".js")).length, 87);
+    assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".js")).length, 89);
     assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".ts")).length, 0);
+    for (const html of [read("../../src/web/index.html"), read("../../src/web/templates/translator-popup.html")]) {
+      assert.doesNotMatch(html, /<script>[^]*?<\/script>/i);
+      assert.doesNotMatch(html, /\son[a-z]+=/i);
+    }
     assert.match(read("../../dist/web/.wordhunter-build.sha256"), /^[0-9a-f]{64}\s*$/);
     assert.match(buildScript, /\.web-build-\$\{process\.pid\}/);
     assert.match(buildScript, /await rename\(temporaryDir, outputDir\)/);

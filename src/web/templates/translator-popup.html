@@ -1,19 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{locale}}" data-theme="{{theme}}" data-color-theme="{{color_theme}}">
+<html lang="{{locale}}" data-theme="{{theme}}" data-color-theme="{{color_theme}}" data-base-url="{{base_url}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{title}}</title>
-    <script>
-        (() => {
-            if (document.documentElement.dataset.theme !== "auto" || !window.matchMedia) return;
-            const media = window.matchMedia("(prefers-color-scheme: dark)");
-            const apply = () => { document.documentElement.dataset.theme = media.matches ? "dark" : "light"; };
-            apply();
-            if (typeof media.addEventListener === "function") media.addEventListener("change", apply);
-            else if (typeof media.addListener === "function") media.addListener(apply);
-        })();
-    </script>
+    <script type="module" src="/translator-popup.js"></script>
     <link rel="stylesheet" href="/theme.css?v=20260713-theme-audit">
     <style>
         :root {
@@ -110,7 +101,7 @@
         <label class="lang-group">
             <span>{{title}}</span>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <img id="flag-from" class="flag-icon" src="{{base_url}}/flags/{{from_code}}.svg" alt="" onerror="this.style.display='none'">
+                <img id="flag-from" class="flag-icon" src="{{base_url}}/flags/{{from_code}}.svg" alt="">
                 <select id="from-lang" title="{{from_label}}" aria-label="{{from_label}}">{{from_options}}</select>
             </div>
         </label>
@@ -118,7 +109,7 @@
         <label class="lang-group">
             <span>&nbsp;</span>
             <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <img id="flag-to" class="flag-icon" src="{{base_url}}/flags/{{to_code}}.svg" alt="" onerror="this.style.display='none'">
+                <img id="flag-to" class="flag-icon" src="{{base_url}}/flags/{{to_code}}.svg" alt="">
                 <select id="to-lang" title="{{to_label}}" aria-label="{{to_label}}">{{to_options}}</select>
             </div>
         </label>
@@ -134,61 +125,10 @@
     <div class="translator-progress" id="translator-progress"><div class="translator-progress-fill"></div></div>
     <div class="footer">
         <span class="engine-info">{{footer}}</span>
-        <button class="primary-button" id="copy-btn">
+        <button class="primary-button" id="copy-btn" type="button" data-copied="{{copied}}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             {{copy_btn}}
         </button>
     </div>
-    <script>
-        const sourceEl = document.getElementById('source-text');
-        const targetEl = document.getElementById('target-text');
-        const fromEl = document.getElementById('from-lang');
-        const toEl = document.getElementById('to-lang');
-        const flagFrom = document.getElementById('flag-from');
-        const flagTo = document.getElementById('flag-to');
-        const progressEl = document.getElementById('translator-progress');
-        let timer = null;
-        function cleanTranslation(text) {
-            return String(text || '')
-                .replace(/\{[A-Z]:\s*[^{}]{0,120}\}/g, '')
-                .replace(/\{\s*\d+\s*\}/g, '')
-                .replace(/\{\s*[A-Za-z0-9_$:;.,#@\- ]{1,80}\s*\}/g, '')
-                .replace(/^\s*[/\\|]+\s*/g, '')
-                .replace(/\s+([,.;:!?])/g, '$1')
-                .replace(/\s+'/g, "'")
-                .replace(/\s+/g, ' ')
-                .trim();
-        }
-        async function translate() {
-            const val = sourceEl.value.trim();
-            if (!val) { targetEl.value = ''; return; }
-            if (progressEl) progressEl.classList.add('active');
-            try {
-                const url = `/__argos/translate?text=${encodeURIComponent(val)}&from=${fromEl.value}&to=${toEl.value}`;
-                const res = await fetch(url);
-                if (res.ok) { const data = await res.json(); targetEl.value = cleanTranslation(data.translated); }
-            } catch (e) { console.error('Translation error', e); }
-            finally { if (progressEl) progressEl.classList.remove('active'); }
-        }
-        function updateFlags() {
-            flagFrom.src = `{{base_url}}/flags/${fromEl.value}.svg`;
-            flagFrom.style.display = 'block';
-            flagTo.src = `{{base_url}}/flags/${toEl.value}.svg`;
-            flagTo.style.display = 'block';
-        }
-        sourceEl.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(translate, 300); });
-        [fromEl, toEl].forEach(el => el.addEventListener('change', () => { updateFlags(); translate(); }));
-        document.getElementById('copy-btn').addEventListener('click', () => {
-            if (!targetEl.value) return;
-            targetEl.select();
-            document.execCommand('copy');
-            const btn = document.getElementById('copy-btn');
-            const originalHTML = btn.innerHTML;
-            btn.textContent = "{{copied}}";
-            setTimeout(() => { btn.innerHTML = originalHTML; }, 2000);
-        });
-        if (sourceEl.value) translate();
-        sourceEl.focus();
-    </script>
 </body>
 </html>

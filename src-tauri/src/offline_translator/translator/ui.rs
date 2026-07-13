@@ -154,7 +154,7 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         ),
         (
             "{{copied}}",
-            escape_html(labels.get("copied").unwrap_or(&"Copied!".to_string())),
+            escape_attr(labels.get("copied").unwrap_or(&"Copied!".to_string())),
         ),
     ];
     for (needle, value) in replacements {

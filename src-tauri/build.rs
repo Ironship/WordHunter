@@ -53,7 +53,7 @@ fn frontend_source_hash(manifest_dir: &Path) -> String {
         }));
         hash.update([0]);
     }
-    format!("{hash:x}")
+    format!("{:x}", hash.finalize())
 }
 
 fn main() {

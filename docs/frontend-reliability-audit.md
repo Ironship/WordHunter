@@ -69,7 +69,8 @@ source remains under `src/web`; generated browser assets are emitted to
 
 - [x] Replace transitional checkJs with a repository-pinned TypeScript build.
 - [x] Add ambient declarations outside the shipped web assets.
-- [x] Convert all 87 shipped browser runtime modules to `.ts`.
+- [x] Convert all 87 existing browser runtime modules and the two inline runtime
+  scripts to `.ts`.
 - [x] Keep fetched and injected snapshots typed as `unknown` until validation.
 - [x] Resolve bridge call-signature drift rather than suppressing it.
 - [x] Do not add broad `@ts-ignore` or `@ts-nocheck` directives.

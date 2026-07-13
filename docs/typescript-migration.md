@@ -34,6 +34,8 @@ hidden behind local assertions.
       responses, Android bridge calls, and YouGlish integration.
 - [x] Preserve all existing dynamic import paths and worker URLs in emitted JS.
 - [x] Confirm that no `.js` runtime source remains under `src/web`.
+- [x] Move boot and translator-popup runtime code out of inline HTML and into
+      compiler-checked TypeScript modules.
 
 ## Selected-word panel
 
