@@ -467,7 +467,8 @@ describe("focused frontend regressions", () => {
 
   it("restores selected-word settings focus after visibility and reorder renders", () => {
     const settings = read("dist/web/js/events/settings.js");
-    assert.match(settings, /list\?\.querySelector\(selector\)\?\.focus\(\)/);
+    assert.match(settings, /preferred && !preferred\.disabled/);
+    assert.match(settings, /fallback && !fallback\.disabled \? fallback : checkbox/);
     assert.match(settings, /item\.visible = input\.checked;\s*saveSelectedWordPanelItems\(items\);\s*restoreSelectedWordPanelSettingFocus\(id\)/);
     assert.match(settings, /\[items\[index\], items\[nextIndex\]\] = \[items\[nextIndex\], items\[index\]\];\s*saveSelectedWordPanelItems\(items\);\s*restoreSelectedWordPanelSettingFocus\(id, button\.dataset\.direction\)/);
   });
@@ -622,6 +623,7 @@ describe("focused frontend regressions", () => {
 
   it("keeps popup language metadata localized through template placeholders", () => {
     const popup = read("dist/web/templates/translator-popup.html");
+    const popupRuntime = read("dist/web/translator-popup.js");
     const backend = read("src-tauri/src/offline_translator/translator/ui.rs");
 
     assert.match(popup, /<html lang="\{\{locale\}\}"/);
@@ -633,6 +635,12 @@ describe("focused frontend regressions", () => {
     assert.match(backend, /\("\{\{locale\}\}", escape_attr\(&locale\)\)/);
     assert.match(backend, /"\{\{from_label\}\}"[\s\S]*labels\.get\("from"\)/);
     assert.match(backend, /"\{\{to_label\}\}"[\s\S]*labels\.get\("to"\)/);
+    assert.match(popupRuntime, /translationController\?\.abort\(\)/);
+    assert.match(popupRuntime, /function invalidateTranslation\(\)/);
+    assert.match(popupRuntime, /addEventListener\("input", \(\) => \{[\s\S]*invalidateTranslation\(\);[\s\S]*setTimeout\(translate, 300\)/);
+    assert.match(popupRuntime, /addEventListener\("change", \(\) => \{[\s\S]*clearTimeout\(timer\);[\s\S]*translate\(\)/);
+    assert.match(popupRuntime, /generation !== activeTranslation/);
+    assert.match(popupRuntime, /generation === activeTranslation/);
   });
 });
 

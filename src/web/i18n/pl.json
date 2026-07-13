@@ -1,7 +1,7 @@
 {
   "app": {
     "title": "Word Hunter",
-    "tagline": "App to track new words to learn",
+    "tagline": "Aplikacja do śledzenia nowych słów do nauki",
     "section": "Czytanie",
     "footer": "Dane zapisują się w tej przeglądarce.",
     "openBooksFolder": "Otwórz folder książek",

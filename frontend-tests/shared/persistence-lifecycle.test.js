@@ -436,6 +436,7 @@ describe("persistence lifecycle", () => {
   it("keeps startup boot CSS scoped and removes the boot state after initialization", async () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const boot = readFileSync(new URL("../../dist/web/boot.js", import.meta.url), "utf8");
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
@@ -444,8 +445,9 @@ describe("persistence lifecycle", () => {
     assert.match(inlineBoot, /overflow:\s*hidden/);
     assert.match(inlineBoot, /background:\s*var\(--boot-bg,#0067a8\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
-    assert.ok(html.includes('localStorage.getItem("wordHunterStateV2")'));
-    assert.ok(html.includes('root.dataset.themePref = theme'));
+    assert.match(html, /<script type="module" src="boot\.js"><\/script>/);
+    assert.ok(boot.includes('localStorage.getItem("wordHunterStateV2")'));
+    assert.ok(boot.includes("root.dataset.themePref = theme"));
     assert.match(cssDeclarations(html, String.raw`html\.app-booting \.app-shell`), /visibility:\s*hidden/);
 
     const bootPage = cssDeclarations(styles, String.raw`html\.app-booting,\s*html\.app-booting body`);

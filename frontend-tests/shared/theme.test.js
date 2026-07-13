@@ -201,14 +201,16 @@ describe("named themes", () => {
   it("propagates named themes to the offline translator with contrasting button ink", () => {
     const sharedEvents = readFileSync(new URL("../../dist/web/js/events/shared.js", import.meta.url), "utf8");
     const popup = readFileSync(new URL("../../dist/web/templates/translator-popup.html", import.meta.url), "utf8");
+    const popupRuntime = readFileSync(new URL("../../dist/web/translator-popup.js", import.meta.url), "utf8");
     assert.match(sharedEvents, /family=\$\{theme\.family\}/);
     assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
     assert.match(popup, /<link rel="stylesheet" href="\/theme\.css[^>]*>/);
     assert.ok(popup.indexOf("/theme.css") < popup.indexOf("<style>"));
     assert.doesNotMatch(popup, /--(?:bg|panel|panel-strong|ink|muted|line|shadow):\s*#/);
     assert.match(popup, /--popup-accent:\s*#297a5b/);
-    assert.match(popup, /dataset\.theme\s*!==\s*"auto"/);
-    assert.match(popup, /media\.addListener\(apply\)/);
+    assert.match(popup, /<script type="module" src="\/translator-popup\.js"><\/script>/);
+    assert.match(popupRuntime, /dataset\.theme\s*!==\s*"auto"/);
+    assert.match(popupRuntime, /media\.addListener\(apply\)/);
     assert.match(popup, /\.primary-button[^}]*color:\s*var\(--popup-accent-ink\)/s);
     assert.match(popup, /box-shadow:[^;]*rgba\([^;]+;\s*box-shadow:[^;]*color-mix/s);
     assert.doesNotMatch(popup, /\.engine-info[^}]*opacity:/s);

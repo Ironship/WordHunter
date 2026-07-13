@@ -25,6 +25,10 @@ window.onerror = function(msg, url, line, col, error) {
   reportClientError(t("app.jsError", { msg, url, line, col, stack: error?.stack || "" }), error);
 };
 
+if (window.wordHunterBootRejectionHandler) {
+  window.removeEventListener("unhandledrejection", window.wordHunterBootRejectionHandler);
+  delete window.wordHunterBootRejectionHandler;
+}
 window.addEventListener("unhandledrejection", function(event) {
   reportClientError(t("app.unhandledPromise", { reason: event.reason }), event.reason);
 });

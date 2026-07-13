@@ -8,54 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="theme-color" content="#0067a8">
-  <script>
-    (function() {
-      try {
-        var saved = window.__bridgeState;
-        if (!saved) saved = JSON.parse(localStorage.getItem("wordHunterStateV2") || "null");
-        var prefs = saved && saved.prefs ? saved.prefs : saved && saved.preferences ? saved.preferences : {};
-        var aliases = { auto: "classic-auto", light: "classic-light", dark: "classic-dark" };
-        var theme = aliases[prefs.theme] || prefs.theme;
-        if (!theme && typeof prefs.darkMode === "boolean") theme = prefs.darkMode ? "classic-dark" : "classic-light";
-        if (!["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"].includes(theme)) theme = "familiar";
-        var systemDark = !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var family = theme === "familiar" || theme === "alternative-familiar" ? theme : "classic";
-        var mode = theme === "classic-dark" || ((theme === "classic-auto" || family !== "classic") && systemDark) ? "dark" : "light";
-        var color = family === "familiar" ? (mode === "dark" ? "#00395d" : "#0067a8")
-          : family === "alternative-familiar" ? (mode === "dark" ? "#2c001e" : "#5e2750")
-          : mode === "dark" ? "#0d1114" : "#f7f9f6";
-        var root = document.documentElement;
-        root.dataset.theme = mode;
-        root.dataset.themePref = theme;
-        root.dataset.colorTheme = family;
-        root.style.setProperty("--boot-bg", color);
-        root.style.background = color;
-        root.style.colorScheme = mode;
-        document.querySelector('meta[name="theme-color"]').setAttribute("content", color);
-      } catch (_error) {}
-    })();
-  </script>
+  <script type="module" src="boot.js"></script>
   <style>html.app-booting,html.app-booting body{width:100%;height:100%;min-height:100%;margin:0;overflow:hidden;background:var(--boot-bg,#0067a8);color-scheme:inherit}html.app-booting .app-shell{visibility:hidden}</style>
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+  <link id="app-font-stylesheet" rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="theme.css?v=20260713-theme-audit">
   <link rel="stylesheet" href="styles.css?v=20260629-ui-cache">
   <link rel="stylesheet" href="platforms/android-pocket.css?v=20260629-ui-cache">
-  <script>
-    function reportBootError(text) {
-      document.documentElement.classList.remove("app-booting");
-      console.error(text);
-      fetch("/__log_error", { method: "POST", body: text }).catch(()=>{});
-    }
-    window.onerror = function(msg, url, line, col, error) {
-      reportBootError(`JS Error: ${msg} at ${url}:${line}:${col}\n${error ? error.stack : ''}`);
-    };
-    window.addEventListener("unhandledrejection", function(event) {
-      reportBootError(`Unhandled Promise: ${event.reason}`);
-    });
-  </script>
 </head>
 <body>
   <div class="app-shell">

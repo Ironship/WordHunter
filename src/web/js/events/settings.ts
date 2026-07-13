@@ -343,11 +343,23 @@ function saveSelectedWordPanelItems(items: WhSelectedWordPanelItem[]): void {
 }
 
 function restoreSelectedWordPanelSettingFocus(id: WhSelectedWordPanelItemId, direction?: "up" | "down"): void {
-  const selector = direction
-    ? `[data-word-panel-item-move="${id}"][data-direction="${direction}"]`
-    : `[data-word-panel-item-visible="${id}"]`;
   const list = els.prefSelectedWordPanelItems as HTMLElement | null;
-  (list?.querySelector(selector) as HTMLElement | null)?.focus();
+  if (!direction) {
+    (list?.querySelector(`[data-word-panel-item-visible="${id}"]`) as HTMLInputElement | null)?.focus();
+    return;
+  }
+  const preferred = list?.querySelector(
+    `[data-word-panel-item-move="${id}"][data-direction="${direction}"]`
+  ) as HTMLButtonElement | null;
+  const fallbackDirection = direction === "up" ? "down" : "up";
+  const fallback = list?.querySelector(
+    `[data-word-panel-item-move="${id}"][data-direction="${fallbackDirection}"]`
+  ) as HTMLButtonElement | null;
+  const checkbox = list?.querySelector(`[data-word-panel-item-visible="${id}"]`) as HTMLInputElement | null;
+  const target = preferred && !preferred.disabled
+    ? preferred
+    : fallback && !fallback.disabled ? fallback : checkbox;
+  target?.focus();
 }
 
 function bindSelectedWordPanelSettings(): void {
