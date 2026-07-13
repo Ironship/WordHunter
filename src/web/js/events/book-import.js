@@ -14,6 +14,7 @@ import {
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { beginElementBusy, setElementBusy } from "../loading.js";
 import { deleteStoredText } from "../store-bridge.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 let pendingCoverDataUrl = "";
 let pendingImportMeta = {};
@@ -417,8 +418,9 @@ async function runPdfImport(file) {
     throw new Error(t("toast.pdfTooLarge", { mb: Math.floor(maxBytes / (1024 * 1024)) }));
   }
   if (!androidPdfOverlay && !await confirmWholeBookOcr()) return false;
-  const lang = state.preferences.learningLanguage || "en";
-  const id = `${lang}-pdf-ocr-${slugFromFileName(file.name)}-${Date.now()}`;
+  const profile = state.preferences.learningLanguage || "en";
+  const lang = effectiveLearningLanguage(state.preferences);
+  const id = `${profile}-pdf-ocr-${slugFromFileName(file.name)}-${Date.now()}`;
   const jobId = crypto.randomUUID();
   const controller = new AbortController();
   let cancelled = false;

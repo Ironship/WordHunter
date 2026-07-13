@@ -7,9 +7,12 @@ globalThis.document = globalThis.document || { addEventListener: () => {}, getEl
 
 const {
   DEFAULT_LM_STUDIO_ENDPOINT,
+  effectiveLearningLanguage,
   isDesktopOnlyTranslationProvider,
+  normalizeTranslationLanguageCode,
   normalizeTranslationProvider,
-  normalizeTranslatorTextPreference
+  normalizeTranslatorTextPreference,
+  resolveProfileTranslationPair
 } = await import("../../src/web/js/translator-preferences.js");
 const { resolveTranslatorPair } = await import("../../src/web/js/views/translator.js");
 
@@ -28,6 +31,34 @@ describe("translator preferences helpers", () => {
     assert.equal(normalizeTranslatorTextPreference("lmStudioModel", "  local-model  "), "local-model");
     assert.equal(normalizeTranslatorTextPreference("lmStudioEndpoint", "  "), DEFAULT_LM_STUDIO_ENDPOINT);
     assert.equal(normalizeTranslatorTextPreference("lmStudioEndpoint", "  http://localhost:9999/v1  "), "http://localhost:9999/v1");
+  });
+
+  it("normalizes provider language codes without accepting the Other profile id", () => {
+    assert.equal(normalizeTranslationLanguageCode(" PT_BR "), "pt-br");
+    assert.equal(normalizeTranslationLanguageCode("grc"), "grc");
+    assert.equal(normalizeTranslationLanguageCode("other"), "");
+    assert.equal(normalizeTranslationLanguageCode("not a code"), "");
+  });
+
+  it("resolves a configured source and target for the Other profile", () => {
+    const pair = resolveProfileTranslationPair({
+      learningLanguage: "other",
+      locale: "pl",
+      translationSourceLanguage: "nl",
+      translationTargetLanguage: "es"
+    });
+
+    assert.deepEqual(pair, { fromCode: "nl", toCode: "es", configured: true });
+    assert.equal(effectiveLearningLanguage({ learningLanguage: "other", translationSourceLanguage: "nl" }), "nl");
+    assert.equal(resolveProfileTranslationPair({ learningLanguage: "other", locale: "pl" }).configured, false);
+  });
+
+  it("preserves existing profile-to-interface translation defaults", () => {
+    assert.deepEqual(resolveProfileTranslationPair({ learningLanguage: "de", locale: "pl" }), {
+      fromCode: "de",
+      toCode: "pl",
+      configured: true
+    });
   });
 });
 

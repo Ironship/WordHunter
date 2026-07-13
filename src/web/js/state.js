@@ -1,6 +1,7 @@
 import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { loadState } from "./state/normalize.js";
+import { OTHER_PROFILE_ID } from "./constants.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
 export { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./state/defaults.js";
@@ -175,6 +176,8 @@ export function switchLearningLanguage(lang) {
     previousProfile.preferences = previousProfile.preferences || {};
     previousProfile.preferences.dictionaryUrl = state.preferences.dictionaryUrl;
     previousProfile.preferences.dictionaryMode = state.preferences.dictionaryMode;
+    previousProfile.preferences.translationSourceLanguage = state.preferences.translationSourceLanguage;
+    previousProfile.preferences.translationTargetLanguage = state.preferences.translationTargetLanguage;
   }
   state.preferences.learningLanguage = lang;
   state.discover.page = 1;
@@ -182,7 +185,13 @@ export function switchLearningLanguage(lang) {
   if (!state.profiles[lang]) {
     state.profiles[lang] = {
       vocab: {}, customTexts: [], userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [],
-      preferences: { dictionaryUrl: getDefaultDictionaryUrl(lang), dictionaryMode: "internal", theme: "familiar" }
+      preferences: {
+        dictionaryUrl: getDefaultDictionaryUrl(lang),
+        dictionaryMode: "internal",
+        theme: "familiar",
+        translationSourceLanguage: "",
+        translationTargetLanguage: lang === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""
+      }
     };
   }
   const active = state.profiles[lang];
@@ -199,6 +208,9 @@ export function switchLearningLanguage(lang) {
   state.archivedBookIds = active.archivedBookIds;
   state.preferences.dictionaryUrl = active.preferences?.dictionaryUrl || getDefaultDictionaryUrl(lang);
   state.preferences.dictionaryMode = active.preferences?.dictionaryMode || "internal";
+  state.preferences.translationSourceLanguage = active.preferences?.translationSourceLanguage || "";
+  state.preferences.translationTargetLanguage = active.preferences?.translationTargetLanguage
+    || (lang === OTHER_PROFILE_ID ? state.preferences.locale || "en" : "");
   state.currentTextId = null;
   state.selectedWord = null;
   state.selectedWordIndex = null;

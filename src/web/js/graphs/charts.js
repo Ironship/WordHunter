@@ -3,6 +3,7 @@
  */
 import { state } from "../state.js";
 import { t } from "../i18n.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar
@@ -576,7 +577,7 @@ export function renderVocabProgress(_chartEntries) {
   const ph = H - pad.top - pad.bottom;
   const chartEntries = _chartEntries || Object.values(state.vocab || {});
 
-  const lang = state.preferences?.learningLanguage || "en";
+  const lang = effectiveLearningLanguage(state.preferences).split("-")[0];
   const thresholds = getCefrThresholds(lang);
   const knownCount = getKnownWordCount(chartEntries);
   const knownLearningCount = getKnownLearningWordCount(chartEntries);

@@ -35,7 +35,7 @@ globalThis.CustomEvent = class CustomEvent {
 };
 
 const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
+const { createDefaultState, normalizeState, replaceState, state } = await import("../../src/web/js/state.js");
 const { syncSettingsControls } = await import("../../src/web/js/preferences.js");
 
 function control() {
@@ -65,6 +65,8 @@ function setupSettingsControls() {
     "prefHighlight",
     "prefAutoLearn",
     "prefCardStats",
+    "prefCardStatsMode",
+    "prefCardStatsModeRow",
     "prefStatusSoundsEnabled",
     "prefStatusSoundVolume",
     "prefStatusSoundVolumeLabel",
@@ -109,6 +111,25 @@ describe("preferences settings summary", () => {
     assert.equal(els.prefStatusSoundVolume.value, "30");
     assert.equal(els.prefStatusSoundVolume.disabled, true);
     assert.equal(els.prefStatusSoundVolumeLabel.textContent, "settings.statusSoundVolume");
+  });
+
+  it("synchronizes the book counter display mode and disables it with card stats", () => {
+    resetState();
+    state.preferences.cardStatsMode = "both";
+    state.preferences.showCardStats = false;
+
+    syncSettingsControls();
+
+    assert.equal(els.prefCardStatsMode.value, "both");
+    assert.equal(els.prefCardStatsMode.disabled, true);
+    assert.equal(els.prefCardStatsModeRow.style.opacity, "0.5");
+  });
+
+  it("defaults invalid book counter display modes to percentages", () => {
+    const raw = createDefaultState();
+    assert.equal(raw.preferences.cardStatsMode, "percentages");
+    raw.preferences.cardStatsMode = "invalid";
+    assert.equal(normalizeState(raw).preferences.cardStatsMode, "percentages");
   });
 
   it("renders actionable sync conflict details when the backend exposes them", () => {

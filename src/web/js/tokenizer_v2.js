@@ -124,14 +124,21 @@ export function findGermanSeparableVerbMatches(tokens, vocab, lang = "en") {
 
   for (const words of clauses) {
     if (words.length < 2) continue;
-    const prefix = words.at(-1);
-    for (let index = words.length - 2; index >= 0 && words.length - index <= 12; index--) {
-      const candidate = (candidates.get(words[index].word) || [])
-        .find((value) => value.prefix === prefix.word);
-      if (!candidate) continue;
-      matches.set(words[index].tokenIndex, candidate.key);
-      matches.set(prefix.tokenIndex, candidate.key);
-      break;
+    const consumed = new Set();
+    for (let prefixIndex = 1; prefixIndex < words.length; prefixIndex++) {
+      const prefix = words[prefixIndex];
+      if (!GERMAN_SEPARABLE_PREFIXES.has(prefix.word) || consumed.has(prefix.tokenIndex)) continue;
+      for (let index = prefixIndex - 1; index >= 0 && prefixIndex - index < 12; index--) {
+        if (consumed.has(words[index].tokenIndex)) continue;
+        const candidate = (candidates.get(words[index].word) || [])
+          .find((value) => value.prefix === prefix.word);
+        if (!candidate) continue;
+        matches.set(words[index].tokenIndex, candidate.key);
+        matches.set(prefix.tokenIndex, candidate.key);
+        consumed.add(words[index].tokenIndex);
+        consumed.add(prefix.tokenIndex);
+        break;
+      }
     }
   }
   return matches;
@@ -323,11 +330,19 @@ export function getSentenceForWord(text, word, lang = "en", algorithm = "modern"
   return "";
 }
 
-export function getTokenStats(tokens, vocab, lang = "en") {
-  const words = tokens.filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean);
+export function classifyTokenOccurrences(tokens, vocab, lang = "en") {
+  const classifications = new Map();
+  tokens.forEach((token, tokenIndex) => {
+    if (token.type !== "word") return;
+    const key = normalizeWord(token.value);
+    if (!key) return;
+    classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
+  });
+
   const phrases = Object.entries(vocab || {})
     .filter(([word]) => word.includes(" "))
-    .map(([word, entry]) => ({ words: word.split(/\s+/), status: entry?.status || "new" }))
+    .map(([key, entry]) => ({ key, words: key.split(/\s+/).map(normalizeWord).filter(Boolean), status: entry?.status || "new" }))
+    .filter((phrase) => phrase.words.length > 1)
     .sort((a, b) => b.words.length - a.words.length);
   const phrasesByFirstWord = new Map();
   for (const phrase of phrases) {
@@ -335,23 +350,53 @@ export function getTokenStats(tokens, vocab, lang = "en") {
     values.push(phrase);
     phrasesByFirstWord.set(phrase.words[0], values);
   }
-  const statuses = words.map((word) => vocab?.[word]?.status || "new");
-  for (let i = 0; i < words.length; i += 1) {
-    const phrase = (phrasesByFirstWord.get(words[i]) || [])
-      .find(({ words: phraseWords }) => phraseWords.every((word, offset) => words[i + offset] === word));
-    if (phrase) phrase.words.forEach((_word, offset) => { statuses[i + offset] = phrase.status; });
+
+  const claimed = new Set();
+  for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
+    const first = classifications.get(tokenIndex);
+    if (!first || claimed.has(tokenIndex)) continue;
+    for (const phrase of phrasesByFirstWord.get(first.key) || []) {
+      const wordTokenIndexes = [tokenIndex];
+      let cursor = tokenIndex + 1;
+      let wordOffset = 1;
+      let blocked = false;
+      while (wordOffset < phrase.words.length && cursor < tokens.length) {
+        const token = tokens[cursor];
+        if (token.type === "image" || (token.type === "text" && /[.!?;,\n\r。！？]/u.test(token.value))) {
+          blocked = true;
+          break;
+        }
+        if (token.type === "word") {
+          if (claimed.has(cursor) || normalizeWord(token.value) !== phrase.words[wordOffset]) {
+            blocked = true;
+            break;
+          }
+          wordTokenIndexes.push(cursor);
+          wordOffset += 1;
+        }
+        cursor += 1;
+      }
+      if (blocked || wordOffset !== phrase.words.length) continue;
+      for (const index of wordTokenIndexes) {
+        classifications.set(index, { key: phrase.key, status: phrase.status });
+        claimed.add(index);
+      }
+      break;
+    }
   }
-  const wordIndexByTokenIndex = new Map();
-  let wordIndex = 0;
-  tokens.forEach((token, tokenIndex) => {
-    if (token.type === "word") wordIndexByTokenIndex.set(tokenIndex, wordIndex++);
-  });
+
   for (const [tokenIndex, key] of findGermanSeparableVerbMatches(tokens, vocab, lang)) {
-    const index = wordIndexByTokenIndex.get(tokenIndex);
-    if (index !== undefined) statuses[index] = vocab?.[key]?.status || "new";
+    classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   }
+
+  return classifications;
+}
+
+export function getTokenStats(tokens, vocab, lang = "en") {
+  const words = tokens.filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean);
+  const classifications = classifyTokenOccurrences(tokens, vocab, lang);
   const stats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
-  statuses.forEach((status) => { stats[["known", "learning", "ignored"].includes(status) ? status : "new"] += 1; });
+  classifications.forEach(({ status }) => { stats[["known", "learning", "ignored"].includes(status) ? status : "new"] += 1; });
   return stats;
 }
 

@@ -109,7 +109,8 @@ async function loadAppHarness() {
     "./js/books.js": {
       loadBooksCatalog: asyncNoOp,
       loadAllBookTexts: asyncNoOp,
-      loadAllCustomTextContents: asyncNoOp
+      loadAllCustomTextContents: asyncNoOp,
+      hydrateActiveLibraryTexts: asyncNoOp
     },
     "./js/render.js": { render: noOp, ensureCurrentText: noOp },
     "./js/i18n.js": { loadLocale: asyncNoOp, applyTranslations: noOp, t: (key) => key },

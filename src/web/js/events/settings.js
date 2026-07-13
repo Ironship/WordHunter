@@ -15,7 +15,8 @@ import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { setElementBusy } from "../loading.js";
 import { isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
-import { normalizeTranslatorTextPreference } from "../translator-preferences.js";
+import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
+import { hydrateActiveLibraryTexts } from "../books.js";
 
 let syncIntervalStarted = false;
 let backgroundSyncTimer = null;
@@ -657,6 +658,12 @@ export function bindSettingsEvents() {
       syncSettingsControls();
       render();
       showToast(t("toast.learningLanguageChanged"));
+      const language = control.value;
+      hydrateActiveLibraryTexts()
+        .then((current) => {
+          if (current && state.preferences.learningLanguage === language && state.currentView === "library") renderLibrary();
+        })
+        .catch((error) => console.warn("Failed to load books for the selected profile", error));
     });
   });
   if (els.prefWordsPerPage) els.prefWordsPerPage.addEventListener("change", (e) => {
@@ -695,6 +702,29 @@ export function bindSettingsEvents() {
       renderTranslator();
     });
   }
+  for (const [control, key] of [
+    [els.prefTranslationSourceLanguage, "translationSourceLanguage"],
+    [els.prefTranslationTargetLanguage, "translationTargetLanguage"]
+  ]) {
+    if (!control) continue;
+    control.addEventListener("input", () => control.setCustomValidity(""));
+    control.addEventListener("change", async (event) => {
+      const raw = event.target.value.trim();
+      const value = normalizeTranslationLanguageCode(raw);
+      if (raw && !value) {
+        event.target.setCustomValidity(t("settings.translationLanguageInvalid"));
+        event.target.reportValidity();
+        return;
+      }
+      event.target.setCustomValidity("");
+      event.target.value = value;
+      updatePreferenceValue(key, value);
+      syncSettingsControls();
+      const { renderTranslator } = await import("../views/translator.js");
+      renderTranslator();
+      renderReader();
+    });
+  }
   if (els.prefDeepLApiKey) {
     els.prefDeepLApiKey.addEventListener("change", (e) => {
       updateTranslatorTextPreference("deeplApiKey", e.target.value);
@@ -713,15 +743,21 @@ export function bindSettingsEvents() {
   if (els.prefOfflineTranslator) {
     els.prefOfflineTranslator.addEventListener("change", async (e) => {
       if (e.target.checked) {
+        const pair = resolveProfileTranslationPair(state.preferences);
+        if (!pair.configured) {
+          e.target.checked = false;
+          showToast(t("translator.providerUnavailable"), "error");
+          return;
+        }
         // Dynamically build the language list in the download dialog
         const { t } = await import("../i18n.js");
-        const supported = OFFLINE_TRANSLATOR_LANGUAGES;
+        const supported = Array.from(new Set([...OFFLINE_TRANSLATOR_LANGUAGES, pair.fromCode, pair.toCode].filter(Boolean)));
         
         if (els.argosLanguagesList) {
           els.argosLanguagesList.innerHTML = supported.map(lang => `
             <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-              <input type="checkbox" value="${lang}" ${lang === (state.preferences.locale || "pl") || lang === (state.preferences.learningLanguage || "en") ? "checked" : ""}>
-              <span>${t(`languages.${lang}`)} (${lang.toUpperCase()})</span>
+              <input type="checkbox" value="${lang}" ${lang === pair.fromCode || lang === pair.toCode ? "checked" : ""}>
+              <span>${t(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : t(`languages.${lang}`)} (${lang.toUpperCase()})</span>
             </label>
           `).join("");
           
@@ -774,7 +810,8 @@ export function bindSettingsEvents() {
       els.argosDownloadConfirm.textContent = t("toast.downloadingWait");
       
       try {
-        const languages = Array.from(new Set(["en", state.preferences.learningLanguage || "en", ...toCodes]));
+        const pair = resolveProfileTranslationPair(state.preferences);
+        const languages = Array.from(new Set(["en", pair.fromCode, pair.toCode, ...toCodes].filter(Boolean)));
         const response = await fetch("/__argos/install", {
           method: "POST",
           headers: {
@@ -785,7 +822,12 @@ export function bindSettingsEvents() {
         });
         
         if (!response.ok) throw new Error("Failed to download models");
-        
+        const result = await response.json();
+        if (!Number.isFinite(result.installed)) throw new Error("Invalid model installation response");
+        const { refreshTranslatorAvailability, hasModelForPair, invalidatePackagesCache, renderTranslator } = await import("../views/translator.js");
+        invalidatePackagesCache();
+        await refreshTranslatorAvailability();
+        if (!hasModelForPair(pair.fromCode, pair.toCode)) throw new Error("No matching translation models were installed");
         updatePreferenceValue("offlineTranslator", true);
         if (els.prefArgosAsDictRow) {
           els.prefArgosAsDictRow.style.opacity = "1";
@@ -793,9 +835,7 @@ export function bindSettingsEvents() {
         }
         syncSettingsControls();
         if (els.argosDownloadDialog) els.argosDownloadDialog.close();
-        const { refreshTranslatorAvailability, invalidatePackagesCache } = await import("../views/translator.js");
-        invalidatePackagesCache();
-        await refreshTranslatorAvailability();
+        renderTranslator();
         import("../toast.js").then(m => m.showToast(t("toast.modelsDownloaded")));
       } catch (err) {
         console.error("Offline translator install error", err);
@@ -817,7 +857,17 @@ export function bindSettingsEvents() {
     });
   }
 
-  els.prefCardStats.addEventListener("change", () => { updatePreferenceValue("showCardStats", els.prefCardStats.checked); renderLibrary(); });
+  els.prefCardStats.addEventListener("change", () => {
+    updatePreferenceValue("showCardStats", els.prefCardStats.checked);
+    syncSettingsControls();
+    renderLibrary();
+  });
+  if (els.prefCardStatsMode) {
+    els.prefCardStatsMode.addEventListener("change", () => {
+      updatePreferenceValue("cardStatsMode", els.prefCardStatsMode.value);
+      renderLibrary();
+    });
+  }
   if (els.prefCovers) {
     els.prefCovers.addEventListener("change", () => { updatePreferenceValue("showCovers", els.prefCovers.checked); renderLibrary(); renderDiscover(); });
   }

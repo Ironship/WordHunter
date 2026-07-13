@@ -24,7 +24,8 @@ export const UI_SCALE = {
 };
 
 export const APP_LOCALES = ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"];
-export const LEARNING_LANGUAGES = ["en", "de", "es", "it", "fr", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
+export const OTHER_PROFILE_ID = "other";
+export const LEARNING_LANGUAGES = ["en", "de", "es", "it", "fr", "pl", "uk", "ru", "ja", "zh", "la", "grc", OTHER_PROFILE_ID];
 export const TRANSLATOR_LANGUAGES = ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk", "zh", "la", "grc"];
 export const OFFLINE_TRANSLATOR_LANGUAGES = ["en", "pl", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"];
 

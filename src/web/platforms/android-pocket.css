@@ -737,6 +737,10 @@ html.pocket-mode {
   max-width: 74px;
 }
 
+.pocket-mode .card-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr));
+}
+
 .pocket-mode .table-wrap {
   overflow: visible;
 }
@@ -993,6 +997,20 @@ html.pocket-mode {
 .pocket-mode .word-panel-close {
   display: inline-flex;
   flex: 0 0 auto;
+}
+
+.pocket-word-dictionary {
+  display: none;
+}
+
+.pocket-mode .status-options > .pocket-word-dictionary {
+  display: inline-flex;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.pocket-mode #word-panel .word-actions > [data-dict-word] {
+  display: none;
 }
 
 .pocket-mode .word-form {

@@ -18,7 +18,7 @@ globalThis.document = {
 };
 
 const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { bookTexts, clearAllBookTextCaches, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../src/web/js/books.js");
+const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../src/web/js/books.js");
 const { els } = await import("../../src/web/js/dom.js");
 const { openBook } = await import("../../src/web/js/book-actions.js");
 const { setView } = await import("../../src/web/js/render.js");
@@ -106,6 +106,38 @@ describe("full-text hydration", () => {
 
     assert.equal(peak, 2);
     for (const text of state.customTexts) assert.equal(bookTexts.get(text.id), `body:${text.id}`);
+  });
+
+  it("hydrates the selected profile after an older profile batch finishes", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = false;
+    state.customTexts = [];
+    state.preferences.learningLanguage = "en";
+    let resolveEnglish;
+    globalThis.fetch = async (url) => {
+      if (url === "books/index.json") {
+        return {
+          ok: true,
+          json: async () => [
+            { id: "en-book", lang: "en", textUrl: "/en" },
+            { id: "de-book", lang: "de", textUrl: "/de" }
+          ]
+        };
+      }
+      if (url === "/en") return new Promise((resolve) => { resolveEnglish = resolve; });
+      if (url === "/de") return { ok: true, text: async () => "deutscher Text ".repeat(50) };
+      throw new Error(`unexpected URL: ${url}`);
+    };
+    await loadBooksCatalog();
+    const englishBatch = loadAllBookTexts();
+    await new Promise((resolve) => setImmediate(resolve));
+    state.preferences.learningLanguage = "de";
+    const germanBatch = hydrateActiveLibraryTexts();
+    resolveEnglish({ ok: true, text: async () => "English text ".repeat(50) });
+
+    await englishBatch;
+    assert.equal(await germanBatch, true);
+    assert.equal(bookTexts.get("de-book"), "deutscher Text ".repeat(50).trim());
   });
 
   it("does not resume an old hydration batch after all text caches are cleared", async () => {

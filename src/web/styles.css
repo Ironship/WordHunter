@@ -1540,6 +1540,24 @@ button:disabled {
   min-width: 0;
 }
 
+.card-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.75rem, 1fr));
+  gap: 0.55rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.card-stat-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  width: 100%;
+  min-width: 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+
 .card-stat {
   display: inline-flex;
   flex-direction: column;
@@ -1556,6 +1574,17 @@ button:disabled {
   line-height: 1;
 }
 
+.card-stat-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  max-width: 100%;
+}
+
+.card-stat-values span {
+  overflow-wrap: anywhere;
+}
+
 .card-stat-label {
   color: currentColor;
   font-size: 0.68rem;
@@ -1569,6 +1598,8 @@ button:disabled {
 .card-stat-new { color: var(--amber); }
 .card-stat-unique { color: var(--muted); }
 .card-stat-unique strong { color: var(--ink); }
+.card-stat-total { color: var(--muted); }
+.card-stat-total strong { color: var(--ink); }
 
 .book-actions,
 .form-actions {

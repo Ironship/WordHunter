@@ -1,11 +1,11 @@
 // User preferences: theme, font, size — reads and saves state, updates DOM.
 import { state, saveState, createDefaultState, getDefaultDictionaryUrl } from "./state.js";
-import { APP_LOCALES, FONT_STACKS, LEARNING_LANGUAGES, LINE_HEIGHTS, UI_SCALE } from "./constants.js";
+import { APP_LOCALES, FONT_STACKS, LEARNING_LANGUAGES, LINE_HEIGHTS, OTHER_PROFILE_ID, UI_SCALE } from "./constants.js";
 import { els } from "./dom.js";
 import { clamp, escapeHtml } from "./utils.js";
 import { t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
-import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider } from "./translator-preferences.js";
+import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
 import { applyTheme, nextTheme, normalizeTheme } from "./theme.js";
 import { isAndroidPlatform } from "./platform.js";
@@ -314,6 +314,10 @@ export function syncSettingsControls() {
   }
 
   const prefs = state.preferences || {};
+  const translationPair = resolveProfileTranslationPair(prefs);
+  if (els.prefTranslationLanguageSettings) els.prefTranslationLanguageSettings.hidden = lang !== OTHER_PROFILE_ID;
+  if (els.prefTranslationSourceLanguage) els.prefTranslationSourceLanguage.value = prefs.translationSourceLanguage || "";
+  if (els.prefTranslationTargetLanguage) els.prefTranslationTargetLanguage.value = prefs.translationTargetLanguage || translationPair.toCode;
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
   els.prefFont.value = prefs.readerFont || "serif";
@@ -410,6 +414,13 @@ export function syncSettingsControls() {
     }
   }
   els.prefCardStats.checked = prefs.showCardStats !== false;
+  if (els.prefCardStatsMode) els.prefCardStatsMode.value = ["percentages", "counts", "both"].includes(prefs.cardStatsMode) ? prefs.cardStatsMode : "percentages";
+  if (els.prefCardStatsModeRow) {
+    const enabled = prefs.showCardStats !== false;
+    els.prefCardStatsModeRow.style.opacity = enabled ? "1" : "0.5";
+    els.prefCardStatsModeRow.setAttribute("aria-disabled", String(!enabled));
+    if (els.prefCardStatsMode) els.prefCardStatsMode.disabled = !enabled;
+  }
   if (els.prefCovers) els.prefCovers.checked = prefs.showCovers !== false;
   if (els.prefUseEdgeTts) els.prefUseEdgeTts.checked = prefs.useEdgeTts === true;
 
@@ -480,7 +491,7 @@ export function syncSettingsControls() {
 
 export function updatePreferenceValue(key, value) {
   state.preferences[key] = value;
-  if (["dictionaryUrl", "dictionaryMode"].includes(key)) {
+  if (["dictionaryUrl", "dictionaryMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
     const profile = state.profiles?.[state.preferences.learningLanguage];
     if (profile) {
       profile.preferences = profile.preferences || {};
@@ -501,6 +512,8 @@ export function resetPreferences() {
     learningLanguage,
     dictionaryUrl: profilePreferences.dictionaryUrl || getDefaultDictionaryUrl(learningLanguage),
     dictionaryMode: profilePreferences.dictionaryMode || "internal",
+    translationSourceLanguage: profilePreferences.translationSourceLanguage || "",
+    translationTargetLanguage: profilePreferences.translationTargetLanguage || (learningLanguage === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""),
     lastReadTextIds
   };
   if (state.profiles?.[learningLanguage]) {
@@ -508,6 +521,8 @@ export function resetPreferences() {
       ...(state.profiles[learningLanguage].preferences || {}),
       dictionaryUrl: state.preferences.dictionaryUrl,
       dictionaryMode: state.preferences.dictionaryMode,
+      translationSourceLanguage: state.preferences.translationSourceLanguage,
+      translationTargetLanguage: state.preferences.translationTargetLanguage,
     };
   }
   state.readerFontSize = defaults.readerFontSize;

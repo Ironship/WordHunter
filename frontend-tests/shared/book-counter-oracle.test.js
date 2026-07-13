@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { getReaderSession } from "../../src/web/js/reader/session.js";
 import { getTextStats, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
+import { calcRoundedStatsPcts } from "../../src/web/js/utils.js";
 
 const CORE_TEXT = "Alpha alpha beta gamma delta epsilon. New York new york. well-known don't 42. [IMG:cover.png] alpha.";
 const CORE_VOCAB = {
@@ -38,6 +39,11 @@ function assertCounters({ id, text, vocab, lang, algorithm, expected }) {
 }
 
 describe("book counter correctness oracle", () => {
+  it("allocates displayed percentages to exactly 100 percent", () => {
+    const rounded = calcRoundedStatsPcts({ known: 1, ignored: 0, learning: 1, new: 1 });
+    assert.deepEqual([rounded.knownPct, rounded.learningPct, rounded.newPct].sort(), [33, 33, 34]);
+    assert.equal(rounded.knownPct + rounded.learningPct + rounded.newPct, 100);
+  });
   it("preserves occurrence counts, every status, phrases and algorithm differences", () => {
     assertCounters({
       id: "counter-oracle-modern",

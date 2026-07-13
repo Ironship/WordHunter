@@ -98,6 +98,7 @@
                 <option value="zh" data-i18n="languages.zh">Chiński uproszczony</option>
                 <option value="la" data-i18n="languages.la">Łacina</option>
                 <option value="grc" data-i18n="languages.grc">Greka starożytna</option>
+                <option value="other" data-i18n="languages.other">Inny</option>
               </select>
             </div>
           </div>
@@ -386,7 +387,7 @@
               </div>
             </aside>
             <div class="focus-hint">
-              <span data-i18n-html="help.focusHint1">Wciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby wejść w tekst</span>
+              <span data-i18n-html="help.focusHint1">Wciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby wejść lub wrócić do tekstu</span>
               <span data-i18n-html="help.focusHint2"><kbd>←</kbd> <kbd>→</kbd> do nawigacji po słowach</span>
               <span data-i18n-html="help.focusHint3"><kbd>Ctrl</kbd>+<kbd>Spacja</kbd> czytaj zdanie</span>
               <span data-i18n-html="help.focusHint4"><kbd>I</kbd> dodaj obrazek</span>
@@ -694,6 +695,7 @@
                     <option value="zh" data-i18n="languages.zh">Chiński uproszczony</option>
                     <option value="la" data-i18n="languages.la">Łacina</option>
                     <option value="grc" data-i18n="languages.grc">Greka starożytna</option>
+                    <option value="other" data-i18n="languages.other">Inny</option>
                   </select>
                 </span>
               </label>
@@ -759,6 +761,17 @@
                   <small data-i18n="settings.cardStatsHint">Pokazuje na kartach w bibliotece postęp czytania książki i liczbę słów z tej książki.</small>
                 </span>
                 <input id="pref-card-stats" type="checkbox">
+              </label>
+              <label class="setting-row" id="pref-card-stats-mode-row">
+                <span>
+                  <span data-i18n="settings.cardStatsMode">Wartości statystyk książki</span>
+                  <small data-i18n="settings.cardStatsModeHint">Wybierz procenty, dokładne liczby wystąpień albo oba warianty.</small>
+                </span>
+                <select id="pref-card-stats-mode">
+                  <option value="percentages" data-i18n="settings.cardStatsModePercentages">Procenty</option>
+                  <option value="counts" data-i18n="settings.cardStatsModeCounts">Liczby</option>
+                  <option value="both" data-i18n="settings.cardStatsModeBoth">Procenty i liczby</option>
+                </select>
               </label>
               <label class="setting-row toggle-row">
                 <span>
@@ -966,6 +979,33 @@
               <h2 id="translator-prefs-heading" data-i18n="settings.translatorHeading">Tłumaczenia i odnośniki</h2>
             </div>
             <div class="settings-body">
+              <div id="pref-translation-language-settings" hidden>
+                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                  <span>
+                    <span data-i18n="settings.translationSourceLanguage">Język źródłowy tłumaczeń</span>
+                    <small data-i18n="settings.translationLanguageHint">Wpisz kod języka, np. nl, pt-BR lub eo. Ustawienie dotyczy wszystkich silników w tym profilu.</small>
+                  </span>
+                  <input id="pref-translation-source-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationSourceLanguagePlaceholder" class="input">
+                </label>
+                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                  <span data-i18n="settings.translationTargetLanguage">Język docelowy tłumaczeń</span>
+                  <input id="pref-translation-target-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationTargetLanguagePlaceholder" class="input">
+                </label>
+                <datalist id="translation-language-codes">
+                  <option value="de"></option>
+                  <option value="en"></option>
+                  <option value="es"></option>
+                  <option value="fr"></option>
+                  <option value="it"></option>
+                  <option value="ja"></option>
+                  <option value="pl"></option>
+                  <option value="ru"></option>
+                  <option value="uk"></option>
+                  <option value="zh"></option>
+                  <option value="la"></option>
+                  <option value="grc"></option>
+                </datalist>
+              </div>
               <label class="setting-row toggle-row desktop-only-setting">
                 <span>
                   <span data-i18n="settings.offlineTranslator">Zaawansowany translator offline</span>
@@ -1549,6 +1589,7 @@
             <option value="zh" data-i18n="languages.zh">Chiński uproszczony</option>
             <option value="la" data-i18n="languages.la">Łacina</option>
             <option value="grc" data-i18n="languages.grc">Greka starożytna</option>
+            <option value="other" data-i18n="languages.other">Inny</option>
           </select>
         </span>
       </label>

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { t } from "../i18n.js";
 import { escapeAttribute } from "../utils.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 function imageSearchMessage(key) {
   return `<div style="font-size: 11px; color: var(--muted); padding: 0.25rem;">${t(key)}</div>`;
@@ -35,7 +36,7 @@ function renderImageSuggestions(container, word, pages) {
 
 export function renderImageSearch(container, word) {
   container.innerHTML = imageSearchMessage("toast.searching");
-  const lang = state.preferences.learningLanguage || "de";
+  const lang = effectiveLearningLanguage(state.preferences).split("-")[0];
   fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(word)}&gsrlimit=10&prop=pageimages&format=json&pithumbsize=300&origin=*`)
     .then((response) => response.json())
     .then((data) => renderImageSuggestions(container, word, data?.query?.pages))
