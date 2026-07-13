@@ -15,8 +15,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  frontend-validation:
+    name: Frontend static validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install frontend validation dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate frontend sources
+        run: npm run check:frontend
+
+      - name: Validate frontend behavior and repository data
+        run: |
+          node scripts/validate-json-i18n.mjs
+          node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js
+
   android:
     name: Android APK and AAB
+    needs: frontend-validation
     runs-on: windows-2022
     timeout-minutes: 120
 
@@ -72,6 +99,7 @@ jobs:
 
   windows:
     name: Windows portable ZIP and NSIS installer
+    needs: frontend-validation
     runs-on: windows-2022
     timeout-minutes: 180
 
@@ -119,6 +147,7 @@ jobs:
 
   flatpak:
     name: Flatpak bundle and installed file list
+    needs: frontend-validation
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 

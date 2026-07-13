@@ -1,7 +1,10 @@
+// @ts-check
+
 import { t } from "./i18n.js";
 
 const MOBILE_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/pdf";
 
+/** @returns {"android" | "desktop"} */
 export function detectPlatform() {
   const query = new URLSearchParams(window.location.search);
   const forced = query.get("platform");
@@ -12,10 +15,12 @@ export function detectPlatform() {
   return platform;
 }
 
+/** @returns {boolean} */
 export function isAndroidPlatform() {
   return document.documentElement.dataset.platform === "android";
 }
 
+/** @param {string} url @returns {boolean} */
 export function openAndroidUrl(url) {
   const opener = window.WordHunterAndroid?.openUrl;
   if (typeof opener !== "function") return false;
@@ -43,7 +48,8 @@ export function applyPlatformUi() {
   if (importHint) importHint.innerHTML = t("import.mobileFileHint");
 
   const provider = document.getElementById("pref-translation-provider");
-  provider?.querySelectorAll('option[value="offline"], option[value="lmstudio"]').forEach((option) => {
+  provider?.querySelectorAll('option[value="offline"], option[value="lmstudio"]').forEach((element) => {
+    const option = /** @type {HTMLOptionElement} */ (element);
     option.disabled = true;
     option.hidden = true;
   });
@@ -56,7 +62,7 @@ function bindPocketNavigationDrawer() {
   const toggles = [
     document.getElementById("pocket-navigation-toggle"),
     document.getElementById("reader-pocket-navigation-toggle")
-  ].filter(Boolean);
+  ].filter((toggle) => toggle !== null);
   if (!panel || !toggles.length) return;
   root.dataset.pocketNavigationDrawerBound = "true";
 

@@ -1,9 +1,11 @@
+// @ts-check
+
 import { STATE_SCHEMA_VERSION, STORAGE_KEY } from "./constants.js";
 
 /**
  * Build a save payload from the raw state for bridge (Tauri) communication.
- * @param {object} rawState
- * @returns {{ schemaVersion: number, texts: object[], prefs: object, hiddenBooks: string[], vocab: object }}
+ * @param {WhSaveStateInput} rawState
+ * @returns {WhSavePayload}
  */
 export function buildSavePayload(rawState) {
   const profileTexts = Object.values(rawState.profiles || {})
@@ -36,7 +38,7 @@ function discoverPayload(discover) {
 
 /**
  * Save to localStorage.
- * @param {object} rawState
+ * @param {WhRecord} rawState
  */
 export function saveToLocalStorage(rawState) {
   try {
@@ -50,7 +52,7 @@ export function saveToLocalStorage(rawState) {
  * POST the payload to the backend bridge with retry.
  * @param {string} body JSON payload string
  * @param {number} maxRetries
- * @returns {Promise<object>}
+ * @returns {Promise<WhRecord>}
  */
 export async function saveWithRetry(body, maxRetries) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -65,9 +67,7 @@ export async function saveWithRetry(body, maxRetries) {
       });
       if (response.ok) return await response.json().catch(() => ({ ok: true }));
       const detail = (await response.text()).trim();
-      const error = new Error(detail || `HTTP ${response.status}`);
-      error.status = response.status;
-      throw error;
+      throw new Error(detail || `HTTP ${response.status}`);
     } catch (e) {
       if (attempt === maxRetries) throw e;
       await new Promise(r => setTimeout(r, 200 * (attempt + 1)));

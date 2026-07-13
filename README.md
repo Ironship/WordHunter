@@ -240,6 +240,7 @@ macOS and iOS are not active targets right now.
 
 - Rust `1.88` or newer with Cargo.
 - Node.js `22` or newer for frontend and packaging validation tests.
+- npm dependencies installed with `npm ci` for read-only CSS and JavaScript checks.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
@@ -248,16 +249,22 @@ macOS and iOS are not active targets right now.
 
 ### Common Commands
 
-Full repository validation is a single command:
+Install the pinned validation dependencies after checkout:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+```
+
+Then run the full repository gate:
 
 ```bash
 ./scripts/validate.sh
 ```
 
-It runs `git diff --check`, JSON/i18n parsing, frontend tests, Flatpak
+It runs `git diff --check`, JSON/i18n parsing, Stylelint, no-emit JavaScript
+type checks, frontend tests, Flatpak
 `cargo-sources.json` drift detection, Rust formatting, Rust tests for the main
-Tauri crate and OCR runner, and non-blocking `cargo clippy` reports when
-available.
+Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 
 ```powershell
 .\scripts\build.bat test         # run shared, desktop, and Android frontend tests

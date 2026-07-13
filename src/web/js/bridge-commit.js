@@ -1,18 +1,20 @@
-import { applyBridgeSnapshotToState, saveState, state } from "./state.js";
+// @ts-check
+
+import { applyBridgeSnapshotToState, saveState } from "./state.js";
 import { loadBackendSnapshot } from "./store-bridge.js";
 
-export async function saveStateAndReloadBridge(previousView = state.currentView || "library") {
+export async function saveStateAndReloadBridge() {
   const result = await saveState();
   if (window.__qtBridge) {
     const snapshot = result?.snapshot || await loadBackendSnapshot();
-    applyBridgeSnapshotToState(snapshot, { previousView });
+    applyBridgeSnapshotToState(snapshot);
   }
   return result;
 }
 
-export async function reloadBridgeSnapshot(previousView = state.currentView || "library") {
+export async function reloadBridgeSnapshot() {
   if (!window.__qtBridge) return false;
   const snapshot = await loadBackendSnapshot();
-  applyBridgeSnapshotToState(snapshot, { previousView });
+  applyBridgeSnapshotToState(snapshot);
   return true;
 }

@@ -74,10 +74,10 @@ export async function importCustomText(title, text, meta = {}, openAfterImport =
   upsertCustomText(customText);
 
   try {
-    await saveStateAndReloadBridge(state.currentView || "library");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("custom text profile save failed", error);
-    await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("custom text recovery reload failed", reloadError);
     });
     showToast(t("toast.syncUnavailable"), "error");
@@ -135,10 +135,10 @@ export async function updatePdfOcrPageText(id, pageIndex, correctedText, options
   invalidateBookId(id);
   upsertCustomText(updated);
   try {
-    await saveStateAndReloadBridge(state.currentView || "reader");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("PDF OCR correction profile save failed", error);
-    await reloadBridgeSnapshot(state.currentView || "reader").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("PDF OCR correction recovery reload failed", reloadError);
     });
     const recovered = findCustomText(id, { coerce: true });
@@ -167,11 +167,11 @@ export async function removeCustomText(id) {
   clearLastReadTextId(id);
 
   try {
-    await saveStateAndReloadBridge(state.currentView || "library");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("delete_text profile save failed", error);
     if (window.__qtBridge) {
-      await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+      await reloadBridgeSnapshot().catch((reloadError) => {
         console.warn("delete_text recovery reload failed", reloadError);
       });
     }

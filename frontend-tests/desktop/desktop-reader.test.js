@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-const css = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+const css = ["theme.css", "styles.css"]
+  .map((file) => readFileSync(new URL(`../../src/web/${file}`, import.meta.url), "utf8"))
+  .join("\n");
 const pocketCss = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
 const desktopWindow = readFileSync(new URL("../../src-tauri/src/platform/web_app.rs", import.meta.url), "utf8");
 const cargoToml = readFileSync(new URL("../../src-tauri/Cargo.toml", import.meta.url), "utf8");

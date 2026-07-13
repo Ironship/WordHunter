@@ -112,7 +112,7 @@ async function loadBridgeStateBeforeRender() {
   if (!window.__qtBridge || window.__bridgeState) return;
   const response = await fetch("/__store/load", { cache: "no-store" });
   if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
-  applyBridgeSnapshotToState(await response.json(), { previousView: state.currentView || "library" });
+  applyBridgeSnapshotToState(await response.json());
 }
 
 function scheduleLibraryStatsHydration() {

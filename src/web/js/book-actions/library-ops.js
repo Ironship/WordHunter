@@ -88,10 +88,10 @@ export async function moveBookToProfile(id, targetLang, isCustom) {
   }
 
   try {
-    await saveStateAndReloadBridge(state.currentView || "library");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("move book profile save failed", error);
-    await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("move book recovery reload failed", reloadError);
     });
     showToast(t("toast.syncUnavailable"), "error");

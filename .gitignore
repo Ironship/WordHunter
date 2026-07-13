@@ -15,6 +15,7 @@ src-tauri/gen/
 *.spec
 
 # Build output / compiled executables
+node_modules/
 outputs/
 output/
 dist/

@@ -1,3 +1,5 @@
+// @ts-check
+
 import { STATE_SCHEMA_VERSION, UI_SCALE } from "../constants.js";
 import { VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
 import { DEFAULT_LEARNING_COLORS } from "../reader-colors.js";

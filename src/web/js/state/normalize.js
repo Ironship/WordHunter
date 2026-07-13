@@ -1,3 +1,5 @@
+// @ts-check
+
 import { LEARNING_LANGUAGES, STATE_SCHEMA_VERSION, STATUS_ORDER, STORAGE_KEY, UI_SCALE } from "../constants.js";
 import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
@@ -12,6 +14,10 @@ function cleanSavedCatalogTitles(items) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @returns {value is WhRecord}
+ */
 function isRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -35,6 +41,11 @@ export class UnsupportedStateSchemaError extends Error {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @param {string} [source]
+ * @returns {asserts value is WhBridgeSnapshot}
+ */
 export function assertSupportedStateSchemaVersion(value, source = "state payload") {
   if (!isRecord(value)) throw new UnsupportedStateSchemaError(source, "missing");
   const version = Number(value.schemaVersion);

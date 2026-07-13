@@ -5,6 +5,23 @@ use crate::router;
 
 use super::models::status;
 
+fn popup_theme(value: Option<&str>) -> &'static str {
+    match value {
+        Some("dark") => "dark",
+        Some("auto") => "auto",
+        None => "auto",
+        _ => "light",
+    }
+}
+
+fn popup_family(value: Option<&str>) -> &'static str {
+    match value {
+        Some("familiar") => "familiar",
+        Some("alternative-familiar") => "alternative-familiar",
+        _ => "classic",
+    }
+}
+
 /// Public popup HTML endpoint — renders the translator popup template with
 /// language options and i18n labels.
 pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
@@ -15,16 +32,8 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         .get("to")
         .cloned()
         .unwrap_or_else(|| "pl".to_string());
-    let theme = params
-        .get("theme")
-        .map(String::as_str)
-        .filter(|value| matches!(*value, "light" | "dark" | "auto"))
-        .unwrap_or("auto");
-    let family = params
-        .get("family")
-        .map(String::as_str)
-        .filter(|value| matches!(*value, "classic" | "familiar" | "alternative-familiar"))
-        .unwrap_or("classic");
+    let theme = popup_theme(params.get("theme").map(String::as_str));
+    let family = popup_family(params.get("family").map(String::as_str));
     let locale = params
         .get("locale")
         .cloned()
@@ -241,5 +250,19 @@ mod tests {
 
         assert!(html.contains(">Polski</option>"));
         assert!(html.contains("selected"));
+    }
+
+    #[test]
+    fn popup_theme_parameters_are_bounded() {
+        assert_eq!(popup_theme(Some("dark")), "dark");
+        assert_eq!(popup_theme(Some("auto")), "auto");
+        assert_eq!(popup_theme(None), "auto");
+        assert_eq!(popup_theme(Some("untrusted")), "light");
+        assert_eq!(popup_family(Some("familiar")), "familiar");
+        assert_eq!(
+            popup_family(Some("alternative-familiar")),
+            "alternative-familiar"
+        );
+        assert_eq!(popup_family(Some("untrusted")), "classic");
     }
 }

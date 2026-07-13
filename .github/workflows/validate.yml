@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "feat/**"
+      - "release/**"
 
 permissions:
   contents: read
@@ -18,10 +19,13 @@ jobs:
     env:
       WORDHUNTER_VALIDATE_CLIPPY: "1"
       WORDHUNTER_VALIDATE_LICENSES: "1"
+      WORDHUNTER_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
 
       - name: Install Linux build dependencies
         run: |
@@ -46,6 +50,10 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: "22"
+          cache: npm
+
+      - name: Install frontend validation dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4

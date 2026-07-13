@@ -160,7 +160,7 @@ function showSyncFolderError(error) {
 }
 
 export function applyBridgeSnapshot(snapshot) {
-  applyBridgeSnapshotToState(snapshot, { previousView: state.currentView || "settings" });
+  applyBridgeSnapshotToState(snapshot);
   syncSettingsControls();
   render();
 }
@@ -359,7 +359,7 @@ export function bindSettingsEvents() {
       const result = await response.json();
       if (result.path) {
         if (result.snapshot) {
-          applyBridgeSnapshot(result.snapshot, state.currentView || "settings");
+          applyBridgeSnapshot(result.snapshot);
         } else {
           state.dataDirectory = result.path;
         }
@@ -380,12 +380,11 @@ export function bindSettingsEvents() {
     setElementBusy(els.prepareSyncDirectory, true, { disable: true });
     try {
       await flushAllPendingFrontendState();
-      const previousView = state.currentView || "settings";
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
         const snapshot = await loadBackendSnapshot();
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        applyBridgeSnapshot(snapshot, previousView);
+        applyBridgeSnapshot(snapshot);
         setSyncStatus("Ready");
         showToast(t("settings.syncFolderChanged"));
         return;
@@ -398,7 +397,7 @@ export function bindSettingsEvents() {
       });
       if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();
-      if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
+      if (result.snapshot) applyBridgeSnapshot(result.snapshot);
       if (result.path) state.syncDirectory = result.path;
       if (result.health) state.syncHealth = result.health;
       setSyncStatus("Ready");
@@ -514,12 +513,11 @@ export function bindSettingsEvents() {
     setElementBusy(els.chooseSyncDirectory, true, { disable: true });
     try {
       await flushAllPendingFrontendState();
-      const previousView = state.currentView || "settings";
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
         const snapshot = await loadBackendSnapshot();
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        applyBridgeSnapshot(snapshot, previousView);
+        applyBridgeSnapshot(snapshot);
         setSyncStatus("Ready");
         showToast(t("settings.syncFolderChanged"));
         return;
@@ -533,7 +531,7 @@ export function bindSettingsEvents() {
       if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
       const result = await response.json();
       if (result.path) {
-        if (result.snapshot) applyBridgeSnapshot(result.snapshot, previousView);
+        if (result.snapshot) applyBridgeSnapshot(result.snapshot);
         state.syncDirectory = result.path;
         setSyncStatus("Ready");
         await refreshSyncHealth();

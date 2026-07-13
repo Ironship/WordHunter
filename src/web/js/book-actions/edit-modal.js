@@ -161,10 +161,10 @@ export async function saveEditedBook() {
   invalidateBookId(targetBookId);
 
   try {
-    await saveStateAndReloadBridge(state.currentView || "library");
+    await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("save edited book failed", error);
-    await reloadBridgeSnapshot(state.currentView || "library").catch((reloadError) => {
+    await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("edit book recovery reload failed", reloadError);
     });
     showToast(t("toast.syncUnavailable"), "error");
