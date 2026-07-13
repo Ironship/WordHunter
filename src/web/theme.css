@@ -31,6 +31,8 @@
   --toast-bg: #17201c;
   --toast-ink: #ffffff;
   --boot-bg: #f7f9f6;
+  --desktop-bg: #e8efea;
+  --desktop-panel: #f3f7f4;
   --focus-ring: #23694d;
   --control-accent: #23694d;
   --control-accent-soft: #e2f0ea;
@@ -101,6 +103,8 @@
   --toast-bg: #004f82;
   --toast-ink: #ffffff;
   --boot-bg: #0067a8;
+  --desktop-bg: #dcecf7;
+  --desktop-panel: #edf7fc;
   --focus-ring: #0067a8;
   --control-accent: #0067a8;
   --control-accent-soft: #d9effb;
@@ -139,6 +143,8 @@
   --toast-bg: #2c001e;
   --toast-ink: #ffffff;
   --boot-bg: #5e2750;
+  --desktop-bg: #efe3ea;
+  --desktop-panel: #f8eff4;
   --focus-ring: #a33a15;
   --control-accent: #a33a15;
   --control-accent-soft: #fdeee9;

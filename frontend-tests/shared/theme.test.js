@@ -184,6 +184,30 @@ describe("named themes", () => {
     assert.doesNotMatch(html, /var\(--(?:text-color-muted|gray-soft)\)/);
   });
 
+  it("uses distinct themed surfaces for light desktop layouts", () => {
+    const themeStyles = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
+    const componentStyles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const backgrounds = [];
+    const panels = [];
+    for (const selector of [':root', ':root[data-color-theme="familiar"]', ':root[data-color-theme="alternative-familiar"]']) {
+      const block = themeBlock(themeStyles, selector);
+      const background = token(block, "--desktop-bg");
+      const panel = token(block, "--desktop-panel");
+      const ink = token(block, "--ink");
+      backgrounds.push(background);
+      panels.push(panel);
+      assert.notEqual(background, "#ffffff", `${selector} desktop background must be themed`);
+      assert.notEqual(panel, "#ffffff", `${selector} desktop panel must be themed`);
+      assert.ok(contrast(ink, background) >= 4.5, `${selector} desktop background contrast`);
+      assert.ok(contrast(ink, panel) >= 4.5, `${selector} desktop panel contrast`);
+    }
+    assert.equal(new Set(backgrounds).size, backgrounds.length, "desktop theme backgrounds must differ");
+    assert.equal(new Set(panels).size, panels.length, "desktop theme panels must differ");
+    const desktop = themeBlock(componentStyles, ':root:not(.pocket-mode)[data-theme="light"]');
+    assert.match(desktop, /--bg:\s*var\(--desktop-bg\)/);
+    assert.match(desktop, /--panel:\s*var\(--desktop-panel\)/);
+  });
+
   it("keeps theme-sensitive component overrides visible and palette-driven", () => {
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     const pocket = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");

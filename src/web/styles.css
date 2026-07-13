@@ -133,6 +133,13 @@ body {
   transition: background 0.3s ease, color 0.3s ease;
 }
 
+/* Desktop needs more theme color than Pocket, where navigation chrome already
+   provides the dominant themed surface. */
+:root:not(.pocket-mode)[data-theme="light"] {
+  --bg: var(--desktop-bg);
+  --panel: var(--desktop-panel);
+}
+
 html.app-booting .app-shell {
   visibility: hidden;
 }
@@ -1874,15 +1881,15 @@ button.icon-button {
   gap: 0.85rem;
 }
 
-.edit-book-field {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.45rem;
+.edit-book-body .edit-book-field {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem 1rem;
 }
 
-.edit-book-field > .input,
-.edit-book-field > select {
+.edit-book-body .edit-book-field > .input,
+.edit-book-body .edit-book-field > select {
   width: 100%;
 }
 
@@ -1947,8 +1954,13 @@ button.icon-button {
   cursor: pointer;
 }
 
-.edit-book-text-field {
+.edit-book-body .edit-book-text-field {
+  align-items: start;
   min-height: 0;
+}
+
+.edit-book-body .edit-book-text-field > span {
+  padding-top: 0.55rem;
 }
 
 #edit-book-text {
@@ -3497,7 +3509,8 @@ textarea.vocab-translation-input {
     width: 100%;
   }
 
-  .setting-row {
+  .setting-row,
+  .edit-book-body .edit-book-field {
     grid-template-columns: 1fr;
   }
   .setting-row.toggle-row {

@@ -512,6 +512,11 @@ describe("desktop reader markup and style contracts", () => {
       { display: "flex", direction: "column" }
     );
     assert.equal(cssDeclarations(css, ".edit-book-body")["overflow-y"], "auto");
+    const fields = cssDeclarations(css, ".edit-book-body .edit-book-field");
+    assert.equal(fields.display, "grid");
+    assert.match(css, /\.edit-book-body \.edit-book-field\s*\{[^}]*grid-template-columns:\s*minmax\(120px, 180px\) minmax\(0, 1fr\)/s);
+    assert.match(css, /@media \(max-width: 540px\)[\s\S]*\.edit-book-body \.edit-book-field\s*\{[^}]*grid-template-columns:\s*1fr/s);
+    assert.equal(cssDeclarations(css, ".edit-book-body .edit-book-text-field")["align-items"], "start");
     assert.equal(cssDeclarations(css, ".edit-book-actions").position, "sticky");
     const clear = cssDeclarations(css, ".edit-book-cover-clear");
     assert.equal(clear.width, "24px");
@@ -555,7 +560,7 @@ describe("desktop platform contracts", () => {
     assert.match(flatpakMeta, /<icon type="stock">com\.wordhunter\.app<\/icon>/);
     assert.match(flatpakMeta, /<category>Education<\/category>/);
     assert.match(flatpakMeta, /<category>Languages<\/category>/);
-    assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.1"[^>]*type="development">/);
+    assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.2"[^>]*type="development">/);
     assert.match(tomlSection(cargoToml, "target.'cfg(target_os = \"linux\")'.dependencies"), /gdkwayland-sys = \{ version = "0\.18", features = \["v3_24_22"\] \}/);
     assert.match(desktopWindow, /const LINUX_DESKTOP_APP_ID: &str = "com\.wordhunter\.app"/);
     assert.match(desktopWindow, /set_linux_program_name\(\)/);

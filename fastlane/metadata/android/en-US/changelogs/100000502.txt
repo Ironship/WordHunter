@@ -1,0 +1,5 @@
+Test prerelease. Back up your data before installing.
+
+- Fixed white-looking backgrounds across light desktop themes.
+- Fixed squeezed fields in the desktop Edit Book dialog.
+- Includes the TypeScript migration and configurable selected-word panel from RC1.

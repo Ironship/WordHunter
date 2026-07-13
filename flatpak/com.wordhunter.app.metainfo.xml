@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.2" date="2026-07-13" type="development">
+      <description>
+        <ul>
+          <li>Give each light desktop theme a distinct background and panel surface instead of plain white.</li>
+          <li>Fix the desktop Edit Book dialog so labels stay compact and fields use the available width.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.1" date="2026-07-13" type="development">
       <description>
         <ul>
