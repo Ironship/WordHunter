@@ -97,6 +97,17 @@ window.addEventListener("wordhunter:sync-saved", (event) => {
   setSyncStatus("Saved", { time: event.detail?.time || new Date().toLocaleTimeString() });
 });
 
+window.addEventListener("wordhunter:state-replaced", () => {
+  applyPreferences();
+  syncSettingsControls();
+});
+
+window.addEventListener("wordhunter:theme-changed", () => {
+  if (document.documentElement.classList.contains("app-booting")) return;
+  if (state.currentView === "graphs") import("./js/views/graphs.js").then((module) => module.renderGraphs());
+  if (["vocabulary", "flashcards"].includes(state.currentView)) renderReview();
+});
+
 async function loadBridgeStateBeforeRender() {
   if (!window.__qtBridge || window.__bridgeState) return;
   const response = await fetch("/__store/load", { cache: "no-store" });

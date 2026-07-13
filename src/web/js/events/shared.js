@@ -23,9 +23,9 @@ export async function openDictionary(word) {
       showToast(t("translator.providerUnavailable"), "error");
       return;
     }
-    const theme = resolveTheme(state.preferences.theme, window.matchMedia?.("(prefers-color-scheme: dark)").matches).mode;
+    const theme = resolveTheme(state.preferences.theme, window.matchMedia?.("(prefers-color-scheme: dark)").matches);
     const locale = state.preferences.locale || "pl";
-    const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme}&locale=${locale}`;
+    const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme.mode}&family=${theme.family}&locale=${locale}`;
     const dictUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("translator.argosTitle"))}`;
     fetch(dictUrl).catch(e => console.warn("Failed to open offline translator UI", e));
     return;

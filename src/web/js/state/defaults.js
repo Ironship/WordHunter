@@ -40,7 +40,7 @@ export function createDefaultState() {
     userBooks: [],
     hiddenBuiltInBooks: [],
     archivedBookIds: [],
-    preferences: { dictionaryUrl: getDefaultDictionaryUrl("de"), dictionaryMode: "internal", theme: DEFAULT_THEME }
+    preferences: { dictionaryUrl: getDefaultDictionaryUrl("de"), dictionaryMode: "internal" }
   };
   return {
     schemaVersion: STATE_SCHEMA_VERSION,

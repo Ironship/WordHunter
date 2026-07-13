@@ -173,6 +173,7 @@ function setupRenderControls() {
   els.pillLearning = control();
   els.pillNew = control();
   els.themeToggle = control();
+  els.prefTheme = control();
   els.prefLocales = [];
   els.prefLearningLanguages = [];
   els.ankiExportStatusFilters = [];
@@ -216,6 +217,39 @@ describe("Sync navigation behavior", () => {
     assert.equal(prevented, 1);
     assert.equal(state.currentView, "sync");
     assert.equal(syncView.classList.contains("active"), true);
+  });
+
+  it("changes themes without rebuilding the active Reader view", () => {
+    resetState();
+    setupRenderControls();
+    state.currentView = "reader";
+    let readerRenderAttempts = 0;
+    els.readerText = {
+      get dataset() {
+        readerRenderAttempts += 1;
+        return {};
+      }
+    };
+    bindNavigationEvents();
+
+    els.themeToggle.listener("click")();
+
+    assert.equal(state.currentView, "reader");
+    assert.equal(state.preferences.theme, "alternative-familiar");
+    assert.equal(document.documentElement.dataset.themePref, "alternative-familiar");
+    assert.equal(els.prefTheme.value, "alternative-familiar");
+    assert.equal(readerRenderAttempts, 0);
+  });
+
+  it("announces wholesale state replacements so global preferences can be reapplied", () => {
+    const dispatched = [];
+    window.dispatchEvent = (event) => dispatched.push(event.type);
+    try {
+      resetState();
+      assert.ok(dispatched.includes("wordhunter:state-replaced"));
+    } finally {
+      window.dispatchEvent = () => {};
+    }
   });
 });
 

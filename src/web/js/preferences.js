@@ -249,7 +249,11 @@ export function applyPreferences() {
   const prefs = state.preferences || {};
   const theme = normalizeTheme(prefs.theme);
   if (prefs.theme !== theme) prefs.theme = theme;
-  applyTheme(theme);
+  const root = document.documentElement;
+  const previousTheme = root.dataset.themePref;
+  const previousMode = root.dataset.theme;
+  const resolvedTheme = applyTheme(theme);
+  if (els.prefTheme) els.prefTheme.value = theme;
 
   const fontKey = FONT_STACKS[prefs.readerFont] ? prefs.readerFont : "serif";
   const lineKey = LINE_HEIGHTS[prefs.readerLineHeight] ? prefs.readerLineHeight : "normal";
@@ -282,6 +286,10 @@ export function applyPreferences() {
     els.themeToggle.dataset.nextTheme = next;
     els.themeToggle.title = `${t("topbar.themeToggle")}: ${themeLabel(next)}`;
     els.themeToggle.setAttribute("aria-label", els.themeToggle.title);
+  }
+  if ((previousTheme !== resolvedTheme.theme || previousMode !== resolvedTheme.mode)
+    && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("wordhunter:theme-changed", { detail: resolvedTheme }));
   }
 }
 

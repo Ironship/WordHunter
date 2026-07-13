@@ -16,7 +16,9 @@ const {
   normalizeTheme,
   resolveTheme
 } = await import("../../src/web/js/theme.js");
-const { normalizeState } = await import("../../src/web/js/state/normalize.js");
+const { loadState, normalizeState } = await import("../../src/web/js/state/normalize.js");
+const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
+const { STATE_SCHEMA_VERSION } = await import("../../src/web/js/constants.js");
 const { themeIcon } = await import("../../src/web/js/icons.js");
 
 function themeBlock(styles, selector) {
@@ -101,11 +103,25 @@ describe("named themes", () => {
   it("uses named dark browser chrome colors", () => {
     assert.equal(resolveTheme("familiar", true).color, "#00395d");
     assert.equal(resolveTheme("alternative-familiar", true).color, "#2c001e");
+    assert.equal(resolveTheme("classic-light", true).color, "#f7f9f6");
   });
 
   it("migrates the legacy darkMode preference through full state normalization", () => {
     assert.equal(normalizeState({ preferences: { darkMode: true } }).preferences.theme, "classic-dark");
     assert.equal(normalizeState({ preferences: { darkMode: false } }).preferences.theme, "classic-light");
+  });
+
+  it("migrates the legacy darkMode preference from a bridge snapshot before adding defaults", () => {
+    window.__qtBridge = true;
+    window.__bridgeState = { schemaVersion: STATE_SCHEMA_VERSION, prefs: { darkMode: false }, vocab: {} };
+    try {
+      assert.equal(loadState().preferences.theme, "classic-light");
+      window.__bridgeState.prefs.darkMode = true;
+      assert.equal(loadState().preferences.theme, "classic-dark");
+    } finally {
+      delete window.__qtBridge;
+      delete window.__bridgeState;
+    }
   });
 
   it("keeps theme global instead of restoring a per-language value", () => {
@@ -122,6 +138,8 @@ describe("named themes", () => {
       profiles: { pl: { preferences: { theme: "alternative-familiar" } } }
     });
     assert.equal(polish.preferences.theme, "classic-light");
+    assert.equal(Object.hasOwn(createDefaultState().profiles.de.preferences, "theme"), false);
+    assert.equal(Object.hasOwn(normalized.profiles.pl.preferences, "theme"), false);
   });
 
   it("defines complete, contrasting light and dark named palettes", () => {
@@ -158,5 +176,31 @@ describe("named themes", () => {
     assert.match(styles, /\.reader-zoom-slider input\[type="range"\]::-(?:webkit-slider-thumb|moz-range-thumb)\s*\{[^}]*background:\s*var\(--control-accent\)/s);
     assert.doesNotMatch(styles, /\.primary-button\s*\{[^}]*(?:background|border-color):\s*var\(--green\)/s);
     assert.match(html, /id="theme-toggle"[^>]*>[\s\S]*?<svg class="theme-toggle-icon"/);
+    assert.doesNotMatch(html, /var\(--(?:text-color-muted|gray-soft)\)/);
+  });
+
+  it("keeps theme-sensitive component overrides visible and palette-driven", () => {
+    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const pocket = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const charts = readFileSync(new URL("../../src/web/js/graphs/charts.js", import.meta.url), "utf8");
+    const helpers = readFileSync(new URL("../../src/web/js/graphs/helpers.js", import.meta.url), "utf8");
+    assert.match(styles, /\.nav-item\.active:not\(\.nav-item-locked\)[^}]*var\(--sidebar-active-accent\)/s);
+    assert.match(styles, /\.book-card\.archived\s*\{[^}]*border-style:\s*dashed/s);
+    assert.doesNotMatch(themeBlock(styles, ".book-card.archived"), /opacity/);
+    assert.match(pocket, /#reader-highlight-toggle\[aria-pressed="true"\][^}]*background:\s*var\(--sidebar-nav-active\)/s);
+    assert.match(helpers, /labelMuted\s*=\s*muted/);
+    assert.doesNotMatch(charts, /rgba\(79,\s*179,\s*142/);
+    assert.doesNotMatch(charts, /rgba\(255,\s*255,\s*255,\s*0\.6\)/);
+  });
+
+  it("propagates named themes to the offline translator with contrasting button ink", () => {
+    const sharedEvents = readFileSync(new URL("../../src/web/js/events/shared.js", import.meta.url), "utf8");
+    const popup = readFileSync(new URL("../../src/web/templates/translator-popup.html", import.meta.url), "utf8");
+    assert.match(sharedEvents, /family=\$\{theme\.family\}/);
+    assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
+    assert.match(popup, /data-color-theme="familiar"/);
+    assert.match(popup, /data-color-theme="alternative-familiar"/);
+    assert.match(popup, /\.primary-button[^}]*color:\s*var\(--button-ink\)/s);
+    assert.doesNotMatch(popup, /\.engine-info[^}]*opacity:/s);
   });
 });

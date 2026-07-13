@@ -17,8 +17,14 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         .unwrap_or_else(|| "pl".to_string());
     let theme = params
         .get("theme")
-        .cloned()
-        .unwrap_or_else(|| "auto".to_string());
+        .map(String::as_str)
+        .filter(|value| matches!(*value, "light" | "dark" | "auto"))
+        .unwrap_or("auto");
+    let family = params
+        .get("family")
+        .map(String::as_str)
+        .filter(|value| matches!(*value, "classic" | "familiar" | "alternative-familiar"))
+        .unwrap_or("classic");
     let locale = params
         .get("locale")
         .cloned()
@@ -68,7 +74,8 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
     let mut html = String::from_utf8(template.to_vec()).map_err(|e| e.to_string())?;
 
     let replacements = [
-        ("{{theme}}", escape_attr(&theme)),
+        ("{{theme}}", escape_attr(theme)),
+        ("{{color_theme}}", escape_attr(family)),
         (
             "{{title}}",
             escape_html(

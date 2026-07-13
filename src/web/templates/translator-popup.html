@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="{{theme}}">
+<html lang="en" data-theme="{{theme}}" data-color-theme="{{color_theme}}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,6 +14,7 @@
             --line: #e2e8e4;
             --green: #297a5b;
             --green-hover: #1e5a3f;
+            --button-ink: #ffffff;
             --shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
             --radius: 8px;
             color-scheme: light;
@@ -26,8 +27,59 @@
             --muted: #8b98a0;
             --line: #29343d;
             --green: #4fb38e;
-            --green-hover: #23694d;
+            --green-hover: #6cc8a5;
+            --button-ink: #082018;
             --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+            color-scheme: dark;
+        }
+        :root[data-color-theme="familiar"] {
+            --bg: #f3f8fc;
+            --panel: #ffffff;
+            --panel-strong: #e6f2fa;
+            --ink: #17232d;
+            --muted: #526674;
+            --line: #cbdde9;
+            --green: #0067a8;
+            --green-hover: #005a95;
+            --button-ink: #ffffff;
+            --shadow: 0 6px 22px rgba(0, 79, 130, 0.1), 0 1px 3px rgba(0, 79, 130, 0.08);
+        }
+        :root[data-color-theme="alternative-familiar"] {
+            --bg: #f6f4f2;
+            --panel: #ffffff;
+            --panel-strong: #eee9ec;
+            --ink: #2d252b;
+            --muted: #6a5c65;
+            --line: #ded5db;
+            --green: #a33a15;
+            --green-hover: #7f2d10;
+            --button-ink: #ffffff;
+            --shadow: 0 6px 22px rgba(44, 0, 30, 0.1), 0 1px 3px rgba(44, 0, 30, 0.08);
+        }
+        :root[data-color-theme="familiar"][data-theme="dark"] {
+            --bg: #081923;
+            --panel: #0d2635;
+            --panel-strong: #123449;
+            --ink: #eff8fd;
+            --muted: #a8c6d8;
+            --line: #28536b;
+            --green: #65c8f5;
+            --green-hover: #8bd8f8;
+            --button-ink: #00395d;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            color-scheme: dark;
+        }
+        :root[data-color-theme="alternative-familiar"][data-theme="dark"] {
+            --bg: #160b13;
+            --panel: #21101c;
+            --panel-strong: #2d1727;
+            --ink: #fff4fb;
+            --muted: #c9afc0;
+            --line: #523349;
+            --green: #ff9b77;
+            --green-hover: #ffb49a;
+            --button-ink: #2c001e;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
             color-scheme: dark;
         }
         @media (prefers-color-scheme: dark) {
@@ -39,7 +91,8 @@
                 --muted: #8b98a0;
                 --line: #29343d;
                 --green: #4fb38e;
-                --green-hover: #23694d;
+                --green-hover: #6cc8a5;
+                --button-ink: #082018;
                 --shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
                 color-scheme: dark;
             }
@@ -66,7 +119,7 @@
             background-repeat: no-repeat; background-position: right 0.75rem center;
             background-size: 14px;
         }
-        select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); }
+        select:focus { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
         select option { background: var(--panel); color: var(--ink); }
         .editor-box { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
         textarea {
@@ -75,15 +128,15 @@
             font-size: 1.05rem; resize: none; outline: none;
             line-height: 1.55; font-family: inherit;
         }
-        textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(79, 179, 142, 0.15); }
+        textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 20%, transparent); }
         textarea[readonly] { color: var(--green); background: var(--bg); }
         .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em; }
         .footer { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0 0.25rem; border-top: 1px solid var(--line); flex-shrink: 0; }
-        .engine-info { font-size: 0.75rem; color: var(--muted); opacity: 0.8; }
+        .engine-info { font-size: 0.75rem; color: var(--muted); }
         .primary-button {
             display: inline-flex; align-items: center; justify-content: center;
             gap: 0.5rem; height: 38px; padding: 0 1.5rem;
-            background: var(--green); color: #ffffff;
+            background: var(--green); color: var(--button-ink);
             border: 1px solid var(--green); border-radius: 6px;
             font-size: 0.9rem; font-weight: 500; cursor: pointer;
         }

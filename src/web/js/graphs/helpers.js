@@ -26,18 +26,11 @@ export function updateColors() {
   amber = s.getPropertyValue("--amber").trim() || "#e6b361";
   panelBg = s.getPropertyValue("--panel").trim() || "#fff";
   grid = s.getPropertyValue("--line").trim() || "rgba(128,128,128,0.15)";
-  labelMuted = text ? "rgba(" + hexToRgb(text) + ", 0.5)" : "#8b98a0";
+  labelMuted = muted;
   C.new = s.getPropertyValue("--token-new-bg") || "#ff6b6b";
   C.learning = s.getPropertyValue("--token-learning-bg") || "#ffb84d";
   C.known = s.getPropertyValue("--token-known-bg") || "#8ce99a";
   C.ignored = s.getPropertyValue("--token-ignored-bg") || "#ced4da";
-}
-
-function hexToRgb(hex) {
-  if (hex.startsWith("#") && hex.length >= 7) {
-    return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)].join(",");
-  }
-  return "0,0,0";
 }
 
 export function daysBetween(a, b) {
@@ -74,7 +67,7 @@ export function showTooltip(evt, tipText) {
 
 export function hideTooltip() { if (tooltipEl) tooltipEl.style.display = "none"; }
 
-function colorWithAlpha(color, alpha) {
+export function colorWithAlpha(color, alpha) {
   const value = String(color || "").trim();
   const hex = value.match(/^#([0-9a-f]{6})$/i)?.[1];
   if (hex) {

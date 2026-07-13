@@ -2,7 +2,7 @@ import { LEARNING_LANGUAGES, STATE_SCHEMA_VERSION, STATUS_ORDER, STORAGE_KEY, UI
 import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
 import { normalizeLearningColors } from "../reader-colors.js";
-import { DEFAULT_THEME, normalizeTheme } from "../theme.js";
+import { normalizeTheme } from "../theme.js";
 import { normalizeTranslationLanguageCode } from "../translator-preferences.js";
 
 function cleanSavedCatalogTitles(items) {
@@ -101,7 +101,7 @@ function createEmptyProfile(lang) {
     userBooks: [],
     hiddenBuiltInBooks: [],
     archivedBookIds: [],
-    preferences: { dictionaryUrl: getDefaultDictionaryUrl(lang), dictionaryMode: "internal", theme: DEFAULT_THEME }
+    preferences: { dictionaryUrl: getDefaultDictionaryUrl(lang), dictionaryMode: "internal" }
   };
 }
 
@@ -115,6 +115,8 @@ function normalizeProfile(rawProfile, lang) {
   profile.hiddenBuiltInBooks = stringArray(profile.hiddenBuiltInBooks);
   profile.archivedBookIds = stringArray(profile.archivedBookIds);
   profile.preferences = isRecord(profile.preferences) ? profile.preferences : {};
+  delete profile.preferences.theme;
+  delete profile.preferences.darkMode;
   profile.preferences.translationSourceLanguage = normalizeTranslationLanguageCode(profile.preferences.translationSourceLanguage);
   profile.preferences.translationTargetLanguage = normalizeTranslationLanguageCode(profile.preferences.translationTargetLanguage);
   return profile;
@@ -261,7 +263,7 @@ export function loadState() {
         vocab: {},
         profiles: rawVocab,
         discover,
-        preferences: { ...fallback.preferences, ...prefs }
+        preferences: prefs
       };
       if (Array.isArray(snap.texts)) {
         for (const [profileLang, rawProfile] of objectEntries(merged.profiles)) {
