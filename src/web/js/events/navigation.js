@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { render, setView } from "../render.js";
+import { setView } from "../render.js";
 import { updatePreferenceValue, applyPreferences, themeLabel } from "../preferences.js";
 import { renderReview } from "../views/vocabulary.js";
 import { showToast } from "../toast.js";
@@ -24,17 +24,18 @@ export function bindNavigationEvents() {
   els.themeToggle.addEventListener("click", () => {
     const next = nextTheme(state.preferences.theme);
     updatePreferenceValue("theme", next);
-    render();
     showToast(t("toast.themeChanged", { name: themeLabel(next) }));
   });
 
   document.addEventListener("keydown", handleGlobalKeydown);
-  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+  const colorScheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const handleColorSchemeChange = () => {
     if (["familiar", "alternative-familiar", "classic-auto"].includes(normalizeTheme(state.preferences?.theme))) {
       applyPreferences();
-      render();
     }
-  });
+  };
+  if (typeof colorScheme?.addEventListener === "function") colorScheme.addEventListener("change", handleColorSchemeChange);
+  else colorScheme?.addListener?.(handleColorSchemeChange);
   els.reviewReverseToggle?.addEventListener("click", () => {
     state.preferences.reviewReverse = !state.preferences.reviewReverse;
     saveState();

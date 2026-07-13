@@ -653,6 +653,12 @@ html.pocket-mode {
   height: 56px;
 }
 
+.pocket-mode #reader-highlight-toggle[aria-pressed="true"] {
+  border-color: var(--sidebar-active-accent);
+  background: var(--sidebar-nav-active);
+  box-shadow: inset 0 -3px 0 var(--sidebar-active-accent);
+}
+
 .pocket-mode #tts-play-text,
 .pocket-mode #tts-stop-text {
   order: 3;

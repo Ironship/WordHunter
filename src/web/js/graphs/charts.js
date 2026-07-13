@@ -6,7 +6,7 @@ import { t } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
-  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar
+  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha
 } from "./helpers.js";
 
 const CEFR_THRESHOLDS = {
@@ -519,7 +519,7 @@ export function renderFsrsScatter(_chartEntries) {
     const x = pad.left + (p.d / maxD) * pw;
     const y = pad.top + ph - (p.s / maxS) * ph;
     ctx.fillStyle = blue; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = panelBg; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
   }
   ctx.fillStyle = text; ctx.font = "600 12px Inter, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
   ctx.fillText(t("graphs.fsrsTitle"), W / 2, 10);
@@ -639,8 +639,8 @@ export function renderVocabProgress(_chartEntries) {
   ctx.lineTo(points[points.length - 1].x, pad.top + ph);
   ctx.closePath();
   const areaGrad = ctx.createLinearGradient(0, pad.top + ph, 0, pad.top);
-  areaGrad.addColorStop(0, "rgba(79, 179, 142, 0.05)");
-  areaGrad.addColorStop(1, "rgba(79, 179, 142, 0.25)");
+  areaGrad.addColorStop(0, colorWithAlpha(green, 0.05));
+  areaGrad.addColorStop(1, colorWithAlpha(green, 0.25));
   ctx.fillStyle = areaGrad;
   ctx.fill();
 

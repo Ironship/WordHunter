@@ -35,7 +35,7 @@ export function resolveTheme(value, prefersDark = false) {
   const mode = theme === "classic-dark" || (theme === "classic-auto" && prefersDark)
     ? "dark"
     : "light";
-  return { theme, family: "classic", mode, color: mode === "dark" ? "#0d1114" : "#17201c" };
+  return { theme, family: "classic", mode, color: mode === "dark" ? "#0d1114" : "#f7f9f6" };
 }
 
 export function nextTheme(value) {

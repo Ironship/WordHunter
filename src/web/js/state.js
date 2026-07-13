@@ -162,6 +162,9 @@ export function replaceState(nextState, { save = true } = {}) {
   });
   resetInitialVocabKeys();
   if (save) saveState();
+  if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+    window.dispatchEvent(new CustomEvent("wordhunter:state-replaced"));
+  }
 }
 
 export function switchLearningLanguage(lang) {
@@ -188,7 +191,6 @@ export function switchLearningLanguage(lang) {
       preferences: {
         dictionaryUrl: getDefaultDictionaryUrl(lang),
         dictionaryMode: "internal",
-        theme: "familiar",
         translationSourceLanguage: "",
         translationTargetLanguage: lang === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""
       }

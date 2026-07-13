@@ -23,7 +23,7 @@
         var mode = theme === "classic-dark" || ((theme === "classic-auto" || family !== "classic") && systemDark) ? "dark" : "light";
         var color = family === "familiar" ? (mode === "dark" ? "#00395d" : "#0067a8")
           : family === "alternative-familiar" ? (mode === "dark" ? "#2c001e" : "#5e2750")
-          : mode === "dark" ? "#0d1114" : "#17201c";
+          : mode === "dark" ? "#0d1114" : "#f7f9f6";
         var root = document.documentElement;
         root.dataset.theme = mode;
         root.dataset.themePref = theme;
@@ -81,7 +81,7 @@
               </select>
             </div>
             
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--text-color-muted);"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--sidebar-muted);"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             
             <div style="position: relative; display: flex; align-items: center;" data-i18n-attr="title=settings.learningLanguageTitle">
               <div id="learning-lang-flag" style="display: flex; align-items: center;"></div>
@@ -298,7 +298,7 @@
               </div>
               <div id="import-cover-preview" class="import-cover-preview" hidden style="margin-bottom: 1.5rem; position: relative; width: max-content;">
                 <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="" style="max-height: 150px; border-radius: 6px; border: 1px solid var(--line);">
-                <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: white; cursor: pointer;">
+                <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: var(--red-ink); cursor: pointer;">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
@@ -1598,7 +1598,7 @@
   </dialog>
 
   <dialog id="youglish-modal" class="panel" style="max-width: 700px; padding: 0;">
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--gray-soft);">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--line);">
       <h2 data-i18n="reader.youglishModalTitle" style="margin: 0; font-size: 1.25rem;">Wymowa (YouGlish)</h2>
       <button type="button" id="youglish-close" class="icon-button" data-i18n-attr="title=reader.close">×</button>
     </div>
