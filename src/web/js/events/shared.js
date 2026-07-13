@@ -3,8 +3,9 @@ import { state } from "../state.js";
 import { t } from "../i18n.js";
 import { getReaderSelectionText } from "../reader/selection.js";
 import { showToast } from "../toast.js";
-import { openAndroidUrl } from "../platform.js";
+import { isAndroidPlatform, openAndroidUrl } from "../platform.js";
 import { resolveTheme } from "../theme.js";
+import { resolveProfileTranslationPair } from "../translator-preferences.js";
 
 export function hasNativeTextSelection() {
   const selection = window.getSelection?.();
@@ -16,9 +17,12 @@ export function getSelectedReaderActionText() {
 }
 
 export async function openDictionary(word) {
-  if (state.preferences?.argosAsDict && state.preferences?.offlineTranslator) {
-    const fromLang = state.preferences.learningLanguage || "en";
-    const toLang = state.preferences.locale || "pl";
+  if (!isAndroidPlatform() && state.preferences?.argosAsDict && state.preferences?.offlineTranslator) {
+    const { fromCode: fromLang, toCode: toLang, configured } = resolveProfileTranslationPair(state.preferences);
+    if (!configured) {
+      showToast(t("translator.providerUnavailable"), "error");
+      return;
+    }
     const theme = resolveTheme(state.preferences.theme, window.matchMedia?.("(prefers-color-scheme: dark)").matches).mode;
     const locale = state.preferences.locale || "pl";
     const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme}&locale=${locale}`;

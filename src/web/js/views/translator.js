@@ -1,11 +1,12 @@
 import { els } from "../dom.js";
 import { t } from "../i18n.js";
-import { state } from "../state.js";
+import { state, saveState } from "../state.js";
 import { showToast } from "../toast.js";
 import { setElementBusy } from "../loading.js";
 import { escapeHtml } from "../utils.js";
 import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
-import { TRANSLATOR_LANGUAGES } from "../constants.js";
+import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
+import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
 
 // All languages supported by online/local translator providers.
 const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
@@ -96,7 +97,7 @@ export async function refreshTranslatorAvailability() {
 }
 
 /** Check if a model exists (directly or via English pivot) for the given pair. */
-function hasModelForPair(fromCode, toCode) {
+export function hasModelForPair(fromCode, toCode) {
   if (!fromCode || !toCode || fromCode === toCode) return true;
   const installed = getModels();
   // Direct model
@@ -118,7 +119,12 @@ function getPackageSize(fromCode, toCode) {
 
 /** Return all supported language codes (not just those with installed models). */
 function getAllLanguageCodes() {
-  return [...SUPPORTED_LANGUAGES];
+  const pair = resolveProfileTranslationPair(state.preferences);
+  const modelCodes = getModels().flatMap((model) => [model.from, model.to]);
+  const packageCodes = (state.argosAvailablePackages || []).flatMap((item) => [item.from, item.to]);
+  return [...new Set([...SUPPORTED_LANGUAGES, pair.fromCode, pair.toCode, ...modelCodes, ...packageCodes]
+    .map(normalizeTranslationLanguageCode)
+    .filter(Boolean))];
 }
 
 function pickLanguageCode(candidates, codes, fallback) {
@@ -148,13 +154,30 @@ function optionHtml(code, selected) {
 
 function ensureSelectedPair() {
   const allCodes = getAllLanguageCodes();
+  const profilePair = resolveProfileTranslationPair(state.preferences);
+  const isOtherProfile = state.preferences.learningLanguage === OTHER_PROFILE_ID;
   return resolveTranslatorPair({
-    fromValue: els.translatorFrom?.value,
-    toValue: els.translatorTo?.value,
-    learningLanguage: state.preferences.learningLanguage,
-    locale: state.preferences.locale,
+    fromValue: isOtherProfile ? profilePair.fromCode : els.translatorFrom?.value,
+    toValue: isOtherProfile ? profilePair.toCode : els.translatorTo?.value,
+    learningLanguage: isOtherProfile ? profilePair.fromCode : state.preferences.learningLanguage,
+    locale: isOtherProfile ? profilePair.toCode : state.preferences.locale,
     allCodes
   });
+}
+
+function saveOtherProfilePair(fromCode, toCode) {
+  if (state.preferences.learningLanguage !== OTHER_PROFILE_ID) return;
+  const source = normalizeTranslationLanguageCode(fromCode);
+  const target = normalizeTranslationLanguageCode(toCode);
+  state.preferences.translationSourceLanguage = source;
+  state.preferences.translationTargetLanguage = target;
+  const profile = state.profiles?.[OTHER_PROFILE_ID];
+  if (profile) {
+    profile.preferences = profile.preferences || {};
+    profile.preferences.translationSourceLanguage = source;
+    profile.preferences.translationTargetLanguage = target;
+  }
+  saveState();
 }
 
 export function renderTranslator() {
@@ -192,11 +215,11 @@ function updateTranslatorFlags(fromCode, toCode) {
   const fCode = fromCode || els.translatorFrom?.value;
   const tCode = toCode || els.translatorTo?.value;
   if (fromFlag && fCode) {
-    fromFlag.src = `flags/${fCode}.svg`;
+    fromFlag.src = `flags/${TRANSLATOR_LANGUAGES.includes(fCode) ? fCode : OTHER_PROFILE_ID}.svg`;
     fromFlag.style.display = "block";
   }
   if (toFlag && tCode) {
-    toFlag.src = `flags/${tCode}.svg`;
+    toFlag.src = `flags/${TRANSLATOR_LANGUAGES.includes(tCode) ? tCode : OTHER_PROFILE_ID}.svg`;
     toFlag.style.display = "block";
   }
 }
@@ -279,12 +302,14 @@ export function bindTranslatorEvents() {
   if (els.translatorSource) els.translatorSource.addEventListener("input", scheduleTranslate);
   if (els.translatorFrom) {
     els.translatorFrom.addEventListener("change", () => {
+      saveOtherProfilePair(els.translatorFrom.value, els.translatorTo?.value);
       renderTranslator();
       scheduleTranslate();
     });
   }
   if (els.translatorTo) {
     els.translatorTo.addEventListener("change", () => {
+      saveOtherProfilePair(els.translatorFrom?.value, els.translatorTo.value);
       renderTranslator();
       scheduleTranslate();
     });
@@ -296,6 +321,7 @@ export function bindTranslatorEvents() {
       // Swap values FIRST, then render + update flags
       els.translatorFrom.value = toCode;
       els.translatorTo.value = fromCode;
+      saveOtherProfilePair(toCode, fromCode);
       renderTranslator();
       scheduleTranslate();
     });

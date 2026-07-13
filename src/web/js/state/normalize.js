@@ -3,6 +3,7 @@ import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
 import { normalizeLearningColors } from "../reader-colors.js";
 import { DEFAULT_THEME, normalizeTheme } from "../theme.js";
+import { normalizeTranslationLanguageCode } from "../translator-preferences.js";
 
 function cleanSavedCatalogTitles(items) {
   if (!Array.isArray(items)) return;
@@ -114,6 +115,8 @@ function normalizeProfile(rawProfile, lang) {
   profile.hiddenBuiltInBooks = stringArray(profile.hiddenBuiltInBooks);
   profile.archivedBookIds = stringArray(profile.archivedBookIds);
   profile.preferences = isRecord(profile.preferences) ? profile.preferences : {};
+  profile.preferences.translationSourceLanguage = normalizeTranslationLanguageCode(profile.preferences.translationSourceLanguage);
+  profile.preferences.translationTargetLanguage = normalizeTranslationLanguageCode(profile.preferences.translationTargetLanguage);
   return profile;
 }
 
@@ -159,6 +162,7 @@ export function normalizeState(nextState) {
   if (!["offline", "deepl", "google", "lmstudio"].includes(nextState.preferences.translationProvider)) nextState.preferences.translationProvider = "google";
   nextState.preferences.languageOnboardingDone = nextState.preferences.languageOnboardingDone === true;
   nextState.preferences.srsAlgorithm = nextState.preferences.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
+  if (!["percentages", "counts", "both"].includes(nextState.preferences.cardStatsMode)) nextState.preferences.cardStatsMode = "percentages";
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
   nextState.preferences.readerFocusMode = nextState.preferences.readerFocusMode === true;
   nextState.preferences.readerWordPanelVisible = nextState.preferences.readerWordPanelVisible !== false;
@@ -209,6 +213,13 @@ export function normalizeState(nextState) {
   nextState.hiddenBuiltInBooks = active.hiddenBuiltInBooks;
   nextState.archivedBookIds = active.archivedBookIds;
   nextState.preferences.dictionaryUrl = active.preferences?.dictionaryUrl || getDefaultDictionaryUrl(lang);
+  nextState.preferences.translationSourceLanguage = active.preferences?.translationSourceLanguage || "";
+  nextState.preferences.translationTargetLanguage = active.preferences?.translationTargetLanguage
+    || (lang === "other" ? normalizeTranslationLanguageCode(nextState.preferences.locale) || "en" : "");
+  if (lang === "other") {
+    active.preferences.translationSourceLanguage = nextState.preferences.translationSourceLanguage;
+    active.preferences.translationTargetLanguage = nextState.preferences.translationTargetLanguage;
+  }
 
   const nonDikiLanguages = ["uk", "ru", "ja", "zh", "la", "grc"];
   for (const [profileLang, profile] of Object.entries(nextState.profiles)) {
@@ -262,8 +273,7 @@ export function loadState() {
         for (const text of objectArray(snap.texts)) {
           const textId = typeof text.id === "string" ? text.id : "";
           if (!textId) continue;
-          const match = textId.match(/^([a-z]{2,3})-/);
-          const prefixLang = match && LEARNING_LANGUAGES.includes(match[1]) ? match[1] : "";
+          const prefixLang = LEARNING_LANGUAGES.find((code) => textId.startsWith(`${code}-`)) || "";
           const targetLang = text.lang || prefixLang || merged.preferences.learningLanguage || "de";
           const profile = isRecord(merged.profiles[targetLang])
             ? merged.profiles[targetLang]

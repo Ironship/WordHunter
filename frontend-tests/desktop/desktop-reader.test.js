@@ -632,7 +632,7 @@ describe("desktop PDF reader contracts", () => {
     assert.match(renderer, /const globalIndex = overlayWordIndexes\[index\]/);
     assert.match(renderer, /globalIndex - globalOffset/);
     assert.doesNotMatch(renderer, /globalOffset \+ index \+ 1/);
-    assert.match(renderer, /separableVerbMatches\.get\(index \* 2\)/);
+    assert.match(renderer, /classifications\.get\(index \* 2\)\?\.key/);
     assert.match(renderer, /data-pdf-view-mode="\$\{escapeAttribute\(targetMode\)\}"/);
     assert.match(renderer, /data-pdf-zoom="out"/);
     assert.match(renderer, /data-pdf-zoom="reset"/);

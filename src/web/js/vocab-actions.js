@@ -13,6 +13,7 @@ import { canUseTranslationProvider, translateText } from "./translation-provider
 import { scheduleFirstLearningReview } from "./sm2.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
+import { resolveProfileTranslationPair } from "./translator-preferences.js";
 
 let lastAutoTtsFocusKey = "";
 
@@ -23,9 +24,8 @@ async function maybeAutoTranslateWord(word, entry) {
   if (entry.translationAutoRejected === true) return false;
   
   try {
-    const fromLang = state.preferences.learningLanguage || "en";
-    const toLang = state.preferences.locale || "pl";
-    const data = await translateText(word, fromLang, toLang);
+    const pair = resolveProfileTranslationPair(state.preferences);
+    const data = await translateText(word, pair.fromCode, pair.toCode);
     if (state.vocab[word] !== entry
       || String(entry.translation || "").trim()
       || entry.translationAutoRejected === true) return false;

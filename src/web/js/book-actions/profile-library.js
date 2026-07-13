@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { LEARNING_LANGUAGES } from "../constants.js";
 
 function activeProfile() {
   const lang = state.preferences?.learningLanguage;
@@ -35,7 +36,8 @@ function ensureProfile(lang) {
 
 function withLanguagePrefix(id, lang) {
   const rawId = String(id || "");
-  return rawId.match(/^[a-z]{2,3}-/) ? rawId.replace(/^[a-z]{2,3}-/, `${lang}-`) : `${lang}-${rawId}`;
+  const prefix = LEARNING_LANGUAGES.find((code) => rawId.startsWith(`${code}-`));
+  return prefix ? `${lang}-${rawId.slice(prefix.length + 1)}` : `${lang}-${rawId}`;
 }
 
 function customTextIdsAcrossProfiles() {

@@ -3,6 +3,7 @@ import { state, saveState } from "../state.js";
 import { getSentenceForWord } from "../tokenizer_v2.js";
 import { ensureSM2Fields, SM2_DEFAULTS, FSRS_DEFAULTS, todayISO } from "../sm2.js";
 import { sessionAddedWords } from "../vocabulary/vocab-list.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 // Module-level state: answer visibility for review
 export let reviewAnswerVisible = false;
@@ -39,7 +40,7 @@ export function getOrCreateEntry(word, text = "", wordIndex = null) {
   const context = getSentenceForWord(
     text,
     word,
-    state.preferences.learningLanguage || "en",
+    effectiveLearningLanguage(state.preferences),
     state.preferences.wordDetectionAlgorithm || "modern",
     wordIndex
   );

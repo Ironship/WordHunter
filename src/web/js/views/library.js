@@ -1,13 +1,14 @@
 // Library view: book card list (built-in + user-added).
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { escapeHtml, escapeAttribute, parseTagList, calcStatsPcts } from "../utils.js";
+import { escapeHtml, escapeAttribute, parseTagList, calcRoundedStatsPcts, calcStatsPcts } from "../utils.js";
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
 import { normalizeSearchVariants } from "../tokenizer_v2.js";
 import { getAllBooks, bookTexts } from "../books.js";
-import { getCachedTextStats, getCachedUniqueWordCount, prepareTextStats } from "../stats-cache.js";
+import { getCachedTextStats, prepareTextStats } from "../stats-cache.js";
 import { t, getLocale } from "../i18n.js";
 import { bindSidebarResizer } from "../panel-resizer.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 const EMPTY_STATS = { unique: 0, known: 0, learning: 0, ignored: 0, new: 0 };
 
@@ -29,11 +30,11 @@ function getSortValue(book, stats, sortKey) {
     case "length":
       return -(stats.known + stats.ignored + stats.learning + stats.new); // Negative for descending (longest first)
     case "known":
-      return -((stats.known + stats.ignored) / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
+      return -(stats.known + stats.ignored);
     case "new":
-      return -(stats.new / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
+      return -stats.new;
     case "learning":
-      return -(stats.learning / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100;
+      return -stats.learning;
     case "progress":
       return -(((stats.known + stats.ignored) / ((stats.known + stats.ignored + stats.learning + stats.new) || 1)) * 100);
     case "year":
@@ -66,22 +67,27 @@ export function renderLibrary() {
 
   const allBooks = [
     ...getAllBooks(),
-    ...(state.customTexts || []).map((ct) => ({
-      id: ct.id,
-      title: ct.title,
-      author: ct.author ?? "",
-      year: ct.createdAt ? new Date(ct.createdAt).getFullYear() : "",
-      level: ct.level || "custom",
-      blurb: ct.blurb || "",
-      pageUrl: ct.sourceUrl || "",
-      coverDataUrl: ct.coverDataUrl || "",
-      tags: parseTagList(ct.tags),
-      source: ct.source || "",
-      pdfOcrPages: ct.pdfOcrPages,
-      pdfOcrEngine: ct.pdfOcrEngine || "",
-      isCustom: true,
-      _customText: bookTexts.get(ct.id) || ct.text || ""
-    }))
+    ...(state.customTexts || []).map((ct) => {
+      const hasCachedText = bookTexts.has(ct.id);
+      const hasInlineText = typeof ct.text === "string";
+      return {
+        id: ct.id,
+        title: ct.title,
+        author: ct.author ?? "",
+        year: ct.createdAt ? new Date(ct.createdAt).getFullYear() : "",
+        level: ct.level || "custom",
+        blurb: ct.blurb || "",
+        pageUrl: ct.sourceUrl || "",
+        coverDataUrl: ct.coverDataUrl || "",
+        tags: parseTagList(ct.tags),
+        source: ct.source || "",
+        pdfOcrPages: ct.pdfOcrPages,
+        pdfOcrEngine: ct.pdfOcrEngine || "",
+        isCustom: true,
+        _customText: hasCachedText ? bookTexts.get(ct.id) : hasInlineText ? ct.text : "",
+        _textLoaded: hasCachedText || hasInlineText
+      };
+    })
   ];
 
   const books = allBooks
@@ -96,18 +102,14 @@ export function renderLibrary() {
       return matchesLevel && matchesQuery;
     })
     .map((book) => {
-      const loadedText = book._customText || bookTexts.get(book.id) || "";
-      const fullText = loadedText || book.sample || "";
-      const hasCompleteText = Boolean(loadedText);
-      const isArchived = archivedBookIds.has(book.id);
-      const lang = state.preferences.learningLanguage || "en";
+      const hasCompleteText = book._textLoaded === true || bookTexts.has(book.id);
+      const loadedText = book._textLoaded === true ? book._customText : bookTexts.get(book.id);
+      const fullText = hasCompleteText ? String(loadedText || "") : book.sample || "";
+      const lang = effectiveLearningLanguage(state.preferences);
       const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
-      // ponytail: archive view reads its existing count; it never starts a vocabulary lookup.
       const stats = !hasCompleteText
         ? null
-        : isArchived
-        ? { unique: getCachedUniqueWordCount(book, fullText, lang, algorithm), known: 0, ignored: 0, learning: 0, new: 0 }
-        : needsStats && fullText
+        : needsStats
         ? getCachedTextStats(book, fullText, state.vocab, lang, algorithm, preparedVocabStatuses)
         : { unique: 0, known: 0, ignored: 0, learning: 0, new: 0 };
     return { book, stats, statsReady: stats !== null, ...calcStatsPcts(stats || EMPTY_STATS) };
@@ -131,23 +133,45 @@ export function renderLibrary() {
     return;
   }
 
-  const localeTag = getLocale() === "en" ? "en-US" : "pl-PL";
+  const numberFormat = new Intl.NumberFormat(getLocale());
+  const statsMode = ["percentages", "counts", "both"].includes(state.preferences?.cardStatsMode)
+    ? state.preferences.cardStatsMode
+    : "percentages";
 
-  els.bookList.innerHTML = books.map(({ book, stats, statsReady, progress, knownPct, learningPct, newPct }) => {
+  els.bookList.innerHTML = books.map(({ book, stats, statsReady, knownPct, learningPct }) => {
     const isArchived = archivedBookIds.has(book.id);
-    const uniqueValue = (stats?.unique || 0).toLocaleString(localeTag);
+    const uniqueValue = numberFormat.format(stats?.unique || 0);
+    const total = (stats?.known || 0) + (stats?.ignored || 0) + (stats?.learning || 0) + (stats?.new || 0);
+    const totalValue = numberFormat.format(total);
+    const rounded = calcRoundedStatsPcts(stats || EMPTY_STATS);
+    const renderStatus = (className, label, title, percent, count) => {
+      const countValue = numberFormat.format(count);
+      const values = statsMode === "percentages"
+        ? [`${percent}%`]
+        : statsMode === "counts"
+          ? [countValue]
+          : [`${percent}%`, countValue];
+      const descriptionKey = statsMode === "percentages"
+        ? "library.cardStatPercent"
+        : statsMode === "counts"
+          ? "library.cardStatCount"
+          : "library.cardStatBoth";
+      const description = t(descriptionKey, { label: title, percent, count: countValue, total: totalValue });
+      return renderCardStat(className, label, values, description);
+    };
     const statsBlock = showStats
       ? !statsReady
         ? `<div class="progress-block" aria-busy="true"><span class="card-stat-summary">…</span></div>`
-        : isArchived
-        ? `<div class="progress-block"><span class="card-stat-summary">${renderCardCount(uniqueValue, t("library.uniqueWordsLabel"))}</span></div>`
         : `
         <div class="progress-block" aria-label="${escapeAttribute(t("library.progressLabel"))}">
           <div class="progress-line card-progress-line">
-            <span class="card-stat-summary">
-              ${renderCardStat("card-stat-known", t("reader.statsKnownIgnored"), t("reader.statsKnownIgnoredTitle"), knownPct)}
-              ${renderCardStat("card-stat-learning", t("reader.statsLearning"), t("reader.statsLearning"), learningPct)}
-              ${renderCardStat("card-stat-new", t("reader.statsNew"), t("reader.statsNew"), newPct)}
+            <span class="card-stat-grid">
+              ${renderStatus("card-stat-known", t("reader.statsKnownIgnored"), t("reader.statsKnownIgnoredTitle"), rounded.knownPct, stats.known + stats.ignored)}
+              ${renderStatus("card-stat-learning", t("reader.statsLearning"), t("reader.statsLearning"), rounded.learningPct, stats.learning)}
+              ${renderStatus("card-stat-new", t("reader.statsNew"), t("reader.statsNew"), rounded.newPct, stats.new)}
+            </span>
+            <span class="card-stat-footer">
+              ${renderCardCount(totalValue, t("library.totalWordsLabel"), "card-stat-total")}
               ${renderCardCount(uniqueValue, t("library.uniqueWordsLabel"))}
             </span>
           </div>
@@ -157,9 +181,7 @@ export function renderLibrary() {
           </div>
         </div>`
       : "";
-    const lengthHint = !showStats && (book._customText || bookTexts.has(book.id))
-      ? `<span class="tag tag-soft">${escapeHtml(t("library.uniqueWords", { n: uniqueValue }))}</span>`
-      : (!showStats ? `<span class="tag tag-soft">${escapeHtml(t("library.fragment"))}</span>` : "");
+    const lengthHint = !showStats && !statsReady ? `<span class="tag tag-soft">${escapeHtml(t("library.fragment"))}</span>` : "";
     const isUserBook = (state.userBooks || []).some((entry) => entry.id === book.id);
     let removeButton = "";
     let moveButton = "";

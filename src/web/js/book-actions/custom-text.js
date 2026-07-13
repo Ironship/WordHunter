@@ -18,6 +18,7 @@ import {
   upsertCustomText
 } from "./profile-library.js";
 import { buildPdfDocumentText, effectivePdfPageText, reconcilePdfPageWords } from "../reader/pdf-page-text.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 export function slugify(value) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -108,7 +109,7 @@ export async function updatePdfOcrPageText(id, pageIndex, correctedText, options
     next.words = reconcilePdfPageWords(
       Array.isArray(page.words) ? page.words : [],
       corrected,
-      state.preferences.learningLanguage || "en",
+      effectiveLearningLanguage(state.preferences),
       state.preferences.wordDetectionAlgorithm || "modern"
     );
     if (corrected === original) delete next.correctedText;

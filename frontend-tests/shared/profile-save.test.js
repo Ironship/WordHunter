@@ -287,6 +287,23 @@ describe("profile save payload", () => {
     assert.equal(restored.profiles.grc.customTexts[0].text, "μῆνιν ἄειδε");
   });
 
+  it("restores Other-profile texts from their full language prefix", () => {
+    globalThis.window = {
+      __qtBridge: true,
+      __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "other" },
+        vocab: { other: { vocab: {}, preferences: { translationSourceLanguage: "nl", translationTargetLanguage: "en" } } },
+        texts: [{ id: "other-custom-news", title: "Nieuws", text: "Goedemorgen" }]
+      }
+    };
+
+    const restored = loadState();
+    assert.equal(restored.profiles.other.customTexts[0].id, "other-custom-news");
+    assert.equal(restored.preferences.translationSourceLanguage, "nl");
+    assert.equal(restored.preferences.translationTargetLanguage, "en");
+  });
+
   it("uses defaults when the localStorage cache is absent", () => {
     globalThis.window = { __qtBridge: false };
     globalThis.localStorage = {

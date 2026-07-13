@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { normalizeWord } from "./tokenizer_v2.js";
+import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 let speaking = false;
 let currentAudio = null;
@@ -11,7 +12,11 @@ const TTS_WORD_CLASS = "tts-current-word";
 
 function getTtsLang(lang) {
   const map = { en: "en-US", de: "de-DE", es: "es-ES", fr: "fr-FR", it: "it-IT", pl: "pl-PL", uk: "uk-UA", ru: "ru-RU", ja: "ja-JP", zh: "zh-CN", la: "la", grc: "el-GR" };
-  return map[lang] || "en-US";
+  return map[lang] || lang || "en-US";
+}
+
+function activeTtsLanguage() {
+  return effectiveLearningLanguage(state.preferences);
 }
 
 function getTtsRate(rate) {
@@ -42,7 +47,7 @@ function speakSentenceAndroid(sentence, onEnd, tracker) {
   window.addEventListener("wordhunter:android-tts", finish);
   const ok = bridge.speak(
     sentence,
-    getTtsLang(state.preferences.learningLanguage || "en"),
+    getTtsLang(activeTtsLanguage()),
     getTtsRate(state.preferences.ttsRate || "normal"),
     id
   );
@@ -62,7 +67,7 @@ export function speakWord(word) {
       window.speechSynthesis.cancel();
     }
     
-    const lang = state.preferences.learningLanguage || "en";
+    const lang = activeTtsLanguage();
     const url = `/__tts?text=${encodeURIComponent(word)}&lang=${lang}`;
     
     currentAudio = new Audio(url);
@@ -84,7 +89,7 @@ function speakWordLocal(word) {
   if (!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   
-  const lang = state.preferences.learningLanguage || "en";
+  const lang = activeTtsLanguage();
   const ttsLang = getTtsLang(lang);
   const voices = window.speechSynthesis.getVoices();
   if (voices.length > 0) {
@@ -99,7 +104,7 @@ function speakWordLocal(word) {
   }
 
   const utterance = new SpeechSynthesisUtterance(word);
-  utterance.lang = getTtsLang(state.preferences.learningLanguage || "en");
+  utterance.lang = getTtsLang(activeTtsLanguage());
   utterance.rate = getTtsRate(state.preferences.ttsRate || "normal");
   window.speechSynthesis.speak(utterance);
 }
@@ -207,7 +212,7 @@ function readNextSentenceEdge(sentences, index, containerElement, tracker) {
     return;
   }
 
-  const lang = state.preferences.learningLanguage || "en";
+  const lang = activeTtsLanguage();
   const url = `/__tts?text=${encodeURIComponent(sentence)}&lang=${lang}`;
   
   currentAudio = new Audio(url);
@@ -272,7 +277,7 @@ function readNextSentenceLocal(sentences, index, containerElement, tracker) {
     return;
   }
 
-  const lang = state.preferences.learningLanguage || "en";
+  const lang = activeTtsLanguage();
   const ttsLang = getTtsLang(lang);
   const voices = window.speechSynthesis.getVoices();
   if (voices.length > 0) {
@@ -287,7 +292,7 @@ function readNextSentenceLocal(sentences, index, containerElement, tracker) {
   }
 
   const utterance = new SpeechSynthesisUtterance(sentence);
-  utterance.lang = getTtsLang(state.preferences.learningLanguage || "en");
+  utterance.lang = getTtsLang(activeTtsLanguage());
   utterance.rate = getTtsRate(state.preferences.ttsRate || "normal");
   beginTtsSentenceHighlight(tracker, sentence);
   
@@ -320,7 +325,7 @@ function speakSentenceLocal(sentence, onEnd, tracker) {
     return;
   }
   const utterance = new SpeechSynthesisUtterance(sentence);
-  utterance.lang = getTtsLang(state.preferences.learningLanguage || "en");
+  utterance.lang = getTtsLang(activeTtsLanguage());
   utterance.rate = getTtsRate(state.preferences.ttsRate || "normal");
   beginTtsSentenceHighlight(tracker, sentence);
   utterance.onboundary = (event) => {

@@ -63,3 +63,17 @@ export function calcStatsPcts(stats) {
   const newPct = 100 - knownPct - learningPct;
   return { knownPct, learningPct, newPct, total };
 }
+
+export function calcRoundedStatsPcts(stats) {
+  const raw = calcStatsPcts(stats);
+  if (!raw.total) return { knownPct: 0, learningPct: 0, newPct: 0 };
+  const values = [raw.knownPct, raw.learningPct, raw.newPct];
+  const rounded = values.map(Math.floor);
+  const order = values
+    .map((value, index) => ({ index, remainder: value - rounded[index] }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index);
+  for (let remaining = 100 - rounded.reduce((sum, value) => sum + value, 0), index = 0; remaining > 0; remaining--, index++) {
+    rounded[order[index % order.length].index] += 1;
+  }
+  return { knownPct: rounded[0], learningPct: rounded[1], newPct: rounded[2] };
+}

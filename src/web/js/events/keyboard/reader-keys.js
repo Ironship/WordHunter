@@ -4,7 +4,7 @@ import { speakWord } from "../../tts.js";
 import { setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
 import { openYouGlish } from "../../youglish.js";
-import { navigateReaderWord, readerTokens, selectReaderToken } from "../../reader/word-navigation.js";
+import { findCurrentReaderToken, navigateReaderWord, readerTokens, selectReaderToken } from "../../reader/word-navigation.js";
 
 function focusSelectedWordField(field) {
   if (!state.selectedWord) return;
@@ -88,7 +88,7 @@ export function handleReaderKeys(event, key) {
   if (key === "enter" && exactCtrl) {
     event.preventDefault();
     const tokens = readerTokens();
-    const token = tokens[0];
+    const token = findCurrentReaderToken(tokens) || tokens[0];
     if (token) selectReaderToken(token);
     return true;
   }

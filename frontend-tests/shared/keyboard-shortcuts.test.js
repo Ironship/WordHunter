@@ -32,6 +32,7 @@ const { createDefaultState, replaceState, state } = await import("../../src/web/
 const { handleGlobalKeydown } = await import("../../src/web/js/events/navigation.js");
 const { handleGlobalKeys } = await import("../../src/web/js/events/keyboard/global-keys.js");
 const { handleReaderKeys } = await import("../../src/web/js/events/keyboard/reader-keys.js");
+const { findCurrentReaderToken } = await import("../../src/web/js/reader/word-navigation.js");
 const { handleFlashcardKeys } = await import("../../src/web/js/events/keyboard/flashcards-keys.js");
 const { els } = await import("../../src/web/js/dom.js");
 Object.assign(els, {
@@ -173,10 +174,18 @@ describe("keyboard shortcut dispatch", () => {
     assert.equal(event.defaultPrevented, false);
   });
 
-  it("documents Ctrl+Enter by always selecting the first Reader token", () => {
+  it("returns Ctrl+Enter to the exact selected Reader token", () => {
+    resetState("reader");
+    const first = { dataset: { word: "wort", wordIndex: "4" } };
+    const selected = { dataset: { word: "wort", wordIndex: "18" } };
+    state.selectedWordIndex = 18;
+    document.activeElement = null;
+    window.lastActiveToken = { dataset: { word: "wort", wordIndex: "18" } };
+
+    assert.equal(findCurrentReaderToken([first, selected]), selected);
+
     const readerKeys = readFileSync(new URL("../../src/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
-    assert.match(readerKeys, /const token = tokens\[0\]/);
-    assert.doesNotMatch(readerKeys, /tokens\.find\(\(item\) => item\.dataset\.word === state\.selectedWord\)/);
+    assert.match(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
   });
 });
 

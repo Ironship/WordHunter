@@ -128,6 +128,9 @@ export function cacheElements() {
   els.prefAutoTranslateRow = document.getElementById("pref-auto-translate-row");
   els.prefOfflineTranslator = document.getElementById("pref-offline-translator");
   els.prefTranslationProvider = document.getElementById("pref-translation-provider");
+  els.prefTranslationLanguageSettings = document.getElementById("pref-translation-language-settings");
+  els.prefTranslationSourceLanguage = document.getElementById("pref-translation-source-language");
+  els.prefTranslationTargetLanguage = document.getElementById("pref-translation-target-language");
   els.prefDeepLApiKey = document.getElementById("pref-deepl-api-key");
   els.prefDeepLApiKeyRow = document.getElementById("pref-deepl-key-row");
   els.prefLmStudioEndpoint = document.getElementById("pref-lmstudio-endpoint");
@@ -143,6 +146,8 @@ export function cacheElements() {
   els.prefDictionaryUrl = document.getElementById("pref-dictionary-url");
   els.prefDictionaryMode = document.getElementById("pref-dictionary-mode");
   els.prefCardStats = document.getElementById("pref-card-stats");
+  els.prefCardStatsMode = document.getElementById("pref-card-stats-mode");
+  els.prefCardStatsModeRow = document.getElementById("pref-card-stats-mode-row");
   els.prefCovers = document.getElementById("pref-covers");
   els.ocrGpuStatus = document.getElementById("ocr-gpu-status");
   els.prefTextAlign = document.getElementById("pref-text-align");

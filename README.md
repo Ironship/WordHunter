@@ -95,10 +95,16 @@ language:
     <td><img src="src/web/flags/la.svg" width="24" alt="Latin flag artwork"> Latin</td>
     <td><img src="src/web/flags/grc.svg" width="24" alt="Ancient Greek flag artwork"> Ancient Greek</td>
   </tr>
+  <tr>
+    <td><img src="src/web/flags/other.svg" width="24" alt="Neutral globe icon"> Other</td>
+    <td colspan="2">A custom-language profile with configurable source and target translation codes.</td>
+  </tr>
 </table>
 
 Translation, TTS, catalog, and offline-model availability can vary by language
-and provider.
+and provider. The Other profile has no built-in starter catalog; set its source
+and target language codes under Translator & Dictionary settings before using
+automatic translation.
 
 ## Feature Walkthrough
 

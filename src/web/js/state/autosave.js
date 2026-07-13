@@ -54,6 +54,8 @@ export function createAutosave(getState) {
       profile.preferences = profile.preferences || {};
       profile.preferences.dictionaryUrl = current.preferences.dictionaryUrl;
       profile.preferences.dictionaryMode = current.preferences.dictionaryMode;
+      profile.preferences.translationSourceLanguage = current.preferences.translationSourceLanguage;
+      profile.preferences.translationTargetLanguage = current.preferences.translationTargetLanguage;
     }
   }
 

@@ -6,6 +6,7 @@ import {
   getCachedEntry,
   requestVocabIndex
 } from "./vocab-index-client.js";
+import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 export function getVocabularyTextOptions() {
   const seen = new Set();
@@ -34,7 +35,7 @@ export function getTextVocabularyIndex(textId) {
   const textRecord = getVocabularyTextById(textId);
   if (!textRecord) return null;
 
-  const lang = state.preferences.learningLanguage || "en";
+  const lang = effectiveLearningLanguage(state.preferences);
   const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
   const text = textRecord.text || "";
   const book = { id: textRecord.id };
@@ -56,7 +57,7 @@ export async function loadTextVocabularyIndex(textId) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const textRecord = getVocabularyTextById(textId);
     if (!textRecord) return null;
-    const lang = state.preferences.learningLanguage || "en";
+    const lang = effectiveLearningLanguage(state.preferences);
     const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
     const text = textRecord.text || "";
     const book = { id: textRecord.id };

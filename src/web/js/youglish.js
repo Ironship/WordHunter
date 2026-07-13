@@ -4,6 +4,7 @@ let youglishWidget = null;
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { resolveTheme } from "./theme.js";
+import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 let youglishApiReady = false;
 let youglishApiPromise = null;
@@ -92,7 +93,7 @@ async function fetchYouGlish(word) {
     youglishApiReady = true;
     initYouglish();
   }
-  const ygLang = getYouglishLang(state.preferences.learningLanguage || "en");
+  const ygLang = getYouglishLang(effectiveLearningLanguage(state.preferences));
   if (youglishWidget) {
     youglishWidget.fetch(word, ygLang);
   }

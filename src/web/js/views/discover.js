@@ -5,6 +5,7 @@ import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t, getLocale } from "../i18n.js";
 import { searchGutendex } from "../discover/gutendex.js";
 import { searchMediaWiki } from "../discover/mediawiki.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 let lastResults = [];
 const selected = new Set();
@@ -16,7 +17,7 @@ let _mwContinueToken = null;
 const FETCH_CONCURRENCY = 2;
 
 function getDiscoverLanguage() {
-  return state.preferences?.learningLanguage || "en";
+  return effectiveLearningLanguage(state.preferences).split("-")[0];
 }
 
 export function renderDiscover() {

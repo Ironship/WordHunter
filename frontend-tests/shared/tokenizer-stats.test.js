@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
+import { classifyTokenOccurrences, findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../src/web/js/tokenizer_v2.js";
 
 describe("token stats", () => {
   it("counts each token occurrence by vocabulary status", () => {
@@ -8,6 +8,26 @@ describe("token stats", () => {
     assert.deepEqual(getTokenStats(tokens, { hello: { status: "known" } }), {
       unique: 2, known: 2, learning: 0, ignored: 0, new: 1
     });
+  });
+
+  it("uses longest non-overlapping phrases just like the Reader", () => {
+    const tokens = tokenizeText("one two three", "en");
+    const vocab = {
+      "one two": { status: "learning" },
+      "two three": { status: "known" }
+    };
+    const classifications = [...classifyTokenOccurrences(tokens, vocab, "en").values()];
+
+    assert.deepEqual(classifications.map((entry) => entry.key), ["one two", "one two", "three"]);
+    assert.deepEqual(getTokenStats(tokens, vocab, "en"), {
+      unique: 3, known: 0, learning: 2, ignored: 0, new: 1
+    });
+  });
+
+  it("does not match phrases across images or sentence boundaries", () => {
+    const vocab = { "one two": { status: "known" } };
+    assert.equal(getTokenStats(tokenizeText("one. two", "en"), vocab).known, 0);
+    assert.equal(getTokenStats(tokenizeText("one [IMG:page.png] two", "en"), vocab).known, 0);
   });
 
   it("keeps Chinese text as selectable word tokens", () => {
@@ -53,6 +73,17 @@ describe("token stats", () => {
   it("does not join German verb parts across a clause boundary", () => {
     const tokens = tokenizeText("Ich rufe dich, danach kommt er an.", "de");
     assert.equal(findGermanSeparableVerbMatches(tokens, { "rufe an": { status: "known" } }, "de").size, 0);
+  });
+
+  it("recognizes multiple German separable verbs in one clause", () => {
+    const tokens = tokenizeText("Ich rufe an und mache mit.", "de");
+    const vocab = {
+      "rufe an": { status: "known" },
+      "mache mit": { status: "learning" }
+    };
+    assert.deepEqual(getTokenStats(tokens, vocab, "de"), {
+      unique: 6, known: 2, learning: 2, ignored: 0, new: 2
+    });
   });
 
   it("uses either clicked part of a separated German verb for sentence context", () => {

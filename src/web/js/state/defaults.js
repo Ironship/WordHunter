@@ -27,7 +27,8 @@ export function getDefaultDictionaryUrl(lang) {
     ja: "https://jisho.org/search/{{word}}",
     zh: "https://www.mdbg.net/chinese/dictionary?page=worddict&wdrst=0&wdqb={{word}}",
     la: "https://logeion.uchicago.edu/{{word}}",
-    grc: "https://logeion.uchicago.edu/{{word}}"
+    grc: "https://logeion.uchicago.edu/{{word}}",
+    other: "https://en.wiktionary.org/wiki/{{word}}"
   };
   return urls[lang] || urls.en;
 }
@@ -96,6 +97,7 @@ export function createDefaultState() {
       autoLearnOnClick: false,
       autoAddLearningOnly: true,
       showCardStats: true,
+      cardStatsMode: "percentages",
       showCovers: true,
       learningLanguage: "de",
       dictionaryUrl: defaultProfile.preferences.dictionaryUrl,
@@ -119,6 +121,8 @@ export function createDefaultState() {
       useEdgeTts: true,
       autoTranslateWords: true,
       translationProvider: "google",
+      translationSourceLanguage: "",
+      translationTargetLanguage: "",
       deeplApiKey: "",
       lmStudioEndpoint: "http://127.0.0.1:1234/v1/chat/completions",
       lmStudioModel: "",

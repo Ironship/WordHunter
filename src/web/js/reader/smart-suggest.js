@@ -4,6 +4,7 @@
 import { state } from "../state.js";
 import { escapeHtml } from "../utils.js";
 import { t } from "../i18n.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 /**
  * @param {string} context - sentence context around the word
@@ -13,7 +14,7 @@ import { t } from "../i18n.js";
 export function getSmartSuggestionHtml(context, word) {
   if (!context || !word || word.includes(" ")) return "";
 
-  const lang = state.preferences.learningLanguage || "en";
+  const lang = effectiveLearningLanguage(state.preferences).split("-")[0];
   const articles = {
     de: ["der", "die", "das", "ein", "eine", "einen", "einem", "einer", "eines", "dem", "den", "des"],
     fr: ["le", "la", "les", "un", "une", "l'", "d'"],

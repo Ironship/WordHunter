@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" role="img" aria-labelledby="title">
+  <title id="title">Other language</title>
+  <rect width="64" height="48" rx="6" fill="#e8f0f8"/>
+  <circle cx="32" cy="24" r="16" fill="none" stroke="#32658a" stroke-width="3"/>
+  <path d="M16 24h32M32 8c5 5 8 10 8 16s-3 11-8 16c-5-5-8-10-8-16s3-11 8-16Z" fill="none" stroke="#32658a" stroke-width="3"/>
+</svg>

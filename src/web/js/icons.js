@@ -65,21 +65,19 @@ export function statusIcon(status, size = 16) {
   return icon(STATUS_ICONS[status] || "star", size);
 }
 
-export function renderCardStat(className, label, title, value) {
-  const percent = `${Math.round(value)}%`;
-  const description = `${title}: ${percent}`;
+export function renderCardStat(className, label, values, description) {
   return `
     <span class="card-stat ${className}" title="${escapeAttribute(description)}" aria-label="${escapeAttribute(description)}">
-      <strong>${percent}</strong>
+      <strong class="card-stat-values">${values.map((value) => `<span>${escapeHtml(value)}</span>`).join("")}</strong>
       <span class="card-stat-label">${escapeHtml(label)}</span>
     </span>
   `;
 }
 
-export function renderCardCount(value, label) {
+export function renderCardCount(value, label, className = "card-stat-unique") {
   const description = `${value} ${label}`;
   return `
-    <span class="card-stat card-stat-unique" title="${escapeAttribute(description)}" aria-label="${escapeAttribute(description)}">
+    <span class="card-stat ${className}" title="${escapeAttribute(description)}" aria-label="${escapeAttribute(description)}">
       <strong>${escapeHtml(value)}</strong>
       <span class="card-stat-label">${escapeHtml(label)}</span>
     </span>

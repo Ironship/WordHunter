@@ -6,7 +6,7 @@ import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { t } from "../i18n.js";
-import { findGermanSeparableVerbMatches, normalizeWord, getTokenStats, tokenizeText } from "../tokenizer_v2.js";
+import { classifyTokenOccurrences, normalizeWord, getTokenStats, tokenizeText } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
@@ -16,6 +16,7 @@ import { getLearningColor } from "../reader-colors.js";
 import { icon } from "../icons.js";
 import { countEffectivePdfPageWords, effectivePdfPageText, reconcilePdfPageWords } from "./pdf-page-text.js";
 import { getReaderSession } from "./session.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 const PDF_OCR_LAYOUT_FONT = `"Times New Roman", Georgia, serif`;
 const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2";
@@ -69,8 +70,9 @@ export function pdfOcrZoomStep() {
 
 export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
-  const session = getReaderSession(current, state.preferences.learningLanguage || "en", wordAlgorithm);
-  const stats = getTokenStats(session.tokens, state.vocab, state.preferences.learningLanguage || "en");
+  const language = effectiveLearningLanguage(state.preferences);
+  const session = getReaderSession(current, language, wordAlgorithm);
+  const stats = getTokenStats(session.tokens, state.vocab, language);
   renderTrackingSummary(stats);
   els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
@@ -91,7 +93,7 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
   const globalOffset = pages.slice(0, pageIndex).reduce(
     (sum, item) => sum + countEffectivePdfPageWords(
       item,
-      state.preferences.learningLanguage || "en",
+      language,
       wordAlgorithm
     ),
     0
@@ -113,7 +115,7 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
     ? reconcilePdfPageWords(
       sourcePageWords,
       effectivePdfPageText(page),
-      state.preferences.learningLanguage || "en",
+      language,
       wordAlgorithm
     )
     : sourcePageWords;
@@ -124,15 +126,11 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
       { type: "text", value: raw.match(/[.!?;,\n\r]+$/u)?.[0] || " " }
     ];
   });
-  const separableVerbMatches = findGermanSeparableVerbMatches(
-    overlayTokens,
-    state.vocab,
-    state.preferences.learningLanguage || "en"
-  );
+  const classifications = classifyTokenOccurrences(overlayTokens, state.vocab, language);
   const overlayWordIndexes = mapPdfOverlayWordIndexes(
     pageWords,
     effectivePdfPageText(page),
-    state.preferences.learningLanguage || "en",
+    language,
     wordAlgorithm,
     globalOffset
   );
@@ -145,7 +143,7 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
         page,
         globalIndex,
         current,
-        separableVerbMatches.get(index * 2),
+        classifications.get(index * 2)?.key,
         pageWordIndex
       );
     })
@@ -188,8 +186,9 @@ export function renderPdfOcrReader(current, scrollPerPageKey, savedPos) {
 function renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPerPageKey, savedPos) {
   const pageText = effectivePdfPageText(page);
   const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
-  const tokens = tokenizeText(pageText, state.preferences.learningLanguage || "en", wordAlgorithm);
-  const textHtml = renderPdfOcrTextTokens(tokens, globalOffset);
+  const language = effectiveLearningLanguage(state.preferences);
+  const tokens = tokenizeText(pageText, language, wordAlgorithm);
+  const textHtml = renderPdfOcrTextTokens(tokens, globalOffset, classifyTokenOccurrences(tokens, state.vocab, language));
   const emptyHtml = `<p class="muted-copy">${escapeHtml(t("reader.empty"))}</p>`;
 
   els.readerText.innerHTML = [
@@ -217,14 +216,9 @@ function renderPdfOcrTextMode(current, page, globalOffset, totalPages, scrollPer
   els.readerText.removeAttribute("aria-busy");
 }
 
-function renderPdfOcrTextTokens(tokens, globalOffset) {
+function renderPdfOcrTextTokens(tokens, globalOffset, classifications) {
   let html = "";
   let wordCount = 0;
-  const separableVerbMatches = findGermanSeparableVerbMatches(
-    tokens,
-    state.vocab,
-    state.preferences.learningLanguage || "en"
-  );
   for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {
     const token = tokens[tokenIndex];
     if (token.type !== "word") {
@@ -234,7 +228,7 @@ function renderPdfOcrTextTokens(tokens, globalOffset) {
 
     const raw = String(token.value || "");
     const word = normalizeWord(raw);
-    const dataWord = separableVerbMatches.get(tokenIndex) || word;
+    const dataWord = classifications.get(tokenIndex)?.key || word;
     const entry = state.vocab[dataWord];
     const status = entry ? entry.status : "new";
     const selected = state.selectedWord === dataWord ? "selected" : "";

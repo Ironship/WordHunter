@@ -35,7 +35,7 @@ describe("language selectors", () => {
 
   it("uses the active learning profile instead of a separate discover language selector", () => {
     assert.equal(html.includes('id="discover-language"'), false);
-    assert.match(discoverView, /preferences\?\.learningLanguage/);
+    assert.match(discoverView, /effectiveLearningLanguage\(state\.preferences\)/);
     assert.doesNotMatch(discoverView, /state\.discover\.language/);
     assert.doesNotMatch(discoverEvents, /discoverLanguage/);
     assert.doesNotMatch(defaults, /language: "de"/);
@@ -55,7 +55,7 @@ describe("language selectors", () => {
   it("localizes new learning-language labels in every locale file", () => {
     for (const file of fs.readdirSync("src/web/i18n").filter((name) => name.endsWith(".json"))) {
       const data = JSON.parse(fs.readFileSync(`src/web/i18n/${file}`, "utf8"));
-      for (const code of ["zh", "la", "grc"]) {
+      for (const code of ["zh", "la", "grc", "other"]) {
         assert.equal(typeof data.languages?.[code], "string", `${file} missing languages.${code}`);
         assert.ok(data.languages[code].trim(), `${file} has empty languages.${code}`);
       }
@@ -72,5 +72,11 @@ describe("language selectors", () => {
     assert.match(greekFlag, /Owl_of_Athena/);
     assert.doesNotMatch(latinFlag, />SPQR</);
     assert.doesNotMatch(greekFlag, /<circle[^>]+cx="1\.5"[^>]+cy="1"/);
+  });
+
+  it("ships a neutral icon for the Other profile", () => {
+    const otherFlag = fs.readFileSync("src/web/flags/other.svg", "utf8");
+    assert.match(otherFlag, /<circle/);
+    assert.match(otherFlag, /Other language/);
   });
 });

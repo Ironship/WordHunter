@@ -95,6 +95,10 @@ describe("Android Pocket reader", () => {
     assert.match(navigation, /currentIndex === -1 \? \(step > 0 \? 0 : tokens\.length - 1\)/);
     assert.match(readerEvents, /changeReaderPage\(dx < 0 \? 1 : -1\)/);
     assert.match(wordPanel, /data-close-word-panel/);
+    assert.match(wordPanel, /class="secondary-button pocket-word-dictionary"/);
+    assert.match(wordPanel, /pocket-word-dictionary[^>]+data-dict-word/);
+    assert.match(wordPanel, /pocket-word-dictionary[^>]+aria-label/);
+    assert.match(globalActions, /dataset\.dictWord/);
     assert.match(wordPanel, /function bindInTextReviewControls/);
     assert.match(wordPanel, /refreshInTextReview\(entry\)/);
     assert.match(wordPanel, /event\.stopPropagation\(\)/);
@@ -137,6 +141,9 @@ describe("Android Pocket reader", () => {
     assertDeclarations(css, ".pocket-mode .word-panel", { "overflow-y": "auto" });
     assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "sticky" });
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });
+    assertDeclarations(css, ".pocket-word-dictionary", { display: "none" });
+    assertDeclarations(css, ".pocket-mode .status-options > .pocket-word-dictionary", { display: "inline-flex", "grid-column": "1 / -1", width: "100%" });
+    assertDeclarations(css, ".pocket-mode #word-panel .word-actions > [data-dict-word]", { display: "none" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-1", { background: "var(--red-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-3", { background: "var(--amber-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-5", { background: "var(--green-soft)" });

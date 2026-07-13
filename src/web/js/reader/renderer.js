@@ -20,6 +20,7 @@ import {
   goToReaderPage
 } from "./pagination.js";
 import { getReaderSession } from "./session.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 export { changeReaderPage, goToReaderPage };
 
@@ -167,9 +168,10 @@ export function renderReader() {
       if (generation !== readerRenderGeneration || state.currentTextId !== current.id) return;
       // 1. Tokenize once, then derive both statistics and pagination from the result.
       const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
-      const session = getReaderSession(current, state.preferences.learningLanguage || "en", wordAlgorithm);
+      const language = effectiveLearningLanguage(state.preferences);
+      const session = getReaderSession(current, language, wordAlgorithm);
       const { tokens } = session;
-       const stats = getTokenStats(tokens, state.vocab, state.preferences.learningLanguage || "en");
+       const stats = getTokenStats(tokens, state.vocab, language);
        renderTrackingSummary(stats);
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 

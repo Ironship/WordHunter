@@ -164,6 +164,15 @@ export function loadAllCustomTextContents() {
   );
 }
 
+export async function hydrateActiveLibraryTexts() {
+  const language = state.preferences?.learningLanguage;
+  await Promise.all([loadAllBookTexts(), loadAllCustomTextContents()]);
+  if (state.preferences?.learningLanguage !== language) return false;
+  // A previous profile can still own the shared built-in batch promise.
+  await Promise.all([loadAllBookTexts(), loadAllCustomTextContents()]);
+  return state.preferences?.learningLanguage === language;
+}
+
 export function clearBookTextCache(id) {
   textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   bookTexts.delete(id);

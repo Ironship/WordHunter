@@ -11,12 +11,13 @@ function assertSourceOrder(source, before, after, message) {
 }
 
 function sourceBetween(source, startMarker, endMarker) {
-  const start = source.indexOf(startMarker);
-  const end = source.indexOf(endMarker, start + startMarker.length);
+  const normalized = source.replaceAll("\r\n", "\n");
+  const start = normalized.indexOf(startMarker);
+  const end = normalized.indexOf(endMarker, start + startMarker.length);
   assert.notEqual(start, -1, `Missing source marker: ${startMarker}`);
   assert.notEqual(end, -1, `Missing source marker: ${endMarker}`);
   assert.ok(start < end, `Expected ${startMarker} before ${endMarker}`);
-  return source.slice(start, end);
+  return normalized.slice(start, end);
 }
 
 describe("Android Pocket bridges", () => {

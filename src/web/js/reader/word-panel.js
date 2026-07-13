@@ -17,6 +17,7 @@ import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
 import { canUseTranslationProvider, translateText } from "../translation-provider.js";
 import { beginElementBusy } from "../loading.js";
+import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../translator-preferences.js";
 
 let inTextReviewWord = "";
 let inTextAnswerVisible = false;
@@ -118,10 +119,11 @@ function bindContextTranslation(word, context) {
     output.hidden = false;
     output.textContent = t("translator.translating");
     try {
+      const pair = resolveProfileTranslationPair(state.preferences);
       const result = await translateText(
         context,
-        state.preferences.learningLanguage || "en",
-        state.preferences.locale || "en"
+        pair.fromCode,
+        pair.toCode
       );
       if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
       output.innerHTML = `<strong>${escapeHtml(t("reader.contextTranslationLabel"))}</strong> ${escapeHtml(result.translated || "")}`;
@@ -156,7 +158,7 @@ export function renderWordPanel(currentText) {
   const context = getSentenceForWord(
     currentText.text,
     word,
-    state.preferences.learningLanguage || "en",
+    effectiveLearningLanguage(state.preferences),
     state.preferences.wordDetectionAlgorithm || "modern",
     state.selectedWordIndex
   ) || entry.examples?.[0] || "";
@@ -182,6 +184,9 @@ export function renderWordPanel(currentText) {
             </button>
           `;
         }).join("")}
+        <button class="secondary-button pocket-word-dictionary" type="button" data-dict-word="${escapeAttribute(word)}" title="${escapeAttribute(t("vocab.openDictionary"))}" aria-label="${escapeAttribute(t("vocab.openDictionary"))}">
+          ${icon("book", 18)} ${escapeHtml(t("vocab.openDictionary"))}
+        </button>
       </div>
       ${smartSuggestionHtml}
       ${renderInTextReview(entry, word, !!smartSuggestionHtml)}
@@ -243,7 +248,7 @@ export function updateWordStatusInReader(word, status, options = {}) {
     const stats = getTextStats(
       current.text,
       state.vocab,
-      state.preferences.learningLanguage || "en",
+      effectiveLearningLanguage(state.preferences),
       state.preferences.wordDetectionAlgorithm || "modern"
     );
     renderTrackingSummary(stats);

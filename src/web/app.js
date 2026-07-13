@@ -3,7 +3,7 @@ import { cacheElements, els } from "./js/dom.js";
 import { showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, setSyncStatus, syncSettingsControls } from "./js/preferences.js";
-import { loadBooksCatalog, loadAllBookTexts, loadAllCustomTextContents } from "./js/books.js";
+import { hydrateActiveLibraryTexts, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, saveState, state } from "./js/state.js";
@@ -107,7 +107,7 @@ async function loadBridgeStateBeforeRender() {
 function scheduleLibraryStatsHydration() {
   const hydrate = () => {
     els.bookList?.setAttribute("aria-busy", "true");
-    Promise.all([loadAllBookTexts(), loadAllCustomTextContents()])
+    hydrateActiveLibraryTexts()
       .then(() => {
         if (state.currentView === "library") render();
       })
