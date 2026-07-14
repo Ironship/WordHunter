@@ -103,7 +103,7 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /keepPanelOpen: true/);
     assert.match(readerEvents, /animateDirection: direction > 0 \? "next" : "previous"/);
     assert.match(readerEvents, /persistWord: true/);
-    assert.ok(readerEvents.indexOf("selectWord(wordToSelect") < readerEvents.indexOf("if (openPocketPanel) refreshPocketWordPanelSheet();"));
+    assert.match(readerEvents, /selectWord\(wordToSelect[\s\S]*?if \(openPocketPanel\)\s*refreshPocketWordPanelSheet\(\);/);
     assert.match(readerEvents, /event\.touches\.length !== 1/);
     assert.match(readerEvents, /candidate\.identifier === swipeStart\?\.touchId/);
     assert.match(readerEvents, /button:not\(\.word-token\)/);
