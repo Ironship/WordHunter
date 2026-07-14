@@ -113,10 +113,14 @@ describe("repository validation wiring", () => {
 
     assert.ok(workflow.on.schedule[0].cron);
     assertActionsArePinned(workflow);
-    assert.deepEqual(workflow.on.release.types, ["published"]);
+    assert.equal(workflow.on.release, undefined);
     assert.ok(workflow.on.workflow_dispatch !== undefined);
     assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "windows"]);
     const frontendValidation = workflow.jobs["frontend-validation"];
+    const revisionCheck = stepByName(frontendValidation, "Match a requested draft release to this revision");
+    assert.match(revisionCheck.if, /workflow_dispatch[\s\S]*release_tag/);
+    assert.equal(revisionCheck.env.GH_REPO, "${{ github.repository }}");
+    assert.match(revisionCheck.run, /isDraft,targetCommitish[\s\S]*repos\/\$GH_REPO\/commits\/\$RELEASE_TAG[\s\S]*repos\/\$GH_REPO\/commits\/\$release_target[\s\S]*GITHUB_SHA/);
     assert.equal(stepByName(frontendValidation, "Set up Node").with.cache, "npm");
     assert.equal(
       stepByName(frontendValidation, "Install frontend validation dependencies").run,

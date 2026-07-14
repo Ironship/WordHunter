@@ -46,9 +46,32 @@ let inTextAnswerVisible = false;
 let inTextReviewCompleted = false;
 let contextTranslationGeneration = 0;
 const ACTION_ITEM_IDS = new Set<WhSelectedWordPanelItemId>(["dictionary", "speech", "youglish", "copy", "edit", "remove"]);
+const WORD_PANEL_STATUS_CLASSES = STATUS_ORDER.map((status) => `word-panel-status-${status}`);
 
 function wordPanelElement(): HTMLElement {
   return els.wordPanel as HTMLElement;
+}
+
+function applyWordPanelStatus(status: VocabStatus | null): void {
+  const panel = wordPanelElement();
+  const host = panel.parentElement;
+  panel.classList?.remove(...WORD_PANEL_STATUS_CLASSES);
+  host?.classList.remove(...WORD_PANEL_STATUS_CLASSES);
+  if (!status) {
+    if (panel.dataset) delete panel.dataset.wordStatus;
+    return;
+  }
+  const statusClass = `word-panel-status-${status}`;
+  panel.classList?.add(statusClass);
+  host?.classList.add(statusClass);
+  if (panel.dataset) panel.dataset.wordStatus = status;
+  const label = panel.querySelector?.<HTMLElement>(".word-panel-header .eyebrow");
+  if (label) label.textContent = statusLabel(status);
+  panel.querySelectorAll?.<HTMLButtonElement>("[data-set-status]").forEach((button) => {
+    const active = button.dataset.setStatus === status;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
 }
 
 function isTransientReaderRangeSelection() {
@@ -307,6 +330,7 @@ export function renderWordPanel(currentText: WhText): void {
   contextTranslationGeneration += 1;
   const word = state.selectedWord;
   if (!word) {
+    applyWordPanelStatus(null);
     els.wordPanel.innerHTML = `
       <div class="empty-state">
         <p class="eyebrow">${escapeHtml(t("reader.wordPanelEyebrow"))}</p>
@@ -321,6 +345,7 @@ export function renderWordPanel(currentText: WhText): void {
   const entry: WordPanelEntry = isTransientRange
     ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
     : getOrCreateEntry(word, currentText.text, state.selectedWordIndex);
+  applyWordPanelStatus(entry.status);
   resetInTextReview(word);
   const context = getSentenceForWord(
     currentText.text,
@@ -352,6 +377,7 @@ export function renderWordPanel(currentText: WhText): void {
 
 export function updateWordStatusInReader(word: string, status: VocabStatus, options: UpdateWordStatusOptions = {}): void {
   const { renderPanel = true } = options;
+  if (state.selectedWord === word) applyWordPanelStatus(status);
   if (!els.readerText) return;
   const tokens = (els.readerText as HTMLElement).querySelectorAll<HTMLElement>(`.word-token[data-word="${CSS.escape(word)}"]`);
   tokens.forEach(token => {

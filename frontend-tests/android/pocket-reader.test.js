@@ -103,6 +103,7 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /keepPanelOpen: true/);
     assert.match(readerEvents, /animateDirection: direction > 0 \? "next" : "previous"/);
     assert.match(readerEvents, /persistWord: true/);
+    assert.ok(readerEvents.indexOf("selectWord(wordToSelect") < readerEvents.indexOf("if (openPocketPanel) refreshPocketWordPanelSheet();"));
     assert.match(readerEvents, /event\.touches\.length !== 1/);
     assert.match(readerEvents, /candidate\.identifier === swipeStart\?\.touchId/);
     assert.match(readerEvents, /button:not\(\.word-token\)/);
@@ -157,13 +158,15 @@ describe("Android Pocket reader", () => {
     assert.equal(openPanel.overflow, "hidden");
     assert.equal(openPanel.display, "flex");
     assert.equal(openPanel.gap, "0");
+    assert.equal(openPanel["--pocket-word-sheet-collapsed-size"], "clamp(6.25rem, 18dvh, 9rem)");
     assert.match(
       declarationBlock(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]').top,
       /^max\(/
     );
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { top: "calc(var(--pocket-statusbar-safe-top) + 0.5rem)" });
+    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"]', { top: "var(--pocket-word-sheet-top)" });
     assertDeclarations(css, ".pocket-mode .pocket-word-panel-sheet-handle", { display: "flex", "min-height": "44px", "touch-action": "none" });
-    assertDeclarations(css, ".pocket-mode .word-panel", { flex: "1 1 auto", "min-height": "0", height: "auto", "max-height": "none", "overflow-y": "auto", "touch-action": "pan-y pinch-zoom" });
+    assertDeclarations(css, ".pocket-mode .word-panel", { flex: "1 1 auto", "min-height": "0", height: "auto", "max-height": "none", "overflow-y": "auto", background: "var(--word-panel-status-bg, var(--panel))", "touch-action": "pan-y pinch-zoom" });
     assert.match(css, /@media \(prefers-reduced-motion: no-preference\)[\s\S]*pocket-word-sheet-dragging[\s\S]*transition: top 200ms/);
     assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "sticky" });
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });

@@ -2328,6 +2328,32 @@ html[data-max-width="full"] .reader-text {
 
 .word-panel {
   padding: 1rem;
+  border-color: var(--word-panel-status-border, var(--line));
+  background: var(--word-panel-status-bg, var(--panel));
+}
+
+.reader-sidebar-wrapper.word-panel-status-new,
+.word-panel.word-panel-status-new {
+  --word-panel-status-bg: color-mix(in srgb, var(--amber-soft) 76%, var(--panel));
+  --word-panel-status-border: color-mix(in srgb, var(--amber) 34%, var(--line));
+}
+
+.reader-sidebar-wrapper.word-panel-status-learning,
+.word-panel.word-panel-status-learning {
+  --word-panel-status-bg: color-mix(in srgb, var(--blue-soft) 76%, var(--panel));
+  --word-panel-status-border: color-mix(in srgb, var(--blue) 34%, var(--line));
+}
+
+.reader-sidebar-wrapper.word-panel-status-known,
+.word-panel.word-panel-status-known {
+  --word-panel-status-bg: color-mix(in srgb, var(--green-soft) 76%, var(--panel));
+  --word-panel-status-border: color-mix(in srgb, var(--green) 34%, var(--line));
+}
+
+.reader-sidebar-wrapper.word-panel-status-ignored,
+.word-panel.word-panel-status-ignored {
+  --word-panel-status-bg: color-mix(in srgb, var(--muted) 10%, var(--panel));
+  --word-panel-status-border: color-mix(in srgb, var(--muted) 30%, var(--line));
 }
 
 .word-panel.word-panel-card-ghost {

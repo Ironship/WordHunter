@@ -3,7 +3,7 @@
 import { t } from "./i18n.js";
 
 const MOBILE_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/pdf";
-type PocketWordSheetState = "collapsed" | "expanded";
+type PocketWordSheetState = "collapsed" | "expanded" | "custom";
 
 export function resolvePocketWordSheetState(
   deltaY: number,
@@ -15,7 +15,9 @@ export function resolvePocketWordSheetState(
   if (Math.abs(deltaY) >= 12 && Math.abs(releaseVelocityY) >= 0.35) {
     return releaseVelocityY < 0 ? "expanded" : "collapsed";
   }
-  return currentTop <= (expandedTop + collapsedTop) / 2 ? "expanded" : "collapsed";
+  if (currentTop <= expandedTop + 8) return "expanded";
+  if (currentTop >= collapsedTop - 8) return "collapsed";
+  return "custom";
 }
 
 export function detectPlatform(): "android" | "desktop" {
@@ -51,7 +53,7 @@ export function applyPlatformUi(): void {
   document.documentElement.style.zoom = "1";
   bindPocketNavigationDrawer();
   bindPocketImportDrawer();
-  bindPocketWordPanelSheet();
+  refreshPocketWordPanelSheet();
 
   const importFile = document.getElementById("import-file");
   if (importFile) importFile.setAttribute("accept", MOBILE_IMPORT_ACCEPT);
@@ -66,25 +68,46 @@ export function applyPlatformUi(): void {
   });
 }
 
+export function refreshPocketWordPanelSheet(): void {
+  if (isAndroidPlatform()) bindPocketWordPanelSheet();
+}
+
 function bindPocketWordPanelSheet(): void {
   const root = document.documentElement;
   const handle = document.getElementById("pocket-word-panel-sheet-handle");
   const wrapper = document.querySelector<HTMLElement>("#reader-view .reader-sidebar-wrapper");
   if (!handle || !wrapper) return;
 
-  const currentState = (): PocketWordSheetState => wrapper.dataset.pocketSheetState === "expanded" ? "expanded" : "collapsed";
-  const setState = (state: PocketWordSheetState): void => {
+  const currentState = (): PocketWordSheetState => {
+    if (wrapper.dataset.pocketSheetState === "expanded") return "expanded";
+    if (wrapper.dataset.pocketSheetState === "custom") return "custom";
+    return "collapsed";
+  };
+  const setState = (
+    state: PocketWordSheetState,
+    customTop?: number,
+    expandedTop?: number,
+    collapsedTop?: number
+  ): void => {
     wrapper.dataset.pocketSheetState = state;
     root.dataset.pocketWordSheetState = state;
-    const expanded = state === "expanded";
+    if (state === "custom") {
+      if (Number.isFinite(customTop)) wrapper.style.setProperty("--pocket-word-sheet-top", `${customTop}px`);
+      if (Number.isFinite(customTop) && Number.isFinite(expandedTop) && Number.isFinite(collapsedTop)) {
+        const range = Math.max(1, collapsedTop - expandedTop);
+        const progress = Math.max(0, Math.min(1, (customTop - expandedTop) / range));
+        root.dataset.pocketWordSheetProgress = String(progress);
+      }
+    } else {
+      wrapper.style.removeProperty("--pocket-word-sheet-top");
+      delete root.dataset.pocketWordSheetProgress;
+    }
+    const expanded = state !== "collapsed";
     const label = t(expanded ? "reader.collapseWordPanel" : "reader.expandWordPanel");
     handle.setAttribute("aria-expanded", String(expanded));
     handle.setAttribute("aria-label", label);
     handle.setAttribute("title", label);
   };
-  setState(currentState());
-  if (root.dataset.pocketWordSheetBound === "true") return;
-  root.dataset.pocketWordSheetBound = "true";
 
   interface SheetDrag {
     pointerId: number;
@@ -110,19 +133,44 @@ function bindPocketWordPanelSheet(): void {
     wrapper.dataset.pocketSheetState = original;
     return top;
   };
-  const finishDrag = (state: PocketWordSheetState): void => {
-    setState(state);
+  const restoreState = (): void => {
+    const remembered = root.dataset.pocketWordSheetState;
+    if (remembered !== "custom") {
+      setState(remembered === "expanded" ? "expanded" : currentState());
+      return;
+    }
+    if (!root.classList.contains("pocket-word-panel-open") || !root.classList.contains("has-selected-word")) {
+      setState("custom");
+      return;
+    }
+    wrapper.classList.add("pocket-word-sheet-measuring");
+    const expandedTop = measureTop("expanded");
+    const collapsedTop = measureTop("collapsed");
+    wrapper.classList.remove("pocket-word-sheet-measuring");
+    const progress = Math.max(0, Math.min(1, Number(root.dataset.pocketWordSheetProgress) || 0));
+    setState("custom", expandedTop + (collapsedTop - expandedTop) * progress, expandedTop, collapsedTop);
+  };
+  const finishDrag = (
+    state: PocketWordSheetState,
+    top?: number,
+    expandedTop?: number,
+    collapsedTop?: number
+  ): void => {
+    setState(state, top, expandedTop, collapsedTop);
     wrapper.classList.remove("pocket-word-sheet-dragging", "pocket-word-sheet-measuring");
-    wrapper.style.removeProperty("--pocket-word-sheet-top");
     drag = null;
   };
+
+  restoreState();
+  if (root.dataset.pocketWordSheetBound === "true") return;
+  root.dataset.pocketWordSheetBound = "true";
 
   handle.addEventListener("click", (event) => {
     if (performance.now() < suppressClickUntil) {
       event.preventDefault();
       return;
     }
-    setState(currentState() === "expanded" ? "collapsed" : "expanded");
+    setState(currentState() === "collapsed" ? "expanded" : "collapsed");
   });
   handle.addEventListener("keydown", (event) => {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
@@ -185,24 +233,36 @@ function bindPocketWordPanelSheet(): void {
       Math.min(activeDrag.collapsedTop, activeDrag.startTop + deltaY)
     );
     if (activeDrag.maxTravel < 8) {
-      finishDrag(activeDrag.startState);
+      finishDrag(
+        activeDrag.startState,
+        activeDrag.startTop,
+        activeDrag.expandedTop,
+        activeDrag.collapsedTop
+      );
       return;
     }
     suppressClickUntil = performance.now() + 400;
     event.preventDefault();
-    finishDrag(resolvePocketWordSheetState(
+    const nextState = resolvePocketWordSheetState(
       deltaY,
       activeDrag.velocityY,
       activeDrag.currentTop,
       activeDrag.expandedTop,
       activeDrag.collapsedTop
-    ));
+    );
+    finishDrag(
+      nextState,
+      activeDrag.currentTop,
+      activeDrag.expandedTop,
+      activeDrag.collapsedTop
+    );
   });
   handle.addEventListener("pointercancel", () => {
-    if (drag) finishDrag(drag.startState);
+    if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
   });
   window.addEventListener("resize", () => {
-    if (drag) finishDrag(drag.startState);
+    if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
+    else restoreState();
   });
 }
 

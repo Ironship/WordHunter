@@ -81,6 +81,14 @@ export function renderTrackingSummary(stats: TextStats): void {
 
 let loadingBook: ReaderLoadingBook | null = null;
 let readerRenderGeneration = 0;
+const WORD_PANEL_STATUS_CLASSES = ["word-panel-status-new", "word-panel-status-learning", "word-panel-status-known", "word-panel-status-ignored"];
+
+function clearWordPanelStatus(): void {
+  if (!els.wordPanel) return;
+  els.wordPanel.classList?.remove(...WORD_PANEL_STATUS_CLASSES);
+  els.wordPanel.parentElement?.classList.remove(...WORD_PANEL_STATUS_CLASSES);
+  if (els.wordPanel.dataset) delete els.wordPanel.dataset.wordStatus;
+}
 
 export function setReaderLoading(book: ReaderLoadingBook): void {
   loadingBook = book;
@@ -116,6 +124,7 @@ export function renderReader(): void {
         <div class="loading-bar"><div class="loading-bar-fill"></div></div>
       </div>`;
     if (els.wordPanel) {
+      clearWordPanelStatus();
       els.wordPanel.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("reader.wordPanelEyebrow"))}</p><h2>${escapeHtml(t("reader.loadingHeading", { title: loadingBook.title }))}</h2><p>${escapeHtml(t("reader.loadingHint"))}</p></div>`;
     }
     els.readerText.dataset.rendering = "0";
@@ -138,6 +147,7 @@ export function renderReader(): void {
     if (els.progressBarLearning) els.progressBarLearning.style.width = "0%";
     els.readerText.innerHTML = `<p>${escapeHtml(t("reader.empty"))}</p>`;
     if (els.wordPanel) {
+      clearWordPanelStatus();
       els.wordPanel.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("reader.wordPanelEyebrow"))}</p><h2>${escapeHtml(t("reader.wordPanelHeading"))}</h2><p>${escapeHtml(t("reader.wordPanelHint"))}</p></div>`;
     }
     els.readerText.dataset.rendering = "0";

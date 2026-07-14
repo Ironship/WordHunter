@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Extended the Pocket word-panel drag range.
+- Preserved intermediate panel heights while changing words.
+- Tinted the complete word card to match its vocabulary status.
+- Prevented duplicate release artifact builds after publication.

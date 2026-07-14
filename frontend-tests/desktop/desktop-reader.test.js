@@ -572,6 +572,7 @@ describe("desktop platform contracts", () => {
     assert.match(flatpakMeta, /<icon type="stock">com\.wordhunter\.app<\/icon>/);
     assert.match(flatpakMeta, /<category>Education<\/category>/);
     assert.match(flatpakMeta, /<category>Languages<\/category>/);
+    assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.5"[^>]*type="development">/);
     assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.4"[^>]*type="development">/);
     assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.3"[^>]*type="development">/);
     assert.match(tomlSection(cargoToml, "target.'cfg(target_os = \"linux\")'.dependencies"), /gdkwayland-sys = \{ version = "0\.18", features = \["v3_24_22"\] \}/);

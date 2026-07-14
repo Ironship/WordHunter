@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.5" date="2026-07-14" type="development">
+      <description>
+        <ul>
+          <li>Extend the Pocket word-sheet drag range and retain intermediate heights between cards.</li>
+          <li>Tint the complete selected-word card to match New, Learning, Known, or Ignored status.</li>
+          <li>Keep status controls, outgoing card colors, and loading states synchronized.</li>
+          <li>Avoid rebuilding release artifacts after a validated draft is published.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.4" date="2026-07-14" type="development">
       <description>
         <ul>
