@@ -16,6 +16,10 @@ interface ContributionHeatmapOptions {
 
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
+export function latestHeatmapScrollLeft(scrollWidth: number, clientWidth: number): number {
+  return Math.max(0, scrollWidth - clientWidth);
+}
+
 export function buildContributionMonthLabels(weeks: readonly HeatmapDay[][], weeksToShow: number, monthLabels: readonly string[]): HeatmapMonth[] {
   const months: HeatmapMonth[] = [];
   let lastMonth = -1;
@@ -117,4 +121,13 @@ export function renderContributionHeatmap(target: HTMLElement, options: Contribu
 
   html += '</div></div>';
   target.innerHTML = html;
+
+  const alignmentHost = target.closest<HTMLElement>("#graphs-heatmap, #review-chart-fullwidth");
+  if (document.documentElement.classList.contains("pocket-mode")
+    && alignmentHost?.dataset.alignHeatmapLatest === "true") {
+    requestAnimationFrame(() => {
+      target.scrollLeft = latestHeatmapScrollLeft(target.scrollWidth, target.clientWidth);
+      delete alignmentHost.dataset.alignHeatmapLatest;
+    });
+  }
 }

@@ -194,11 +194,15 @@ export function handleReviewAction(action: string): void {
     state.reviewIndex = (state.reviewIndex || 0) + 1;
     hideReviewAnswer();
     saveState();
+    renderReview("next");
+    return;
   }
   if (action === "prev") {
     state.reviewIndex = Math.max(0, (state.reviewIndex || 0) - 1);
     hideReviewAnswer();
     saveState();
+    renderReview("previous");
+    return;
   }
   renderReview();
 }

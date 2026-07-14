@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.3" date="2026-07-14" type="development">
+      <description>
+        <ul>
+          <li>Keep Familiar desktop themes dark from the first paint and in embedded tools.</li>
+          <li>Add swipe navigation with directional animation to selected Reader words.</li>
+          <li>Turn Flashcards into a card-first deck with tap-to-reveal and safe swipe navigation.</li>
+          <li>Open clipped Pocket heatmaps at the latest weeks in Graphs and Flashcards.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.2" date="2026-07-13" type="development">
       <description>
         <ul>

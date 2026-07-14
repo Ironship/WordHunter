@@ -31,6 +31,8 @@ type YouGlishWindow = Window & typeof globalThis & {
 
 const youglishWindow = window as YouGlishWindow;
 let youglishWidget: YouGlishWidget | null = null;
+let youglishWidgetTheme: "dark" | "light" | null = null;
+let youglishLastRequest: { word: string; language: string } | null = null;
 
 import { showToast } from "./toast.js";
 import { t as rawT } from "./i18n.js";
@@ -41,16 +43,22 @@ let youglishApiReady = false;
 let youglishApiPromise: Promise<void> | null = null;
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
-function initYouglish() {
-  if (youglishWidget) return;
+function initYouglish(): boolean {
   const Widget = youglishWindow.YG?.Widget;
-  if (!Widget) return;
-  const isDark = resolveTheme(state.preferences.theme, window.matchMedia?.('(prefers-color-scheme: dark)').matches).mode === "dark";
+  if (!Widget) return false;
+  const isDark = resolveTheme(state.preferences.theme, document.documentElement.dataset.theme === "dark").mode === "dark";
+  const theme = isDark ? "dark" : "light";
+  if (youglishWidget && youglishWidgetTheme === theme) return false;
+  if (youglishWidget) {
+    youglishWidget.pause();
+    youglishWidget = null;
+    document.getElementById("youglish-widget")?.replaceChildren();
+  }
   const w = Math.min(640, window.innerWidth - 64);
   youglishWidget = new Widget("youglish-widget", {
     width: w,
     components: 9,
-    theme: isDark ? "dark" : "light",
+    theme,
     events: {
       'onFetchDone': (e) => {
         if (e && e.totalResult === 0) {
@@ -62,6 +70,8 @@ function initYouglish() {
       }
     }
   });
+  youglishWidgetTheme = theme;
+  return true;
 }
 
 youglishWindow.onYouglishAPIReady = () => {
@@ -123,12 +133,13 @@ async function fetchYouGlish(word: string): Promise<void> {
     showToast(t("toast.youglishBlocked"));
     return;
   }
-  if (!youglishWidget && youglishWindow.YG?.Widget) {
+  if (youglishWindow.YG?.Widget) {
     youglishApiReady = true;
     initYouglish();
   }
   const ygLang = getYouglishLang(effectiveLearningLanguage(state.preferences));
   if (youglishWidget) {
+    youglishLastRequest = { word, language: ygLang };
     youglishWidget.fetch(word, ygLang);
   }
 }
@@ -141,6 +152,7 @@ export function openYouGlish(word: string): void {
     if (document.getElementById("youglish-widget")?.parentNode !== modalBody) {
       modalBody.innerHTML = '<div id="youglish-widget"></div>';
       youglishWidget = null;
+      youglishWidgetTheme = null;
       if (youglishApiReady) {
         initYouglish();
       }
@@ -158,6 +170,13 @@ export function closeYouGlish() {
   if (modal) modal.close();
   if (youglishWidget) {
     youglishWidget.pause();
+  }
+}
+
+export function refreshYouGlishTheme(): void {
+  const recreated = youglishWidget ? initYouglish() : false;
+  if (recreated && youglishWidget && youglishLastRequest) {
+    youglishWidget.fetch(youglishLastRequest.word, youglishLastRequest.language);
   }
 }
 

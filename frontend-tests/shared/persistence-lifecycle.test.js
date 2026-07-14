@@ -122,6 +122,7 @@ async function loadAppHarness() {
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
+    "./js/youglish.js": { refreshYouGlishTheme: noOp },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,
@@ -440,14 +441,20 @@ describe("persistence lifecycle", () => {
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
-    assert.ok(html.includes('<meta name="theme-color" content="#0067a8">'));
+    assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
     const inlineBoot = cssDeclarations(html, String.raw`html\.app-booting,html\.app-booting body`);
     assert.match(inlineBoot, /overflow:\s*hidden/);
-    assert.match(inlineBoot, /background:\s*var\(--boot-bg,#0067a8\)/);
+    assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
-    assert.match(html, /<script type="module" src="boot\.js"><\/script>/);
+    assert.match(html, /<script src="boot\.js"><\/script>/);
+    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js"'));
+    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js"'));
+    assert.doesNotMatch(boot, /export \{\}/);
+    assert.doesNotMatch(boot, /app-font-stylesheet/);
+    assert.match(app, /getElementById\("app-font-stylesheet"\)\?\.setAttribute\("rel", "stylesheet"\)/);
     assert.ok(boot.includes('localStorage.getItem("wordHunterStateV2")'));
     assert.ok(boot.includes("root.dataset.themePref = theme"));
+    assert.match(boot, /forceDesktopDark = !pocketMode && family !== "classic"/);
     assert.match(cssDeclarations(html, String.raw`html\.app-booting \.app-shell`), /visibility:\s*hidden/);
 
     const bootPage = cssDeclarations(styles, String.raw`html\.app-booting,\s*html\.app-booting body`);

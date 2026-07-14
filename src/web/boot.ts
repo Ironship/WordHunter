@@ -30,7 +30,12 @@ function applyBootTheme(): void {
 
   const systemDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches === true;
   const family = theme === "familiar" || theme === "alternative-familiar" ? theme : "classic";
-  const mode = theme === "classic-dark" || ((theme === "classic-auto" || family !== "classic") && systemDark)
+  const query = new URLSearchParams(window.location.search);
+  const pocketMode = query.get("platform") === "android"
+    || "WordHunterAndroid" in window
+    || /\bAndroid\b/i.test(navigator.userAgent || "");
+  const forceDesktopDark = !pocketMode && family !== "classic";
+  const mode = theme === "classic-dark" || forceDesktopDark || ((theme === "classic-auto" || family !== "classic") && systemDark)
     ? "dark"
     : "light";
   const color = family === "familiar"
@@ -59,9 +64,6 @@ try {
 } catch {
   // The critical boot style provides a safe default until regular preferences load.
 }
-
-const fontStylesheet = document.querySelector<HTMLLinkElement>("#app-font-stylesheet");
-if (fontStylesheet) fontStylesheet.rel = "stylesheet";
 
 window.onerror = (message, source, line, column, error): void => {
   reportBootError(`JS Error: ${String(message)} at ${source}:${line}:${column}\n${error instanceof Error ? error.stack || "" : ""}`);

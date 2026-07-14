@@ -100,6 +100,19 @@ describe("named themes", () => {
     assert.equal(root.style.colorScheme, "light");
   });
 
+  it("keeps Familiar themes dark on desktop while Pocket follows the system", () => {
+    const root = { dataset: { platform: "desktop" }, style: { setProperty(name, value) { this[name] = value; } } };
+    assert.equal(applyTheme("familiar", root, false).mode, "dark");
+    assert.equal(root.dataset.theme, "dark");
+    assert.equal(root.style.colorScheme, "dark");
+    assert.equal(meta.content, "#00395d");
+
+    root.dataset.platform = "android";
+    assert.equal(applyTheme("alternative-familiar", root, false).mode, "light");
+    assert.equal(root.dataset.theme, "light");
+    assert.equal(meta.content, "#5e2750");
+  });
+
   it("uses named dark browser chrome colors", () => {
     assert.equal(resolveTheme("familiar", true).color, "#00395d");
     assert.equal(resolveTheme("alternative-familiar", true).color, "#2c001e");
@@ -224,9 +237,16 @@ describe("named themes", () => {
 
   it("propagates named themes to the offline translator with contrasting button ink", () => {
     const sharedEvents = readFileSync(new URL("../../dist/web/js/events/shared.js", import.meta.url), "utf8");
+    const youglish = readFileSync(new URL("../../dist/web/js/youglish.js", import.meta.url), "utf8");
     const popup = readFileSync(new URL("../../dist/web/templates/translator-popup.html", import.meta.url), "utf8");
     const popupRuntime = readFileSync(new URL("../../dist/web/translator-popup.js", import.meta.url), "utf8");
     assert.match(sharedEvents, /family=\$\{theme\.family\}/);
+    assert.match(sharedEvents, /document\.documentElement\.dataset\.theme === "dark"/);
+    assert.match(youglish, /youglishWidgetTheme === theme/);
+    assert.match(youglish, /replaceChildren\(\)/);
+    assert.match(youglish, /export function refreshYouGlishTheme/);
+    assert.match(youglish, /youglishLastRequest = \{ word, language: ygLang \}/);
+    assert.match(youglish, /youglishWidget\.fetch\(youglishLastRequest\.word, youglishLastRequest\.language\)/);
     assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
     assert.match(popup, /<link rel="stylesheet" href="\/theme\.css[^>]*>/);
     assert.ok(popup.indexOf("/theme.css") < popup.indexOf("<style>"));

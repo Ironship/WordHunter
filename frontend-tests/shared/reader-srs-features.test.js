@@ -81,6 +81,38 @@ describe("in-text SRS grading", () => {
     }
   });
 
+  it("renders a bounded, animated flashcard deck without changing review data", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousIndex = state.reviewIndex;
+    els.reviewCard = { innerHTML: "" };
+    state.preferences.autoAddLearningOnly = true;
+    state.vocab = {
+      alpha: { status: "learning", nextDate: "2000-01-01", repetition: 1, interval: 2 },
+      beta: { status: "learning", nextDate: "2000-01-02", repetition: 3, interval: 8 }
+    };
+
+    try {
+      state.reviewIndex = 0;
+      renderReview("next");
+      assert.match(els.reviewCard.innerHTML, /class="flashcard-wrap flashcard-enter-next"/);
+      assert.match(els.reviewCard.innerHTML, /data-review-card-surface/);
+      assert.match(els.reviewCard.innerHTML, /id="btn-flashcard-prev"[^>]*disabled/);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /id="btn-flashcard-next"[^>]*disabled/);
+      assert.match(els.reviewCard.innerHTML, /aria-expanded="false" aria-controls="review-card-answer"/);
+
+      state.reviewIndex = 1;
+      renderReview("previous");
+      assert.match(els.reviewCard.innerHTML, /class="flashcard-wrap flashcard-enter-previous"/);
+      assert.match(els.reviewCard.innerHTML, /id="btn-flashcard-next"[^>]*disabled/);
+      assert.deepEqual(state.vocab.beta, { status: "learning", nextDate: "2000-01-02", repetition: 3, interval: 8 });
+    } finally {
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.reviewIndex = previousIndex;
+    }
+  });
+
   it("uses Enter to reveal and number keys to grade an in-text review", () => {
     const originalDocument = globalThis.document;
     const originalSelectedWord = state.selectedWord;
@@ -168,8 +200,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.5-rc\.2/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.5-rc\.2/, `${locale}.help.version`);
+      assert.match(data.help.whatsNew, /1\.0\.5-rc\.3/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.5-rc\.3/, `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });

@@ -30,6 +30,16 @@ if (compile.status !== 0) {
   process.exit(compile.status ?? 1);
 }
 
+// boot.ts has no imports and must run synchronously before the first paint.
+// TypeScript emits this marker because moduleDetection is forced for the rest
+// of the frontend; remove only that marker so boot.js can be a classic script.
+const bootOutput = join(temporaryDir, "boot.js");
+const bootSource = await readFile(bootOutput, "utf8");
+if (!/\r?\nexport \{\};\s*$/.test(bootSource)) {
+  throw new Error("Unexpected boot.js module output");
+}
+await writeFile(bootOutput, bootSource.replace(/\r?\nexport \{\};\s*$/, "\n"));
+
 async function copyAssets(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {

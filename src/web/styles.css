@@ -726,7 +726,7 @@ kbd {
 @keyframes graph-stat-enter { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
 @keyframes heatmap-cell-enter { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: none; } }
 
-.review-chart-fullwidth { width: 100%; max-width: 100%; padding: 0.75rem 1rem 1rem; min-height: 140px; border-top: 1px solid var(--line); }
+.review-chart-fullwidth { width: 100%; max-width: 100%; margin-top: 2rem; padding: 1.5rem 1rem 1rem; min-height: 140px; border-top: 1px solid var(--line); }
 .review-chart-fullwidth:empty { display: none; }
 .review-chart-frame { width: min(100%, 860px); margin: 0 auto; overflow: hidden; }
 .review-chart-fullwidth canvas { display: block; width: 100%; max-width: 100%; border-radius: var(--radius); }
@@ -2326,6 +2326,24 @@ html[data-max-width="full"] .reader-text {
   padding: 1rem;
 }
 
+.word-panel.word-panel-enter-next {
+  animation: word-panel-enter-next 240ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.word-panel.word-panel-enter-previous {
+  animation: word-panel-enter-previous 240ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+@keyframes word-panel-enter-next {
+  from { opacity: 0.45; transform: translateX(34px) rotate(0.7deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes word-panel-enter-previous {
+  from { opacity: 0.45; transform: translateX(-34px) rotate(-0.7deg); }
+  to { opacity: 1; transform: none; }
+}
+
 .focus-hint {
   display: flex;
   flex-direction: column;
@@ -2479,9 +2497,10 @@ html[data-max-width="full"] .reader-text {
 }
 .review-forecast,
 .review-upcoming-wrap {
-  margin-top: 1.25rem;
+  margin-top: 2rem;
   padding: 0 1rem;
 }
+
 .review-forecast h3,
 .review-upcoming-wrap h3 {
   margin: 0.15rem 0 0.6rem;
@@ -2811,9 +2830,35 @@ html[data-max-width="full"] .reader-text {
 }
 
 .flashcard-wrap {
-  width: 100%;
   position: relative;
+  isolation: isolate;
+  width: min(100%, 780px);
+  margin: 0.4rem auto 0.8rem;
+  padding: 0 0.75rem 0.75rem 0;
   perspective: 1000px;
+  touch-action: pan-y;
+}
+
+.flashcard-wrap::before,
+.flashcard-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0.25rem 0.75rem 0.75rem 0;
+  z-index: 0;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--panel);
+  pointer-events: none;
+}
+
+.flashcard-wrap::before {
+  transform: translate(11px, 12px) rotate(0.45deg);
+  opacity: 0.55;
+}
+
+.flashcard-wrap::after {
+  transform: translate(6px, 6px) rotate(-0.25deg);
+  opacity: 0.82;
 }
 
 .vocab-table {
@@ -2977,20 +3022,30 @@ textarea.vocab-translation-input {
 
 .review-card {
   display: grid;
+  justify-items: center;
   gap: 0.8rem;
-  padding: 1rem;
+  padding: 1.5rem;
+}
+
+.review-card > :not(.flashcard-wrap) {
+  width: min(100%, 780px);
 }
 
 .review-word {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel-strong);
-  padding: 1rem;
-  text-align: center;
-  max-height: 40vh;
+  min-height: clamp(260px, 36vh, 420px);
+  max-height: 48vh;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
   overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--control-accent) 38%, var(--line));
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--panel-strong);
+  box-shadow: 0 18px 45px color-mix(in srgb, var(--ink) 16%, transparent), inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
+  cursor: pointer;
+  text-align: center;
 }
 
 .review-word > div {
@@ -3003,6 +3058,33 @@ textarea.vocab-translation-input {
   display: block;
   font-size: 2rem;
   overflow-wrap: anywhere;
+}
+
+.flashcard-enter-next .review-word {
+  animation: flashcard-enter-next 280ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.flashcard-enter-previous .review-word {
+  animation: flashcard-enter-previous 280ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+.review-card-answer {
+  animation: flashcard-answer-reveal 260ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+@keyframes flashcard-enter-next {
+  from { opacity: 0.35; transform: translateX(54px) rotateY(-7deg) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes flashcard-enter-previous {
+  from { opacity: 0.35; transform: translateX(-54px) rotateY(7deg) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes flashcard-answer-reveal {
+  from { opacity: 0; transform: translateY(14px) rotateX(-7deg); }
+  to { opacity: 1; transform: none; }
 }
 
 .help-grid {
@@ -3581,7 +3663,12 @@ textarea.vocab-translation-input {
   .graph-cell,
   .graph-stat-box,
   .chart-reveal,
-  .heatmap-cell {
+  .heatmap-cell,
+  .word-panel.word-panel-enter-next,
+  .word-panel.word-panel-enter-previous,
+  .flashcard-enter-next .review-word,
+  .flashcard-enter-previous .review-word,
+  .review-card-answer {
     animation: none !important;
   }
 

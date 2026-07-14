@@ -61,7 +61,10 @@ export function applyTheme(
   prefersDark?: boolean
 ): ResolvedTheme {
   const systemDark = prefersDark ?? Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
-  const resolved = resolveTheme(value, systemDark);
+  const theme = normalizeTheme(value);
+  const forceDesktopDark = root.dataset.platform === "desktop"
+    && (theme === "familiar" || theme === "alternative-familiar");
+  const resolved = resolveTheme(theme, forceDesktopDark || systemDark);
   root.dataset.theme = resolved.mode;
   root.dataset.themePref = resolved.theme;
   root.dataset.colorTheme = resolved.family;

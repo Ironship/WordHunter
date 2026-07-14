@@ -107,8 +107,16 @@ export function bindReaderEvents(): void {
       }, 150);
     }, { passive: true });
     let swipeStart: SwipePoint | null = null;
+    let suppressSwipeClickUntil = 0;
+    const isWordPanelOpen = (): boolean => {
+      const root = document.documentElement;
+      if (!state.selectedWord) return false;
+      return root.classList.contains("pocket-mode")
+        ? root.classList.contains("pocket-word-panel-open")
+        : !root.classList.contains("reader-word-panel-hidden");
+    };
     const beginSwipe = (clientX: number, clientY: number, target: EventTarget | null): void => {
-      if (target instanceof Element && target.closest(".pagination-controls, input, textarea, select")) return;
+      if (target instanceof Element && target.closest(".pagination-controls, button:not(.word-token), a, input, textarea, select, [contenteditable]")) return;
       swipeStart = { x: clientX, y: clientY };
     };
     const finishSwipe = (clientX: number, clientY: number): void => {
@@ -117,6 +125,15 @@ export function bindReaderEvents(): void {
       const dy = clientY - swipeStart.y;
       swipeStart = null;
       if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      suppressSwipeClickUntil = Date.now() + 400;
+      if (isWordPanelOpen()) {
+        const direction = dx < 0 ? 1 : -1;
+        navigateReaderWord(direction, {
+          keepPanelOpen: true,
+          animateDirection: direction > 0 ? "next" : "previous"
+        });
+        return;
+      }
       clearReaderSelection(false);
       changeReaderPage(dx < 0 ? 1 : -1);
     };
@@ -170,6 +187,10 @@ export function bindReaderEvents(): void {
       const touch = event.changedTouches[0];
       if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true });
+    readerText.addEventListener("touchcancel", () => {
+      swipeStart = null;
+      pdfPinch = null;
+    }, { passive: true });
     readerText.addEventListener("wheel", (event) => {
       if ((!event.ctrlKey && !event.metaKey) || !isPdfOcrGestureTarget(event.target)) return;
       event.preventDefault();
@@ -185,6 +206,11 @@ export function bindReaderEvents(): void {
       goToReaderPage(Number(pageInput.value));
     });
     readerText.addEventListener("click", async (event) => {
+      if (Date.now() < suppressSwipeClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (!(event.target instanceof Element)) return;
       const zoomBtn = event.target.closest("[data-pdf-zoom]");
       if (zoomBtn instanceof HTMLElement) {
@@ -340,11 +366,27 @@ export function bindReaderEvents(): void {
     });
 
     // Handle smart suggestion click
+    wordPanel.addEventListener("touchstart", (event) => {
+      const touch = event.touches[0];
+      if (touch) beginSwipe(touch.clientX, touch.clientY, event.target);
+    }, { passive: true });
+    wordPanel.addEventListener("touchend", (event) => {
+      const touch = event.changedTouches[0];
+      if (touch) finishSwipe(touch.clientX, touch.clientY);
+    }, { passive: true });
+    wordPanel.addEventListener("touchcancel", () => {
+      swipeStart = null;
+    }, { passive: true });
     wordPanel.addEventListener("pointerdown", rememberWordPanelInteraction);
     wordPanel.addEventListener("touchstart", rememberWordPanelInteraction, { passive: true });
     wordPanel.addEventListener("focusin", rememberWordPanelInteraction);
     wordPanel.addEventListener("click", async (event) => {
       rememberWordPanelInteraction();
+      if (Date.now() < suppressSwipeClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (!(event.target instanceof Element)) return;
       const suggestBtn = event.target.closest("[data-suggest-word]");
       if (suggestBtn instanceof HTMLElement && suggestBtn.dataset.suggestWord) {

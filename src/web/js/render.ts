@@ -29,6 +29,7 @@ type UnknownRecord = Record<string, unknown>;
 let ocrGpuStatus: OcrGpuStatus | undefined;
 let ocrGpuProbe: Promise<void> | undefined;
 let navigationEpoch = 0;
+let lastRenderedView: string | null = null;
 
 const VIEW_RENDERERS: Record<ViewName, ViewRenderer> = {
   library: () => renderLibrary(),
@@ -65,9 +66,24 @@ function renderView(viewName: string): void {
   if (fn) fn();
 }
 
+function preparePocketHeatmapAlignment(viewName: string): void {
+  if (viewName === lastRenderedView || !isAndroidPlatform()) return;
+  const hostId = viewName === "graphs"
+    ? "graphs-heatmap"
+    : viewName === "flashcards" ? "review-chart-fullwidth" : "";
+  if (hostId) document.getElementById(hostId)?.setAttribute("data-align-heatmap-latest", "true");
+}
+
+function completeViewRender(viewName: string): void {
+  lastRenderedView = viewName;
+}
+
 export function render(): void {
+  const viewName = state.currentView || "library";
+  preparePocketHeatmapAlignment(viewName);
   renderShell();
-  renderView(state.currentView || "library");
+  renderView(viewName);
+  completeViewRender(viewName);
 }
 
 export function setView(viewName: string): void {
@@ -85,8 +101,10 @@ export function setView(viewName: string): void {
   }
   state.currentView = viewName;
   saveUiState();
+  preparePocketHeatmapAlignment(viewName);
   renderShell();
   renderView(viewName);
+  completeViewRender(viewName);
   window.dispatchEvent(new CustomEvent("wordhunter:view-changed", { detail: { view: viewName } }));
 }
 

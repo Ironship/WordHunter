@@ -1050,6 +1050,23 @@ html.pocket-mode {
 
 .pocket-mode .review-card {
   min-height: 260px;
+  padding: 1rem 0.75rem 1.5rem;
+}
+
+.pocket-mode .flashcard-wrap {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.pocket-mode .review-word {
+  min-height: 300px;
+  max-height: none;
+  padding: 1.25rem 1rem;
+}
+
+.pocket-mode .review-word > div {
+  max-height: none;
+  overflow: visible;
 }
 
 .pocket-mode .review-word strong {
