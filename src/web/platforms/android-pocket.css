@@ -979,7 +979,7 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
-  --pocket-word-sheet-collapsed-size: clamp(14rem, 38dvh, 21rem);
+  --pocket-word-sheet-collapsed-size: clamp(6.25rem, 18dvh, 9rem);
   position: fixed;
   z-index: 60;
   top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
@@ -1007,6 +1007,10 @@ html.pocket-mode {
   top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
 }
 
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"] {
+  top: var(--pocket-word-sheet-top);
+}
+
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
   top: var(--pocket-word-sheet-top) !important;
 }
@@ -1022,7 +1026,7 @@ html.pocket-mode {
   left: 0.45rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--panel);
+  background: var(--word-panel-status-bg, var(--panel));
   pointer-events: none;
 }
 
@@ -1048,7 +1052,7 @@ html.pocket-mode {
   border: 1px solid var(--line);
   border-bottom: 0;
   border-radius: 12px 12px 0 0;
-  background: var(--panel);
+  background: var(--word-panel-status-bg, var(--panel));
   color: var(--muted);
   touch-action: none;
   cursor: grab;
@@ -1083,7 +1087,7 @@ html.pocket-mode {
   overscroll-behavior: contain;
   padding-bottom: 1rem;
   border-radius: 0 0 12px 12px;
-  background: var(--panel);
+  background: var(--word-panel-status-bg, var(--panel));
   touch-action: pan-y pinch-zoom;
 }
 
@@ -1099,7 +1103,7 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-text {
-  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + clamp(14rem, 38dvh, 21rem));
+  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + clamp(6.25rem, 18dvh, 9rem));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1113,7 +1117,7 @@ html.pocket-mode {
   top: 0;
   z-index: 1;
   padding: 0.35rem 0 0.65rem;
-  background: var(--panel);
+  background: var(--word-panel-status-bg, var(--panel));
 }
 
 .pocket-mode .word-panel-close {

@@ -157,6 +157,7 @@ describe("render performance guards", () => {
       "../reader/scroll.js": {
         rememberReaderScrollPosition(options) { rememberCalls.push(options); }
       },
+      "../platform.js": { refreshPocketWordPanelSheet: noOp },
       "../reader/word-navigation.js": { navigateReaderWord: noOp },
       "../reader/renderer.js": { changeReaderPage: noOp, goToReaderPage: noOp, renderReader: noOp },
       "../reader/pdf-ocr-renderer.js": {

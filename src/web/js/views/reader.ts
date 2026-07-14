@@ -7,6 +7,7 @@ import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearRead
 
 import { rememberReaderScrollPosition } from "../reader/scroll.js";
 import { navigateReaderWord } from "../reader/word-navigation.js";
+import { refreshPocketWordPanelSheet } from "../platform.js";
 
 import { changeReaderPage, goToReaderPage, renderReader } from "../reader/renderer.js";
 import {
@@ -54,7 +55,8 @@ export function bindReaderEvents(): void {
     };
     const selectReaderToken = async (token: HTMLElement, options: ReaderTokenOptions = {}): Promise<void> => {
       if (!token?.isConnected) return;
-      if (options.openPanel && document.documentElement.classList.contains("pocket-mode")) {
+      const openPocketPanel = options.openPanel && document.documentElement.classList.contains("pocket-mode");
+      if (openPocketPanel) {
         document.documentElement.classList.add("pocket-word-panel-open");
       }
       window.lastActiveToken = token;
@@ -69,6 +71,7 @@ export function bindReaderEvents(): void {
       }
       const wordIndex = options.ctrlKey ? state.selectedWordIndex : Number(token.dataset.wordIndex);
       selectWord(wordToSelect, normalizeWord, false, wordIndex);
+      if (openPocketPanel) refreshPocketWordPanelSheet();
     };
     const openCurrentPdfCorrection = async (wordIndex: number | null = null): Promise<boolean> => {
       const { getTextById } = await import("../reader/renderer.js");

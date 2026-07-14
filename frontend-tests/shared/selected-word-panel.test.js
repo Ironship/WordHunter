@@ -41,7 +41,9 @@ describe("selected-word panel", () => {
 
   it("renders only configured visible items in order and coalesces actions", () => {
     const panel = read("dist/web/js/reader/word-panel.js");
+    const renderer = read("dist/web/js/reader/renderer.js");
     const constants = read("dist/web/js/constants.js");
+    const styles = read("dist/web/styles.css");
 
     assert.match(panel, /for \(const item of normalizeSelectedWordPanelItems\(state\.preferences\.selectedWordPanelItems\)\)/);
     assert.match(panel, /if \(!item\.visible\)\s*continue/);
@@ -51,6 +53,13 @@ describe("selected-word panel", () => {
     assert.match(panel, /data-copy-word/);
     assert.match(panel, /data-edit-word/);
     assert.doesNotMatch(panel, /pocket-word-dictionary/);
+    assert.match(panel, /word-panel-status-\$\{status\}/);
+    assert.match(panel, /button\.classList\.toggle\("active", active\)/);
+    assert.match(panel, /button\.setAttribute\("aria-pressed", String\(active\)\)/);
+    assert.match(renderer, /clearWordPanelStatus\(\);[\s\S]*reader\.loadingHeading/);
+    for (const status of ["new", "learning", "known", "ignored"]) {
+      assert.match(styles, new RegExp(`reader-sidebar-wrapper\\.word-panel-status-${status}`));
+    }
     assert.ok(constants.indexOf('{ id: "status", visible: true }') < constants.indexOf('{ id: "dictionary", visible: true }'));
     assert.ok(constants.indexOf('{ id: "dictionary", visible: true }') < constants.indexOf('{ id: "speech", visible: true }'));
     assert.ok(constants.indexOf('{ id: "speech", visible: true }') < constants.indexOf('{ id: "youglish", visible: true }'));

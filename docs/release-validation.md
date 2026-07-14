@@ -36,8 +36,8 @@ This compiles the generated Gradle project, custom `MainActivity.kt`, Android
 resources, and Rust library into a real debug APK.
 
 Full release packages are deliberately kept out of the fast pull-request gate.
-`.github/workflows/artifact-validation.yml` runs nightly, when a GitHub Release
-is published, or when manually dispatched. It rebuilds and validates:
+`.github/workflows/artifact-validation.yml` runs nightly or when manually
+dispatched. It rebuilds and validates:
 
 - arm64 Android debug APK and release AAB file lists, ELF architecture, legal
   resources, and the absence of the desktop OCR runtime;
@@ -56,7 +56,9 @@ The workflow always uploads validated files as workflow artifacts. A manual
 dispatch may additionally provide an existing draft `release_tag`; after every
 platform job succeeds, a final GitHub-hosted job attaches the five validated
 files to that draft. This keeps release binaries off the maintainer's local
-machine. Scheduled and published-release runs do not attach or replace assets.
+machine. The draft must target the exact commit selected for the workflow run.
+Scheduled runs do not attach or replace assets. Publishing the draft does not
+rebuild the same artifacts a second time.
 
 ## Android Version Code
 
