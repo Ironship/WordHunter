@@ -148,15 +148,12 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     match (method, path.as_str()) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => {
-            let snapshot = if response::parse_query(&query)
-                .get("ack")
-                .map(String::as_str)
-                == Some("0")
-            {
-                state.store.snapshot_unacknowledged()
-            } else {
-                state.store.snapshot()
-            };
+            let snapshot =
+                if response::parse_query(&query).get("ack").map(String::as_str) == Some("0") {
+                    state.store.snapshot_unacknowledged()
+                } else {
+                    state.store.snapshot()
+                };
             response::json_response(request, snapshot)
         }
         (Method::Get, "/__store/data_dir") => {
