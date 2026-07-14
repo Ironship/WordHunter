@@ -206,11 +206,6 @@ impl Store {
         Ok(())
     }
 
-    #[cfg(not(target_os = "android"))]
-    pub(crate) fn seed_or_refresh_records(&self) -> Result<(), String> {
-        self.records_snapshot().map(|_| ())
-    }
-
     pub fn sync_with_directory(&self, sync_dir: PathBuf) -> Result<Value, String> {
         self.sync_with_directory_inner(sync_dir)
     }
@@ -892,16 +887,22 @@ mod tests {
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
 
         pc_store.bulk_save(profile_payload("wort", "pc")).unwrap();
         phone_store
             .bulk_save(profile_payload("wort", "phone"))
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
@@ -1438,8 +1439,11 @@ mod tests {
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
 
         phone_store
