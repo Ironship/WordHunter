@@ -47,6 +47,11 @@ describe("learning colors", () => {
 });
 
 describe("in-text SRS grading", () => {
+  function setActiveVocab(vocab) {
+    state.profiles.de.vocab = vocab;
+    state.vocab = state.profiles.de.vocab;
+  }
+
   it("keeps new words out of flashcards when the learning-only default is enabled", () => {
     const today = "2026-06-23";
     const previousCard = els.reviewCard;
@@ -154,7 +159,7 @@ describe("in-text SRS grading", () => {
   for (const quality of expectedEase.keys()) {
     it(`routes grade ${quality} through the existing SRS scheduler`, async () => {
       state.preferences.srsAlgorithm = "sm2";
-      state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } };
+      setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
       const entry = await applyReviewGrade("wort", quality);
       assert.equal(entry.status, "learning");
       assert.equal(entry.repetition, quality < 3 ? 0 : 1);
@@ -167,7 +172,7 @@ describe("in-text SRS grading", () => {
 
   it("promotes a repeatedly recalled word through the shared rule", async () => {
     state.preferences.srsAlgorithm = "sm2";
-    state.vocab = { wort: { status: "learning", repetition: 1, interval: 1, efactor: 2.5 } };
+    setActiveVocab({ wort: { status: "learning", repetition: 1, interval: 1, efactor: 2.5 } });
     const entry = await applyReviewGrade("wort", 4);
     assert.equal(entry.repetition, 2);
     assert.equal(entry.status, "known");
@@ -176,12 +181,80 @@ describe("in-text SRS grading", () => {
 
   it("uses FSRS when that is the selected scheduler", async () => {
     state.preferences.srsAlgorithm = "fsrs";
-    state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, stability: 0, difficulty: 5 } };
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, stability: 0, difficulty: 5 } });
     const entry = await applyReviewGrade("wort", 5);
     assert.equal(entry.srsAlgorithm, "fsrs");
     assert.equal(entry.repetition, 1);
     assert.ok(entry.stability > 0);
     assert.equal(getSrsLevel(entry), 2);
+  });
+
+  it("applies a delayed native grade to the current vocabulary entry", async () => {
+    const originalFetch = globalThis.fetch;
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    state.preferences.srsAlgorithm = "sm2";
+    state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } };
+    let resolveReview;
+    globalThis.fetch = (url) => {
+      if (url === "/__srs/review") {
+        return new Promise((resolve) => { resolveReview = resolve; });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    };
+
+    try {
+      const pendingGrade = applyReviewGrade("wort", 4);
+      const replacement = { status: "learning", repetition: 0, interval: 0, efactor: 2.5, note: "synced" };
+      state.profiles.de.vocab = { wort: replacement };
+      state.vocab = state.profiles.de.vocab;
+      resolveReview({
+        ok: true,
+        json: async () => ({ repetition: 1, interval: 1, efactor: 2.5, nextDate: "2026-07-15", srsAlgorithm: "sm2" })
+      });
+
+      const entry = await pendingGrade;
+      assert.equal(entry, state.vocab.wort);
+      assert.equal(entry.repetition, 1);
+      assert.equal(entry.note, "synced");
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+      delete window.WH_TOKEN;
+    }
+  });
+
+  it("does not overwrite a status changed while a native grade is pending", async () => {
+    const originalFetch = globalThis.fetch;
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
+    let resolveReview;
+    globalThis.fetch = (url) => {
+      if (url === "/__srs/review") {
+        return new Promise((resolve) => { resolveReview = resolve; });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    };
+
+    try {
+      const pendingGrade = applyReviewGrade("wort", 2);
+      state.vocab.wort.status = "ignored";
+      state.vocab.wort.updatedAt = "2026-07-14T10:02:00.000Z";
+      resolveReview({
+        ok: true,
+        json: async () => ({ repetition: 0, interval: 1, efactor: 2.18, nextDate: "2026-07-15", srsAlgorithm: "sm2" })
+      });
+
+      assert.equal(await pendingGrade, null);
+      assert.equal(state.vocab.wort.status, "ignored");
+      assert.equal(state.vocab.wort.interval, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+      delete window.WH_TOKEN;
+    }
   });
 });
 
@@ -200,8 +273,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.5-rc\.5/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.5-rc\.5/, `${locale}.help.version`);
+      assert.match(data.help.whatsNew, /1\.0\.5-rc\.6/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.5-rc\.6/, `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });

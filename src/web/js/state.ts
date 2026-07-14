@@ -66,6 +66,10 @@ export function saveUiState(): Promise<WhBridgeSaveResult | void> {
   return saveState();
 }
 
+export function getDurableStateRevision(): number {
+  return autosave.getDurableStateRevision();
+}
+
 export function registerFrontendStateFlusher(flusher: () => unknown): () => boolean | void {
   if (typeof flusher !== "function") return () => {};
   frontendStateFlushers.add(flusher);
@@ -99,8 +103,12 @@ export function runExclusiveStateWrite<T>(callback: () => T | Promise<T>): Promi
   return autosave.runExclusiveWrite(callback);
 }
 
-export function applyBridgeSnapshotToState(snapshot: unknown): void {
+export function applyBridgeSnapshotToState(
+  snapshot: unknown,
+  { expectedRevision }: { expectedRevision?: number } = {}
+): boolean {
   assertSupportedStateSchemaVersion(snapshot, "bridge snapshot");
+  if (expectedRevision !== undefined && autosave.getDurableStateRevision() !== expectedRevision) return false;
   const localUi = captureLocalUiState();
   const previousTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter((id): id is string => Boolean(id)));
   const snapshotPreferences = snapshot.prefs !== null && typeof snapshot.prefs === "object" && !Array.isArray(snapshot.prefs)
@@ -116,6 +124,7 @@ export function applyBridgeSnapshotToState(snapshot: unknown): void {
   const nextState = loadState();
   restoreLocalUiState(nextState, localUi);
   replaceState(nextState, { save: false });
+  autosave.markDurableStateReplaced();
   const currentTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter((id): id is string => Boolean(id)));
   const textIds = new Set([...previousTextIds, ...currentTextIds]);
   for (const handler of [...bridgeSnapshotHandlers]) {
@@ -125,6 +134,7 @@ export function applyBridgeSnapshotToState(snapshot: unknown): void {
       console.warn("bridge snapshot handler failed", error);
     }
   }
+  return true;
 }
 
 function flushPendingSave(): void {

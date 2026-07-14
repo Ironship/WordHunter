@@ -125,6 +125,65 @@ describe("shared UI event behavior", () => {
       delete window.__qtBridge;
     }
   });
+
+  it("does not apply a sync snapshot older than a local vocabulary change", async () => {
+    const originalFetch = globalThis.fetch;
+    window.__qtBridge = true;
+    delete window.WordHunterAndroid;
+    const {
+      STATE_SCHEMA_VERSION,
+      createDefaultState,
+      replaceState,
+      state
+    } = await import("../../dist/web/js/state.js");
+    const defaults = createDefaultState();
+    const vocab = {
+      haus: { status: "new", translation: "house", updatedAt: "2026-07-14T10:00:00.000Z" }
+    };
+    defaults.profiles.de.vocab = vocab;
+    defaults.vocab = vocab;
+    defaults.syncDirectory = "/sync";
+    replaceState(defaults, { save: false });
+    let resolveSync;
+    globalThis.fetch = (url) => url === "/__store/ack_snapshot"
+      ? Promise.resolve({ ok: true, json: async () => ({}) })
+      : new Promise((resolve) => { resolveSync = resolve; });
+
+    try {
+      const { syncNow } = await import("../../dist/web/js/events/settings.js");
+      const pendingSync = syncNow({ background: true, saveFirst: false });
+      await Promise.resolve();
+      state.vocab.haus.status = "known";
+      state.vocab.haus.updatedAt = "2026-07-14T10:01:00.000Z";
+      assert.equal(typeof resolveSync, "function");
+      resolveSync({
+        ok: true,
+        json: async () => ({
+          snapshot: {
+            schemaVersion: STATE_SCHEMA_VERSION,
+            prefs: { learningLanguage: "de" },
+            texts: [],
+            hiddenBooks: [],
+            vocab: {
+              de: {
+                preferences: {},
+                vocab: {
+                  haus: { status: "new", translation: "house", updatedAt: "2026-07-14T10:00:00.000Z" }
+                }
+              }
+            }
+          }
+        })
+      });
+
+      assert.equal(await pendingSync, true);
+      assert.equal(state.vocab.haus.status, "known");
+      assert.equal(state.vocab.haus.updatedAt, "2026-07-14T10:01:00.000Z");
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+    }
+  });
 });
 
 after(() => {

@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.6" date="2026-07-14" type="development">
+      <description>
+        <ul>
+          <li>Prevent stale synchronization snapshots from reverting newly changed word statuses.</li>
+          <li>Acknowledge backend snapshots only after the frontend accepts the exact revision.</li>
+          <li>Return Ctrl+Enter to the selected Reader word without falling back to the page start.</li>
+          <li>Keep delayed SRS grades from overwriting newer status changes.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.5" date="2026-07-14" type="development">
       <description>
         <ul>

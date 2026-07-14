@@ -1,4 +1,4 @@
-import { applyBridgeSnapshotToState, flushAllPendingFrontendState, state, saveState } from "../state.js";
+import { applyBridgeSnapshotToState, flushAllPendingFrontendState, getDurableStateRevision, runExclusiveStateWrite, state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { t, loadLocale, applyTranslations } from "../i18n.js";
 import { render } from "../render.js";
@@ -11,7 +11,7 @@ import { applyPreferences, setSyncStatus, syncSettingsControls, updatePreference
 import { showToast } from "../toast.js";
 import { exportState, importStateFile, clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
-import { loadBackendSnapshot } from "../store-bridge.js";
+import { acknowledgeBackendSnapshot, loadBackendSnapshot } from "../store-bridge.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { setElementBusy } from "../loading.js";
 import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
@@ -33,10 +33,6 @@ type AndroidSyncResult = {
 
 type SyncNowOptions = {
   background?: boolean;
-  saveFirst?: boolean;
-};
-
-type BackgroundSyncOptions = {
   saveFirst?: boolean;
 };
 
@@ -183,16 +179,43 @@ function showSyncFolderError(error: unknown): void {
     : fallback, "error");
 }
 
-export function applyBridgeSnapshot(snapshot: unknown): void {
-  applyBridgeSnapshotToState(snapshot);
+export function applyBridgeSnapshot(
+  snapshot: unknown,
+  { expectedRevision }: { expectedRevision?: number } = {}
+): boolean {
+  if (!applyBridgeSnapshotToState(snapshot, { expectedRevision })) return false;
   syncSettingsControls();
   render();
+  return true;
+}
+
+async function applySyncSnapshot(
+  snapshot: WhBridgeSnapshot,
+  startingRevision: number,
+  { exclusive = false }: { exclusive?: boolean } = {}
+): Promise<boolean> {
+  const apply = async (): Promise<boolean> => {
+    if (!applyBridgeSnapshot(snapshot, { expectedRevision: startingRevision })) {
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-snapshot-skipped"));
+      return false;
+    }
+    try {
+      await acknowledgeBackendSnapshot(snapshot);
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent("wordhunter:sync-snapshot-skipped"));
+      throw error;
+    }
+    return true;
+  };
+  return exclusive ? runExclusiveStateWrite(apply) : apply();
 }
 
 async function reloadActiveDataFolder() {
   if (!window.__qtBridge) return;
   await flushAllPendingFrontendState();
-  applyBridgeSnapshot(await loadBackendSnapshot());
+  const startingRevision = getDurableStateRevision();
+  const snapshot = await loadBackendSnapshot();
+  if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
 }
 
 async function refreshSyncHealth() {
@@ -225,46 +248,54 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
     if (!background) showToast(t("settings.syncFolderMissing"), "error");
     return false;
   }
-  if (saveFirst) await flushAllPendingFrontendState();
-  let androidResult;
-  try {
-    androidResult = await forceAndroidSyncFolder();
-  } catch (error) {
-    // A SAF export can fail after Rust committed the merge. Reloading prevents a
-    // subsequent stale frontend save from deleting records imported by that merge.
+  const performSync = async (): Promise<boolean> => {
+    const startingRevision = getDurableStateRevision();
+    let androidResult;
     try {
-      applyBridgeSnapshot(await loadBackendSnapshot());
-    } catch (reloadError) {
-      console.warn("Could not reload data after Android sync failure", reloadError);
+      androidResult = await forceAndroidSyncFolder();
+    } catch (error) {
+      // A SAF export can fail after Rust committed the merge. Reloading prevents a
+      // subsequent stale frontend save from deleting records imported by that merge.
+      try {
+        const snapshot = await loadBackendSnapshot();
+        if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst });
+      } catch (reloadError) {
+        console.warn("Could not reload data after Android sync failure", reloadError);
+      }
+      throw error;
     }
-    throw error;
-  }
-  if (androidResult) {
-    const snapshot = await loadBackendSnapshot();
-    snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-    applyBridgeSnapshot(snapshot);
+    if (androidResult) {
+      const snapshot = await loadBackendSnapshot();
+      if (!snapshot) return false;
+      snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
+      await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst });
+      return true;
+    }
+    if (androidResult === null && typeof window.WordHunterAndroid?.forceSyncFolder === "function") {
+      if (!background) showToast(t("settings.syncFolderMissing"), "error");
+      return false;
+    }
+    const response = await fetch("/__store/sync_now", {
+      method: "POST",
+      headers: { "X-WH-Token": window.WH_TOKEN || "" }
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).trim();
+      throw new Error(detail || t("toast.syncUnavailable"));
+    }
+    const result = await response.json();
+    if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: saveFirst });
+    if (!background) refreshSyncHealth();
     return true;
-  }
-  if (androidResult === null && typeof window.WordHunterAndroid?.forceSyncFolder === "function") {
-    if (!background) showToast(t("settings.syncFolderMissing"), "error");
-    return false;
-  }
-  const response = await fetch("/__store/sync_now", {
-    method: "POST",
-    headers: { "X-WH-Token": window.WH_TOKEN || "" }
-  });
-  if (!response.ok) {
-    const detail = (await response.text()).trim();
-    throw new Error(detail || t("toast.syncUnavailable"));
-  }
-  const result = await response.json();
-  if (result.snapshot) applyBridgeSnapshot(result.snapshot);
-  if (!background) refreshSyncHealth();
-  return true;
+  };
+  if (saveFirst) await flushAllPendingFrontendState();
+  return performSync();
 }
 
 async function resolveSyncConflict(id: string, resolution: string): Promise<boolean> {
   if (!window.__qtBridge) return false;
+  await flushAllPendingFrontendState();
+  const startingRevision = getDurableStateRevision();
   const response = await fetch("/__store/resolve_conflict", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
@@ -272,26 +303,38 @@ async function resolveSyncConflict(id: string, resolution: string): Promise<bool
   });
   if (!response.ok) throw new Error(t("toast.syncUnavailable"));
   const result = await response.json();
-  if (result.snapshot) applyBridgeSnapshot(result.snapshot);
+  if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
   return true;
 }
 
 function startBackgroundSyncJob() {
   if (syncIntervalStarted) return;
   syncIntervalStarted = true;
-  let pendingSaveFirst = false;
+  let rerunDelayMs: number | null = null;
   const runBackgroundSync = () => {
+    backgroundSyncTimer = null;
     if (document.visibilityState === "hidden") return;
-    if (backgroundSyncRunning) return;
-    const saveFirst = pendingSaveFirst;
-    pendingSaveFirst = false;
+    if (backgroundSyncRunning) {
+      rerunDelayMs = rerunDelayMs === null ? 5000 : Math.min(rerunDelayMs, 5000);
+      return;
+    }
     backgroundSyncRunning = true;
-    syncNow({ background: true, saveFirst })
+    syncNow({ background: true, saveFirst: true })
       .catch((error) => console.warn("Background sync failed", error))
-      .finally(() => { backgroundSyncRunning = false; });
+      .finally(() => {
+        backgroundSyncRunning = false;
+        if (rerunDelayMs !== null) {
+          const delayMs = rerunDelayMs;
+          rerunDelayMs = null;
+          scheduleBackgroundSync(delayMs);
+        }
+      });
   };
-  const scheduleBackgroundSync = (delayMs = 0, { saveFirst = false }: BackgroundSyncOptions = {}) => {
-    pendingSaveFirst ||= saveFirst;
+  const scheduleBackgroundSync = (delayMs = 0) => {
+    if (backgroundSyncRunning) {
+      rerunDelayMs = rerunDelayMs === null ? delayMs : Math.min(rerunDelayMs, delayMs);
+      return;
+    }
     if (backgroundSyncTimer !== null) clearTimeout(backgroundSyncTimer);
     backgroundSyncTimer = window.setTimeout(runBackgroundSync, delayMs);
   };
@@ -299,6 +342,7 @@ function startBackgroundSyncJob() {
   window.addEventListener("wordhunter:sync-saved", () => {
     if (!backgroundSyncRunning) scheduleBackgroundSync(5000);
   });
+  window.addEventListener("wordhunter:sync-snapshot-skipped", () => scheduleBackgroundSync(5000));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       scheduleBackgroundSync(2000);
@@ -306,7 +350,7 @@ function startBackgroundSyncJob() {
       refreshSyncthingStatus();
     }
   });
-  window.setInterval(() => scheduleBackgroundSync(0, { saveFirst: true }), 15 * 60 * 1000);
+  window.setInterval(() => scheduleBackgroundSync(), 15 * 60 * 1000);
 }
 
 function bindPreferenceControls() {
@@ -439,6 +483,7 @@ export function bindSettingsEvents() {
     try {
       if (!await confirmDataFolderChange()) return;
       await flushAllPendingFrontendState();
+      const startingRevision = getDurableStateRevision();
 
       const response = await fetch("/__store/choose_data_dir", {
         method: "POST",
@@ -448,7 +493,7 @@ export function bindSettingsEvents() {
       const result = await response.json();
       if (result.path) {
         if (result.snapshot) {
-          applyBridgeSnapshot(result.snapshot);
+          await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
         } else {
           state.dataDirectory = result.path;
         }
@@ -469,11 +514,13 @@ export function bindSettingsEvents() {
     setElementBusy(els.prepareSyncDirectory, true, { disable: true });
     try {
       await flushAllPendingFrontendState();
+      const startingRevision = getDurableStateRevision();
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
         const snapshot = await loadBackendSnapshot();
+        if (!snapshot) return;
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        applyBridgeSnapshot(snapshot);
+        await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
         setSyncStatus("Ready");
         showToast(t("settings.syncFolderChanged"));
         return;
@@ -486,7 +533,7 @@ export function bindSettingsEvents() {
       });
       if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();
-      if (result.snapshot) applyBridgeSnapshot(result.snapshot);
+      if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
       if (result.path) state.syncDirectory = result.path;
       if (result.health) state.syncHealth = result.health;
       setSyncStatus("Ready");
@@ -602,11 +649,13 @@ export function bindSettingsEvents() {
     setElementBusy(els.chooseSyncDirectory, true, { disable: true });
     try {
       await flushAllPendingFrontendState();
+      const startingRevision = getDurableStateRevision();
       const androidResult = await chooseAndroidSyncFolder();
       if (androidResult) {
         const snapshot = await loadBackendSnapshot();
+        if (!snapshot) return;
         snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        applyBridgeSnapshot(snapshot);
+        await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
         setSyncStatus("Ready");
         showToast(t("settings.syncFolderChanged"));
         return;
@@ -620,7 +669,7 @@ export function bindSettingsEvents() {
       if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
       const result = await response.json();
       if (result.path) {
-        if (result.snapshot) applyBridgeSnapshot(result.snapshot);
+        if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
         state.syncDirectory = result.path;
         setSyncStatus("Ready");
         await refreshSyncHealth();

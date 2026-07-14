@@ -3,6 +3,8 @@ import { buildSavePayload, saveToLocalStorage, saveWithRetry, saveSyncXhr } from
 type SaveResult = WhBridgeSaveResult | void;
 
 const TRANSIENT_ROOT_KEYS = new Set<PropertyKey>([
+  "dataDirectory",
+  "syncDirectory",
   "syncHealth",
   "cloudSyncStatus",
   "syncthingStatus",
@@ -43,6 +45,7 @@ export function createAutosave(getState: () => WhAppState) {
   let queuedSavePromise: Promise<SaveResult> | null = null;
   let resolveQueuedSave: ((value: SaveResult | PromiseLike<SaveResult>) => void) | null;
   let rejectQueuedSave: ((reason?: any) => void) | null;
+  let durableStateRevision = 0;
 
   function rawState(): WhAppState {
     const state = getState();
@@ -142,9 +145,6 @@ export function createAutosave(getState: () => WhAppState) {
   }
 
   function runExclusiveWrite<T>(callback: () => T | Promise<T>): Promise<T> {
-    if (exclusiveWriteActive) {
-      return Promise.reject(new Error("nested exclusive state write is not supported"));
-    }
     const operation = exclusiveWriteTail.then(async () => {
       await saveState();
       exclusiveWriteActive = true;
@@ -200,14 +200,20 @@ export function createAutosave(getState: () => WhAppState) {
         const result = Reflect.set(object, prop, rawValue, receiver);
         if (oldValue !== rawValue
           && !(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
-          && !isBridgeUiMutation(object, prop)) scheduleSave();
+          && !isBridgeUiMutation(object, prop)) {
+          if (suspendAutoSave === 0) durableStateRevision += 1;
+          scheduleSave();
+        }
         return result;
       },
       deleteProperty(object, prop) {
         if (prop in object) {
           Reflect.deleteProperty(object, prop);
           if (!(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
-            && !isBridgeUiMutation(object, prop)) scheduleSave();
+            && !isBridgeUiMutation(object, prop)) {
+            if (suspendAutoSave === 0) durableStateRevision += 1;
+            scheduleSave();
+          }
         }
         return true;
       }
@@ -220,6 +226,12 @@ export function createAutosave(getState: () => WhAppState) {
     wrap,
     saveState,
     runExclusiveWrite,
+    getDurableStateRevision() {
+      return durableStateRevision;
+    },
+    markDurableStateReplaced() {
+      durableStateRevision += 1;
+    },
     flushPendingSave() {
       clearTimeout(saveTimer);
       saveTimer = null;

@@ -52,6 +52,7 @@ describe("state import cache invalidation", () => {
       if (url === "/__store/save?snapshot=1") {
         return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
       }
+      if (url === "/__store/ack_snapshot") return { ok: true, json: async () => ({}) };
       return { ok: true, text: async () => `${url} ${"word ".repeat(50)}` };
     };
     globalThis.FileReader = class FileReader {
@@ -82,7 +83,8 @@ describe("state import cache invalidation", () => {
     globalThis.fetch = async (url) => {
       if (url === "/__store/save") return { ok: true, json: async () => ({}) };
       if (url === "/__store/save?snapshot=1") return { ok: false, status: 500 };
-      if (url === "/__store/load") return { ok: true, json: async () => currentSnapshot };
+      if (url === "/__store/load?ack=0") return { ok: true, json: async () => currentSnapshot };
+      if (url === "/__store/ack_snapshot") return { ok: true, json: async () => ({}) };
       return { ok: true, text: async () => `${url} ${"word ".repeat(50)}` };
     };
     globalThis.FileReader = class FileReader {
