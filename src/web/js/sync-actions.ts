@@ -1,4 +1,4 @@
-import { applyBridgeSnapshotToState, state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
+import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
 import { STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
@@ -8,7 +8,7 @@ import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
 import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
 import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "./bridge-commit.js";
-import { deleteStoredText, loadBackendSnapshot, postStoreCommand } from "./store-bridge.js";
+import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, postStoreCommand } from "./store-bridge.js";
 import { assertSupportedStateSchemaVersion } from "./state/normalize.js";
 import { clearAllBookTextCaches, clearBookTextCache, loadAllBookTexts, loadAllCustomTextContents } from "./books.js";
 
@@ -199,10 +199,12 @@ async function requestAnkiImport(tsv: string): Promise<unknown> {
   return response.json();
 }
 
-async function applyBridgeCommandResult(result: unknown): Promise<void> {
-  if (!window.__qtBridge) return;
+async function applyBridgeCommandResult(result: unknown, expectedRevision?: number): Promise<boolean> {
+  if (!window.__qtBridge) return true;
   const snapshot = (isRecord(result) ? result.snapshot : undefined) || await loadBackendSnapshot();
-  applyBridgeSnapshotToState(snapshot);
+  if (!snapshot || !applyBridgeSnapshotToState(snapshot, { expectedRevision })) return false;
+  await acknowledgeBackendSnapshot(snapshot);
+  return true;
 }
 
 function safeFilenamePart(value: unknown): string {
@@ -319,6 +321,7 @@ export function importStateFile(event: unknown): void {
       const imported = normalizeState({ ...createDefaultState(), ...parsed });
       if (window.__qtBridge) {
         await runExclusiveStateWrite(async () => {
+          const startingRevision = getDurableStateRevision();
           let result: unknown;
           try {
             const response = await fetch("/__store/save?snapshot=1", {
@@ -333,7 +336,9 @@ export function importStateFile(event: unknown): void {
             try {
               const snapshot = await loadBackendSnapshot();
               clearAllBookTextCaches();
-              applyBridgeSnapshotToState(snapshot);
+              if (snapshot && applyBridgeSnapshotToState(snapshot, { expectedRevision: startingRevision })) {
+                await acknowledgeBackendSnapshot(snapshot);
+              }
               renderImportedState();
             } catch (reloadError) {
               console.warn("Could not reconcile state after import failure", reloadError);
@@ -341,7 +346,9 @@ export function importStateFile(event: unknown): void {
             throw saveError;
           }
           clearAllBookTextCaches();
-          await applyBridgeCommandResult(result);
+          if (!await applyBridgeCommandResult(result, startingRevision)) {
+            throw new Error("import snapshot was superseded by a local state change");
+          }
         });
       } else {
         clearAllBookTextCaches();

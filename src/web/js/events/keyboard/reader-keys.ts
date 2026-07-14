@@ -91,7 +91,7 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   if (key === "enter" && exactCtrl) {
     event.preventDefault();
     const tokens = readerTokens();
-    const token = findCurrentReaderToken(tokens) || tokens[0];
+    const token = findCurrentReaderToken(tokens);
     if (token) selectReaderToken(token);
     return true;
   }

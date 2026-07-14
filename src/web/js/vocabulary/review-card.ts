@@ -206,17 +206,32 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
 export async function applyReviewGrade(word: string, quality: number): Promise<WhVocabEntry | null> {
   const entry = state.vocab[word];
   if (!entry) return null;
+  const learningLanguage = state.preferences.learningLanguage;
+  const startingUpdatedAt = entry.updatedAt;
   const now = new Date();
-  await applyReviewNative(entry, quality, now, state.preferences?.srsAlgorithm || "sm2");
+  const reviewedEntry = await applyReviewNative({ ...entry }, quality, now, state.preferences?.srsAlgorithm || "sm2");
+  const currentEntry = state.profiles?.[learningLanguage]?.vocab?.[word];
+  if (!currentEntry) return null;
+  if (currentEntry.updatedAt !== startingUpdatedAt) return null;
+  Object.assign(currentEntry, {
+    repetition: reviewedEntry.repetition,
+    interval: reviewedEntry.interval,
+    efactor: reviewedEntry.efactor,
+    stability: reviewedEntry.stability,
+    difficulty: reviewedEntry.difficulty,
+    nextDate: reviewedEntry.nextDate,
+    lastReviewedAt: reviewedEntry.lastReviewedAt,
+    srsAlgorithm: reviewedEntry.srsAlgorithm
+  });
   const updatedAt = now.toISOString();
-  let status = entry.status;
-  if (quality >= 4 && entry.repetition >= 2) status = "known";
+  let status = currentEntry.status;
+  if (quality >= 4 && currentEntry.repetition >= 2) status = "known";
   else if (quality < 3) status = "learning";
-  else if (entry.status === "new") status = "learning";
-  const previousStatus = setEntryStatus(entry, status, updatedAt);
+  else if (currentEntry.status === "new") status = "learning";
+  const previousStatus = setEntryStatus(currentEntry, status, updatedAt);
   if (previousStatus !== status) playStatusSound(status);
   saveState();
-  return entry;
+  return currentEntry;
 }
 
 export async function gradeReview(word: string, quality: number): Promise<void> {

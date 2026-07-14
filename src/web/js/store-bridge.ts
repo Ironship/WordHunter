@@ -43,9 +43,17 @@ export async function postStoreCommand(path: string): Promise<WhRecord> {
 
 export async function loadBackendSnapshot(): Promise<WhBridgeSnapshot | null> {
   if (!window.__qtBridge) return null;
-  const response = await fetch("/__store/load", { cache: "no-store" });
+  const response = await fetch("/__store/load?ack=0", { cache: "no-store" });
   if (!response.ok) throw new Error(`/__store/load HTTP ${response.status}`);
   return response.json();
+}
+
+export async function acknowledgeBackendSnapshot(snapshot: unknown): Promise<void> {
+  if (!window.__qtBridge) return;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("ack_snapshot requires a snapshot object");
+  }
+  await postStoreJson("/__store/ack_snapshot", snapshot as WhRecord);
 }
 
 export async function upsertStoredText(

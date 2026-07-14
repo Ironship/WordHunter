@@ -195,7 +195,35 @@ describe("keyboard shortcut dispatch", () => {
     assert.equal(findCurrentReaderToken([first, selected]), selected);
 
     const readerKeys = readFileSync(new URL("../../dist/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
-    assert.match(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
+    assert.match(readerKeys, /const token = findCurrentReaderToken\(tokens\);/);
+    assert.doesNotMatch(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
+  });
+
+  it("handles Ctrl+Enter from a word-panel field without falling back to the first token", () => {
+    resetState("reader");
+    const event = keyEvent({
+      key: "Enter",
+      code: "Enter",
+      ctrlKey: true,
+      target: { isContentEditable: false, closest: () => ({}) }
+    });
+
+    handleGlobalKeydown(event);
+
+    assert.equal(event.defaultPrevented, true);
+  });
+
+  it("does not route Ctrl+Enter through a dialog or repeated keydown", () => {
+    resetState("reader");
+    querySelector = (selector) => selector === "dialog[open]" ? {} : null;
+    const dialogEvent = keyEvent({ key: "Enter", code: "Enter", ctrlKey: true });
+    handleGlobalKeydown(dialogEvent);
+    assert.equal(dialogEvent.defaultPrevented, false);
+
+    querySelector = () => null;
+    const repeatedEvent = keyEvent({ key: "Enter", code: "Enter", ctrlKey: true, repeat: true });
+    handleGlobalKeydown(repeatedEvent);
+    assert.equal(repeatedEvent.defaultPrevented, false);
   });
 });
 

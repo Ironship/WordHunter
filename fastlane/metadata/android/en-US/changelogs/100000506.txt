@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Prevented synchronization from reverting newly changed word statuses.
+- Preserved imported records until the frontend accepts a snapshot.
+- Returned Ctrl+Enter to the exact selected Reader word.
+- Protected newer statuses from delayed SRS responses.

@@ -267,13 +267,16 @@ describe("persistence lifecycle", () => {
       clearTimeout() {},
       console
     });
-    const state = createAutosave(() => rawState).wrap(rawState);
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
 
     state.syncHealth = { status: "ready" };
     state.syncthingStatus = { running: true };
     assert.equal(scheduled, 0);
+    assert.equal(autosave.getDurableStateRevision(), 0);
     state.preferences.theme = "classic-dark";
     assert.equal(scheduled, 1);
+    assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
   it("does not autosave bridge-only navigation and reader UI state", async () => {
@@ -299,16 +302,19 @@ describe("persistence lifecycle", () => {
       clearTimeout() {},
       console
     });
-    const state = createAutosave(() => rawState).wrap(rawState);
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
 
     state.currentView = "settings";
     state.selectedWord = "haus";
     state.readerPages.book = 2;
     state.filters.vocabQuery = "ha";
     assert.equal(scheduled, 0);
+    assert.equal(autosave.getDurableStateRevision(), 0);
 
     state.preferences.theme = "alternative-familiar";
     assert.equal(scheduled, 1);
+    assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
   it("queues autosaves behind an exclusive state write", async () => {
@@ -395,6 +401,7 @@ describe("persistence lifecycle", () => {
     const autosave = readFileSync(new URL("../../dist/web/js/state/autosave.js", import.meta.url), "utf8");
     const api = readFileSync(new URL("../../dist/web/js/api.js", import.meta.url), "utf8");
     const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const storeBridge = readFileSync(new URL("../../dist/web/js/store-bridge.js", import.meta.url), "utf8");
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
 
     for (const id of [
@@ -418,6 +425,7 @@ describe("persistence lifecycle", () => {
     ]) {
       assert.ok(settings.includes(`"${endpoint}"`), `missing frontend endpoint ${endpoint}`);
     }
+    assert.ok(storeBridge.includes('"/__store/ack_snapshot"'));
     for (const endpoint of [
       "/__store/recovery_status",
       "/__store/sync_health",
@@ -431,7 +439,8 @@ describe("persistence lifecycle", () => {
     assert.ok(autosave.includes("wordhunter:sync-error"));
     assert.ok(api.includes("wordhunter:sync-error"));
     assert.match(settings, /scheduleBackgroundSync\(30000\)/);
-    assert.match(settings, /syncNow\(\{ background: true, saveFirst \}\)/);
+    assert.match(settings, /syncNow\(\{ background: true, saveFirst: true \}\)/);
+    assert.match(settings, /wordhunter:sync-snapshot-skipped/);
   });
 
   it("keeps startup boot CSS scoped and removes the boot state after initialization", async () => {
@@ -520,6 +529,7 @@ describe("persistence lifecycle", () => {
     const actions = await evaluateWithMocks("../../dist/web/js/sync-actions.js", {
       "./state.js": {
         applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
         state,
         saveState: async () => downstreamCalls.push("saveState"),
         runExclusiveStateWrite: async (callback) => {
@@ -551,6 +561,7 @@ describe("persistence lifecycle", () => {
         saveStateAndReloadBridge: async () => downstreamCalls.push("saveStateAndReloadBridge")
       },
       "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => downstreamCalls.push("acknowledgeBackendSnapshot"),
         deleteStoredText: async () => downstreamCalls.push("deleteStoredText"),
         loadBackendSnapshot: async () => ({}),
         postStoreCommand: async () => downstreamCalls.push("postStoreCommand")

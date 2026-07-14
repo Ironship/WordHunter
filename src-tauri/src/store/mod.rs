@@ -82,8 +82,6 @@ impl Store {
         let result = (|| -> Result<(), String> {
             std::fs::create_dir_all(dir.join("books")).map_err(|e| e.to_string())?;
             self.recover_pending_save()?;
-            self.base_records.lock().unwrap().clear();
-            self.seed_or_refresh_records()?;
             crate::paths::set_data_dir(crate::APP_NAME, &dir)?;
             Ok(())
         })();
@@ -282,7 +280,7 @@ mod tests {
         record_files::write_records(target.path(), &target_records).unwrap();
 
         store.relocate(target.path().to_path_buf()).unwrap();
-        let snapshot = store.snapshot();
+        let snapshot = store.snapshot_unacknowledged();
 
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["lokal"]["translation"],
@@ -290,6 +288,13 @@ mod tests {
         );
         assert_eq!(
             snapshot["vocab"]["de"]["vocab"]["chmura"]["translation"],
+            "cloud"
+        );
+        store
+            .bulk_save(profile_payload("lokal", "local-after-relocation"))
+            .unwrap();
+        assert_eq!(
+            store.snapshot()["vocab"]["de"]["vocab"]["chmura"]["translation"],
             "cloud"
         );
     }
