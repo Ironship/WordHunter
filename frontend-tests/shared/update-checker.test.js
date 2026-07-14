@@ -24,6 +24,7 @@ describe("stable update version ordering", () => {
   it("orders release candidates before the final release", () => {
     assert.equal(isNewer("1.0.5-rc.2", "1.0.5-rc.1"), true);
     assert.equal(isNewer("1.0.5-rc.3", "1.0.5-rc.2"), true);
+    assert.equal(isNewer("1.0.5-rc.4", "1.0.5-rc.3"), true);
     assert.equal(isNewer("1.0.5", "1.0.5-rc.2"), true);
     assert.equal(isNewer("1.0.5-rc.1", "1.0.5"), false);
   });

@@ -15,8 +15,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="theme.css?v=20260714-desktop-dark">
-  <link rel="stylesheet" href="styles.css?v=20260714-card-gestures">
-  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260714-card-gestures">
+  <link rel="stylesheet" href="styles.css?v=20260714-word-sheet">
+  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260714-word-sheet">
 </head>
 <body>
   <div class="app-shell">
@@ -340,7 +340,10 @@
           </section>
 
           <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
-          <div class="reader-sidebar-wrapper">
+          <div class="reader-sidebar-wrapper" data-pocket-sheet-state="collapsed">
+            <button type="button" id="pocket-word-panel-sheet-handle" class="pocket-word-panel-sheet-handle" aria-controls="word-panel" aria-expanded="false" aria-label="Expand word panel" title="Expand word panel">
+              <span aria-hidden="true"></span>
+            </button>
             <aside class="panel word-panel" id="word-panel" aria-live="polite" data-i18n-attr="aria-label=reader.wordPanelEyebrow">
               <div class="empty-state">
                 <p class="eyebrow" data-i18n="reader.wordPanelEyebrow">Słowo</p>

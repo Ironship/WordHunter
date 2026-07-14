@@ -81,6 +81,16 @@ function assertSourceOrder(source, before, after) {
 }
 
 describe("Android Pocket platform", () => {
+  it("snaps the word card by drag velocity and resting position", async () => {
+    const { resolvePocketWordSheetState } = await import("../../dist/web/js/platform.js");
+
+    assert.equal(resolvePocketWordSheetState(-90, -0.8, 500, 80, 560), "expanded");
+    assert.equal(resolvePocketWordSheetState(90, 0.8, 140, 80, 560), "collapsed");
+    assert.equal(resolvePocketWordSheetState(-20, -0.02, 240, 80, 560), "expanded");
+    assert.equal(resolvePocketWordSheetState(20, 0.02, 420, 80, 560), "collapsed");
+    assert.equal(resolvePocketWordSheetState(30, -0.8, 300, 80, 560), "expanded");
+  });
+
   it("defines centered, non-scrollable critical boot styles", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
@@ -239,6 +249,109 @@ describe("Android Pocket platform", () => {
     assert.equal(providerOptions.find((option) => option.value === "offline").disabled, true);
     assert.equal(providerOptions.find((option) => option.value === "lmstudio").hidden, true);
     assert.equal(providerOptions.find((option) => option.value === "google").hidden, false);
+  });
+
+  it("drags and toggles the Pocket word sheet without duplicate bindings", async (context) => {
+    let now = 0;
+    context.mock.method(globalThis.performance, "now", () => now);
+    const listeners = {};
+    const addListener = (target, type, handler) => {
+      (target[type] ||= []).push(handler);
+    };
+    const handle = {
+      attrs: {},
+      listeners: {},
+      setAttribute(name, value) { this.attrs[name] = value; },
+      addEventListener(type, handler) { addListener(this.listeners, type, handler); },
+      setPointerCapture() {},
+      releasePointerCapture() {}
+    };
+    const wrapper = {
+      dataset: { pocketSheetState: "collapsed" },
+      classList: createClassList(),
+      style: {
+        values: {},
+        setProperty(name, value) { this.values[name] = value; },
+        removeProperty(name) { delete this.values[name]; }
+      },
+      getBoundingClientRect() {
+        return { top: this.dataset.pocketSheetState === "expanded" ? 80 : 560 };
+      }
+    };
+    const root = {
+      dataset: {},
+      classList: createClassList(),
+      style: { zoom: "", setProperty(name, value) { this[name] = value; } }
+    };
+
+    globalThis.window = {
+      location: { search: "?platform=android" },
+      addEventListener(type, handler) { addListener(listeners, type, handler); }
+    };
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { userAgent: "Desktop test" }
+    });
+    globalThis.document = {
+      documentElement: root,
+      getElementById(id) { return id === "pocket-word-panel-sheet-handle" ? handle : null; },
+      querySelector(selector) { return selector === "#reader-view .reader-sidebar-wrapper" ? wrapper : null; },
+      querySelectorAll() { return []; }
+    };
+
+    const { applyPlatformUi, detectPlatform } = await import("../../dist/web/js/platform.js");
+    detectPlatform();
+    applyPlatformUi();
+    applyPlatformUi();
+
+    assert.equal(handle.listeners.click.length, 1);
+    assert.equal(handle.listeners.pointerdown.length, 1);
+    assert.equal(handle.attrs["aria-expanded"], "false");
+
+    handle.listeners.click[0]({ preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
+    assert.equal(handle.attrs["aria-expanded"], "true");
+    handle.listeners.click[0]({ preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
+
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 4, clientX: 100, clientY: 550 });
+    now = 16;
+    handle.listeners.pointermove[0]({ pointerId: 4, clientX: 100, clientY: 250, preventDefault() {} });
+    now = 32;
+    handle.listeners.pointerup[0]({ pointerId: 4, clientX: 100, clientY: 250, preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
+    assert.equal(wrapper.classList.contains("pocket-word-sheet-dragging"), false);
+    assert.equal(root.classList.contains("pocket-word-panel-open"), false);
+
+    handle.listeners.keydown[0]({ key: "ArrowDown", preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
+
+    now = 500;
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 5, clientX: 100, clientY: 550 });
+    now = 516;
+    handle.listeners.pointermove[0]({ pointerId: 5, clientX: 100, clientY: 300, preventDefault() {} });
+    now = 532;
+    handle.listeners.pointermove[0]({ pointerId: 5, clientX: 100, clientY: 550, preventDefault() {} });
+    now = 548;
+    handle.listeners.pointerup[0]({ pointerId: 5, clientX: 100, clientY: 550, preventDefault() {} });
+    handle.listeners.click[0]({ preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
+
+    now = 1000;
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 6, clientX: 100, clientY: 550 });
+    now = 1016;
+    handle.listeners.pointermove[0]({ pointerId: 6, clientX: 100, clientY: 250, preventDefault() {} });
+    now = 3016;
+    handle.listeners.pointerup[0]({ pointerId: 6, clientX: 100, clientY: 540, preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
+
+    now = 4000;
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 7, clientX: 100, clientY: 550 });
+    now = 4016;
+    handle.listeners.pointermove[0]({ pointerId: 7, clientX: 100, clientY: 400, preventDefault() {} });
+    now = 4200;
+    handle.listeners.pointerup[0]({ pointerId: 7, clientX: 100, clientY: 400, preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
   });
 
   it("opens and closes the Pocket import drawer from button and swipe", async () => {

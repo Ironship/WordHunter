@@ -25,6 +25,8 @@ describe("selected-word panel", () => {
     const preferences = read("dist/web/js/preferences.js");
     const settings = read("dist/web/js/events/settings.js");
 
+    assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);
+    assert.ok(html.indexOf('id="pocket-word-panel-sheet-handle"') < html.indexOf('id="word-panel"'));
     assert.match(html, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
     assert.match(dom, /prefSelectedWordPanelItems = document\.getElementById\("pref-selected-word-panel-items"\)/);
     assert.match(preferences, /data-word-panel-item-visible/);
@@ -34,6 +36,7 @@ describe("selected-word panel", () => {
     assert.match(settings, /state\.preferences\.selectedWordPanelItems = normalizeSelectedWordPanelItems\(items\)/);
     assert.match(settings, /window\.flushWordFieldSave\?\.\(\)/);
     assert.match(settings, /saveState\(\)[\s\S]*syncSettingsControls\(\)[\s\S]*renderWordPanel\(currentText\)/);
+    assert.match(settings, /applyTranslations\(\);\s*applyPlatformUi\(\);/);
   });
 
   it("renders only configured visible items in order and coalesces actions", () => {
@@ -77,6 +80,7 @@ describe("selected-word panel", () => {
     ];
     for (const [locale, dictionary] of dictionaries) {
       for (const key of required) assert.ok(dictionary.settings[key]?.trim(), `${locale}.settings.${key}`);
+      for (const key of ["expandWordPanel", "collapseWordPanel"]) assert.ok(dictionary.reader[key]?.trim(), `${locale}.reader.${key}`);
       for (const id of itemIds) assert.ok(dictionary.settings.wordPanelItems[id]?.trim(), `${locale}.settings.wordPanelItems.${id}`);
     }
     const english = dictionaries[0][1].settings;

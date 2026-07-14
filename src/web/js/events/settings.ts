@@ -14,7 +14,7 @@ import { switchLearningLanguage } from "../state.js";
 import { loadBackendSnapshot } from "../store-bridge.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { setElementBusy } from "../loading.js";
-import { isAndroidPlatform } from "../platform.js";
+import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { hydrateActiveLibraryTexts } from "../books.js";
@@ -734,6 +734,7 @@ export function bindSettingsEvents() {
       saveState();
       await loadLocale(value);
       applyTranslations();
+      applyPlatformUi();
       applyPreferences();
       syncSettingsControls();
       render();

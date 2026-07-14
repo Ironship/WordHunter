@@ -29,6 +29,8 @@ interface ReaderTokenOptions {
 interface SwipePoint {
   x: number;
   y: number;
+  card?: boolean;
+  touchId?: number;
 }
 
 interface PdfPinchState {
@@ -108,6 +110,7 @@ export function bindReaderEvents(): void {
     }, { passive: true });
     let swipeStart: SwipePoint | null = null;
     let suppressSwipeClickUntil = 0;
+    let wordCardResetTimer = 0;
     const isWordPanelOpen = (): boolean => {
       const root = document.documentElement;
       if (!state.selectedWord) return false;
@@ -115,25 +118,68 @@ export function bindReaderEvents(): void {
         ? root.classList.contains("pocket-word-panel-open")
         : !root.classList.contains("reader-word-panel-hidden");
     };
-    const beginSwipe = (clientX: number, clientY: number, target: EventTarget | null): void => {
+    const resetWordCardDrag = (animate: boolean): void => {
+      window.clearTimeout(wordCardResetTimer);
+      wordPanel.classList.remove("word-panel-card-dragging", "word-panel-card-drag-left", "word-panel-card-drag-right");
+      if (animate && wordPanel.style.getPropertyValue("--word-card-drag-x")) {
+        wordPanel.classList.add("word-panel-card-snapback");
+        wordCardResetTimer = window.setTimeout(() => {
+          wordPanel.classList.remove("word-panel-card-snapback");
+          wordPanel.style.removeProperty("--word-card-drag-x");
+          wordPanel.style.removeProperty("--word-card-drag-rotate");
+        }, 220);
+        return;
+      }
+      wordPanel.classList.remove("word-panel-card-snapback");
+      wordPanel.style.removeProperty("--word-card-drag-x");
+      wordPanel.style.removeProperty("--word-card-drag-rotate");
+    };
+    const beginSwipe = (
+      clientX: number,
+      clientY: number,
+      target: EventTarget | null,
+      card = false,
+      touchId?: number
+    ): void => {
+      if (card && wordPanel.dataset.wordCardTransition) return;
       if (target instanceof Element && target.closest(".pagination-controls, button:not(.word-token), a, input, textarea, select, [contenteditable]")) return;
-      swipeStart = { x: clientX, y: clientY };
+      swipeStart = { x: clientX, y: clientY, card, touchId };
+    };
+    const updateSwipe = (clientX: number, clientY: number, event: TouchEvent): void => {
+      if (!swipeStart?.card) return;
+      const dx = clientX - swipeStart.x;
+      const dy = clientY - swipeStart.y;
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      event.preventDefault();
+      window.clearTimeout(wordCardResetTimer);
+      const limitedDx = Math.max(-window.innerWidth * 0.72, Math.min(window.innerWidth * 0.72, dx));
+      wordPanel.classList.remove("word-panel-card-snapback", "word-panel-card-drag-left", "word-panel-card-drag-right");
+      wordPanel.classList.add("word-panel-card-dragging", limitedDx < 0 ? "word-panel-card-drag-left" : "word-panel-card-drag-right");
+      wordPanel.style.setProperty("--word-card-drag-x", `${limitedDx}px`);
+      wordPanel.style.setProperty("--word-card-drag-rotate", limitedDx < 0 ? "-1.5deg" : "1.5deg");
     };
     const finishSwipe = (clientX: number, clientY: number): void => {
       if (!swipeStart) return;
       const dx = clientX - swipeStart.x;
       const dy = clientY - swipeStart.y;
+      const card = swipeStart.card;
       swipeStart = null;
-      if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+      if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+        if (card) resetWordCardDrag(true);
+        return;
+      }
       suppressSwipeClickUntil = Date.now() + 400;
       if (isWordPanelOpen()) {
         const direction = dx < 0 ? 1 : -1;
-        navigateReaderWord(direction, {
+        const navigated = navigateReaderWord(direction, {
           keepPanelOpen: true,
-          animateDirection: direction > 0 ? "next" : "previous"
+          animateDirection: direction > 0 ? "next" : "previous",
+          persistWord: true
         });
+        if (!navigated && card) resetWordCardDrag(true);
         return;
       }
+      if (card) resetWordCardDrag(false);
       clearReaderSelection(false);
       changeReaderPage(dx < 0 ? 1 : -1);
     };
@@ -170,8 +216,14 @@ export function bindReaderEvents(): void {
         event.preventDefault();
         return;
       }
+      if (event.touches.length !== 1) {
+        swipeStart = null;
+        return;
+      }
       const touch = event.touches[0];
-      if (touch && !shouldReservePdfPan(event.target)) beginSwipe(touch.clientX, touch.clientY, event.target);
+      if (touch && !shouldReservePdfPan(event.target)) {
+        beginSwipe(touch.clientX, touch.clientY, event.target, false, touch.identifier);
+      }
     }, { passive: false });
     readerText.addEventListener("touchmove", (event) => {
       if (!updatePdfPinch(event)) return;
@@ -184,7 +236,7 @@ export function bindReaderEvents(): void {
         swipeStart = null;
         return;
       }
-      const touch = event.changedTouches[0];
+      const touch = Array.from(event.changedTouches).find((candidate) => candidate.identifier === swipeStart?.touchId);
       if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true });
     readerText.addEventListener("touchcancel", () => {
@@ -367,15 +419,30 @@ export function bindReaderEvents(): void {
 
     // Handle smart suggestion click
     wordPanel.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1) {
+        swipeStart = null;
+        resetWordCardDrag(false);
+        return;
+      }
       const touch = event.touches[0];
-      if (touch) beginSwipe(touch.clientX, touch.clientY, event.target);
+      if (touch) beginSwipe(touch.clientX, touch.clientY, event.target, true, touch.identifier);
     }, { passive: true });
+    wordPanel.addEventListener("touchmove", (event) => {
+      if (event.touches.length !== 1) {
+        swipeStart = null;
+        resetWordCardDrag(false);
+        return;
+      }
+      const touch = Array.from(event.touches).find((candidate) => candidate.identifier === swipeStart?.touchId);
+      if (touch) updateSwipe(touch.clientX, touch.clientY, event);
+    }, { passive: false });
     wordPanel.addEventListener("touchend", (event) => {
-      const touch = event.changedTouches[0];
+      const touch = Array.from(event.changedTouches).find((candidate) => candidate.identifier === swipeStart?.touchId);
       if (touch) finishSwipe(touch.clientX, touch.clientY);
     }, { passive: true });
     wordPanel.addEventListener("touchcancel", () => {
       swipeStart = null;
+      resetWordCardDrag(true);
     }, { passive: true });
     wordPanel.addEventListener("pointerdown", rememberWordPanelInteraction);
     wordPanel.addEventListener("touchstart", rememberWordPanelInteraction, { passive: true });

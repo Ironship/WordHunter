@@ -209,6 +209,135 @@ describe("focused frontend regressions", () => {
     }
   });
 
+  it("keeps keyboard navigation lightweight and routes swipes through automatic translation", async () => {
+    const calls = [];
+    const rootClasses = classList(["pocket-word-panel-open"]);
+    const state = { selectedWord: "alpha", selectedWordIndex: 3 };
+    const token = {
+      dataset: { word: "Beta", wordIndex: "17" },
+      focus() { calls.push(["focus"]); }
+    };
+    const navigation = await evaluateWithMocks("dist/web/js/reader/word-navigation.js", {
+      "../state.js": { state, saveUiState: () => calls.push(["saveUiState"]) },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word.toLowerCase() },
+      "../tts.js": { speakWord: (word) => calls.push(["speakWord", word]) },
+      "../vocab-actions.js": {
+        selectWord(...args) {
+          calls.push(["selectWord", ...args]);
+          state.selectedWord = args[1](args[0]);
+          state.selectedWordIndex = args[3];
+        }
+      },
+      "./selection.js": {
+        setReaderSelectionAnchorFromToken: (value) => calls.push(["anchor", value]),
+        updateReaderSelection: (options) => calls.push(["updateReaderSelection", options])
+      }
+    }, {
+      HTMLElement: class {},
+      window: { lastActiveToken: null },
+      document: { documentElement: { classList: rootClasses }, getElementById: () => null }
+    });
+
+    assert.equal(navigation.selectReaderToken(token, true, { keepPanelOpen: true }), true);
+    assert.equal(calls.some((call) => call[0] === "selectWord"), false);
+    assert.equal(calls.some((call) => call[0] === "saveUiState"), true);
+    assert.deepEqual(calls.find((call) => call[0] === "speakWord"), ["speakWord", "Beta"]);
+
+    calls.length = 0;
+    state.selectedWord = "alpha";
+    state.selectedWordIndex = 3;
+    assert.equal(navigation.selectReaderToken(token, true, { keepPanelOpen: true, persistWord: true }), true);
+    const selection = calls.find((call) => call[0] === "selectWord");
+    assert.equal(selection[1], "Beta");
+    assert.equal(selection[2](selection[1]), "beta");
+    assert.equal(selection[3], false);
+    assert.equal(selection[4], 17);
+    assert.equal(selection[5].forceSpeak, true);
+    assert.equal(state.selectedWord, "beta");
+    assert.equal(state.selectedWordIndex, 17);
+    assert.equal(rootClasses.contains("pocket-word-panel-open"), true);
+    const vocabActions = read("dist/web/js/vocab-actions.js");
+    assert.match(vocabActions, /maybeAutoTranslateWord\(word, entry\)/);
+    assert.match(vocabActions, /pendingAutoTranslations\.has\(entry\)/);
+    assert.match(vocabActions, /state\.currentView === "reader" && state\.selectedWord === word/);
+  });
+
+  it("selects the next word immediately while a ghost card animates out", async () => {
+    class FakeElement {
+      constructor(classes = []) {
+        this.attributes = {};
+        this.classList = classList(classes);
+        this.dataset = {};
+        this.listeners = new Map();
+        this.scrollTop = 12;
+        this.style = {
+          values: { "--word-card-drag-x": "-90px" },
+          removeProperty: (name) => { delete this.style.values[name]; }
+        };
+      }
+      addEventListener(type, listener) { this.listeners.set(type, listener); }
+      removeEventListener(type, listener) {
+        if (this.listeners.get(type) === listener) this.listeners.delete(type);
+      }
+      dispatchAnimation() { this.listeners.get("animationend")?.({ target: this }); }
+      cloneNode() { return new FakeElement(["word-panel", "word-panel-card-dragging", "word-panel-card-snapback"]); }
+      querySelectorAll() { return []; }
+      removeAttribute(name) { delete this.attributes[name]; }
+      setAttribute(name, value) { this.attributes[name] = value; }
+      remove() { this.removed = true; }
+      focus() {}
+      get offsetWidth() { return 320; }
+    }
+
+    const ghosts = [];
+    const host = {
+      appendChild(element) { element.parentElement = this; ghosts.push(element); },
+      querySelectorAll() { return ghosts.filter((ghost) => !ghost.removed); }
+    };
+    const panel = new FakeElement(["word-panel", "word-panel-card-dragging"]);
+    panel.parentElement = host;
+    const rootClasses = classList(["pocket-word-panel-open"]);
+    const state = { selectedWord: "alpha", selectedWordIndex: 3 };
+    const selections = [];
+    const token = { dataset: { word: "Beta", wordIndex: "17" }, focus() {} };
+    const navigation = await evaluateWithMocks("dist/web/js/reader/word-navigation.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word.toLowerCase() },
+      "../tts.js": { speakWord() {} },
+      "../vocab-actions.js": {
+        selectWord(...args) {
+          selections.push(args);
+          state.selectedWord = args[1](args[0]);
+          state.selectedWordIndex = args[3];
+        }
+      },
+      "./selection.js": { setReaderSelectionAnchorFromToken() {}, updateReaderSelection() {} }
+    }, {
+      HTMLElement: FakeElement,
+      window: {
+        lastActiveToken: null,
+        matchMedia: () => ({ matches: false }),
+        setTimeout,
+        clearTimeout
+      },
+      document: {
+        documentElement: { classList: rootClasses },
+        getElementById: (id) => id === "word-panel" ? panel : null
+      }
+    });
+
+    assert.equal(navigation.selectReaderToken(token, true, { keepPanelOpen: true, animateDirection: "next", persistWord: true }), true);
+    assert.equal(selections.length, 1);
+    assert.equal(state.selectedWord, "beta");
+    assert.equal(ghosts.length, 1);
+    assert.equal(ghosts[0].classList.contains("word-panel-exit-next"), true);
+    assert.equal(ghosts[0].classList.contains("word-panel-card-snapback"), false);
+    assert.equal(panel.classList.contains("word-panel-enter-next"), true);
+    panel.dispatchAnimation();
+    assert.equal(ghosts[0].removed, true);
+    assert.equal(panel.dataset.wordCardTransition, undefined);
+  });
+
   it("routes unsaved edit-book discard through the complete cancellation cleanup", async () => {
     const bookImport = read("dist/web/js/events/book-import.js");
     assert.match(bookImport, /registerUnsavedDialog\("edit-book-dialog", isEditBookDirty, \(\) => saveEditedBook\(\), \(\) => cancelEditBook\(\)\)/);
