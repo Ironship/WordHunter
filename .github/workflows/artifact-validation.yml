@@ -18,17 +18,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  frontend-validation:
-    name: Frontend static validation
+  release-preflight:
+    name: Release draft preflight
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-
       - name: Match a requested draft release to this revision
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -41,6 +40,17 @@ jobs:
             target_sha="$(gh api "repos/$GH_REPO/commits/$release_target" --jq .sha)"
           fi
           test "$target_sha" = "$GITHUB_SHA"
+
+  frontend-validation:
+    name: Frontend static validation
+    needs: release-preflight
+    if: ${{ !cancelled() && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -225,12 +235,19 @@ jobs:
             test -f "release-assets/$asset"
           done
 
-      - name: Require an existing draft release
+      - name: Revalidate the draft release revision
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-        run: test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
+        run: |
+          release_json="$(gh release view "$RELEASE_TAG" --json isDraft,targetCommitish)"
+          test "$(jq -r .isDraft <<<"$release_json")" = "true"
+          if ! target_sha="$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha 2>/dev/null)"; then
+            release_target="$(jq -r .targetCommitish <<<"$release_json")"
+            target_sha="$(gh api "repos/$GH_REPO/commits/$release_target" --jq .sha)"
+          fi
+          test "$target_sha" = "$GITHUB_SHA"
 
       - name: Attach validated assets to the draft release
         env:

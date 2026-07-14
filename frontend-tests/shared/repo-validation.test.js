@@ -113,14 +113,19 @@ describe("repository validation wiring", () => {
 
     assert.ok(workflow.on.schedule[0].cron);
     assertActionsArePinned(workflow);
+    assert.equal(workflow.permissions.contents, "read");
     assert.equal(workflow.on.release, undefined);
     assert.ok(workflow.on.workflow_dispatch !== undefined);
-    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "windows"]);
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "release-preflight", "windows"]);
+    const releasePreflight = workflow.jobs["release-preflight"];
     const frontendValidation = workflow.jobs["frontend-validation"];
-    const revisionCheck = stepByName(frontendValidation, "Match a requested draft release to this revision");
-    assert.match(revisionCheck.if, /workflow_dispatch[\s\S]*release_tag/);
+    const revisionCheck = stepByName(releasePreflight, "Match a requested draft release to this revision");
+    assert.match(releasePreflight.if, /workflow_dispatch[\s\S]*release_tag/);
     assert.equal(revisionCheck.env.GH_REPO, "${{ github.repository }}");
-    assert.match(revisionCheck.run, /isDraft,targetCommitish[\s\S]*repos\/\$GH_REPO\/commits\/\$RELEASE_TAG[\s\S]*repos\/\$GH_REPO\/commits\/\$release_target[\s\S]*GITHUB_SHA/);
+    assert.match(revisionCheck.run, /isDraft,targetCommitish[\s\S]*repos\/\$GH_REPO\/commits\/\$RELEASE_TAG[\s\S]*repos\/\$GH_REPO\/commits\/\$release_target[\s\S]*test "\$target_sha" = "\$GITHUB_SHA"/);
+    assert.equal(releasePreflight.permissions.contents, "write");
+    assert.equal(frontendValidation.needs, "release-preflight");
+    assert.match(frontendValidation.if, /!cancelled\(\)[\s\S]*success[\s\S]*skipped/);
     assert.equal(stepByName(frontendValidation, "Set up Node").with.cache, "npm");
     assert.equal(
       stepByName(frontendValidation, "Install frontend validation dependencies").run,
@@ -146,13 +151,13 @@ describe("repository validation wiring", () => {
     assert.deepEqual(publish.needs, ["android", "windows", "flatpak"]);
     assert.equal(publish.permissions.contents, "write");
     assert.match(publish.if, /workflow_dispatch[\s\S]*release_tag/);
+    const finalRevisionCheck = stepByName(publish, "Revalidate the draft release revision");
+    assert.match(finalRevisionCheck.run, /isDraft,targetCommitish[\s\S]*repos\/\$GH_REPO\/commits\/\$RELEASE_TAG[\s\S]*repos\/\$GH_REPO\/commits\/\$release_target[\s\S]*test "\$target_sha" = "\$GITHUB_SHA"/);
     const download = stepByName(publish, "Download validated artifacts on the GitHub runner");
     assert.equal(download.uses, "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093");
     assert.equal(download.with.pattern, "validated-*");
     assert.equal(download.with["merge-multiple"], true);
-    const requireDraft = stepByName(publish, "Require an existing draft release");
-    assert.equal(requireDraft.env.GH_REPO, "${{ github.repository }}");
-    assert.match(requireDraft.run, /gh release view[\s\S]*isDraft/);
+    assert.equal(finalRevisionCheck.env.GH_REPO, "${{ github.repository }}");
     const attach = stepByName(publish, "Attach validated assets to the draft release");
     assert.equal(attach.env.GH_REPO, "${{ github.repository }}");
     assert.match(attach.run, /gh release upload[\s\S]*--clobber/);
