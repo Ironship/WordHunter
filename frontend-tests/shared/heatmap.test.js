@@ -1,11 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
 const { buildHeatmapActivityCounts } = await import("../../dist/web/js/graphs/helpers.js");
-const { buildContributionMonthLabels } = await import("../../dist/web/js/views/heatmap.js");
+const { buildContributionMonthLabels, latestHeatmapScrollLeft } = await import("../../dist/web/js/views/heatmap.js");
 
 describe("shared heatmap", () => {
   it("does not overlap adjacent starting month labels", () => {
@@ -27,5 +28,17 @@ describe("shared heatmap", () => {
     ]);
 
     assert.deepEqual(counts, { "2026-06-20": 2 });
+  });
+
+  it("positions a clipped Pocket heatmap at the latest weeks", () => {
+    assert.equal(latestHeatmapScrollLeft(920, 360), 560);
+    assert.equal(latestHeatmapScrollLeft(320, 360), 0);
+    const render = readFileSync(new URL("../../dist/web/js/render.js", import.meta.url), "utf8");
+    const heatmap = readFileSync(new URL("../../dist/web/js/views/heatmap.js", import.meta.url), "utf8");
+    const reviewChart = readFileSync(new URL("../../dist/web/js/vocabulary/review-chart.js", import.meta.url), "utf8");
+    assert.match(render, /data-align-heatmap-latest/);
+    assert.match(render, /viewName === lastRenderedView/);
+    assert.match(heatmap, /delete alignmentHost\.dataset\.alignHeatmapLatest/);
+    assert.match(reviewChart, /hEl\.parentElement !== reviewEls\.reviewChart/);
   });
 });

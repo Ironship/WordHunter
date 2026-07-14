@@ -47,8 +47,11 @@ export function renderReviewChart(srsEntries: readonly ReviewEntry[], today: str
   const graphType = state.preferences?.reviewGraphType || "heatmap";
 
   if (graphType === "heatmap") {
-    reviewEls.reviewChart.innerHTML = '<div id="review-heatmap" class="review-heatmap"></div>';
-    const hEl = document.getElementById("review-heatmap");
+    let hEl = document.getElementById("review-heatmap");
+    if (!hEl || hEl.parentElement !== reviewEls.reviewChart) {
+      reviewEls.reviewChart.innerHTML = '<div id="review-heatmap" class="review-heatmap"></div>';
+      hEl = document.getElementById("review-heatmap");
+    }
     if (!hEl) return;
 
     const { counts: activity } = buildHeatmapActivityCounts(Object.values(state.vocab || {}) as VocabEntry[]);

@@ -10,6 +10,7 @@ import { applyBridgeSnapshotToState, flushFrontendStateBuffers, saveState, state
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
+import { refreshYouGlishTheme } from "./js/youglish.js";
 
 detectPlatform();
 
@@ -115,6 +116,7 @@ window.addEventListener("wordhunter:state-replaced", () => {
 
 window.addEventListener("wordhunter:theme-changed", () => {
   if (document.documentElement.classList.contains("app-booting")) return;
+  refreshYouGlishTheme();
   if (state.currentView === "graphs") import("./js/views/graphs.js").then((module) => module.renderGraphs());
   if (["vocabulary", "flashcards"].includes(state.currentView)) renderReview();
 });
@@ -174,6 +176,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     syncSettingsControls();
     applyPlatformUi();
     render();
+    document.getElementById("app-font-stylesheet")?.setAttribute("rel", "stylesheet");
     showLanguageOnboardingIfNeeded();
     scheduleLibraryStatsHydration();
   } catch (error) {

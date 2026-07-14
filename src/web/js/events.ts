@@ -7,6 +7,7 @@ import { bindGlobalActionEvents } from "./events/global-actions.js";
 import { bindVocabularyFilterEvents } from "./events/vocabulary-filters.js";
 import { bindMoveBookEvents } from "./events/move-book.js";
 import { bindWordEditorEvents } from "./events/word-editor.js";
+import { bindFlashcardEvents } from "./events/flashcards.js";
 
 export function bindEvents() {
   bindNavigationEvents();
@@ -15,6 +16,7 @@ export function bindEvents() {
   bindVocabularyFilterEvents();
   bindMoveBookEvents();
   bindWordEditorEvents();
+  bindFlashcardEvents();
   bindSettingsEvents();
   bindTranslatorEvents();
   refreshTranslatorAvailability();

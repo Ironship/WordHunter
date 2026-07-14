@@ -25,7 +25,9 @@ interface ReviewTranslationCard {
   word: string;
 }
 
-export function renderReview(): void {
+export type ReviewTransitionDirection = "next" | "previous";
+
+export function renderReview(transition?: ReviewTransitionDirection): void {
   if (!els.reviewCard) return;
   const today = todayISO();
   const srsEntries = Object.entries(state.vocab)
@@ -150,16 +152,23 @@ export function renderReview(): void {
         ${card.note ? `<p class="review-note" style="margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem;">${escapeHtml(card.note)}</p>` : ""}
       `;
     }
+    backHtml = `<div id="review-card-answer" class="review-card-answer">${backHtml}</div>`;
+  } else {
+    backHtml = '<div id="review-card-answer" hidden></div>';
   }
 
   const scheduleMeta = formatSrsMeta(card);
+  const transitionClass = transition ? ` flashcard-enter-${transition}` : "";
+  const answerClass = reviewAnswerVisible ? " flashcard-answer-visible" : "";
 
   els.reviewCard.innerHTML = `
-    <div class="review-word">
-      <div>
-        ${frontHtml}
-        ${imageHtml}
-        ${backHtml}
+    <div class="flashcard-wrap${transitionClass}${answerClass}" data-answer-visible="${reviewAnswerVisible}">
+      <div class="review-word" data-review-card-surface>
+        <div>
+          ${frontHtml}
+          ${imageHtml}
+          ${backHtml}
+        </div>
       </div>
     </div>
     <div class="word-actions" style="flex-wrap: wrap;">
@@ -171,17 +180,17 @@ export function renderReview(): void {
         ${icon("video", 16)}
         <span class="shortcut-badge">Y</span>
       </button>
-      <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.word)}">
+      <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.word)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">
         ${icon("eye", 16)}
         ${escapeHtml(reviewAnswerVisible ? t("vocab.reviewHide") : t("vocab.reviewShow"))}
         <span class="shortcut-badge">${escapeHtml(t("reader.keyEnter"))}</span>
       </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.word)}" ${state.reviewIndex === 0 ? "disabled" : ""}>
+      <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.word)}" ${reviewIndex === 0 ? "disabled" : ""}>
         ${icon("chevronLeft", 16)}
         ${escapeHtml(t("vocab.reviewPrev"))}
         <span class="shortcut-badge">←</span>
       </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.word)}">
+      <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.word)}" ${reviewIndex === reviewWords.length - 1 ? "disabled" : ""}>
         ${escapeHtml(t("vocab.reviewNext"))}
         <span class="shortcut-badge">→</span>
         ${icon("chevronRight", 16)}
@@ -191,7 +200,7 @@ export function renderReview(): void {
       <p class="muted-copy sm2-prompt">${escapeHtml(t("sm2.prompt"))}</p>
       <div class="sm2-grades">${ratingButtons}</div>
     ` : ""}
-    <p class="muted-copy">${state.reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
+    <p class="muted-copy">${reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
 }
 export async function applyReviewGrade(word: string, quality: number): Promise<WhVocabEntry | null> {

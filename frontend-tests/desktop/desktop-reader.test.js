@@ -549,6 +549,16 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(hasCssSelector(css, ':root[data-theme="dark"] .sm2-grades .status-button.sm2-grade-1:hover'), false);
     assert.equal(hasCssSelector(css, ".sm2-grade:hover"), false);
   });
+
+  it("styles Flashcards as an animated card deck", () => {
+    const card = cssDeclarations(css, ".review-word");
+    assert.equal(card["min-height"], "clamp(260px, 36vh, 420px)");
+    assert.match(card.border, /2px solid/);
+    assert.match(card["box-shadow"], /0 18px 45px/);
+    assert.match(css, /\.flashcard-wrap::before,[\s\S]*\.flashcard-wrap::after/);
+    assert.match(css, /\.flashcard-enter-next \.review-word[\s\S]*animation: flashcard-enter-next/);
+    assert.match(css, /\.flashcard-enter-previous \.review-word[\s\S]*animation: flashcard-enter-previous/);
+  });
 });
 
 describe("desktop platform contracts", () => {
@@ -560,7 +570,7 @@ describe("desktop platform contracts", () => {
     assert.match(flatpakMeta, /<icon type="stock">com\.wordhunter\.app<\/icon>/);
     assert.match(flatpakMeta, /<category>Education<\/category>/);
     assert.match(flatpakMeta, /<category>Languages<\/category>/);
-    assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.2"[^>]*type="development">/);
+    assert.match(flatpakMeta, /<release version="1\.0\.5~rc\.3"[^>]*type="development">/);
     assert.match(tomlSection(cargoToml, "target.'cfg(target_os = \"linux\")'.dependencies"), /gdkwayland-sys = \{ version = "0\.18", features = \["v3_24_22"\] \}/);
     assert.match(desktopWindow, /const LINUX_DESKTOP_APP_ID: &str = "com\.wordhunter\.app"/);
     assert.match(desktopWindow, /set_linux_program_name\(\)/);

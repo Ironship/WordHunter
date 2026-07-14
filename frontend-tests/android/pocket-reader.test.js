@@ -86,7 +86,9 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /options\.openPanel && document\.documentElement\.classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /openPanel: true/);
     assert.match(navigation, /classList\.remove\("pocket-word-panel-open"\)/);
-    assert.match(navigation, /updateReaderSelection\(\{ renderPanel: false \}\)/);
+    assert.match(navigation, /updateReaderSelection\(\{ renderPanel: options\.keepPanelOpen === true \}\)/);
+    assert.match(navigation, /pocketPanelWasOpen/);
+    assert.match(navigation, /word-panel-enter-/);
     assert.match(navigation, /speakWord\(state\.selectedWord\)/);
     assert.doesNotMatch(navigation, /vocab-actions/);
     assert.match(globalActions, /classList\.contains\("pocket-mode"\)/);
@@ -94,6 +96,11 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /navigateReaderWord\(1\)/);
     assert.match(navigation, /currentIndex === -1 \? \(step > 0 \? 0 : tokens\.length - 1\)/);
     assert.match(readerEvents, /changeReaderPage\(dx < 0 \? 1 : -1\)/);
+    assert.match(readerEvents, /isWordPanelOpen\(\)/);
+    assert.match(readerEvents, /keepPanelOpen: true/);
+    assert.match(readerEvents, /animateDirection: direction > 0 \? "next" : "previous"/);
+    assert.match(readerEvents, /button:not\(\.word-token\)/);
+    assert.match(readerEvents, /wordPanel\.addEventListener\("touchend"/);
     assert.match(wordPanel, /data-close-word-panel/);
     assert.doesNotMatch(wordPanel, /pocket-word-dictionary/);
     assert.equal((wordPanel.match(/data-dict-word=/g) || []).length, 1);

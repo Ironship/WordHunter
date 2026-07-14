@@ -93,6 +93,8 @@ describe("loading state", () => {
     assert.match(reducedMotion, /html\.app-booting body::after/);
     assert.match(reducedMotion, /\.book-grid\[aria-busy="true"\]::after/);
     assert.match(reducedMotion, /\.ocr-progress-scan-line/);
+    assert.match(reducedMotion, /\.word-panel\.word-panel-enter-next/);
+    assert.match(reducedMotion, /\.word-panel\.word-panel-enter-previous/);
     assert.match(bookImport, /id="ocr-progress-eta" aria-hidden="true"/);
     assert.match(bookImport, /class="ocr-progress-document"/);
     assert.match(bookImport, /await waitForUiPaint\(\)/);
