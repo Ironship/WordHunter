@@ -123,7 +123,9 @@ impl Store {
         let mut snapshot = match record_files::load_records(&dir) {
             Ok(records) if records.is_empty() => empty_snapshot(dir.clone()),
             Ok(records) => snapshot_payload(&dir, &records),
-            Err(error) => add_snapshot_error(empty_snapshot(dir.clone()), format!("records: {error}")),
+            Err(error) => {
+                add_snapshot_error(empty_snapshot(dir.clone()), format!("records: {error}"))
+            }
         };
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &dir);
@@ -1292,7 +1294,9 @@ mod tests {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
         let store = store_at(&local);
-        store.bulk_save(profile_payload("lokal", "before-sync")).unwrap();
+        store
+            .bulk_save(profile_payload("lokal", "before-sync"))
+            .unwrap();
 
         let remote_payload = profile_payload("fern", "remote");
         let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
@@ -1302,7 +1306,9 @@ mod tests {
             .unwrap();
         let _ = store.snapshot_unacknowledged();
 
-        store.bulk_save(profile_payload("lokal", "after-sync")).unwrap();
+        store
+            .bulk_save(profile_payload("lokal", "after-sync"))
+            .unwrap();
         let snapshot = store.snapshot();
 
         assert_eq!(
