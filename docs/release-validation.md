@@ -52,8 +52,11 @@ also fails if 7-Zip is unavailable or cannot read an archive; release archive
 inspection is never silently skipped. `scripts/build-flatpak.sh` inspects the
 completed bundle before reporting success.
 
-The workflow uploads validated files as workflow artifacts. It does not attach
-or replace assets on an already-published GitHub Release.
+The workflow always uploads validated files as workflow artifacts. A manual
+dispatch may additionally provide an existing draft `release_tag`; after every
+platform job succeeds, a final GitHub-hosted job attaches the five validated
+files to that draft. This keeps release binaries off the maintainer's local
+machine. Scheduled and published-release runs do not attach or replace assets.
 
 ## Android Version Code
 
