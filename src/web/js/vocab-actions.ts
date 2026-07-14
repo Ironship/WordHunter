@@ -16,6 +16,11 @@ import { playStatusSound } from "./status-sounds.js";
 import { resolveProfileTranslationPair } from "./translator-preferences.js";
 
 let lastAutoTtsFocusKey = "";
+const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
+
+interface SelectWordOptions {
+  forceSpeak?: boolean;
+}
 
 function isAutoTranslationRejected(entry: WhVocabEntry): boolean {
   return entry.translationAutoRejected === true;
@@ -26,6 +31,8 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
   if (!canUseTranslationProvider()) return false;
   if (!entry || String(entry.translation || "").trim()) return false;
   if (isAutoTranslationRejected(entry)) return false;
+  if (pendingAutoTranslations.has(entry)) return false;
+  pendingAutoTranslations.add(entry);
   
   try {
     const pair = resolveProfileTranslationPair(state.preferences);
@@ -40,7 +47,14 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
       entry.updatedAt = new Date().toISOString();
       saveState();
 
-      if (state.currentView === "reader") updateReaderSelection();
+      if (state.currentView === "reader" && state.selectedWord === word) {
+        const translationField = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `#word-panel [data-word-field="translation"][data-word="${CSS.escape(word)}"]`
+        );
+        if (translationField && !translationField.value.trim()) {
+          translationField.value = translated;
+        }
+      }
       else if (state.currentView === "vocabulary") renderVocabulary();
       else if (state.currentView === "flashcards") renderReview();
 
@@ -48,6 +62,8 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
     }
   } catch (e) {
     console.warn("Auto translation failed", e);
+  } finally {
+    pendingAutoTranslations.delete(entry);
   }
 
   return false;
@@ -57,7 +73,8 @@ export function selectWord(
   rawWord: string,
   normalizeFn: (word: string) => string,
   preserveScroll = false,
-  wordIndex: number | null = null
+  wordIndex: number | null = null,
+  options: SelectWordOptions = {}
 ): void {
   const word = normalizeFn(rawWord);
   if (!word) return;
@@ -77,7 +94,8 @@ export function selectWord(
   saveState();
   renderShell();
   updateReaderSelection();
-  maybeAutoSpeakFocusedWord(word);
+  if (options.forceSpeak) speakWord(word);
+  else maybeAutoSpeakFocusedWord(word);
   
   if (word.includes(" ") && isFresh) {
     import("./reader/renderer.js").then(({ renderReader }) => {

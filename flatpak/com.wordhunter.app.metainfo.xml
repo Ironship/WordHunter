@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.4" date="2026-07-14" type="development">
+      <description>
+        <ul>
+          <li>Run complete word selection and automatic translation after Reader swipes.</li>
+          <li>Add a draggable collapsed or expanded Pocket word-panel sheet with an accessible handle.</li>
+          <li>Animate horizontal card drags with immediate content updates and layered transitions.</li>
+          <li>Prevent stale translation refreshes and improve gesture release handling.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.3" date="2026-07-14" type="development">
       <description>
         <ul>

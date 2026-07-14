@@ -61,6 +61,7 @@ describe("Android Pocket reader", () => {
     const selection = readFileSync(new URL("../../dist/web/js/reader/selection.js", import.meta.url), "utf8");
     const shell = readFileSync(new URL("../../dist/web/js/views/shell.js", import.meta.url), "utf8");
     const navigation = readFileSync(new URL("../../dist/web/js/reader/word-navigation.js", import.meta.url), "utf8");
+    const platform = readFileSync(new URL("../../dist/web/js/platform.js", import.meta.url), "utf8");
 
     assert.doesNotMatch(html, /id="reader-vocab-list"/);
     assert.doesNotMatch(globalActions, /reader-vocab-list/);
@@ -79,6 +80,8 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /setPdfOcrViewMode\(pdfViewModeBtn\.dataset\.pdfViewMode\)/);
     assert.match(html, /id="reader-previous-word"/);
     assert.match(html, /id="reader-next-word"/);
+    assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);
+    assert.ok(html.indexOf('id="pocket-word-panel-sheet-handle"') < html.indexOf('id="word-panel"'));
     assert.match(html, /id="pocket-navigation-toggle"/);
     assert.match(html, /id="reader-pocket-navigation-toggle"/);
     assert.doesNotMatch(html, /id="reader-pocket-panel-toggle"/);
@@ -86,11 +89,11 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /options\.openPanel && document\.documentElement\.classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /openPanel: true/);
     assert.match(navigation, /classList\.remove\("pocket-word-panel-open"\)/);
-    assert.match(navigation, /updateReaderSelection\(\{ renderPanel: options\.keepPanelOpen === true \}\)/);
     assert.match(navigation, /pocketPanelWasOpen/);
     assert.match(navigation, /word-panel-enter-/);
-    assert.match(navigation, /speakWord\(state\.selectedWord\)/);
-    assert.doesNotMatch(navigation, /vocab-actions/);
+    assert.match(navigation, /word-panel-exit-/);
+    assert.match(navigation, /selectWord\(rawWord, normalizeWord/);
+    assert.match(navigation, /forceSpeak: true/);
     assert.match(globalActions, /classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /navigateReaderWord\(-1\)/);
     assert.match(readerEvents, /navigateReaderWord\(1\)/);
@@ -99,8 +102,16 @@ describe("Android Pocket reader", () => {
     assert.match(readerEvents, /isWordPanelOpen\(\)/);
     assert.match(readerEvents, /keepPanelOpen: true/);
     assert.match(readerEvents, /animateDirection: direction > 0 \? "next" : "previous"/);
+    assert.match(readerEvents, /persistWord: true/);
+    assert.match(readerEvents, /event\.touches\.length !== 1/);
+    assert.match(readerEvents, /candidate\.identifier === swipeStart\?\.touchId/);
     assert.match(readerEvents, /button:not\(\.word-token\)/);
+    assert.match(readerEvents, /wordPanel\.addEventListener\("touchmove"/);
+    assert.match(readerEvents, /word-panel-card-dragging/);
     assert.match(readerEvents, /wordPanel\.addEventListener\("touchend"/);
+    assert.match(platform, /bindPocketWordPanelSheet\(\)/);
+    assert.match(platform, /resolvePocketWordSheetState/);
+    assert.match(platform, /handle\.addEventListener\("pointermove"/);
     assert.match(wordPanel, /data-close-word-panel/);
     assert.doesNotMatch(wordPanel, /pocket-word-dictionary/);
     assert.equal((wordPanel.match(/data-dict-word=/g) || []).length, 1);
@@ -144,7 +155,16 @@ describe("Android Pocket reader", () => {
     assert.match(openPanel.bottom, /^calc\(4\.6rem/);
     assert.equal(openPanel["max-height"], undefined);
     assert.equal(openPanel.overflow, "hidden");
-    assertDeclarations(css, ".pocket-mode .word-panel", { height: "100%", "max-height": "100%", "overflow-y": "auto" });
+    assert.equal(openPanel.display, "flex");
+    assert.equal(openPanel.gap, "0");
+    assert.match(
+      declarationBlock(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]').top,
+      /^max\(/
+    );
+    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { top: "calc(var(--pocket-statusbar-safe-top) + 0.5rem)" });
+    assertDeclarations(css, ".pocket-mode .pocket-word-panel-sheet-handle", { display: "flex", "min-height": "44px", "touch-action": "none" });
+    assertDeclarations(css, ".pocket-mode .word-panel", { flex: "1 1 auto", "min-height": "0", height: "auto", "max-height": "none", "overflow-y": "auto", "touch-action": "pan-y pinch-zoom" });
+    assert.match(css, /@media \(prefers-reduced-motion: no-preference\)[\s\S]*pocket-word-sheet-dragging[\s\S]*transition: top 200ms/);
     assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "sticky" });
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });
     assert.equal(css.includes("pocket-word-dictionary"), false);
@@ -153,5 +173,6 @@ describe("Android Pocket reader", () => {
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-3", { background: "var(--amber-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-5", { background: "var(--green-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-5", { color: "var(--green)" });
+    assertDeclarations(sharedCss, ".word-panel.word-panel-card-dragging", { transition: "none !important" });
   });
 });

@@ -979,33 +979,133 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
+  --pocket-word-sheet-collapsed-size: clamp(14rem, 38dvh, 21rem);
   position: fixed;
   z-index: 60;
   top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
   left: 0.75rem;
   right: 0.75rem;
   bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
+  isolation: isolate;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"] {
+  top: max(
+    calc(var(--pocket-statusbar-safe-top) + 0.5rem),
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-collapsed-size))
+  );
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"] {
+  top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
+  top: var(--pocket-word-sheet-top) !important;
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before,
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 2.6rem;
+  right: 0.45rem;
+  bottom: 0.15rem;
+  left: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--panel);
-  border-top: 1px solid var(--line);
+  pointer-events: none;
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before {
-  display: none;
+  transform: translate(7px, 7px) rotate(0.35deg);
+  opacity: 0.5;
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::after {
+  transform: translate(3px, 3px) rotate(-0.2deg);
+  opacity: 0.78;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--panel);
+  color: var(--muted);
+  touch-action: none;
+  cursor: grab;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle:active {
+  cursor: grabbing;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle span {
+  width: 3.25rem;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -4px;
 }
 
 .pocket-mode .word-panel {
+  position: relative;
+  z-index: 2;
   box-sizing: border-box;
-  height: 100%;
-  max-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-bottom: 1rem;
-  border-radius: 8px;
+  border-radius: 0 0 12px 12px;
+  background: var(--panel);
+  touch-action: pan-y pinch-zoom;
+}
+
+.pocket-mode .word-panel.word-panel-card-ghost {
+  position: absolute;
+  z-index: 4;
+  top: 44px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: auto;
+  max-height: none;
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-text {
+  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + clamp(14rem, 38dvh, 21rem));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper:not(.pocket-word-sheet-dragging):not(.pocket-word-sheet-measuring) {
+    transition: top 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
 }
 
 .pocket-mode .word-panel-header {

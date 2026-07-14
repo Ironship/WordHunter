@@ -164,6 +164,8 @@
   "reader": {
     "title": "リーダー",
     "resizeWordPanel": "単語パネルの幅を変更",
+    "expandWordPanel": "単語カードを展開",
+    "collapseWordPanel": "単語カードを折りたたむ",
     "textLabel": "テキスト",
     "controlsLabel": "リーダー操作",
     "previousWord": "前の単語",
@@ -812,8 +814,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>テスト版 1.0.5-rc.3：Familiar テーマをデスクトップで常にダークにし、リーダーの単語にスワイプ操作を追加しました。フラッシュカードはタップとスワイプができるカード束になり、Pocket のヒートマップは最新週から表示されます。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.3",
+    "whatsNew": "<strong>テスト版 1.0.5-rc.4：リーダーのスワイプで単語の完全な選択と自動翻訳を実行するようになりました。Pocket の単語パネルはドラッグできるボトムシートになり、重なったカードの切り替えがより滑らかで、操作のアクセシビリティも向上しました。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.4",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditSync": "<strong>Syncthing 2.1.0</strong> — デスクトップ版にMPL-2.0の独立したプログラムとして同梱しています。ソース: https://github.com/syncthing/syncthing/tree/v2.1.0",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。"
