@@ -115,7 +115,7 @@ describe("repository validation wiring", () => {
     assertActionsArePinned(workflow);
     assert.deepEqual(workflow.on.release.types, ["published"]);
     assert.ok(workflow.on.workflow_dispatch !== undefined);
-    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "windows"]);
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "windows"]);
     const frontendValidation = workflow.jobs["frontend-validation"];
     assert.equal(stepByName(frontendValidation, "Set up Node").with.cache, "npm");
     assert.equal(
@@ -138,6 +138,20 @@ describe("repository validation wiring", () => {
       assert.ok(upload, `${job.name} does not upload its validated artifact`);
       assert.equal(upload.with["if-no-files-found"], "error");
     }
+    const publish = workflow.jobs["publish-release"];
+    assert.deepEqual(publish.needs, ["android", "windows", "flatpak"]);
+    assert.equal(publish.permissions.contents, "write");
+    assert.match(publish.if, /workflow_dispatch[\s\S]*release_tag/);
+    const download = stepByName(publish, "Download validated artifacts on the GitHub runner");
+    assert.equal(download.uses, "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093");
+    assert.equal(download.with.pattern, "validated-*");
+    assert.equal(download.with["merge-multiple"], true);
+    const requireDraft = stepByName(publish, "Require an existing draft release");
+    assert.equal(requireDraft.env.GH_REPO, "${{ github.repository }}");
+    assert.match(requireDraft.run, /gh release view[\s\S]*isDraft/);
+    const attach = stepByName(publish, "Attach validated assets to the draft release");
+    assert.equal(attach.env.GH_REPO, "${{ github.repository }}");
+    assert.match(attach.run, /gh release upload[\s\S]*--clobber/);
   });
 
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {

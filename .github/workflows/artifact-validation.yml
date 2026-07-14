@@ -6,6 +6,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft release tag to receive validated artifacts
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -178,3 +183,52 @@ jobs:
           name: validated-flatpak
           path: outputs/WordHunter.flatpak
           if-no-files-found: error
+
+  publish-release:
+    name: Attach validated artifacts to draft release
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+    needs: [android, windows, flatpak]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download validated artifacts on the GitHub runner
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: validated-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Require the complete release asset set
+        run: |
+          for asset in \
+            Word.Hunter.Pocket.debug.apk \
+            Word.Hunter.Pocket.release.aab \
+            Word.Hunter.portable.zip \
+            Word.Hunter.Setup.exe \
+            WordHunter.flatpak; do
+            test -f "release-assets/$asset"
+          done
+
+      - name: Require an existing draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
+
+      - name: Attach validated assets to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            release-assets/Word.Hunter.Pocket.debug.apk \
+            release-assets/Word.Hunter.Pocket.release.aab \
+            release-assets/Word.Hunter.portable.zip \
+            release-assets/Word.Hunter.Setup.exe \
+            release-assets/WordHunter.flatpak \
+            --clobber
