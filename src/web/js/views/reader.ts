@@ -39,6 +39,9 @@ interface PdfPinchState {
   zoom: number;
 }
 
+const WORD_CARD_SWIPE_DISTANCE = 56;
+const WORD_CARD_SWIPE_AXIS_RATIO = 1.2;
+
 export function bindReaderEvents(): void {
   import("../dom.js").then(({ els }) => {
     const readerText = els.readerText;
@@ -121,6 +124,15 @@ export function bindReaderEvents(): void {
         ? root.classList.contains("pocket-word-panel-open")
         : !root.classList.contains("reader-word-panel-hidden");
     };
+    const isHorizontalSwipe = (
+      dx: number,
+      dy: number,
+      minDistance: number,
+      axisRatio: number,
+      maxVerticalDistance = Number.POSITIVE_INFINITY
+    ): boolean => Math.abs(dx) >= minDistance
+      && Math.abs(dy) <= maxVerticalDistance
+      && Math.abs(dx) >= Math.abs(dy) * axisRatio;
     const resetWordCardDrag = (animate: boolean): void => {
       window.clearTimeout(wordCardResetTimer);
       wordPanel.classList.remove("word-panel-card-dragging", "word-panel-card-drag-left", "word-panel-card-drag-right");
@@ -145,14 +157,17 @@ export function bindReaderEvents(): void {
       touchId?: number
     ): void => {
       if (card && wordPanel.dataset.wordCardTransition) return;
-      if (target instanceof Element && target.closest(".pagination-controls, button:not(.word-token), a, input, textarea, select, [contenteditable]")) return;
+      if (target instanceof Element) {
+        if (target.closest(".pagination-controls, a, input, textarea, select, [contenteditable]")) return;
+        if (!card && target.closest("button:not(.word-token)")) return;
+      }
       swipeStart = { x: clientX, y: clientY, card, touchId };
     };
     const updateSwipe = (clientX: number, clientY: number, event: TouchEvent): void => {
       if (!swipeStart?.card) return;
       const dx = clientX - swipeStart.x;
       const dy = clientY - swipeStart.y;
-      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      if (!isHorizontalSwipe(dx, dy, 10, WORD_CARD_SWIPE_AXIS_RATIO)) return;
       event.preventDefault();
       window.clearTimeout(wordCardResetTimer);
       const limitedDx = Math.max(-window.innerWidth * 0.72, Math.min(window.innerWidth * 0.72, dx));
@@ -167,7 +182,10 @@ export function bindReaderEvents(): void {
       const dy = clientY - swipeStart.y;
       const card = swipeStart.card;
       swipeStart = null;
-      if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) {
+      const isCommittedSwipe = card
+        ? isHorizontalSwipe(dx, dy, WORD_CARD_SWIPE_DISTANCE, WORD_CARD_SWIPE_AXIS_RATIO)
+        : isHorizontalSwipe(dx, dy, 80, 1.5, 60);
+      if (!isCommittedSwipe) {
         if (card) resetWordCardDrag(true);
         return;
       }
@@ -450,6 +468,11 @@ export function bindReaderEvents(): void {
     wordPanel.addEventListener("pointerdown", rememberWordPanelInteraction);
     wordPanel.addEventListener("touchstart", rememberWordPanelInteraction, { passive: true });
     wordPanel.addEventListener("focusin", rememberWordPanelInteraction);
+    wordPanel.addEventListener("click", (event) => {
+      if (Date.now() >= suppressSwipeClickUntil) return;
+      event.preventDefault();
+      event.stopPropagation();
+    }, { capture: true });
     wordPanel.addEventListener("click", async (event) => {
       rememberWordPanelInteraction();
       if (Date.now() < suppressSwipeClickUntil) {

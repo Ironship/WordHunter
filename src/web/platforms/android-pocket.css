@@ -12,6 +12,7 @@
 html.pocket-mode {
   --pocket-statusbar-safe-top: env(safe-area-inset-top, 0px);
   --pocket-navbar-safe-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  --pocket-word-sheet-collapsed-size: max(4rem, calc(20dvh - 4.6rem - var(--pocket-navbar-safe-bottom)));
   zoom: 1 !important;
 }
 
@@ -167,8 +168,11 @@ html.pocket-mode {
 
 .pocket-mode .nav-list {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: clamp(56px, 9dvh, 76px);
   align-items: stretch;
+  align-content: space-evenly;
   gap: 0.35rem;
 }
 
@@ -180,10 +184,10 @@ html.pocket-mode {
   min-width: 44px;
   max-width: 100%;
   min-height: 56px;
-  padding: 0.55rem 0.65rem;
+  padding: 0.7rem 0.8rem;
   border-radius: 8px;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1.15;
   overflow: hidden;
 }
@@ -979,7 +983,6 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
-  --pocket-word-sheet-collapsed-size: clamp(6.25rem, 18dvh, 9rem);
   position: fixed;
   z-index: 60;
   top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
@@ -1047,7 +1050,7 @@ html.pocket-mode {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 44px;
+  min-height: 56px;
   padding: 0;
   border: 1px solid var(--line);
   border-bottom: 0;
@@ -1094,7 +1097,7 @@ html.pocket-mode {
 .pocket-mode .word-panel.word-panel-card-ghost {
   position: absolute;
   z-index: 4;
-  top: 44px;
+  top: 56px;
   right: 0;
   bottom: 0;
   left: 0;
@@ -1103,7 +1106,7 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-text {
-  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + clamp(6.25rem, 18dvh, 9rem));
+  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + var(--pocket-word-sheet-collapsed-size));
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -1213,10 +1216,6 @@ html.pocket-mode {
 }
 
 @media (max-width: 380px) {
-  .pocket-mode .nav-item {
-    font-size: 0.56rem;
-  }
-
   .pocket-mode .metric-pill#overall-count {
     display: none;
   }
