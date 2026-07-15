@@ -157,6 +157,8 @@ jobs:
 
       - name: Build frontend and Windows release packages
         shell: cmd
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: scripts\build.bat all
 
       - name: Inspect Windows release packages

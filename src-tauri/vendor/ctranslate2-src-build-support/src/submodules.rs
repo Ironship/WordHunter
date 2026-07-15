@@ -1,6 +1,7 @@
 use base64::Engine;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -33,6 +34,23 @@ struct GitModuleFile {
     content: String,
 }
 
+fn github_get(url: &str) -> Result<ureq::http::Response<ureq::Body>, ureq::Error> {
+    let mut request = ureq::get(url)
+        .header("User-Agent", "rust-submodule-fetcher")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28");
+
+    if let Some(token) = ["GITHUB_TOKEN", "GH_TOKEN"]
+        .into_iter()
+        .find_map(|name| env::var(name).ok())
+        .filter(|token| !token.trim().is_empty())
+    {
+        request = request.header("Authorization", format!("Bearer {token}"));
+    }
+
+    request.call()
+}
+
 pub fn get_submodules(
     owner: &str,
     repo: &str,
@@ -43,9 +61,7 @@ pub fn get_submodules(
         owner, repo, tag
     );
     let git_ref: GitRef = {
-        let resp = ureq::get(&ref_url)
-            .header("User-Agent", "rust-submodule-fetcher")
-            .call()?;
+        let resp = github_get(&ref_url)?;
         serde_json::from_reader(BufReader::new(resp.into_body().into_reader()))?
     };
     let commit_sha = git_ref.object.sha;
@@ -55,9 +71,7 @@ pub fn get_submodules(
         owner, repo, commit_sha
     );
     let tree: Tree = {
-        let resp = ureq::get(&tree_url)
-            .header("User-Agent", "rust-submodule-fetcher")
-            .call()?;
+        let resp = github_get(&tree_url)?;
         serde_json::from_reader(BufReader::new(resp.into_body().into_reader()))?
     };
 
@@ -66,9 +80,7 @@ pub fn get_submodules(
         owner, repo, tag
     );
     let gitmodules_file: GitModuleFile = {
-        let resp = ureq::get(&gitmodules_url)
-            .header("User-Agent", "rust-submodule-fetcher")
-            .call()?;
+        let resp = github_get(&gitmodules_url)?;
         serde_json::from_reader(BufReader::new(resp.into_body().into_reader()))?
     };
 
