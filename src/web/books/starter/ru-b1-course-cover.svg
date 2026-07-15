@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Русский без границ. Курс B1</title>
+  <desc id="desc">Бордовая обложка курса русского языка B1 с мостом, расходящимися путями и компасом самостоятельного выбора.</desc>
+  <defs>
+    <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#31152c"/>
+      <stop offset="1" stop-color="#733044"/>
+    </linearGradient>
+    <linearGradient id="b1-water" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#54c6c7" stop-opacity=".45"/>
+      <stop offset=".5" stop-color="#96e0d2" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#54c6c7" stop-opacity=".45"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#b1-bg)"/>
+  <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f7efdc" stroke-width="4"/>
+  <rect x="58" y="58" width="250" height="32" rx="16" fill="#3da5a7"/>
+  <text x="183" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">РУССКИЙ БЕЗ ГРАНИЦ</text>
+  <text x="58" y="132" fill="#f7efdc" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <path d="M28 158H572" stroke="#f2b84b" stroke-width="8"/>
+
+  <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">B1</text>
+  <text x="64" y="344" fill="#f2b84b" font-family="Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="5">СВОЙ МАРШРУТ</text>
+
+  <circle cx="470" cy="262" r="69" fill="#f7efdc" stroke="#3da5a7" stroke-width="7"/>
+  <circle cx="470" cy="262" r="49" fill="none" stroke="#733044" stroke-width="3"/>
+  <path d="M470 206l14 44 36 12-36 12-14 44-14-44-36-12 36-12z" fill="#f2b84b" stroke="#31152c" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M470 220l8 31-8 11-8-11z" fill="#e25b52"/>
+
+  <rect x="54" y="641" width="492" height="90" rx="45" fill="url(#b1-water)"/>
+  <path d="M80 655c74-94 145-139 220-139s146 45 220 139" fill="none" stroke="#f7efdc" stroke-width="18"/>
+  <path d="M80 655c74-94 145-139 220-139s146 45 220 139" fill="none" stroke="#31152c" stroke-width="4" stroke-dasharray="10 14"/>
+  <path d="M115 614V714M180 557V714M246 523V714M354 523V714M420 557V714M485 614V714" stroke="#f7efdc" stroke-width="10"/>
+  <path d="M82 655H518" stroke="#f2b84b" stroke-width="13" stroke-linecap="round"/>
+  <path d="M300 516c-31-52-78-86-142-101M300 516c31-52 78-86 142-101" fill="none" stroke="#3da5a7" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="158" cy="415" r="12" fill="#f2b84b"/><circle cx="442" cy="415" r="12" fill="#f2b84b"/>
+
+  <path d="M62 770H538" stroke="#f2b84b" stroke-width="2"/>
+  <text x="300" y="824" fill="#f7efdc" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="852" fill="#f2b84b" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">汉语A2《日子越过越明白》课程封面</title>
+  <desc id="desc">靛蓝与玉绿色封面，城市街区、窗灯和连续路线组成一幅生活地图，象征扩展日常沟通能力。</desc>
+  <defs>
+    <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#18264f"/>
+      <stop offset="1" stop-color="#283b78"/>
+    </linearGradient>
+    <pattern id="a2-grid" width="54" height="54" patternUnits="userSpaceOnUse">
+      <path d="M54 0H0v54" fill="none" stroke="#d8e8dc" stroke-width="1" opacity=".11"/>
+    </pattern>
+    <filter id="a2-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0a1433" flood-opacity=".6"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#a2-bg)"/>
+  <rect width="600" height="900" fill="url(#a2-grid)"/>
+  <path d="M40 594C129 556 181 618 255 572s110-151 193-113 47 135 112 146" fill="none" stroke="#f3bd62" stroke-width="18" stroke-linecap="round"/>
+  <path d="M40 594C129 556 181 618 255 572s110-151 193-113 47 135 112 146" fill="none" stroke="#fff4d3" stroke-width="3" stroke-dasharray="4 17" stroke-linecap="round"/>
+  <g filter="url(#a2-shadow)">
+    <rect x="66" y="495" width="114" height="159" rx="8" fill="#4db39e"/>
+    <rect x="194" y="430" width="135" height="224" rx="8" fill="#eef0d3"/>
+    <rect x="343" y="378" width="94" height="276" rx="8" fill="#df6d58"/>
+    <rect x="451" y="478" width="81" height="176" rx="8" fill="#82c7b2"/>
+  </g>
+  <g fill="#18264f">
+    <rect x="88" y="525" width="22" height="28" rx="3"/>
+    <rect x="129" y="525" width="22" height="28" rx="3"/>
+    <rect x="88" y="573" width="22" height="28" rx="3"/>
+    <rect x="129" y="573" width="22" height="28" rx="3"/>
+    <rect x="218" y="463" width="30" height="34" rx="3"/>
+    <rect x="273" y="463" width="30" height="34" rx="3"/>
+    <rect x="218" y="522" width="30" height="34" rx="3"/>
+    <rect x="273" y="522" width="30" height="34" rx="3"/>
+    <rect x="366" y="417" width="19" height="39" rx="3"/>
+    <rect x="399" y="417" width="19" height="39" rx="3"/>
+    <rect x="366" y="482" width="19" height="39" rx="3"/>
+    <rect x="399" y="482" width="19" height="39" rx="3"/>
+    <rect x="470" y="513" width="16" height="27" rx="3"/>
+    <rect x="499" y="513" width="16" height="27" rx="3"/>
+  </g>
+  <g fill="#f3bd62">
+    <circle cx="123" cy="574" r="8"/>
+    <circle cx="262" cy="568" r="8"/>
+    <circle cx="390" cy="500" r="8"/>
+    <circle cx="506" cy="574" r="8"/>
+  </g>
+  <text x="55" y="83" fill="#eef0d3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">A2</text>
+  <path d="M55 310h229" stroke="#4db39e" stroke-width="11"/>
+  <text x="57" y="360" fill="#f3bd62" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">日子越过越明白</text>
+  <g transform="translate(55 802)">
+    <rect width="490" height="2" fill="#f3bd62" opacity=".85"/>
+    <text x="0" y="54" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <rect x="450" y="23" width="35" height="35" rx="7" fill="none" stroke="#4db39e" stroke-width="5"/>
+    <path d="m477 52 16 16" stroke="#4db39e" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

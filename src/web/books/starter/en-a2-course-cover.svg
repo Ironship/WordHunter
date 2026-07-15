@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">English A2: Wider Horizons course cover</title>
+  <desc id="desc">A deep blue English A2 cover with a golden compass, orbiting words, and expanding route lines.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#101d4d"/>
+      <stop offset="1" stop-color="#176b8f"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#55d6d0" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#55d6d0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#070d26" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <circle cx="386" cy="498" r="260" fill="url(#glow)"/>
+  <g fill="none" stroke="#9ce5df" stroke-opacity="0.24">
+    <circle cx="386" cy="498" r="205" stroke-width="2"/>
+    <circle cx="386" cy="498" r="156" stroke-width="2" stroke-dasharray="4 12"/>
+    <path d="M17 700 C147 575 217 630 296 540 S445 350 590 410" stroke-width="3"/>
+    <path d="M4 745 C157 618 229 690 328 574 S481 431 610 466" stroke-width="1"/>
+  </g>
+  <g filter="url(#shadow)" transform="translate(386 498)">
+    <circle r="112" fill="#f4b942"/>
+    <circle r="92" fill="#122353" stroke="#fff3c4" stroke-width="3"/>
+    <circle r="72" fill="none" stroke="#55d6d0" stroke-opacity="0.45" stroke-width="2"/>
+    <path d="M-29 32 L22 -65 L29 -32 L-22 65 Z" fill="#fff3c4"/>
+    <path d="M-29 32 L29 -32 L22 65 L-22 65 Z" fill="#ed6a5a" opacity="0.9"/>
+    <circle r="8" fill="#f4b942"/>
+  </g>
+  <g fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="2">
+    <text x="189" y="392" transform="rotate(-22 189 392)">EXPLAIN</text>
+    <text x="493" y="414" transform="rotate(24 493 414)">COMPARE</text>
+    <text x="507" y="633" transform="rotate(-26 507 633)">EXPLORE</text>
+    <text x="176" y="635" transform="rotate(18 176 635)">CONNECT</text>
+  </g>
+  <g fill="#f4b942">
+    <circle cx="183" cy="398" r="5"/>
+    <circle cx="496" cy="419" r="5"/>
+    <circle cx="504" cy="640" r="5"/>
+    <circle cx="170" cy="642" r="5"/>
+  </g>
+  <text x="54" y="80" fill="#fff3c4" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">A2</text>
+  <path d="M54 275 H274" stroke="#f4b942" stroke-width="12"/>
+  <text x="55" y="325" fill="#9ce5df" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">WIDER HORIZONS</text>
+  <g transform="translate(54 813)">
+    <rect width="492" height="2" fill="#f4b942" opacity="0.85"/>
+    <text x="0" y="48" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="473" cy="39" r="17" fill="none" stroke="#55d6d0" stroke-width="5"/>
+    <path d="M485 51 L500 66" stroke="#55d6d0" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

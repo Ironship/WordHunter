@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">English B2: Ideas in Context course cover</title>
+  <desc id="desc">An aubergine English B2 cover with a faceted prism balancing multiple beams of evidence and perspective.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#27143f"/>
+      <stop offset="1" stop-color="#0e1733"/>
+    </linearGradient>
+    <linearGradient id="facetA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7f6e"/>
+      <stop offset="1" stop-color="#b851a4"/>
+    </linearGradient>
+    <linearGradient id="facetB" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#5b63d3"/>
+      <stop offset="1" stop-color="#63dfcf"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#050716" flood-opacity="0.7"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <g fill="none" stroke="#e2d7f5" stroke-opacity="0.13">
+    <path d="M0 386 H600 M0 446 H600 M0 506 H600 M0 566 H600 M0 626 H600 M0 686 H600"/>
+    <path d="M60 350 V740 M120 350 V740 M180 350 V740 M240 350 V740 M300 350 V740 M360 350 V740 M420 350 V740 M480 350 V740 M540 350 V740"/>
+  </g>
+  <g stroke-linecap="round" fill="none">
+    <path d="M8 495 L230 535" stroke="#ffb05c" stroke-width="18" opacity="0.8"/>
+    <path d="M8 556 L230 553" stroke="#63dfcf" stroke-width="11" opacity="0.75"/>
+    <path d="M8 620 L230 571" stroke="#ef6f9a" stroke-width="7" opacity="0.75"/>
+    <path d="M395 541 L592 434" stroke="#ffb05c" stroke-width="8" opacity="0.9"/>
+    <path d="M395 554 L604 552" stroke="#63dfcf" stroke-width="14" opacity="0.85"/>
+    <path d="M395 568 L590 677" stroke="#ef6f9a" stroke-width="20" opacity="0.75"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M230 469 L319 417 L407 484 L395 610 L303 681 L218 600 Z" fill="#171d42" stroke="#eadff8" stroke-width="3"/>
+    <path d="M230 469 L319 417 L305 551 L218 600 Z" fill="url(#facetA)" opacity="0.95"/>
+    <path d="M319 417 L407 484 L305 551 Z" fill="#ffb05c" opacity="0.9"/>
+    <path d="M407 484 L395 610 L305 551 Z" fill="url(#facetB)" opacity="0.95"/>
+    <path d="M395 610 L303 681 L305 551 Z" fill="#555fc2" opacity="0.95"/>
+    <path d="M303 681 L218 600 L305 551 Z" fill="#922d79" opacity="0.95"/>
+    <circle cx="305" cy="551" r="13" fill="#ffffff"/>
+  </g>
+  <g fill="#eadff8" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.5">
+    <text x="25" y="472">EVIDENCE</text>
+    <text x="25" y="540">CONTEXT</text>
+    <text x="25" y="610">ETHICS</text>
+    <text x="475" y="416">CLAIM</text>
+    <text x="477" y="535">NUANCE</text>
+    <text x="465" y="710">DECISION</text>
+  </g>
+  <text x="54" y="80" fill="#eadff8" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">B2</text>
+  <path d="M54 275 H274" stroke="#ff7f6e" stroke-width="12"/>
+  <text x="55" y="325" fill="#63dfcf" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">IDEAS IN CONTEXT</text>
+  <g transform="translate(54 813)">
+    <rect width="492" height="2" fill="#ff7f6e" opacity="0.85"/>
+    <text x="0" y="48" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="473" cy="39" r="17" fill="none" stroke="#63dfcf" stroke-width="5"/>
+    <path d="M485 51 L500 66" stroke="#63dfcf" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

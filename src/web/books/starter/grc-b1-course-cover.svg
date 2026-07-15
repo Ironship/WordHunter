@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Μαθήματα Ἑλληνικῆς B1, Πόλις ἐν λόγοις</title>
+  <desc id="desc">Κυανοῦν κάλυμμα μετὰ στοᾶς, δημοσίου κυλίνδρου καὶ χάλκινων γραμμῶν πόλεως.</desc>
+  <defs>
+    <linearGradient id="bg-b1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#102e4a"/>
+      <stop offset="1" stop-color="#071725"/>
+    </linearGradient>
+    <linearGradient id="copper-b1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#efbd83"/>
+      <stop offset="1" stop-color="#a95538"/>
+    </linearGradient>
+    <pattern id="key-b1" width="56" height="28" patternUnits="userSpaceOnUse">
+      <path d="M0 4h42v18H14V11h20" fill="none" stroke="#d6a66e" stroke-width="4"/>
+    </pattern>
+    <filter id="shadow-b1" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#020911" flood-opacity=".6"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg-b1)"/>
+  <path d="M0 684L112 615l73 34 112-91 104 46 80-73 119 66v303H0Z" fill="#0d2233"/>
+  <path d="M0 684L112 615l73 34 112-91 104 46 80-73 119 66" fill="none" stroke="#4d7e92" stroke-width="3" opacity=".7"/>
+  <g transform="translate(226 365)" filter="url(#shadow-b1)">
+    <path d="M0 58L174 0l174 58Z" fill="url(#copper-b1)"/>
+    <rect x="18" y="58" width="312" height="22" fill="#e8cfaa"/>
+    <g fill="#d6b889">
+      <rect x="42" y="80" width="34" height="201"/>
+      <rect x="119" y="80" width="34" height="201"/>
+      <rect x="196" y="80" width="34" height="201"/>
+      <rect x="273" y="80" width="34" height="201"/>
+    </g>
+    <g fill="#a95538">
+      <path d="M37 92h44l-7 19H44Z"/>
+      <path d="M114 92h44l-7 19h-30Z"/>
+      <path d="M191 92h44l-7 19h-30Z"/>
+      <path d="M268 92h44l-7 19h-30Z"/>
+    </g>
+    <rect x="0" y="281" width="348" height="25" fill="#e8cfaa"/>
+  </g>
+  <g transform="translate(70 515) rotate(-7)" filter="url(#shadow-b1)">
+    <path d="M8 0h180c-18 22-18 160 0 182H8c18-22 18-160 0-182Z" fill="#f1dfba"/>
+    <rect x="0" y="-7" width="20" height="196" rx="10" fill="#a95538"/>
+    <rect x="176" y="-7" width="20" height="196" rx="10" fill="#a95538"/>
+    <g stroke="#776047" stroke-width="3" opacity=".65">
+      <path d="M38 42h121M38 66h105M38 90h126M38 114h93M38 138h119"/>
+    </g>
+  </g>
+  <rect x="31" y="31" width="538" height="838" fill="none" stroke="#d6a66e" stroke-width="2"/>
+  <rect x="31" y="64" width="538" height="28" fill="url(#key-b1)" opacity=".86"/>
+  <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
+    <text x="54" y="145" fill="#e8cfaa" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="47" y="313" fill="#fff7e5" font-size="142">B1</text>
+    <text x="55" y="361" fill="#d77a55" font-size="28">ΠΟΛΙΣ ΕΝ ΛΟΓΟΙΣ</text>
+  </g>
+  <path d="M56 386h252" stroke="#5b9cac" stroke-width="5"/>
+  <g transform="translate(54 831)" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="0" y="25" fill="#fff7e5" font-size="24" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="466" cy="14" r="15" fill="none" stroke="#d77a55" stroke-width="5"/>
+    <path d="M477 25l16 16" stroke="#d77a55" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

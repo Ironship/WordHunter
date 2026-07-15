@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Cursus linguae Latinae A2: Inter Urbem et Mare</title>
+  <desc id="desc">Navis Romana inter fluctus tessellatos iter longius ab urbe ad mare facit.</desc>
+  <rect width="600" height="900" fill="#e8ddc4"/>
+  <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#183954" stroke-width="4"/>
+  <circle cx="117" cy="162" r="62" fill="#d88a32"/>
+  <path d="M0 642 Q75 604 150 642 T300 642 T450 642 T600 642 V900H0Z" fill="#2f6f86"/>
+  <path d="M0 696 Q75 658 150 696 T300 696 T450 696 T600 696 V900H0Z" fill="#183954"/>
+  <g transform="translate(94 365)" stroke="#183954" stroke-width="6" stroke-linejoin="round">
+    <path d="M22 238H406L351 304H91Z" fill="#b85c45"/>
+    <path d="M76 265H363" fill="none" stroke="#e8ddc4" stroke-width="5"/>
+    <path d="M210 24V239" fill="none"/>
+    <path d="M204 43Q102 92 104 208H204Z" fill="#f1bd55"/>
+    <path d="M218 70Q319 111 337 208H218Z" fill="#f4ead4"/>
+    <path d="M202 29L228 42L202 55Z" fill="#b85c45"/>
+    <path d="M65 237Q41 208 66 184Q86 214 109 238" fill="#d88a32"/>
+  </g>
+  <g fill="#183954" font-family="Georgia, 'Times New Roman', serif">
+    <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
+    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="274" font-size="22" font-style="italic">Inter Urbem et Mare</text>
+  </g>
+  <g transform="translate(476 292)">
+    <rect x="-58" y="-58" width="116" height="116" rx="10" fill="#f1bd55" stroke="#183954" stroke-width="5" transform="rotate(45)"/>
+    <text x="0" y="17" text-anchor="middle" fill="#183954" font-family="Arial, sans-serif" font-size="48" font-weight="800">A2</text>
+  </g>
+  <g fill="#e8ddc4" font-family="Arial, sans-serif">
+    <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+  </g>
+</svg>

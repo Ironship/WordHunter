@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">日本語 A1 はじめの一歩 コース表紙</title>
+  <desc id="desc">朱色の朝日と、ひらがなの石が一歩ずつ続く日本語A1コースの表紙。</desc>
+  <defs>
+    <linearGradient id="a1-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#17324d"/>
+      <stop offset="1" stop-color="#285a67"/>
+    </linearGradient>
+    <linearGradient id="a1-sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd98a"/>
+      <stop offset="1" stop-color="#f26b4f"/>
+    </linearGradient>
+    <filter id="a1-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#0b2031" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#a1-bg)"/>
+  <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#f7ead3" stroke-width="3"/>
+  <circle cx="455" cy="255" r="108" fill="url(#a1-sun)"/>
+  <circle cx="455" cy="255" r="132" fill="none" stroke="#f7ead3" stroke-width="2" opacity=".28"/>
+  <path d="M0 687C115 625 225 724 338 665C433 616 520 628 600 665V900H0Z" fill="#10293b"/>
+  <path d="M0 735C121 694 245 778 368 721C465 676 536 690 600 713V900H0Z" fill="#0b2031" opacity=".72"/>
+  <g filter="url(#a1-shadow)" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-weight="700" text-anchor="middle">
+    <g transform="translate(91 625) rotate(-7)">
+      <rect width="122" height="82" rx="27" fill="#f26b4f"/>
+      <text x="61" y="55" fill="#ffffff" font-size="35">あ</text>
+    </g>
+    <g transform="translate(227 542) rotate(4)">
+      <rect width="112" height="76" rx="25" fill="#f7ead3"/>
+      <text x="56" y="51" fill="#17324d" font-size="32">い</text>
+    </g>
+    <g transform="translate(352 457) rotate(-3)">
+      <rect width="102" height="70" rx="23" fill="#77c8bd"/>
+      <text x="51" y="47" fill="#17324d" font-size="29">う</text>
+    </g>
+  </g>
+  <rect x="54" y="60" width="222" height="42" rx="21" fill="#f26b4f"/>
+  <text x="165" y="88" fill="#ffffff" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="700" letter-spacing="3">日本語コース</text>
+  <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">A1</text>
+  <path d="M56 283H294" stroke="#ffd98a" stroke-width="11"/>
+  <text x="56" y="333" fill="#f7ead3" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">はじめの一歩</text>
+  <g transform="translate(55 792)">
+    <rect width="490" height="2" fill="#77c8bd"/>
+    <text x="0" y="53" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="17" fill="none" stroke="#f26b4f" stroke-width="5"/>
+    <path d="M480 54l16 16" stroke="#f26b4f" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

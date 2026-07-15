@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Tra le righe, corso d’italiano B2</title>
+  <desc id="desc">Pagine geometriche color avorio e turchese si sovrappongono su un fondo prugna, attraversate da linee che suggeriscono analisi e connessioni.</desc>
+  <rect width="600" height="900" fill="#3f1f3f"/>
+  <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#f3dfb8" stroke-width="4"/>
+  <g transform="translate(78 370)">
+    <path d="M0 68 L184 0 L410 56 V354 L220 420 L0 354Z" fill="#f3dfb8" stroke="#1d3c4a" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M220 120 L410 56 V354 L220 420Z" fill="#56b5ad" stroke="#1d3c4a" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M220 120 L0 68 V354 L220 420Z" fill="#fff3d7" stroke="#1d3c4a" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M220 120 V420" stroke="#1d3c4a" stroke-width="6"/>
+    <g fill="none" stroke="#c05455" stroke-width="8" stroke-linecap="round">
+      <path d="M42 131 L174 162"/>
+      <path d="M42 184 L174 215"/>
+      <path d="M42 237 L144 261"/>
+    </g>
+    <g fill="none" stroke="#f3dfb8" stroke-width="8" stroke-linecap="round">
+      <path d="M264 166 L369 130"/>
+      <path d="M264 221 L369 185"/>
+      <path d="M264 276 L344 249"/>
+    </g>
+  </g>
+  <g fill="none" stroke="#56b5ad" stroke-width="5">
+    <circle cx="478" cy="144" r="72"/>
+    <circle cx="478" cy="144" r="46"/>
+    <path d="M406 144 H550 M478 72 V216"/>
+  </g>
+  <g fill="#f3dfb8" font-family="Georgia, 'Times New Roman', serif">
+    <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="62" y="205" font-size="43" font-weight="700">CORSO</text>
+    <text x="62" y="255" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="305" font-size="20" font-style="italic">Tra le righe</text>
+  </g>
+  <g transform="translate(477 302)">
+    <path d="M0 -72 L72 0 L0 72 L-72 0Z" fill="#c05455" stroke="#f3dfb8" stroke-width="5"/>
+    <text x="0" y="18" text-anchor="middle" fill="#fff3d7" font-family="Arial, sans-serif" font-size="51" font-weight="800">B2</text>
+  </g>
+  <g fill="#f3dfb8" font-family="Arial, sans-serif">
+    <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+  </g>
+</svg>

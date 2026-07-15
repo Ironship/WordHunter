@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Un passo più lontano, corso d’italiano A2</title>
+  <desc id="desc">Un percorso blu attraversa terrazze gialle e conduce verso un orizzonte italiano, simbolo di autonomia crescente.</desc>
+  <rect width="600" height="900" fill="#e9f1ec"/>
+  <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#153b5b" stroke-width="4"/>
+  <path d="M34 566 H566 V866 H34Z" fill="#153b5b"/>
+  <path d="M34 566 L180 424 L304 532 L421 372 L566 500 V696 H34Z" fill="#f2bd45" stroke="#153b5b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M34 651 C142 595 231 623 307 694 C373 754 460 757 566 676 V866 H34Z" fill="#357d8d"/>
+  <path d="M269 866 C267 755 305 690 366 632 C408 591 426 547 420 487" fill="none" stroke="#e9f1ec" stroke-width="34" stroke-linecap="round"/>
+  <path d="M420 487 C394 453 390 423 420 397 C450 423 446 453 420 487Z" fill="#dc6047" stroke="#153b5b" stroke-width="4"/>
+  <circle cx="420" cy="430" r="9" fill="#e9f1ec"/>
+  <g fill="#153b5b" font-family="Georgia, 'Times New Roman', serif">
+    <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="62" y="210" font-size="43" font-weight="700">CORSO</text>
+    <text x="62" y="260" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="313" font-size="20" font-style="italic">Un passo più lontano</text>
+  </g>
+  <g transform="translate(486 307)">
+    <rect x="-66" y="-55" width="132" height="110" rx="18" fill="#dc6047" stroke="#153b5b" stroke-width="5"/>
+    <text x="0" y="18" text-anchor="middle" fill="#fff7e8" font-family="Arial, sans-serif" font-size="51" font-weight="800">A2</text>
+  </g>
+  <g fill="#e9f1ec" font-family="Arial, sans-serif">
+    <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Parole per cominciare, corso d’italiano A1</title>
+  <desc id="desc">Una finestra color crema su una piazza italiana stilizzata, con forme corallo e verdi che evocano i primi incontri in città.</desc>
+  <rect width="600" height="900" fill="#f5edda"/>
+  <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#173f3a" stroke-width="4"/>
+  <circle cx="486" cy="124" r="66" fill="#ef8354"/>
+  <path d="M0 684 Q150 606 300 676 T600 664 V900 H0Z" fill="#173f3a"/>
+  <path d="M0 735 Q152 661 302 731 T600 719 V900 H0Z" fill="#2f6f61"/>
+  <g transform="translate(83 389)">
+    <rect x="0" y="78" width="434" height="190" rx="6" fill="#fffaf0" stroke="#173f3a" stroke-width="5"/>
+    <path d="M-20 78 L217 -24 L454 78Z" fill="#ef8354" stroke="#173f3a" stroke-width="5" stroke-linejoin="round"/>
+    <rect x="56" y="130" width="74" height="138" fill="#f5c453" stroke="#173f3a" stroke-width="5"/>
+    <rect x="169" y="124" width="96" height="76" rx="48" fill="#89b9aa" stroke="#173f3a" stroke-width="5"/>
+    <path d="M217 126 V199 M171 163 H263" stroke="#173f3a" stroke-width="4"/>
+    <rect x="305" y="130" width="74" height="94" fill="#89b9aa" stroke="#173f3a" stroke-width="5"/>
+    <path d="M342 132 V222 M307 177 H377" stroke="#173f3a" stroke-width="4"/>
+  </g>
+  <g fill="#173f3a" font-family="Georgia, 'Times New Roman', serif">
+    <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="62" y="210" font-size="43" font-weight="700">CORSO</text>
+    <text x="62" y="260" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="313" font-size="20" font-style="italic">Parole per cominciare</text>
+  </g>
+  <g transform="translate(444 282)">
+    <circle r="70" fill="#f5c453" stroke="#173f3a" stroke-width="5"/>
+    <text x="0" y="18" text-anchor="middle" fill="#173f3a" font-family="Arial, sans-serif" font-size="51" font-weight="800">A1</text>
+  </g>
+  <g fill="#f5edda" font-family="Arial, sans-serif">
+    <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">40 LEZIONI</text>
+  </g>
+</svg>

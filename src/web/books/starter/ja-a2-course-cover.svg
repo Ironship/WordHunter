@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">日本語 A2 暮らしを広げる コース表紙</title>
+  <desc id="desc">青緑の町を複数の道が結び、暮らしの範囲が広がる日本語A2コースの表紙。</desc>
+  <defs>
+    <linearGradient id="a2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#103b46"/>
+      <stop offset="1" stop-color="#14766f"/>
+    </linearGradient>
+    <pattern id="a2-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#d8f0df" stroke-width="1" opacity=".11"/>
+    </pattern>
+    <filter id="a2-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#08262c" flood-opacity=".5"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#a2-bg)"/>
+  <rect width="600" height="900" fill="url(#a2-grid)"/>
+  <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#edf5e8" stroke-width="3"/>
+  <rect x="54" y="60" width="222" height="42" rx="21" fill="#ef9b45"/>
+  <text x="165" y="88" fill="#103b46" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="800" letter-spacing="3">日本語コース</text>
+  <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">A2</text>
+  <path d="M56 283H294" stroke="#ef9b45" stroke-width="11"/>
+  <text x="56" y="333" fill="#edf5e8" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">暮らしを広げる</text>
+  <g transform="translate(58 408)" filter="url(#a2-shadow)">
+    <path d="M10 257C74 223 86 137 153 135C230 133 208 245 282 237C352 230 352 92 469 36" fill="none" stroke="#edf5e8" stroke-width="24" stroke-linecap="round"/>
+    <path d="M13 257C89 271 129 318 208 305C286 292 300 210 368 213C415 215 442 245 480 268" fill="none" stroke="#ef9b45" stroke-width="13" stroke-linecap="round"/>
+    <path d="M153 135C178 89 233 62 294 78C351 94 386 127 469 36" fill="none" stroke="#7dd7c0" stroke-width="10" stroke-linecap="round"/>
+    <g fill="#103b46" stroke="#edf5e8" stroke-width="6">
+      <circle cx="11" cy="257" r="19"/>
+      <circle cx="153" cy="135" r="19"/>
+      <circle cx="282" cy="237" r="19"/>
+      <circle cx="469" cy="36" r="19"/>
+    </g>
+    <g fill="#ef9b45">
+      <rect x="52" y="95" width="45" height="58" rx="4"/>
+      <rect x="319" y="117" width="53" height="72" rx="4"/>
+      <rect x="401" y="269" width="48" height="61" rx="4"/>
+    </g>
+    <g fill="#103b46">
+      <rect x="64" y="110" width="8" height="13"/><rect x="79" y="110" width="8" height="13"/>
+      <rect x="332" y="133" width="9" height="14"/><rect x="350" y="133" width="9" height="14"/>
+      <rect x="414" y="284" width="8" height="13"/><rect x="430" y="284" width="8" height="13"/>
+    </g>
+  </g>
+  <g transform="translate(55 792)">
+    <rect width="490" height="2" fill="#7dd7c0"/>
+    <text x="0" y="53" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="17" fill="none" stroke="#ef9b45" stroke-width="5"/>
+    <path d="M480 54l16 16" stroke="#ef9b45" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

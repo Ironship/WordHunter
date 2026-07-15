@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Premiers échanges en français, cours A1</title>
+  <desc id="desc">Couverture corail et bleu nuit avec une porte lumineuse, des bulles de dialogue et des pas menant vers le français.</desc>
+  <rect width="600" height="900" fill="#17243a"/>
+  <rect x="24" y="24" width="552" height="852" rx="24" fill="none" stroke="#ffcc70" stroke-width="4"/>
+  <path d="M24 188H576V340H24Z" fill="#ed6a5a"/>
+  <circle cx="492" cy="104" r="52" fill="#ffcc70"/>
+  <text x="492" y="121" text-anchor="middle" fill="#17243a" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">A1</text>
+  <text x="58" y="86" fill="#fff8e8" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="58" y="142" fill="#ffcc70" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">COURS DE FRANÇAIS</text>
+  <text x="300" y="246" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700">Premiers</text>
+  <text x="300" y="306" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700">échanges</text>
+
+  <path d="M190 430H410V718H190Z" fill="#0d1627" stroke="#fff8e8" stroke-width="8"/>
+  <path d="M218 456H382V718H218Z" fill="#ffcc70"/>
+  <path d="M382 456L294 493V718H382Z" fill="#ed6a5a"/>
+  <circle cx="316" cy="585" r="8" fill="#17243a"/>
+  <path d="M294 718C332 646 387 606 486 577V718Z" fill="#7ac7b7"/>
+  <path d="M294 718C333 653 390 614 484 590" fill="none" stroke="#fff8e8" stroke-width="18" stroke-linecap="round"/>
+
+  <path d="M76 432H204Q224 432 224 452V492Q224 512 204 512H142L112 538L119 512H76Q56 512 56 492V452Q56 432 76 432Z" fill="#fff8e8"/>
+  <circle cx="103" cy="472" r="7" fill="#ed6a5a"/>
+  <circle cx="140" cy="472" r="7" fill="#ed6a5a"/>
+  <circle cx="177" cy="472" r="7" fill="#ed6a5a"/>
+  <path d="M418 394H524Q544 394 544 414V454Q544 474 524 474H485L510 500L470 474H418Q398 474 398 454V414Q398 394 418 394Z" fill="#7ac7b7"/>
+  <path d="M430 434H512" stroke="#17243a" stroke-width="8" stroke-linecap="round"/>
+
+  <g fill="#ffcc70">
+    <ellipse cx="145" cy="692" rx="22" ry="13" transform="rotate(-18 145 692)"/>
+    <ellipse cx="188" cy="735" rx="22" ry="13" transform="rotate(18 188 735)"/>
+    <ellipse cx="231" cy="767" rx="22" ry="13" transform="rotate(-15 231 767)"/>
+  </g>
+  <text x="300" y="827" text-anchor="middle" fill="#fff8e8" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">PARLER • COMPRENDRE • AGIR</text>
+  <text x="300" y="856" text-anchor="middle" fill="#ffcc70" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+</svg>

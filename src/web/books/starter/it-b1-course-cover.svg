@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Voci e percorsi, corso d’italiano B1</title>
+  <desc id="desc">Archi color terracotta e onde sonore attraversano una notte blu, evocando racconti, viaggi e voci del quartiere.</desc>
+  <rect width="600" height="900" fill="#18263d"/>
+  <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#f0d8aa" stroke-width="4"/>
+  <circle cx="470" cy="170" r="78" fill="#e7b84a"/>
+  <path d="M34 594 Q150 502 266 594 T498 594 T730 594 V866 H34Z" fill="#b54f3f"/>
+  <path d="M34 658 Q150 566 266 658 T498 658 T730 658 V866 H34Z" fill="#6f3340"/>
+  <g fill="#f0d8aa" stroke="#18263d" stroke-width="5">
+    <path d="M72 662 V488 Q72 390 170 390 Q268 390 268 488 V662 H218 V490 Q218 440 170 440 Q122 440 122 490 V662Z"/>
+    <path d="M240 662 V450 Q240 326 364 326 Q488 326 488 450 V662 H430 V452 Q430 384 364 384 Q298 384 298 452 V662Z"/>
+  </g>
+  <g fill="none" stroke="#e7b84a" stroke-width="10" stroke-linecap="round">
+    <path d="M87 735 Q126 699 165 735 T243 735"/>
+    <path d="M260 756 Q309 706 358 756 T456 756 T554 756"/>
+  </g>
+  <g fill="#f0d8aa" font-family="Georgia, 'Times New Roman', serif">
+    <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="62" y="205" font-size="43" font-weight="700">CORSO</text>
+    <text x="62" y="255" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="305" font-size="20" font-style="italic">Voci e percorsi</text>
+  </g>
+  <g transform="translate(486 301)">
+    <path d="M-72 -58 H72 V58 H-72Z" fill="#e7b84a" stroke="#f0d8aa" stroke-width="5"/>
+    <text x="0" y="18" text-anchor="middle" fill="#18263d" font-family="Arial, sans-serif" font-size="51" font-weight="800">B1</text>
+  </g>
+  <g fill="#f0d8aa" font-family="Arial, sans-serif">
+    <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+  </g>
+</svg>

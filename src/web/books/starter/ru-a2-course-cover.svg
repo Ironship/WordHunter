@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Русский в действии. Курс A2</title>
+  <desc id="desc">Бирюзовая обложка курса русского языка A2 с городскими кварталами и ярким маршрутом между точками.</desc>
+  <defs>
+    <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#073f49"/>
+      <stop offset="1" stop-color="#0d6f70"/>
+    </linearGradient>
+    <pattern id="a2-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#b9ddd2" stroke-width="1" opacity=".16"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#a2-bg)"/>
+  <rect width="600" height="900" fill="url(#a2-grid)"/>
+  <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f5f1df" stroke-width="4"/>
+  <rect x="58" y="58" width="250" height="32" rx="16" fill="#ff8c5a"/>
+  <text x="183" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">РУССКИЙ В ДЕЙСТВИИ</text>
+  <text x="58" y="132" fill="#f5f1df" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <path d="M28 158H572" stroke="#ffc857" stroke-width="8"/>
+
+  <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">A2</text>
+  <text x="64" y="344" fill="#ffc857" font-family="Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="5">ДАЛЬШЕ В ПУТЬ</text>
+  <circle cx="478" cy="260" r="68" fill="#f5f1df" opacity=".95"/>
+  <path d="M448 269l19 19 40-55" fill="none" stroke="#ff6b57" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g fill="#f5f1df" stroke="#073f49" stroke-width="5">
+    <rect x="60" y="438" width="128" height="116" rx="12"/>
+    <rect x="225" y="386" width="130" height="124" rx="12"/>
+    <rect x="396" y="426" width="142" height="112" rx="12"/>
+    <rect x="91" y="610" width="138" height="104" rx="12"/>
+    <rect x="286" y="570" width="143" height="135" rx="12"/>
+    <rect x="463" y="605" width="77" height="104" rx="12"/>
+  </g>
+  <g fill="#0d6f70">
+    <path d="M82 464h84v16H82zM82 500h56v16H82zM247 412h86v16h-86zM247 450h64v16h-64z"/>
+    <path d="M418 452h98v16h-98zM418 490h58v16h-58zM113 636h94v16h-94zM113 674h60v16h-60z"/>
+    <path d="M308 596h99v16h-99zM308 634h68v16h-68zM485 631h33v16h-33zM485 670h33v16h-33z"/>
+  </g>
+  <path d="M112 575C152 520 222 551 263 527S330 492 378 537s85 59 116 29" fill="none" stroke="#ffc857" stroke-width="12" stroke-linecap="round" stroke-dasharray="3 20"/>
+  <circle cx="112" cy="575" r="15" fill="#ff6b57" stroke="#f5f1df" stroke-width="5"/>
+  <path d="M493 566l-23-37h46z" fill="#ff6b57" stroke="#f5f1df" stroke-width="5" stroke-linejoin="round"/>
+
+  <path d="M62 770H538" stroke="#ffc857" stroke-width="2"/>
+  <text x="300" y="824" fill="#f5f1df" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="852" fill="#ffc857" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

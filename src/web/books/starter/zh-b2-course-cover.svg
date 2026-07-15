@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">汉语B2《在复杂问题中表达》课程封面</title>
+  <desc id="desc">石墨黑与琥珀色封面，多层论据经过透明棱镜汇成清晰光束，象征有分寸的复杂论证。</desc>
+  <defs>
+    <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111722"/>
+      <stop offset="1" stop-color="#273653"/>
+    </linearGradient>
+    <linearGradient id="b2-beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#72d6d1" stop-opacity=".05"/>
+      <stop offset="1" stop-color="#72d6d1" stop-opacity=".9"/>
+    </linearGradient>
+    <linearGradient id="b2-prism" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#8797c7" stop-opacity=".08"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#b2-bg)"/>
+  <rect x="26" y="26" width="548" height="848" rx="20" fill="none" stroke="#e7ebf3" stroke-width="3"/>
+  <path d="M26 153h548" stroke="#e5a950" stroke-width="9"/>
+  <g>
+    <rect x="66" y="405" width="244" height="52" rx="10" fill="#e7ebf3"/>
+    <rect x="66" y="471" width="218" height="52" rx="10" fill="#9aa9d7"/>
+    <rect x="66" y="537" width="192" height="52" rx="10" fill="#72d6d1"/>
+    <rect x="66" y="603" width="166" height="52" rx="10" fill="#e5a950"/>
+  </g>
+  <g fill="#172032">
+    <circle cx="94" cy="431" r="7"/>
+    <path d="M114 431h156" stroke="#172032" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="94" cy="497" r="7"/>
+    <path d="M114 497h130" stroke="#172032" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="94" cy="563" r="7"/>
+    <path d="M114 563h104" stroke="#172032" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="94" cy="629" r="7"/>
+    <path d="M114 629h78" stroke="#172032" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <path d="M216 399h142l-22 260H216Z" fill="url(#b2-beam)"/>
+  <path d="m355 532 92-144 93 270-204 1Z" fill="url(#b2-prism)" stroke="#e7ebf3" stroke-width="6" stroke-linejoin="round"/>
+  <path d="m355 532 92-144 24 144Z" fill="#6879bc" opacity=".8"/>
+  <path d="m355 532 116 0 69 126-204 1Z" fill="#e5a950" opacity=".85"/>
+  <path d="m471 532 102-67v177l-33 16Z" fill="#72d6d1" opacity=".82"/>
+  <path d="M477 532h96" stroke="#ffffff" stroke-width="3" opacity=".7"/>
+  <g fill="#e7ebf3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="17" font-weight="700">
+    <text x="76" y="697">证据</text>
+    <text x="154" y="697">限制</text>
+    <text x="232" y="697">权衡</text>
+    <text x="310" y="697">结论</text>
+  </g>
+  <path d="M74 714h278" stroke="#72d6d1" stroke-width="3"/>
+  <circle cx="95" cy="714" r="7" fill="#e7ebf3"/>
+  <circle cx="174" cy="714" r="7" fill="#9aa9d7"/>
+  <circle cx="253" cy="714" r="7" fill="#72d6d1"/>
+  <circle cx="332" cy="714" r="7" fill="#e5a950"/>
+  <text x="55" y="83" fill="#e7ebf3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">B2</text>
+  <path d="M55 310h229" stroke="#72d6d1" stroke-width="11"/>
+  <text x="57" y="360" fill="#e5a950" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">在复杂问题中表达</text>
+  <g transform="translate(55 784)">
+    <rect width="490" height="2" fill="#e5a950" opacity=".85"/>
+    <text x="0" y="54" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="18" fill="none" stroke="#72d6d1" stroke-width="5"/>
+    <path d="m480 55 15 15" stroke="#72d6d1" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

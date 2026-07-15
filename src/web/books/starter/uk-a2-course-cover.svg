@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Українська в дії. Курс A2</title>
+  <desc id="desc">Бірюзово-коралова обкладинка курсу української мови A2 з мапою міста, маршрутом і позначками, що символізують практичне використання мови.</desc>
+  <defs>
+    <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#083f4b"/>
+      <stop offset="1" stop-color="#087f79"/>
+    </linearGradient>
+    <linearGradient id="a2-route" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd27d"/>
+      <stop offset="1" stop-color="#ff7b66"/>
+    </linearGradient>
+    <pattern id="a2-grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#bce9dc" stroke-width="1" opacity=".13"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#a2-bg)"/>
+  <rect width="600" height="900" fill="url(#a2-grid)"/>
+  <rect x="25" y="25" width="550" height="850" rx="22" fill="none" stroke="#e9fff8" stroke-width="3"/>
+  <path d="M25 158H575" stroke="#ff9a72" stroke-width="9"/>
+  <rect x="60" y="54" width="204" height="36" rx="18" fill="#ff765f"/>
+  <text x="162" y="78" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.8">УКРАЇНСЬКА В ДІЇ</text>
+  <text x="60" y="122" fill="#e9fff8" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">КУРС УКРАЇНСЬКОЇ МОВИ</text>
+  <text x="57" y="304" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="168" font-weight="900" letter-spacing="-8">A2</text>
+  <text x="65" y="347" fill="#ffd27d" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="4">МОВА В ДІЇ</text>
+
+  <g transform="translate(61 385)">
+    <path d="M0 66L126 0l88 48 100-45 163 69v278L338 296l-114 45-91-42L0 358z" fill="#e9fff8" opacity=".96"/>
+    <path d="M126 0l7 299M214 48l10 293M314 3l24 293" stroke="#0b5f66" stroke-width="5" opacity=".55"/>
+    <path d="M24 111l85-35 69 60 79-39 70 55 124-48M40 211l92-48 90 61 104-51 118 50M22 305l110-43 93 35 105-58 117 38" fill="none" stroke="#0b5f66" stroke-width="7" opacity=".45"/>
+    <path d="M36 290C88 257 82 167 144 157c61-10 53 91 119 76 52-11 36-91 91-100 48-8 55 48 89 64" fill="none" stroke="url(#a2-route)" stroke-width="13" stroke-linecap="round" stroke-dasharray="2 23"/>
+    <g fill="#ff765f" stroke="#ffffff" stroke-width="5">
+      <path d="M36 264c-23 0-42 18-42 41 0 31 42 73 42 73s42-42 42-73c0-23-19-41-42-41z"/>
+      <path d="M443 169c-23 0-42 18-42 41 0 31 42 73 42 73s42-42 42-73c0-23-19-41-42-41z"/>
+    </g>
+    <circle cx="36" cy="305" r="12" fill="#ffd27d"/>
+    <circle cx="443" cy="210" r="12" fill="#ffd27d"/>
+    <g fill="#0b5f66">
+      <rect x="153" y="70" width="55" height="48" rx="5"/><rect x="272" y="257" width="61" height="45" rx="5"/>
+      <path d="M357 42l36 25v45h-72V67z"/>
+    </g>
+    <g fill="#ffd27d">
+      <rect x="163" y="82" width="10" height="13"/><rect x="183" y="82" width="10" height="13"/>
+      <rect x="283" y="269" width="10" height="12"/><rect x="307" y="269" width="10" height="12"/>
+      <rect x="350" y="77" width="14" height="35"/>
+    </g>
+  </g>
+
+  <rect x="60" y="766" width="480" height="2" fill="#ff9a72"/>
+  <text x="300" y="820" fill="#e9fff8" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="848" fill="#ffd27d" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

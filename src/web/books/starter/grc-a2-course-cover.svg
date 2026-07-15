@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Μαθήματα Ἑλληνικῆς A2, Ὁδοὶ καὶ λόγοι</title>
+  <desc id="desc">Πράσινον καὶ ὠχρὸν κάλυμμα μετὰ ἱερᾶς ὁδοῦ, ὁροσήμων καὶ κλάδων ἐλαίας.</desc>
+  <defs>
+    <linearGradient id="bg-a2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#173f3a"/>
+      <stop offset="1" stop-color="#092520"/>
+    </linearGradient>
+    <linearGradient id="sun-a2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2c46f"/>
+      <stop offset="1" stop-color="#cf7444"/>
+    </linearGradient>
+    <pattern id="wave-a2" width="52" height="22" patternUnits="userSpaceOnUse">
+      <path d="M0 12c8-10 17-10 26 0s18 10 26 0" fill="none" stroke="#f2d89b" stroke-width="3"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg-a2)"/>
+  <circle cx="455" cy="383" r="113" fill="url(#sun-a2)" opacity=".95"/>
+  <circle cx="455" cy="383" r="137" fill="none" stroke="#f2d89b" stroke-width="2" opacity=".4"/>
+  <path d="M270 790C272 684 355 643 347 558c-7-74-82-74-41-151 20-37 57-61 107-80" fill="none" stroke="#e9d8ae" stroke-width="72" stroke-linecap="round"/>
+  <path d="M270 790C272 684 355 643 347 558c-7-74-82-74-41-151 20-37 57-61 107-80" fill="none" stroke="#a9683f" stroke-width="5" stroke-dasharray="5 18"/>
+  <g fill="#d7c48f" stroke="#805133" stroke-width="3">
+    <path d="M210 630h54l-8 96h-38Z"/>
+    <path d="M202 630h70l-8-17h-54Z"/>
+    <path d="M370 489h44l-6 76h-32Z"/>
+    <path d="M363 489h58l-7-15h-44Z"/>
+  </g>
+  <g fill="none" stroke="#b8c891" stroke-width="7" stroke-linecap="round">
+    <path d="M66 423c43 51 70 112 81 183"/>
+    <path d="M534 559c-42 45-69 97-83 157"/>
+  </g>
+  <g fill="#b8c891">
+    <ellipse cx="84" cy="455" rx="10" ry="25" transform="rotate(-40 84 455)"/>
+    <ellipse cx="111" cy="491" rx="10" ry="25" transform="rotate(-35 111 491)"/>
+    <ellipse cx="129" cy="534" rx="10" ry="25" transform="rotate(-25 129 534)"/>
+    <ellipse cx="515" cy="588" rx="10" ry="25" transform="rotate(38 515 588)"/>
+    <ellipse cx="489" cy="624" rx="10" ry="25" transform="rotate(33 489 624)"/>
+    <ellipse cx="469" cy="667" rx="10" ry="25" transform="rotate(24 469 667)"/>
+  </g>
+  <rect x="32" y="31" width="536" height="838" fill="none" stroke="#f2d89b" stroke-width="2"/>
+  <rect x="32" y="65" width="536" height="22" fill="url(#wave-a2)" opacity=".8"/>
+  <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
+    <text x="54" y="145" fill="#f2d89b" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="48" y="310" fill="#fff8df" font-size="142">A2</text>
+    <text x="55" y="358" fill="#e5a458" font-size="29">ΟΔΟΙ ΚΑΙ ΛΟΓΟΙ</text>
+  </g>
+  <path d="M56 383h243" stroke="#b8c891" stroke-width="5"/>
+  <g transform="translate(54 831)" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="0" y="25" fill="#fff8df" font-size="24" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="466" cy="14" r="15" fill="none" stroke="#e5a458" stroke-width="5"/>
+    <path d="M477 25l16 16" stroke="#e5a458" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

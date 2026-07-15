@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">日本語 B1 つながる物語 コース表紙</title>
+  <desc id="desc">藍色の紙面から言葉の橋が伸び、経験と地域を結ぶ日本語B1コースの表紙。</desc>
+  <defs>
+    <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18233f"/>
+      <stop offset="1" stop-color="#334b7b"/>
+    </linearGradient>
+    <linearGradient id="b1-paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff2dc"/>
+      <stop offset="1" stop-color="#e8d8bf"/>
+    </linearGradient>
+    <filter id="b1-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#0b1122" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#b1-bg)"/>
+  <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#fff2dc" stroke-width="3"/>
+  <rect x="54" y="60" width="222" height="42" rx="21" fill="#dc6b55"/>
+  <text x="165" y="88" fill="#ffffff" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="700" letter-spacing="3">日本語コース</text>
+  <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">B1</text>
+  <path d="M56 283H294" stroke="#e8b85e" stroke-width="11"/>
+  <text x="56" y="333" fill="#fff2dc" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">つながる物語</text>
+  <g transform="translate(67 407)" filter="url(#b1-shadow)">
+    <path d="M10 40L219 9L225 282L15 313Z" fill="url(#b1-paper)"/>
+    <path d="M225 9L432 43L426 316L225 282Z" fill="#f8e7cb"/>
+    <path d="M225 9V282" stroke="#beaa89" stroke-width="4"/>
+    <g fill="none" stroke="#334b7b" stroke-width="7" stroke-linecap="round">
+      <path d="M48 89L182 69"/><path d="M49 121L166 104"/><path d="M50 153L189 132"/>
+      <path d="M268 74L390 93"/><path d="M268 108L379 125"/><path d="M268 142L397 162"/>
+    </g>
+    <path d="M80 245C153 184 280 178 368 253" fill="none" stroke="#dc6b55" stroke-width="18" stroke-linecap="round"/>
+    <path d="M80 245C153 207 279 204 368 253" fill="none" stroke="#e8b85e" stroke-width="5"/>
+    <path d="M103 226V273M156 199V249M225 188V239M295 202V251M346 228V274" stroke="#334b7b" stroke-width="7"/>
+    <circle cx="80" cy="245" r="14" fill="#dc6b55"/>
+    <circle cx="368" cy="253" r="14" fill="#dc6b55"/>
+  </g>
+  <g transform="translate(55 792)">
+    <rect width="490" height="2" fill="#e8b85e"/>
+    <text x="0" y="53" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="17" fill="none" stroke="#dc6b55" stroke-width="5"/>
+    <path d="M480 54l16 16" stroke="#dc6b55" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

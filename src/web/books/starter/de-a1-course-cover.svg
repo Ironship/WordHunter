@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Deutsch im Alltag: Gemeinsam ankommen A1</title>
+  <desc id="desc">Buchcover in warmem Gelb und Blau mit einer offenen Tür, Wegmarken und Sprechblasen für den Einstieg in den deutschen Alltag.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd65a"/>
+      <stop offset="1" stop-color="#ff9f43"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#17324d" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <path d="M0 640 C145 580 235 690 365 625 C455 580 515 595 600 540 V900 H0Z" fill="#163f5f"/>
+  <circle cx="505" cy="98" r="48" fill="#fff3c5" opacity=".9"/>
+  <g fill="#163f5f">
+    <rect x="54" y="72" width="6" height="72" rx="3"/>
+    <rect x="54" y="72" width="98" height="6" rx="3"/>
+  </g>
+  <text x="54" y="188" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="54" y="257" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="42" font-weight="900" letter-spacing="1">DEUTSCH IM ALLTAG</text>
+  <text x="57" y="303" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="3">GEMEINSAM ANKOMMEN</text>
+  <g filter="url(#shadow)">
+    <path d="M191 385 H410 V694 H191Z" fill="#f6f0db"/>
+    <path d="M220 414 H382 V694 H220Z" fill="#2c6d91"/>
+    <path d="M220 414 L382 446 V694 H220Z" fill="#327ea8"/>
+    <circle cx="354" cy="563" r="10" fill="#ffd65a"/>
+  </g>
+  <path d="M302 739 C246 735 206 758 171 805" fill="none" stroke="#ffd65a" stroke-width="14" stroke-linecap="round" stroke-dasharray="2 30"/>
+  <g fill="#fff3c5" stroke="#163f5f" stroke-width="5">
+    <path d="M98 430 H184 Q202 430 202 448 V493 Q202 511 184 511 H149 L126 535 L130 511 H98 Q80 511 80 493 V448 Q80 430 98 430Z"/>
+    <path d="M422 356 H510 Q528 356 528 374 V419 Q528 437 510 437 H477 L454 461 L458 437 H422 Q404 437 404 419 V374 Q404 356 422 356Z"/>
+  </g>
+  <text x="105" y="481" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">Hallo!</text>
+  <text x="431" y="407" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700">Guten</text>
+  <text x="445" y="433" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700">Tag</text>
+  <circle cx="492" cy="703" r="92" fill="#f6f0db" stroke="#163f5f" stroke-width="8"/>
+  <text x="492" y="735" text-anchor="middle" fill="#163f5f" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="900">A1</text>
+  <text x="54" y="856" fill="#f6f0db" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" letter-spacing="2">SPRACHE FÜR JEDEN TAG</text>
+</svg>

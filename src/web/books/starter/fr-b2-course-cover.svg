@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Nuancer et convaincre en français, cours B2</title>
+  <desc id="desc">Couverture prune et cyan avec un prisme qui transforme une idée en réseau de perspectives nuancées.</desc>
+  <rect width="600" height="900" fill="#3d214c"/>
+  <rect x="24" y="24" width="552" height="852" rx="24" fill="none" stroke="#8fe3cf" stroke-width="4"/>
+  <path d="M24 188H576V340H24Z" fill="#7851a9"/>
+  <circle cx="492" cy="104" r="52" fill="#8fe3cf"/>
+  <text x="492" y="121" text-anchor="middle" fill="#3d214c" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">B2</text>
+  <text x="58" y="86" fill="#fff8ed" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="58" y="142" fill="#8fe3cf" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">COURS DE FRANÇAIS</text>
+  <text x="300" y="246" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="700">Nuancer</text>
+  <text x="300" y="306" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="700">et convaincre</text>
+
+  <path d="M70 574H232" stroke="#ffcc66" stroke-width="16" stroke-linecap="round"/>
+  <path d="M232 574L324 431L391 602Z" fill="#8fe3cf" fill-opacity="0.2" stroke="#fff8ed" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M324 431L324 663" stroke="#fff8ed" stroke-width="5"/>
+  <path d="M391 602L530 472" stroke="#ffcc66" stroke-width="12" stroke-linecap="round"/>
+  <path d="M391 602L543 573" stroke="#8fe3cf" stroke-width="12" stroke-linecap="round"/>
+  <path d="M391 602L513 696" stroke="#ff8f70" stroke-width="12" stroke-linecap="round"/>
+  <g stroke="#8fe3cf" stroke-width="5" fill="#3d214c">
+    <circle cx="530" cy="472" r="27"/>
+    <circle cx="543" cy="573" r="27"/>
+    <circle cx="513" cy="696" r="27"/>
+    <circle cx="437" cy="422" r="20"/>
+    <circle cx="454" cy="742" r="20"/>
+  </g>
+  <path d="M437 442L506 472M454 722L494 699M515 493L536 546M531 599L520 670" stroke="#8fe3cf" stroke-width="5"/>
+  <g fill="#fff8ed">
+    <circle cx="530" cy="472" r="8"/>
+    <circle cx="543" cy="573" r="8"/>
+    <circle cx="513" cy="696" r="8"/>
+    <circle cx="437" cy="422" r="6"/>
+    <circle cx="454" cy="742" r="6"/>
+  </g>
+  <path d="M93 484H174Q194 484 194 504V538Q194 558 174 558H133L108 581L114 558H93Q73 558 73 538V504Q73 484 93 484Z" fill="#ff8f70"/>
+  <path d="M96 520H169" stroke="#3d214c" stroke-width="7" stroke-linecap="round"/>
+  <text x="300" y="827" text-anchor="middle" fill="#fff8ed" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">ANALYSER • NUANCER • NÉGOCIER</text>
+  <text x="300" y="856" text-anchor="middle" fill="#8fe3cf" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+</svg>

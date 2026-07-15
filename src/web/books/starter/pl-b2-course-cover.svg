@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Polski precyzyjnie. Kurs B2</title>
+  <desc id="desc">Grafitowa okładka kursu polskiego B2 z warstwami argumentu, pryzmatem i skupioną wiązką światła symbolizującymi precyzję wypowiedzi.</desc>
+  <defs>
+    <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#243b6b"/>
+    </linearGradient>
+    <linearGradient id="b2-beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#7dd3fc" stop-opacity=".85"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#b2-bg)"/>
+  <rect x="25" y="25" width="550" height="850" rx="20" fill="none" stroke="#edf4ff" stroke-width="3"/>
+  <path d="M25 158H575" stroke="#f0b35a" stroke-width="9"/>
+  <rect x="61" y="56" width="190" height="34" rx="17" fill="#5865d8"/>
+  <text x="156" y="79" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">POLSKI PRECYZYJNIE</text>
+
+  <text x="60" y="121" fill="#edf4ff" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">KURS JĘZYKA POLSKIEGO</text>
+  <text x="58" y="294" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="900" letter-spacing="-8">B2</text>
+  <text x="65" y="338" fill="#f0b35a" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">PRECYZJA ARGUMENTU</text>
+
+  <path d="M55 503h195l103 72-103 72H55z" fill="url(#b2-beam)"/>
+  <path d="M353 575l109-156 81 244z" fill="#17223c" stroke="#edf4ff" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M353 575l109-156 22 156z" fill="#5865d8" opacity=".88"/>
+  <path d="M353 575h131l59 88z" fill="#f0b35a" opacity=".92"/>
+  <path d="M484 575l89-82v174l-30-4z" fill="#7dd3fc" opacity=".8"/>
+
+  <g>
+    <rect x="77" y="399" width="253" height="54" rx="12" fill="#edf4ff"/>
+    <rect x="77" y="465" width="223" height="54" rx="12" fill="#aeb9ff"/>
+    <rect x="77" y="531" width="193" height="54" rx="12" fill="#7dd3fc"/>
+    <rect x="77" y="597" width="163" height="54" rx="12" fill="#f0b35a"/>
+  </g>
+  <g fill="#17223c">
+    <circle cx="105" cy="426" r="7"/>
+    <path d="M124 426h167" stroke="#17223c" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="105" cy="492" r="7"/>
+    <path d="M124 492h137" stroke="#17223c" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="105" cy="558" r="7"/>
+    <path d="M124 558h107" stroke="#17223c" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="105" cy="624" r="7"/>
+    <path d="M124 624h77" stroke="#17223c" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <path d="M83 694h422" stroke="#7dd3fc" stroke-width="3"/>
+  <path d="M180 694v27M300 694v27M420 694v27" stroke="#7dd3fc" stroke-width="3"/>
+  <circle cx="180" cy="722" r="8" fill="#edf4ff"/>
+  <circle cx="300" cy="722" r="8" fill="#f0b35a"/>
+  <circle cx="420" cy="722" r="8" fill="#7dd3fc"/>
+
+  <rect x="60" y="766" width="480" height="2" fill="#f0b35a"/>
+  <text x="300" y="820" fill="#edf4ff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="848" fill="#f0b35a" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>
