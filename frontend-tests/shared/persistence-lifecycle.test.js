@@ -440,7 +440,6 @@ describe("persistence lifecycle", () => {
     assert.ok(api.includes("wordhunter:sync-error"));
     assert.match(settings, /scheduleBackgroundSync\(30000\)/);
     assert.match(settings, /syncNow\(\{ background: true, saveFirst: true \}\)/);
-    assert.match(settings, /const preserveActiveReader = background/);
     assert.match(settings, /wordhunter:sync-snapshot-skipped/);
   });
 

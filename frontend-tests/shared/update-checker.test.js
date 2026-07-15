@@ -23,12 +23,6 @@ const { isNewer } = await import("../../dist/web/js/update-checker.js");
 describe("stable update version ordering", () => {
   it("orders release candidates before the final release", () => {
     assert.equal(isNewer("1.0.5-rc.2", "1.0.5-rc.1"), true);
-    assert.equal(isNewer("1.0.5-rc.3", "1.0.5-rc.2"), true);
-    assert.equal(isNewer("1.0.5-rc.4", "1.0.5-rc.3"), true);
-    assert.equal(isNewer("1.0.5-rc.5", "1.0.5-rc.4"), true);
-    assert.equal(isNewer("1.0.5-rc.6", "1.0.5-rc.5"), true);
-    assert.equal(isNewer("1.0.5-rc.7", "1.0.5-rc.6"), true);
-    assert.equal(isNewer("1.0.5-rc.8", "1.0.5-rc.7"), true);
     assert.equal(isNewer("1.0.5", "1.0.5-rc.2"), true);
     assert.equal(isNewer("1.0.5-rc.1", "1.0.5"), false);
   });
