@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 const itemIds = [
   "status",
+  "article",
   "dictionary",
   "speech",
   "youglish",
@@ -27,6 +28,7 @@ describe("selected-word panel", () => {
 
     assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);
     assert.ok(html.indexOf('id="pocket-word-panel-sheet-handle"') < html.indexOf('id="word-panel"'));
+    assert.match(html, /<details class="word-panel-items-setting">[\s\S]*<summary id="word-panel-items-heading"/);
     assert.match(html, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
     assert.match(dom, /prefSelectedWordPanelItems = document\.getElementById\("pref-selected-word-panel-items"\)/);
     assert.match(preferences, /data-word-panel-item-visible/);
@@ -50,6 +52,7 @@ describe("selected-word panel", () => {
     assert.match(panel, /ACTION_ITEM_IDS\.has\(item\.id\)/);
     assert.match(panel, /parts\.push\(`<div class="word-actions">\$\{actionParts\.join\(""\)\}<\/div>`\)/);
     assert.match(panel, /if \(isTransientRange\)\s*return ""/);
+    assert.match(panel, /id === "article"/);
     assert.match(panel, /data-copy-word/);
     assert.match(panel, /data-edit-word/);
     assert.doesNotMatch(panel, /pocket-word-dictionary/);
@@ -60,7 +63,8 @@ describe("selected-word panel", () => {
     for (const status of ["new", "learning", "known", "ignored"]) {
       assert.match(styles, new RegExp(`reader-sidebar-wrapper\\.word-panel-status-${status}`));
     }
-    assert.ok(constants.indexOf('{ id: "status", visible: true }') < constants.indexOf('{ id: "dictionary", visible: true }'));
+    assert.ok(constants.indexOf('{ id: "status", visible: true }') < constants.indexOf('{ id: "article", visible: true }'));
+    assert.ok(constants.indexOf('{ id: "article", visible: true }') < constants.indexOf('{ id: "dictionary", visible: true }'));
     assert.ok(constants.indexOf('{ id: "dictionary", visible: true }') < constants.indexOf('{ id: "speech", visible: true }'));
     assert.ok(constants.indexOf('{ id: "speech", visible: true }') < constants.indexOf('{ id: "youglish", visible: true }'));
     assert.ok(constants.indexOf('{ id: "remove", visible: true }') < constants.indexOf('{ id: "suggestion", visible: true }'));

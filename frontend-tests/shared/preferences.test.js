@@ -140,6 +140,7 @@ describe("preferences settings summary", () => {
     const second = createDefaultState();
     assert.deepEqual(first.preferences.selectedWordPanelItems, [
       { id: "status", visible: true },
+      { id: "article", visible: true },
       { id: "dictionary", visible: true },
       { id: "speech", visible: true },
       { id: "youglish", visible: true },
@@ -181,8 +182,8 @@ describe("preferences settings summary", () => {
       { id: "note", visible: false },
       { id: "status", visible: true }
     ]);
-    assert.equal(restored.preferences.selectedWordPanelItems.length, 12);
-    assert.deepEqual(new Set(restored.preferences.selectedWordPanelItems.map((item) => item.id)).size, 12);
+    assert.equal(restored.preferences.selectedWordPanelItems.length, 13);
+    assert.deepEqual(new Set(restored.preferences.selectedWordPanelItems.map((item) => item.id)).size, 13);
 
     const malformed = createDefaultState();
     malformed.preferences.selectedWordPanelItems = { id: "note", visible: false };
@@ -209,6 +210,7 @@ describe("preferences settings summary", () => {
     state.readerSelectionRange = null;
     state.vocab.haus = { status: "known", article: "das", translation: "house", note: "noun", examples: [] };
     state.preferences.selectedWordPanelItems = [
+      { id: "article", visible: true },
       { id: "note", visible: true },
       { id: "dictionary", visible: true },
       { id: "speech", visible: true },
@@ -235,6 +237,11 @@ describe("preferences settings summary", () => {
     assert.doesNotMatch(html, /data-word-panel-item="status"/);
 
     state.preferences.selectedWordPanelItems[0].visible = false;
+    renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
+    assert.doesNotMatch(els.wordPanel.innerHTML, /data-word-field="article"/);
+    assert.match(els.wordPanel.innerHTML, /data-word-field="note"/);
+
+    state.preferences.selectedWordPanelItems[1].visible = false;
     renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
     assert.doesNotMatch(els.wordPanel.innerHTML, /data-word-field="note"/);
   });

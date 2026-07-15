@@ -395,6 +395,7 @@
     "wordPanelMoveUpAria": "{item} nach oben verschieben",
     "wordPanelMoveDownAria": "{item} nach unten verschieben",
     "wordPanelItems": {
+      "article": "Artikel",
       "status": "Status",
       "dictionary": "Wörterbuch",
       "speech": "Aussprache (TTS)",

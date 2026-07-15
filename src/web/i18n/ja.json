@@ -395,6 +395,7 @@
     "wordPanelMoveUpAria": "{item}を上へ移動",
     "wordPanelMoveDownAria": "{item}を下へ移動",
     "wordPanelItems": {
+      "article": "冠詞",
       "status": "ステータス",
       "dictionary": "辞書",
       "speech": "発音（TTS）",

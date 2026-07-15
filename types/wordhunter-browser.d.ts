@@ -7,6 +7,7 @@ declare global {
 
   type WhSelectedWordPanelItemId =
     | "status"
+    | "article"
     | "dictionary"
     | "speech"
     | "youglish"

@@ -2460,6 +2460,7 @@ html[data-max-width="full"] .reader-text {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 0.6rem;
+  width: min(100%, 22rem);
   margin-top: 0.85rem;
 }
 
@@ -3472,14 +3473,27 @@ textarea.vocab-translation-input {
 }
 
 .word-panel-items-setting {
-  display: grid;
   grid-column: 1 / -1;
-  gap: 0.65rem;
   min-width: 0;
   padding: 0.85rem;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-strong);
+}
+
+.word-panel-items-setting > summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.word-panel-items-setting-body {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.word-panel-items-setting:not([open]) .word-panel-items-setting-body {
+  display: none;
 }
 
 .word-panel-items-setting .settings-subheading,

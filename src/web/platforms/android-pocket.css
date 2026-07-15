@@ -12,7 +12,12 @@
 html.pocket-mode {
   --pocket-statusbar-safe-top: env(safe-area-inset-top, 0px);
   --pocket-navbar-safe-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  --pocket-word-sheet-expanded-top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
   --pocket-word-sheet-collapsed-size: max(4rem, calc(20dvh - 4.6rem - var(--pocket-navbar-safe-bottom)));
+  --pocket-word-sheet-collapsed-top: max(
+    var(--pocket-word-sheet-expanded-top),
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-collapsed-size))
+  );
   zoom: 1 !important;
 }
 
@@ -985,11 +990,21 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
   z-index: 60;
-  top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
+  top: var(--pocket-word-sheet-current-top);
   left: 0.75rem;
   right: 0.75rem;
-  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
+  bottom: auto;
+  box-sizing: border-box;
+  height: max(
+    4rem,
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-current-top))
+  );
+  min-height: 0;
+  max-height: none;
+  align-self: stretch;
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 0;
   overflow: hidden;
@@ -1000,22 +1015,16 @@ html.pocket-mode {
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"] {
-  top: max(
-    calc(var(--pocket-statusbar-safe-top) + 0.5rem),
-    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-collapsed-size))
-  );
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-collapsed-top);
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"] {
-  top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
 }
 
-.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"] {
-  top: var(--pocket-word-sheet-top);
-}
-
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"],
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
-  top: var(--pocket-word-sheet-top) !important;
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-top);
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before,
@@ -1111,7 +1120,7 @@ html.pocket-mode {
 
 @media (prefers-reduced-motion: no-preference) {
   .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper:not(.pocket-word-sheet-dragging):not(.pocket-word-sheet-measuring) {
-    transition: top 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+    transition: top 200ms cubic-bezier(0.16, 1, 0.3, 1), height 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 }
 
@@ -1141,12 +1150,18 @@ html.pocket-mode {
 }
 
 .pocket-mode .word-article-editor {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
   margin-top: 0.65rem;
 }
 
 .pocket-mode .word-article-editor > label {
   grid-template-columns: minmax(0, 1fr);
+  flex: 0 1 calc(50% - 0.3rem);
+  width: calc(50% - 0.3rem);
+  min-width: 8rem;
   gap: 0.25rem;
 }
 
