@@ -223,7 +223,9 @@ export function isBookTextCacheStale(id: string): boolean {
   return staleBookTextIds.has(id);
 }
 
-registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds }) => {
+registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds, preserveActiveReader }) => {
+  const activeReaderTextId = state.currentView === "reader" ? state.currentTextId : null;
+  const activeReaderBody = activeReaderTextId ? bookTexts.get(activeReaderTextId) : undefined;
   for (const id of previousTextIds || []) {
     if (!currentTextIds?.has(id)) clearBookTextCache(id);
   }
@@ -243,6 +245,11 @@ registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds }) => {
       }
       const activeId = state.currentTextId;
       if (state.currentView !== "reader" || !activeId || !currentTextIds?.has(activeId)) return;
+      if (
+        preserveActiveReader
+        && activeId === activeReaderTextId
+        && bookTexts.get(activeId) === activeReaderBody
+      ) return;
       const { renderReader } = await import("./reader/renderer.js");
       renderReader();
     })

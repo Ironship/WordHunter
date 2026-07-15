@@ -36,6 +36,16 @@ type SyncNowOptions = {
   saveFirst?: boolean;
 };
 
+type ApplyBridgeSnapshotOptions = {
+  expectedRevision?: number;
+  preserveActiveReader?: boolean;
+};
+
+type ApplySyncSnapshotOptions = {
+  exclusive?: boolean;
+  preserveActiveReader?: boolean;
+};
+
 let syncIntervalStarted = false;
 let backgroundSyncTimer: number | null = null;
 let backgroundSyncRunning = false;
@@ -181,21 +191,32 @@ function showSyncFolderError(error: unknown): void {
 
 export function applyBridgeSnapshot(
   snapshot: unknown,
-  { expectedRevision }: { expectedRevision?: number } = {}
+  {
+    expectedRevision,
+    preserveActiveReader = false
+  }: ApplyBridgeSnapshotOptions = {}
 ): boolean {
-  if (!applyBridgeSnapshotToState(snapshot, { expectedRevision })) return false;
+  if (!applyBridgeSnapshotToState(snapshot, { expectedRevision, preserveActiveReader })) return false;
   syncSettingsControls();
-  render();
+  if (preserveActiveReader && state.currentView === "reader") {
+    const current = getTextById(state.currentTextId);
+    if (current && state.selectedWord && els.wordPanel) renderWordPanel(current);
+  } else {
+    render();
+  }
   return true;
 }
 
 async function applySyncSnapshot(
   snapshot: WhBridgeSnapshot,
   startingRevision: number,
-  { exclusive = false }: { exclusive?: boolean } = {}
+  {
+    exclusive = false,
+    preserveActiveReader = false
+  }: ApplySyncSnapshotOptions = {}
 ): Promise<boolean> {
   const apply = async (): Promise<boolean> => {
-    if (!applyBridgeSnapshot(snapshot, { expectedRevision: startingRevision })) {
+    if (!applyBridgeSnapshot(snapshot, { expectedRevision: startingRevision, preserveActiveReader })) {
       window.dispatchEvent(new CustomEvent("wordhunter:sync-snapshot-skipped"));
       return false;
     }
@@ -249,6 +270,7 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
     return false;
   }
   const performSync = async (): Promise<boolean> => {
+    const preserveActiveReader = background;
     const startingRevision = getDurableStateRevision();
     let androidResult;
     try {
@@ -258,7 +280,9 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
       // subsequent stale frontend save from deleting records imported by that merge.
       try {
         const snapshot = await loadBackendSnapshot();
-        if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst });
+        if (snapshot) {
+          await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
+        }
       } catch (reloadError) {
         console.warn("Could not reload data after Android sync failure", reloadError);
       }
@@ -268,7 +292,7 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
       const snapshot = await loadBackendSnapshot();
       if (!snapshot) return false;
       snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-      await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst });
+      await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
       return true;
     }
     if (androidResult === null && typeof window.WordHunterAndroid?.forceSyncFolder === "function") {
@@ -284,7 +308,9 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
       throw new Error(detail || t("toast.syncUnavailable"));
     }
     const result = await response.json();
-    if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: saveFirst });
+    if (result.snapshot) {
+      await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
+    }
     if (!background) refreshSyncHealth();
     return true;
   };
