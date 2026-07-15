@@ -261,6 +261,7 @@ declare global {
 
   interface WhBridgeSnapshotChange {
     textIds: Set<string>;
+    preserveActiveReader: boolean;
     previousTextIds: Set<string>;
     currentTextIds: Set<string>;
   }

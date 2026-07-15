@@ -820,8 +820,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>テスト版 1.0.5-rc.7：Pocket の単語カードを画面のかなり下まで動かせるようになり、Smart Suggestion の変化でも位置がずれません。スワイプと縦長端末のナビゲーションが操作しやすくなり、単語に冠詞を保存・提案・表示・読み上げ・インポート・エクスポートできます。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.7",
+    "whatsNew": "<strong>テスト版 1.0.5-rc.8：バックグラウンド同期で Reader が点滅したり先頭へ戻ったりしなくなりました。Pocket の単語シートはどの位置でも使いやすい高さを安定して保ち、冠詞は他の単語パネル項目と同様に表示・非表示や並べ替えができます。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.8",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditSync": "<strong>Syncthing 2.1.0</strong> — デスクトップ版にMPL-2.0の独立したプログラムとして同梱しています。ソース: https://github.com/syncthing/syncthing/tree/v2.1.0",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。"

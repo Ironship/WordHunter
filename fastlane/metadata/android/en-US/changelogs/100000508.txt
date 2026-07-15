@@ -1,0 +1,7 @@
+Test prerelease. Back up your data before installing.
+
+- Kept the Pocket word sheet usable at every drag position.
+- Made Article a configurable selected-word panel item.
+- Added collapsible word-panel ordering controls in Reader settings.
+- Prevented background sync from flashing or resetting the Reader.
+- Restored complete frontend release validation.

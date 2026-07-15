@@ -105,7 +105,10 @@ export function runExclusiveStateWrite<T>(callback: () => T | Promise<T>): Promi
 
 export function applyBridgeSnapshotToState(
   snapshot: unknown,
-  { expectedRevision }: { expectedRevision?: number } = {}
+  {
+    expectedRevision,
+    preserveActiveReader = false
+  }: { expectedRevision?: number; preserveActiveReader?: boolean } = {}
 ): boolean {
   assertSupportedStateSchemaVersion(snapshot, "bridge snapshot");
   if (expectedRevision !== undefined && autosave.getDurableStateRevision() !== expectedRevision) return false;
@@ -129,7 +132,7 @@ export function applyBridgeSnapshotToState(
   const textIds = new Set([...previousTextIds, ...currentTextIds]);
   for (const handler of [...bridgeSnapshotHandlers]) {
     try {
-      handler({ textIds, previousTextIds, currentTextIds });
+      handler({ textIds, preserveActiveReader, previousTextIds, currentTextIds });
     } catch (error) {
       console.warn("bridge snapshot handler failed", error);
     }

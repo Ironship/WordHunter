@@ -37,6 +37,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.8" date="2026-07-15" type="development">
+      <description>
+        <ul>
+          <li>Keep the Pocket word sheet at a stable usable height in expanded, collapsed, and custom positions.</li>
+          <li>Let the grammatical Article field be shown, hidden, and reordered with the other selected-word items.</li>
+          <li>Collapse the long word-panel ordering controls in Reader settings when they are not needed.</li>
+          <li>Keep background synchronization from rebuilding an unchanged Reader and returning it to the top.</li>
+          <li>Restore complete frontend release validation after the RC7 TypeScript additions.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.7" date="2026-07-15" type="development">
       <description>
         <ul>
