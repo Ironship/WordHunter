@@ -151,9 +151,23 @@ describe("Android Pocket layout", () => {
     assertDeclarations(css, ".pocket-mode .pocket-navigation-toggle", { position: "fixed", display: "inline-flex", bottom: "calc(0.35rem + var(--pocket-navbar-safe-bottom))", background: "var(--sidebar-bg)" });
     assertDeclarations(css, '.pocket-mode[data-view="reader"] #pocket-navigation-toggle', { display: "none" });
     assert.equal(css.includes('.pocket-mode:not([data-view="reader"]) .topbar'), false);
-    assertDeclarations(css, ".pocket-mode .nav-list", { "grid-template-columns": "minmax(0, 1fr)", "align-items": "stretch" });
-    assertDeclarations(css, ".pocket-mode .nav-item", { "grid-template-columns": "30px minmax(0, 1fr)", "max-width": "100%", overflow: "hidden" });
+    assertDeclarations(css, ".pocket-mode .nav-list", {
+      flex: "1 0 auto",
+      "grid-template-columns": "minmax(0, 1fr)",
+      "grid-auto-rows": "clamp(56px, 9dvh, 76px)",
+      "align-items": "stretch",
+      "align-content": "space-evenly"
+    });
+    assertDeclarations(css, ".pocket-mode .nav-item", {
+      "grid-template-columns": "30px minmax(0, 1fr)",
+      "max-width": "100%",
+      "min-height": "56px",
+      padding: "0.7rem 0.8rem",
+      "font-size": "1rem",
+      overflow: "hidden"
+    });
     assertDeclarations(css, ".pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge)", { "overflow-wrap": "anywhere" });
+    assert.doesNotMatch(css, /\.pocket-mode \.nav-item\s*\{[^}]*font-size:\s*0\.56rem/);
   });
 
   it("defines finger-sized Pocket flashcard and toggle controls", () => {

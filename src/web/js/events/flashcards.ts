@@ -8,9 +8,11 @@ interface FlashcardGesture {
 }
 
 const INTERACTIVE_SELECTOR = "button, a, input, textarea, select, [contenteditable]";
+const CARD_SWIPE_MIN_DISTANCE = 56;
+const CARD_SWIPE_AXIS_RATIO = 1.2;
 
 export function flashcardGestureAction(dx: number, dy: number): "next" | "prev" | null {
-  if (Math.abs(dx) < 80 || Math.abs(dy) > 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return null;
+  if (Math.abs(dx) < CARD_SWIPE_MIN_DISTANCE || Math.abs(dx) < Math.abs(dy) * CARD_SWIPE_AXIS_RATIO) return null;
   return dx < 0 ? "next" : "prev";
 }
 
@@ -21,6 +23,10 @@ export function bindFlashcardEvents(): void {
 
   let gesture: FlashcardGesture | null = null;
   let suppressClickUntil = 0;
+  const clickGestureButton = (button: HTMLButtonElement): void => {
+    suppressClickUntil = 0;
+    button.click();
+  };
 
   host.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
@@ -46,7 +52,7 @@ export function bindFlashcardEvents(): void {
       const button = host.querySelector<HTMLButtonElement>(action === "next" ? "#btn-flashcard-next" : "#btn-flashcard-prev");
       if (button && !button.disabled) {
         event.preventDefault();
-        button.click();
+        clickGestureButton(button);
       }
       suppressClickUntil = Date.now() + 400;
       return;
@@ -56,7 +62,7 @@ export function bindFlashcardEvents(): void {
     const card = host.querySelector<HTMLElement>(".flashcard-wrap");
     if (card?.dataset.answerVisible === "true") return;
     const reveal = host.querySelector<HTMLButtonElement>('[data-review-action="toggle"]');
-    if (reveal && !reveal.disabled) reveal.click();
+    if (reveal && !reveal.disabled) clickGestureButton(reveal);
   });
 
   host.addEventListener("pointercancel", () => {
@@ -67,5 +73,5 @@ export function bindFlashcardEvents(): void {
     if (Date.now() >= suppressClickUntil) return;
     event.preventDefault();
     event.stopPropagation();
-  });
+  }, { capture: true });
 }

@@ -28,7 +28,19 @@ class FakeHost extends FakeHTMLElement {
   querySelector(selector) {
     if (selector === ".flashcard-wrap") return { dataset: { answerVisible: String(this.answerVisible) } };
     const action = selector.includes("next") ? "next" : selector.includes("prev") ? "prev" : "toggle";
-    return { disabled: false, click: () => { this.clicks[action] += 1; } };
+    return {
+      disabled: false,
+      click: () => {
+        const event = {
+          defaultPrevented: false,
+          propagationStopped: false,
+          preventDefault() { this.defaultPrevented = true; },
+          stopPropagation() { this.propagationStopped = true; }
+        };
+        this.emit("click", event);
+        if (!event.defaultPrevented && !event.propagationStopped) this.clicks[action] += 1;
+      }
+    };
   }
   emit(type, event) { this.listeners.get(type)?.(event); }
 }
@@ -37,9 +49,10 @@ describe("flashcard gestures", () => {
   it("maps horizontal deck gestures without accepting vertical scrolling", () => {
     assert.equal(flashcardGestureAction(-100, 8), "next");
     assert.equal(flashcardGestureAction(100, -8), "prev");
-    assert.equal(flashcardGestureAction(79, 0), null);
-    assert.equal(flashcardGestureAction(120, 81), null);
-    assert.equal(flashcardGestureAction(100, 70), null);
+    assert.equal(flashcardGestureAction(55, 0), null);
+    assert.equal(flashcardGestureAction(56, 0), "prev");
+    assert.equal(flashcardGestureAction(-60, 49), "next");
+    assert.equal(flashcardGestureAction(60, 51), null);
   });
 
   it("routes gestures through navigation buttons instead of SRS grading", () => {
@@ -49,6 +62,7 @@ describe("flashcard gestures", () => {
     assert.match(events, /#btn-flashcard-next/);
     assert.match(events, /#btn-flashcard-prev/);
     assert.match(events, /data-review-action="toggle"/);
+    assert.match(events, /\{ capture: true \}/);
     assert.doesNotMatch(events, /data-sm2-grade|gradeReview|applyReview/);
     assert.match(review, /reviewIndex === reviewWords\.length - 1 \? "disabled"/);
     assert.ok(html.indexOf('id="review-card"') < html.indexOf('id="review-chart-fullwidth"'));
