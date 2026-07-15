@@ -121,6 +121,12 @@ function normalizeVocabEntries(rawVocab: unknown): WhVocabulary {
   for (const [word, entry] of objectEntries(rawVocab)) {
     if (!isRecord(entry)) continue;
     if (!isVocabStatus(entry.status)) entry.status = "new";
+    if (typeof entry.article === "string") {
+      entry.article = entry.article.trim();
+      if (!entry.article) delete entry.article;
+    } else {
+      delete entry.article;
+    }
     if (typeof entry.interval !== "number" || !Number.isFinite(entry.interval)) entry.interval = 0;
     if (typeof entry.repetition !== "number" || !Number.isFinite(entry.repetition)) entry.repetition = 0;
     if (typeof entry.efactor !== "number" || !Number.isFinite(entry.efactor)) entry.efactor = 2.5;

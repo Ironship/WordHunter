@@ -47,6 +47,26 @@ describe("profile save payload", () => {
     assert.deepEqual(payload.vocab.fr.vocab, { maison: { status: "known" } });
   });
 
+  it("round-trips optional articles and normalizes legacy or malformed values", () => {
+    const raw = createDefaultState();
+    raw.preferences.learningLanguage = "de";
+    raw.profiles.de.vocab = {
+      haus: { status: "known", article: "  das  " },
+      alt: { status: "learning" },
+      broken: { status: "new", article: 42 },
+      empty: { status: "new", article: "   " }
+    };
+    raw.vocab = raw.profiles.de.vocab;
+
+    const normalized = normalizeState(raw);
+    const payload = buildSavePayload(normalized);
+
+    assert.equal(normalized.vocab.haus.article, "das");
+    assert.equal(payload.vocab.de.vocab.haus.article, "das");
+    assert.equal(Object.hasOwn(normalized.vocab.alt, "article"), false);
+    assert.equal(Object.hasOwn(normalized.vocab.broken, "article"), false);
+    assert.equal(Object.hasOwn(normalized.vocab.empty, "article"), false);
+  });
   it("removes the duplicate starter text created by the old Gutenberg fallback", () => {
     const raw = createDefaultState();
     raw.preferences.learningLanguage = "ru";

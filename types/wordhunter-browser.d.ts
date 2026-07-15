@@ -27,6 +27,7 @@ declare global {
   interface WhVocabEntry extends WhRecord {
     word?: string;
     status: WhVocabStatus;
+    article?: string;
     translation?: string;
     translationSource?: string;
     translationAutoRejected?: boolean;

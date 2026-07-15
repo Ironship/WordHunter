@@ -11,7 +11,12 @@ import { t } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
 import { getReaderSelectionText } from "./selection.js";
-import { getSmartSuggestionHtml } from "./smart-suggest.js";
+import {
+  articleOptionsForLanguage,
+  getSmartSuggestion,
+  renderSmartSuggestionHtml,
+  type ArticleSmartSuggestion
+} from "./smart-suggest.js";
 import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
@@ -20,6 +25,7 @@ import { beginElementBusy } from "../loading.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import type { VocabStatus } from "../constants.js";
+import { formatHeadword } from "../vocabulary/article.js";
 
 export interface UpdateWordStatusOptions {
   renderPanel?: boolean;
@@ -27,6 +33,7 @@ export interface UpdateWordStatusOptions {
 
 interface WordPanelEntry {
   status: VocabStatus;
+  article?: string;
   translation?: string;
   note?: string;
   imageUrl?: string;
@@ -85,6 +92,43 @@ function resetInTextReview(word: string): void {
     inTextAnswerVisible = false;
     inTextReviewCompleted = false;
   }
+}
+
+function renderArticleEditor(
+  entry: WordPanelEntry,
+  word: string,
+  suggestion: ArticleSmartSuggestion | null,
+  isTransientRange: boolean
+): string {
+  if (isTransientRange) return "";
+  const options = articleOptionsForLanguage()
+    .map((article) => `<option value="${escapeAttribute(article)}"></option>`)
+    .join("");
+  return `
+    <div class="word-article-editor" data-word-article-editor>
+      <label>
+        <span>${escapeHtml(t("reader.articleLabel"))}</span>
+        <input
+          class="word-article-input"
+          type="text"
+          data-word="${escapeAttribute(word)}"
+          data-word-field="article"
+          value="${escapeAttribute(entry.article || "")}"
+          list="word-article-options"
+          placeholder="${escapeAttribute(t("reader.articlePlaceholder"))}"
+          aria-label="${escapeAttribute(t("reader.articleAria", { word }))}"
+          autocomplete="off"
+          spellcheck="false">
+      </label>
+      <datalist id="word-article-options">${options}</datalist>
+      ${suggestion ? `
+        <button class="secondary-button article-suggestion-button" type="button" data-suggest-article="${escapeAttribute(suggestion.article)}" data-suggest-word="${escapeAttribute(suggestion.word)}">
+          ${escapeHtml(t("reader.smartSuggestArticleBtn", { article: suggestion.article }))}
+          <span class="shortcut-badge">5</span>
+        </button>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderTranslationEditor(entry: WordPanelEntry, word: string, marginTop = "0"): string {
@@ -209,7 +253,12 @@ function renderStatusItem(word: string, entry: WordPanelEntry): string {
   `;
 }
 
-function renderActionItem(id: WhSelectedWordPanelItemId, word: string, isTransientRange: boolean): string {
+function renderActionItem(
+  id: WhSelectedWordPanelItemId,
+  word: string,
+  entry: WordPanelEntry,
+  isTransientRange: boolean
+): string {
   const escapedWord = escapeAttribute(word);
   const label = escapeAttribute(wordPanelItemLabel(id));
   if (id === "dictionary") {
@@ -217,7 +266,8 @@ function renderActionItem(id: WhSelectedWordPanelItemId, word: string, isTransie
   }
   if (id === "speech") {
     const title = escapeAttribute(t("reader.ttsWordTitle"));
-    return `<button class="secondary-button" type="button" data-word-panel-item="speech" data-tts-word="${escapedWord}" title="${title}" aria-label="${title}">${icon("speaker", 18)}<span class="shortcut-badge">${escapeHtml(t("reader.keySpace"))}</span></button>`;
+    const spokenHeadword = escapeAttribute(formatHeadword(word, entry.article));
+    return `<button class="secondary-button" type="button" data-word-panel-item="speech" data-tts-word="${spokenHeadword}" title="${title}" aria-label="${title}">${icon("speaker", 18)}<span class="shortcut-badge">${escapeHtml(t("reader.keySpace"))}</span></button>`;
   }
   if (id === "youglish") {
     const title = escapeAttribute(t("reader.youglishWordTitle"));
@@ -313,7 +363,7 @@ function renderConfiguredItems(
   for (const item of normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems)) {
     if (!item.visible) continue;
     if (ACTION_ITEM_IDS.has(item.id)) {
-      const action = renderActionItem(item.id, word, isTransientRange);
+      const action = renderActionItem(item.id, word, entry, isTransientRange);
       if (action) actionParts.push(action);
       continue;
     }
@@ -355,7 +405,11 @@ export function renderWordPanel(currentText: WhText): void {
     state.selectedWordIndex
   ) || entry.examples?.[0] || "";
 
-  const smartSuggestionHtml = getSmartSuggestionHtml(context, word);
+  const smartSuggestion = getSmartSuggestion(context, word);
+  const articleSuggestion = smartSuggestion?.kind === "article" ? smartSuggestion : null;
+  const smartSuggestionHtml = smartSuggestion?.kind === "separable-verb"
+    ? renderSmartSuggestionHtml(smartSuggestion)
+    : "";
   const hasVisibleSmartSuggestion = !!smartSuggestionHtml && normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems)
     .some((item) => item.id === "suggestion" && item.visible);
 
@@ -363,10 +417,11 @@ export function renderWordPanel(currentText: WhText): void {
     <div class="word-panel-header">
       <div>
         <p class="eyebrow">${escapeHtml(statusLabel(entry.status))}</p>
-        <h2 class="word-title">${escapeHtml(word)}</h2>
+        <h2 class="word-title" data-headword-word="${escapeAttribute(word)}">${escapeHtml(formatHeadword(word, entry.article))}</h2>
       </div>
       <button class="icon-button word-panel-close" type="button" data-close-word-panel aria-label="${escapeAttribute(t("reader.close"))}" title="${escapeAttribute(t("reader.close"))}">×</button>
     </div>
+    ${renderArticleEditor(entry, word, articleSuggestion, isTransientRange)}
     <div class="word-form">
       ${renderConfiguredItems(word, entry, context, smartSuggestionHtml, isTransientRange, hasVisibleSmartSuggestion)}
     </div>

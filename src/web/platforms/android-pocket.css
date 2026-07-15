@@ -1140,6 +1140,32 @@ html.pocket-mode {
   min-height: 44px;
 }
 
+.pocket-mode .word-article-editor {
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 0.65rem;
+}
+
+.pocket-mode .word-article-editor > label {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+}
+
+.pocket-mode .word-article-input,
+.pocket-mode .article-suggestion-button {
+  min-height: 44px;
+}
+
+.pocket-mode .word-editor-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pocket-mode .word-editor-field.word-editor-word,
+.pocket-mode .word-editor-field.word-editor-article,
+.pocket-mode .word-editor-field.word-editor-translation,
+.pocket-mode .word-editor-field.word-editor-example,
+.pocket-mode .word-editor-status {
+  grid-column: 1;
+}
 .pocket-mode .word-form {
   gap: 0.65rem;
   margin-top: 0.65rem;

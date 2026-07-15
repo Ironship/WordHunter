@@ -15,8 +15,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="theme.css?v=20260714-desktop-dark">
-  <link rel="stylesheet" href="styles.css?v=20260714-word-sheet">
-  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260714-word-sheet">
+  <link rel="stylesheet" href="styles.css?v=20260715-sheet-stability">
+  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260715-sheet-stability">
 </head>
 <body>
   <div class="app-shell">
@@ -1072,7 +1072,7 @@
                 <section class="data-action-row">
                   <div class="data-action-copy">
                     <h3 data-i18n="settings.ankiTitle">Wymiana słówek z Anki</h3>
-                    <p data-i18n="settings.ankiHint">TSV eksportuje tylko słowa, tłumaczenia i pierwszy kontekst. Import TSV dopisuje lub aktualizuje słówka, ale nie przenosi ustawień, książek ani profili.</p>
+                    <p data-i18n="settings.ankiHint">TSV eksportuje słowa, tłumaczenia, pierwszy kontekst i opcjonalne rodzajniki. Import TSV dopisuje lub aktualizuje słówka, ale nie przenosi ustawień, książek ani profili.</p>
                     <fieldset class="status-filter-field anki-export-statuses">
                       <legend data-i18n="settings.ankiExportStatuses">Eksportowane statusy</legend>
                       <div class="status-filter-options">
@@ -1093,7 +1093,7 @@
                           <span data-i18n="vocab.statusIgnored">Ignorowane</span>
                         </label>
                       </div>
-                      <small data-i18n="settings.ankiExportStatusesHint">Wybierz, które statusy słów trafią do TSV. Anki dostaje tylko kolumny: słowo, tłumaczenie i kontekst.</small>
+                      <small data-i18n="settings.ankiExportStatusesHint">Wybierz, które statusy słów trafią do TSV. Anki dostaje kolumny: słowo, tłumaczenie, kontekst i opcjonalny rodzajnik.</small>
                     </fieldset>
                   </div>
                   <div class="data-action-buttons">
@@ -1726,7 +1726,11 @@
           <span data-i18n="vocab.addWordLabel">Słowo</span>
           <input id="add-word-input" type="text" class="input" autocomplete="off" autofocus>
         </label>
-        <label class="word-editor-field">
+        <label class="word-editor-field word-editor-article">
+          <span data-i18n="vocab.addArticleLabel">Rodzajnik (opcjonalnie)</span>
+          <input id="add-article-input" type="text" class="input" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="word-editor-field word-editor-translation">
           <span data-i18n="vocab.addTranslationLabel">Tłumaczenie (opcjonalnie)</span>
           <input id="add-translation-input" type="text" class="input" autocomplete="off">
         </label>

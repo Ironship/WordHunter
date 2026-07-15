@@ -1,87 +1,143 @@
 /**
- * Smart suggestions for the word panel: article detection & German separable verbs.
+ * Smart suggestions for the word panel: grammatical articles and German separable verbs.
  */
 import { state } from "../state.js";
-import { escapeHtml } from "../utils.js";
+import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 
-/**
- * @param {string} context - sentence context around the word
- * @param {string} word - the selected word
- * @returns {string} HTML for the smart suggestion, or empty string
- */
-export function getSmartSuggestionHtml(context: string, word: string): string {
-  if (!context || !word || word.includes(" ")) return "";
+export interface ArticleSmartSuggestion {
+  kind: "article";
+  article: string;
+  word: string;
+}
 
-  const lang = effectiveLearningLanguage(state.preferences).split("-")[0];
-  const articles: Record<string, string[]> = {
-    de: ["der", "die", "das", "ein", "eine", "einen", "einem", "einer", "eines", "dem", "den", "des"],
-    fr: ["le", "la", "les", "un", "une", "l'", "d'"],
-    es: ["el", "la", "los", "las", "un", "una", "unos", "unas"],
-    it: ["il", "lo", "la", "i", "gli", "le", "un", "uno", "una", "un'"]
-  };
+export interface SeparableVerbSmartSuggestion {
+  kind: "separable-verb";
+  word: string;
+}
 
-  let suggestion = null;
-  let suggestType = "";
+export type SmartSuggestion = ArticleSmartSuggestion | SeparableVerbSmartSuggestion;
 
-  // 1. Check articles first (higher priority)
-  if (articles[lang]) {
-    const langArticles = articles[lang];
-    const spaceArticles = langArticles.filter(a => !a.endsWith("'"));
-    const aposArticles = langArticles.filter(a => a.endsWith("'"));
-    const wordEsc = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ARTICLES: Record<string, readonly string[]> = {
+  de: ["der", "die", "das", "ein", "eine", "einen", "einem", "einer", "eines", "dem", "den", "des"],
+  fr: ["le", "la", "les", "un", "une", "l'"],
+  es: ["el", "la", "los", "las", "un", "una", "unos", "unas"],
+  it: ["il", "lo", "la", "i", "gli", "le", "un", "uno", "una", "l'", "un'"]
+};
 
-    // Is the clicked word preceded by an article?
-    let patternParts = [];
-    if (spaceArticles.length > 0) patternParts.push(`(?:\\b(?:${spaceArticles.join("|")})\\s+${wordEsc}\\b)`);
-    if (aposArticles.length > 0) patternParts.push(`(?:\\b(?:${aposArticles.join("|")})${wordEsc}\\b)`);
+const SUGGESTIBLE_ARTICLES: Record<string, readonly string[]> = {
+  ...ARTICLES,
+  // Inflected German forms such as "dem" and "den" do not identify one
+  // canonical dictionary article, so only unambiguous forms are suggested.
+  de: ["der", "die", "das"]
+};
 
-    if (patternParts.length > 0) {
-      const regex = new RegExp(patternParts.join("|"), "i");
-      const match = context.match(regex);
-      if (match) {
-        suggestion = match[0];
-        suggestType = t("reader.smartSuggestArticle");
-      }
+function baseLanguage(language: string): string {
+  return language.toLowerCase().split("-")[0];
+}
+
+export function articleOptionsForLanguage(language = effectiveLearningLanguage(state.preferences)): readonly string[] {
+  return ARTICLES[baseLanguage(language)] || [];
+}
+
+export function supportsArticleLanguage(language = effectiveLearningLanguage(state.preferences)): boolean {
+  return articleOptionsForLanguage(language).length > 0;
+}
+
+function suggestionArticlesForLanguage(language: string): readonly string[] {
+  return SUGGESTIBLE_ARTICLES[baseLanguage(language)] || [];
+}
+
+function regexEscape(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeSuggestedArticle(value: string): string {
+  return value.toLowerCase().replaceAll("’", "'");
+}
+
+function detectArticle(context: string, word: string, language: string): ArticleSmartSuggestion | null {
+  const options = suggestionArticlesForLanguage(language);
+  if (!options.length) return null;
+  const selectedWord = word.toLowerCase();
+  const wordPattern = regexEscape(word);
+  const boundaryBefore = "(?:^|[^\\p{L}\\p{M}])";
+  const boundaryAfter = "(?![\\p{L}\\p{M}])";
+  const spaced = options.filter((article) => !article.endsWith("'"));
+  const attached = options.filter((article) => article.endsWith("'"));
+
+  if (!state.vocab[word]?.article && spaced.length) {
+    const pattern = spaced.map(regexEscape).join("|");
+    const match = context.match(new RegExp(`${boundaryBefore}(${pattern})\\s+${wordPattern}${boundaryAfter}`, "iu"));
+    if (match?.[1]) {
+      return { kind: "article", article: normalizeSuggestedArticle(match[1]), word };
     }
-
-    // Is the clicked word the ARTICLE itself?
-    if (!suggestion && langArticles.includes(word.toLowerCase())) {
-      const isApos = word.endsWith("'");
-      const spaceRegex = isApos ? "" : "\\s+";
-      const nextWordRegex = new RegExp(`\\b${wordEsc}${spaceRegex}([\\p{L}\\p{M}\\-]+)\\b`, "iu");
-      const match = context.match(nextWordRegex);
-      if (match) {
-        suggestion = match[0];
-        suggestType = t("reader.smartSuggestArticle");
-      }
+  }
+  if (!state.vocab[word]?.article && attached.length) {
+    const pattern = attached
+      .map((article) => regexEscape(article).replace("'", "['’]"))
+      .join("|");
+    const match = context.match(new RegExp(`${boundaryBefore}(${pattern})${wordPattern}${boundaryAfter}`, "iu"));
+    if (match?.[1]) {
+      return { kind: "article", article: normalizeSuggestedArticle(match[1]), word };
     }
   }
 
-  // 2. If not an article, check German separable prefixes
-  if (!suggestion && lang === "de") {
-    suggestion = checkGermanSeparableVerb(context, word);
-    if (suggestion) {
-      suggestType = t("reader.smartSuggestSeparableVerb");
+  if (spaced.includes(selectedWord)) {
+    const match = context.match(new RegExp(
+      `${boundaryBefore}${wordPattern}\\s+([\\p{L}\\p{M}][\\p{L}\\p{M}'’\\-]*)${boundaryAfter}`,
+      "iu"
+    ));
+    const targetWord = match?.[1]?.toLowerCase() || "";
+    if (targetWord && !state.vocab[targetWord]?.article) {
+      return { kind: "article", article: normalizeSuggestedArticle(selectedWord), word: targetWord };
     }
   }
+  return null;
+}
 
+export function getSmartSuggestion(context: string, word: string): SmartSuggestion | null {
+  if (!context || !word || word.includes(" ")) return null;
+  const language = effectiveLearningLanguage(state.preferences);
+  const articleSuggestion = detectArticle(context, word, language);
+  if (articleSuggestion) return articleSuggestion;
+
+  if (baseLanguage(language) === "de") {
+    const suggestedWord = checkGermanSeparableVerb(context, word);
+    if (suggestedWord) return { kind: "separable-verb", word: suggestedWord };
+  }
+  return null;
+}
+export function renderSmartSuggestionHtml(suggestion: SmartSuggestion | null): string {
   if (!suggestion) return "";
-
-  const paramWord = suggestion.toLowerCase().replace(word.toLowerCase(), "").trim();
-  const suggestText = t("reader.smartSuggest");
-  const btnText = t("reader.smartSuggestBtn").replace("{word}", paramWord);
+  if (suggestion.kind === "article") {
+    return `
+      <div class="smart-suggestion smart-suggestion-article">
+        <p>${escapeHtml(t("reader.smartSuggestArticle"))}</p>
+        <button class="primary-button button-xs" type="button" data-suggest-article="${escapeAttribute(suggestion.article)}" data-suggest-word="${escapeAttribute(suggestion.word)}">
+          ${escapeHtml(t("reader.smartSuggestArticleBtn", { article: suggestion.article }))}
+          <span class="shortcut-badge">5</span>
+        </button>
+      </div>
+    `;
+  }
+  const particle = suggestion.word.toLowerCase().replace(state.selectedWord?.toLowerCase() || "", "").trim();
   return `
-    <div style="margin-top: 0.75rem; background: color-mix(in srgb, var(--control-accent) 5%, transparent); padding: 0.5rem; border-radius: 6px; border: 1px dashed var(--control-accent); text-align: center;">
-      <p style="font-size: 0.75rem; color: var(--control-accent); margin: 0 0 0.4rem 0; opacity: 0.9;">${escapeHtml(suggestText)}</p>
-      <button class="primary-button button-xs" type="button" data-suggest-word="${escapeHtml(suggestion)}" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; height: auto; min-height: 24px;">
-        ${escapeHtml(btnText)} <strong style="margin-left: 0.2rem">${escapeHtml(suggestion)}</strong> <span class="shortcut-badge" style="margin-left: 0.4rem; font-size: 0.7rem;">5</span>
+    <div class="smart-suggestion smart-suggestion-separable">
+      <p>${escapeHtml(t("reader.smartSuggestSeparableVerb"))}</p>
+      <button class="primary-button button-xs" type="button" data-suggest-word="${escapeAttribute(suggestion.word)}">
+        ${escapeHtml(t("reader.smartSuggestBtn").replace("{word}", particle))}
+        <strong>${escapeHtml(suggestion.word)}</strong>
+        <span class="shortcut-badge">5</span>
       </button>
     </div>
   `;
 }
 
+export function getSmartSuggestionHtml(context: string, word: string): string {
+  return renderSmartSuggestionHtml(getSmartSuggestion(context, word));
+}
 function checkGermanSeparableVerb(context: string, word: string): string | null {
   const dePrefixes = ["ab", "an", "auf", "aus", "bei", "ein", "fest", "her", "herein", "hin", "hinaus", "los", "mit", "nach", "vor", "vorbei", "weg", "weiter", "zu", "zurück", "zusammen", "dran", "drauf", "raus", "rein", "rüber", "runter"];
   const pronouns = ["ich", "du", "er", "sie", "es", "wir", "ihr", "mich", "dich", "ihn", "uns", "euch", "ihnen", "mir", "dir", "ihm"];

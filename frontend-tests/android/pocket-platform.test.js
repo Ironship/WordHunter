@@ -251,7 +251,7 @@ describe("Android Pocket platform", () => {
     assert.equal(providerOptions.find((option) => option.value === "google").hidden, false);
   });
 
-  it("drags and toggles the Pocket word sheet without duplicate bindings", async (context) => {
+  it("keeps a custom Pocket word-sheet top across content refreshes and reprojects it only for viewport changes", async (context) => {
     let now = 0;
     let expandedTop = 80;
     let collapsedTop = 560;
@@ -274,7 +274,8 @@ describe("Android Pocket platform", () => {
       style: {
         values: {},
         setProperty(name, value) { this.values[name] = value; },
-        removeProperty(name) { delete this.values[name]; }
+        removeProperty(name) { delete this.values[name]; },
+        getPropertyValue(name) { return this.values[name] || ""; }
       },
       getBoundingClientRect() {
         if (this.dataset.pocketSheetState === "custom") {
@@ -313,6 +314,8 @@ describe("Android Pocket platform", () => {
 
     assert.equal(handle.listeners.click.length, 1);
     assert.equal(handle.listeners.pointerdown.length, 1);
+    assert.equal(listeners.resize.length, 1);
+    assert.equal(listeners.orientationchange.length, 1);
     assert.equal(handle.attrs["aria-expanded"], "false");
 
     handle.listeners.click[0]({ preventDefault() {} });
@@ -368,16 +371,31 @@ describe("Android Pocket platform", () => {
     assert.equal(wrapper.dataset.pocketSheetState, "custom");
     assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "400px");
 
-    root.classList.remove("pocket-word-panel-open");
+    // Content refreshes such as a newly rendered Smart Suggestion must not
+    // reinterpret the saved progress against a transiently different layout.
     expandedTop = 40;
     collapsedTop = 700;
+    refreshPocketWordPanelSheet();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "400px");
+
+    listeners.orientationchange[0]();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "480px");
+
+    root.classList.remove("pocket-word-panel-open");
     applyPlatformUi();
     assert.equal(wrapper.dataset.pocketSheetState, "custom");
-    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "400px");
+    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "480px");
+
+    // A viewport change while the sheet is closed is remembered and applied
+    // after the panel opens again.
+    expandedTop = 100;
+    collapsedTop = 800;
+    listeners.resize[0]();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "480px");
 
     root.classList.add("pocket-word-panel-open");
     refreshPocketWordPanelSheet();
-    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "480px");
+    assert.ok(Math.abs(Number.parseFloat(wrapper.style.values["--pocket-word-sheet-top"]) - (100 + 700 * 2 / 3)) < 0.001);
 
     now = 5000;
     handle.listeners.click[0]({ preventDefault() {} });

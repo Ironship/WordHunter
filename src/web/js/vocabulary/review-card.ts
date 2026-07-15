@@ -11,6 +11,7 @@ import { renderVocabulary } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playStatusSound } from "../status-sounds.js";
+import { formatHeadword } from "./article.js";
 
 import { reviewAnswerVisible } from "../views/vocabulary.js";
 
@@ -74,8 +75,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   if (!isReverse) {
     frontHtml = `
       <strong style="font-size: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
-        ${escapeHtml(card.word)}
-        <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(card.word)}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+        ${escapeHtml(formatHeadword(card.word, card.article))}
+        <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
           ${icon("speaker", 14)}
         </button>
       </strong>
@@ -97,7 +98,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
       ` : renderReviewTranslationInput(card)}
       ${context ? `
         <p class="review-context" style="font-size: 0.9rem; color: var(--muted); margin-top: 0.75rem; font-style: italic; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
-          „${escapeHtml(maskWordInSentence(displayContext, card.word))}”
+          „${escapeHtml(maskHeadwordInSentence(displayContext, card.word, card.article))}”
         </p>
       ` : ""}
     `;
@@ -136,8 +137,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     } else {
       backHtml = `
         <strong style="font-size: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%; margin-top: 1rem;">
-          ${escapeHtml(card.word)}
-          <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(card.word)}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+          ${escapeHtml(formatHeadword(card.word, card.article))}
+          <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
             ${icon("speaker", 14)}
           </button>
         </strong>
@@ -267,7 +268,9 @@ export function formatSrsMeta(entry: SrsMetaEntry): string {
 
 function maskWordInSentence(sentence: string, word: string): string {
   if (!sentence || !word) return sentence;
-  const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const escapedWord = word
+    .replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+    .replace(/['’]/g, "['’]");
   try {
     let regex: RegExp;
     if (/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\uFAFF\uFF66-\uFF9F]/.test(word)) {
@@ -279,6 +282,14 @@ function maskWordInSentence(sentence: string, word: string): string {
   } catch (e) {
     return sentence.replace(new RegExp(escapedWord, 'gi'), '_____');
   }
+}
+
+function maskHeadwordInSentence(sentence: string, word: string, article: unknown): string {
+  const maskedWord = maskWordInSentence(
+    maskWordInSentence(sentence, formatHeadword(word, article)),
+    word
+  );
+  return maskWordInSentence(maskedWord, typeof article === "string" ? article.trim() : "");
 }
 
 function renderReviewTranslationInput(card: ReviewTranslationCard): string {

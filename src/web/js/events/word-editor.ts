@@ -11,6 +11,7 @@ import { VOCAB_STATUS_FILTERS } from "./vocab-status.js";
 
 type AddWordOriginalValues = {
   word: string;
+  article: string;
   translation: string;
   example: string;
   status: VocabStatus;
@@ -51,6 +52,7 @@ export function bindWordEditorEvents() {
   const addWordBtn = document.querySelector<HTMLButtonElement>("#add-word-btn");
   const addWordDialog = document.querySelector<HTMLDialogElement>("#add-word-dialog");
   const addWordInput = document.querySelector<HTMLInputElement>("#add-word-input");
+  const addArticleInput = document.querySelector<HTMLInputElement>("#add-article-input");
   const addTranslationInput = document.querySelector<HTMLInputElement>("#add-translation-input");
   const addExampleInput = document.querySelector<HTMLTextAreaElement>("#add-example-input");
   const addWordConfirm = document.querySelector<HTMLButtonElement>("#add-word-confirm");
@@ -63,10 +65,12 @@ export function bindWordEditorEvents() {
   function isAddWordDirty() {
     if (!addWordOriginalValues) return false;
     const word = addWordInput?.value || "";
+    const article = addArticleInput?.value || "";
     const translation = addTranslationInput?.value || "";
     const example = addExampleInput?.value || "";
     const status = getAddWordStatus();
     return word !== addWordOriginalValues.word
+      || article !== addWordOriginalValues.article
       || translation !== addWordOriginalValues.translation
       || example !== addWordOriginalValues.example
       || status !== addWordOriginalValues.status;
@@ -79,6 +83,7 @@ export function bindWordEditorEvents() {
   function captureAddWordOriginal() {
     addWordOriginalValues = {
       word: addWordInput?.value || "",
+      article: addArticleInput?.value || "",
       translation: addTranslationInput?.value || "",
       example: addExampleInput?.value || "",
       status: getAddWordStatus()
@@ -107,6 +112,7 @@ export function bindWordEditorEvents() {
     addWordBtn.addEventListener("click", () => {
       addWordEditing.value = "";
       if (addWordInput) { addWordInput.value = ""; addWordInput.disabled = false; }
+      if (addArticleInput) addArticleInput.value = "";
       if (addTranslationInput) addTranslationInput.value = "";
       if (addExampleInput) addExampleInput.value = "";
       setAddWordStatus("new");
@@ -129,6 +135,7 @@ export function bindWordEditorEvents() {
     if (!entry) return;
     addWordEditing.value = word;
     if (addWordInput) { addWordInput.value = word; addWordInput.disabled = true; }
+    if (addArticleInput) addArticleInput.value = entry.article || "";
     if (addTranslationInput) addTranslationInput.value = entry.translation || "";
     if (addExampleInput) addExampleInput.value = entry.examples?.[0] || "";
     setAddWordStatus(entry.status || "new");
@@ -156,6 +163,9 @@ export function bindWordEditorEvents() {
     if (editing) {
       const entry = state.vocab[editing];
       if (!entry) return;
+      const article = addArticleInput?.value.trim() || "";
+      if (article) entry.article = article;
+      else delete entry.article;
       const translation = addTranslationInput?.value.trim();
       if (translation !== undefined && translation !== entry.translation) {
         entry.translation = translation;
@@ -178,6 +188,8 @@ export function bindWordEditorEvents() {
       const entry = getOrCreateEntry(word);
       const previousStatus = setEntryStatus(entry, selectedStatus, now);
       if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
+      const article = addArticleInput?.value.trim();
+      if (article) entry.article = article;
       const translation = addTranslationInput?.value.trim();
       if (translation) entry.translation = translation;
       const example = addExampleInput?.value.trim();
@@ -203,7 +215,7 @@ export function bindWordEditorEvents() {
       ? e.key
       : e.code?.match(/^(?:Digit|Numpad)([1-4])$/)?.[1];
     if (statusDigit && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (e.target === addWordInput || e.target === addTranslationInput || e.target === addExampleInput) {
+      if (e.target === addWordInput || e.target === addArticleInput || e.target === addTranslationInput || e.target === addExampleInput) {
         e.preventDefault();
         setAddWordStatus(statusShortcutMap[statusDigit]);
         return;

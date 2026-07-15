@@ -6,14 +6,18 @@ import { showToast } from "../toast.js";
 import { isAndroidPlatform, openAndroidUrl } from "../platform.js";
 import { resolveTheme } from "../theme.js";
 import { resolveProfileTranslationPair } from "../translator-preferences.js";
+import { formatHeadword } from "../vocabulary/article.js";
 
 export function hasNativeTextSelection(): boolean {
   const selection = window.getSelection?.();
   return !!selection && !selection.isCollapsed && selection.toString().trim().length > 0;
 }
 
-export function getSelectedReaderActionText(): string {
-  return getReaderSelectionText() || state.selectedWord || "";
+export function getSelectedReaderActionText(includeArticle = false): string {
+  const selection = getReaderSelectionText();
+  if (selection) return selection;
+  const word = state.selectedWord || "";
+  return includeArticle ? formatHeadword(word, state.vocab?.[word]?.article) : word;
 }
 
 export async function openDictionary(word: string): Promise<void> {

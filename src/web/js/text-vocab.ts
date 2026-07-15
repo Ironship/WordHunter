@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { getAllBooks, bookTexts } from "./books.js";
-import { normalizeWord } from "./tokenizer_v2.js";
+import { normalizeVocabularyWord, normalizeWord } from "./tokenizer_v2.js";
 import {
   computeSignature,
   getCachedEntry,
@@ -89,11 +89,19 @@ export async function loadTextVocabularyIndex(textId: string): Promise<TextVocab
   return null;
 }
 
-export function entryAppearsInText(word: unknown, textIndex: TextVocabularyIndex | null | undefined): boolean {
+export function entryAppearsInText(
+  word: unknown,
+  textIndex: TextVocabularyIndex | null | undefined,
+  language = "en"
+): boolean {
   if (!word || !textIndex) return false;
   const normalized = normalizeWord(word);
   if (!normalized) return false;
-  if (!normalized.includes(" ")) return textIndex.words.has(normalized);
-  const phrase = normalized.split(/\s+/).filter(Boolean).join(" ");
+  const phrase = normalized
+    .split(/\s+/)
+    .map((part) => normalizeVocabularyWord(part, language))
+    .filter(Boolean)
+    .join(" ");
+  if (!phrase.includes(" ")) return textIndex.words.has(phrase);
   return Boolean(phrase) && textIndex.tokenLine.includes(` ${phrase} `);
 }

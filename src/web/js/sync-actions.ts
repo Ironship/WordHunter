@@ -46,6 +46,46 @@ interface AnkiImportRow {
   word: string;
   translation: string;
   context: string;
+  article: string;
+}
+
+const LOCALIZED_ANKI_WORD_HEADERS = new Set([
+  "word",
+  "słowo",
+  "wort",
+  "palabra",
+  "mot",
+  "parola",
+  "単語",
+  "слово"
+]);
+const LOCALIZED_ANKI_TRANSLATION_HEADERS = new Set([
+  "translation",
+  "tłumaczenie",
+  "übersetzung",
+  "traducción",
+  "traduction",
+  "traduzione",
+  "翻訳",
+  "перевод",
+  "переклад"
+]);
+const LOCALIZED_ANKI_CONTEXT_HEADERS = new Set([
+  "context",
+  "kontekst",
+  "kontext",
+  "contexto",
+  "contexte",
+  "contesto",
+  "文脈",
+  "контекст"
+]);
+
+function isLocalizedAnkiHeader(parts: readonly string[]): boolean {
+  return parts.length >= 3
+    && LOCALIZED_ANKI_WORD_HEADERS.has(parts[0]?.trim().toLowerCase() || "")
+    && LOCALIZED_ANKI_TRANSLATION_HEADERS.has(parts[1]?.trim().toLowerCase() || "")
+    && LOCALIZED_ANKI_CONTEXT_HEADERS.has(parts[2]?.trim().toLowerCase() || "");
 }
 
 interface FileInputTarget {
@@ -83,7 +123,8 @@ function normalizeAnkiRows(value: unknown): AnkiImportRow[] {
     rows.push({
       word: item.word,
       translation: typeof item.translation === "string" ? item.translation : "",
-      context: typeof item.context === "string" ? item.context : ""
+      context: typeof item.context === "string" ? item.context : "",
+      article: typeof item.article === "string" ? item.article : ""
     });
   }
   return rows;
@@ -521,6 +562,7 @@ export function importAnkiTsv(event: unknown): void {
         if (!word) continue;
         const entry = getOrCreateEntry(word, row.context);
         if (row.translation) entry.translation = row.translation;
+        if (row.article) entry.article = row.article;
         entry.updatedAt = new Date().toISOString();
         importedCount++;
       }
@@ -536,23 +578,26 @@ export function importAnkiTsv(event: unknown): void {
   target.value = "";
 }
 
-function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
+export function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
   const rows: AnkiImportRow[] = [];
-  let hasHeader = false;
+  let isFirstNonEmptyLine = true;
   for (const line of text.split("\n")) {
     const trimmed = line.replace(/\r$/, "");
     if (!trimmed.trim()) continue;
     const parts = trimmed.split("\t");
-    if (!hasHeader && parts[0]?.trim().toLowerCase() === "word") {
-      hasHeader = true;
+    const first = parts[0]?.trim() || "";
+    if (isFirstNonEmptyLine && isLocalizedAnkiHeader(parts)) {
+      isFirstNonEmptyLine = false;
       continue;
     }
-    const word = parts[0]?.trim();
+    isFirstNonEmptyLine = false;
+    const word = first;
     if (!word) continue;
     rows.push({
       word,
       translation: parts[1]?.trim() || "",
-      context: parts[2]?.trim() || ""
+      context: parts[2]?.trim() || "",
+      article: parts[3]?.trim() || ""
     });
   }
   return rows;
