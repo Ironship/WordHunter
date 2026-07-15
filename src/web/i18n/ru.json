@@ -395,6 +395,7 @@
     "wordPanelMoveUpAria": "Переместить «{item}» выше",
     "wordPanelMoveDownAria": "Переместить «{item}» ниже",
     "wordPanelItems": {
+      "article": "Артикль",
       "status": "Статус",
       "dictionary": "Словарь",
       "speech": "Произношение (TTS)",

@@ -395,6 +395,7 @@
     "wordPanelMoveUpAria": "Перемістити «{item}» вище",
     "wordPanelMoveDownAria": "Перемістити «{item}» нижче",
     "wordPanelItems": {
+      "article": "Артикль",
       "status": "Статус",
       "dictionary": "Словник",
       "speech": "Вимова (TTS)",

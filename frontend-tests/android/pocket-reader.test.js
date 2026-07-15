@@ -157,20 +157,23 @@ describe("Android Pocket reader", () => {
     assert.equal(css.includes("#reader-view #reader-vocab-list"), false);
     const pocketRoot = declarationBlock(css, "html.pocket-mode");
     assert.equal(pocketRoot["--pocket-word-sheet-collapsed-size"], "max(4rem, calc(20dvh - 4.6rem - var(--pocket-navbar-safe-bottom)))");
+    assert.equal(pocketRoot["--pocket-word-sheet-expanded-top"], "calc(var(--pocket-statusbar-safe-top) + 0.5rem)");
+    assert.match(pocketRoot["--pocket-word-sheet-collapsed-top"], /^max\(/);
     const openPanel = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper");
-    assert.equal(openPanel.top, "calc(var(--pocket-statusbar-safe-top) + 0.5rem)");
-    assert.match(openPanel.bottom, /^calc\(4\.6rem/);
-    assert.equal(openPanel["max-height"], undefined);
+    assert.equal(openPanel.top, "var(--pocket-word-sheet-current-top)");
+    assert.equal(openPanel.bottom, "auto");
+    assert.equal(openPanel["min-height"], "0");
+    assert.equal(openPanel["max-height"], "none");
+    assert.match(openPanel.height, /^max\(/);
+    assert.equal(openPanel["align-self"], "stretch");
     assert.equal(openPanel.overflow, "hidden");
     assert.equal(openPanel.display, "flex");
+    assert.equal(openPanel.flex, "none");
     assert.equal(openPanel.gap, "0");
     assert.equal(openPanel["--pocket-word-sheet-collapsed-size"], undefined);
-    assert.match(
-      declarationBlock(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]').top,
-      /^max\(/
-    );
-    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { top: "calc(var(--pocket-statusbar-safe-top) + 0.5rem)" });
-    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"]', { top: "var(--pocket-word-sheet-top)" });
+    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-collapsed-top)" });
+    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-expanded-top)" });
+    assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-top)" });
     assertDeclarations(css, ".pocket-mode .pocket-word-panel-sheet-handle", { display: "flex", "min-height": "56px", "touch-action": "none" });
     assertDeclarations(css, ".pocket-mode .word-panel.word-panel-card-ghost", { top: "56px" });
     assert.match(
@@ -183,6 +186,7 @@ describe("Android Pocket reader", () => {
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });
     assert.equal(css.includes("pocket-word-dictionary"), false);
     assertDeclarations(css, ".pocket-mode #word-panel .word-actions .secondary-button", { flex: "1 1 44px", "min-width": "44px" });
+    assertDeclarations(css, ".pocket-mode .word-article-editor > label", { flex: "0 1 calc(50% - 0.3rem)", width: "calc(50% - 0.3rem)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-1", { background: "var(--red-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-3", { background: "var(--amber-soft)" });
     assertDeclarations(sharedCss, ".sm2-grades .status-button.sm2-grade-5", { background: "var(--green-soft)" });

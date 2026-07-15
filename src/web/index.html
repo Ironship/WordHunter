@@ -15,8 +15,8 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="theme.css?v=20260714-desktop-dark">
-  <link rel="stylesheet" href="styles.css?v=20260715-sheet-stability">
-  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260715-sheet-stability">
+  <link rel="stylesheet" href="styles.css?v=20260715-panel-controls">
+  <link rel="stylesheet" href="platforms/android-pocket.css?v=20260715-panel-controls">
 </head>
 <body>
   <div class="app-shell">
@@ -805,11 +805,13 @@
                 </span>
                 <input id="pref-reader-word-panel-visible" type="checkbox" data-pref="readerWordPanelVisible">
               </label>
-              <div class="word-panel-items-setting">
-                <p id="word-panel-items-heading" class="settings-subheading" data-i18n="settings.wordPanelItemsHeading"></p>
-                <p id="word-panel-items-hint" class="muted-copy" data-i18n="settings.wordPanelItemsHint"></p>
-                <ol id="pref-selected-word-panel-items" class="word-panel-item-list" aria-labelledby="word-panel-items-heading" aria-describedby="word-panel-items-hint"></ol>
-              </div>
+              <details class="word-panel-items-setting">
+                <summary id="word-panel-items-heading" class="settings-subheading" data-i18n="settings.wordPanelItemsHeading"></summary>
+                <div class="word-panel-items-setting-body">
+                  <p id="word-panel-items-hint" class="muted-copy" data-i18n="settings.wordPanelItemsHint"></p>
+                  <ol id="pref-selected-word-panel-items" class="word-panel-item-list" aria-labelledby="word-panel-items-heading" aria-describedby="word-panel-items-hint"></ol>
+                </div>
+              </details>
               <label class="setting-row">
                 <span data-i18n="settings.wordsPerPage">Słowa na stronę</span>
                 <select id="pref-words-per-page">

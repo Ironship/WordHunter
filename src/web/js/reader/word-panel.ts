@@ -105,7 +105,7 @@ function renderArticleEditor(
     .map((article) => `<option value="${escapeAttribute(article)}"></option>`)
     .join("");
   return `
-    <div class="word-article-editor" data-word-article-editor>
+    <div class="word-article-editor" data-word-article-editor data-word-panel-item="article">
       <label>
         <span>${escapeHtml(t("reader.articleLabel"))}</span>
         <input
@@ -294,9 +294,12 @@ function renderContentItem(
   entry: WordPanelEntry,
   context: string,
   smartSuggestionHtml: string,
-  hasVisibleSmartSuggestion: boolean
+  hasVisibleSmartSuggestion: boolean,
+  articleSuggestion: ArticleSmartSuggestion | null,
+  isTransientRange: boolean
 ): string {
   if (id === "status") return renderStatusItem(word, entry);
+  if (id === "article") return renderArticleEditor(entry, word, articleSuggestion, isTransientRange);
   if (id === "suggestion") {
     return smartSuggestionHtml
       ? `<div class="word-panel-item" data-word-panel-item="suggestion">${smartSuggestionHtml}</div>`
@@ -350,7 +353,8 @@ function renderConfiguredItems(
   context: string,
   smartSuggestionHtml: string,
   isTransientRange: boolean,
-  hasVisibleSmartSuggestion: boolean
+  hasVisibleSmartSuggestion: boolean,
+  articleSuggestion: ArticleSmartSuggestion | null
 ): string {
   const parts: string[] = [];
   let actionParts: string[] = [];
@@ -367,7 +371,16 @@ function renderConfiguredItems(
       if (action) actionParts.push(action);
       continue;
     }
-    const content = renderContentItem(item.id, word, entry, context, smartSuggestionHtml, hasVisibleSmartSuggestion);
+    const content = renderContentItem(
+      item.id,
+      word,
+      entry,
+      context,
+      smartSuggestionHtml,
+      hasVisibleSmartSuggestion,
+      articleSuggestion,
+      isTransientRange
+    );
     if (!content) continue;
     flushActions();
     parts.push(content);
@@ -421,9 +434,8 @@ export function renderWordPanel(currentText: WhText): void {
       </div>
       <button class="icon-button word-panel-close" type="button" data-close-word-panel aria-label="${escapeAttribute(t("reader.close"))}" title="${escapeAttribute(t("reader.close"))}">×</button>
     </div>
-    ${renderArticleEditor(entry, word, articleSuggestion, isTransientRange)}
     <div class="word-form">
-      ${renderConfiguredItems(word, entry, context, smartSuggestionHtml, isTransientRange, hasVisibleSmartSuggestion)}
+      ${renderConfiguredItems(word, entry, context, smartSuggestionHtml, isTransientRange, hasVisibleSmartSuggestion, articleSuggestion)}
     </div>
   `;
   bindInTextReviewControls(currentText, word, entry, hasVisibleSmartSuggestion);

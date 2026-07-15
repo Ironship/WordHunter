@@ -395,6 +395,7 @@
     "wordPanelMoveUpAria": "Przenieś „{item}” w górę",
     "wordPanelMoveDownAria": "Przenieś „{item}” w dół",
     "wordPanelItems": {
+      "article": "Rodzajnik",
       "status": "Status",
       "dictionary": "Słownik",
       "speech": "Wymowa (TTS)",

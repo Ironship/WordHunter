@@ -8,6 +8,7 @@ export const STATUS_ORDER: VocabStatus[] = ["new", "learning", "known", "ignored
 
 export const SELECTED_WORD_PANEL_ITEM_IDS: readonly WhSelectedWordPanelItemId[] = [
   "status",
+  "article",
   "dictionary",
   "speech",
   "youglish",
@@ -23,6 +24,7 @@ export const SELECTED_WORD_PANEL_ITEM_IDS: readonly WhSelectedWordPanelItemId[] 
 
 export const DEFAULT_SELECTED_WORD_PANEL_ITEMS: readonly WhSelectedWordPanelItem[] = [
   { id: "status", visible: true },
+  { id: "article", visible: true },
   { id: "dictionary", visible: true },
   { id: "speech", visible: true },
   { id: "youglish", visible: true },
