@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.9" date="2026-07-15" type="development">
+      <description>
+        <ul>
+          <li>Add 48 original A1-B2 books across all 12 named learning languages.</li>
+          <li>Offer lessons, dialogues, practical texts, contextual vocabulary, and practice activities.</li>
+          <li>Use CEFR-inspired levels for Latin and Ancient Greek.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.8" date="2026-07-15" type="development">
       <description>
         <ul>
