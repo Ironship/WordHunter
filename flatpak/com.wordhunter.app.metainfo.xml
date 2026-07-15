@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.7" date="2026-07-15" type="development">
+      <description>
+        <ul>
+          <li>Let the Pocket word card travel across most of the screen and keep its chosen height when Smart Suggestion changes.</li>
+          <li>Make word-card swipes easier and move larger navigation targets closer to the bottom of tall phones.</li>
+          <li>Add visible grammatical-article editing, suggestions, display, flashcards, search, and import/export support.</li>
+          <li>Recognize French and Italian apostrophe articles without creating duplicate vocabulary keys.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.6" date="2026-07-14" type="development">
       <description>
         <ul>

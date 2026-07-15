@@ -15,7 +15,7 @@ pub fn handle(payload: Value) -> Result<Value, String> {
 
     let algorithm = cache_key::algorithm_name(algorithm);
     let index = index::build_vocab_index(text, lang, algorithm);
-    let stats = stats::VocabStats::from_words(&index.words, &index.frequencies, &vocab);
+    let stats = stats::VocabStats::from_words(&index.words, &index.frequencies, &vocab, lang);
 
     Ok(json!({
         "unique": stats.unique,

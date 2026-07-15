@@ -189,7 +189,7 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   }
   if (isSpace && plainKey) {
     event.preventDefault();
-    speakWord(getSelectedReaderActionText());
+    speakWord(getSelectedReaderActionText(true));
     return true;
   }
   return false;

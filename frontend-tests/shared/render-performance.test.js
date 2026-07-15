@@ -114,6 +114,8 @@ describe("render performance guards", () => {
   it("uses the imprecise path for routine reader scroll events", async () => {
     const pendingTimers = new Map();
     const rememberCalls = [];
+    const articleUpdates = [];
+    let wordPanelRenders = 0;
     let nextTimerId = 1;
     let frontendFlusher;
     const setTimeout = (callback, delay) => {
@@ -129,7 +131,11 @@ describe("render performance guards", () => {
       pendingTimers.delete(id);
       return timer;
     };
-    const readerText = fakeEventTarget({ dataset: { rendering: "0" }, scrollTop: 101 });
+    const readerText = fakeEventTarget({
+      dataset: { rendering: "0" },
+      scrollTop: 101,
+      querySelector() { return null; }
+    });
     const els = {
       readerSidebarResizer: null,
       readerText,
@@ -140,9 +146,16 @@ describe("render performance guards", () => {
       currentTextId: "text-1",
       currentView: "reader",
       readerPage: 2,
-      readerScrolls: { "text-1": { readerPage: 2, scrollTop: 100 } }
+      readerScrolls: { "text-1": { readerPage: 2, scrollTop: 100 } },
+      selectedWord: "das"
     };
     const noOp = () => {};
+    class FakeElement {}
+    class FakeHtmlElement {
+      static [Symbol.hasInstance](value) {
+        return value !== null && typeof value === "object";
+      }
+    }
     const { bindReaderEvents } = await evaluateWithMocks("../../dist/web/js/views/reader.js", {
       "../panel-resizer.js": { bindSidebarResizer: noOp },
       "../state.js": {
@@ -159,7 +172,12 @@ describe("render performance guards", () => {
       },
       "../platform.js": { refreshPocketWordPanelSheet: noOp },
       "../reader/word-navigation.js": { navigateReaderWord: noOp },
-      "../reader/renderer.js": { changeReaderPage: noOp, goToReaderPage: noOp, renderReader: noOp },
+      "../reader/renderer.js": {
+        changeReaderPage: noOp,
+        getTextById() { return { id: "text-1", text: "Das Haus ist alt." }; },
+        goToReaderPage: noOp,
+        renderReader: noOp
+      },
       "../reader/pdf-ocr-renderer.js": {
         adjustPdfOcrZoom: noOp,
         getPdfOcrViewMode: () => "text",
@@ -172,12 +190,8 @@ describe("render performance guards", () => {
     }, {
       window: {},
       document: { activeElement: null },
-      Element: class FakeElement {},
-      HTMLElement: class FakeHtmlElement {
-        static [Symbol.hasInstance](value) {
-          return value !== null && typeof value === "object";
-        }
-      },
+      Element: FakeElement,
+      HTMLElement: FakeHtmlElement,
       HTMLButtonElement: class FakeButtonElement {},
       HTMLInputElement: class FakeInputElement {},
       HTMLSelectElement: class FakeSelectElement {
@@ -187,13 +201,28 @@ describe("render performance guards", () => {
       },
       setTimeout,
       clearTimeout,
+      CSS: { escape(value) { return value; } },
       console
     }, {
-      "../dom.js": { els }
+      "../dom.js": { els },
+      "../vocab-actions.js": {
+        updateWordField(word, field, value) { articleUpdates.push([word, field, value]); }
+      },
+      "../reader/word-panel.js": {
+        renderWordPanel() { wordPanelRenders += 1; }
+      }
     });
 
     bindReaderEvents();
     await new Promise((resolve) => setImmediate(resolve));
+
+    const articleButton = { dataset: { suggestArticle: "das", suggestWord: "haus" } };
+    const clickTarget = new FakeElement();
+    clickTarget.closest = (selector) => selector === "[data-suggest-article]" ? articleButton : null;
+    wordPanel.dispatch("click", { target: clickTarget });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(articleUpdates, [["haus", "article", "das"]]);
+    assert.equal(wordPanelRenders, 1);
 
     readerText.dispatch("scroll");
     const ignoredTimer = takeTimer();

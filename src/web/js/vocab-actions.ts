@@ -14,6 +14,7 @@ import { scheduleFirstLearningReview } from "./sm2.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
 import { resolveProfileTranslationPair } from "./translator-preferences.js";
+import { formatHeadword } from "./vocabulary/article.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
@@ -94,8 +95,9 @@ export function selectWord(
   saveState();
   renderShell();
   updateReaderSelection();
-  if (options.forceSpeak) speakWord(word);
-  else maybeAutoSpeakFocusedWord(word);
+  const spokenHeadword = formatHeadword(word, entry.article);
+  if (options.forceSpeak) speakWord(spokenHeadword);
+  else maybeAutoSpeakFocusedWord(word, spokenHeadword);
   
   if (word.includes(" ") && isFresh) {
     import("./reader/renderer.js").then(({ renderReader }) => {
@@ -121,7 +123,7 @@ export function selectWord(
   }
 }
 
-function maybeAutoSpeakFocusedWord(word: string): void {
+function maybeAutoSpeakFocusedWord(word: string, spokenHeadword = word): void {
   if (state.currentView !== "reader") return;
   if (state.preferences?.autoTtsOnWordFocus !== true) return;
 
@@ -134,7 +136,7 @@ function maybeAutoSpeakFocusedWord(word: string): void {
   const focusKey = `${word}|${active.dataset.wordIndex || ""}`;
   if (focusKey === lastAutoTtsFocusKey) return;
   lastAutoTtsFocusKey = focusKey;
-  speakWord(word);
+  speakWord(spokenHeadword);
 }
 
 function isVocabStatus(status: string): status is WhVocabStatus {
@@ -167,8 +169,15 @@ export function setWordStatus(word: string, status: string): void {
 export function updateWordField(word: string, field: string, value: unknown): void {
   const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
-  if (hadEntry && Object.is(entry[field], value)) return;
-  entry[field] = value;
+  if (field === "article") {
+    const article = typeof value === "string" ? value.trim() : "";
+    if (hadEntry && Object.is(entry.article || "", article)) return;
+    if (article) entry.article = article;
+    else delete entry.article;
+  } else {
+    if (hadEntry && Object.is(entry[field], value)) return;
+    entry[field] = value;
+  }
   if (field === "translation") {
     delete entry.translationSource;
     if (String(value || "").trim()) {

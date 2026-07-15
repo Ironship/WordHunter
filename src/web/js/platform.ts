@@ -133,14 +133,22 @@ function bindPocketWordPanelSheet(): void {
     wrapper.dataset.pocketSheetState = original;
     return top;
   };
-  const restoreState = (): void => {
+  const restoreState = (reprojectCustom = false): void => {
     const remembered = root.dataset.pocketWordSheetState;
     if (remembered !== "custom") {
       setState(remembered === "expanded" ? "expanded" : currentState());
       return;
     }
     if (!root.classList.contains("pocket-word-panel-open") || !root.classList.contains("has-selected-word")) {
+      if (reprojectCustom) root.dataset.pocketWordSheetNeedsReproject = "true";
       setState("custom");
+      return;
+    }
+    const shouldReproject = reprojectCustom || root.dataset.pocketWordSheetNeedsReproject === "true";
+    delete root.dataset.pocketWordSheetNeedsReproject;
+    const customTop = Number.parseFloat(wrapper.style.getPropertyValue("--pocket-word-sheet-top"));
+    if (!shouldReproject && Number.isFinite(customTop)) {
+      setState("custom", customTop);
       return;
     }
     wrapper.classList.add("pocket-word-sheet-measuring");
@@ -260,10 +268,12 @@ function bindPocketWordPanelSheet(): void {
   handle.addEventListener("pointercancel", () => {
     if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
   });
-  window.addEventListener("resize", () => {
+  const restoreAfterViewportChange = (): void => {
     if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
-    else restoreState();
-  });
+    else restoreState(true);
+  };
+  window.addEventListener("resize", restoreAfterViewportChange);
+  window.addEventListener("orientationchange", restoreAfterViewportChange);
 }
 
 function bindPocketNavigationDrawer(): void {

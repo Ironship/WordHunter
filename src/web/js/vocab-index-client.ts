@@ -1,6 +1,6 @@
 import { STATE_SCHEMA_VERSION } from "./constants.js";
 
-export const VOCAB_INDEX_CACHE_VERSION = 1;
+export const VOCAB_INDEX_CACHE_VERSION = 2;
 const CACHE_KEY = `wordhunter:vocab-index:cache-v${VOCAB_INDEX_CACHE_VERSION}`;
 const MAX_CACHE_ENTRIES = 80;
 const SIGNATURE_VERSION = `vocab-index-v${VOCAB_INDEX_CACHE_VERSION}`;

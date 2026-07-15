@@ -1,4 +1,6 @@
 // Text tokenization and statistics. Independent of global state.
+import { vocabularyWordKey } from "./vocabulary/article.js";
+
 export type TokenType = "text" | "word" | "image";
 
 export interface TextToken {
@@ -29,7 +31,7 @@ function resolveTokenizerAlgorithm(value: string): TokenizerAlgorithm {
 }
 
 function pushClassicTokens(block: string, parts: TextToken[]) {
-  const pattern = /[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*/gu;
+  const pattern = /[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*/gu;
   let last = 0;
   let match = pattern.exec(block);
   while (match) {
@@ -102,8 +104,24 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
 export function normalizeWord(value: unknown): string {
   return String(value || "")
     .toLowerCase()
+    .replaceAll("’", "'")
     .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
     .trim();
+}
+
+export function normalizeVocabularyWord(value: unknown, language = "en"): string {
+  const normalized = normalizeWord(value);
+  return normalizeWord(vocabularyWordKey(normalized, language));
+}
+
+function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string): string {
+  const raw = normalizeWord(value);
+  const canonical = normalizeVocabularyWord(raw, language);
+  if (canonical && vocab?.[canonical]) return canonical;
+  if (raw && vocab?.[raw]) return raw;
+  const alternateApostrophe = raw.includes("’") ? raw.replaceAll("’", "'") : raw.replaceAll("'", "’");
+  if (alternateApostrophe !== raw && vocab?.[alternateApostrophe]) return alternateApostrophe;
+  return canonical || raw;
 }
 
 export function normalizeSearchVariants(value: unknown): string[] {
@@ -171,7 +189,7 @@ export function findGermanSeparableVerbMatches(tokens: readonly TextToken[], voc
 
 function getWordCharacterIndex(text: string, word: string, lang: string, algorithm: string, wordIndex: number | null) {
   if (!Number.isInteger(wordIndex) || wordIndex < 0) return null;
-  const expectedParts = normalizeWord(word).split(/\s+/).filter(Boolean);
+  const expectedParts = normalizeWord(word).split(/\s+/).map((part) => normalizeVocabularyWord(part, lang)).filter(Boolean);
   let characterIndex = 0;
   let currentWordIndex = 0;
   for (const part of tokenizeText(text, lang, algorithm)) {
@@ -180,7 +198,7 @@ function getWordCharacterIndex(text: string, word: string, lang: string, algorit
     characterIndex = partIndex + part.value.length;
     if (part.type !== "word") continue;
     if (currentWordIndex === wordIndex) {
-      return expectedParts.includes(normalizeWord(part.value))
+      return expectedParts.includes(normalizeVocabularyWord(part.value, lang))
         ? { characterIndex: partIndex, word: part.value }
         : null;
     }
@@ -189,12 +207,12 @@ function getWordCharacterIndex(text: string, word: string, lang: string, algorit
   return null;
 }
 
-function getClassicSentenceForWord(text: string, word: string, preferredIndex = -1): string {
+function getClassicSentenceForWord(text: string, word: string, lang: string, preferredIndex = -1): string {
   if (!text || !word) return "";
 
   const lowerText = text.toLowerCase();
   const lowerWord = word.toLowerCase();
-  const normalizedWord = normalizeWord(word);
+  const normalizedWord = normalizeVocabularyWord(word, lang);
   const wordLen = lowerWord.length;
 
   const isLetter = (char: string) => {
@@ -231,7 +249,7 @@ function getClassicSentenceForWord(text: string, word: string, preferredIndex = 
 
       const sentence = text.slice(start, end).trim();
       if (sentence) {
-        if (tokenizeText(sentence, "en", "classic").some(part => part.type === "word" && normalizeWord(part.value) === normalizedWord)) {
+        if (tokenizeText(sentence, lang, "classic").some(part => part.type === "word" && normalizeVocabularyWord(part.value, lang) === normalizedWord)) {
           return sentence;
         }
       }
@@ -248,13 +266,13 @@ export function getSentenceForWord(text: string, word: string, lang = "en", algo
   const preferredIndex = indexedMatch?.characterIndex ?? -1;
   const contextWord = indexedMatch?.word || word;
   if (resolveTokenizerAlgorithm(algorithm) === "classic") {
-    return getClassicSentenceForWord(text, contextWord, preferredIndex);
+    return getClassicSentenceForWord(text, contextWord, lang, preferredIndex);
   }
   if (!text || !contextWord) return "";
   
   const lowerText = text.toLowerCase();
   const lowerWord = contextWord.toLowerCase();
-  const normalizedContextWord = normalizeWord(contextWord);
+  const normalizedContextWord = normalizeVocabularyWord(contextWord, lang);
   const wordLen = lowerWord.length;
   
   const isLetter = (char: string) => {
@@ -335,7 +353,7 @@ export function getSentenceForWord(text: string, word: string, lang = "en", algo
       
       const sentence = text.slice(start, end).trim();
       if (sentence) {
-        if (tokenizeText(sentence, lang, algorithm).some(part => part.type === "word" && normalizeWord(part.value) === normalizedContextWord)) {
+        if (tokenizeText(sentence, lang, algorithm).some(part => part.type === "word" && normalizeVocabularyWord(part.value, lang) === normalizedContextWord)) {
           return sentence;
         }
       }
@@ -359,14 +377,18 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
   const classifications = new Map<number, TokenClassification>();
   tokens.forEach((token, tokenIndex) => {
     if (token.type !== "word") return;
-    const key = normalizeWord(token.value);
+    const key = resolveTokenVocabularyKey(token.value, vocab, lang);
     if (!key) return;
     classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   });
 
   const phrases = Object.entries(vocab || {})
     .filter(([word]) => word.includes(" "))
-    .map(([key, entry]) => ({ key, words: key.split(/\s+/).map(normalizeWord).filter(Boolean), status: entry?.status || "new" }))
+    .map(([key, entry]) => ({
+      key,
+      words: key.split(/\s+/).map((word) => normalizeVocabularyWord(word, lang)).filter(Boolean),
+      status: entry?.status || "new"
+    }))
     .filter((phrase) => phrase.words.length > 1)
     .sort((a, b) => b.words.length - a.words.length);
   const phrasesByFirstWord = new Map<string, typeof phrases>();
@@ -392,7 +414,7 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
           break;
         }
         if (token.type === "word") {
-          if (claimed.has(cursor) || normalizeWord(token.value) !== phrase.words[wordOffset]) {
+          if (claimed.has(cursor) || normalizeVocabularyWord(token.value, lang) !== phrase.words[wordOffset]) {
             blocked = true;
             break;
           }
@@ -418,7 +440,10 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
 }
 
 export function getTokenStats(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): TextStats {
-  const words = tokens.filter((part) => part.type === "word").map((part) => normalizeWord(part.value)).filter(Boolean);
+  const words = tokens
+    .filter((part) => part.type === "word")
+    .map((part) => normalizeVocabularyWord(part.value, lang))
+    .filter(Boolean);
   const classifications = classifyTokenOccurrences(tokens, vocab, lang);
   const stats: TextStats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
   classifications.forEach(({ status }) => {

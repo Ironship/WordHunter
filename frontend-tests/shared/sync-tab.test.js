@@ -163,6 +163,7 @@ const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
 const { bindNavigationEvents } = await import("../../dist/web/js/events/navigation.js");
+const { parseAnkiTsvLocally } = await import("../../dist/web/js/sync-actions.js");
 
 function setupRenderControls() {
   const syncNav = control({ dataset: { view: "sync" } });
@@ -194,6 +195,30 @@ function resetState() {
   document.documentElement.classList = fakeClassList();
 }
 
+describe("Anki TSV compatibility", () => {
+  it("parses an optional article column after every localized first-column header", () => {
+    for (const header of ["Word", "Słowo", "Wort", "Palabra", "Mot", "Parola", "単語", "Слово"]) {
+      const rows = parseAnkiTsvLocally(`${header}\tTranslation\tContext\tArticle\nhaus\thouse\texample\tdas\n`);
+      assert.deepEqual(rows, [{ word: "haus", translation: "house", context: "example", article: "das" }], header);
+    }
+  });
+
+  it("does not discard a headerless first row whose word resembles a localized header", () => {
+    assert.deepEqual(parseAnkiTsvLocally("Mot\tword\texample\tle\n"), [{
+      word: "Mot",
+      translation: "word",
+      context: "example",
+      article: "le"
+    }]);
+  });
+
+  it("keeps legacy three-column rows compatible and only treats the first non-empty row as a header", () => {
+    assert.deepEqual(parseAnkiTsvLocally("\nalpha\talef\texample\nWord\tterm\tcontext\n"), [
+      { word: "alpha", translation: "alef", context: "example", article: "" },
+      { word: "Word", translation: "term", context: "context", article: "" }
+    ]);
+  });
+});
 describe("Sync navigation behavior", () => {
   it("navigates to and renders Sync from its nav item and Y shortcut", () => {
     resetState();

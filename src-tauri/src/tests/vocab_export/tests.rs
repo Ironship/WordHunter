@@ -81,6 +81,45 @@ fn query_filters_by_query_against_word_translation_note() {
 }
 
 #[test]
+fn query_matches_article_field() {
+    let vocab = json!({
+        "haus": { "status": "learning", "article": "das", "translation": "house", "note": "", "examples": [] },
+        "wohnung": { "status": "learning", "article": "die", "translation": "flat", "note": "", "examples": [] }
+    });
+    let result = run_op(json!({
+        "op": "query",
+        "vocab": vocab,
+        "query": "das"
+    }));
+    let words: Vec<&str> = result["entries"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["word"].as_str().unwrap())
+        .collect();
+    assert_eq!(words, vec!["haus"]);
+}
+
+#[test]
+fn query_matches_apostrophe_article_as_displayed() {
+    let result = run_op(json!({
+        "op": "query",
+        "vocab": {
+            "homme": {
+                "status": "learning",
+                "article": "l'",
+                "translation": "man",
+                "note": "",
+                "examples": []
+            }
+        },
+        "query": "l'homme",
+        "lang": "fr"
+    }));
+    assert_eq!(result["entries"][0]["word"], "homme");
+}
+
+#[test]
 fn query_matches_word_field_directly() {
     let vocab = json!({
         "alef": vocab_entry("alef", "learning", ""),
@@ -118,6 +157,25 @@ fn query_filters_by_text_index() {
         .map(|e| e["word"].as_str().unwrap())
         .collect();
     assert_eq!(words, vec!["alpha", "beta"]);
+}
+
+#[test]
+fn query_text_index_matches_legacy_attached_article_keys() {
+    let result = run_op(json!({
+        "op": "query",
+        "vocab": {
+            "l’homme": {
+                "status": "learning",
+                "article": "l'",
+                "translation": "man",
+                "note": "",
+                "examples": []
+            }
+        },
+        "lang": "fr",
+        "textIndex": { "words": ["homme"], "tokenLine": " homme " }
+    }));
+    assert_eq!(result["entries"][0]["word"], "l’homme");
 }
 
 #[test]
@@ -179,7 +237,7 @@ fn export_returns_anki_tsv_with_default_header() {
     assert_eq!(result["filename"], "out.tsv");
     assert_eq!(result["mime"], "text/tab-separated-values");
     let content = result["content"].as_str().unwrap();
-    assert!(content.starts_with("word\ttranslation\tcontext\n"));
+    assert!(content.starts_with("word\ttranslation\tcontext\tarticle\n"));
     assert!(content.contains("alpha\talef\tAn example sentence."));
     assert!(content.contains("beta\tbet\tsecond"));
     assert_eq!(result["count"], 2);
@@ -197,6 +255,23 @@ fn export_returns_anki_tsv_with_custom_header() {
     }));
     let content = result["content"].as_str().unwrap();
     assert!(content.starts_with("Word\tTranslation\tSentence\n"));
+}
+
+#[test]
+fn export_includes_article_as_optional_fourth_anki_column() {
+    let vocab = json!({
+        "haus": { "status": "learning", "article": "das", "translation": "house", "note": "", "examples": ["Das Haus ist groß."] },
+        "lernen": vocab_entry("lernen", "learning", "learn")
+    });
+    let result = run_op(json!({
+        "op": "export",
+        "vocab": vocab,
+        "format": "anki",
+        "filename": "out.tsv"
+    }));
+    let content = result["content"].as_str().unwrap();
+    assert!(content.contains("haus\thouse\tDas Haus ist groß.\tdas\n"));
+    assert!(content.contains("lernen\tlearn\t\t\n"));
 }
 
 #[test]
@@ -227,6 +302,27 @@ fn export_returns_words_txt() {
     assert_eq!(result["mime"], "text/plain;charset=utf-8");
     let content = result["content"].as_str().unwrap();
     assert_eq!(content, "alpha\nbeta\n");
+}
+
+#[test]
+fn words_txt_formats_articles_with_language_appropriate_spacing() {
+    let vocab = json!({
+        "haus": { "status": "learning", "article": "das", "translation": "", "note": "", "examples": [] },
+        "homme": { "status": "learning", "article": "l'", "translation": "", "note": "", "examples": [] },
+        "amica": { "status": "learning", "article": "un’", "translation": "", "note": "", "examples": [] },
+        "l’homme": { "status": "learning", "article": "l'", "translation": "", "note": "", "examples": [] },
+        "plain": vocab_entry("plain", "learning", "")
+    });
+    let result = run_op(json!({
+        "op": "export",
+        "vocab": vocab,
+        "format": "txt",
+        "filename": "out.txt"
+    }));
+    assert_eq!(
+        result["content"],
+        "un’amica\ndas haus\nl'homme\nl’homme\nplain\n"
+    );
 }
 
 #[test]
@@ -285,7 +381,39 @@ fn import_parses_anki_tsv_with_header() {
     assert_eq!(rows[0]["word"], "alpha");
     assert_eq!(rows[0]["translation"], "alef");
     assert_eq!(rows[0]["context"], "example");
+    assert_eq!(rows[0]["article"], "");
     assert_eq!(rows[1]["word"], "beta");
+}
+
+#[test]
+fn import_keeps_headerless_words_that_resemble_localized_headers() {
+    let result = run_op(json!({
+        "op": "import",
+        "tsv": "Mot\tword\texample\tle\n"
+    }));
+    assert_eq!(result["headerFound"], false);
+    assert_eq!(result["rows"][0]["word"], "Mot");
+    assert_eq!(result["rows"][0]["article"], "le");
+}
+
+#[test]
+fn import_parses_optional_article_column_and_localized_headers() {
+    for header in [
+        "Word",
+        "Słowo",
+        "Wort",
+        "Palabra",
+        "Mot",
+        "Parola",
+        "単語",
+        "Слово",
+    ] {
+        let tsv = format!("{header}\tTranslation\tContext\tArticle\nhaus\thouse\texample\tdas\n");
+        let result = run_op(json!({ "op": "import", "tsv": tsv }));
+        assert_eq!(result["headerFound"], true, "header: {header}");
+        assert_eq!(result["rows"][0]["word"], "haus", "header: {header}");
+        assert_eq!(result["rows"][0]["article"], "das", "header: {header}");
+    }
 }
 
 #[test]

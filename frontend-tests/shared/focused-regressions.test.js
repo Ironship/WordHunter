@@ -125,7 +125,10 @@ async function globalActionsHarness() {
       getSelectedReaderActionText() { return state.selectedWord || ""; },
       openDictionary() {}
     },
-    "./image-search.js": { renderImageSearch() {} }
+    "./image-search.js": { renderImageSearch() {} },
+    "../vocabulary/article.js": {
+      formatHeadword(word, article) { return article ? (article.endsWith("'") || article.endsWith("’") ? `${article}${word}` : `${article} ${word}`) : word; }
+    }
   }, { document, window: {}, HTMLInputElement: FakeInput });
   module.bindGlobalActionEvents();
   return { calls, document, listeners, state };
@@ -800,7 +803,16 @@ async function evaluateWordPanel({
     },
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
     "./selection.js": { getReaderSelectionText },
-    "./smart-suggest.js": { getSmartSuggestionHtml() { return ""; } },
+    "./smart-suggest.js": {
+      articleOptionsForLanguage() { return []; },
+      getSmartSuggestion() { return null; },
+      getSmartSuggestionHtml() { return ""; },
+      renderSmartSuggestionHtml() { return ""; },
+      supportsArticleLanguage() { return false; }
+    },
+    "../vocabulary/article.js": {
+      formatHeadword(word, article) { return article ? (article.endsWith("'") || article.endsWith("’") ? `${article}${word}` : `${article} ${word}`) : word; }
+    },
     "../vocabulary/review-card.js": { applyReviewGrade() {} },
     "../reader-colors.js": { getLearningColor() { return ""; } },
     "../sm2.js": { isInTextReviewDue() { return false; } },

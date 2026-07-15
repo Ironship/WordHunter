@@ -36,11 +36,13 @@ fn read_filter_opts<'a>(payload: &'a Value, statuses: &'a [String]) -> filter::F
     let vocab = payload.get("vocab").unwrap_or(&Value::Null);
     let query = payload.get("query").and_then(Value::as_str).unwrap_or("");
     let text_index = payload.get("textIndex");
+    let lang = payload.get("lang").and_then(Value::as_str).unwrap_or("en");
     filter::FilterOptions {
         vocab,
         query,
         statuses,
         text_index,
+        lang,
     }
 }
 
@@ -105,6 +107,7 @@ fn import(payload: Value) -> Result<Value, String> {
                 "word": r.word,
                 "translation": r.translation,
                 "context": r.context,
+                "article": r.article,
             })
         })
         .collect();

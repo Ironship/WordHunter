@@ -12,6 +12,7 @@ const { createDefaultState } = await import("../../dist/web/js/state/defaults.js
 const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
 const { state } = await import("../../dist/web/js/state.js");
 const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
 
@@ -65,6 +66,76 @@ describe("in-text SRS grading", () => {
     assert.match(els.reviewCard.innerHTML, /learning/);
     assert.doesNotMatch(els.reviewCard.innerHTML, /fresh/);
     els.reviewCard = previousCard;
+  });
+
+  it("shows the article with the headword without leaking it on a reverse card", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousReverse = state.preferences.reviewReverse;
+    els.reviewCard = { innerHTML: "" };
+    state.vocab = {
+      haus: {
+        status: "learning",
+        article: "das",
+        translation: "house",
+        examples: ["Das große Haus ist alt."],
+        nextDate: "2000-01-01"
+      }
+    };
+    state.reviewIndex = 0;
+
+    try {
+      hideReviewAnswer();
+      state.preferences.reviewReverse = false;
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /das haus/);
+
+      hideReviewAnswer();
+      state.preferences.reviewReverse = true;
+      renderReview();
+      assert.doesNotMatch(els.reviewCard.innerHTML, />das haus</);
+      assert.match(els.reviewCard.innerHTML, /„_____ große _____ ist alt\.”/i);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /Das\s+große/i);
+
+      toggleReviewAnswer();
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, />\s*das haus\s*</);
+    } finally {
+      hideReviewAnswer();
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.preferences.reviewReverse = previousReverse;
+    }
+  });
+
+  it("masks straight and typographic apostrophe articles on reverse cards", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousReverse = state.preferences.reviewReverse;
+    els.reviewCard = { innerHTML: "" };
+    state.vocab = {
+      homme: {
+        status: "learning",
+        article: "l'",
+        translation: "man",
+        examples: ["L’homme arrive."],
+        nextDate: "2000-01-01"
+      }
+    };
+    state.reviewIndex = 0;
+
+    try {
+      hideReviewAnswer();
+      state.preferences.reviewReverse = true;
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /„_____ arrive\.”/i);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /L['’]_____/i);
+    } finally {
+      hideReviewAnswer();
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.preferences.reviewReverse = previousReverse;
+    }
   });
 
   it("does not persist unchanged review state while rendering a card", () => {
@@ -273,8 +344,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.5-rc\.6/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.5-rc\.6/, `${locale}.help.version`);
+      assert.match(data.help.whatsNew, /1\.0\.5-rc\.7/, `${locale}.help.whatsNew version`);
+      assert.match(data.help.version, /1\.0\.5-rc\.7/, `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });

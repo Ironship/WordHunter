@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Expanded the Pocket word-card drag range and kept its height stable.
+- Made card swipes and tall-phone navigation easier to reach.
+- Added visible optional grammatical articles with smart suggestions.
+- Included articles in vocabulary, flashcards, search, TTS, and TSV/TXT.

@@ -481,6 +481,25 @@ export function bindReaderEvents(): void {
         return;
       }
       if (!(event.target instanceof Element)) return;
+      const articleBtn = event.target.closest("[data-suggest-article]");
+      if (articleBtn instanceof HTMLElement && articleBtn.dataset.suggestArticle && articleBtn.dataset.suggestWord) {
+        const { updateWordField } = await import("../vocab-actions.js");
+        updateWordField(articleBtn.dataset.suggestWord, "article", articleBtn.dataset.suggestArticle);
+        const [{ getTextById }, { renderWordPanel }] = await Promise.all([
+          import("../reader/renderer.js"),
+          import("../reader/word-panel.js")
+        ]);
+        const targetToken = readerText.querySelector<HTMLElement>(
+          `.word-token[data-word="${CSS.escape(articleBtn.dataset.suggestWord)}"]`
+        );
+        if (state.selectedWord !== articleBtn.dataset.suggestWord && targetToken) {
+          await selectReaderToken(targetToken, { openPanel: true });
+          return;
+        }
+        const current = getTextById(state.currentTextId);
+        if (current) renderWordPanel(current);
+        return;
+      }
       const suggestBtn = event.target.closest("[data-suggest-word]");
       if (suggestBtn instanceof HTMLElement && suggestBtn.dataset.suggestWord) {
         const { selectWord } = await import("../vocab-actions.js");

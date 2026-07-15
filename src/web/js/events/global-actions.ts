@@ -16,6 +16,7 @@ import { openYouGlish } from "../youglish.js";
 import { speakText, speakWord, stopSpeaking } from "../tts.js";
 import { copySelectedWordToClipboard, getSelectedReaderActionText, openDictionary } from "./shared.js";
 import { renderImageSearch } from "./image-search.js";
+import { formatHeadword } from "../vocabulary/article.js";
 
 function playReaderText(playTextBtn: HTMLElement): void {
   const readerTextEl = document.getElementById("reader-text");
@@ -73,7 +74,7 @@ function handleGlobalClick(event: MouseEvent): void {
   }
 
   const ttsWordBtn = target.closest<HTMLElement>("[data-tts-word]");
-  if (ttsWordBtn) speakWord(getSelectedReaderActionText() || ttsWordBtn.dataset.ttsWord);
+  if (ttsWordBtn) speakWord(getSelectedReaderActionText(true) || ttsWordBtn.dataset.ttsWord);
 
   const youglishBtn = target.closest<HTMLElement>("[data-youglish-word]");
   if (youglishBtn) openYouGlish(getSelectedReaderActionText() || youglishBtn.dataset.youglishWord);
@@ -207,6 +208,16 @@ function handleWordFieldInput(event: Event): void {
   if (!field) return;
   if (field.classList.contains("vocab-translation-input")) {
     field.classList.toggle("empty", !field.value.trim());
+  }
+  if (field.dataset.wordField === "article" && field.dataset.word) {
+    const title = document.querySelector<HTMLElement>(
+      `#word-panel [data-headword-word="${CSS.escape(field.dataset.word)}"]`
+    );
+    if (title) title.textContent = formatHeadword(field.dataset.word, field.value);
+    const suggestion = field
+      .closest<HTMLElement>("[data-word-article-editor]")
+      ?.querySelector<HTMLElement>("[data-suggest-article]");
+    suggestion?.toggleAttribute("hidden", Boolean(field.value.trim()));
   }
   scheduleWordFieldSave(field.dataset.word, field.dataset.wordField, field.value);
 }

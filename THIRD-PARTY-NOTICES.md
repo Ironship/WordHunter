@@ -1,7 +1,7 @@
 # Word Hunter Third-Party Notices
 
 This document describes the principal third-party technologies used or
-distributed by Word Hunter 1.0.5-rc.6. Word Hunter itself is licensed under
+distributed by Word Hunter 1.0.5-rc.7. Word Hunter itself is licensed under
 AGPL-3.0-or-later; the complete license is distributed as `LICENSE`.
 
 The exact Rust dependency license texts generated from the locked dependency
@@ -13,7 +13,7 @@ graphs are distributed as:
 The corresponding source for this release, including build instructions and
 lockfiles, is available at:
 
-https://github.com/Ironship/WordHunter/tree/WordHunter1.0.5-rc.6
+https://github.com/Ironship/WordHunter/tree/WordHunter1.0.5-rc.7
 
 ## Application Platform
 

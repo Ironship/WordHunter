@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { classifyTokenOccurrences, findGermanSeparableVerbMatches, getSentenceForWord, getTokenStats, tokenizeText } from "../../dist/web/js/tokenizer_v2.js";
+import {
+  classifyTokenOccurrences,
+  findGermanSeparableVerbMatches,
+  getSentenceForWord,
+  getTokenStats,
+  normalizeVocabularyWord,
+  tokenizeText
+} from "../../dist/web/js/tokenizer_v2.js";
 
 describe("token stats", () => {
   it("counts each token occurrence by vocabulary status", () => {
@@ -39,6 +46,33 @@ describe("token stats", () => {
     assert.deepEqual(getTokenStats(tokenizeText("中文学习", "zh"), { 中文: { status: "known" } }), {
       unique: 2, known: 1, learning: 0, ignored: 0, new: 1
     });
+  });
+
+  it("treats attached French and Italian articles as metadata, not part of the vocabulary key", () => {
+    const frenchVocab = { homme: { status: "known" } };
+    for (const algorithm of ["classic", "modern"]) {
+      const frenchTokens = tokenizeText("L'homme et l’homme.", "fr", algorithm);
+      const frenchKeys = [...classifyTokenOccurrences(frenchTokens, frenchVocab, "fr").values()]
+        .map((entry) => entry.key);
+
+      assert.deepEqual(frenchKeys, ["homme", "et", "homme"], algorithm);
+      assert.deepEqual(getTokenStats(frenchTokens, frenchVocab, "fr"), {
+        unique: 2, known: 2, learning: 0, ignored: 0, new: 1
+      }, algorithm);
+    }
+    assert.equal(getSentenceForWord("L’homme est ici.", "homme", "fr", "classic", 0), "L’homme est ici.");
+    assert.equal(normalizeVocabularyWord("un’amica", "it"), "amica");
+    assert.equal(normalizeVocabularyWord("d’homme", "fr"), "d'homme");
+  });
+
+  it("keeps legacy attached-article vocabulary keys readable", () => {
+    const tokens = tokenizeText("L'homme et l’homme.", "fr", "classic");
+    const classifications = [...classifyTokenOccurrences(tokens, {
+      "l’homme": { status: "learning" }
+    }, "fr").values()];
+
+    assert.deepEqual(classifications.map((entry) => entry.key), ["l’homme", "et", "l’homme"]);
+    assert.equal(classifications.filter((entry) => entry.status === "learning").length, 2);
   });
 
   it("returns context for the selected repeated word occurrence", () => {

@@ -9,6 +9,8 @@ import { normalizeSearchVariants } from "../tokenizer_v2.js";
 import { t } from "../i18n.js";
 import { getTextVocabularyIndex, getVocabularyTextOptions, entryAppearsInText } from "../text-vocab.js";
 import { isVocabStatus, VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { formatHeadword } from "./article.js";
 
 type VocabListEntry = WhVocabEntry & { word: string };
 
@@ -68,10 +70,14 @@ export function renderVocabulary(resetLimit = true): void {
     .map(([word, entry]): VocabListEntry => ({ word, ...entry }))
     .filter((entry) => {
       const matchesStatus = statusFilters.has(entry.status);
-      const haystackText = `${entry.word} ${entry.translation || ""} ${entry.note || ""}`;
+      const haystackText = `${formatHeadword(entry.word, entry.article)} ${entry.word} ${entry.translation || ""} ${entry.note || ""}`;
       const haystacks = normalizeSearchVariants(haystackText);
       const matchesQuery = !state.filters.vocabQuery || queryVariants.some(q => haystacks.some(h => h.includes(q)));
-      const matchesText = !textIndex || entryAppearsInText(entry.word, textIndex);
+      const matchesText = !textIndex || entryAppearsInText(
+        entry.word,
+        textIndex,
+        effectiveLearningLanguage(state.preferences)
+      );
       return matchesStatus && matchesQuery && matchesText;
     })
     .sort((first, second) => (second.updatedAt || "").localeCompare(first.updatedAt || ""));
@@ -105,7 +111,7 @@ export function renderVocabulary(resetLimit = true): void {
       `;
     return `
     <tr class="${addedInSession ? "vocab-row-added-in-session" : ""}">
-      <td><strong>${escapeHtml(entry.word)}</strong></td>
+      <td><strong>${escapeHtml(formatHeadword(entry.word, entry.article))}</strong></td>
       <td><span class="status-chip status-${escapeHtml(entry.status)}">${escapeHtml(statusLabel(entry.status))}</span></td>
       <td>
         ${translationField}
@@ -114,7 +120,7 @@ export function renderVocabulary(resetLimit = true): void {
       <td>
         <div class="row-actions">
           <button class="icon-button" type="button" data-edit-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>
-          <button class="icon-button" type="button" data-tts-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("reader.ttsWordTitle"))}">${icon("speaker", 16)}</button>
+          <button class="icon-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(entry.word, entry.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}">${icon("speaker", 16)}</button>
           <button class="icon-button" type="button" data-youglish-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("reader.youglishWordTitle"))}">${icon("video", 16)}</button>
           <button class="icon-button" style="color: var(--blue); border-color: color-mix(in srgb, var(--blue) 42%, var(--line)); background: var(--blue-soft);" type="button" data-word="${escapeHtml(entry.word)}" data-set-status="learning" title="${escapeAttribute(t("vocab.btnLearning"))}">${icon("pencil", 14)}</button>
           <button class="icon-button" style="color: var(--green); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); background: var(--green-soft);" type="button" data-word="${escapeHtml(entry.word)}" data-set-status="known" title="${escapeAttribute(t("vocab.btnKnown"))}">${icon("check", 14)}</button>

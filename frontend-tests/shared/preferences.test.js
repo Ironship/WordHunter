@@ -207,7 +207,7 @@ describe("preferences settings summary", () => {
     state.selectedWord = "haus";
     state.selectedWordIndex = 4;
     state.readerSelectionRange = null;
-    state.vocab.haus = { status: "known", translation: "house", note: "noun", examples: [] };
+    state.vocab.haus = { status: "known", article: "das", translation: "house", note: "noun", examples: [] };
     state.preferences.selectedWordPanelItems = [
       { id: "note", visible: true },
       { id: "dictionary", visible: true },
@@ -225,6 +225,9 @@ describe("preferences settings summary", () => {
 
     renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
     const html = els.wordPanel.innerHTML;
+    assert.match(html, /data-headword-word="haus">das haus<\/h2>/);
+    assert.match(html, /data-word-field="article"[^>]*value="das"/);
+    assert.ok(html.indexOf('data-word-field="article"') < html.indexOf('data-word-panel-item="note"'));
     assert.ok(html.indexOf('data-word-panel-item="note"') < html.indexOf('data-word-panel-item="dictionary"'));
     assert.ok(html.indexOf('data-word-panel-item="dictionary"') < html.indexOf('data-word-panel-item="speech"'));
     assert.equal((html.match(/class="word-actions"/g) || []).length, 1);
