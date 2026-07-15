@@ -1,0 +1,5 @@
+Test prerelease. Back up your data before installing.
+
+- Added 48 original A1-B2 course books: four each across 12 languages.
+- Each includes practical lessons, dialogues, texts, and vocabulary.
+- Modern-language courses support CEFR-style preparation without result or provider equivalence; Latin and Ancient Greek levels are CEFR-inspired.
