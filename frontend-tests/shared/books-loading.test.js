@@ -34,15 +34,16 @@ Object.assign(els, {
 });
 
 describe("built-in starter catalog", () => {
-  it("ships one original text and cover with at least 1,000 word segments per language", () => {
-    const catalog = JSON.parse(readFileSync(new URL("../../dist/web/books/index.json", import.meta.url), "utf8"));
-    const languages = ["en", "de", "es", "fr", "it", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
+  const catalog = JSON.parse(readFileSync(new URL("../../dist/web/books/index.json", import.meta.url), "utf8"));
+  const languages = ["en", "de", "es", "fr", "it", "pl", "uk", "ru", "ja", "zh", "la", "grc"];
 
-    assert.equal(catalog.length, languages.length);
-    assert.deepEqual([...new Set(catalog.map((book) => book.lang))].sort(), [...languages].sort());
-    assert.equal(new Set(catalog.map((book) => book.id)).size, catalog.length);
+  it("ships one original common-word story per language", () => {
+    const stories = catalog.filter((book) => book.id.endsWith("-common-stories"));
+    const expectedIds = languages.map((lang) => `starter-${lang}-common-stories`);
 
-    for (const book of catalog) {
+    assert.deepEqual(stories.map((book) => book.id).sort(), expectedIds.sort());
+
+    for (const book of stories) {
       assert.equal(book.author, "Word Hunter Originals");
       assert.equal(book.source, "Word Hunter Originals");
       assert.ok(book.title);
@@ -61,6 +62,36 @@ describe("built-in starter catalog", () => {
       assert.ok(new Set(words).size >= 1_000, `${book.lang} starter text has fewer than 1,000 distinct word segments`);
       assert.match(cover, /^<svg\b/);
       assert.match(cover, /<title\b/);
+    }
+  });
+
+  it("ships one A1-B2 course and cover per language", () => {
+    const levels = ["A1", "A2", "B1", "B2"];
+    const courses = catalog.filter((book) => levels.includes(book.level));
+    const expectedIds = languages.flatMap((lang) => levels.map((level) => `starter-${lang}-${level.toLowerCase()}-course`));
+
+    assert.deepEqual(courses.map((book) => book.id).sort(), expectedIds.sort());
+    assert.equal(new Set(courses.map((book) => book.localPath)).size, courses.length);
+    assert.equal(new Set(courses.map((book) => book.coverPath)).size, courses.length);
+
+    for (const course of courses) {
+      const slug = course.level.toLowerCase();
+      assert.equal(course.author, "Word Hunter Originals");
+      assert.equal(course.source, "Word Hunter Originals");
+      assert.ok(course.title);
+      assert.ok(course.blurb);
+      assert.equal(course.localPath, `books/starter/${course.lang}-${slug}-course.txt`);
+      assert.equal(course.textUrl, undefined);
+      assert.equal(course.coverPath, `books/starter/${course.lang}-${slug}-course-cover.svg`);
+
+      const text = readFileSync(new URL(`../../dist/web/${course.localPath}`, import.meta.url), "utf8");
+      const cover = readFileSync(new URL(`../../dist/web/${course.coverPath}`, import.meta.url), "utf8");
+
+      assert.ok(text.length >= 12_000, `${course.lang} ${course.level} course is unexpectedly short`);
+      assert.match(cover, /^<svg\b/);
+      assert.match(cover, /<title\b/);
+      assert.match(cover, /<desc\b/);
+      assert.match(cover, /\bviewBox=["']0\s+0\s+600\s+900["']/);
     }
   });
 });

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">汉语B1《把经历讲成故事》课程封面</title>
+  <desc id="desc">深蓝与橙红色封面，多条采访声音汇成穿过城市的一条长河，象征连贯叙述和独立表达。</desc>
+  <defs>
+    <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101b3d"/>
+      <stop offset="1" stop-color="#214d72"/>
+    </linearGradient>
+    <linearGradient id="b1-river" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6c96b"/>
+      <stop offset=".5" stop-color="#ef7357"/>
+      <stop offset="1" stop-color="#67c6c3"/>
+    </linearGradient>
+    <filter id="b1-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="13"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#b1-bg)"/>
+  <g fill="none" stroke="#f5f0dc" opacity=".16">
+    <path d="M32 423h536M32 500h536M32 577h536M32 654h536"/>
+    <path d="M95 388v303M198 388v303M301 388v303M404 388v303M507 388v303"/>
+  </g>
+  <path d="M49 641c84-113 128-20 193-76 58-50 48-155 126-166 61-8 77 75 137 53 30-11 46-37 61-65" fill="none" stroke="#ef7357" stroke-width="37" opacity=".25" filter="url(#b1-glow)"/>
+  <path d="M49 641c84-113 128-20 193-76 58-50 48-155 126-166 61-8 77 75 137 53 30-11 46-37 61-65" fill="none" stroke="url(#b1-river)" stroke-width="15" stroke-linecap="round"/>
+  <g fill="#f5f0dc" stroke="#101b3d" stroke-width="5">
+    <circle cx="94" cy="601" r="28"/>
+    <circle cx="225" cy="576" r="28"/>
+    <circle cx="324" cy="450" r="28"/>
+    <circle cx="454" cy="449" r="28"/>
+  </g>
+  <g fill="#101b3d">
+    <circle cx="94" cy="595" r="8"/>
+    <path d="M79 615q15-16 30 0" fill="none" stroke="#101b3d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="225" cy="570" r="8"/>
+    <path d="M210 590q15-16 30 0" fill="none" stroke="#101b3d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="324" cy="444" r="8"/>
+    <path d="M309 464q15-16 30 0" fill="none" stroke="#101b3d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="454" cy="443" r="8"/>
+    <path d="M439 463q15-16 30 0" fill="none" stroke="#101b3d" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g fill="#f5f0dc" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="18" font-weight="700">
+    <text x="59" y="680">背景</text>
+    <text x="203" y="627">转折</text>
+    <text x="301" y="399">行动</text>
+    <text x="438" y="507">结果</text>
+  </g>
+  <text x="55" y="83" fill="#f5f0dc" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">B1</text>
+  <path d="M55 310h229" stroke="#ef7357" stroke-width="11"/>
+  <text x="57" y="360" fill="#f6c96b" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">把经历讲成故事</text>
+  <g transform="translate(55 802)">
+    <rect width="490" height="2" fill="#67c6c3" opacity=".85"/>
+    <text x="0" y="54" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="18" fill="none" stroke="#f6c96b" stroke-width="5"/>
+    <path d="m480 55 15 15" stroke="#f6c96b" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

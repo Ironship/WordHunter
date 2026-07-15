@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">汉语A1《你好，新生活》课程封面</title>
+  <desc id="desc">朱红与青绿色封面，四条声调线化成通往城市晨光的台阶，象征从第一声问候开始学习汉语。</desc>
+  <defs>
+    <linearGradient id="a1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#073b3a"/>
+      <stop offset="1" stop-color="#0b6b61"/>
+    </linearGradient>
+    <linearGradient id="a1-sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd889"/>
+      <stop offset="1" stop-color="#f26b4f"/>
+    </linearGradient>
+    <filter id="a1-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="7" flood-color="#032725" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#a1-bg)"/>
+  <path d="M0 637C117 591 210 664 310 642c108-23 190-95 290-71v329H0Z" fill="#052d2e"/>
+  <circle cx="468" cy="239" r="93" fill="url(#a1-sun)"/>
+  <circle cx="468" cy="239" r="116" fill="none" stroke="#ffe9b9" stroke-width="2" opacity=".3"/>
+  <g fill="none" stroke="#ffe9b9" stroke-width="5" stroke-linecap="round" opacity=".9">
+    <path d="M72 449h94"/>
+    <path d="M207 474l86-55"/>
+    <path d="M337 437q42 52 84 0"/>
+    <path d="M456 406l82 70"/>
+  </g>
+  <g filter="url(#a1-shadow)">
+    <path d="M66 629q0-21 21-21h134q21 0 21 21v59q0 21-21 21h-67l-28 27 6-27H87q-21 0-21-21Z" fill="#f26b4f"/>
+    <path d="M210 546q0-19 19-19h119q19 0 19 19v52q0 19-19 19h-60l-22 22 5-22h-42q-19 0-19-19Z" fill="#ffe9b9"/>
+    <path d="M348 480q0-17 17-17h104q17 0 17 17v46q0 17-17 17h-51l-19 19 4-19h-38q-17 0-17-17Z" fill="#72d7c5"/>
+  </g>
+  <g fill="#073b3a" text-anchor="middle" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-weight="800">
+    <text x="154" y="674" font-size="31">你好</text>
+    <text x="288" y="582" font-size="26">请再说一遍</text>
+    <text x="417" y="511" font-size="24">明白了</text>
+  </g>
+  <text x="55" y="83" fill="#ffe9b9" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">A1</text>
+  <path d="M55 310h229" stroke="#f26b4f" stroke-width="11"/>
+  <text x="57" y="360" fill="#ffe9b9" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="3">你好，新生活</text>
+  <g transform="translate(55 802)">
+    <rect width="490" height="2" fill="#72d7c5" opacity=".8"/>
+    <text x="0" y="54" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="467" cy="43" r="17" fill="none" stroke="#f26b4f" stroke-width="5"/>
+    <path d="m479 55 16 16" stroke="#f26b4f" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

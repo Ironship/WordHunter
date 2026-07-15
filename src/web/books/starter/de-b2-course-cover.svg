@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Deutschkurs B2 – Perspektiven im Gespräch</title>
+  <desc id="desc">Bordeauxrotes Buchcover mit analytischen Diagrammformen, sich überschneidenden Perspektivfenstern und einem hellblauen B2-Zeichen.</desc>
+  <defs>
+    <linearGradient id="wine" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#47182c"/>
+      <stop offset="1" stop-color="#862f48"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect x="56" y="322" width="488" height="394" rx="5"/>
+    </clipPath>
+  </defs>
+  <rect width="600" height="900" fill="url(#wine)"/>
+  <path d="M0 0H600V194L0 334Z" fill="#f3ead7" opacity=".08"/>
+  <text x="55" y="82" fill="#7ed8df" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">WORD HUNTER</text>
+  <text x="55" y="173" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">DEUTSCHKURS</text>
+  <text x="58" y="222" fill="#f0a15f" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="2">PERSPEKTIVEN IM GESPRÄCH</text>
+  <rect x="56" y="261" width="488" height="2" fill="#f3ead7" opacity=".55"/>
+  <g clip-path="url(#frame)">
+    <rect x="56" y="322" width="488" height="394" fill="#321326"/>
+    <circle cx="179" cy="515" r="145" fill="#7ed8df" opacity=".82"/>
+    <circle cx="416" cy="502" r="155" fill="#f0a15f" opacity=".78"/>
+    <rect x="233" y="363" width="138" height="295" transform="rotate(12 302 510)" fill="#f3ead7" opacity=".78"/>
+    <path d="M71 658L143 594L212 625L287 514L356 548L438 414L532 450" fill="none" stroke="#f3ead7" stroke-width="8" stroke-linejoin="round"/>
+    <g fill="#f3ead7">
+      <circle cx="143" cy="594" r="9"/><circle cx="212" cy="625" r="9"/><circle cx="287" cy="514" r="9"/>
+      <circle cx="356" cy="548" r="9"/><circle cx="438" cy="414" r="9"/>
+    </g>
+  </g>
+  <rect x="56" y="322" width="488" height="394" rx="5" fill="none" stroke="#f3ead7" stroke-width="4"/>
+  <g transform="translate(365 628)">
+    <rect width="179" height="142" fill="#7ed8df"/>
+    <text x="89.5" y="101" text-anchor="middle" fill="#47182c" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="900">B2</text>
+  </g>
+  <g fill="#f3ead7" opacity=".7">
+    <rect x="56" y="753" width="255" height="4"/><rect x="56" y="770" width="184" height="4"/>
+    <rect x="56" y="787" width="219" height="4"/>
+  </g>
+  <text x="55" y="848" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2">ANALYSIEREN · ABWÄGEN · ÜBERZEUGEN</text>
+</svg>

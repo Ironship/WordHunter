@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Polski w działaniu. Kurs A2</title>
+  <desc id="desc">Turkusowa okładka kursu polskiego A2 z połączonymi punktami, planem miasta i dymkami symbolizującymi język w codziennym działaniu.</desc>
+  <defs>
+    <linearGradient id="a2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#073b4c"/>
+      <stop offset="1" stop-color="#087f8c"/>
+    </linearGradient>
+    <pattern id="a2-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#d9f5ee" stroke-width="1" opacity=".16"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#a2-bg)"/>
+  <rect x="25" y="25" width="550" height="850" rx="20" fill="none" stroke="#ecf8f3" stroke-width="3"/>
+  <path d="M25 158H575" stroke="#ffcc66" stroke-width="9"/>
+  <rect x="61" y="56" width="191" height="34" rx="17" fill="#ef5b5b"/>
+  <text x="156" y="79" fill="#fffaf0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">POLSKI W DZIAŁANIU</text>
+
+  <text x="60" y="121" fill="#ecf8f3" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">KURS JĘZYKA POLSKIEGO</text>
+  <text x="58" y="294" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="900" letter-spacing="-8">A2</text>
+  <text x="65" y="338" fill="#ffcc66" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">CODZIENNE POŁĄCZENIA</text>
+
+  <rect x="52" y="380" width="496" height="347" rx="28" fill="url(#a2-grid)" stroke="#bdebe0" stroke-width="3"/>
+  <path d="M105 650C146 587 157 511 224 527s65 99 126 73c58-25 50-115 132-139" fill="none" stroke="#ffcc66" stroke-width="13" stroke-linecap="round"/>
+  <path d="M105 650C146 587 157 511 224 527s65 99 126 73c58-25 50-115 132-139" fill="none" stroke="#ef5b5b" stroke-width="4" stroke-linecap="round" stroke-dasharray="4 18"/>
+
+  <g fill="#ecf8f3" stroke="#073b4c" stroke-width="5">
+    <circle cx="105" cy="650" r="25"/>
+    <circle cx="224" cy="527" r="25"/>
+    <circle cx="350" cy="600" r="25"/>
+    <circle cx="482" cy="461" r="25"/>
+  </g>
+  <g fill="#ef5b5b">
+    <circle cx="105" cy="650" r="9"/>
+    <circle cx="224" cy="527" r="9"/>
+    <circle cx="350" cy="600" r="9"/>
+    <circle cx="482" cy="461" r="9"/>
+  </g>
+
+  <path d="M82 412h148a18 18 0 0 1 18 18v49a18 18 0 0 1-18 18h-61l-27 24 5-24H82a18 18 0 0 1-18-18v-49a18 18 0 0 1 18-18z" fill="#ffffff"/>
+  <path d="M381 642h129a18 18 0 0 1 18 18v35a18 18 0 0 1-18 18H405l-27 21 7-21h-4a18 18 0 0 1-18-18v-35a18 18 0 0 1 18-18z" fill="#ef5b5b"/>
+  <g fill="#087f8c">
+    <circle cx="108" cy="455" r="8"/>
+    <circle cx="153" cy="455" r="8"/>
+    <circle cx="198" cy="455" r="8"/>
+  </g>
+  <g fill="#ffffff">
+    <circle cx="407" cy="678" r="7"/>
+    <circle cx="445" cy="678" r="7"/>
+    <circle cx="483" cy="678" r="7"/>
+  </g>
+
+  <rect x="60" y="766" width="480" height="2" fill="#ffcc66"/>
+  <text x="300" y="820" fill="#ecf8f3" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="848" fill="#ffcc66" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

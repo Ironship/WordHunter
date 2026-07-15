@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Русский: точность и аргумент. Курс B2</title>
+  <desc id="desc">Фиолетово-синяя обложка продвинутого курса русского языка B2 с призмой, связями и слоями аргументации.</desc>
+  <defs>
+    <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18183f"/>
+      <stop offset="1" stop-color="#4d286b"/>
+    </linearGradient>
+    <linearGradient id="b2-prism" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#84e1d0"/>
+      <stop offset="1" stop-color="#b8ea63"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#b2-bg)"/>
+  <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f5f0e2" stroke-width="4"/>
+  <rect x="58" y="58" width="302" height="32" rx="16" fill="#7656a8"/>
+  <text x="209" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">ТОЧНОСТЬ И АРГУМЕНТ</text>
+  <text x="58" y="132" fill="#f5f0e2" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <path d="M28 158H572" stroke="#b8ea63" stroke-width="8"/>
+
+  <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">B2</text>
+  <text x="64" y="344" fill="#b8ea63" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">ТОЧНОСТЬ МЫСЛИ</text>
+  <g stroke="#84e1d0" stroke-width="4" opacity=".85">
+    <path d="M424 205l60 34 0 68-60 34-60-34v-68z" fill="none"/>
+    <path d="M424 205v136M364 239l120 68M484 239l-120 68"/>
+  </g>
+  <circle cx="424" cy="273" r="18" fill="#b8ea63"/>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M82 663l128-211 90 142 82-179 136 248" stroke="#f5f0e2" stroke-width="13"/>
+    <path d="M82 690h436" stroke="#7656a8" stroke-width="32"/>
+    <path d="M82 690h436" stroke="#84e1d0" stroke-width="5" stroke-dasharray="4 16"/>
+    <path d="M210 452l90 142 82-179" stroke="url(#b2-prism)" stroke-width="18"/>
+  </g>
+  <g fill="#b8ea63" stroke="#18183f" stroke-width="6">
+    <circle cx="82" cy="663" r="17"/><circle cx="210" cy="452" r="17"/><circle cx="300" cy="594" r="17"/><circle cx="382" cy="415" r="17"/><circle cx="518" cy="663" r="17"/>
+  </g>
+  <path d="M199 436l101-74 93 38 105-51" fill="none" stroke="#ef6d77" stroke-width="7" stroke-linecap="round" stroke-dasharray="2 17"/>
+  <path d="M493 334l27 11-21 21z" fill="#ef6d77"/>
+
+  <path d="M62 770H538" stroke="#b8ea63" stroke-width="2"/>
+  <text x="300" y="824" fill="#f5f0e2" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="852" fill="#b8ea63" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

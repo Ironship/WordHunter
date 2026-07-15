@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Curso de español A2: Vivir y comunicarse</title>
+  <desc id="desc">Cubierta crema, verde y azul con una ciudad modular recorrida por una línea de comunicación naranja.</desc>
+  <rect width="600" height="900" fill="#f3edd8"/>
+  <path d="M0 0h600v24H0zM0 876h600v24H0z" fill="#12355b"/>
+  <path d="M420 0h180v306H420z" fill="#0f8b8d"/>
+  <circle cx="513" cy="95" r="54" fill="#ff8c42"/>
+
+  <text x="48" y="73" fill="#12355b" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="48" y="154" fill="#12355b" font-family="sans-serif" font-size="30" font-weight="700">CURSO DE ESPAÑOL</text>
+  <text x="44" y="218" fill="#0f8b8d" font-family="sans-serif" font-size="61" font-weight="900">VIVIR</text>
+  <text x="48" y="263" fill="#c34f28" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="2">Y COMUNICARSE</text>
+
+  <g transform="translate(46 330)">
+    <rect width="142" height="168" fill="#12355b"/>
+    <rect x="22" y="25" width="32" height="32" fill="#f3edd8"/>
+    <rect x="83" y="25" width="32" height="32" fill="#ff8c42"/>
+    <rect x="22" y="81" width="32" height="32" fill="#0f8b8d"/>
+    <rect x="83" y="81" width="32" height="67" fill="#f3edd8"/>
+
+    <rect x="164" y="64" width="156" height="202" fill="#0f8b8d"/>
+    <path d="M189 91h105M189 125h105M189 159h58" stroke="#f3edd8" stroke-width="13"/>
+    <rect x="256" y="184" width="38" height="82" fill="#12355b"/>
+
+    <rect x="342" y="18" width="166" height="176" fill="#ff8c42"/>
+    <circle cx="387" cy="65" r="17" fill="#12355b"/>
+    <circle cx="455" cy="65" r="17" fill="#f3edd8"/>
+    <path d="M376 111h92" stroke="#12355b" stroke-width="14" stroke-linecap="round"/>
+    <rect x="373" y="143" width="104" height="51" fill="#f3edd8"/>
+
+    <rect x="28" y="287" width="211" height="174" fill="#2f6f9f"/>
+    <path d="M58 324h147M58 361h102M58 398h128" stroke="#f3edd8" stroke-width="12" stroke-linecap="round"/>
+    <rect x="263" y="287" width="245" height="174" fill="#12355b"/>
+    <path d="M298 420V330h69v90M399 420V345h74v75" fill="none" stroke="#0f8b8d" stroke-width="18"/>
+  </g>
+
+  <path d="M32 624C108 570 151 619 225 570s117-35 163 11 98 14 168-48" fill="none" stroke="#ff8c42" stroke-width="15" stroke-linecap="round"/>
+  <circle cx="31" cy="624" r="17" fill="#c34f28"/>
+  <circle cx="556" cy="533" r="17" fill="#c34f28"/>
+
+  <rect x="47" y="805" width="506" height="66" fill="#0f8b8d"/>
+  <text x="300" y="855" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="58" font-weight="900" letter-spacing="10">A2</text>
+</svg>

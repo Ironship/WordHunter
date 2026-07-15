@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">日本語 B2 論点をひらく コース表紙</title>
+  <desc id="desc">濃紺の層を光のプリズムが分け、複数の論点を精密に照らす日本語B2コースの表紙。</desc>
+  <defs>
+    <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#11162b"/>
+      <stop offset="1" stop-color="#34265d"/>
+    </linearGradient>
+    <linearGradient id="b2-beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8ce4dc" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#8ce4dc" stop-opacity=".9"/>
+    </linearGradient>
+    <filter id="b2-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#b2-bg)"/>
+  <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#f1e7cf" stroke-width="3"/>
+  <g opacity=".13" stroke="#8ce4dc" stroke-width="1">
+    <path d="M0 390H600M0 450H600M0 510H600M0 570H600M0 630H600M0 690H600"/>
+    <path d="M60 350V750M120 350V750M180 350V750M240 350V750M300 350V750M360 350V750M420 350V750M480 350V750M540 350V750"/>
+  </g>
+  <rect x="54" y="60" width="222" height="42" rx="21" fill="#8068c9"/>
+  <text x="165" y="88" fill="#ffffff" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="700" letter-spacing="3">日本語コース</text>
+  <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">B2</text>
+  <path d="M56 283H294" stroke="#e7b85b" stroke-width="11"/>
+  <text x="56" y="333" fill="#f1e7cf" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">論点をひらく</text>
+  <g transform="translate(54 401)">
+    <g>
+      <rect x="0" y="40" width="228" height="48" rx="10" fill="#f1e7cf"/>
+      <rect x="0" y="103" width="200" height="48" rx="10" fill="#a99be0"/>
+      <rect x="0" y="166" width="174" height="48" rx="10" fill="#8ce4dc"/>
+      <rect x="0" y="229" width="148" height="48" rx="10" fill="#e7b85b"/>
+    </g>
+    <g fill="#171a31">
+      <circle cx="27" cy="64" r="6"/><path d="M45 64H200" stroke="#171a31" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="27" cy="127" r="6"/><path d="M45 127H172" stroke="#171a31" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="27" cy="190" r="6"/><path d="M45 190H146" stroke="#171a31" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="27" cy="253" r="6"/><path d="M45 253H120" stroke="#171a31" stroke-width="6" stroke-linecap="round"/>
+    </g>
+    <path d="M180 159H306L359 196L306 233H180Z" fill="url(#b2-beam)"/>
+    <path d="M359 196L433 70L486 304Z" fill="#1b203c" stroke="#f1e7cf" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M359 196L433 70L449 196Z" fill="#8068c9" opacity=".9"/>
+    <path d="M359 196H449L486 304Z" fill="#e7b85b" opacity=".9"/>
+    <g filter="url(#b2-glow)" fill="none" stroke-linecap="round">
+      <path d="M449 196L507 105" stroke="#8ce4dc" stroke-width="9"/>
+      <path d="M449 196L522 196" stroke="#f1e7cf" stroke-width="8"/>
+      <path d="M449 196L507 288" stroke="#d67aa5" stroke-width="9"/>
+    </g>
+  </g>
+  <g transform="translate(55 792)">
+    <rect width="490" height="2" fill="#8ce4dc"/>
+    <text x="0" y="53" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="800" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="468" cy="42" r="17" fill="none" stroke="#e7b85b" stroke-width="5"/>
+    <path d="M480 54l16 16" stroke="#e7b85b" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

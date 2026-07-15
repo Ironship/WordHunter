@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Curso de español B2: Perspectivas y argumentos</title>
+  <desc id="desc">Cubierta azul oscuro con un prisma de perspectivas en cian, violeta y verde luminoso.</desc>
+  <rect width="600" height="900" fill="#0c1633"/>
+  <path d="M0 0h600v20H0zM0 880h600v20H0z" fill="#9df24b"/>
+  <path d="M420 0h180v286H420z" fill="#4f37a5"/>
+  <circle cx="514" cy="93" r="55" fill="none" stroke="#52d6d3" stroke-width="18"/>
+  <circle cx="514" cy="93" r="18" fill="#9df24b"/>
+
+  <text x="50" y="78" fill="#9df24b" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="50" y="158" fill="#ffffff" font-family="sans-serif" font-size="30" font-weight="700">CURSO DE ESPAÑOL</text>
+  <text x="46" y="218" fill="#52d6d3" font-family="sans-serif" font-size="46" font-weight="900">PERSPECTIVAS</text>
+  <text x="50" y="263" fill="#c8bfff" font-family="sans-serif" font-size="25" font-weight="700" letter-spacing="2">Y ARGUMENTOS</text>
+
+  <g transform="translate(52 342)">
+    <path d="M0 79L208 0l90 178-211 92z" fill="#4f37a5"/>
+    <path d="M208 0l238 86-148 92z" fill="#1a8fa3"/>
+    <path d="M87 270l211-92 148 179-232 69z" fill="#174e71"/>
+    <path d="M208 0l90 178-211 92" fill="none" stroke="#c8bfff" stroke-width="6"/>
+    <path d="M298 178l148-92M298 178l148 179M298 178l-84 248" fill="none" stroke="#52d6d3" stroke-width="7"/>
+
+    <g fill="#0c1633" stroke="#9df24b" stroke-width="5">
+      <circle cx="92" cy="99" r="35"/>
+      <circle cx="220" cy="70" r="35"/>
+      <circle cx="368" cy="113" r="35"/>
+      <circle cx="193" cy="323" r="35"/>
+      <circle cx="363" cy="294" r="35"/>
+    </g>
+    <path d="M74 99h36M202 70h36M350 113h36M175 323h36M345 294h36" stroke="#ffffff" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <path d="M41 700h518M41 734h391M41 768h454" stroke="#4f37a5" stroke-width="12" stroke-linecap="round"/>
+  <rect x="45" y="802" width="510" height="70" rx="35" fill="#9df24b"/>
+  <text x="300" y="854" text-anchor="middle" fill="#0c1633" font-family="sans-serif" font-size="62" font-weight="900" letter-spacing="11">B2</text>
+</svg>

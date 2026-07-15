@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Curso de español B1: Conectar experiencias</title>
+  <desc id="desc">Cubierta burdeos y verde con un puente de relatos que une distintas escenas y recorridos.</desc>
+  <rect width="600" height="900" fill="#431c3b"/>
+  <path d="M0 0h600v40H0z" fill="#d6a84b"/>
+  <path d="M390 0h210v330H390z" fill="#155e63"/>
+  <path d="M412 40l188 0v218z" fill="#1f7a6d"/>
+
+  <text x="52" y="94" fill="#f5e8cb" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="52" y="169" fill="#f5e8cb" font-family="sans-serif" font-size="30" font-weight="700">CURSO DE ESPAÑOL</text>
+  <text x="48" y="230" fill="#e7bb58" font-family="sans-serif" font-size="54" font-weight="900">CONECTAR</text>
+  <text x="52" y="278" fill="#93d3bd" font-family="sans-serif" font-size="28" font-weight="700" letter-spacing="2">EXPERIENCIAS</text>
+
+  <g transform="translate(52 350)">
+    <rect width="142" height="112" rx="12" fill="#f5e8cb"/>
+    <circle cx="42" cy="42" r="20" fill="#d85b45"/>
+    <path d="M27 86c13-28 46-28 60 0" fill="#155e63"/>
+    <path d="M102 30h19M102 53h19M102 76h19" stroke="#431c3b" stroke-width="8"/>
+
+    <rect x="177" y="28" width="142" height="112" rx="12" fill="#d85b45"/>
+    <path d="M202 93c20-36 38-7 57-37s31-9 40-25" fill="none" stroke="#f5e8cb" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="202" cy="93" r="10" fill="#e7bb58"/>
+    <circle cx="299" cy="31" r="10" fill="#e7bb58"/>
+
+    <rect x="354" width="142" height="112" rx="12" fill="#93d3bd"/>
+    <path d="M378 29h94M378 57h67M378 85h82" stroke="#155e63" stroke-width="10" stroke-linecap="round"/>
+  </g>
+
+  <path d="M30 713h540" stroke="#d6a84b" stroke-width="18"/>
+  <path d="M75 712c0-146 101-214 225-214s225 68 225 214" fill="none" stroke="#f5e8cb" stroke-width="24"/>
+  <path d="M84 712c0-132 94-197 216-197s216 65 216 197" fill="none" stroke="#1f7a6d" stroke-width="10" stroke-dasharray="14 18"/>
+  <path d="M126 584v128M212 525v187M300 510v202M388 525v187M474 584v128" stroke="#d85b45" stroke-width="9"/>
+  <path d="M52 752h496v116H52z" fill="#155e63"/>
+  <text x="300" y="835" text-anchor="middle" fill="#f5e8cb" font-family="sans-serif" font-size="76" font-weight="900" letter-spacing="12">B1</text>
+</svg>

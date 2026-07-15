@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">English A1: First Steps course cover</title>
+  <desc id="desc">A warm coral and teal English A1 cover with a rising path of speech-shaped stepping stones.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#092f3a"/>
+      <stop offset="1" stop-color="#125e62"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#ff795f"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#03191f" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <path d="M0 650 C145 590 235 720 390 645 C470 606 527 606 600 630 V900 H0 Z" fill="#06242c"/>
+  <circle cx="467" cy="282" r="100" fill="url(#sun)"/>
+  <circle cx="467" cy="282" r="124" fill="none" stroke="#f7e4ae" stroke-opacity="0.25" stroke-width="2"/>
+  <g fill="none" stroke="#f7e4ae" stroke-opacity="0.28" stroke-width="2">
+    <path d="M467 128 V93"/>
+    <path d="M576 173 L599 148"/>
+    <path d="M358 173 L333 148"/>
+    <path d="M313 282 H278"/>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M80 675 Q80 649 106 649 H234 Q260 649 260 675 V718 Q260 744 234 744 H157 L126 772 L133 744 H106 Q80 744 80 718 Z" fill="#ff795f"/>
+    <path d="M205 550 Q205 526 229 526 H346 Q370 526 370 550 V588 Q370 612 346 612 H295 L272 634 L277 612 H229 Q205 612 205 588 Z" fill="#f7e4ae"/>
+    <path d="M329 440 Q329 419 350 419 H447 Q468 419 468 440 V473 Q468 494 447 494 H409 L391 512 L395 494 H350 Q329 494 329 473 Z" fill="#5dd6c7"/>
+  </g>
+  <g fill="#092f3a" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="170" y="708" font-size="32">HELLO</text>
+    <text x="287" y="573" font-size="27">PLEASE</text>
+    <text x="399" y="462" font-size="22">LET'S GO</text>
+  </g>
+  <text x="54" y="80" fill="#f7e4ae" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="50" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">A1</text>
+  <path d="M54 275 H274" stroke="#ff795f" stroke-width="12"/>
+  <text x="55" y="325" fill="#f7e4ae" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">FIRST STEPS</text>
+  <g transform="translate(54 813)">
+    <rect width="492" height="2" fill="#5dd6c7" opacity="0.7"/>
+    <text x="0" y="48" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="473" cy="39" r="17" fill="none" stroke="#ff795f" stroke-width="5"/>
+    <path d="M485 51 L500 66" stroke="#ff795f" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

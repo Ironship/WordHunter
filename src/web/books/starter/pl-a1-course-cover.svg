@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Zaczynam mówić po polsku. Kurs A1</title>
+  <desc id="desc">Granatowa okładka kursu polskiego A1 ze schodami, słońcem i dymkami rozmowy symbolizującymi pierwsze kroki w języku.</desc>
+  <defs>
+    <linearGradient id="a1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102a43"/>
+      <stop offset="1" stop-color="#174f64"/>
+    </linearGradient>
+    <linearGradient id="a1-sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#f6b73c"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#a1-bg)"/>
+  <rect x="25" y="25" width="550" height="850" rx="20" fill="none" stroke="#f7f1df" stroke-width="3"/>
+  <path d="M25 158H575" stroke="#f6b73c" stroke-width="9"/>
+  <rect x="61" y="56" width="316" height="34" rx="17" fill="#e9584f"/>
+  <text x="219" y="79" fill="#fffaf0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">ZACZYNAM MÓWIĆ PO POLSKU</text>
+
+  <text x="60" y="121" fill="#f7f1df" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">KURS JĘZYKA POLSKIEGO</text>
+  <text x="58" y="294" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="900" letter-spacing="-8">A1</text>
+  <text x="65" y="338" fill="#f6b73c" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">PIERWSZE KROKI</text>
+
+  <circle cx="447" cy="269" r="72" fill="url(#a1-sun)"/>
+  <g stroke="#ffe08a" stroke-width="7" stroke-linecap="round">
+    <path d="M447 174v-22M447 386v-22M352 269h-22M564 269h-22"/>
+    <path d="M380 202l-16-16M530 352l-16-16M380 336l-16 16M530 186l-16 16"/>
+  </g>
+
+  <path d="M76 706h122v-82h105v-84h104v-84h117v250z" fill="#f7f1df"/>
+  <path d="M76 706h122v-82h105v-84h104v-84h117" fill="none" stroke="#102a43" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M130 657c38-12 61-30 70-62M231 575c36-14 59-34 72-62M337 491c37-12 61-32 75-63" fill="none" stroke="#e9584f" stroke-width="8" stroke-linecap="round" stroke-dasharray="3 17"/>
+  <path d="M411 428l13-34 25 28z" fill="#e9584f"/>
+
+  <g fill="#ffffff" stroke="#102a43" stroke-width="5">
+    <path d="M76 405h165a20 20 0 0 1 20 20v60a20 20 0 0 1-20 20h-86l-35 31 8-31H76a20 20 0 0 1-20-20v-60a20 20 0 0 1 20-20z"/>
+  </g>
+  <g fill="#174f64">
+    <circle cx="111" cy="455" r="9"/>
+    <circle cx="158" cy="455" r="9"/>
+    <circle cx="205" cy="455" r="9"/>
+  </g>
+
+  <rect x="60" y="766" width="480" height="2" fill="#f6b73c"/>
+  <text x="300" y="820" fill="#f7f1df" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="848" fill="#f6b73c" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

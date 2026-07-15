@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Русский шаг за шагом. Курс A1</title>
+  <desc id="desc">Тёмно-синяя обложка начального курса русского языка со светлыми ступенями, солнечным кругом и диалоговым облаком.</desc>
+  <defs>
+    <linearGradient id="a1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101c35"/>
+      <stop offset="1" stop-color="#184f63"/>
+    </linearGradient>
+    <linearGradient id="a1-sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe39a"/>
+      <stop offset="1" stop-color="#f3b63f"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#a1-bg)"/>
+  <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f6f0df" stroke-width="4"/>
+  <rect x="58" y="58" width="274" height="32" rx="16" fill="#e45b4f"/>
+  <text x="195" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">РУССКИЙ ШАГ ЗА ШАГОМ</text>
+  <text x="58" y="132" fill="#f6f0df" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <path d="M28 158H572" stroke="#f3b63f" stroke-width="8"/>
+
+  <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">A1</text>
+  <text x="64" y="344" fill="#f3b63f" font-family="Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="5">ПЕРВЫЕ ШАГИ</text>
+  <circle cx="466" cy="266" r="65" fill="url(#a1-sun)"/>
+  <g stroke="#ffe39a" stroke-width="7" stroke-linecap="round">
+    <path d="M466 176v-22M466 378v-22M376 266h-22M578 266h-22"/>
+    <path d="M402 202l-16-16M530 330l16 16M402 330l-16 16M530 202l16-16"/>
+  </g>
+
+  <path d="M64 718h122v-78h108v-80h108v-80h134v238z" fill="#f6f0df"/>
+  <path d="M64 718h122v-78h108v-80h108v-80h134" fill="none" stroke="#101c35" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M118 670c42-16 65-36 77-67M228 590c39-15 63-37 77-67M338 510c40-15 65-38 78-68" fill="none" stroke="#e45b4f" stroke-width="8" stroke-linecap="round" stroke-dasharray="4 18"/>
+  <path d="M411 442l18-36 25 33z" fill="#e45b4f"/>
+
+  <path d="M70 398h174a20 20 0 0 1 20 20v61a20 20 0 0 1-20 20h-88l-38 32 10-32H70a20 20 0 0 1-20-20v-61a20 20 0 0 1 20-20z" fill="#ffffff" stroke="#101c35" stroke-width="5"/>
+  <g fill="#184f63">
+    <circle cx="105" cy="449" r="9"/><circle cx="157" cy="449" r="9"/><circle cx="209" cy="449" r="9"/>
+  </g>
+
+  <path d="M62 770H538" stroke="#f3b63f" stroke-width="2"/>
+  <text x="300" y="824" fill="#f6f0df" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="852" fill="#f3b63f" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

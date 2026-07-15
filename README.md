@@ -109,9 +109,9 @@ language:
 </table>
 
 Translation, TTS, catalog, and offline-model availability can vary by language
-and provider. The Other profile has no built-in starter catalog; set its source
-and target language codes under Translator & Dictionary settings before using
-automatic translation.
+and provider. The named languages include built-in original stories and A1-B2
+course books; the Other profile has none. Set its source and target language
+codes under Translator & Dictionary settings before using automatic translation.
 
 ## Feature Walkthrough
 

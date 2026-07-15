@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Cursus linguae Latinae A1: Primi Gradus per Urbem</title>
+  <desc id="desc">Porta Romana aperta, via clara et tres gradus initium itineris per urbem significant.</desc>
+  <rect width="600" height="900" fill="#f4e7cc"/>
+  <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#243d3a" stroke-width="4"/>
+  <path d="M0 666 Q148 614 300 660 T600 650 V900 H0Z" fill="#2e6159"/>
+  <circle cx="473" cy="157" r="63" fill="#d96c4b"/>
+  <g transform="translate(105 370)" stroke="#243d3a" stroke-width="6" stroke-linejoin="round">
+    <path d="M0 250V76H390V250" fill="#c99a61"/>
+    <path d="M-24 76L195 0L414 76Z" fill="#d96c4b"/>
+    <path d="M126 250V156a69 69 0 0 1 138 0v94Z" fill="#f4e7cc"/>
+    <path d="M195 250V88" fill="none"/>
+    <path d="M91 250H299M111 272H279M133 294H257" fill="none" stroke="#efc05b" stroke-width="16" stroke-linecap="square"/>
+  </g>
+  <path d="M238 664 C246 603 265 568 300 532 C335 568 354 603 362 664Z" fill="#efc05b"/>
+  <g fill="#243d3a" font-family="Georgia, 'Times New Roman', serif">
+    <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
+    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="274" font-size="22" font-style="italic">Primi Gradus per Urbem</text>
+  </g>
+  <g transform="translate(476 292)">
+    <circle r="61" fill="#efc05b" stroke="#243d3a" stroke-width="5"/>
+    <text x="0" y="17" text-anchor="middle" fill="#243d3a" font-family="Arial, sans-serif" font-size="49" font-weight="800">A1</text>
+  </g>
+  <g fill="#f4e7cc" font-family="Arial, sans-serif">
+    <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+  </g>
+</svg>

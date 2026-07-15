@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">English B1: Independent Voices course cover</title>
+  <desc id="desc">A forest green English B1 cover with an illuminated bridge built from connected lines and story fragments.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#102b2c"/>
+      <stop offset="1" stop-color="#071b26"/>
+    </linearGradient>
+    <linearGradient id="bridge" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5de0b4"/>
+      <stop offset="1" stop-color="#f3c969"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-50%" width="160%" height="200%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg)"/>
+  <g opacity="0.16" stroke="#a9f1d7" fill="none">
+    <path d="M0 390 H600 M0 450 H600 M0 510 H600 M0 570 H600 M0 630 H600 M0 690 H600"/>
+    <path d="M70 360 V740 M150 360 V740 M230 360 V740 M310 360 V740 M390 360 V740 M470 360 V740 M550 360 V740"/>
+  </g>
+  <path d="M0 714 C95 665 173 700 240 731 C337 775 424 662 600 692 V900 H0 Z" fill="#050f18"/>
+  <g filter="url(#glow)" fill="none" stroke="url(#bridge)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 675 C148 498 341 456 558 634" stroke-width="8"/>
+    <path d="M76 684 C166 552 343 525 522 648" stroke-width="5"/>
+    <path d="M78 683 H523" stroke-width="8"/>
+    <path d="M119 590 V683 M186 532 V683 M262 494 V683 M344 487 V683 M423 519 V683 M487 565 V683" stroke-width="3"/>
+  </g>
+  <g fill="#f7e5aa" font-family="Georgia, 'Times New Roman', serif" font-size="16" font-style="italic">
+    <text x="65" y="455">experience</text>
+    <text x="208" y="416">evidence</text>
+    <text x="360" y="426">however</text>
+    <text x="475" y="480">therefore</text>
+  </g>
+  <g fill="#5de0b4">
+    <circle cx="119" cy="590" r="7"/>
+    <circle cx="186" cy="532" r="7"/>
+    <circle cx="262" cy="494" r="7"/>
+    <circle cx="344" cy="487" r="7"/>
+    <circle cx="423" cy="519" r="7"/>
+    <circle cx="487" cy="565" r="7"/>
+  </g>
+  <text x="54" y="80" fill="#f7e5aa" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">B1</text>
+  <path d="M54 275 H274" stroke="#5de0b4" stroke-width="12"/>
+  <text x="55" y="325" fill="#f3c969" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" letter-spacing="1.5">INDEPENDENT VOICES</text>
+  <g transform="translate(54 813)">
+    <rect width="492" height="2" fill="#5de0b4" opacity="0.85"/>
+    <text x="0" y="48" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="473" cy="39" r="17" fill="none" stroke="#f3c969" stroke-width="5"/>
+    <path d="M485 51 L500 66" stroke="#f3c969" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

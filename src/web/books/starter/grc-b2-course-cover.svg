@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Μαθήματα Ἑλληνικῆς B2, Κρίσις καὶ πειθώ</title>
+  <desc id="desc">Βαθυπόρφυρον κάλυμμα μετὰ γλαυκός, ζυγοῦ κρίσεως καὶ στεφάνου δάφνης.</desc>
+  <defs>
+    <radialGradient id="bg-b2" cx="70%" cy="42%" r="85%">
+      <stop offset="0" stop-color="#5a2639"/>
+      <stop offset=".58" stop-color="#301727"/>
+      <stop offset="1" stop-color="#160b14"/>
+    </radialGradient>
+    <linearGradient id="gold-b2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1d596"/>
+      <stop offset="1" stop-color="#ad7440"/>
+    </linearGradient>
+    <pattern id="tri-b2" width="44" height="26" patternUnits="userSpaceOnUse">
+      <path d="M0 22L11 4l11 18L33 4l11 18" fill="none" stroke="#d8ad69" stroke-width="3"/>
+    </pattern>
+    <filter id="shadow-b2" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="9" flood-color="#080308" flood-opacity=".65"/>
+    </filter>
+  </defs>
+  <rect width="600" height="900" fill="url(#bg-b2)"/>
+  <circle cx="427" cy="474" r="171" fill="none" stroke="#d8ad69" stroke-width="2" opacity=".45"/>
+  <circle cx="427" cy="474" r="145" fill="#221622" stroke="#bd844e" stroke-width="4"/>
+  <g transform="translate(327 337)" fill="url(#gold-b2)" filter="url(#shadow-b2)">
+    <path d="M101 20c-47 0-78 36-78 92 0 48 24 77 60 88l-17 42 39-23 35 24-12-44c35-13 57-43 57-87 0-55-34-92-84-92Z"/>
+    <circle cx="75" cy="93" r="31" fill="#5a2639"/>
+    <circle cx="137" cy="93" r="31" fill="#5a2639"/>
+    <circle cx="75" cy="93" r="10" fill="#f1d596"/>
+    <circle cx="137" cy="93" r="10" fill="#f1d596"/>
+    <path d="M106 108l-18 25h36Z" fill="#5a2639"/>
+    <path d="M57 154c31 22 65 22 98 0-9 31-27 48-49 48s-40-17-49-48Z" fill="#5a2639"/>
+  </g>
+  <g transform="translate(72 535)" fill="none" stroke="#e4bf7f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M120 0v141M66 28h108M84 29l-43 75h86ZM156 29l-43 75h86"/>
+    <path d="M34 104c17 18 68 18 86 0M113 104c18 18 68 18 86 0M78 145h84M60 165h120"/>
+  </g>
+  <g fill="none" stroke="#9f744b" stroke-width="6" stroke-linecap="round">
+    <path d="M72 455c-20 91-7 184 54 257"/>
+    <path d="M302 701c36-58 52-123 45-192"/>
+  </g>
+  <g fill="#c49659">
+    <ellipse cx="71" cy="495" rx="9" ry="23" transform="rotate(-14 71 495)"/>
+    <ellipse cx="72" cy="543" rx="9" ry="23" transform="rotate(-2 72 543)"/>
+    <ellipse cx="83" cy="591" rx="9" ry="23" transform="rotate(13 83 591)"/>
+    <ellipse cx="101" cy="637" rx="9" ry="23" transform="rotate(25 101 637)"/>
+    <ellipse cx="340" cy="548" rx="9" ry="23" transform="rotate(14 340 548)"/>
+    <ellipse cx="329" cy="595" rx="9" ry="23" transform="rotate(2 329 595)"/>
+    <ellipse cx="314" cy="641" rx="9" ry="23" transform="rotate(-16 314 641)"/>
+  </g>
+  <rect x="30" y="30" width="540" height="840" fill="none" stroke="#d8ad69" stroke-width="2"/>
+  <rect x="30" y="61" width="540" height="26" fill="url(#tri-b2)" opacity=".9"/>
+  <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
+    <text x="54" y="145" fill="#e9cb92" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="47" y="312" fill="#fff3dd" font-size="142">B2</text>
+    <text x="55" y="360" fill="#e0a162" font-size="29">ΚΡΙΣΙΣ ΚΑΙ ΠΕΙΘΩ</text>
+  </g>
+  <path d="M56 385h265" stroke="#d8ad69" stroke-width="5"/>
+  <g transform="translate(54 831)" font-family="Arial, Helvetica, sans-serif" font-weight="700">
+    <text x="0" y="25" fill="#fff3dd" font-size="24" letter-spacing="5">WORD HUNTER</text>
+    <circle cx="466" cy="14" r="15" fill="none" stroke="#e0a162" stroke-width="5"/>
+    <path d="M477 25l16 16" stroke="#e0a162" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

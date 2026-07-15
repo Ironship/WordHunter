@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Deutschkurs A2 – Zwischen Alltag und Aufbruch</title>
+  <desc id="desc">Türkisfarbenes Buchcover mit Stadtlinien, einem bewegten Weg und einem korallfarbenen A2-Signet für wachsende Selbstständigkeit.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b4858"/>
+      <stop offset="1" stop-color="#147f83"/>
+    </linearGradient>
+    <pattern id="grid" width="42" height="42" patternUnits="userSpaceOnUse">
+      <path d="M42 0H0V42" fill="none" stroke="#d7f2e9" stroke-width="1" opacity=".16"/>
+    </pattern>
+  </defs>
+  <rect width="600" height="900" fill="url(#sky)"/>
+  <rect width="600" height="900" fill="url(#grid)"/>
+  <path d="M-20 654 C88 555 171 685 274 562 S471 459 628 520" fill="none" stroke="#f47f6b" stroke-width="34" stroke-linecap="round"/>
+  <path d="M-20 654 C88 555 171 685 274 562 S471 459 628 520" fill="none" stroke="#ffe1a8" stroke-width="5" stroke-linecap="round" stroke-dasharray="4 20"/>
+  <g fill="#d7f2e9" opacity=".9">
+    <path d="M0 725L70 670L126 708L190 641L258 698L329 630L401 692L478 622L600 703V900H0Z" opacity=".16"/>
+    <rect x="45" y="638" width="65" height="167"/>
+    <rect x="128" y="688" width="94" height="117"/>
+    <rect x="448" y="632" width="104" height="173"/>
+  </g>
+  <g fill="#0b4858" opacity=".8">
+    <rect x="61" y="672" width="13" height="18"/><rect x="83" y="672" width="13" height="18"/>
+    <rect x="61" y="705" width="13" height="18"/><rect x="83" y="705" width="13" height="18"/>
+    <rect x="467" y="662" width="19" height="22"/><rect x="508" y="662" width="19" height="22"/>
+    <rect x="467" y="704" width="19" height="22"/><rect x="508" y="704" width="19" height="22"/>
+  </g>
+  <text x="54" y="92" fill="#ffe1a8" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="54" y="177" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">DEUTSCHKURS</text>
+  <rect x="56" y="210" width="188" height="7" fill="#f47f6b"/>
+  <text x="54" y="260" fill="#d7f2e9" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="2">ZWISCHEN ALLTAG</text>
+  <text x="54" y="294" fill="#d7f2e9" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="2">UND AUFBRUCH</text>
+  <g transform="translate(369 321)">
+    <circle cx="90" cy="90" r="86" fill="#f47f6b" stroke="#ffe1a8" stroke-width="8"/>
+    <circle cx="90" cy="90" r="66" fill="none" stroke="#0b4858" stroke-width="3" opacity=".35"/>
+    <text x="90" y="121" text-anchor="middle" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="88" font-weight="900">A2</text>
+  </g>
+  <g transform="translate(69 373)" fill="none" stroke="#ffe1a8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 90H212L171 49M212 90L171 131"/>
+    <circle cx="0" cy="90" r="17" fill="#ffe1a8" stroke="none"/>
+  </g>
+  <text x="54" y="848" fill="#ffe1a8" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="2">WEITERDENKEN · WEITERSPRECHEN</text>
+</svg>

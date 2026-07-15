@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Polski samodzielnie. Kurs B1</title>
+  <desc id="desc">Bordowa okładka kursu polskiego B1 z mostem zbudowanym ze zdań i dwiema postaciami symbolizującymi samodzielną komunikację.</desc>
+  <defs>
+    <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#351735"/>
+      <stop offset="1" stop-color="#7a284f"/>
+    </linearGradient>
+    <linearGradient id="b1-bridge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#f29e4c"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="900" fill="url(#b1-bg)"/>
+  <rect x="25" y="25" width="550" height="850" rx="20" fill="none" stroke="#fff5e6" stroke-width="3"/>
+  <path d="M25 158H575" stroke="#ffd166" stroke-width="9"/>
+  <rect x="61" y="56" width="203" height="34" rx="17" fill="#36a7a2"/>
+  <text x="162" y="79" fill="#fffaf0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">POLSKI SAMODZIELNIE</text>
+
+  <text x="60" y="121" fill="#fff5e6" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">KURS JĘZYKA POLSKIEGO</text>
+  <text x="58" y="294" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="900" letter-spacing="-8">B1</text>
+  <text x="65" y="338" fill="#ffd166" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">SAMODZIELNY GŁOS</text>
+
+  <circle cx="300" cy="547" r="171" fill="#28132d" opacity=".62"/>
+  <path d="M66 681c72-126 143-181 234-181s162 55 234 181" fill="none" stroke="url(#b1-bridge)" stroke-width="26" stroke-linecap="round"/>
+  <path d="M92 680h416" stroke="#fff5e6" stroke-width="15" stroke-linecap="round"/>
+  <g stroke="#ffd166" stroke-width="7">
+    <path d="M147 594v87M207 540v141M270 511v170M330 511v170M393 540v141M453 594v87"/>
+  </g>
+
+  <g fill="#fff5e6">
+    <circle cx="137" cy="475" r="30"/>
+    <path d="M88 558c6-49 24-69 49-69s43 20 49 69z"/>
+    <circle cx="463" cy="475" r="30"/>
+    <path d="M414 558c6-49 24-69 49-69s43 20 49 69z"/>
+  </g>
+  <path d="M176 393h128a18 18 0 0 1 18 18v46a18 18 0 0 1-18 18h-61l-29 27 7-27h-45a18 18 0 0 1-18-18v-46a18 18 0 0 1 18-18z" fill="#36a7a2"/>
+  <path d="M426 397H310a18 18 0 0 0-18 18v37a18 18 0 0 0 18 18h59l28 25-7-25h36a18 18 0 0 0 18-18v-37a18 18 0 0 0-18-18z" fill="#f06f5f"/>
+  <g fill="#ffffff">
+    <circle cx="196" cy="434" r="7"/>
+    <circle cx="239" cy="434" r="7"/>
+    <circle cx="282" cy="434" r="7"/>
+    <circle cx="325" cy="434" r="7"/>
+    <circle cx="361" cy="434" r="7"/>
+    <circle cx="397" cy="434" r="7"/>
+  </g>
+
+  <rect x="60" y="766" width="480" height="2" fill="#ffd166"/>
+  <text x="300" y="820" fill="#fff5e6" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" letter-spacing="4">WORD HUNTER</text>
+  <text x="300" y="848" fill="#ffd166" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="700" letter-spacing="4">ORIGINALS</text>
+</svg>

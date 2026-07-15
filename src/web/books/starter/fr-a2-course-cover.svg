@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Vivre et agir en français, cours A2</title>
+  <desc id="desc">Couverture turquoise et orange montrant un itinéraire qui relie un quartier, un marché et une gare.</desc>
+  <rect width="600" height="900" fill="#0d4f59"/>
+  <rect x="24" y="24" width="552" height="852" rx="24" fill="none" stroke="#ffd166" stroke-width="4"/>
+  <path d="M24 188H576V340H24Z" fill="#f28f3b"/>
+  <circle cx="492" cy="104" r="52" fill="#ffd166"/>
+  <text x="492" y="121" text-anchor="middle" fill="#0d4f59" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">A2</text>
+  <text x="58" y="86" fill="#f6fbf3" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+  <text x="58" y="142" fill="#ffd166" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">COURS DE FRANÇAIS</text>
+  <text x="300" y="246" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700">Vivre et agir</text>
+  <text x="300" y="306" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="44" font-weight="700">en français</text>
+
+  <path d="M82 684C142 614 135 528 226 522C316 516 303 660 407 639C472 626 468 537 520 494" fill="none" stroke="#ffd166" stroke-width="24" stroke-linecap="round"/>
+  <path d="M82 684C142 614 135 528 226 522C316 516 303 660 407 639C472 626 468 537 520 494" fill="none" stroke="#f6fbf3" stroke-width="8" stroke-linecap="round" stroke-dasharray="4 22"/>
+  <g fill="#f6fbf3" stroke="#083941" stroke-width="6" stroke-linejoin="round">
+    <path d="M62 581L120 530L178 581V672H62Z"/>
+    <path d="M371 471L429 420L487 471V557H371Z"/>
+  </g>
+  <rect x="91" y="616" width="34" height="56" fill="#f28f3b"/>
+  <path d="M392 500H466V557H392Z" fill="#68c3b7"/>
+  <path d="M206 438H326V522H206Z" fill="#f6fbf3" stroke="#083941" stroke-width="6"/>
+  <path d="M222 438V416H310V438M236 464H252V489H236ZM280 464H296V489H280Z" fill="#ffd166" stroke="#083941" stroke-width="5"/>
+  <circle cx="82" cy="684" r="18" fill="#f28f3b" stroke="#f6fbf3" stroke-width="6"/>
+  <circle cx="520" cy="494" r="18" fill="#f28f3b" stroke="#f6fbf3" stroke-width="6"/>
+  <path d="M487 738H110Q82 738 82 710" fill="none" stroke="#68c3b7" stroke-width="10" stroke-linecap="round"/>
+  <path d="M470 718L494 738L470 758" fill="none" stroke="#68c3b7" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="300" y="827" text-anchor="middle" fill="#f6fbf3" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">EXPLORER • RACONTER • CHOISIR</text>
+  <text x="300" y="856" text-anchor="middle" fill="#ffd166" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+</svg>

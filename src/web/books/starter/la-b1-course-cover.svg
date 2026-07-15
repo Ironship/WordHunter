@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Cursus linguae Latinae B1: Viae Civium</title>
+  <desc id="desc">Aquaeductus Romanus supra viam longam stat, laurea et tabula civica opus commune significant.</desc>
+  <rect width="600" height="900" fill="#e9e2ca"/>
+  <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#263b2d" stroke-width="4"/>
+  <path d="M0 682Q148 627 300 680T600 669V900H0Z" fill="#516b45"/>
+  <path d="M300 900C274 780 270 697 300 580C330 697 326 780 300 900Z" fill="#d2a33b"/>
+  <g transform="translate(72 385)" fill="#b95f43" stroke="#263b2d" stroke-width="6">
+    <path d="M0 220V83H456V220H405V145a52 52 0 0 0-104 0v75H251V145a52 52 0 0 0-104 0v75H97V145a49 49 0 0 0-97 0Z"/>
+    <rect x="-14" y="62" width="484" height="28" fill="#d9b76b"/>
+    <path d="M25 61V18H431V61" fill="#e9e2ca"/>
+  </g>
+  <g fill="none" stroke="#d2a33b" stroke-width="8" stroke-linecap="round">
+    <path d="M85 344Q128 288 177 315Q124 327 96 379"/>
+    <path d="M515 344Q472 288 423 315Q476 327 504 379"/>
+  </g>
+  <g fill="#263b2d" font-family="Georgia, 'Times New Roman', serif">
+    <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
+    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
+    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="274" font-size="22" font-style="italic">Viae Civium</text>
+  </g>
+  <g transform="translate(476 292)">
+    <path d="M0-68L59-34V34L0 68L-59 34V-34Z" fill="#d2a33b" stroke="#263b2d" stroke-width="5"/>
+    <text x="0" y="17" text-anchor="middle" fill="#263b2d" font-family="Arial, sans-serif" font-size="48" font-weight="800">B1</text>
+  </g>
+  <g fill="#e9e2ca" font-family="Arial, sans-serif">
+    <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+  </g>
+</svg>
