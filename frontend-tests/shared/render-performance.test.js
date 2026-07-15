@@ -219,7 +219,7 @@ describe("render performance guards", () => {
     const articleButton = { dataset: { suggestArticle: "das", suggestWord: "haus" } };
     const clickTarget = new FakeElement();
     clickTarget.closest = (selector) => selector === "[data-suggest-article]" ? articleButton : null;
-    wordPanel.dispatch("click", { target: clickTarget });
+    els.wordPanel.dispatch("click", { target: clickTarget });
     await new Promise((resolve) => setImmediate(resolve));
     assert.deepEqual(articleUpdates, [["haus", "article", "das"]]);
     assert.equal(wordPanelRenders, 1);
