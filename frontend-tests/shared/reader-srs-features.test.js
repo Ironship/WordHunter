@@ -15,6 +15,7 @@ const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocab
 const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
+const appVersion = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8")).version;
 
 describe("learning colors", () => {
   it("enables learning colors, in-text reviews, and learning-only flashcards by default", () => {
@@ -344,8 +345,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.5-rc\.7/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.5-rc\.7/, `${locale}.help.version`);
+      assert.ok(data.help.whatsNew.includes(appVersion), `${locale}.help.whatsNew version`);
+      assert.ok(data.help.version.includes(appVersion), `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });
