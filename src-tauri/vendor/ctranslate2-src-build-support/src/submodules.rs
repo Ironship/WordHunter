@@ -2,7 +2,7 @@ use base64::Engine;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -51,6 +51,94 @@ fn github_get(url: &str) -> Result<ureq::http::Response<ureq::Body>, ureq::Error
     request.call()
 }
 
+fn parse_gitmodules(gitmodules: &str) -> HashMap<String, String> {
+    let mut path_to_url = HashMap::new();
+    let mut current_path = String::new();
+    for line in gitmodules.lines() {
+        if line.trim().starts_with("[submodule") {
+            current_path.clear();
+        } else if let Some(rest) = line.trim().strip_prefix("path = ") {
+            current_path = rest.to_string();
+        } else if let Some(rest) = line.trim().strip_prefix("url = ") {
+            path_to_url.insert(current_path.clone(), rest.to_string());
+        }
+    }
+    path_to_url
+}
+
+fn parse_gitlinks(
+    tree: &str,
+    path_to_url: &HashMap<String, String>,
+) -> Vec<(String, String, String)> {
+    tree.lines()
+        .filter_map(|line| {
+            let (metadata, path) = line.split_once('\t')?;
+            let mut fields = metadata.split_whitespace();
+            if fields.next()? != "160000" || fields.next()? != "commit" {
+                return None;
+            }
+            let sha = fields.next()?.to_string();
+            let url = path_to_url.get(path).cloned().unwrap_or_default();
+            Some((path.to_string(), sha, url))
+        })
+        .collect()
+}
+
+fn get_submodules_via_git(
+    parent: &Path,
+    version: &str,
+) -> Result<Vec<(String, String, String)>, Box<dyn std::error::Error>> {
+    let source_dir = parent.join(format!("CTranslate2-{version}"));
+    let path_to_url = parse_gitmodules(&fs::read_to_string(source_dir.join(".gitmodules"))?);
+    let metadata_dir = parent.join(format!(".CTranslate2-{version}-git"));
+    if metadata_dir.exists() {
+        fs::remove_dir_all(&metadata_dir)?;
+    }
+
+    let tag = format!("v{version}");
+    let status = Command::new("git")
+        .args([
+            "clone",
+            "--filter=blob:none",
+            "--no-checkout",
+            "--depth",
+            "1",
+            "--branch",
+            &tag,
+            "https://github.com/OpenNMT/CTranslate2.git",
+            metadata_dir.to_str().unwrap(),
+        ])
+        .status()?;
+    if !status.success() {
+        return Err(std::io::Error::other(format!(
+            "git metadata clone failed with {status}"
+        ))
+        .into());
+    }
+
+    let output = Command::new("git")
+        .current_dir(&metadata_dir)
+        .args(["ls-tree", "-r", "HEAD"])
+        .output()?;
+    if !output.status.success() {
+        return Err(std::io::Error::other(format!(
+            "git ls-tree failed with {}",
+            output.status
+        ))
+        .into());
+    }
+    let modules = parse_gitlinks(&String::from_utf8(output.stdout)?, &path_to_url);
+    fs::remove_dir_all(metadata_dir)?;
+    if modules.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "CTranslate2 tag did not contain any submodule gitlinks",
+        )
+        .into());
+    }
+    Ok(modules)
+}
+
 pub fn get_submodules(
     owner: &str,
     repo: &str,
@@ -88,17 +176,7 @@ pub fn get_submodules(
         .decode(gitmodules_file.content.replace("\n", ""))?;
     let gitmodules_str = String::from_utf8(decoded)?;
 
-    let mut path_to_url = HashMap::new();
-    let mut current_path = String::new();
-    for line in gitmodules_str.lines() {
-        if line.trim().starts_with("[submodule") {
-            current_path.clear();
-        } else if let Some(rest) = line.trim().strip_prefix("path = ") {
-            current_path = rest.to_string();
-        } else if let Some(rest) = line.trim().strip_prefix("url = ") {
-            path_to_url.insert(current_path.clone(), rest.to_string());
-        }
-    }
+    let path_to_url = parse_gitmodules(&gitmodules_str);
 
     let submodules = tree
         .tree
@@ -119,7 +197,19 @@ pub fn get_submodules_helper(path: &Path, version: &str) -> Vec<PathBuf> {
     if f.exists() {
         return vec![];
     }
-    let submodules = get_submodules("OpenNMT", "CTranslate2", &format!("v{version}")).unwrap();
+    let submodules = match get_submodules("OpenNMT", "CTranslate2", &format!("v{version}")) {
+        Ok(submodules) => submodules,
+        Err(error) => {
+            eprintln!(
+                "GitHub API submodule lookup failed ({error}); falling back to Git metadata"
+            );
+            get_submodules_via_git(path, version).unwrap_or_else(|git_error| {
+                panic!(
+                    "failed to resolve CTranslate2 submodules through GitHub API ({error}) and Git ({git_error})"
+                )
+            })
+        }
+    };
     let mut modules = vec![];
     for (path, sha, url) in submodules {
         let submodule_path = p.join(path);
@@ -151,4 +241,33 @@ pub fn get_submodules_helper(path: &Path, version: &str) -> Vec<PathBuf> {
     }
     File::create(f).unwrap();
     modules
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_gitlinks, parse_gitmodules};
+
+    #[test]
+    fn parses_submodule_urls_and_gitlinks() {
+        let urls = parse_gitmodules(
+            r#"
+[submodule "third_party/example"]
+    path = third_party/example
+    url = https://github.com/example/example.git
+"#,
+        );
+        let modules = parse_gitlinks(
+            "160000 commit abc123\tthird_party/example\n100644 blob def456\tREADME.md\n",
+            &urls,
+        );
+
+        assert_eq!(
+            modules,
+            vec![(
+                "third_party/example".to_string(),
+                "abc123".to_string(),
+                "https://github.com/example/example.git".to_string()
+            )]
+        );
+    }
 }
