@@ -38,6 +38,27 @@ fn tokenize_handles_hyphenated_and_apostrophe_words() {
 }
 
 #[test]
+fn tokenizers_keep_typographic_apostrophe_words_together() {
+    for algorithm in ["classic", "modern"] {
+        let parts = tokenize("L’homme et un’amica", "fr", Some(algorithm));
+        let words: Vec<String> = parts
+            .iter()
+            .filter(|part| part.kind == "word")
+            .map(|part| part.value.clone())
+            .collect();
+        assert_eq!(words, vec!["L’homme", "et", "un’amica"], "{algorithm}");
+    }
+}
+
+#[test]
+fn attached_articles_use_the_bare_vocabulary_key() {
+    assert_eq!(vocabulary_word_key("L'homme", "fr"), "homme");
+    assert_eq!(vocabulary_word_key("l’homme", "fr-FR"), "homme");
+    assert_eq!(vocabulary_word_key("un’amica", "it"), "amica");
+    assert_eq!(vocabulary_word_key("d’homme", "fr"), "d'homme");
+}
+
+#[test]
 fn image_markers_become_image_tokens() {
     let parts = tokenize("front [IMG:cover.jpg] back", "en", Some("classic"));
     let kinds: Vec<&str> = parts.iter().map(|p| p.kind.as_str()).collect();
@@ -197,6 +218,26 @@ fn stats_counts_unique_words_and_vocab_status() {
     assert_eq!(stats["known"], 2);
     assert_eq!(stats["learning"], 1);
     assert_eq!(stats["new"], 3);
+}
+
+#[test]
+fn stats_canonicalize_attached_articles_and_preserve_legacy_vocab() {
+    let canonical = text_stats(
+        "L'homme l’homme",
+        &json!({ "homme": { "status": "known" } }),
+        "fr",
+        Some("classic"),
+    );
+    assert_eq!(canonical["unique"], 1);
+    assert_eq!(canonical["known"], 2);
+
+    let legacy = text_stats(
+        "L’homme",
+        &json!({ "l’homme": { "status": "learning" } }),
+        "fr",
+        Some("classic"),
+    );
+    assert_eq!(legacy["learning"], 1);
 }
 
 #[test]

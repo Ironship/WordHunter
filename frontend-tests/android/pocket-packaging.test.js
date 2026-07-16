@@ -149,19 +149,24 @@ describe("Android Pocket packaging", () => {
   it("derives a bounded monotonic version code and patches the generated project", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const build = read("../../scripts/build.bat");
-    const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)$/);
-    assert.ok(parts, "Tauri version must be MAJOR.MINOR.PATCH");
-    const [, majorText, minorText, patchText] = parts;
+    const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$/);
+    assert.ok(parts, "Tauri version must be stable or an RC SemVer");
+    const [, majorText, minorText, patchText, rcText] = parts;
     const [major, minor, patch] = [majorText, minorText, patchText].map(Number);
     assert.ok(minor < 1_000 && patch < 1_000);
-    const versionCode = (major * 1_000_000) + (minor * 1_000) + patch;
+    const baseCode = (major * 1_000_000) + (minor * 1_000) + patch;
+    const releaseOrdinal = rcText ? Number(rcText) : 99;
+    assert.ok(releaseOrdinal >= 1 && releaseOrdinal <= 99);
+    const versionCode = (baseCode * 100) + releaseOrdinal;
     assert.ok(Number.isSafeInteger(versionCode));
     assert.ok(versionCode > 0 && versionCode <= 2_100_000_000);
-    assert.ok(versionCode < ((major + 1) * 1_000_000));
+    assert.ok(versionCode < ((major + 1) * 100_000_000));
 
     const versionRecipe = powershellFunction(build, "Get-AndroidVersionInfo");
     assert.match(versionRecipe, /\$minor -gt 999 -or \$patch -gt 999/);
     assert.match(versionRecipe, /\(\$major \* 1000000\) \+ \(\$minor \* 1000\) \+ \$patch/);
+    assert.match(versionRecipe, /\$code = \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
+    assert.match(versionRecipe, /release-candidate ordinal must be between 1 and 98/);
     assert.match(versionRecipe, /\$code -le 0 -or \$code -gt 2100000000/);
     const prepare = powershellFunction(build, "Prepare-AndroidProject");
     assert.match(prepare, /Copy-Item -LiteralPath \$activitySource -Destination \$activityTarget/);

@@ -5,6 +5,23 @@ use crate::router;
 
 use super::models::status;
 
+fn popup_theme(value: Option<&str>) -> &'static str {
+    match value {
+        Some("dark") => "dark",
+        Some("auto") => "auto",
+        None => "auto",
+        _ => "light",
+    }
+}
+
+fn popup_family(value: Option<&str>) -> &'static str {
+    match value {
+        Some("familiar") => "familiar",
+        Some("alternative-familiar") => "alternative-familiar",
+        _ => "classic",
+    }
+}
+
 /// Public popup HTML endpoint — renders the translator popup template with
 /// language options and i18n labels.
 pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
@@ -15,10 +32,8 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         .get("to")
         .cloned()
         .unwrap_or_else(|| "pl".to_string());
-    let theme = params
-        .get("theme")
-        .cloned()
-        .unwrap_or_else(|| "auto".to_string());
+    let theme = popup_theme(params.get("theme").map(String::as_str));
+    let family = popup_family(params.get("family").map(String::as_str));
     let locale = params
         .get("locale")
         .cloned()
@@ -68,7 +83,9 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
     let mut html = String::from_utf8(template.to_vec()).map_err(|e| e.to_string())?;
 
     let replacements = [
-        ("{{theme}}", escape_attr(&theme)),
+        ("{{theme}}", escape_attr(theme)),
+        ("{{color_theme}}", escape_attr(family)),
+        ("{{locale}}", escape_attr(&locale)),
         (
             "{{title}}",
             escape_html(
@@ -82,6 +99,14 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         ("{{to_code}}", escape_attr(&to_code)),
         ("{{from_options}}", from_options),
         ("{{to_options}}", to_options),
+        (
+            "{{from_label}}",
+            escape_attr(labels.get("from").unwrap_or(&"Source language".to_string())),
+        ),
+        (
+            "{{to_label}}",
+            escape_attr(labels.get("to").unwrap_or(&"Target language".to_string())),
+        ),
         (
             "{{source_label}}",
             escape_html(
@@ -129,7 +154,7 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
         ),
         (
             "{{copied}}",
-            escape_html(labels.get("copied").unwrap_or(&"Copied!".to_string())),
+            escape_attr(labels.get("copied").unwrap_or(&"Copied!".to_string())),
         ),
     ];
     for (needle, value) in replacements {
@@ -234,5 +259,19 @@ mod tests {
 
         assert!(html.contains(">Polski</option>"));
         assert!(html.contains("selected"));
+    }
+
+    #[test]
+    fn popup_theme_parameters_are_bounded() {
+        assert_eq!(popup_theme(Some("dark")), "dark");
+        assert_eq!(popup_theme(Some("auto")), "auto");
+        assert_eq!(popup_theme(None), "auto");
+        assert_eq!(popup_theme(Some("untrusted")), "light");
+        assert_eq!(popup_family(Some("familiar")), "familiar");
+        assert_eq!(
+            popup_family(Some("alternative-familiar")),
+            "alternative-familiar"
+        );
+        assert_eq!(popup_family(Some("untrusted")), "classic");
     }
 }

@@ -11,19 +11,20 @@ function assertSourceOrder(source, before, after, message) {
 }
 
 function sourceBetween(source, startMarker, endMarker) {
-  const start = source.indexOf(startMarker);
-  const end = source.indexOf(endMarker, start + startMarker.length);
+  const normalized = source.replaceAll("\r\n", "\n");
+  const start = normalized.indexOf(startMarker);
+  const end = normalized.indexOf(endMarker, start + startMarker.length);
   assert.notEqual(start, -1, `Missing source marker: ${startMarker}`);
   assert.notEqual(end, -1, `Missing source marker: ${endMarker}`);
   assert.ok(start < end, `Expected ${startMarker} before ${endMarker}`);
-  return source.slice(start, end);
+  return normalized.slice(start, end);
 }
 
 describe("Android Pocket bridges", () => {
   it("defines the request-scoped Android sync bridge ABI", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../src/web/js/preferences.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
+    const preferences = readFileSync(new URL("../../dist/web/js/preferences.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
 
     assert.match(activity, /fun chooseSyncFolder\(token: String\?, requestId: String\?\): Boolean/);
     assert.match(activity, /fun forceSyncFolder\(token: String\?, requestId: String\?\): Boolean/);
@@ -69,10 +70,11 @@ describe("Android Pocket bridges", () => {
         return { isCollapsed: true };
       }
     };
-    const tokenClasses = [new Set(), new Set()];
+    const tokenClasses = [new Set(), new Set(), new Set()];
     const tokens = [
       { textContent: "Hallo", dataset: {}, classList: { add: (name) => tokenClasses[0].add(name), remove: (name) => tokenClasses[0].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } }
+      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } },
+      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[2].add(name), remove: (name) => tokenClasses[2].delete(name) } }
     ];
     globalThis.localStorage = { getItem: () => null, setItem: () => {} };
     globalThis.document = {
@@ -82,12 +84,12 @@ describe("Android Pocket bridges", () => {
       }
     };
 
-    const { state } = await import("../../src/web/js/state.js");
+    const { state } = await import("../../dist/web/js/state.js");
     state.preferences.learningLanguage = "de";
     state.preferences.ttsRate = "fast";
     state.preferences.ttsWordHighlight = true;
 
-    const { speakText } = await import("../../src/web/js/tts.js");
+    const { speakText } = await import("../../dist/web/js/tts.js");
     let finished = false;
     const container = { classList: { add() {} }, querySelectorAll: () => tokens };
     speakText("Hallo. Welt.", container, () => { finished = true; });
@@ -111,6 +113,13 @@ describe("Android Pocket bridges", () => {
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "done" } });
     assert.equal(finished, true);
     assert.equal(stopped, true);
+
+    speakText("Welt.", container, null, { startTokenIndex: 2 });
+    assert.equal(calls.length, 3);
+    listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "range", start: 0, end: 4 } });
+    assert.equal(tokenClasses[1].has("tts-current-word"), false);
+    assert.equal(tokenClasses[2].has("tts-current-word"), true);
+    listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "done" } });
   });
 
   it("forwards dictionary URLs through the live Android bridge", async () => {
@@ -124,7 +133,7 @@ describe("Android Pocket bridges", () => {
       }
     };
 
-    const { openAndroidUrl } = await import("../../src/web/js/platform.js");
+    const { openAndroidUrl } = await import("../../dist/web/js/platform.js");
 
     assert.equal(openAndroidUrl("https://dict.test/wort"), true);
     assert.deepEqual(calls, ["https://dict.test/wort"]);
@@ -136,8 +145,8 @@ describe("Android Pocket bridges", () => {
   });
 
   it("defines the native URL and TTS callback security contracts", () => {
-    const shared = readFileSync(new URL("../../src/web/js/events/shared.js", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../src/web/app.js", import.meta.url), "utf8");
+    const shared = readFileSync(new URL("../../dist/web/js/events/shared.js", import.meta.url), "utf8");
+    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
 
     assertSourceOrder(shared, "openAndroidUrl(url)", "window.__qtBridge");
@@ -152,7 +161,7 @@ describe("Android Pocket bridges", () => {
 
   it("defines Android PDF rendering and overlay integration ABIs", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const importEvents = readFileSync(new URL("../../src/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
 
     assert.match(activity, /import android\.graphics\.pdf\.PdfRenderer/);
     assert.match(activity, /private val pdfRenderSessions = mutableMapOf<String, PdfRenderSession>\(\)/);
@@ -297,7 +306,7 @@ describe("Android Pocket bridges", () => {
 
   it("defines the Android create-document export ABI", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const syncActions = readFileSync(new URL("../../src/web/js/sync-actions.js", import.meta.url), "utf8");
+    const syncActions = readFileSync(new URL("../../dist/web/js/sync-actions.js", import.meta.url), "utf8");
 
     assert.match(activity, /fun saveExport\(data: String\?, filename: String\?, mime: String\?, requestId: String\?\): Boolean/);
     assert.match(activity, /private val exportDocumentLauncher = registerForActivityResult\(/);
@@ -307,9 +316,10 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /Intent\.EXTRA_TITLE/);
     assert.match(activity, /openFileDescriptor\(uri, "wt"\)/);
     assert.match(activity, /output\.fd\.sync\(\)/);
-    assert.match(syncActions, /WordHunterAndroid\?\.saveExport/);
+    assert.match(syncActions, /const bridge = window\.WordHunterAndroid/);
+    assert.match(syncActions, /typeof bridge\?\.saveExport !== "function"/);
     assert.match(syncActions, /wordhunter:android-export/);
     assert.match(syncActions, /detail\.requestId !== requestId/);
-    assert.match(syncActions, /window\.WordHunterAndroid\.saveExport\(data, filename, mime, requestId\)/);
+    assert.match(syncActions, /bridge\.saveExport\(data, filename, mime, requestId\)/);
   });
 });

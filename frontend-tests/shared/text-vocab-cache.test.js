@@ -4,11 +4,21 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent() {} };
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 
-const { state } = await import("../../src/web/js/state.js");
-const { invalidateBookId } = await import("../../src/web/js/vocab-index-client.js");
-const { loadTextVocabularyIndex } = await import("../../src/web/js/text-vocab.js");
+const { state } = await import("../../dist/web/js/state.js");
+const { invalidateBookId } = await import("../../dist/web/js/vocab-index-client.js");
+const { entryAppearsInText, loadTextVocabularyIndex } = await import("../../dist/web/js/text-vocab.js");
 
 describe("text vocabulary cache", () => {
+  it("matches legacy attached-article keys against canonical text indexes", () => {
+    const textIndex = {
+      text: { id: "fr", title: "French", text: "L’homme." },
+      words: new Set(["homme"]),
+      tokenLine: " homme "
+    };
+    assert.equal(entryAppearsInText("l’homme", textIndex, "fr"), true);
+    assert.equal(entryAppearsInText("d’homme", textIndex, "fr"), false);
+  });
+
   it("retries with a fresh index when the active request is invalidated", async () => {
     const responses = [];
     let requests = 0;

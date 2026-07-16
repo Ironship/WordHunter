@@ -44,9 +44,9 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { setWordStatus, updateWordField } = await import("../../src/web/js/vocab-actions.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
 
 function vocabEntry(overrides = {}) {
   return {
@@ -121,5 +121,24 @@ describe("vocabulary actions", () => {
     assert.equal(state.vocab.haus.updatedAt, "2026-06-11T00:00:00.000Z");
     assert.equal(state.vocab.haus.translationSource, "translator");
     assert.equal(saveWrites, 0);
+  });
+
+  it("normalizes, clears, and no-ops an optional article", () => {
+    resetVocabState({
+      haus: vocabEntry({ article: "das", updatedAt: "2026-06-11T00:00:00.000Z" })
+    });
+
+    updateWordField("haus", "article", "  die  ");
+    assert.equal(state.vocab.haus.article, "die");
+    assert.equal(saveWrites, 1);
+
+    const updatedAt = state.vocab.haus.updatedAt;
+    updateWordField("haus", "article", "die");
+    assert.equal(state.vocab.haus.updatedAt, updatedAt);
+    assert.equal(saveWrites, 1);
+
+    updateWordField("haus", "article", "   ");
+    assert.equal(Object.hasOwn(state.vocab.haus, "article"), false);
+    assert.equal(saveWrites, 2);
   });
 });

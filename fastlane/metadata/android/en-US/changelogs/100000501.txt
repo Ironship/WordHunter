@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Migrated the browser runtime to TypeScript.
+- Added configurable visibility and ordering for the selected-word panel.
+- Moved Pocket word actions higher.
+- Improved theme, state, dialog, drawer, and localization reliability.

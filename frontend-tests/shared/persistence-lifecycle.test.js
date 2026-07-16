@@ -101,7 +101,7 @@ async function loadAppHarness() {
   const noOp = () => {};
   const asyncNoOp = async () => {};
 
-  await evaluateWithMocks("../../src/web/app.js", {
+  await evaluateWithMocks("../../dist/web/app.js", {
     "./js/dom.js": { cacheElements: noOp, els: {} },
     "./js/toast.js": { showToast: noOp },
     "./js/events.js": { bindEvents: noOp },
@@ -109,7 +109,8 @@ async function loadAppHarness() {
     "./js/books.js": {
       loadBooksCatalog: asyncNoOp,
       loadAllBookTexts: asyncNoOp,
-      loadAllCustomTextContents: asyncNoOp
+      loadAllCustomTextContents: asyncNoOp,
+      hydrateActiveLibraryTexts: asyncNoOp
     },
     "./js/render.js": { render: noOp, ensureCurrentText: noOp },
     "./js/i18n.js": { loadLocale: asyncNoOp, applyTranslations: noOp, t: (key) => key },
@@ -121,6 +122,7 @@ async function loadAppHarness() {
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
+    "./js/youglish.js": { refreshYouGlishTheme: noOp },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,
@@ -206,7 +208,7 @@ describe("persistence lifecycle", () => {
         this.detail = init?.detail;
       }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -252,7 +254,7 @@ describe("persistence lifecycle", () => {
       syncHealth: null,
       syncthingStatus: null
     };
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -265,13 +267,16 @@ describe("persistence lifecycle", () => {
       clearTimeout() {},
       console
     });
-    const state = createAutosave(() => rawState).wrap(rawState);
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
 
     state.syncHealth = { status: "ready" };
     state.syncthingStatus = { running: true };
     assert.equal(scheduled, 0);
+    assert.equal(autosave.getDurableStateRevision(), 0);
     state.preferences.theme = "classic-dark";
     assert.equal(scheduled, 1);
+    assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
   it("does not autosave bridge-only navigation and reader UI state", async () => {
@@ -284,7 +289,7 @@ describe("persistence lifecycle", () => {
       preferences: { theme: "familiar" },
       profiles: {}
     };
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -297,16 +302,19 @@ describe("persistence lifecycle", () => {
       clearTimeout() {},
       console
     });
-    const state = createAutosave(() => rawState).wrap(rawState);
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
 
     state.currentView = "settings";
     state.selectedWord = "haus";
     state.readerPages.book = 2;
     state.filters.vocabQuery = "ha";
     assert.equal(scheduled, 0);
+    assert.equal(autosave.getDurableStateRevision(), 0);
 
     state.preferences.theme = "alternative-familiar";
     assert.equal(scheduled, 1);
+    assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
   it("queues autosaves behind an exclusive state write", async () => {
@@ -316,7 +324,7 @@ describe("persistence lifecycle", () => {
     class CustomEvent {
       constructor(type, init) { this.type = type; this.detail = init?.detail; }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -355,7 +363,7 @@ describe("persistence lifecycle", () => {
     class CustomEvent {
       constructor(type, init) { this.type = type; this.detail = init?.detail; }
     }
-    const { createAutosave } = await evaluateWithMocks("../../src/web/js/state/autosave.js", {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         saveToLocalStorage() {},
@@ -388,11 +396,12 @@ describe("persistence lifecycle", () => {
   });
 
   it("keeps sync UI, endpoint, and event contracts", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../src/web/app.js", import.meta.url), "utf8");
-    const autosave = readFileSync(new URL("../../src/web/js/state/autosave.js", import.meta.url), "utf8");
-    const api = readFileSync(new URL("../../src/web/js/api.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../src/web/js/events/settings.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
+    const autosave = readFileSync(new URL("../../dist/web/js/state/autosave.js", import.meta.url), "utf8");
+    const api = readFileSync(new URL("../../dist/web/js/api.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const storeBridge = readFileSync(new URL("../../dist/web/js/store-bridge.js", import.meta.url), "utf8");
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
 
     for (const id of [
@@ -416,6 +425,7 @@ describe("persistence lifecycle", () => {
     ]) {
       assert.ok(settings.includes(`"${endpoint}"`), `missing frontend endpoint ${endpoint}`);
     }
+    assert.ok(storeBridge.includes('"/__store/ack_snapshot"'));
     for (const endpoint of [
       "/__store/recovery_status",
       "/__store/sync_health",
@@ -429,22 +439,31 @@ describe("persistence lifecycle", () => {
     assert.ok(autosave.includes("wordhunter:sync-error"));
     assert.ok(api.includes("wordhunter:sync-error"));
     assert.match(settings, /scheduleBackgroundSync\(30000\)/);
-    assert.match(settings, /syncNow\(\{ background: true, saveFirst \}\)/);
+    assert.match(settings, /syncNow\(\{ background: true, saveFirst: true \}\)/);
+    assert.match(settings, /wordhunter:sync-snapshot-skipped/);
   });
 
   it("keeps startup boot CSS scoped and removes the boot state after initialization", async () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../src/web/app.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const boot = readFileSync(new URL("../../dist/web/boot.js", import.meta.url), "utf8");
+    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
-    assert.ok(html.includes('<meta name="theme-color" content="#0067a8">'));
+    assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
     const inlineBoot = cssDeclarations(html, String.raw`html\.app-booting,html\.app-booting body`);
     assert.match(inlineBoot, /overflow:\s*hidden/);
-    assert.match(inlineBoot, /background:\s*var\(--boot-bg,#0067a8\)/);
+    assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
-    assert.ok(html.includes('localStorage.getItem("wordHunterStateV2")'));
-    assert.ok(html.includes('root.dataset.themePref = theme'));
+    assert.match(html, /<script src="boot\.js"><\/script>/);
+    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js"'));
+    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js"'));
+    assert.doesNotMatch(boot, /export \{\}/);
+    assert.doesNotMatch(boot, /app-font-stylesheet/);
+    assert.match(app, /getElementById\("app-font-stylesheet"\)\?\.setAttribute\("rel", "stylesheet"\)/);
+    assert.ok(boot.includes('localStorage.getItem("wordHunterStateV2")'));
+    assert.ok(boot.includes("root.dataset.themePref = theme"));
+    assert.match(boot, /forceDesktopDark = !pocketMode && family !== "classic"/);
     assert.match(cssDeclarations(html, String.raw`html\.app-booting \.app-shell`), /visibility:\s*hidden/);
 
     const bootPage = cssDeclarations(styles, String.raw`html\.app-booting,\s*html\.app-booting body`);
@@ -507,9 +526,10 @@ describe("persistence lifecycle", () => {
       }
     }
     const noOp = () => {};
-    const actions = await evaluateWithMocks("../../src/web/js/sync-actions.js", {
+    const actions = await evaluateWithMocks("../../dist/web/js/sync-actions.js", {
       "./state.js": {
         applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
         state,
         saveState: async () => downstreamCalls.push("saveState"),
         runExclusiveStateWrite: async (callback) => {
@@ -541,6 +561,7 @@ describe("persistence lifecycle", () => {
         saveStateAndReloadBridge: async () => downstreamCalls.push("saveStateAndReloadBridge")
       },
       "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => downstreamCalls.push("acknowledgeBackendSnapshot"),
         deleteStoredText: async () => downstreamCalls.push("deleteStoredText"),
         loadBackendSnapshot: async () => ({}),
         postStoreCommand: async () => downstreamCalls.push("postStoreCommand")
@@ -592,7 +613,7 @@ describe("persistence lifecycle", () => {
   });
 
   it("ships sync safety copy in every locale", () => {
-    const localeDir = new URL("../../src/web/i18n/", import.meta.url);
+    const localeDir = new URL("../../dist/web/i18n/", import.meta.url);
     const required = [
       ["settings", "syncStatusDefault"],
       ["settings", "syncStatusReady"],

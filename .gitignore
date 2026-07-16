@@ -15,9 +15,11 @@ src-tauri/gen/
 *.spec
 
 # Build output / compiled executables
+node_modules/
 outputs/
 output/
 dist/
+frontend-dist/
 
 # Temporary local helper scripts / experiments
 scratch/

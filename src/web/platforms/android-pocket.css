@@ -12,6 +12,12 @@
 html.pocket-mode {
   --pocket-statusbar-safe-top: env(safe-area-inset-top, 0px);
   --pocket-navbar-safe-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  --pocket-word-sheet-expanded-top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
+  --pocket-word-sheet-collapsed-size: max(4rem, calc(20dvh - 4.6rem - var(--pocket-navbar-safe-bottom)));
+  --pocket-word-sheet-collapsed-top: max(
+    var(--pocket-word-sheet-expanded-top),
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-collapsed-size))
+  );
   zoom: 1 !important;
 }
 
@@ -167,8 +173,11 @@ html.pocket-mode {
 
 .pocket-mode .nav-list {
   display: grid;
+  flex: 1 0 auto;
   grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: clamp(56px, 9dvh, 76px);
   align-items: stretch;
+  align-content: space-evenly;
   gap: 0.35rem;
 }
 
@@ -180,10 +189,10 @@ html.pocket-mode {
   min-width: 44px;
   max-width: 100%;
   min-height: 56px;
-  padding: 0.55rem 0.65rem;
+  padding: 0.7rem 0.8rem;
   border-radius: 8px;
   text-align: left;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1.15;
   overflow: hidden;
 }
@@ -191,7 +200,6 @@ html.pocket-mode {
 .pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge) {
   max-width: 100%;
   overflow-wrap: anywhere;
-  word-break: break-word;
 }
 
 .pocket-mode .nav-item > .nav-icon {
@@ -475,6 +483,25 @@ html.pocket-mode {
   overflow-wrap: anywhere;
 }
 
+.pocket-mode .word-panel-item-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.pocket-mode .word-panel-item-visibility {
+  min-height: 44px;
+}
+
+.pocket-mode .word-panel-item-visibility input {
+  height: 20px;
+  min-height: 20px;
+}
+
+.pocket-mode .word-panel-item-order-actions .secondary-button {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
 .pocket-mode .data-actions {
   padding: 0;
 }
@@ -494,6 +521,7 @@ html.pocket-mode {
 
 .pocket-mode .status-check {
   width: 100%;
+  min-height: 44px;
   gap: 0.4rem;
   white-space: normal;
 }
@@ -509,10 +537,6 @@ html.pocket-mode {
   min-width: 0;
   overflow-wrap: anywhere;
   line-height: 1.15;
-}
-
-.pocket-mode .status-check {
-  min-height: 44px;
 }
 
 .pocket-mode .data-action-buttons,
@@ -653,6 +677,12 @@ html.pocket-mode {
   height: 56px;
 }
 
+.pocket-mode #reader-highlight-toggle[aria-pressed="true"] {
+  border-color: var(--sidebar-active-accent);
+  background: var(--sidebar-nav-active);
+  box-shadow: inset 0 -3px 0 var(--sidebar-active-accent);
+}
+
 .pocket-mode #tts-play-text,
 .pocket-mode #tts-stop-text {
   order: 3;
@@ -735,6 +765,10 @@ html.pocket-mode {
 
 .pocket-mode .book-cover {
   max-width: 74px;
+}
+
+.pocket-mode .card-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(4.75rem, 1fr));
 }
 
 .pocket-mode .table-wrap {
@@ -956,38 +990,146 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
   z-index: 60;
-  top: auto;
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
+  top: var(--pocket-word-sheet-current-top);
   left: 0.75rem;
   right: 0.75rem;
-  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
-  display: block;
-  max-height: min(54vh, calc(100dvh - var(--pocket-statusbar-safe-top) - 7rem));
+  bottom: auto;
+  box-sizing: border-box;
+  height: max(
+    4rem,
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-current-top))
+  );
+  min-height: 0;
+  max-height: none;
+  align-self: stretch;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 0;
   overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
-  background: var(--panel);
-  border-top: 1px solid var(--line);
+  isolation: isolate;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"] {
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-collapsed-top);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"] {
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"],
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
+  --pocket-word-sheet-current-top: var(--pocket-word-sheet-top);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before,
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 2.6rem;
+  right: 0.45rem;
+  bottom: 0.15rem;
+  left: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--word-panel-status-bg, var(--panel));
+  pointer-events: none;
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before {
-  display: none;
+  transform: translate(7px, 7px) rotate(0.35deg);
+  opacity: 0.5;
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::after {
+  transform: translate(3px, 3px) rotate(-0.2deg);
+  opacity: 0.78;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--word-panel-status-bg, var(--panel));
+  color: var(--muted);
+  touch-action: none;
+  cursor: grab;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle:active {
+  cursor: grabbing;
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle span {
+  width: 3.25rem;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.pocket-mode .pocket-word-panel-sheet-handle:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: -4px;
 }
 
 .pocket-mode .word-panel {
-  max-height: inherit;
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: 1rem;
-  border-radius: 8px;
+  padding: 0 1rem 1rem;
+  border-radius: 0 0 12px 12px;
+  background: var(--word-panel-status-bg, var(--panel));
+  touch-action: pan-y pinch-zoom;
+}
+
+.pocket-mode .word-panel.word-panel-card-ghost {
+  position: absolute;
+  z-index: 4;
+  top: 56px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: auto;
+  max-height: none;
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-text {
+  padding-bottom: calc(6.2rem + var(--pocket-navbar-safe-bottom) + var(--pocket-word-sheet-collapsed-size));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper:not(.pocket-word-sheet-dragging):not(.pocket-word-sheet-measuring) {
+    transition: top 200ms cubic-bezier(0.16, 1, 0.3, 1), height 200ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
 }
 
 .pocket-mode .word-panel-header {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.35rem 0 0.65rem;
-  background: var(--panel);
+  padding: 1.35rem 0 0.65rem;
+  background: var(--word-panel-status-bg, var(--panel));
 }
 
 .pocket-mode .word-panel-close {
@@ -995,6 +1137,50 @@ html.pocket-mode {
   flex: 0 0 auto;
 }
 
+.pocket-mode #word-panel .word-actions .secondary-button {
+  flex: 1 1 44px;
+  min-width: 44px;
+}
+
+.pocket-mode #word-panel .word-image-remove {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+
+.pocket-mode .word-article-editor {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+.pocket-mode .word-article-editor > label {
+  grid-template-columns: minmax(0, 1fr);
+  flex: 0 1 calc(50% - 0.3rem);
+  width: calc(50% - 0.3rem);
+  min-width: 8rem;
+  gap: 0.25rem;
+}
+
+.pocket-mode .word-article-input,
+.pocket-mode .article-suggestion-button {
+  min-height: 44px;
+}
+
+.pocket-mode .word-editor-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pocket-mode .word-editor-field.word-editor-word,
+.pocket-mode .word-editor-field.word-editor-article,
+.pocket-mode .word-editor-field.word-editor-translation,
+.pocket-mode .word-editor-field.word-editor-example,
+.pocket-mode .word-editor-status {
+  grid-column: 1;
+}
 .pocket-mode .word-form {
   gap: 0.65rem;
   margin-top: 0.65rem;
@@ -1012,6 +1198,23 @@ html.pocket-mode {
 
 .pocket-mode .review-card {
   min-height: 260px;
+  padding: 1rem 0.75rem 1.5rem;
+}
+
+.pocket-mode .flashcard-wrap {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.pocket-mode .review-word {
+  min-height: 300px;
+  max-height: none;
+  padding: 1.25rem 1rem;
+}
+
+.pocket-mode .review-word > div {
+  max-height: none;
+  overflow: visible;
 }
 
 .pocket-mode .review-word strong {
@@ -1054,10 +1257,6 @@ html.pocket-mode {
 }
 
 @media (max-width: 380px) {
-  .pocket-mode .nav-item {
-    font-size: 0.56rem;
-  }
-
   .pocket-mode .metric-pill#overall-count {
     display: none;
   }

@@ -86,9 +86,9 @@ function assertTextContrast(label, foreground, background) {
 
 describe("Android Pocket layout", () => {
   it("defines touch-sized Pocket vocabulary card declarations", () => {
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    const sharedCss = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const vocabList = readFileSync(new URL("../../src/web/js/vocabulary/vocab-list.js", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const sharedCss = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const vocabList = readFileSync(new URL("../../dist/web/js/vocabulary/vocab-list.js", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode .table-wrap", { overflow: "visible" });
     assertDeclarations(css, ".pocket-mode .vocab-table", { "min-width": "0" });
@@ -107,14 +107,14 @@ describe("Android Pocket layout", () => {
   });
 
   it("defines start-aligned Pocket heatmap declarations", () => {
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode .graphs-heatmap", { "justify-content": "flex-start" });
     assertDeclarations(css, ".pocket-mode .review-heatmap", { "justify-content": "flex-start" });
   });
 
   it("defines closed and open Pocket import drawer states", () => {
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode .view.active", { animation: "none !important" });
     assertDeclarations(css, ".pocket-mode .import-panel", { "z-index": "80", visibility: "hidden", "pointer-events": "none" });
@@ -127,9 +127,9 @@ describe("Android Pocket layout", () => {
   });
 
   it("marks library filters for the Pocket collapse control", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    const library = readFileSync(new URL("../../src/web/js/views/library.js", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const library = readFileSync(new URL("../../dist/web/js/views/library.js", import.meta.url), "utf8");
     const toggle = openingTagById(html, "library-filters-toggle");
     const filters = openingTagById(html, "library-filters");
     const panel = ancestorOpeningTag(html, "library-filters-toggle", "section");
@@ -144,20 +144,34 @@ describe("Android Pocket layout", () => {
   });
 
   it("defines the hidden and open Pocket navigation drawer", () => {
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode .sidebar", { "z-index": "80", visibility: "hidden", "pointer-events": "none" });
     assertDeclarations(css, ".pocket-mode.pocket-navigation-open .sidebar", { visibility: "visible", "pointer-events": "auto" });
     assertDeclarations(css, ".pocket-mode .pocket-navigation-toggle", { position: "fixed", display: "inline-flex", bottom: "calc(0.35rem + var(--pocket-navbar-safe-bottom))", background: "var(--sidebar-bg)" });
     assertDeclarations(css, '.pocket-mode[data-view="reader"] #pocket-navigation-toggle', { display: "none" });
     assert.equal(css.includes('.pocket-mode:not([data-view="reader"]) .topbar'), false);
-    assertDeclarations(css, ".pocket-mode .nav-list", { "grid-template-columns": "minmax(0, 1fr)", "align-items": "stretch" });
-    assertDeclarations(css, ".pocket-mode .nav-item", { "grid-template-columns": "30px minmax(0, 1fr)", "max-width": "100%", overflow: "hidden" });
-    assertDeclarations(css, ".pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge)", { "overflow-wrap": "anywhere", "word-break": "break-word" });
+    assertDeclarations(css, ".pocket-mode .nav-list", {
+      flex: "1 0 auto",
+      "grid-template-columns": "minmax(0, 1fr)",
+      "grid-auto-rows": "clamp(56px, 9dvh, 76px)",
+      "align-items": "stretch",
+      "align-content": "space-evenly"
+    });
+    assertDeclarations(css, ".pocket-mode .nav-item", {
+      "grid-template-columns": "30px minmax(0, 1fr)",
+      "max-width": "100%",
+      "min-height": "56px",
+      padding: "0.7rem 0.8rem",
+      "font-size": "1rem",
+      overflow: "hidden"
+    });
+    assertDeclarations(css, ".pocket-mode .nav-item > span:not(.nav-icon):not(.shortcut-badge)", { "overflow-wrap": "anywhere" });
+    assert.doesNotMatch(css, /\.pocket-mode \.nav-item\s*\{[^}]*font-size:\s*0\.56rem/);
   });
 
   it("defines finger-sized Pocket flashcard and toggle controls", () => {
-    const css = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions", { "grid-template-columns": "repeat(2, minmax(0, 1fr))" });
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions .secondary-button", { "min-height": "44px" });
@@ -166,7 +180,7 @@ describe("Android Pocket layout", () => {
   });
 
   it("meets WCAG AA contrast for common Pocket theme text pairs", () => {
-    const css = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
     const light = declarationBlock(css, ":root");
     const dark = declarationBlock(css, ':root[data-theme="dark"]');
 
@@ -179,8 +193,8 @@ describe("Android Pocket layout", () => {
   });
 
   it("defines circular settings color-picker declarations", () => {
-    const css = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
-    const pocketCss = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const pocketCss = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".color-picker-lg", { "aspect-ratio": "1", overflow: "hidden" });
     assertDeclarations(css, ".color-picker-lg::-webkit-color-swatch-wrapper", { padding: "0" });

@@ -12,9 +12,28 @@ The project is built around one idea: read real texts, click words you want to
 learn, keep the context, and review them later without losing control of your
 data.
 
+## Installation
+
+The recommended package-manager channels are being added. Until their reviews
+are complete, use the files from the
+[latest GitHub release](https://github.com/Ironship/WordHunter/releases/latest).
+
+- **Windows - WinGet (work in progress):** the package submission is under
+  review. Once accepted, install with
+  `winget install --exact --id Ironship.WordHunter`.
+- **Android - F-Droid (work in progress):** inclusion is being prepared for
+  `com.wordhunter.pocket`. Until it is available, use the APK from GitHub
+  Releases.
+- **Linux - Flatpak:** download `WordHunter.flatpak` from GitHub Releases and
+  run `flatpak install --user ./WordHunter.flatpak`.
+- **Windows - direct download:** choose `Word.Hunter.Setup.exe` or the portable
+  ZIP from GitHub Releases.
+
+Project website: https://ironship.github.io/WordHunter-site/
+
 ## Project Status
 
-Current release: `1.0.4`.
+Current stable release: `1.0.5`.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
@@ -42,6 +61,7 @@ and refreshed packaging and platform validation.
   library imports.
 - Vocabulary states, spaced-repetition review, TTS, keyboard shortcuts, and
   reading progress.
+- Configurable selected-word panels with per-item visibility and ordering.
 - PDF reading with OCR/text-layer support, page-background overlays, and a clean
   text mode for focused reading.
 - Translation and dictionary tools with language-aware handling for modern and
@@ -76,10 +96,16 @@ language:
     <td><img src="src/web/flags/la.svg" width="24" alt="Latin flag artwork"> Latin</td>
     <td><img src="src/web/flags/grc.svg" width="24" alt="Ancient Greek flag artwork"> Ancient Greek</td>
   </tr>
+  <tr>
+    <td><img src="src/web/flags/other.svg" width="24" alt="Neutral globe icon"> Other</td>
+    <td colspan="2">A custom-language profile with configurable source and target translation codes.</td>
+  </tr>
 </table>
 
 Translation, TTS, catalog, and offline-model availability can vary by language
-and provider.
+and provider. The named languages include built-in original stories and A1-B2
+course books; the Other profile has none. Set its source and target language
+codes under Translator & Dictionary settings before using automatic translation.
 
 ## Feature Walkthrough
 
@@ -215,6 +241,7 @@ macOS and iOS are not active targets right now.
 
 - Rust `1.88` or newer with Cargo.
 - Node.js `22` or newer for frontend and packaging validation tests.
+- npm dependencies installed with `npm ci` for CSS checks and the TypeScript build.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
@@ -223,16 +250,22 @@ macOS and iOS are not active targets right now.
 
 ### Common Commands
 
-Full repository validation is a single command:
+Install the pinned validation dependencies after checkout:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+```
+
+Then run the full repository gate:
 
 ```bash
 ./scripts/validate.sh
 ```
 
-It runs `git diff --check`, JSON/i18n parsing, frontend tests, Flatpak
+It runs `git diff --check`, JSON/i18n parsing, Stylelint, a deterministic
+TypeScript frontend build and type check, frontend tests against `dist/web`, Flatpak
 `cargo-sources.json` drift detection, Rust formatting, Rust tests for the main
-Tauri crate and OCR runner, and non-blocking `cargo clippy` reports when
-available.
+Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 
 ```powershell
 .\scripts\build.bat test         # run shared, desktop, and Android frontend tests
@@ -247,12 +280,13 @@ available.
 Rust backend tests can also be run directly:
 
 ```powershell
+npm run build:frontend
 cargo test --manifest-path src-tauri\Cargo.toml
 ```
 
 Android Pocket release builds derive `versionName` and monotonic `versionCode`
-from the `MAJOR.MINOR.PATCH` value in `src-tauri/tauri.conf.json`. Version
-`1.0.0` becomes `versionName 1.0.0` and `versionCode 1000000`; see
+from stable or `-rc.N` SemVer values in `src-tauri/tauri.conf.json`. Stable
+builds sort after every release candidate for the same version; see
 `docs/release-validation.md` before changing the release version scheme.
 
 ### Flatpak
@@ -292,6 +326,7 @@ generated output, not source.
 ## Repository Layout
 
 - `src/web/` - shared frontend application code.
+- `dist/web/` - generated, untracked browser JavaScript and copied web assets.
 - `src/web/js/reader/` - focused reader session, rendering, word navigation, PDF
   page text, and OCR correction modules.
 - `src/web/platforms/` - platform-specific frontend styling and behavior.
@@ -305,7 +340,7 @@ generated output, not source.
 
 ## Technology and Third-Party Licenses
 
-Word Hunter uses a Rust backend and a shared HTML/CSS/JavaScript interface in a
+Word Hunter uses a Rust backend and a shared HTML/CSS/TypeScript interface in a
 Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
 Android System WebView. Desktop translation and OCR can use CTranslate2,
 SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
@@ -321,7 +356,7 @@ implementation inspired by published SM-2 and FSRS concepts, not the official
 FSRS library or the proprietary SuperMemo application.
 
 The shared WebView UI is an explicit architecture choice for feature and
-accessibility parity across desktop and Pocket. JavaScript owns DOM rendering and
+accessibility parity across desktop and Pocket. TypeScript owns DOM rendering and
 latency-sensitive interaction state. Rust owns storage merge/recovery, parsing,
 local HTTP validation, and desktop OCR, while the Android adapter owns SAF and
 platform PDF boundaries. CPU-heavy frontend statistics use workers and explicit

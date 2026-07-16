@@ -5,10 +5,12 @@
 Run the repository gate before cutting release artifacts:
 
 ```bash
+npm ci --ignore-scripts --no-audit --no-fund
 ./scripts/validate.sh
 ```
 
-It checks whitespace, parses tracked JSON and i18n locales, runs all Node tests,
+It checks whitespace, CSS and the complete TypeScript frontend, parses tracked
+JSON and i18n locales, runs all Node tests,
 checks Flatpak Cargo source and third-party license report drift, verifies Rust
 formatting, runs both Rust test suites, and runs Clippy for both crates. Clippy
 is required by CI and by default locally. A local diagnostic run can explicitly
@@ -34,8 +36,8 @@ This compiles the generated Gradle project, custom `MainActivity.kt`, Android
 resources, and Rust library into a real debug APK.
 
 Full release packages are deliberately kept out of the fast pull-request gate.
-`.github/workflows/artifact-validation.yml` runs nightly, when a GitHub Release
-is published, or when manually dispatched. It rebuilds and validates:
+`.github/workflows/artifact-validation.yml` runs nightly or when manually
+dispatched. It rebuilds and validates:
 
 - arm64 Android debug APK and release AAB file lists, ELF architecture, legal
   resources, and the absence of the desktop OCR runtime;
@@ -50,21 +52,35 @@ also fails if 7-Zip is unavailable or cannot read an archive; release archive
 inspection is never silently skipped. `scripts/build-flatpak.sh` inspects the
 completed bundle before reporting success.
 
-The workflow uploads validated files as workflow artifacts. It does not attach
-or replace assets on an already-published GitHub Release.
+The workflow always uploads validated files as workflow artifacts. A manual
+dispatch may additionally provide an existing draft `release_tag`; after every
+platform job succeeds, a final GitHub-hosted job attaches the five validated
+files to that draft. This keeps release binaries off the maintainer's local
+machine. The draft must target the exact commit selected for the workflow run.
+Scheduled runs do not attach or replace assets. Publishing the draft does not
+rebuild the same artifacts a second time.
 
 ## Android Version Code
 
 Android builds derive `versionName` and `versionCode` from
-`src-tauri/tauri.conf.json`. For a Tauri version `MAJOR.MINOR.PATCH`:
+`src-tauri/tauri.conf.json`. Accepted versions are `MAJOR.MINOR.PATCH` and
+`MAJOR.MINOR.PATCH-rc.N`:
 
-- `versionName` is `MAJOR.MINOR.PATCH`.
-- `versionCode` is `MAJOR * 1000000 + MINOR * 1000 + PATCH`.
+- `versionName` keeps the complete version, including `-rc.N`.
+- The base is `MAJOR * 1000000 + MINOR * 1000 + PATCH`.
+- RC `versionCode` is `base * 100 + N`, where `N` is 1 through 98.
+- Stable `versionCode` is `base * 100 + 99`, so the final build supersedes
+  every release candidate for the same version.
 
 Keep `MINOR` and `PATCH` below 1000. The build rejects values outside Android's
 positive signed 32-bit application-version range. Do not use SemVer build
 metadata for releases because Tauri's direct Android build does not map it to a
 distinct version code.
+
+Prerelease APK/AAB files are test artifacts and must not be submitted to a
+stable store track. The GitHub update checker uses the stable-only
+`releases/latest` endpoint, so publishing a GitHub prerelease does not prompt
+users running a stable Word Hunter build.
 
 The nightly/release validation AAB is unsigned unless `WH_ANDROID_*` signing
 variables are supplied to the Windows recipe. Google Play publication still

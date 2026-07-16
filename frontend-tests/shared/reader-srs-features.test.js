@@ -6,14 +6,16 @@ globalThis.window = { dispatchEvent: () => {}, __qtBridge: false };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.document = { addEventListener: () => {}, getElementById: () => null };
 
-const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING_COLORS } = await import("../../src/web/js/reader-colors.js");
-const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../src/web/js/sm2.js");
-const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-const { state } = await import("../../src/web/js/state.js");
-const { applyReviewGrade, renderReview } = await import("../../src/web/js/vocabulary/review-card.js");
-const { handleReaderKeys } = await import("../../src/web/js/events/keyboard/reader-keys.js");
-const { els } = await import("../../src/web/js/dom.js");
+const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING_COLORS } = await import("../../dist/web/js/reader-colors.js");
+const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../dist/web/js/sm2.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
+const { state } = await import("../../dist/web/js/state.js");
+const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
+const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const appVersion = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8")).version;
 
 describe("learning colors", () => {
   it("enables learning colors, in-text reviews, and learning-only flashcards by default", () => {
@@ -47,6 +49,11 @@ describe("learning colors", () => {
 });
 
 describe("in-text SRS grading", () => {
+  function setActiveVocab(vocab) {
+    state.profiles.de.vocab = vocab;
+    state.vocab = state.profiles.de.vocab;
+  }
+
   it("keeps new words out of flashcards when the learning-only default is enabled", () => {
     const today = "2026-06-23";
     const previousCard = els.reviewCard;
@@ -60,6 +67,76 @@ describe("in-text SRS grading", () => {
     assert.match(els.reviewCard.innerHTML, /learning/);
     assert.doesNotMatch(els.reviewCard.innerHTML, /fresh/);
     els.reviewCard = previousCard;
+  });
+
+  it("shows the article with the headword without leaking it on a reverse card", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousReverse = state.preferences.reviewReverse;
+    els.reviewCard = { innerHTML: "" };
+    state.vocab = {
+      haus: {
+        status: "learning",
+        article: "das",
+        translation: "house",
+        examples: ["Das große Haus ist alt."],
+        nextDate: "2000-01-01"
+      }
+    };
+    state.reviewIndex = 0;
+
+    try {
+      hideReviewAnswer();
+      state.preferences.reviewReverse = false;
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /das haus/);
+
+      hideReviewAnswer();
+      state.preferences.reviewReverse = true;
+      renderReview();
+      assert.doesNotMatch(els.reviewCard.innerHTML, />das haus</);
+      assert.match(els.reviewCard.innerHTML, /„_____ große _____ ist alt\.”/i);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /Das\s+große/i);
+
+      toggleReviewAnswer();
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, />\s*das haus\s*</);
+    } finally {
+      hideReviewAnswer();
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.preferences.reviewReverse = previousReverse;
+    }
+  });
+
+  it("masks straight and typographic apostrophe articles on reverse cards", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousReverse = state.preferences.reviewReverse;
+    els.reviewCard = { innerHTML: "" };
+    state.vocab = {
+      homme: {
+        status: "learning",
+        article: "l'",
+        translation: "man",
+        examples: ["L’homme arrive."],
+        nextDate: "2000-01-01"
+      }
+    };
+    state.reviewIndex = 0;
+
+    try {
+      hideReviewAnswer();
+      state.preferences.reviewReverse = true;
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /„_____ arrive\.”/i);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /L['’]_____/i);
+    } finally {
+      hideReviewAnswer();
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.preferences.reviewReverse = previousReverse;
+    }
   });
 
   it("does not persist unchanged review state while rendering a card", () => {
@@ -78,6 +155,38 @@ describe("in-text SRS grading", () => {
     } finally {
       localStorage.setItem = previousSetItem;
       els.reviewCard = previousCard;
+    }
+  });
+
+  it("renders a bounded, animated flashcard deck without changing review data", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousIndex = state.reviewIndex;
+    els.reviewCard = { innerHTML: "" };
+    state.preferences.autoAddLearningOnly = true;
+    state.vocab = {
+      alpha: { status: "learning", nextDate: "2000-01-01", repetition: 1, interval: 2 },
+      beta: { status: "learning", nextDate: "2000-01-02", repetition: 3, interval: 8 }
+    };
+
+    try {
+      state.reviewIndex = 0;
+      renderReview("next");
+      assert.match(els.reviewCard.innerHTML, /class="flashcard-wrap flashcard-enter-next"/);
+      assert.match(els.reviewCard.innerHTML, /data-review-card-surface/);
+      assert.match(els.reviewCard.innerHTML, /id="btn-flashcard-prev"[^>]*disabled/);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /id="btn-flashcard-next"[^>]*disabled/);
+      assert.match(els.reviewCard.innerHTML, /aria-expanded="false" aria-controls="review-card-answer"/);
+
+      state.reviewIndex = 1;
+      renderReview("previous");
+      assert.match(els.reviewCard.innerHTML, /class="flashcard-wrap flashcard-enter-previous"/);
+      assert.match(els.reviewCard.innerHTML, /id="btn-flashcard-next"[^>]*disabled/);
+      assert.deepEqual(state.vocab.beta, { status: "learning", nextDate: "2000-01-02", repetition: 3, interval: 8 });
+    } finally {
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.reviewIndex = previousIndex;
     }
   });
 
@@ -122,7 +231,7 @@ describe("in-text SRS grading", () => {
   for (const quality of expectedEase.keys()) {
     it(`routes grade ${quality} through the existing SRS scheduler`, async () => {
       state.preferences.srsAlgorithm = "sm2";
-      state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } };
+      setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
       const entry = await applyReviewGrade("wort", quality);
       assert.equal(entry.status, "learning");
       assert.equal(entry.repetition, quality < 3 ? 0 : 1);
@@ -135,7 +244,7 @@ describe("in-text SRS grading", () => {
 
   it("promotes a repeatedly recalled word through the shared rule", async () => {
     state.preferences.srsAlgorithm = "sm2";
-    state.vocab = { wort: { status: "learning", repetition: 1, interval: 1, efactor: 2.5 } };
+    setActiveVocab({ wort: { status: "learning", repetition: 1, interval: 1, efactor: 2.5 } });
     const entry = await applyReviewGrade("wort", 4);
     assert.equal(entry.repetition, 2);
     assert.equal(entry.status, "known");
@@ -144,19 +253,87 @@ describe("in-text SRS grading", () => {
 
   it("uses FSRS when that is the selected scheduler", async () => {
     state.preferences.srsAlgorithm = "fsrs";
-    state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, stability: 0, difficulty: 5 } };
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, stability: 0, difficulty: 5 } });
     const entry = await applyReviewGrade("wort", 5);
     assert.equal(entry.srsAlgorithm, "fsrs");
     assert.equal(entry.repetition, 1);
     assert.ok(entry.stability > 0);
     assert.equal(getSrsLevel(entry), 2);
   });
+
+  it("applies a delayed native grade to the current vocabulary entry", async () => {
+    const originalFetch = globalThis.fetch;
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    state.preferences.srsAlgorithm = "sm2";
+    state.vocab = { wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } };
+    let resolveReview;
+    globalThis.fetch = (url) => {
+      if (url === "/__srs/review") {
+        return new Promise((resolve) => { resolveReview = resolve; });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    };
+
+    try {
+      const pendingGrade = applyReviewGrade("wort", 4);
+      const replacement = { status: "learning", repetition: 0, interval: 0, efactor: 2.5, note: "synced" };
+      state.profiles.de.vocab = { wort: replacement };
+      state.vocab = state.profiles.de.vocab;
+      resolveReview({
+        ok: true,
+        json: async () => ({ repetition: 1, interval: 1, efactor: 2.5, nextDate: "2026-07-15", srsAlgorithm: "sm2" })
+      });
+
+      const entry = await pendingGrade;
+      assert.equal(entry, state.vocab.wort);
+      assert.equal(entry.repetition, 1);
+      assert.equal(entry.note, "synced");
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+      delete window.WH_TOKEN;
+    }
+  });
+
+  it("does not overwrite a status changed while a native grade is pending", async () => {
+    const originalFetch = globalThis.fetch;
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
+    let resolveReview;
+    globalThis.fetch = (url) => {
+      if (url === "/__srs/review") {
+        return new Promise((resolve) => { resolveReview = resolve; });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    };
+
+    try {
+      const pendingGrade = applyReviewGrade("wort", 2);
+      state.vocab.wort.status = "ignored";
+      state.vocab.wort.updatedAt = "2026-07-14T10:02:00.000Z";
+      resolveReview({
+        ok: true,
+        json: async () => ({ repetition: 0, interval: 1, efactor: 2.18, nextDate: "2026-07-15", srsAlgorithm: "sm2" })
+      });
+
+      assert.equal(await pendingGrade, null);
+      assert.equal(state.vocab.wort.status, "ignored");
+      assert.equal(state.vocab.wort.interval, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+      delete window.WH_TOKEN;
+    }
+  });
 });
 
 describe("new interface copy", () => {
   for (const locale of ["en", "pl", "de", "es", "fr", "it", "ja", "ru", "uk"]) {
     it(`${locale} has every in-text review label`, () => {
-      const data = JSON.parse(readFileSync(new URL(`../../src/web/i18n/${locale}.json`, import.meta.url)));
+      const data = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${locale}.json`, import.meta.url)));
       for (const key of ["dynamicLearningColors", "dynamicLearningColorsHint", "learningColorPalette", "learningColorLevel", "inTextReview", "inTextReviewHint"]) {
         assert.equal(typeof data.settings[key], "string", `${locale}.settings.${key}`);
       }
@@ -168,8 +345,8 @@ describe("new interface copy", () => {
       assert.equal(typeof data.import.pdfPocketScanBody, "string", `${locale}.import.pdfPocketScanBody`);
       assert.equal(typeof data.help.whatsNew, "string", `${locale}.help.whatsNew`);
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
-      assert.match(data.help.whatsNew, /1\.0\.4/, `${locale}.help.whatsNew version`);
-      assert.match(data.help.version, /1\.0\.4/, `${locale}.help.version`);
+      assert.ok(data.help.whatsNew.includes(appVersion), `${locale}.help.whatsNew version`);
+      assert.ok(data.help.version.includes(appVersion), `${locale}.help.version`);
       assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });

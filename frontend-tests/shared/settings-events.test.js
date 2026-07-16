@@ -54,16 +54,16 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { els } = await import("../../src/web/js/dom.js");
-const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const {
   bookTexts,
   clearBookTextCache,
   isBookTextCacheStale,
   loadCustomTextContent
-} = await import("../../src/web/js/books.js");
-const { applyBridgeSnapshot } = await import("../../src/web/js/events/settings.js");
-const { syncSettingsControls } = await import("../../src/web/js/preferences.js");
+} = await import("../../dist/web/js/books.js");
+const { applyBridgeSnapshot } = await import("../../dist/web/js/events/settings.js");
+const { syncSettingsControls } = await import("../../dist/web/js/preferences.js");
 
 function control(extra = {}) {
   return {
@@ -272,6 +272,63 @@ describe("settings bridge snapshots", () => {
     }, "library");
 
     assert.equal(bookTexts.has("de-custom-removed"), false);
+  });
+
+  it("does not rebuild an active Reader when a background snapshot keeps the same body", async () => {
+    resetState({
+      currentView: "reader",
+      currentTextId: "de-custom-stable",
+      customTexts: [{ id: "de-custom-stable", title: "Stable text" }]
+    });
+    bookTexts.set("de-custom-stable", "unchanged synchronized body");
+    const previousFetch = globalThis.fetch;
+    const previousReaderElements = {
+      readerHeading: els.readerHeading,
+      readerSource: els.readerSource,
+      readerText: els.readerText,
+      textSelect: els.textSelect
+    };
+    let readerRenders = 0;
+    try {
+      els.readerHeading = control();
+      els.readerSource = control();
+      els.textSelect = control();
+      els.readerText = control({
+        clientHeight: 500,
+        dataset: {},
+        innerHTML: "",
+        scrollHeight: 1000,
+        scrollTop: 240,
+        classList: {
+          remove() { readerRenders += 1; },
+          toggle() {}
+        },
+        insertAdjacentHTML() {},
+        querySelector() { return null; },
+        querySelectorAll() { return []; },
+        removeAttribute() {}
+      });
+      globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ text: "unchanged synchronized body" })
+      });
+
+      applyBridgeSnapshot({
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "de" },
+        texts: [{ id: "de-custom-stable", title: "Stable text" }],
+        hiddenBooks: [],
+        vocab: { de: { preferences: {}, vocab: {} } }
+      }, { preserveActiveReader: true });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.equal(readerRenders, 0);
+      assert.equal(bookTexts.get("de-custom-stable"), "unchanged synchronized body");
+    } finally {
+      globalThis.fetch = previousFetch;
+      Object.assign(els, previousReaderElements);
+    }
   });
 
   it("keeps an active reader body until its synchronized replacement is loaded", async () => {

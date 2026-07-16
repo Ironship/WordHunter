@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Kept Familiar desktop themes dark from startup.
+- Added swipe navigation for selected Reader words.
+- Added a tap-and-swipe Flashcard deck with card animations.
+- Opened clipped Pocket heatmaps at the latest weeks.

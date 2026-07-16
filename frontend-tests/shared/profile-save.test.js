@@ -1,10 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-const { buildSavePayload, saveToLocalStorage } = await import("../../src/web/js/api.js");
-const { STATE_SCHEMA_VERSION, STORAGE_KEY } = await import("../../src/web/js/constants.js");
-const { createDefaultState } = await import("../../src/web/js/state/defaults.js");
-const { loadState, normalizeState } = await import("../../src/web/js/state/normalize.js");
+const { buildSavePayload, saveToLocalStorage } = await import("../../dist/web/js/api.js");
+const { STATE_SCHEMA_VERSION, STORAGE_KEY } = await import("../../dist/web/js/constants.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { loadState, normalizeState } = await import("../../dist/web/js/state/normalize.js");
 
 describe("profile save payload", () => {
   it("keeps books, texts, and vocabulary from every language profile", () => {
@@ -47,6 +47,26 @@ describe("profile save payload", () => {
     assert.deepEqual(payload.vocab.fr.vocab, { maison: { status: "known" } });
   });
 
+  it("round-trips optional articles and normalizes legacy or malformed values", () => {
+    const raw = createDefaultState();
+    raw.preferences.learningLanguage = "de";
+    raw.profiles.de.vocab = {
+      haus: { status: "known", article: "  das  " },
+      alt: { status: "learning" },
+      broken: { status: "new", article: 42 },
+      empty: { status: "new", article: "   " }
+    };
+    raw.vocab = raw.profiles.de.vocab;
+
+    const normalized = normalizeState(raw);
+    const payload = buildSavePayload(normalized);
+
+    assert.equal(normalized.vocab.haus.article, "das");
+    assert.equal(payload.vocab.de.vocab.haus.article, "das");
+    assert.equal(Object.hasOwn(normalized.vocab.alt, "article"), false);
+    assert.equal(Object.hasOwn(normalized.vocab.broken, "article"), false);
+    assert.equal(Object.hasOwn(normalized.vocab.empty, "article"), false);
+  });
   it("removes the duplicate starter text created by the old Gutenberg fallback", () => {
     const raw = createDefaultState();
     raw.preferences.learningLanguage = "ru";
@@ -285,6 +305,23 @@ describe("profile save payload", () => {
 
     assert.equal(restored.profiles.grc.customTexts[0].id, "grc-custom-iliad");
     assert.equal(restored.profiles.grc.customTexts[0].text, "μῆνιν ἄειδε");
+  });
+
+  it("restores Other-profile texts from their full language prefix", () => {
+    globalThis.window = {
+      __qtBridge: true,
+      __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "other" },
+        vocab: { other: { vocab: {}, preferences: { translationSourceLanguage: "nl", translationTargetLanguage: "en" } } },
+        texts: [{ id: "other-custom-news", title: "Nieuws", text: "Goedemorgen" }]
+      }
+    };
+
+    const restored = loadState();
+    assert.equal(restored.profiles.other.customTexts[0].id, "other-custom-news");
+    assert.equal(restored.preferences.translationSourceLanguage, "nl");
+    assert.equal(restored.preferences.translationTargetLanguage, "en");
   });
 
   it("uses defaults when the localStorage cache is absent", () => {

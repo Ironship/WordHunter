@@ -14,7 +14,7 @@ pub fn build_vocab_index(text: &str, lang: &str, algorithm: &str) -> VocabIndex 
     let mut words: Vec<String> = Vec::new();
 
     tokenizer::for_each_word(text, lang, Some(algorithm), |word| {
-        let normalized = tokenizer::normalize_word(word);
+        let normalized = tokenizer::vocabulary_word_key(word, lang);
         if normalized.is_empty() {
             return;
         }

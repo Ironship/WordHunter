@@ -5,7 +5,7 @@ globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.CustomEvent = class CustomEvent {};
 
-const { state, switchLearningLanguage } = await import("../../src/web/js/state.js");
+const { state, switchLearningLanguage } = await import("../../dist/web/js/state.js");
 
 describe("learning language switch", () => {
   it("fills missing profile collections before activating the profile", () => {
@@ -26,5 +26,24 @@ describe("learning language switch", () => {
     assert.deepEqual(state.userBooks, []);
     assert.deepEqual(state.hiddenBuiltInBooks, []);
     assert.deepEqual(state.archivedBookIds, []);
+  });
+
+  it("keeps the Other profile translation pair separate from named profiles", () => {
+    state.preferences.learningLanguage = "other";
+    state.preferences.translationSourceLanguage = "nl";
+    state.preferences.translationTargetLanguage = "pl";
+    state.profiles = {
+      other: { vocab: {}, preferences: {} },
+      de: { vocab: {}, preferences: {} }
+    };
+
+    switchLearningLanguage("de");
+    assert.equal(state.profiles.other.preferences.translationSourceLanguage, "nl");
+    assert.equal(state.profiles.other.preferences.translationTargetLanguage, "pl");
+    assert.equal(state.preferences.translationSourceLanguage, "");
+
+    switchLearningLanguage("other");
+    assert.equal(state.preferences.translationSourceLanguage, "nl");
+    assert.equal(state.preferences.translationTargetLanguage, "pl");
   });
 });
