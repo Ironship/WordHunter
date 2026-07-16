@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Μαθήματα Ἑλληνικῆς A1, Τὰ πρῶτα βήματα</title>
-  <desc id="desc">Ἐρυθρόμορφον κάλυμμα μετὰ Ἰωνικοῦ κίονος, μαιάνδρου καὶ γραμμάτων ἀναβαινόντων.</desc>
+  <title id="title">Ἀνάγνωσμα A1: Ὁ λύχνος τοῦ Κεραμεικοῦ</title>
+  <desc id="desc">Κάλυμμα Ἑλληνικοῦ ἀναγνώσματος βαθμοῦ A1 μετὰ Ἰωνικοῦ κίονος, μαιάνδρου καὶ γραμμάτων.</desc>
   <defs>
     <linearGradient id="bg-a1" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#17283a"/>
@@ -38,7 +38,7 @@
       <circle cx="278" cy="474" r="21" fill="#b84b35" stroke="#e4b873" stroke-width="2"/>
       <text x="278" y="483">Δ</text>
     </g>
-    <text x="54" y="145" fill="#e4b873" font-size="24" text-anchor="start" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="54" y="145" fill="#e4b873" font-size="24" text-anchor="start" letter-spacing="1">ΕΛΛΗΝΙΚΟΝ ΑΝΑΓΝΩΣΜΑ</text>
     <text x="48" y="300" fill="#fff8e7" font-size="142" text-anchor="start">A1</text>
     <text x="55" y="349" fill="#d96b50" font-size="27" text-anchor="start">ΤΑ ΠΡΩΤΑ ΒΗΜΑΤΑ</text>
   </g>

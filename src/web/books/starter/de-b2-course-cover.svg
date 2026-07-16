@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Deutschkurs B2 – Perspektiven im Gespräch</title>
-  <desc id="desc">Bordeauxrotes Buchcover mit analytischen Diagrammformen, sich überschneidenden Perspektivfenstern und einem hellblauen B2-Zeichen.</desc>
+  <title id="title">Perspektiven im Gespräch: Deutsch B2</title>
+  <desc id="desc">Cover einer deutschen B2-Lektüre mit analytischen Diagrammformen, sich überschneidenden Perspektivfenstern und einem hellblauen B2-Zeichen.</desc>
   <defs>
     <linearGradient id="wine" x1="0" y1="0" x2="0.9" y2="1">
       <stop offset="0" stop-color="#47182c"/>
@@ -13,7 +13,7 @@
   <rect width="600" height="900" fill="url(#wine)"/>
   <path d="M0 0H600V194L0 334Z" fill="#f3ead7" opacity=".08"/>
   <text x="55" y="82" fill="#7ed8df" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">WORD HUNTER</text>
-  <text x="55" y="173" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">DEUTSCHKURS</text>
+  <text x="55" y="173" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">LEKTÜRE</text>
   <text x="58" y="222" fill="#f0a15f" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="2">PERSPEKTIVEN IM GESPRÄCH</text>
   <rect x="56" y="261" width="488" height="2" fill="#f3ead7" opacity=".55"/>
   <g clip-path="url(#frame)">
@@ -36,5 +36,5 @@
     <rect x="56" y="753" width="255" height="4"/><rect x="56" y="770" width="184" height="4"/>
     <rect x="56" y="787" width="219" height="4"/>
   </g>
-  <text x="55" y="848" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2">ANALYSIEREN · ABWÄGEN · ÜBERZEUGEN</text>
+  <text x="55" y="848" fill="#f3ead7" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="2">ANALYSIEREN · ABWÄGEN · VERSTEHEN</text>
 </svg>

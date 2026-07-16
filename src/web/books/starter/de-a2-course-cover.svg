@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Deutschkurs A2 – Zwischen Alltag und Aufbruch</title>
-  <desc id="desc">Türkisfarbenes Buchcover mit Stadtlinien, einem bewegten Weg und einem korallfarbenen A2-Signet für wachsende Selbstständigkeit.</desc>
+  <title id="title">Zwischen Alltag und Aufbruch: Deutsch A2</title>
+  <desc id="desc">Cover einer deutschen A2-Lektüre mit Stadtlinien, einem bewegten Weg und einem korallfarbenen A2-Signet.</desc>
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b4858"/>
@@ -27,7 +27,7 @@
     <rect x="467" y="704" width="19" height="22"/><rect x="508" y="704" width="19" height="22"/>
   </g>
   <text x="54" y="92" fill="#ffe1a8" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-  <text x="54" y="177" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">DEUTSCHKURS</text>
+  <text x="54" y="177" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">LEKTÜRE</text>
   <rect x="56" y="210" width="188" height="7" fill="#f47f6b"/>
   <text x="54" y="260" fill="#d7f2e9" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="2">ZWISCHEN ALLTAG</text>
   <text x="54" y="294" fill="#d7f2e9" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="2">UND AUFBRUCH</text>
@@ -40,5 +40,5 @@
     <path d="M0 90H212L171 49M212 90L171 131"/>
     <circle cx="0" cy="90" r="17" fill="#ffe1a8" stroke="none"/>
   </g>
-  <text x="54" y="848" fill="#ffe1a8" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="2">WEITERDENKEN · WEITERSPRECHEN</text>
+  <text x="54" y="848" fill="#ffe1a8" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="2">WEITERLESEN · WEITERDENKEN</text>
 </svg>

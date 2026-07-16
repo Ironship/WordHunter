@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Parole per cominciare, corso d’italiano A1</title>
-  <desc id="desc">Una finestra color crema su una piazza italiana stilizzata, con forme corallo e verdi che evocano i primi incontri in città.</desc>
+  <title id="title">UNA MAPPA PER RESTARE</title>
+  <desc id="desc">Copertina di una lettura graduata d’italiano A1, con una finestra color crema su una piazza stilizzata.</desc>
   <rect width="600" height="900" fill="#f5edda"/>
   <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#173f3a" stroke-width="4"/>
   <circle cx="486" cy="124" r="66" fill="#ef8354"/>
@@ -17,8 +17,8 @@
   </g>
   <g fill="#173f3a" font-family="Georgia, 'Times New Roman', serif">
     <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="62" y="210" font-size="43" font-weight="700">CORSO</text>
-    <text x="62" y="260" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="210" font-size="43" font-weight="700">LETTURA</text>
+    <text x="62" y="260" font-size="43" font-weight="700">GRADUATA</text>
     <text x="62" y="313" font-size="20" font-style="italic">Parole per cominciare</text>
   </g>
   <g transform="translate(444 282)">
@@ -27,6 +27,6 @@
   </g>
   <g fill="#f5edda" font-family="Arial, sans-serif">
     <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="500" y="814" text-anchor="end" font-size="15">40 LEZIONI</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">40 CAPITOLI</text>
   </g>
 </svg>

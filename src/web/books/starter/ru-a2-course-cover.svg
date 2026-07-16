@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Русский в действии. Курс A2</title>
-  <desc id="desc">Бирюзовая обложка курса русского языка A2 с городскими кварталами и ярким маршрутом между точками.</desc>
+  <title id="title">Окна Старого Берега — Летний зал. Адаптированное чтение A2</title>
+  <desc id="desc">Бирюзовая обложка книги для чтения на русском языке уровня A2 с городскими кварталами и ярким маршрутом между точками.</desc>
   <defs>
     <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#073f49"/>
@@ -15,7 +15,7 @@
   <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f5f1df" stroke-width="4"/>
   <rect x="58" y="58" width="250" height="32" rx="16" fill="#ff8c5a"/>
   <text x="183" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="2">РУССКИЙ В ДЕЙСТВИИ</text>
-  <text x="58" y="132" fill="#f5f1df" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <text x="58" y="132" fill="#f5f1df" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КНИГА ДЛЯ ЧТЕНИЯ</text>
   <path d="M28 158H572" stroke="#ffc857" stroke-width="8"/>
 
   <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">A2</text>

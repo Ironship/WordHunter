@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">汉语B2《在复杂问题中表达》课程封面</title>
-  <desc id="desc">石墨黑与琥珀色封面，多层论据经过透明棱镜汇成清晰光束，象征有分寸的复杂论证。</desc>
+  <title id="title">汉语B2分级读物：厂门打开以前</title>
+  <desc id="desc">汉语B2分级读物封面，石墨黑与琥珀色的多层文本经过透明棱镜汇成清晰光束。</desc>
   <defs>
     <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#111722"/>
@@ -51,7 +51,7 @@
   <circle cx="174" cy="714" r="7" fill="#9aa9d7"/>
   <circle cx="253" cy="714" r="7" fill="#72d6d1"/>
   <circle cx="332" cy="714" r="7" fill="#e5a950"/>
-  <text x="55" y="83" fill="#e7ebf3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="55" y="83" fill="#e7ebf3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语分级读物</text>
   <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">B2</text>
   <path d="M55 310h229" stroke="#72d6d1" stroke-width="11"/>
   <text x="57" y="360" fill="#e5a950" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">在复杂问题中表达</text>

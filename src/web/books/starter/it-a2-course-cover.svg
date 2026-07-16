@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Un passo più lontano, corso d’italiano A2</title>
-  <desc id="desc">Un percorso blu attraversa terrazze gialle e conduce verso un orizzonte italiano, simbolo di autonomia crescente.</desc>
+  <title id="title">LE FINESTRE ACCESE</title>
+  <desc id="desc">Copertina di una lettura graduata d’italiano A2, con un percorso blu tra terrazze gialle e un orizzonte lontano.</desc>
   <rect width="600" height="900" fill="#e9f1ec"/>
   <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#153b5b" stroke-width="4"/>
   <path d="M34 566 H566 V866 H34Z" fill="#153b5b"/>
@@ -11,8 +11,8 @@
   <circle cx="420" cy="430" r="9" fill="#e9f1ec"/>
   <g fill="#153b5b" font-family="Georgia, 'Times New Roman', serif">
     <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="62" y="210" font-size="43" font-weight="700">CORSO</text>
-    <text x="62" y="260" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="210" font-size="43" font-weight="700">LETTURA</text>
+    <text x="62" y="260" font-size="43" font-weight="700">GRADUATA</text>
     <text x="62" y="313" font-size="20" font-style="italic">Un passo più lontano</text>
   </g>
   <g transform="translate(486 307)">
@@ -21,6 +21,6 @@
   </g>
   <g fill="#e9f1ec" font-family="Arial, sans-serif">
     <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 CAPITOLI</text>
   </g>
 </svg>

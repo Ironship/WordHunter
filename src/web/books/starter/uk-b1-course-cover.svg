@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Самостійно українською. Курс B1</title>
-  <desc id="desc">Сливово-помаранчева обкладинка курсу української мови B1 з мостом між сторінками та пов’язаними точками як символами самостійного зв’язного мовлення.</desc>
+  <title id="title">Самостійно українською. Читанка B1</title>
+  <desc id="desc">Сливово-помаранчева обкладинка української читанки B1 з мостом між сторінками та пов’язаними точками як символами самостійного зв’язного читання.</desc>
   <defs>
     <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#34214f"/>
@@ -20,7 +20,7 @@
   <path d="M25 158H575" stroke="#f0a16b" stroke-width="9"/>
   <rect x="60" y="54" width="270" height="36" rx="18" fill="#c95368"/>
   <text x="195" y="78" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.5">САМОСТІЙНО УКРАЇНСЬКОЮ</text>
-  <text x="60" y="122" fill="#fff4e8" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">КУРС УКРАЇНСЬКОЇ МОВИ</text>
+  <text x="60" y="122" fill="#fff4e8" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">УКРАЇНСЬКА ЧИТАНКА</text>
   <text x="57" y="304" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="168" font-weight="900" letter-spacing="-8">B1</text>
   <text x="65" y="347" fill="#ffd58a" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="4">ЗВ’ЯЗНЕ МОВЛЕННЯ</text>
 

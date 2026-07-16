@@ -820,8 +820,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>テスト用プレリリース 1.0.5-rc.9：A1～B2 レベルのオリジナルコースブックを48冊内蔵し、12の定義済み学習言語ごとに4冊ずつ収録しています。レッスン、実用的な文章や会話、文脈に沿った語彙、アクティビティで構成されています。ラテン語と古代ギリシャ語のレベルは CEFR を参考にしています。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.9",
+    "whatsNew": "<strong>テスト用プレリリース 1.0.5-rc.10：A1～B2 レベルのオリジナルレベル別読み物を48冊内蔵し、12の定義済み学習言語ごとに4冊ずつ収録しています。読解と文脈内の語彙だけを目的とする連続した物語であり、完全な語学コースではありません。現代語は CEFR のおおよその読解難度、ラテン語と古代ギリシャ語は CEFR を参考にした読解難度を示します。このプレリリースには不具合が含まれる可能性があり、テスト専用です。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5-rc.10",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditSync": "<strong>Syncthing 2.1.0</strong> — デスクトップ版にMPL-2.0の独立したプログラムとして同梱しています。ソース: https://github.com/syncthing/syncthing/tree/v2.1.0",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。"

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Українська в дії. Курс A2</title>
-  <desc id="desc">Бірюзово-коралова обкладинка курсу української мови A2 з мапою міста, маршрутом і позначками, що символізують практичне використання мови.</desc>
+  <title id="title">Українська в дії. Читанка A2</title>
+  <desc id="desc">Бірюзово-коралова обкладинка української читанки A2 з мапою міста, маршрутом і позначками, що символізують читання повсякденних текстів.</desc>
   <defs>
     <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#083f4b"/>
@@ -20,7 +20,7 @@
   <path d="M25 158H575" stroke="#ff9a72" stroke-width="9"/>
   <rect x="60" y="54" width="204" height="36" rx="18" fill="#ff765f"/>
   <text x="162" y="78" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.8">УКРАЇНСЬКА В ДІЇ</text>
-  <text x="60" y="122" fill="#e9fff8" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">КУРС УКРАЇНСЬКОЇ МОВИ</text>
+  <text x="60" y="122" fill="#e9fff8" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">УКРАЇНСЬКА ЧИТАНКА</text>
   <text x="57" y="304" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="168" font-weight="900" letter-spacing="-8">A2</text>
   <text x="65" y="347" fill="#ffd27d" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="4">МОВА В ДІЇ</text>
 

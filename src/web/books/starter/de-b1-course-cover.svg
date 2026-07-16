@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Deutschkurs B1 – Neue Wege, klare Worte</title>
-  <desc id="desc">Dunkelblaues Buchcover mit leuchtend grüner Brücke, verbundenen Gesprächspunkten und markanter B1-Typografie.</desc>
+  <title id="title">Neue Wege, klare Worte: Deutsch B1</title>
+  <desc id="desc">Cover einer deutschen B1-Lektüre mit leuchtend grüner Brücke, verbundenen Textpunkten und markanter B1-Typografie.</desc>
   <defs>
     <linearGradient id="night" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#16193d"/>
@@ -22,7 +22,7 @@
     <circle cx="337" cy="330" r="9"/><circle cx="451" cy="379" r="9"/><circle cx="530" cy="312" r="9"/>
   </g>
   <text x="55" y="88" fill="#a9e85b" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">WORD HUNTER</text>
-  <text x="55" y="179" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">DEUTSCHKURS</text>
+  <text x="55" y="179" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="900">LEKTÜRE</text>
   <text x="58" y="226" fill="#c7c9ff" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="3">NEUE WEGE, KLARE WORTE</text>
   <g transform="translate(43 486)">
     <path d="M0 170H514" stroke="#a9e85b" stroke-width="18"/>
@@ -36,5 +36,5 @@
   <g fill="#c7c9ff">
     <circle cx="390" cy="474" r="10"/><circle cx="426" cy="474" r="10"/><circle cx="462" cy="474" r="10"/>
   </g>
-  <text x="55" y="848" fill="#a9e85b" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="2">ERZÄHLEN · HANDELN · MITREDEN</text>
+  <text x="55" y="848" fill="#a9e85b" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="2">LESEN · VERSTEHEN · DEUTEN</text>
 </svg>

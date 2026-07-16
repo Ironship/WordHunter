@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">日本語 A2 暮らしを広げる コース表紙</title>
-  <desc id="desc">青緑の町を複数の道が結び、暮らしの範囲が広がる日本語A2コースの表紙。</desc>
+  <title id="title">月舟文庫と川風の地図　日本語レベル別読み物 A2</title>
+  <desc id="desc">青緑の町を複数の道が結び、暮らしの範囲が広がる日本語A2読み物の表紙。</desc>
   <defs>
     <linearGradient id="a2-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#103b46"/>
@@ -17,7 +17,7 @@
   <rect width="600" height="900" fill="url(#a2-grid)"/>
   <rect x="28" y="28" width="544" height="844" rx="24" fill="none" stroke="#edf5e8" stroke-width="3"/>
   <rect x="54" y="60" width="222" height="42" rx="21" fill="#ef9b45"/>
-  <text x="165" y="88" fill="#103b46" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="800" letter-spacing="3">日本語コース</text>
+  <text x="165" y="88" fill="#103b46" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="800" letter-spacing="3">日本語の読み物</text>
   <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">A2</text>
   <path d="M56 283H294" stroke="#ef9b45" stroke-width="11"/>
   <text x="56" y="333" fill="#edf5e8" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">暮らしを広げる</text>

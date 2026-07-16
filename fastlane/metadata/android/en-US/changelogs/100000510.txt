@@ -1,0 +1,5 @@
+Test prerelease. Back up your data before installing.
+
+- Added 48 original A1-B2 graded readers across 12 languages.
+- Replaced course and exam claims with clear reading-only descriptions.
+- Completed the reader narratives and corrected Library and cover titles.

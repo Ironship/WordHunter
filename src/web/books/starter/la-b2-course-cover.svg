@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Cursus linguae Latinae B2: Verba, Testes, Civitas</title>
-  <desc id="desc">Rostra, volumen apertum et columnae in luce aurea argumentum, testimonium et civitatem coniungunt.</desc>
+  <title id="title">LIMUS SUB AQUA</title>
+  <desc id="desc">Tegumentum libri Latini ad legendum gradu B2, rostris, volumine aperto et columnis aureis ornatum.</desc>
   <rect width="600" height="900" fill="#241f34"/>
   <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#d8ad4a" stroke-width="4"/>
   <circle cx="472" cy="161" r="61" fill="#a8483f"/>
@@ -18,8 +18,8 @@
   <path d="M166 684H434L413 643H187Z" fill="#a8483f" stroke="#171321" stroke-width="6"/>
   <g fill="#f0e4c8" font-family="Georgia, 'Times New Roman', serif">
     <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4" fill="#d8ad4a">WORD HUNTER</text>
-    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
-    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="178" font-size="39" font-weight="700">LIBER LATINUS</text>
+    <text x="58" y="224" font-size="39" font-weight="700">AD LEGENDUM</text>
     <text x="58" y="274" font-size="22" font-style="italic" fill="#d8ad4a">Verba, Testes, Civitas</text>
   </g>
   <g transform="translate(476 292)">
@@ -29,6 +29,6 @@
   </g>
   <g fill="#f0e4c8" font-family="Arial, sans-serif">
     <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV CAPITULA</text>
   </g>
 </svg>

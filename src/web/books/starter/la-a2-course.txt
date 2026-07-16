@@ -1,197 +1,899 @@
-INTER URBEM ET MARE
-Cursus linguae Latinae A2
+Monitum lectori
+
+Hic liber ad simplicem lectionem et comprehensionem atque ad vocabula ex contextu intellegenda tantum destinatur; nihil ultra praebet. Gradus A2 aestimationem proximam difficultatis legendi, ratione CEFR inspiratam, tantum indicat; officialis non est. Liber neque translatio neque institutio plena est nec rationem systematicam audiendi, loquendi aut scribendi continet. Commendatur ut quisque libros suos aliasque materias licite possessas, non secretas, per importatorem Word Hunter inferat; data personalia aliorum inferenda non sunt. Omnes homines, loci, epistulae, tabulae ceteraque documenta huius fabulae ficta vel ad fictionem accommodata sunt. Nihil hic pro consilio medico aut iuridico habendum est.
+
+VIA INTER DUOS PORTUS
+Lectio graduata A2
 Word Hunter Originals
 
-Gradus huius libri ratione CEFR inspirati sunt, non norma cuiusdam examinis publici. Exercitia nova facultatem legendi augent, sed nullum exitum promittunt. Formas in contextu observa, textus clara voce recita, summas breves scribe; dialogi activi semper voluntarii sunt.
+Capitulum 1: Reditus vere novo
 
-LECTIO I — REDITUS TERTIAE
+Sex menses post discessum Tertia ad Ostiam rediit. Hiems in Campania pluviosa fuerat. Vites nudae diu steterant, deinde prima folia apparuerant. Gaius filiam usque ad Romam comitatus erat; inde ea cum mercatore noto ad mare iter fecerat.
 
-Post sex menses Tertia Ostiam rediit. Sine timore per portam intravit, quod vias principales iam noverat. Marcus ad fontem rationes legebat. Ubi eam vidit, tabulas deposuit et exclamavit: “Tertia, salveto! Quanto maturior videris!”
+Raeda eandem portam intravit, sed urbs non iam tota aliena erat. Tertia fontem, pistrinum rubrum et columnam fractam agnovit. Ante tabernam Publii novum velum pendebat. Aper pictus veteri signo similis erat, sed color splendidior.
 
-Tertia respondit se apud parentes bene valuisse. Capuae matrem in horto adiuvabat, sed amicos Ostienses desiderabat. Nunc in taberna Publii scribere et rationes ordinare discet. Livia ei cubiculum idem paravit, Prima autem parvam mensam addidit.
+Quintus primus eam vidit. Per vicum cucurrit, quamquam post eventum tabernae iam sciebat intus currendum non esse. Lupa, canis Castoris, eum sequebatur; saepe apud familiam manebat. Tertia e raeda descendit et utrumque salutavit.
 
-Perfectum eventum praeteritum saepe ut totum narrat: rediit, intravit, vidit, deposuit, exclamavit, respondit, paravit, addidit. Imperfectum statum, consuetudinem aut actionem tum durantem ostendit: legebat, adiuvabat, desiderabat. Inveni utriusque temporis formas et explica Latine quid uno eventu acciderit, quid per tempus duraverit. Scribe octo sententias de reditu ficticio.
+Livia ad ianuam apparuit, deinde Prima et Syra. Amplexus, voces et sarcinae atrium impleverunt. Publius e taberna venit cum atramento in manu. Marcus valvas solus paulisper servavit. Nemo orationem paratam habuit; reditus ipse satis erat.
 
-LECTIO II — DOMUS MUTATA
+Cubiculum Tertiae paene idem mansit. Vetus lucerna stellae in pluteo stabat. Prima pulverem ab ea saepe removerat. In horto ruta ex seminibus Claudiae creverat. Planta hiemem superaverat et nunc folia nova ferebat.
 
-Domus eadem est, sed non omnia eodem modo se habent. Officina Publii maior facta est; culina clarior, quia Syra parietem dealbavit. Cubiculum Quinti nunc minus ordinatum est quam antea. Hortus autem pulchrior est: Prima plures herbas sevit.
+Tertia dona e Capua aperuit. Livia oleum bonum accepit, Syra ficus, Prima filum purpureum, Quintus nuces et Publius chartam ex officina Capuana. Marco mater Tertiae calamum misit, quia epistulas filiae formaverat. Hilaro tabulam ligneam dedit, quamquam eum nondum viderat.
 
-Nova inquilina, Sabina textrix, cellam supra officinam conducit. Ea quieta est, sed telarium interdiu sonat. Familia constituit quibus horis labor fieri possit, ut et Sabina opus faciat et liberi studeant.
+Hilarus post meridiem advenit. Nunc tunicam mundam tabernae gerebat et numeros multo celerius scribebat. Tertia eum statim agnovit; ille autem paulisper dubitavit, quia puella capillos aliter tenebat. Deinde ambo de numero XVII riserunt.
 
-Formae comparativae: magnus, maior; parvus, minor; pulcher, pulchrior; bene, melius. In comparatione simplici quam alterum membrum introducit, quod eundem casum ac primum servat: culina clarior est quam cella. Describe duas domos aut duo cubicula duodecim sententiis, sine iniusta reprehensione.
+Ad cenam familia de mensibus praeteritis narravit. Tertia vindemiam, fratres et itinera patris memoravit. Prima Sabinae in textrina saepius adiuverat. Quintus litteras melius legebat. Publius plures clientes ex Portu acceperat. Hilarus iam quattuor dies in hebdomada laborabat.
 
-LECTIO III — RATIO MENSIS
+Sextus aberat. Fortuna Puteolis hiemaverat, quia quaedam tabulae navis refectae erant. Livia epistulam eius servabat. Scribebat se vere Ostiam rediturum esse et iter novum parare. Tertia promissionem ad Portum factam meminit.
 
-Publius initio mensis omnes ad mensam vocat. Tabula dierum in pariete pendet. Die quinto merces e Puteolis venient; die nono nundinae erunt; die duodecimo magister conventum habebit; Idibus Tertia ad magistratum ibit. Ante finem mensis taberna novas rationes reddere debet.
+Nocte nova lucerna stellae iterum in mensa arsit. Tertia fenestram aperuit. Aer salsus intravit, et voces vici notae redierunt. Capua non minus domus erat; tamen Ostia quoque eam recipiebat. Inter duas domos iam non pendebat sine via. Viam ipsam habebat.
 
-Tertia munera in tabula distribuit. Quaedam urgent, alia exspectare possunt. Tempus ad quietem quoque servat: singulis diebus post horam nonam ambulabit, nisi imber erit. Livia monet consilium nimis plenum saepe frangi.
+Ante somnum Tertia sarcinam non totam solvit. Vestes itineris in arca manserunt, quasi corpus eius nondum crederet iter finitum esse. Tantum epistulas matris et sigillum conchae in mensa posuit. Mane, ubi pistor eodem clamore panes obtulit, arcam tandem aperuit. Consuetudo vici reditum certiorem quam amplexus unius horae fecit.
 
-Futurum: veniam, venies, veniet; reddam, reddes, reddet; ero, eris, erit. Nisi exceptionem ponit; ante et post cum accusativo tempus ordinant. Fac rationem septem dierum, tribus officiis, duobus studiis, uno spatio otii.
+Capitulum 2: Domus paulum mutata
 
-LECTIO IV — PRETIA ET PONDUS
+Mane Tertia mutationes clarius vidit. In atrio nova arca stabat. Publius rationes tabernae ibi servabat, quia cella posterior post imbrem nimis humida fuerat. Tector Volusius tectum refecerat, et nulla gutta per hiemem ceciderat.
 
-Taberna viginti membranas emere debet. Primus mercator singulas carius vendit, sed membranae firmiores sunt. Secundus pretium minus petit, tamen quinque membranae maculas habent. Tertia summas, pondus et usum comparat, non solum pretium.
+Prima nunc cum Sabina telam vendebat. Non tota die domi manebat. Hora secunda ad textrinam ibat et ante cenam redibat. Mercedem suam in sacculo separato servabat. Livia hoc probabat, quamquam opus domesticum aliter dividendum erat.
 
-In foro interrogat: “Quantum remittes, si viginti accipimus?” Mercator decimam pretii partem remittit et se merces ad tabernam portaturum esse promittit. Tertia pactum litteris brevibus confirmat, ne de numero aut pretio postea dubitetur.
+Syra culinam adhuc optime regebat, sed auxilium puellae nomine Daphnis acceperat. Daphnis serva non erat; filia libertae vicinae erat et mercede ad dimidium diem conducebatur. Syra ei non tantum officia, sed pretia et mensuras ostendebat.
 
-Numeralia maiora agnosce: ducenti nummi, trecentae tabulae, quadringenta volumina. In decima pretii parte, pretii genitivus partitivus est. Scribe rationem emptionis cum tribus pretiis et explica cur hunc mercatorem elegeris.
+Quintus apud Castorem artem argillae bis in hebdomada discebat. Lucernam cum cane iam ipse facere conatus erat. Crura canis nimis longa erant, et oleum per caudam exire poterat. Castor lucernam non vendidit, sed Quintus eam in cubiculo servabat.
 
-LECTIO V — VESTIS AD ITER
+Marcus mensam maiorem habebat. Epistulas non iam tantum dictante Publio scribebat. Clientes quidam eum nomine petebant. In pariete iuxta eum pendebat tabella: MARCUS FABER LITTERARUM. Verbum faber latius quam ferrarius ibi adhibebatur; manus eius verba formabat.
 
-Sextus Tertiam monet se brevi Puteolos navigaturum esse. Si eum comitabitur, vestes aptas sumere debet. Tertia vestem pretiosam domi relinquit. Tunicas leves, pallium crassius, paenulam contra pluviam et calceos bene clausos parat.
+Publius autem facilius fessus videbatur. Oculi post longam scripturam dolebant, itaque vespere rationes aliis tradebat. Morbum gravem non habebat, sed annos laboris sentiebat. Tertiae reditus ei opportunus erat, quamquam hoc primo die non dixit.
 
-Sabina fibulam fractam reficit. Dum laborat, docet lanam calorem servare, linum autem die calido commodius esse. Color non solum ornamentum est: nautae vestes claras in nebula facilius vident.
+In horto Prima nuntium suum aperuit. Lucanus, filius pistoris vicini, matrimonium petiverat. Prima nondum responderat. Vir benignus erat et officinam patris mox accepturus, sed Prima opus Sabinae relinquere nolebat. Livia filiam ad celerem decisionem non urgebat.
 
-Participium futurum cum esse rem futuram vel consilium nuntiat: navigaturus est, profectura est. In locutione vestes aptas sumere debet, aptas adiectivum est quod ad vestes refertur; debet cum infinitivo sumere necessitatem exprimit, non gerundivum. Elige decem res ad iter maritimum et causam cuiusque electionis una sententia da.
+Tertia mutationes sine iudicio audivit. Sex menses breves videbantur, tamen cuique vitam moverant. Ipsa quoque mutata erat. Capuae cum patre rationes vindemiae scripserat et matri epistulas vicinorum legerat. Manus eius firmior facta erat.
 
-LECTIO VI — IN LUDO SCRIBARUM
+Vespere familia officia hebdomadis ordinavit. Tertia tres dies in taberna, unum cum Livia in foro et unum ad rationes domesticas laboraret. Reliquum tempus suum haberet. Publius mercedem certam proposuit, non tantum hospitium et cibum.
 
-Magister Aulus discipulis nuntium brevem proponit: “Horrea ad flumen cras clausa erunt, quod operarii tectum reficient. Merces ad portam meridianam ferantur.” Discipuli debent rem principalem, causam, tempus et locum invenire.
+Tertia pactum accepit. Cubiculum eodem loco erat, sed ipsa non iam hospes recens erat. Domus quoque eam non sicut pueram tantum recipiebat. Spatium laboris et pecuniae propriae habebat. Haec mutatio paulo timebat, sed plus gaudii ferebat.
 
-Tertia primum singula verba intellegit, sed ordinem totius nuntii non statim capit. Aulus eam monet ut titulum fingat et verba conexiva signet. Tum sententia clarescit. Lectio non est series vocabulorum; relationes inter res quoque legendae sunt.
+Livia mercedem in tabula domestica scripsit, ne propinquitas pactum obscuraret. Cibus et cubiculum pars domus erant; nummi pro labore separatim dabantur. Tertia hanc distinctionem primo nimis severam putavit, deinde intellexit eam libertatem utriusque partis servare. Si officium mutaretur, verba clara iam aderant.
 
-Quod causam ab auctore pro certa positam introducit. Ut titulum fingat et verba conexiva signet mandatum obliquum post monet exprimit; ferantur forma passiva coniunctivi iussivi est. Clausa erunt formam participii perfecti cum futuro esse habet; hic statum futurum, non necessario actionem ante aliam futuram perfectam, indicat. Reficiunt forma praesentis est, reficient autem forma activa futuri est. Lege nuntium clara voce, deinde sine exemplari quattuor res necessarias nota.
+Capitulum 3: Hilarus novam lineam facit
 
-LECTIO VII — NOVUS DISCIPULUS
+Primo die in taberna Tertia Hilarum ad mensam veterem invenit. Tabulam in tres columnas diviserat: res receptae, res venditae, res relictae. Lineae rectae erant. In margine tamen unum nomen deletum apparebat. Hilarus de eo tacere non conatus est.
 
-In officina Publii novus discipulus laborat. Nomen ei Hilarus est. Nuper e villa venit et litteras satis bene format, sed nomina clientium saepe in falsam columnam ponit. Tertia non dicit eum neglegentem esse; prius rationem operis demonstrat.
+Cliente duas tabulas reservaverat, sed frater eius eas iam emerat. Hilarus nomen prioris emptoris deleverat et causam iuxta lineam addiderat. Marcus correctionem probaverat. Olim iuvenis errorem celare fortasse voluisset; nunc mutationem apertam relinquebat.
 
-“Haec columna emptorem, illa rem emptam, tertia summam continet. Postquam lineam scribis, eam iterum lege.” Hilarus exemplum sequitur. Post duas horas pauciores errores facit. Tertia intellegit bonam explicationem etiam magistrum docere.
+Tertia tabulam ligneam e Capua ei dedit. In una parte erat imago vitis. Hilarus eam diligenter accepit. Dicebat Stephanum valere, Crispum autem villam vendere cogitare. Si villa venderetur, plures operarii novum locum quaererent.
 
-Accusativus cum infinitivo verba relata exprimit: Tertia dicit Hilarum discere; Publius putat rationem claram esse. In Tertia dicit se Hilarum docere, pronomen reflexivum se ad Tertiam, subiectum sententiae regentis, refertur. Scribe quinque praecepta operis et causam cuiusque.
+Hilarus ipse libertus erat, sed mater eius adhuc in villa serviebat. Stephanus pecuniam colligebat, ut libertatem eius fortasse emeret. Pretium tamen a Crispi voluntate pendebat. Hilarus de re sine spe vana loquebatur; nihil adhuc constitutum erat.
 
-LECTIO VIII — ACTA IN FORO
+Publius iuveni plus operis offerre poterat, non autem matrem liberare. Hoc discrimen omnes intellegebant. Tertia tabulam matri Hilari dedicari proposuit. Ille in tergo nomen eius scripsit: MYRINA. Litterae maiores quam ceterae erant.
 
-In foro tabula publica nova posita est. Acta nuntiant fontem occidentalem per tres dies clausum iri, ludos nauticos mense proximo futuros esse, et duos mercatores ob falsa pondera multatos esse. Turba praecipue de ludis loquitur, quamquam fons ad vitam cotidianam magis pertinet.
+Eodem mane Diodorus fasciculum attulit. Nomen Publii plene scriptum erat, tessera numero LXII, horreum Hermogenis, dies et nomen vectoris. Diodorus singulas partes alta voce cum Marco comparavit. Post errorem delphini rationem suam mutaverat.
 
-Marcus rogat: “Cur homines nuntium de festo legunt, sed fontis clausi mentionem praetereunt?” Tertia respondet res iucundas facilius memoria teneri. Itaque nuntium de fonte in taberna rescribunt litteris magnis et via altera addita.
+Fasciculus chartam Puteolanam continebat. Charta paulo crassior erat quam ea quam Publius solebat vendere. Sextus exempla miserat. Puteolis officina Gnaei Vettii Philonis eam parabat. Philo pretium bonum proponebat, si Publius quinquaginta fasciculos acciperet.
 
-Acta forma pluralis neutra est. Formae clausum iri et futuros esse eventus futuros post verba nuntiandi referunt. Distingue factum, opinionem, rem futuram. Scribe duos titulos: alter attentionem capiat, alter omnia necessaria contineat.
+Quinquaginta fasciculi multam pecuniam requirebant. Publius ante emptum qualitatem videre volebat. Tertia tria folia sub lumine tenuit. Unum maculam parvam habebat; alterum ad marginem findebatur; tertium firmum erat. Ex tribus solis de tota merce iudicari non poterat.
 
-LECTIO IX — VIA CLAUSA
+Hilarus novam lineam in ratione fecit: EXEMPLA PUTEOLANA. Sub ea diem, numerum foliorum et notas breves posuit. Publius constituit unum fasciculum in usu temptari. Epistulae, tituli et rationes in eo scriberentur, deinde eventus compararentur.
 
-Dum Tertia membranas ad ludum portat, viam solitam saeptam invenit. Signum dicit: “Periculum ruinae. Transitus interdictus.” Quidam viatores tamen sub fune transeunt, quia iter brevius est. Tertia eos non sequitur.
+Tertia nomen Puteolorum saepe audiverat, sed urbem numquam viderat. Nunc folium ex illo portu ante eam iacebat. Iter mercium iam initium ceperat, antequam ipsa sciret num cum Sexto profectura esset. Charta quasi primus nuntius viae fuit.
 
-Custodem interrogat qua via tuto ire possit. Ille respondet: “Ad horrea redi, deinde vicum Figulorum sequere usque ad arcum. Inde ludum videbis.” Tertia tardius advenit, sed magistro causam clare exponit.
+Vespere Hilarus tabulam Capuanam ad Myrinam per Stephanum misit. Non poterat ipse ad villam ante diem festum ire. In margine scripsit se munus a matre Tertiae accepisse, quam Myrina numquam viderat. Sic una mulier alteri ignotae parvam materiam dederat; filii et filiae inter eas lineam fecerant.
 
-Praepositiones usque ad, per, inter, contra accusativum regunt; ab, cum, de, sine ablativum. Forma qua via ablativum itineris habet. Delinea duo itinera, brevius periculosum et longius tutum; elige et explica.
+Post hebdomadam tabula rediit cum una voce a Myrina incisa: FILIO. Litterae rudes erant, sed ipsa eas fecerat. Hilarus nullam correctionem addidit. Tabulam pro usu cotidiano acceperat, nunc autem in arca sua servavit. Munus matris Tertiae memoriam alterius matris tenebat.
 
-LECTIO X — PETITIO AD CURATOREM
+Capitulum 4: Epistula Sexti
 
-Fons clausus vicum gravat. Livia aquam longius portat, senex vicinus vix urnam plenam fert. Tertia officium curatoris aquarum adit petitque ut tempus refectionis publicetur et urna communis ponatur.
+Triduo post cursor a Portu venit. Epistula Sexti cera rotae clausa erat. Livia eam aperuit, quia frater ad totam familiam scripserat. Fortuna intra quinque dies Ostiam veniret. Deinde merces ad Puteolos et Cumas ferret.
 
-Scriba officii primo dicit se diem certum ignorare. Tertia civiliter instat: “Intellego diem mutari posse. Potesne saltem tempus probabile indicare et vicinos certiores facere?” Scriba fabrum consulit atque responsum post meridiem promittit.
+Sextus iter non solum mercaturae causa faciebat. Vetus socius eius, Numerius Calvus, summam pecuniae ab eo petebat. Dicebat patrem Sexti ante annos decem pro centum amphoris nondum plene solvisse. Sextus contrariam rationem in scrinio patris invenire non poterat.
 
-Petit ut publicetur: coniunctivus post verbum petendi. Potesne quaestionem mitigat; saltem id quod minimum petitur indicat. Scribe petitionem publicam octoginta verborum: problema, quos tangat, quid petatur, cur utile sit.
+Epistula Calvi exemplar petitionis continebat. Verba civilia erant, sed summa magna. Calvus ducentos quinquaginta denarios intra Kalendas proximas petebat. Si ratio alia inveniretur, se paratum esse eam inspicere scribebat. Nullam poenam publicam minabatur; res privata erat.
 
-LECTIO XI — EPISTULA AD MATREM
+Publius patris rationes aliquando servaverat, sed post inundationem multas tabulas ad Sextum miserat. Memorabat solutionem in duabus partibus factam esse: primam pecunia, alteram oleo. Dies tamen non meminerat. Testimonium memoriae solum Calvo fortasse non sufficeret.
 
-Tertia matri de vita nova scribit. Non singula enumerat, sed res connectit: “Cum Ostiam rediissem, domum paene eandem inveni; officina tamen creverat. Nunc Hilarum doceo, dum ipsa a Publio rationes disco. Si iter Puteolanum fiet, Sextum comitabor.”
+Sextus Tertiam secum invitabat. Sciebat eam rationes Capuae ordinavisse et signa arcarum diligenter observare. Livia aut Gaius consentire deberent. Marcus quoque iturus erat, ut commercium chartae tractaret. Hilarus ad curandas tesseras necessarius videbatur.
 
-Etiam difficultatem narrat: fons clausus est, ideo familia aquam e vico vicino petit. Epistulam bono nuntio finit: curator se urnam communem cras positurum esse respondit.
+Prima verba itineris audivit et Tertiam aspexit. In primo volumine promissum procul videbatur; nunc dies aderat. Tertia statim gaudium sensit, deinde pondus rei. Navigatio ad Puteolos longior quam via ad Portum erat. Numerii petitio etiam dissensionem addebat.
 
-Cum rediissem rem priorem indicat; dum disco actionem simul factam. Ipse, ipsa pronomen intensivum est, personam vi sua distinguit et cum eo ad quod refertur congruit. Scribe epistulam duodecim sententiarum, initio, rebus conexis, quaestione ad accipientem et clausula.
+Livia nuntium ad Gaium et Claudiam mitti constituit. Responsum per cursorem rapidum intra octo dies venire poterat, sed Fortuna quinque diebus adveniret. Sextus profectionem paulisper differre posset. Nullum consilium sine parentibus fieret.
 
-LECTIO XII — NUNTIUS QUI NON VENIT
+Tertia ipsa epistulam addidit. Iter, socios, navem et causam scripsit. Non dixit mare semper tutum esse. Menandrum magistrum peritum esse, tempus secundum exspectari et reditum intra mensem sperari exposuit. De pecunia Calvi breviter, sine accusatione, narravit.
 
-Sextus ante profectionem licentiam horreo utendi exspectat. Cursor eam hora sexta afferre debuit, sed hora octava nondum adest. Sine licentia merces imponi non possunt. Sextus irascitur; Tertia prius facta quaerit.
+Publius interim scrinia patris aperuit. Pulvis et odor cerae veteris ex eis venerunt. Rationes per annos dispositae non erant. Quaedam tabulae titulos amiserant. Tertia et Hilarus eas sine deletu in mensa posuerunt.
 
-Ad stationem cursorum it. Ibi discit tabellam ad alium Sextum missam esse. Scriba errorem agnoscit, exemplar novum facit, sigillum addit. Tertia ad navem festinat atque eam ante solis occasum tradit.
+Inter tabulas apparuit signum duarum amphorarum et litterae N C. Fortasse Numerium Calvum significabant. Cera tamen tam laesa erat ut summa legi non posset. Publius tabulam seposuit. Iter iam non tantum desiderium maris, sed quaestio ex praeterito fiebat.
 
-Plusquamperfectum rem ante aliud tempus praeteritum positam ostendit: scriba tabellam miserat; Tertia errorem non cognoverat. Debuit cum infinitivo officium praeteritum, hic exspectatum sed non impletum, exprimit. Ordina sex eventus et narra eos perfecto atque plusquamperfecto.
+Prima tabulam non attingebat, sed vultum Tertiae spectabat. Iter nunc etiam fiduciam familiae requirebat: documentum pretiosum, dissensio pecuniae et morae ignotae. Tertia dixit se non iudicem futuram esse. Tantum rationes ordinaret et quae videret clare referret. Publius hoc ipsum a se peti confirmavit.
 
-LECTIO XIII — PER VIAM APPIAM
+Capitulum 5: Ratio patris Publii
 
-Ventus adversus est atque navigationem differt, itaque Sextus primam itineris partem terra facere constituit. Viatores Ostia primum Romam vehuntur, deinde Via Appia meridiem versus pergunt. Plaustrum merces fert; Tertia et Hilarus Sextum comitantur. Via Appia longa et recta per agros tendit, sed rotae veteres in lapidibus quatiuntur.
+Per duos dies taberna mane ordinarium opus egit, post meridiem autem vetera scrinia exploravit. Publius patrem suum Lucium Fabium saepe nominabat. Lucius libros vendiderat, sed etiam rationes fratris Sexti et quorundam mercatorum scripserat.
 
-Ad singula milliaria spatium legunt. Iter in partes dividunt: mane ad mutationem, meridie ad cauponam, vespere ad mansionem pervenire sperant. Aquam, cibum, funem et instrumenta ad rotam reficiendam paraverunt.
+Tabula cum litteris N C quattuor lineas habebat. Prima nomen mercium paene servabat: amphorae olei centum. Secunda summam prioris solutionis: denarii centum. Tertia verba fracta: oleum redditum. Quarta diem amiserat.
 
-Ad rotam reficiendam propositum exprimit; etiam ut rotam reficiant dici potest. Milia passuum spatium indicant. Fac itinerarium trium dierum: loca, spatia, horas, cibum, pericula et consilium alterum.
+Si centum denarii dati erant, residuum adhuc magnum manebat. Verba "oleum redditum" aliam solutionem indicare poterant, sed quantitas deerat. Calvus fortasse tantum primam partem in ratione sua invenerat. Neuter necessario mentiebatur.
 
-LECTIO XIV — NOX IN MANSIONE
+Marcus lumen a latere admovit. Vestigia stili in ligno sub cera apparebant. Cera ipsa deleta erat, sed stilus olim fortiter pressus erat. Numerus L paene cerni poterat. Tamen omnes dubitabant utrum quinquaginta amphoras an quinquaginta denarios indicaret.
 
-Prima mansio plena est. Caupo unum tantum cubiculum liberum habet, sed fenestra eius fracta est et lectus umidus. Sextus pretium totum solvere recusat. Caupo respondet omnia alia cubicula occupata esse.
+Hilarus posticam tabulae partem invenit. Ibi parva nota carbone scripta erat: GN. VETT. PHIL. TEST. Nomen Gnaei Vettii Philonis apparebat, eiusdem viri qui chartam Puteolanam vendebat. Fortasse Philo solutionem viderat.
 
-Tertia remedium proponit: caupo linteum siccum et tabulam ad fenestram dabit; viatores pretium minus solvent. Hilarus in stabulo prope plaustrum manere mavult, sed Sextus dicit neminem solum dormire debere. Tandem omnes satis tute quiescunt.
+Decem annis ante Philo multo iuvenior fuerat. Officinam patris gerebat et merces in horreo Calvi numerabat. Sextus eum nosse dicebat. Testis tamen memoriam suam habebat, non rationem perfectam. Etiam amicus mercatoris esse poterat.
 
-Malo, mavis, mavult rem potiorem exprimit; debeo necessitatem. In sententia cubiculum cuius fenestra fracta est, cuius sententiam relativam introducit et possessionem indicat. Age vel scribe colloquium de cubiculo malo, cum querela, responsione et pacto.
+Publius exemplar tabulae in cera nova fecit. Quae certa erant litteris nigris, quae dubia erant punctis notavit. Originalem in panno involvit. In nave intra capsam ceratam servaretur. Exemplar ad tractationem facilius adhiberi posset.
 
-LECTIO XV — EX TERRA IN MARE
+Tertia rationes aliorum annorum comparavit. Lucius Fabius solebat solutionem completam circulo parvo notare. In tabula Calvi nullus circulus supererat, sed angulus ubi esse potuerat fractus erat. Absentia signi nihil certum probabat.
 
-Post biduum viatores ad portum parvum perveniunt. Ventus nunc secundus est. Merces ex plaustro in navem transferuntur; singulae arcae signo notantur. Magister navis iubet pondus aequaliter distribui, ne navis in unam partem inclinetur.
+Sextus e Portu respondit se tabulam agnoscere. Patrem Calvi eo anno mortuum esse memorabat; filius rationes postea acceperat. Dissensio ex successione scriptorum orta esse poterat. Se cum Calvo coram acturum, non per rumores, affirmavit.
 
-Cum vela data sunt, Tertia litus lente recedere videt. Hilarus primum gaudet, deinde pallescit. Mare paulo asperius fit. Tertia eum monet ut horizontem spectet et in media nave maneat.
+Quaestio nondum soluta erat, sed forma clarior facta est. Centum amphorae, prima pecunia, altera res incerta, testis Philo, dies deperditus. Tertia has quinque partes in tabula itineris posuit. Puteoli iam locum quaerendae memoriae facti erant.
 
-Passivum praesentis: transferuntur, notantur; distribui infinitivus praesentis passivi est. Agens a cum ablativo exprimi potest; instrumentum sine a: arca signo notatur. Verte quinque sententias activas in passivas et conserva tempus.
+In altera parte tabulae Tertia ea quae ignorabantur posuit: pretium olei, numerum amphorarum redditarum, praesentiam Numerii et locum alterius rationis. Columna incertorum longior erat. Sextus tamen eam deleri vetuit. Longa absentia notitiae non verecundia erat; potius viam investigationis ostendebat.
 
-LECTIO XVI — TEMPESTAS BREVIS
+Capitulum 6: Consilium itineris
 
-Post meridiem nubes atrae surgunt. Magister navis vela minui iubet. Nautae funes trahunt; viatores infra transtra sedent. Imber tam densus cadit ut litus videri non possit. Una arca movetur, sed funis eam retinet.
+Responsum e Capua die septimo venit. Gaius et Claudia iter permittebant, si Tertia cum familia Sexti maneret et nuntium ex singulis mansionibus mitteret, quotiens cursor certus inveniretur. Mater sollicitudinem non celabat, sed filiam retinere nolebat.
 
-Tempestas brevis est. Cum nubes abeunt, nautae damnum inspiciunt. Nemo laesus est; duae amphorae fractae sunt, membranae autem siccae manserunt. Sextus in tabula scribit quid amissum sit et cur.
+Fortuna interea Ostiam venerat. Menander navem post hiemem probaverat. Tabulae novae in latere positae erant, funes duo mutati, vela refecta. Navis ad Puteolos navigare poterat, ubi ventus idoneus fieret.
 
-Tam… ut cum coniunctivo effectum exprimit. Quaestio obliqua quid amissum sit coniunctivum habet. Lege scaenam magna voce mutans celeritatem: ante tempestatem lente, in periculo celeriter, postea tranquille. Scribe relationem damni.
+Sextus quattuor viatores nominavit: se ipsum, Tertiam, Marcum et Hilarum. Praeterea Menander cum octo nautis erat. Diodorus usque ad Portum merces plaustro ferret. Nemo extra rationem navem conscenderet.
 
-LECTIO XVII — APUD MEDICUM PORTUS
+Merces erant lucernae Castoris, lana Sabinae, tabulae ceratae Publii, vitrum Campanum et quinque capsae epistularum privatarum. Omnis arca numerum, dominum, pondus et locum destinatum accepit. Hilarus tesseras bis legit.
 
-Hilarus post tempestatem adhuc vertigine laborat et nihil edere vult. Tertia eum ad medicum portus ducit. Medicus interrogat quam diu male se habuerit, quid ederit, utrum caput doleat an venter.
+Tertia vestes leves, pallium crassum et paenulam paravit. Syra cibum ad primos dies posuit, sed navis aquam et frumentum suum ferebat. Livia ornamenta pretiosa domi relinqui suasit. Sigillum conchae tamen Tertia secum tulit.
 
-Postquam Hilarum exploravit, medicus dicit eum quiete et aqua egere. Si vomitus aut febris accesserit, medicus rursus vocandus erit. Hilarus paulatim convalescit. Medicus etiam monet aquam ex amphora signata sumi debere, non e quolibet fonte.
+Marcus exempla chartae et litteras Publii in capsa B posuit. Tabula patris in capsa A erat, inter pannos siccos. Sextus tria exemplaria indicis fecit: unum sibi, unum Menandro, unum Publio. Si unum laederetur, alia manerent.
 
-Egeo ablativum regit: quiete, aqua. Quaestio utrum… an duas res opponit. Habuerit, ederit et doleat hic coniunctivi sunt in quaestionibus obliquis; accesserit futurum exactum indicativi est in condicione futura. Fac dialogum decem linearum inter medicum et aegrum, sine iudicio temerario de morbo.
+Hilarus primum extra Latium iturus erat. Stephanus ei pallium dedit. Myrina mater per servum villae parvam fascem herbarum odoratarum misit. Non erat remedium certum maris; tantum odor domus erat, quem filius in capsa servaret.
 
-LECTIO XVIII — MERCES DEERANT
+Prima Tertiae stolam bonam obtulit, sed navis ad vestem splendidam locus non erat. Puellae tunicam simplicem refecerunt. In margine interiore Prima unum filum purpureum consuit. Nemo id videre posset nisi vestis aperiretur.
 
-Puteolis arcae in horreo numerantur. Ex viginti una tantum deest. Sextus statim furtum suspicatur, sed Tertia indicem relegit. Arca sexta in portu priore relicta erat, quia signum aqua deletum erat.
+Pridie profectionem omnes ad cenam convenerunt. Castor de lucernis, Sabina de lana, Publius de charta cogitabant. Livia autem viatores spectabat. Quintus volebat cum eis ire, sed hoc tempore querelam brevem tantum fecit. Sciebat navem non ludum esse.
 
-Tertia cursori locum, formam et pondus arcae describit. Nuntius postridie respondet eam inventam atque sub custodia positam esse. Sextus fatetur se nimis cito de furto cogitavisse. Facta ante accusationem exploranda sunt.
+Nocte Tertia indicem rerum suarum legit. Nihil magni pretii erat: duae tunicae, pallium, calcei, epistulae, sigillum, concha, tessera Fortunae. Ultima iam in nave non necessaria videbatur; tamen eam tulit. Mane rota vera supra puppim exspectabat.
 
-Passivum plusquamperfectum: relicta erat, deletum erat. Infinitivus perfectus: inventam esse, cogitavisse. Distingue quod observatum, quod coniectum, quod postea confirmatum est. Scribe summam centum verborum.
+Syra parvum sacculum salis et panis tostioris in sarcina abscondit. Tertia eum postea invenit cum nota una: "Ad primam famem." Nota nullum mandatum longum habebat. Syra mare non noverat ut nauta, sed viatorem ante cibum navis esurire posse sciebat. Donum apud primam quietem apertum iri sperabat.
 
-LECTIO XIX — INVITATIO FIGULI
+Publius etiam duas tabulas vacuas inter vestes posuerat. Una ad rationes pertinebat, altera titulo MEMORIAE signata erat. Tertia distinctionem risit. Sciebat tamen eundem eventum aliter in utraque tabula scriptum iri: in prima dies et sumptus, in altera ventus, color maris et verba amicorum.
 
-Gnaeus figulus, amicus Sexti, viatores ad cenam invitat. Tabella dicit: “Pridie Kalendas Iunias, hora decima, in horto meo cenabimus. Si pluerit, sub porticu erimus. Uxorem liberosque, si adsunt, adducite.”
+Capitulum 7: Profectio e Portu
 
-Tertia respondet pro omnibus: gratias agit, numerum hospitum confirmat, explicat cur Hilarus a piscibus abstineat. Ad cenam parvum donum e taberna emunt. Gnaeus post cibum officinam ostendit et hospites sinit parvas lucernas fingere.
+Ante lucem plaustrum a domo movit. Viae Ostienses quietiores erant, sed apud flumen iam operarii clamabant. Diodorus arcas ligaverat et singulas tesseras sub velo texerat. Tertia iuxta Liviam ambulavit usque ad ripam.
 
-Si pluerit futurum exactum indicativi est; in condicione futura rem priorem aut condicionem ante eventum sententiae principalis constitutam ponere potest, nec hic imbrem iam confectum necessario significat. Abstineo a cum ablativo. Scribe invitationem et responsum, additis die, hora, loco, consilio tempestatis et cibo necessario aut vitando.
+Navicula viatores ad Portum tulit. Livia, Publius, Prima et Quintus non transierunt; e ripa manus sustulerunt. Tertia eos diu vidit, deinde canalis flexit. Prima profectio a familia sine festo et sine pompa coepit.
 
-LECTIO XX — SIGNA ET SCRIPTA
+Fortuna in lacu hexagono stabat. Rota alba in puppi recens picta erat. Menander indicem accepit et arcas in ponte numerari iussit. Nautae pondera in utraque parte navis distribuerunt. Merces gravissimae infra, leviores supra positae sunt.
 
-In vico Puteolano multa signa leguntur: “Cave canem”; “Hic aqua non potabilis”; “Horrea post occasum clauduntur”; “Merces sine sigillo ne accipiantur.” Quaedam picturas habent, ut etiam qui lente legunt periculum intellegant.
+Hilarus ad scalam constitit. Magnitudo navis eum terruit, quamquam eam antea e ripa viderat. Marcus primus ascendit et manum porrexit. Tertia post Hilarum transiit. Pons sub pedibus movebatur, sed uterque sine casu ad pontem pervenit.
 
-Tertia animadvertit signum vetus paene deletum esse. Custodi dicit litteras maiores et colorem contrarium necessarios esse. Non satis est signum adesse; videri et intellegi debet antequam homo ad periculum perveniat.
+Menander loca viatorum ostendit. Sextus parvum cubiculum cum rationibus habebat. Tertia et Marcus sub velo prope puppim sederent. Hilarus iuxta nautam Chionem maneret, qui tesseras navis curabat. Nemo inter funes ambularet sine causa.
 
-Ne cum coniunctivo mandatum negativum exprimit. Qui hic sine antecedente expresso eos qui lente legunt significat; quod ad antecedens neutri generis vel ad sententiam totam referri potest. Iudica quinque signa ficta: suntne clara, brevia, loco apto posita? Rescribe duo.
+Ventus nondum satis erat. Navis funibus ad molum tenebatur, dum sol oriebatur. Tertia horrea in aqua repercussa vidit. Mensae cibariae aperiebantur, plaustra veniebant, custodes portas mutabant. Portus dies suus sine respectu profectionis incipiebat.
 
-LECTIO XXI — FABULA LOCI
+Hora tertia Menander signum dedit. Remulco parvo navis e loco tracta est; nautae funes solverunt. Fortuna lente ad canalem exteriorem movit. Rota puppis praeter columnas et horrea transiit. Sextus in tabula horam notavit.
 
-Gnaeus hospites ad amphitheatrum ducit. Non recitat textum antiquum, sed suis verbis narrat quomodo oppidum creverit. Cum amphitheatrum aedificatum est, portus iam creverat: antea minor fuerat; mercatores ex multis regionibus venerant, horrea aedificata erant, viae frequentiores factae erant.
+Ad molis finem vela aperta sunt. Linum primo sonuit, deinde vento plenum est. Navis celerius processit. Tertia terram adhuc prope videbat, sed aqua sub ea iam aliter movebatur. Mare latius quam lacus portus patebat.
 
-Tertia quaerit unde haec sciat. Gnaeus inscriptiones, memoriam familiae et rationes collegii nominat, sed addit non omnia aeque certa esse. “Quod avus narravit carum est,” inquit, “memoria tamen res interdum mutat.”
+Marcus palluit, sed nihil dixit. Hilarus malum manu tenere voluit; Chion eum ad sedile duxit. Menander omnes monuit primam horam corpori novam esse. Syra panem parvum dederat, sed nemo statim edere cupiebat.
 
-Quomodo et unde quaestiones obliquas ducunt. Plusquamperfectum eventum vel statum ante aliud tempus praeteritum ponit: creverat, fuerat, venerant. Scribe historiam loci ficti in tribus partibus: antea, mutatio, nunc. Adde fontem et dubitationem unam.
+Portus post eos minor factus est. Moles in lineam conversa est, horrea in puncta. Tertia concham in sacculo tetigit, non quia auxilium magicum exspectabat, sed quia litus notum memorabat. Fortuna ad meridiem vela dedit.
 
-LECTIO XXII — SERMO AD COLLEGIUM
+Sextus antequam terra evanuit singulos sigillos in tabula sua signavit. Menander cursum acus non habebat sicut nautae futuri; litus, ventum, solem et usum longum sequebatur. Tertia vidit scientiam eius in oculis, memoria et consilio consistere. Instrumenta adiuvarent, sed magister ea aetate mare per signa naturae legebat.
 
-Sextus vult collegium mercatorum novas capsas contra aquam emere. Ipse numeris loqui paratus est, sed Tertiam rogat ut initium sermonis faciat. Ea rem recentem narrat: tempestas duas amphoras fregit, sed membranae in capsis ceratis servatae sunt.
+Capitulum 8: Dies primus in mari
 
-Deinde argumentum simplex ponit. Capsae cariores sunt, sed damnum minuunt et iterum adhiberi possunt. Non dicit eas omne periculum tollere. Collegium quinque capsas primo experiri constituit, ut pretium et utilitas comparentur.
+Mare primo placidum erat. Fluctus navem leviter tollebant. Tertia ad horizontem spectabat et paulatim motui assuevit. Marcus post horam panem edit. Hilarus adhuc tacebat, sed color in vultum redierat.
 
-Sermo persuasorius rem, exemplum, rationem et petitionem habet. Coniunctivus ut comparentur propositum indicat. Para orationem duorum minutorum pro mutatione parva; adde commodum, incommodum et experimentum.
+Menander cursum prope litus tenebat. Tecta Laurenti procul apparebant, deinde silvae et harena. Nautae loca ex forma terrae agnoscebant. Unus turrem albam nominavit; alter ostium parvi fluminis. Tertiae omnia similia videbantur.
 
-LECTIO XXIII — QUERELA ET RESPONSUM
+Sextus rationes sub velo aperuit. Tabula patris in capsa manebat, sed exemplar cum eo erat. Tertia nomina et summas iterum legit. Marcus litteras ad Philonem et Calvum ordinavit. Hilarus tesseras mercium cum indice Menandri comparavit.
 
-Ante reditum Sextus epistulam accipit. Emptor queritur tres lucernas fissas advenisse. Dicit capsam integram fuisse, itaque putat vitium ante missionem ortum esse. Sextus primum defendere se vult; Tertia suadet ut delineationem fissurarum et numerum sigilli petat.
+Arca lucernarum numero XII sub ponte recte ligata erat. Lana Sabinae in saccis XX et XXI iacebat. Capsa epistularum numero XXXV sigillum integrum habebat. Hilarus singula digito non tetigit; ex loco tuto numeros legit.
 
-Responsum civile scribunt: querelam agnoscunt, indicia petunt, duo remedia offerunt. Si vitium officinae confirmabitur, novas lucernas sine pretio mittent; sin damnum in itinere factum erit, cum vectore agent. Emptor fissuras delineat et tabellam mittit; officina culpam agnoscit.
+Ad meridiem nautae puls e magna olla sumpserunt. Aqua et vinum modice mixtum dabantur. Tertia parum edit, deinde melius se habuit. Menander ipse cum aliis eandem cenam sumpsit. In nave parva nullum triclinium erat.
 
-Si… sin duas condiciones opponit. Confirmabitur forma passiva futuri est. Scribe querelam non iratam et responsum utile: res, tempus, indicium, petitio, quid deinde agendum sit.
+Chion Hilari nomina ventorum dixit. Auster calidus ex meridie veniebat, aquilo frigidior e septentrione, favonius ab occidente vere saepe utilis erat. Hilarus ea in tabula notavit, sed Chion risit: ventus tabulas non semper sequitur.
 
-LECTIO XXIV — RELATIO ITINERIS
+Post meridiem nubes tenues a latere apparuerunt. Menander eas diu observavit. Nondum periculum videbat. Tamen unum velum minui iussit, ut ante noctem navis facilius regeretur. Nautae sine clamore funes mutaverunt.
 
-Ostiam reversa Tertia familiam, Hilarum et magistrum convocat. Primum epistulam Gnaei clara voce legit, in qua ille suadet ut capsae probentur. Deinde iter ordine narrat: cur terra profecti sint, quid in mansione acciderit, quomodo tempestas merces laeserit, qua ratione arca perdita inventa sit.
+Tertia primam epistulam ad Liviam mente parabat. De Portu, vela data et prandio scriberet. Mare neque monstrum neque campus quietus erat. Singulis horis vultum paulum mutabat. Hanc rem verbis simplicibus tradere volebat.
 
-Publius quaerit utrum capsas emere utile futurum sit. Tertia numeros ex tabulis comparat et experimentum quinque capsarum proponit. Hilarus partem de salute viatorum explicat. Familia post relationem diem festum parat et de itinere futuro consilia facit.
+Vespere litus propius petiverunt. Antium adhuc multum aberat, sed parva statio sub promunturio erat. Menander noctem in mari agere poterat; tamen ventum futurum incertum putabat. Sextus consilium eius sine querela accepit.
 
-Exercitatio coniuncta: textum primum tacite lege et tempora verbalia, casus nominum, verba conexiva nota. Scribe relationem centum quinquaginta verborum cum ordine, causa, difficultate, remedio, consilio. Deinde socius textum novum semel clara voce legat, vel tu ipse eum lege; exemplari clauso nomina, numeros, loca et eventus recordare. Orationem duorum minutorum redde. Si vis, quaestiones Publii et responsa Tertiae dialogo age; aliter responsa scripta sufficiunt.
+Sol post navem cecidit. Lucernae sub velo accensae sunt, sed procul a funibus et pice. Tertia pallium circum umeros posuit. Prima nox in Fortuna sonos novos habuit: aquam contra latus, lignum crepitans, funes tensos et gradus custodis.
+
+Syrae sacculum aperuerunt et panem tostum in quattuor partes diviserunt. Sal maris in labris iam erat, sed sal cibi aliter sapiebat. Hilarus primum totius diei iocum fecit: Syra etiam absentis navis cenam regere poterat. Risus brevis timorem noctis non delevit, sed spatium inter fluctus aperuit.
+
+Capitulum 9: Nubes ab austro
+
+Nocte Tertia saepe experrecta est. Navis non stabat, quamquam ancora deiecta erat. Fluctus eam paulum movebant. Menander duos nautas per vices vigilare iusserat. Lucerna parva in puppi semper ardebat.
+
+Ante lucem ventus mutatus est. Ab austro venit et odorem pluviae ferebat. Nubes quae heri tenues erant nunc densiores apparebant. Menander terram petere constituit. Parvus sinus prope Antium navem recipere poterat.
+
+Vela minora data sunt. Fortuna celerius quam heri movebatur, sed motus asperior erat. Tertia sub velo sedebat. Marcus capsam chartae inspiciebat, ne aqua per operculum intraret. Hilarus cum Chione nodos exteriores oculis tantum sequebatur.
+
+Prima pluvia levis fuit. Deinde guttae magnae in pontem ceciderunt. Nautae paenulas gerebant et funes ad loca certa trahebant. Menander voce clara mandata dabat. Nemo extra officium suum currere conabatur.
+
+Una arca paulum movit. Funis eam tenuit, sed lignum contra alteram arcam pulsavit. Hilarus sonum audivit et Chioni dixit. Nautae cuneum addiderunt. Arca lucernarum erat; fragilitas mercium omnes sollicitavit.
+
+Litus iam videbatur, tamen introitus sinus angustus erat. Piscatoriae naves parvae intus steterant. Menander remiges paravit et vela contrahi iussit. Fortuna vento non sola intrare poterat. Navicula loci funem accepit et puppim direxit.
+
+Tertia aquam fuscam circa moles vidit. Imber caelum et mare quasi una cortina iungebat. Timor aderat, sed non clamor inanis. Marcus iuxta eam sedebat et indicem capsarum sub pallio tenebat. Hilarus nomen matris semel susurravit.
+
+Post longam horam Fortuna intra sinum ligata est. Vela madefacta pendebant. Nautae aquam e ponte removebant. Menander singulos homines numeravit. Nemo deerat, nemo graviter laesus erat. Unus nauta manum leviter attriverat et a comite curabatur.
+
+Sextus arcas aperire noluit, donec imber minueretur. Exteriora tamen inspexit. Arca XII angulum fractum habebat. Capsa chartae sicca videbatur. Saccus lanae exterior madefactus erat, sed pannus ceratus partem interiorem tegebat.
+
+Tertia ad terram descendit, cum pons firmatus esset. Genua post motum navis incerta erant. Sub porticu parvae stationis viatores sederunt. Antium ipsum procul erat; locus tantum navibus tempestatem vitantibus serviebat. Hic saltem noctem tutiorem exspectarent.
+
+In porticu piscator senex pallia madida super funem suspendebat. Viatoribus locum sine pretio dedit, sed monuit tectum in angulo stillare. Marcus capsas procul ab illo loco posuit. In tempestate hospitalitas non in cena splendida, sed in paucis pedibus terrae siccae consistebat. Tertia nomen senis, Laetum, in epistula sua postea servavit.
+
+Laetus navem suam parvam extra sinum reliquerat et de ea sollicitus erat. Fortuna maiorem tutelam intra moles habebat; pauperior piscator totum victum in ligno levi posuerat. Tertia intellexit eandem tempestatem damnum diversum minari. Tria vasa fracta Sexto molesta erant, sed navis perdita Laeto vitam mutaret.
+
+Capitulum 10: Statio apud Antium
+
+Statio tres cellas, stabulum et porticum habebat. Caupo nomine Afer aquam calidam, panem et pulmentum vendebat. Cubicula omnia a piscatoribus occupata erant. Viatores Fortunae sub porticu vel in nave manere debebant.
+
+Sextus pretium stramentorum et cibi ante noctem constituit. Afer summam in tabula scripsit. Marcus eam legit; numerus aquae omnibus danda includebatur. Postea nemo de pretio mutato disputare deberet.
+
+Menander cum nautis apud navem mansit. Vela extendi non poterant propter pluviam, sed funes inspiciebantur. Arca XII ad cellam siccam portata est. Castoris sigillum in angulo integrum, lignum tamen fissum erat.
+
+Tertia et Hilarus fragmenta ligni collegerunt, ne tessera numeri amitteretur. Sextus ante apertionem duos testes vocavit: Afer cauponem et Chionem nautam. Marcus statum arcae in tabula notavit. Deinde funis solutus est.
+
+Intus palea madida in uno latere erat. Ex quadraginta lucernis tres fractae erant, quinque leviter scalptae, ceterae integrae. Oleum non inerat; ideo nulla res effusa erat. Tertia numeros dixit, Hilarus eos iterum confirmavit.
+
+Castor singulas lucernas tessera parva notaverat. Fractae erant numeris VII, VIII et XII. Omnes prope angulum laesum iacebant. Causa probabilis erat pulsus duarum arcarum, non vitium furni. Tamen Castor postea imagines fissurarum acciperet.
+
+Marcus brevem relationem scripsit. "In statione maritima prope Antium, post imbrem et motum arcae, tres lucernae fractae repertae sunt." Afer et Chion signa sua addiderunt. Nullus textus de culpa definitiva loquebatur.
+
+Hilarus se culpabat, quia sonum tantum post primum pulsum nuntiaverat. Chion respondit eum pulsum ipsum impedire non potuisse. Funis ante tempestatem recte ligatus videbatur, sed cuneus laxatus erat. Navis movebatur; res etiam sub cura mutari poterant.
+
+Vespere imber cessavit. Nubes tamen mare texerunt. Viatores sub porticu stramenta posuerunt. Tertia epistulam brevem Liviae scripsit, sed cursor statim non erat. Narravit eos apud Antium in statione manere, navem salvam esse et tres lucernas fractas inveniri.
+
+Nocte Afer fabulam de nave olim ibi servata narrare coepit, sed omnes nimis fessi erant. Tertia sonum stillarum e tecto audivit. Mare post murum adhuc fremuit. Tamen lapis sub ea non movebatur, et somnus tandem venit.
+
+Ante somnum Marcus relationem sub capite, non in capsa communi, posuit; cera adhuc mollis erat et planari poterat. Tertia fragmentum lucernae in panno involvit. Res vilis videbatur, sed fissurae locum pulsus monstrabant. Hilarus autem tesseram XII ad zonam tenuit, quasi numerus ipse arcam custodiret.
+
+Capitulum 11: Tabellae post tempestatem
+
+Mane caelum clarius erat. Menander navigationem nondum statim continuavit. Vela siccari, arca refici et ventus probari debebant. Sextus unum diem in statione manere constituit. Mora sumptum augebat, sed merces et homines priores erant.
+
+Faber loci lignum novum ad angulum arcae posuit. Vetus tessera XII servata est; novam quoque fecit et iuxta veterem ligavit. Marcus in ratione utramque descripsit. Arca iam signa itineris portabat.
+
+Lana Sabinae aperta est. Pannus exterior madidus erat, sed tantum duo fasciculi umorem acceperant. Eos sub porticu extenderunt. Color non fluxit. Tertia particulam lanae ad epistulam Sabinae addere noluit, ne documentum inutile fieret; verba satis erant.
+
+Capsa chartae intus tota sicca manserat. Cera circa marginem una in parte pressa erat, sed non fracta. Marcus folia numeravit. Exempla Puteolana et litterae Publii aderant. Tabula patris in alia capsa etiam integra erat.
+
+Sextus relationem damni cum indice mercium iunxit. Tres lucernae pretium habebant, sed etiam destinatum emptorem. Gnaeus Philo viginti lucernas acceperat, alius mercator reliquas. Sextus novas distributiones scribere debuit.
+
+Tertia proposuit lucernas scalptas non pro integris vendi. Castor pretium earum constituerat, sed emptor vitium videre deberet. Sextus consensit. In tessera quinque lucernarum verba "margo laesus" addita sunt. Nihil occultaretur.
+
+Hilarus tabulam suam vento paene amisit. Folium ligneum e manu elapsum per porticum volavit. Afer pede id tenuit antequam in aquam caderet. Post hoc Hilarus tabulam filo ad zonam ligavit. Omnis dies novum modum curae afferebat.
+
+Cursor ad Antium meridie venit. Is Romam postridie iturus erat. Tertia epistulam ei tradidit, cum nomine Liviae et tabernae Publii. Sextus quoque nuntium de mora misit. Afer cursoris nomen et diem in tabula stationis notavit.
+
+Menander post meridiem ventum probavit. Navicula parva extra sinum ivit et rediit. Mare adhuc asperum, sed minuens erat. Si nox quieta fieret, Fortuna prima luce proficisceretur. Nautae vela iam sicca complicaverunt.
+
+Ad cenam Tertia minus timebat quam nocte prior. Tempestas iam factum praeteritum erat, sed vestigia circa eam manebant: lignum novum, lana suspensa, relatio Marci, vultus fessi. Iter non ad statum pristinum redierat; cum mutationibus procederet.
+
+Caesia ex mansione Asturae non aderat, sed modus eius pretia palam scribendi Aferi quoque placuit. Is post querelam piscatoris tabulam cibi correxit, quia panis in summa bis positus erat. Error parvus statim visus est. Viatores intellexerunt rationes claras non tantum magnis debitis, sed etiam cenae cotidianae prodesse.
+
+Capitulum 12: Via mutatur
+
+Prima luce mare adhuc fluctus altos habebat. Menander ad meridiem exspectavit. Tum nuntius a statione australi venit: ventus in promunturio fortior erat, et duae naves parvae ad terram redierant. Magister iter maritimum differre constituit.
+
+Sextus diem alterum perdere nolebat, sed Menandri iudicium de nave accepit. Fortuna apud Antium maneret cum parte mercium. Viatores autem tabulam patris et exempla chartae terra ad Tarracinam ferre poterant. Ibi aut navem exspectarent aut Via Appia ad Capuam procederent.
+
+Consilium divisum pericula quoque dividebat. Castoris lucernae et lana Sabinae in Fortuna manerent. Epistulae privatae sine Sexto non moverentur. Capsa A cum ratione patris, capsa B cum charta et una arca vestium plaustro ferrentur.
+
+Afer vectorem fide dignum nominavit, Fulvium Longum. Is vinum ab Antiatibus ad Tarracinam portabat et quattuor viatoribus locum habebat. Plaustrum tectum erat, sed lente ibat. Pretium usque ad mansionem Formianam ante testes constitutum est.
+
+Menander Sexto tabellam dedit. Fortuna, ubi mare melius fieret, eos in portu Tarracinae quaereret. Si intra tres dies non adesset, Sextus per terram ad Puteolos pergeret et nuntium in horreo certo relinqueret. Loca et dies clare scripti erant.
+
+Hilarus navem relinquere nolebat. Cum Chione amicitia parva orta erat, et mare post timorem vincere cupiebat. Tamen Sextus eum ad tabulas necessarium putabat. Chion ei partem funis cum nodo simplici dedit. "Iter redire potest," dixit.
+
+Tertia quoque dubitavit. Via terrae longior erat, sed pedes super solum firmum gaudebant. Intellexit iter non minus verum esse si navis partem eius non faceret. Propositum Puteolos attingere et rem Calvi explorare manebat.
+
+Arcae e nave sub oculis Menandri translatae sunt. Marcus sigilla ante et post motum inspexit. Fulvius numeros in ratione sua addidit. Diodori error omnibus memor erat, itaque nemo festinationem permisit.
+
+Fortuna post eos in sinu mansit. Rota alba inter malos aliarum navium apparebat. Sextus Menandro manum dedit, non quasi dominus servo, sed quasi mercator magistro cui navem commiserat. De die futuro certi non erant.
+
+Plaustrum ad meridiem movit. Via iuxta mare primo tendebat, deinde inter agros intravit. Tertia e velo posteriori Antium recedere vidit. Iter mutatum erat, non fractum. Prima pars maritima in ligno arcae et in relatione secum ibat.
+
+Menander ante discessum Tertiae parvum calculum nigrum dederat, quem in puppi ad numeros adhibebat. "Reddetur Puteolis," dixerat. Donum igitur non erat, sed promissum conventus. Tertia eum in sacculo separato posuit. Si Fortuna aliam viam sequeretur, calculus saltem expectationem certam servaret.
+
+Sextus exemplum indicis Menandro reliquit et alterum secum tulit. Linea rubra merces quae in nave manebant a capsis terrestribus separabat. Si nuntius de damno veniret, statim appareret ad quam partem pertineret. Unum iter in duas rationes divisum erat, sed uterque finis ad eundem dominum redibat.
+
+Capitulum 13: Plaustrum Fulvii
+
+Fulvius Longus vir quadraginta annorum erat. Faciem sole fuscam et vocem quietam habebat. Duos mulos regebat, Albam et Picum. Vinum in octo amphoris portabat. Capsae viatorum inter amphoras funibus separatae erant.
+
+Via primo plana fuit. Hinc mare inter arbores apparebat, illinc villae et agri. Fulvius singula milliaria noverat. Non semper numerum dicebat; ex puteo, pinu curva aut sepulcro familiari locum agnoscebat.
+
+Tertia et Marcus in tergo sedebant. Sextus prope Fulvium erat. Hilarus interdum ambulabat, ut muli minus onerarentur. Capsae tamen numquam sine uno viatore relinquebantur. In stationibus alius cibum petebat, alius merces servabat.
+
+Ad primum pontem plaustrum restitit. Rota sinistra sonum asperum faciebat. Fulvius vehiculum ad latus viae duxit et axem inspexit. Clavus laxus erat. Instrumenta ex arca sua sumpsit et rem sine magna mora composuit.
+
+Sextus pretium operis extra pactum offerre voluit. Fulvius recusavit; plaustrum suum erat et cura ad eum pertinebat. Tantum tempus in ratione itineris addi debebat. Marcus horam et causam notavit. Sol paulo altius ascendit.
+
+Meridie sub ilice quieverunt. Cibum e statione sumpserant: panem durum, caseum et mala. Fulvius mulis aquam dedit antequam ipse bibit. Hilarus Picum manu tangere conatus est; mulus aures retraxit, itaque iuvenis spatium reliquit.
+
+Fulvius de via maritima narravit. Aestate plena erat mercatoribus; hieme aqua partes eius tegebat. Latrones aliquando apparebant, sed viatores in grege et luce procedentes minus petebantur. Hac die tria alia plaustra prope erant.
+
+Sub vesperum grex militum eos praeteriit. Ad stationem maritimam ibant, non ad bellum. Unus miles numerum amphorarum rogavit, quia via publica custodiebatur. Fulvius tabellam vecturae ostendit. Mora brevis fuit.
+
+Tertia corpus fessum sensit, quamquam tota die sedebat. Motus plaustri alius quam motus navis erat: durior, pulverulentus, sed minus incertus. In veste filum purpureum Primae invenit et digito tenuit.
+
+Ante noctem ad parvam mansionem prope Asturam pervenerunt. Ibi duo cubicula libera erant et area clausa plaustris. Fulvius amphoras numeravit. Sextus capsas inspexit. Omnia aderant. Primus dies terrae sine novo damno finitus est.
+
+In area erant etiam boves cuiusdam agricolae et asinus cursoris. Fulvius locum capsis inter parietem et plaustrum elegit, ubi animal eas tangere non posset. Hilarus primam vigiliam cum eo egit. Iter terrestre ignem, lutum, rotas et manus alienas timebat; mare alias curas habuerat. Custodia formam mutaverat.
+
+Capitulum 14: Mansio ad Asturam
+
+Mansionem Caesia Fortunata regebat, liberta quae maritum ante quinque annos amiserat. Duo filii stabula curabant, filia rationes scribebat. Caesia viatores singulos salutavit et pretia in pariete ostendit.
+
+Cubiculum Tertiae cum parva fenestra hortum spectabat. Stramentum siccum erat, sed paries odorem fumi tenebat. Marcus et Hilarus in cella iuxta stabula manserunt. Sextus cum Fulvio in porticu dormiturus erat, prope merces.
+
+Caesia epistulas cursoribus tradebat. Tertia nuntium alterum ad Liviam scribere potuit. Narravit viam mutatam, Antium relictum et mansionem Asturae attactam esse. De Fortuna nondum certum nuntium habebant.
+
+Filia Caesiae, Tatia, epistulam accepit et diem in tabula posuit. Cursor Romam postridie mane iret. Tatia signum mansionis, parvam arborem, in cera impressit. Tertia concham suam iuxta nomen posuit.
+
+Ad cenam Caesia piscem, fabas et panem dedit. Fulvius de rota refecta narravit. Sextus de vento quaesivit. Piscatores loci mare postridie quoque asperum futurum putabant. Haec opinio Menandri cautelam confirmabat.
+
+Alius hospes, mulier nomine Tullia Secunda, ad Tarracinam sola cum duobus servis iter faciebat. Maritus mortuus ei officinam purpurae reliquerat. Nunc cum emptore de pretio agebat. Tullia viam saepe fecerat et loca tuta noverat.
+
+Ea Tertiae dixit mulierem negotiis intentam in viis miram videri quibusdam, sed non inauditam esse. Ipsa instrumentum publicum et sigilla semper secum ferebat. Servi tamen libertatem non habebant, quamquam itineris periti erant. Tertia distinctionem animadvertit.
+
+Tullia nomen Numerii Calvi audivit. Mercatorem diligentem sed durum in pactis esse dicebat. Nullam fraudem noverat. Patrem eius, Numerium Maiorem, olim oleum vendidisse meminerat. Filius rationes veteres nuper ordinabat.
+
+Haec notitia petitionem explicare poterat. Calvus fortasse debitum inter tabulas patris tantum nuper invenerat. Tertia nomen Tulliae inter personas quae Calvum noverant scripsit, non autem ut testem solutionis. Mulier rem ipsam non viderat.
+
+Nocte ventus valvas pulsavit. Tertia in lecto firmo iacens mare prope audire potuit. Fortuna eodem vento in sinu tenebatur. Iter eorum autem mane terra continuaretur. Duae partes eiusdem consilii iam diversis horis vivebant.
+
+Caesia mane viatoribus tabellam mansionis dedit. In ea non solum pretium, sed etiam capsas duas integras relictas esse scriptum erat. Sextus hoc testimonium non postulaverat; ipsa post incendium olim ab hospite iniuste accusata talem morem instituerat. Experientia privata rationem domus mutaverat.
+
+Capitulum 15: Tarracina sub monte
+
+Postridie Tulliae plaustrum cum Fulvii plaustro coniunctum est. Via per silvas et agros ad Tarracinam duxit. Grex maior tardior erat, sed plures oculos et manus habebat. Servi Tulliae, Eros et Pamphilus, loca aquae noverant.
+
+Meridie promunturium altum apparuit. Sub eo Tarracina inter mare et montem stabat. Via Appia ex septentrione ad urbem veniebat et deinde ad meridiem per saxa procedebat. Multi viatores in foro parvo conveniebant.
+
+Fulvius vinum ad cauponem tradidit. Amphorae numeratae sunt, et caupo sigilla inspexit. Una ansa in itinere scalpta erat, sed vas integrum mansit. Fulvius pretium accepit et tabellam solutionis Sexto ostendit, quia pactum vecturae ad hunc locum finiebatur.
+
+Capsae A et B autem ad Puteolos adhuc ferri debebant. Sextus Fulvium rogavit ut iter continuaret. Vector aliud negotium Tarracinae habebat et biduum manere volebat. Pretium novum igitur statim constituere non potuit.
+
+Tullia ad Formias post unam noctem proficiscebatur. Plaustrum eius satis spatii pro duabus capsis habebat, sed quattuor viatores pedibus aut in vehiculo conducto sequi deberent. Eros duas vecturas loci noverat.
+
+Sextus ante decisionem portum petivit. Fortuna nondum aderat. Custos nullum nuntium Menandri acceperat. Mare extra moles adhuc album fluctibus erat. Menandrum apud Antium mansisse verisimile erat.
+
+In horreo certo tabellam reliquerunt: Sextus cum sociis Via Appia ad Formias procederet; post tres dies Minturnis nuntium quaereret. Si Fortuna navigaret, Menander merces ad Puteolos directe ferret. Dies et signa capsarum addita sunt.
+
+Tertia urbem sub monte paulisper vidit. In foro vendebantur pisces, sal et fructus agrorum Pomptinorum. Supra tecta templum apparebat. Viae angustae plenae erant mulorum. Ea ad spectacula non venerat, tamen locum mente servavit.
+
+Vespere Tullia condiciones proposuit. Capsas sine pretio in plaustro ferret, quia spatium vacuum erat; viatores autem cibum suum emerent et, si rota laederetur, moram acciperent. Sextus munus gratum accepit et epistulam de futuro commercio ei postea scribere promisit.
+
+Sub porticu mansionis Tertia indicem mutavit. Nomen Fulvii clausit, nomen Tulliae et servorum addidit. Capsae eaedem erant, custodes mutabantur. Iter tale erat: nulla linea per totam paginam recta manebat, sed finis adhuc idem erat.
+
+Fulvius ante discessum Picum et Albam a viatoribus salutari passus est. Muli totum pondus tulerant, sed in rationibus tantum plaustrum nominabatur. Tertia nomina animalium in nota sua addidit, non quia documentum negotii id requirebat, sed quia iter sine eis aliter narrari non poterat.
+
+Tullia tabellam Fulvii quoque accepit, ne dubium esset quo loco capsas suscepisset. Femina et vector sigilla diversa posuerunt. Tertia vidit translationem mercium quasi manuum iunctionem fieri: prior custodia finiebatur ubi altera incipiebat. Spatium sine nomine inter eas non relinquebatur.
+
+Capitulum 16: Tabella Menandri
+
+Mane, paulo ante profectionem, puer e portu cucurrit. Tabellam rota alba signatam ferebat. Menander eam per naviculam piscatoriam miserat. Fortuna apud Antium tuta manebat et postridie, si ventus caderet, Tarracinam peteret.
+
+Sextus iam Via Appia proficisci constituerat. Responsum scripsit: viatores ad Formias cum Tullia irent, deinde Minturnis die quarto nuntium relinquerent. Menander merces Puteolos ferret, nisi navis aliam moram haberet.
+
+Tertia sua manu lineam Liviae addidit, si tabella aliquando Ostiam remitteretur. "Adhuc bene valemus; via nunc terra ducit." Menander fortasse epistulam servaret. Nulla via certa ad familiam ex hoc nuntio erat, sed verba saltem apud amicum manerent.
+
+Plaustrum Tulliae hora tertia movit. Eros mulos regebat. Pamphilus post vehiculum ambulabat. Tullia in parte anteriori sedebat, Tertia iuxta eam. Viri pedibus alternis ibant, quia via ascendebat.
+
+Via sub monte in saxo incisa erat. In quibusdam locis mare longe infra lucebat. Plaustra sibi obviam aegre transibant. Eros ante angustum locum voce signum dabat. Vector ex altera parte respondebat, et unus exspectabat.
+
+Tullia de officina sua narravit. Conchae purpurae odorem gravem faciebant. Color pretiosus erat, sed labor operariorum durus. Non omnes vestes tota purpura tingebantur; saepe tantum fascia vel filum, sicut in tunica Tertiae, colorem habebat.
+
+Tertia filum Primae ostendit. Tullia dixit colorem ex planta, non ex concha, factum videri. Vilior erat, sed ad marginem interiorem aptus. Pretium non solum pulchritudinem, sed materiam, laborem et famam sequebatur.
+
+Ad meridiem viatores fontem iuxta viam invenerunt. Aqua publica per canalem e monte veniebat. Multi ibi quieverunt. Sextus tabulam patris e capsa non tulit; calor ceram mollire poterat. Pannos circa eam tantum inspexit.
+
+Post fontem descensus lenior factus est. Campi et vineae aperti sunt. Ventus maris post montem minor erat. Hilarus primum post tempestatem cantum brevem susurravit, quem Chresimus in horto Liviae cecinerat.
+
+Vespere ad fundum parvum pervenerunt, ubi Tullia hospitium ex epistula iam paraverat. Dominus nomen eius in tabula habebat. Cubicula non pulchra, sed munda erant. Tabella Menandri in capsa A posita est, iuxta rationem veterem; praesens iter praeteritae quaestioni sociabatur.
+
+Tullia in cena epistulam negotiatoris aperuit. Is pretium purpurae minuere volebat propter colorem quem pallidum dicebat. Mulier particulam lanae iuxta verba posuit et respondit se colorem in luce diei comparaturam esse. Tertia vidit etiam negotiatricem peritam documentum cum re ipsa iungere.
+
+Capitulum 17: Hospites in fundo
+
+Fundus oleum et vinum faciebat. Dominus, Publius Aponius, Tulliae amphoras saepe vendebat. Hospites in cellis supra horreum dormiebant. Sub eis servi fundi dolia movebant. Sonus laboris usque ad vesperum mansit.
+
+Aponius Sextum agnovit. Ante annos quattuor in Portu cum eo egerat. De Numerio Calvo quoque audiverat. Patrem Calvi virum accuratum appellavit, qui solutiones duplici signo notare solebat: litteris in tabula et tessera in amphora.
+
+Sextus rogavit num Aponius solutionem centum amphorarum vidisset. Ille negavit. Eo tempore in Hispania fuerat. Tantum morem Numerii Maioris noverat. Hoc indicium ad consuetudinem pertinebat, non ad rem singularem.
+
+Tertia tamen tesseram amphorae quaerendam esse intellexit. Si oleum pro parte debiti redditum erat, tessera Numerii fortasse in horreo Philonis aut Calvi servabatur. Lignum parvum per decem annos facilius quam cera perire potuerat, sed quaerendum erat.
+
+Marcus nomen tesserae in indice quaestionum addidit. Hilarus recordatus est in tabula patris verba "oleo redd." fuisse. Fortasse oleum non merx empta, sed solutio reddita erat. Verbum breve nunc maiorem vim habebat.
+
+Ad cenam servi fundi separatim ederunt. Tertia Myrinam matrem Hilari cogitavit. Hilarus unum puerum interrogavit unde venisset; puer ex Sardinia captus non erat, sed in fundo natus erat. Matrem in alio fundo habebat. Sermo mox a vilico finitus est.
+
+Hilarus iratus mansit, sed nihil statim facere poterat. Tertia iuxta eum sub porticu sedit. Uterque sciebat libertatem eius non omnes alios liberare. Iter mercatorum super laborem multorum servorum procedebat, quorum nomina in rationibus saepe deerant.
+
+Tullia postea Aponium rogavit ut nomina operariorum, quibus merces specialis promissa erat, in tabula poneret. Hoc ad negotium suum pertinebat: amphorae cito parandae erant. Gestus parvus ordinem servitutis non mutavit, sed saltem promissum certis hominibus alligavit.
+
+Nocte Tertia epistulae formam in tabula paravit. Matri de pulchris montibus scribere poterat, sed etiam de puero sine matre cogitabat. Omnia itineris in unam fabulam laetam cogere noluit. Locos pulchros et vitam iniquam simul viderat.
+
+Mane Aponius viatoribus amphoram parvam olei donavit. Sextus eam numero novo notavit, ne cum merce Calvi confunderetur. Tertia risit: post tot verba de amphoris, etiam donum simplex rationem requirebat. Via ad Formias continuata est.
+
+Aponius puero Sardo sportam ad plaustrum ferre iussit. Sextus ei nummum parvum dedit, quem vilicus auferre conatus est. Aponius, re animadversa, nummum puero manere permisit. Tertia sciebat hoc libertatem non dare; tamen facies pueri paulisper mutata est. Res minima inaequalitatem totam simul ostendit.
+
+Capitulum 18: Formiae et epistula matris
+
+Formiae inter colles et mare iacebant. Villae divitum in litore apparebant, sed viatores ad forum et stationem vecturae ierunt. Tullia ibi ab eis discedebat. Officium eius ad negotiatorem purpurae prope portum ducebat.
+
+Sextus gratias egit et tabellam promissi dedit. Tullia nullam pecuniam pro capsis acceperat, sed commercium futurum inter eos ortum erat. Eros et Pamphilus funes solverunt. Hilarus eos nomine salutavit, non tantum ut servos Tulliae.
+
+In statione cursor ex Roma epistulam Tertiae habebat. Livia nuntium Asturensem iam acceperat et ad stationes Viae Appiae responsa miserat. Casu secundo epistula Formias ante puellam venerat. Sigillum avis integrum erat.
+
+Livia scribebat omnes Ostiae valere. Epistula ex Antio de tempestate etiam venerat. Castor de tribus lucernis fractis non irascebatur; relationem claram laudabat. Prima filum alterum pro tunica mittebat, si primum laesum esset.
+
+Claudia quoque pauca verba addiderat, quia nuntius per Capuam transierat. Mater iter terra factum audiverat et Tertiam, si Via Appia prope domum veniret, unum diem manere rogabat. Sextus huic morae consentire poterat, si res Calvi tempus sineret.
+
+Puteoli iam intra paucos dies attingi poterant. Via per Minturnas, Sinuessam et Capuam ducebat. Sextus constituit in Capua unam noctem apud Gaium manere. Ita parentes Tertiam viderent et viatores quietem acciperent.
+
+Marcus stationem vecturae exploravit. Plaustrum ad Minturnas post meridiem proficiscebatur, sed tantum duas personas capiebat. Alterum vehiculum mane sequenti omnibus locum dabat. Sextus celeritatem minorem et custodiam communem elegit.
+
+Interea capsas in horreo publico ad breve tempus posuerunt. Custos numeros, sigilla et pondus accepit. Tabella receptionis duplicata est. Hilarus cum custode mansit, dum ceteri cibum et hospitium quaerebant.
+
+Tertia cum Marco litus paulisper vidit. Mare post tempestatem placidum erat. Fortasse Fortuna eodem tempore Tarracinam transibat. Nullum signum navis apparebat. Tertia tamen Menandro nunc fidebat; mora eius eos servaverat.
+
+Vespere epistulam Liviae iterum legit. Verba per multas stationes celerius quam viatores venerant. Familia remota non videbat montes aut capsas, sed dies et loca sciebat. Haec linea nuntiorum inter Ostiam, Capuam et viam itineris quasi tertium iter currebat.
+
+In margine epistulae Quintus imaginem canis fecerat. Lupa quattuor pedes aequales habebat, multo meliores quam canis primae lucernae. Tertia chartam Marco ostendit. Inter rationes debiti, sigilla et vias, imago pueri locum domus aperuit. Ea epistulam nocte sub pallio servavit.
+
+Postea Tertia responsum Quintum addidit. Canem laudavit et montem iuxta Tarracinam delineare temptavit. Imago eius quoque inepta fuit: mons quasi panis magnus apparebat. Sic frater et soror sine arte perfecta loca sua communicaverunt. Epistula post Puteolos ad Ostiam itura erat.
+
+Capitulum 19: Pons apud Minturnas
+
+Plaustrum conductum mane Formiis discessit. Vector nomine Salvius erat, non idem olearius Ostiensis. Via litus sequebatur et postea ad flumen Lirim descendebat. Muli recentes celerius quam priora vehicula ibant.
+
+Tertia parentes mox visuram esse gaudebat. Hilarus autem taciturnus erat. Capua pro Tertia domus, pro eo urbs ignota erat. Stephanus semel ibi fuerat, Myrina numquam villam Crispi reliquerat.
+
+Ad pontem Liris longa series plaustrorum stabat. Una pars pontis reficiebatur, itaque vehicula vicissim transibant. Custodes numerum rotarum et pondus aestimabant. Capsae viatorum leviores quam amphorae erant, sed mora omnibus communis fuit.
+
+Sub ponte aqua lata fluebat. Prope ostium erant naviculae et tabernae. Minturnae ex via, flumine et mari vivebant. Marcus titulos mercatorum legit, dum plaustrum exspectabat. Unus chartam Puteolanam iam vendebat, sed pretio alto.
+
+Sextus ad horreum quod Menandro nominaverat nuntium tulit. Nullus tabellarius Fortunae adhuc aderat. Custos promisit se tabellam servaturum esse. Sextus diem, horam et proximum locum, Capuam, clare posuit.
+
+Dum ille aberat, Tertia mulierem vidit quae sportam de plaustro lapsam quaerebat. Mala per viam ceciderant. Hilarus et Marcus ea collegerunt, sed tria sub rota fracta erant. Vector causam agnovit et pretium eorum remisit.
+
+Mulier eis unum malum integrum dedit. Hilarus recusavit, sed illa institit. Donum in quattuor partes divisum est. Tertia forum Ostiense et primum canistrum cum Prima meminit. Viae longae etiam res parvas repetebant.
+
+Tandem pons apertus est. Plaustrum lente super lapides processit. Tertia aquam per rimam tabularum vidit. In altera ripa Salvius rotas inspexit. Una fascia ferrea calida erat, sed integra. Brevis quies ante ascensum data est.
+
+Vespere hospitium extra urbem ceperunt. Sextus sumptus itineris iam maiores quam speraverat numeravit. Tempestas, duae morae et vehicula addita pecuniam consumpserant. Tamen rationem Calvi ignorare multo carius poterat.
+
+Tertia in tabula sua non solum denarios, sed dies notavit. Quintus dies a Portu exierat. Ex his duos navigaverant, tres terra fecerant. Distantia in milliariis una res erat; tempus ex vento, pontibus et hominibus pendebat.
+
+In hospitio viator quidam querebatur pontem nimis tarde apertum esse. Salvius respondit trabem fractam prius firmandam fuisse. Tertia utriusque sensum intellexit: viator tempus amiserat, custos autem pondus omnium vehiculorum ferebat. Mora eadem ex duobus locis aliter videbatur.
+
+Capitulum 20: Aquae Sinuessanae
+
+Post Minturnas via per campos ad Sinuessam duxit. Mons Massicus procul surgebat. Vineae in collibus erant, et vinum regionis in amphoris multis vehebatur. Salvius singula praedia ex signis dominorum agnoscebat.
+
+Ad meridiem unum mulum lassum vidit. Plaustrum sub arbore constitit. Animal aquam accepit et iugum paulisper remotum est. Sextus non postulavit ut eodem cursu procederent. Capsae in umbra manserunt, viatores pedibus ambulaverunt.
+
+Prope Sinuessam fontes calidi noti erant. Multi hospites ad balnea veniebant. Tertia vaporem supra tecta vidit, sed grex longam moram non fecit. Aqua ad lavandum data est; nullus sermo curationem certam promisit.
+
+In caupona Tertia viatorem ex Puteolis convenit. Nomen ei Aulus Petronius erat, olearius qui Calvum noverat. Dicebat Numerium rationes patris in novo scrinio nuper reperisse. Multos veteres debitores epistulis petiverat.
+
+Quidam statim solverant, alii rationes contrarias miserant. Calvus duas petitiones iam retraxerat, ubi solutiones probatae erant. Haec fama eum minus iniquum quam durum ostendebat. Sextus tamen cautus mansit; fama non erat pactum.
+
+Petronius Gnaeum Philonem etiam noverat. Officina chartae prope macellum Puteolanum erat, horreum autem iuxta portam Cumanam. Tesserae veteres saepe in arca lignea supra officinam servabantur. Locus quaestioni novam directionem dedit.
+
+Marcus nomen horrei et viae notavit. Tertia Petronium rogavit quo anno officina a patre ad Philonem transisset. Ille annum exacte nesciebat, sed ante magnum incendium vici factum esse dicebat. Dies rei adhuc incertus erat.
+
+Hilarus interim cum puero cauponis loquebatur. Puer Puteolis natus erat et portum describebat: naves, moles, columnas et forum plenum peregrinorum. Hilarus post tot dies viae urbem quasi finem fabulosum audiebat. Tertia autem sciebat ibi quaestionem difficiliorem incipere.
+
+Post prandium mulus melius ambulavit. Salvius tamen pondus unius capsae in alteram partem movit. Via levis facta est. Sub vesperum primum milliarium quod Capuam indicabat apparuit. Tertia nomen digito in lapide secuta est.
+
+Nocte extra Sinuessam steterunt. Vinum Massicum in mensa carum erat; viatores aquam et vinum ordinarium sumpserunt. Sextus rationem sumptuum clausit et dixit postridie filiam Capuae traditurum esse, quasi Gaius eam heri sibi commisisset.
+
+Hilarus in atrio mansionis tesseram palmae in alio plaustro vidit, sed ea ad vinum pertinebat. Signum commune iterum eos monuit imaginem solam parum valere. Nomen domini et numerus iuxta palmam aderant. Iuvenis risit et dixit delphinum primae arcae se per totam Italiam sequi.
+
+Capitulum 21: Una nox Capuae
+
+Via in Campaniam procedens Tertiae notior facta est. Agros, canales et villas iam viderat. Odor terrae post meridiem eam ad vindemiam revocavit. Ante urbem Gaius cum duobus filiis exspectabat, quia cursor Formianus nuntium praemiserat.
+
+Tertia e plaustro descendit et patrem amplectitur. Fratres, Lucius et Faustus, maiores visi sunt quam sex mensibus ante. Illi Marcum iam ex epistulis noverant. Hilarum primum salutaverunt, non sine curiositate de mari.
+
+Claudia ad domum cenam paraverat, sed viatores prius capsas in cella sicca posuerunt. Gaius sigilla cum Sexto inspexit. Tabula patris Publii in capsa A integra manebat. Tantum post hanc curam familia ad mensam sedit.
+
+Narratio tempestatis multas quaestiones excitavit. Tertia facta ordine dixit: nubes, Antium, arcam pulsantem, tres lucernas fractas, iter terrae. Non se heroina fecit. Menandri consilium et nautarum laborem in primo loco posuit.
+
+Claudia epistulas suas ostendit. Prima ex Astura, secunda per Liviam ex Antio venerat. Dies in margine scripserat. Verba filiae et iter nuntiorum nunc unam seriem faciebant. Una tabella tamen tarde venerat et posteriorem secuta erat.
+
+Gaius de debito Calvi audivit. Ipse rationes agrorum noverat. Dicebat oleum saepe pro pecunia datum esse, praesertim cum nummi deessent. Tunc pondus, qualitas et pretium diei clare notari debebant. Tabula laesa fortasse aliam rationem in horreo requirebat.
+
+Hilarus cum fratribus Tertiae in horto sedit. Lucius ei arborem ficus ostendit, Faustus canem. De libertate Myrinae non loquebantur. Hilarus unam noctem tantum puer inter pueros esse potuit, quamquam mane ad curas suas rediturus erat.
+
+Tertia in cubiculo veteri dormivit. Res eius tamen in capsa itineris manserunt. Domus nota eam recipiebat, sed mora brevis erat. Concha et tessera Fortunae super eandem mensam ubi olim epistulas paraverat positae sunt.
+
+Mane Claudia viatoribus panem, caseum et poma dedit. Tertiae parvam stolam non imposuit; tunica itineris satis erat. Gaius duas litteras ad mercatores Puteolanos scripsit, qui Sextum noscebant. Una eorum fortasse de pretio olei antiquo aliquid sciret.
+
+Discessus hoc tempore sine lacrimis gravibus fuit. Dies reditus incertus, sed iter notum erat. Claudia filiam complexa dixit se nuntios ex Puteolis exspectaturam esse. Plaustrum ad viam Cumanam vertit. Capua post eos non finis, sed statio carissima mansit.
+
+Gaius usque ad primum milliarium equo eos comitatus est. Ibi vehiculum constitit, et pater capsarum funes semel tetigit. Nihil novi invenit; gestus tamen curam eius finiebat. Tertia manum sustulit, dum equus ad urbem vertebat. Hoc vale brevius quam primum, sed non minus verum erat.
+
+Hilarus postea dixit se domum Tertiae quietam invenisse. Non omnes familiae ita conveniebant; in villa Crispi mensa dominorum a cellis servorum longe erat. Tertia gloriam domus suae non auxit. Gaius quoque colonos mercede et servos habebat. Benignitas intra ordinem iniquum limites suos tenebat.
+
+Capitulum 22: Per viam Cumanam
+
+Salvius ad Capuam pactum suum impleverat et rediit. Sextus novum vehiculum a cliente Gaii conduxit. Vector Campanus, Nicanor, Graece et Latine loquebatur. Via ad Cumas per agros fertilis et oppida minora ducebat.
+
+Nicanor merces non portabat praeter capsas viatorum. Itaque vehiculum levius et celerius erat. Hilarus iuxta vectorem sedebat et nomina locorum audiebat. Marcus post eos chartam Puteolanam a sole protegebat.
+
+Ad viam occurrit pompa funeraria. Nicanor plaustrum ad latus duxit et constitit, donec familia transiret. Viatores tacuerunt. Tertia nomen mortui in parva tabula legit, sed id in suas notas non rettulit; ad iter eorum non pertinebat.
+
+Post meridiem terra mutata est. Colles veteribus crateribus formati apparebant; alicubi vapor tenuis e solo surgebat. Nicanor fabulas de deis et gigantibus loci narravit, sed eas fabulas appellavit, non mensuras terrae. Tertia utrumque genus narrationis separavit.
+
+Prope Cumas mare iterum apparuit. Hilarus diu spectavit. Post Antium fluctus eum adhuc movebant, quamquam e terra. Tertia dixit Fortunam fortasse iam ante Puteolos esse. Haec spes nullo nuntio confirmata erat.
+
+Cumae urbs antiqua super colles stabat. Portus minor quam Puteolanus erat. Sextus in horreo Gnaei Philonis nuntium quaesivit. Nihil adhuc venerat. Custos tamen navem rota alba prope Misenum visam esse audiverat.
+
+Fama poterat ad aliam navem pertinere. Menander nomen Fortunae in velo non gerebat, tantum rotam. Sextus nuntium certum usque ad Puteolos exspectare constituit. Laetitiam non ante rem accepit.
+
+Nicanor ad cauponam fratris eos duxit. Cubicula parva sed munda erant. In horto ficus crescebat. Tertia epistulam ad parentes scripsit: Capuam reliquerant, Cumas attigerant, mare iterum videbant. De Fortuna tantum rumorem incertum addidit.
+
+Vespere viatores ad litus ambulaverunt. Naves in sinu stabant, mons Misenus procul apparebat. Marcus concham nigram invenit et Tertiae dedit. Illa albam Ostiensem secum habebat; duas formas comparavit, sed nullam meliorem dixit.
+
+Postridie breve iter ad Puteolos restabat. Sextus capsae A sigillum iterum inspexit. Cera angulum parvum amiserat, sed filum integrum erat; calor Viae Appiae eam molliverat. Nota de mutatione facta est, ne Calvus sigillum laesum pro apertione haberet.
+
+Nicanor in caupona de mercede cum fratre clare egit. Frater cibum gratis dare volebat, sed Nicanor equorum paleam et tempus viae in pretio manere dixit. Propinquitas rationem non tollebat, sicut Livia cum Tertia fecerat. Eadem cura in familiis diversis apparebat.
+
+Capitulum 23: Puteoli
+
+Puteolos hora quarta viderunt. Portus naves ex multis terris tenebat. Moles in mare procedebant, et arcus super aquam viam portabant. Horrea, templa, tabernae et domus colles implebant. Clamor etiam ante portam audiebatur.
+
+Nicanor vehiculum per viam frequentem lente duxit. Tertia titulos Graecos iuxta Latinos vidit. Mercatores ex Alexandria, Tyro, Carthagine et Hispania aderant. Puteoli Ostiae similis et simul diversa erat; collis locum planum vincebat, et mare propius ubique apparebat.
+
+Primum ad horreum Philonis ierunt. Custos nomine Sosias litteram Sexti accepit. Capsae in cella privata positae sunt. Numeri A et B, sigilla et cera mollita in ratione descripta sunt. Nicanor tabellam vecturae clausit.
+
+Sosias nuntium magnum habebat. Fortuna pridie vespere ad portum intraverat. Menander merces in horreo maritimo deposuerat et navem ad molum secundum ligaverat. Omnes nautae bene valebant. Sextus primum post multos dies umeros relaxavit.
+
+Menander paulo post ipse advenit. Hilarus eum et Chionem amplexus est. Navis post Antium unum diem exspectaverat, deinde vento meliore Tarracinam praeterierat. Tabellam Sexti ibi invenerat et directe Puteolos navigaverat.
+
+Lucernae, lana et epistulae salvae erant. Arca XII post refectionem non iterum mota erat. Menander relationem suam dedit, in qua dies, venti et stationes scripti erant. Sextus eam cum tabellis terrestribus iunxit.
+
+Gnaeus Vettius Philo hospites ad domum supra officinam invitavit. Vir quinquaginta annorum erat, capillis iam albis. Sextum ut veterem amicum salutavit, de Numerio Calvo autem statim non locutus est. Primum viatores lavari et cenare voluit.
+
+Tertia cubiculum cum parva podio accepit. Ex eo portum videre poterat. Fortuna inter alias naves parva apparebat, sed rota clare lucebat. Viae terrae et maris tandem in uno loco iterum convenerant.
+
+Ad cenam Philo uxorem Antiam et filiam Vettiam introduxit. Antia officinae rationes curabat; Vettia imagines in libris pingebat. Marcus de charta cum eis loquebatur. Hilarus Sosiacum filium, puerum horrei, cognovit.
+
+Post cibum Sextus tabulam laesam tantum nominavit. Philo diu tacuit, deinde dixit se commercii olei meminisse. Non certus erat de summa, sed patrem Sexti amphoras in horreo suo reliquisse recordabatur. Arca veterum tesserarum mane quaereretur.
+
+Antia hospitibus lectos ostendens monuit portum nocte quoque sonare. Tertia e podio lucernas in molibus vidit. Quaedam movebantur, quia custodes ambulabant; aliae in navibus stabant. Puteoli post longum iter non quiescebant. Urbs mercium etiam tenebris laborabat.
+
+Capitulum 24: Officina Philonis
+
+Mane Philo officinam aperuit. Chartae fasciculi in pluteis iacebant. Operarii fibras componebant, premebant et sole siccabant. Tertia processum observavit, sed manus laborantium non impedivit. Marcus exempla Publii cum novis foliis comparavit.
+
+Antia rationem pretii protulit. Quinquaginta fasciculi minus singuli constarent, sed vectura et capsae ad Ostiam addendae erant. Publius antea tantum pretium chartae viderat. Marcus summam totam computavit; lucrum possibile minus quam primo videbatur.
+
+Philo qualitatem defendit. Folia maculata in genere secundo venderentur, non cum optimis miscerentur. Tertia exempla laesa ostendit. Philo agnovit fasciculum probationis male delectum esse et aliud exemplum sine pretio dedit.
+
+Negotium sine ira processit. Marcus viginti fasciculos primo emere proposuit, non quinquaginta. Si clientes eos probarent, altera emptio fieret. Antia pretium paulo maius pro minore numero posuit. Ambo pactum in cera paraverunt.
+
+Interea Sosias arcam tesserarum e cella superiore tulit. Pulvis operculum tegebat. Tesserae per annos, non per nomina, dispositae erant. Annus commercii Calvi in tertia parte inveniri debebat. Hilarus et Tertia mensam vacuam paraverunt.
+
+Philo memoriam suam dixit. Lucius Fabius, pater Publii, cum Numerio Maiore de centum amphoris egerat. Prima pars pretii pecunia soluta erat. Pro reliqua parte Sextus oleum ex alia villa reddiderat, quia emptor idem oleum in Africam mittere volebat.
+
+Philo tunc iuvenis amphoras in horreo receperat. Numerium Maiorem adesse non meminerat; procurator eius fortasse adfuerat. Quantitatem quinquaginta amphorarum esse putabat, sed post decem annos certus esse nolebat. Tabula vel tessera necessaria erat.
+
+Tertia quaesivit quomodo tesserae notatae essent. Philo dixit litteras N M, numerum amphorarum et diem plerumque incisum esse. Post missionem tesserae in arca remanebant, si emptor eas non petebat. Multae tamen ad focum olim datae erant.
+
+Sosias primum fasciculum tesserarum aperuit. N M saepe apparebat, quia Numerius Maior multas merces habuerat. Numeri XX, XXX et C erant. Dies autem ad alios menses pertinebant. Quaestio non una hora solveretur.
+
+Sextus Calvo nuntium misit se Puteolos advenisse et postridie convenire velle. Tabulam laesam se allaturum esse, tesseras autem adhuc quaeri. Calvum ad officinam Philonis invitavit, ut documenta in eodem loco viderentur. Responsum ante vesperum exspectabatur.
+
+Tertia per primum fasciculum tesserarum digitos nigros pulvere fecit. Una tessera nomen feminae mercatricis, BASSA, servabat; aliae tantum litteras virorum. Antia dixit multas feminas per libertos aut procuratores egisse, ideo nomina in ligno non semper apparebant. Silentium tabularum absentiam vitae non probabat.
+
+Antia rationem officinae sua manu tenebat, quamquam titulus publicus nomen Philonis ferebat. Maritus hoc non negabat. Tertia vidit domum mercatoriam ex muneribus coniugum constare, sed fama externa unum virum saepe anteponebat. Primae opus post matrimonium propter hanc rem ei iterum venit in mentem.
+
+Capitulum 25: Numerius Calvus
+
+Calvus eodem vespere respondit. Ad officinam hora secunda veniret, cum liberto suo Felice qui rationes patris ordinaverat. Rogabat ut tabula originalis, non tantum exemplar, adesset. Ipse tabulas suas afferret.
+
+Mane mensa in atrio Philonis posita est. Antia, quia domus et officina ad eam quoque pertinebant, conventui adfuit. Sextus, Tertia et Marcus ex una parte sederunt; Calvus et Felix ex altera. Philo inter eos stabat, non ut iudex, sed ut dominus documentorum.
+
+Numerius Calvus vir gracilis erat, tunica sine ornatu. Sextum civiliter salutavit. Dixit se nullam fraudem ante rem probatam asserere. In ratione patris debitum apertum invenerat et heredem suum officium putabat pecuniam quaerere.
+
+Felix tabulam protulit. Scriptum erat: "L. Fabio, amphorae olei C; accepti denarii C; restant denarii CCL." Dies cum anno tabulae Publii congruebat. Nulla altera solutio in ea parte apparebat. Cera integra videbatur, sed tabula sola erat.
+
+Sextus tabulam patris ostendit. Calvus litteras N C et verba "oleo redditum" legit. Numerum L sub cera quoque vidit, sed dubitavit quid significaret. Angulus cum signo completionis deerat. Neutra tabula alteram omnino tollebat.
+
+Philo memoriam suam narravit, cautis verbis. Amphoras redditas esse credebat; numerum quinquaginta esse putabat. Calvus rogavit num ipse eas numeravisset. Philo respondit se iuvenem in horreo adfuisse, sed post tot annos singula confundere posse.
+
+Felix quaesivit an merces pro alio contractu datae essent. Haec possibilitas vera erat. Philo multas res cum Fabiis egerat. Tessera cum die necessaria manebat. Tertia indicem annorum in mensa posuit, ne fasciculi iam explorati iterum quaererentur.
+
+Calvus petitionem statim non retraxit, sed terminum Kalendas suspendit. Quinque dies tesseris et rationibus portus quaerendis dedit. Si indicium novum non inveniretur, de compositione pecuniae agerent. Sextus hoc pactum accepit.
+
+Post conventum Tertia de Calvo aliter cogitavit. Durus erat, sed non clamosus. Documentum verum habebat, quamquam fortasse imperfectum. Facile fuisset eum adversarium malum fingere; res ipsa difficilior erat, quia utraque pars aliquid firmum tenebat.
+
+Hilarus, qui tesseras toto mane ordinaverat, fasciculum novi anni aperuit. In fundo arcae invenit lignum cum litteris N M, numero L et imagine parvae palmae. Dies paene idem erat. Omnes ad mensam iterum vocati sunt.
+
+Antequam tessera moveretur, Antia locum eius in arca descripsit. Felix, quamquam pro Calvo venerat, nondum aderat; ideo inventum apertum in mensa mansit. Philo nuntium ad eum misit. Hilarus gloriam celeris nuntii maluit perdere quam suspicionem postea creare. Usus primi itineris in eo iam apparebat.
+
+Capitulum 26: Tessera palmae
+
+Tessera ligno olivae facta erat. In una parte legebatur N M, L, palma. In altera erant verba brevia: A PHIL. REC. Dies sexto post tabulam debiti cadebat. Philo signum palmae officinae patris sui esse agnovit.
+
+"A Philone receptae" significare poterat quinquaginta amphoras a Philone receptas esse. L autem etiam quinquaginta libras aut alium numerum indicare poterat. Tessera sine amphora suo contextu caruerat. Tamen dies et signa cum memoria Philonis conveniebant.
+
+Sosias aliam tesseram eiusdem mensis quaesivit. In ea scriptum erat N M, XX, palma, VIN. Post numerum genus mercium clare additum erat. In tessera quaestionis genus deerat, fortasse quia altera pars fracta erat. Margo quidem asper erat.
+
+Tertia duas tesseras iuxta posuit. Lignum quaestionis brevius erat. Si pars dextra defuisset, ibi OLEUM scribi potuerat. Hoc coniectura erat, sed forma eam sustinebat. Marcus lineam fracturae delineavit.
+
+Calvus rursus vocatus est. Ille tesseram diu inspexit. Felix imaginem palmae cum sigillis veteribus comparavit. Philo arcam non solus aperuerat; omnes aderant. Nihil facile substitui potuerat. Calvus indicium grave esse concessit.
+
+Tamen quaestio pretii mansit. Si quinquaginta amphorae olei redditae erant, num earum valor ducentos quinquaginta denarios aequabat? Pretium quinque denariorum per amphoram necesse erat. Tabula patris Publii summam non servabat.
+
+Gaius litteram ad mercatorem Puteolanum miserat. Mercator, Aulus Roscius, eo anno oleum Campanum inter quattuor et sex denarios per amphoram venisse scripsit, secundum qualitatem. Quinque denarii igitur pretium possibile erat, non autem probatum.
+
+Felix in ratione Calvi lineam posteriorem invenit: "oleum Philonis in Africam missum, L amphorae." Nullum nomen Fabii ibi erat, sed dies tribus diebus post tesseram cadebat. Numerus et ordo rerum iam fortius congruebant.
+
+Calvus conventum ad diem posterum distulit. Volebat omnem rationem patris legere, ne eadem amphorae alii creditori pertinerent. Sextus impatientiam sensit, sed tempus concessum adhuc manebat. Tertia tesseram in sacculo communi sub sigillis utriusque partis posuit.
+
+Nocte nemo in domo Philonis de victoria locutus est. Indicium novum spem dabat, sed summa adhuc probanda erat. Hilarus maxime laetabatur quod lignum invenerat; tamen Tertia eum monuit inventum eius utile esse etiam si conclusionem aliam duceret.
+
+Vettia tesseram palmae delineavit. Imago eius lineam fractam clarius quam verba Marci ostendebat. Tertia duas formas servavit: descriptio litterarum et imago totius ligni. Una sensum, altera formam praebebat. Calvus postridie utramque accepit, originali sub sigillo manente.
+
+Capitulum 27: Horrea vectigalium
+
+Marcus proposuit rationes portorii quaeri. Oleum in Africam missum vectigal aut saltem indicem navis habere poterat. Philo dubitavit num tabulae decem annorum adhuc servarentur. Sosias custodem veterem nomine Apollonium noverat.
+
+Apollonius in horreis ad molum orientalem laborabat. Senex erat et unum oculum male habebat, sed ordinem scriniorum memoria tenebat. Dixit indices annuos non omnes mansisse; umor duos fasciculos deleverat, alii ad tabularium translati erant.
+
+Annus quaestionis in scrinio superiore repertus est. Tabulae cerae in fascibus secundum mensem ligatae erant. Nomina navium, magistrorum, mercium et dominorum continebant. Nihil inde sine custode auferri poterat.
+
+Tertia, Marcus et Felix simul legerunt. Haec societas nova erat: unus pro Sexto, alter pro Calvo, Tertia indicem communem faciebat. Calvus ipse aliis negotiis occupatus erat, sed Felici potestatem inspiciendi dederat.
+
+In die post tesseram navis Isis Alexandrina oleum quinquaginta amphorarum accepit. Dominus scriptus erat N. Maior. Mittens autem "Philo pro Fabio" legebatur. Verba satis clara erant, quamquam nomen Fabii sine praenomine positum erat.
+
+Felix diu tabulam tenuit. Poterat alius Fabius esse, sed cum tessera, memoria et die coniuncta res fortis erat. Ipse exemplar fecit et Apollonius sigillum horrei addidit. Originale in fasciculo mansit.
+
+Pretium adhuc in indice navis non erat. Sed quantitas et relatio ad Fabium confirmabantur. Tertia columnam suam implevit: oleum L, a Philone receptum, pro Fabio missum, ad Numerium Maiorem pertinens. Quattuor fontes inter se conveniebant.
+
+Apollonius aliud documentum invenit: ratio ponderis olei. Qualitas media notata erat. Roscius in littera pretium quattuor ad sex denariorum dederat; quinque mediae qualitati convenire poterat. Hoc calculum probabilem faciebat.
+
+Felix dixit se Calvo omnia relaturum esse. Sextus eum non pressit ut statim sententiam daret. Ambo exemplaribus aequalibus discesserunt. Marcus Apollonio pretium operis scribendi solvit, non pro accessu tabularum, sed pro tempore extra officium.
+
+In reditu Tertia mare inter columnas molis vidit. Fortuna procul movebatur, quia Menander locum navis mutabat. Iter maris eos ad documentum portus duxerat; sine indice navis, tessera sola semper ambigua mansisset.
+
+Apollonius, priusquam scrinium clauderet, tabulam laesam vento sicciori loco posuit. Dixit multas rationes non fraude, sed aqua, fumo et muribus perire. Custodes omnia in aeternum servare non poterant. Quod manebat saepe casu et cura simul supererat. Tertia hoc de tabula patris quoque cogitavit.
+
+Tertia indicem fasciculi fecit, ut postea tabula celerius reperiri posset. Apollonius eum in operculo ligavit. Opus unius horae fortasse alium mercatorem post annos adiuvaret. Nemo sciret quis ille esset. Cura documenti saepe homini ignoto in futuro dabatur.
+
+Capitulum 28: Responsum Calvi
+
+Calvus postridie ad horam tertiam venit. Secum tabulam patris et exemplum indicis navis ferebat. Felix nocte omnes lineas eiusdem mensis legerat. Nullus alius Fabius quinquaginta amphoras per Philonem miserat.
+
+Calvus dixit se secundam solutionem nunc satis probatam putare. Quinque denarios pro amphora pretium rationabile erat. Quinqueaginta amphorae igitur ducentos quinquaginta denarios efficiebant, eandem summam quae in ratione patris restabat.
+
+Petitionem retraxit. Non tantum ore, sed tabella scripta. In ea nomina, contractum et fontes brevi ordine posuit. "Debitum ex rationibus nuper repertum aliis documentis solutum demonstratur; nihil amplius petitur." Sigillum suum addidit.
+
+Sextus quoque tabellam accepit et signum posuit. Deinde Calvo sumptus itineris reddendos esse non postulavit. Calvus ex documento imperfecto, non ex fraude manifesta, petitionem miserat. Uterque suos sumptus ferret.
+
+Philo rogavit quid de tesseris fieret. Calvus tesseram palmae secum non tulit. In arca Philonis cum novo titulo maneret, quia ad historiam officinae pertinebat. Exemplaria utrique parti data sunt.
+
+Tertia tabulam patris Publii iterum aspexit. Lineae fractae nunc sensum pleniorem habebant, sed documentum ipsum non mutatum erat. Alii fontes lacunas impleverant. Angulus deperditus numquam rediit.
+
+Hilarus Calvo quaesivit cur rationes patris tam tarde ordinasset. Calvus respondit se post mortem matris domum veterem vendidisse et scrinia aperuisse. Multa debita et multae solutiones inventae erant. Opus adhuc pergebat.
+
+Calvus Hilarum propter tesseram laudavit et parvum praemium offerre voluit. Iuvenis accepit, sed dimidium Sosiae dedit, qui arcam invenerat et fasciculos moverat. Inventum unius nomine facile narrabatur, labor plurium re vera adfuerat.
+
+Post conventum Sextus ad forum ivit et epistulam Liviae scripsit. "Res Calvi sine iudicio publico composita est. Documenta solutionem confirmant." Deinde singulos viatores bene valere addidit. Nuntius eodem die ad Capuam et Romam profectus est.
+
+Vespere familia Philonis cenam parvam dedit. Non erat convivium victoriae contra hostem. Calvus quoque invitatus est et venit. Sermo ad chartam, naves et pretia praesentia transiit. Vetus dissensio clausa erat, sed commercium futurum manere poterat.
+
+Felix in cena Hilari narravit se servum Calvi patris fuisse et libertatem post mortem eius accepisse. Rationes quas nunc ordinabat olim ipse partim scripserat, sed lineam solutionis non meminerat. Vita eius intra eadem documenta et extra ea stabat. Hilarus audivit sine facili comparatione.
+
+Capitulum 29: Lucernae Castoris
+
+Post rem Calvi Sextus merces curare potuit. Arca XII ex horreo allata est. Gnaeus Philo viginti lucernas acceperat; Antia singulas inspexit. Tres fractae deerant, quinque margo leviter laesus erat.
+
+Sextus pretium fractarum ex ratione sustulit. De quinque laesis Antia minorem summam obtulit. Hae lucernae in officina ad usum, non ad venditionem, manerent. Vitium in tabella empti clare scriptum est.
+
+Reliquae duodecim integrae erant. Imagines navium, piscium et stellarum habebant. Vettia unam cum stella elegit, quia Tertia de lucerna matris narraverat. Castor pretium suum post reditum acciperet.
+
+Philo arcam reparatam quoque emit, quia ad chartam transportandam utilis erat. Pretium ligni a pretio lucernarum separatum est. Faber Antias qui angulum refecerat partem accepit. Sic res laesa novum usum invenit.
+
+Lana Sabinae mercatori Syriaco vendita est. Duo fasciculi umorem passi erant, sed post siccationem colorem et vim servaverant. Emptor eos tamen pretio paulo minore accepit. Sextus causam in ratione posuit.
+
+Hilarus ad Fortunam rediit et Chioni omnia narravit. Funis cuneum post tempestatem non iterum laxaverat. Chion arcam XII iam aliter ligaverat, ut angulus reparatus aliam arcam non tangeret. Experientia ordinem navis mutaverat.
+
+Tertia Menandro epistulam Castoris dictavit. In ea damnum, inspectio et pretium mutatum erant. Menander suam relationem addidit. Nullus de culpa certa locutus est, sed Sextus sumptum trium lucernarum ex lucro suo ferre constituit.
+
+Castor merces Sexto commiserat. Etiam si tempestas causam dederat, mercator emptori et artifici rationem praestare volebat. Menander hoc accepit, quamquam se accusatum non sensit. Cura rei et culpa hominis non semper idem erant.
+
+Vettia Tertiae parvam imaginem Fortunae fecit. Navis sub nube, sed intra portum picta erat. Non erat tabula veteris artis imitata; imago ad hoc iter tantum pertinebat. Tertia eam inter epistulas posuit.
+
+Vespere arca XII vacua mansit. Lignum eius fracturam et novum angulum gerebat. Sextus eam ad chartam emptam paravit. Merces una finem itineris invenerat; alia in eadem arca ad Ostiam reditura erat.
+
+Castoris fragmenta in parva capsa separata sunt. Tertia unum retinuit, cetera ad artificem redirent. In superficie imago dimidiae stellae manebat. Vettia dixit fragmentum pulchrum esse, sed Tertia respondit pulchritudinem damnum non tollere. Utrumque simul verum esse poterat.
+
+Capitulum 30: Pactum chartae
+
+Marcus et Antia ad pactum chartae redierunt. Viginti fasciculi generis primi, quinque generis secundi, duae capsae ceratae et vectura usque ad Ostiam in summa ponebantur. Dies missionis post Kalendas constitutus est.
+
+Publius in epistula potestatem Marco dederat usque ad summam certam. Pactum intra eam manebat, sed paene totam pecuniam consumebat. Marcus dubitavit num genus secundum necessarium esset. Tertia usum vilioris chartae ad primas formas epistularum memoravit.
+
+Antia quinque fasciculos secundi generis pretio minore dedit, si omnes simul acciperentur. Maculae ad margines erant, non in medio. Marcus folia fortuito e tribus fasciculis sumpsit, ne sola exempla ab officina electa videret.
+
+Qualitas promissae distinctioni congruebat. Philo sigillum diversum generi secundo adhibuit: palma sine circulo. Ita in taberna Publii fasciculi non miscerentur. Hilarus tesseras numeros I ad XXV fecit.
+
+Pactum in duabus tabulis scriptum est. Una apud Philonem, altera apud Marcum maneret. Pretia, numeri, dies, vectura et responsum pro fasciculis aqua laesis continebantur. Nulla formula longa rem simplicem celavit.
+
+Sextus Fortunam chartae portandae obtulit, sed navis prius Cumas ad vitrum itura erat. Philo merces ad molum die certo mitteret. Menander pondus ante receptionem acciperet. Arca XII et altera capsa vetus satis erant.
+
+Tertia officinae operarios nomine in ratione non invenit. Antiam rogavit quis fasciculos pararet. Antia nomina principum operis addidit: Dorotheus fibras, Eutychus pressum, Chreste margines curabat. Alii tamen sine nomine manebant.
+
+Hoc pactum condicionem servitutis non mutabat; duo ex illis servi erant. Tertia sibi hanc rem occultare noluit. Charta qua epistulae libertatis aliquando scriberentur ex manibus non liberis quoque veniebat. Portus contradictiones in omni merce tenebat.
+
+Marcus sigillum suum nondum habebat. Publius anulum apri ei ad hoc negotium dederat. Marcus imaginem magistri in cera pressit, sed nomen suum manu addidit. Pactum Publii potestate, Marci opere factum erat.
+
+Postquam tabulae clausae sunt, Antia vinum parvum omnibus dedit. Non celebrabant lucrum certum; charta adhuc ad Ostiam pervenire et clientibus placere debebat. Tamen prima pars commercii clare constituta erat. Marcus minus discipulus, magis socius tabernae videbatur.
+
+Marcus nocte epistulam Publio scripsit et decisiones suas singillatim explicavit. Non tantum pretium finale dedit, sed cur viginti potius quam quinquaginta fasciculos elegisset. Responsum magistri ante reditum fortasse non veniret. Tamen Marcus volebat potestatem acceptam ratione, non solo eventu, reddere.
+
+Tertia epistulam legit rogante Marco. Unam sententiam ambiguam invenit: "merces minores accepimus." Poterat numerum aut qualitatem significare. Marcus eam mutavit in "pauciores fasciculos accepimus." Parva correctio pactum ipsum non mutavit, sed absentem Publium ab errore interpretationis servabat.
+
+Capitulum 31: Nuntius de Myrina
+
+Die sequenti cursor Ostia epistulam Hilari attulit. Stephanus scripserat Crispum villam intra mensem venditurum esse. Emptor servos fundi cum terra accipere volebat. Myrina quoque inter eos numerabatur, nisi libertas eius ante venditionem emeretur.
+
+Stephanus iam magnam partem pretii collegerat. Crispus summam minorem quam olim postulabat, quia annos Myrinae et laborem longum considerabat. Tamen triginta denarii deerant. Hilarus tot pecuniam non habebat, quamquam mercedem servaverat.
+
+Iuvenis epistulam bis legit et ab aliis recessit. Tertia eum apud molum invenit. Naves intrabant et exibant, sed Hilarus nihil spectabat. Dicebat se iter suscepisse dum mater ad alium dominum ferri posset. Culpa eum premebat, quamquam venditio consilium eius non erat.
+
+Sextus rem audivit. Mutuum dare poterat, sed Hilarus annos multos reddere deberet. Calvus praemium pro tessera obtulerat; dimidium post partem Sosiae adhuc viginti denarios erat. Decem denarii tantum deerant.
+
+Marcus mercedem itineris Hilari nondum datam numeravit. Sextus pro diebus terrae et labore tesserarum duodecim denarios debebat. Pecunia igitur summae sufficiebat, sed Hilarus domum paene sine nummis rediret. Hoc ipsum facere volebat.
+
+Tertia rogavit ut consilium una nocte exspectaret. Non quia mater exspectare poterat, sed quia epistula ad Crispum clare mittenda erat. Pretium, dies et modus manumissionis in tabella certi fierent. Pecunia sine pacto ad villam mitti non deberet.
+
+Philo cursorem fide dignum noverat, qui biduo Ostiam attingere posset. Calvus quoque tabellam solutionis addidit, ne praemium suum dubium esset. Sextus mercedem Hilari coram Marco numeravit. Omnes summae in una ratione positae sunt.
+
+Hilarus ad Stephanum scripsit. Se triginta duos denarios mittere; triginta ad pretium, duos ad cursorem. Rogabat ut Crispus ante pecuniam acceptam tabellam condicionum sigillaret. Verba non frigida erant, sed cura matris exactum ordinem requirebat.
+
+Tertia nullam pecuniam addidit. Primo hoc durum videbatur. Sed Hilarus summam ipse ex labore, praemio et mercede habebat. Auxilium eius erat scriptum componere et testes invenire, non rem sibi accipere. Dignitas iuvenis ita servabatur.
+
+Cursor vespere profectus est. Hilarus anulum non habebat; signum vitis ex tabula matris in cera pressit. Epistula et nummi in sacculo separato sigillati sunt. Mare post eos lucebat, sed tota mens Hilari viam ad villam sequebatur.
+
+Myrina pretium sui corporis ipsa constituere numquam potuerat. Haec res inter numeros tabellae gravis manebat. Hilarus gaudere nondum audebat, quia manumissio promissa nondum facta erat. Tertia intellexit pecuniam necessariam esse, sed libertatem mercem ordinariam appellare noluit.
+
+Capitulum 32: Dies exspectationis
+
+Responsum ante quattuor dies venire non poterat. Fortuna interim vitrum Cumanum accepit et ad reditum parata erat. Sextus profectionem uno die differre potuit, non autem sine fine. Si epistula tardaret, Hilarus cum incertitudine navigaret.
+
+Philo hospites ad horreum vetus duxit, ut tempus opere utile fieret. Ibi rationes chartae antiquae erant. Marcus pretia quinque annorum comparavit. Tertia indices navium legit. Hilarus laborabat, sed saepe ad ianuam spectabat.
+
+Vettia eum ad forum secum invitavit. Hilarus recusavit. Postea tamen cum Sosia ad molum ivit, quia sedere difficilius erat quam arcas numerare. Chion eum ad funes adiuvandos non admisit, sed tesseras vitri tradidit.
+
+Tertia interea epistulam longam matri scripsit. De Calvo, tessera palmae et indice navis narravit. De Myrina tantum quantum Hilarus permitteret addidit. Vita aliena non tota in epistula familiae suae poni debebat.
+
+Secundo die Calvus ad officinam venit. Documentum retractatae petitionis exemplari publico apud tabularium privatum collegii mercatorum posuerat. Non erat iudicium magistratus; sodales tantum pacta sua servabant. Sextus exemplar signatum accepit.
+
+Calvus Hilari dixit patrem suum quoque libertum fuisse, antequam mercaturam auxisset. Hoc neque dolorem praesentem solvebat neque Calvum meliorem faciebat. Tamen ostendebat statum familiae per aetates mutari posse. Hilarus verba sine responsione accepit.
+
+Tertio die ventus secundus coepit. Menander dixit navem postridie mane exire debere; si non, alii quinque dies venti incerti venirent. Sextus hunc terminum accepit. Hilarus paratus erat sine responso proficisci.
+
+Sub vesperum cursor ad portam apparuit. Stephanus duabus tabellis responderat. Prima Crispum condiciones scripsisse confirmabat. Secunda manumissionem apud amicos factam et pecuniam acceptam esse dicebat. Myrina libera erat, quamquam documenta civitatis alium ordinem suum sequerentur.
+
+Hilarus diu nullum verbum dixit. Deinde tabellam omnibus ostendit, sed nomen prioris domini non laudavit. Crispus rem iustam tandem fecerat, post multos annos quibus Myrina libera non fuerat. Gaudium et ira in eodem vultu manebant.
+
+Nocte Philo cenam parvam dedit. Hilarus partem panis pro matre servare voluit, deinde risit, quia panis iter non duraret. Imaginem vitis in nova tabula fecit. Mane mare transiret; Myrina interim primam noctem libera apud Stephanum ageret.
+
+Antia parvam capsam ligneam Hilari dedit, in qua tabellam manumissionis ab aqua servaret. Pretium accipere noluit; lignum e margine fracto officinae restabat. Hilarus capsam non ut documentum libertatis, sed ut custodiam documenti accepit. Libertas Myrinae ex cera sola non orta erat.
+
+Capitulum 33: Vale, Puteoli
+
+Prima luce arcae chartae ad Fortunam portatae sunt. Hilarus singulas tesseras legit: I ad XXV, genera signis distincta. Menander pondus in indice navis addidit. Arca XII, olim lucernarum, fasciculos primi generis tenebat.
+
+Sextus merces reditus quoque emit: parvum vitrum, duas amphoras garo signatas et epistulas mercatorum ad Ostiam. Numerus mercium minor quam in adventu erat. Spatium in nave tamen aequaliter distribuebatur.
+
+Marcus pactum cum Antia iterum legit. Dies missionis iam dies praesentis erat, quia merces cum ipsis ibant. Linea de vectura externa deleta non est; iuxta eam scriptum est Fortunam Sexti suscepisse et pretium remissum esse.
+
+Tertia Vettiae imaginem navis gratias egit. Ipsa concham nigram Cumanam ei dedit. Vettia duas conchas iuxta se pingere promisit. Amicitia brevis itineris epistulis fortasse continuaretur, fortasse non; nullum iusiurandum necessarium erat.
+
+Philo tabulam patris Publii in capsa A posuit. Tesseram palmae in arca officinae servavit, sed exemplar ligneum Hilari fecit. Iuvenis inventum suum tangere poterat sine documento originali auferendo.
+
+Calvus ad molum venit. Sexto manum dedit et dixit se rationes reliquas cautius petiturum esse. Sextus respondit se quoque exemplaria solutionum in duobus locis servaturum. Dissensio utrique modum laboris mutaverat.
+
+Antia Marco fasciculum parvum chartae dono dedit, extra pactum. In eo erant folia diversae qualitatis cum titulis claris. Publius clientibus discrimina ostendere posset. Marcus donum in ratione posuit, ne numerus arcae confunderetur.
+
+Sosia Hilarum salutavit et pro parte praemii gratias egit. Hilarus ei tabulam Capuanam cum vite non dedit; matris nomen in ea erat. Alteram tabulam e taberna Philonis emit et signum palmae fecit. Donum aequum, non nimis pretiosum, fuit.
+
+Funis a molo solutus est. Philo, Antia, Vettia, Calvus, Felix et Sosias in ripa steterunt. Fortuna e portu lente exiit. Arcus molis unus post alium praeterierunt. Tertia Puteolos usque ad ultimam columnam spectavit.
+
+Extra portum vela data sunt. Ventus a tergo lenis erat. Menander iter ad Cumas, deinde prope litus septentrionale paravit. Si caelum maneret, Ostia intra quattuor aut quinque dies attingeretur. Mare reditus alium vultum habebat.
+
+Tertia calculum nigrum Menandro reddidit. Magister miratus est eam rem tam parvam servavisse. Ille calculum statim cum aliis in sacculo navis posuit; promissum completum erat. Tertia sentit non omnes memoriae secum auferri debere. Quaedam ad locum suum redeunt.
+
+Menander vicissim relationem tempestatis altero exemplari Tertiae dedit. Non munus privatum, sed documentum Castori tradendum erat. In extremo tamen scripserat viatores mandata servavisse et Hilarum arcam motam mature nuntiavisse. Laus factum certum, non verba magna, continebat.
+
+Capitulum 34: Litora nota et ignota
+
+Fortuna primam noctem prope Cumas egit. Vitrum ibi iam acceptum erat, itaque mora brevis fuit. Menander aquam novam et panem emit. Sextus nuntium ad Gaium per viam misit, ne familia Capuana reditum terra exspectaret.
+
+Tertia e nave colles quos pridie plaustro transierat vidit. Loca ex mari aliter apparebant. Viae et mansiones latebant; tantum montes, tecta et fumus videbantur. Iter terrestre quasi sub imagine litoris occultum erat.
+
+Hilarus tabellam manumissionis saepe legit. Myrina ad Ostiam ventura erat, ubi apud Stephanum habitaret. Publius ei opus leve in taberna fortasse daret, si vellet. Nemo pro ea iam constitueret sine consensu, quamquam paucae opes libertatem difficilem faciebant.
+
+Secundo die Fortuna promunturium Formianum transiit. Mare placidum mansit. Menander tamen vela nocte minuit et stationem tutam petivit. Prima tempestas eum non timidum, sed attentum fecerat; eandem curam antea quoque habuerat.
+
+Marcus chartam cotidie inspiciebat. Capsae siccae erant. Unum operculum sole calebat, itaque pannus superpositus est. Fasciculi longam viam toleraverant. Probatio tamen ad Ostiam demum finiretur.
+
+Ad Minturnas navis nuntium invenit quem Sextus terra reliquerat. Dies iam praeteritus erat, sed Menander eum in rationibus servavit. Tabella ostendebat duas partes itineris eodem loco diversis temporibus transisse. Tertia eam cum nuntio Menandri iunxit.
+
+Tertio die ventus cecidit. Vela vacua pependerunt, et nautae remis navem tantum a litore remoto tenuerunt. Fortuna paene non procedebat. Viatores umbram quaerebant. Mora quieta interdum difficilior quam tempestas erat.
+
+Chion Hilari nodos iterum ostendit. Nunc iuvenis manus adhibere potuit, quia mare tranquillum et navis in ordine erat. Nodus simplex funem tenuit, deinde uno motu solutus est. Hilarus partem funis ab Antio secum habebat et formam comparavit.
+
+Vespere aura rediit. Navis lente septentrionem petivit. Sol post eam in mare descendit. Tertia imaginem Vettiae protulit: Fortuna sub nube intra portum. Nunc caelum purum erat, sed pictura primam partem itineris servabat.
+
+Nocte sidera clara apparuerunt. Menander ex eis directionem confirmavit. Tertia stellam lucernae maternae meminit. Signa caeli nautae ad usum vertebant; imago in lucerna tantum memoriam ferebat. Utraque tamen noctem minus vacuam faciebat.
+
+Sextus in eadem nocte rationem totius negotii Calvi clausit. Sumptus itineris lucra chartae nondum aequabant, sed debitum falsum maiorem iacturam fecisset. Tertia animadvertit exitum utilem non semper lucrum praesens esse. Aliquando incertitudo remota ipsa pretium habet.
+
+Capitulum 35: Ostia iterum
+
+Quarto die litus Latii apparuit. Antium procul transierunt. Tertia stationem tempestatis ex forma sinus agnovisse putavit, sed Menander locum alium esse dixit. E mari distantiae facile fallunt. Tabula itineris certior quam memoria oculorum erat.
+
+Post meridiem moles Portus tandem visa est. Rota Fortunae vela iam contracta habebat. Navicula remulca eos per introitum duxit. Horrea hexagoni, quae profectione magna visa erant, nunc quasi domus nota redierunt.
+
+Livia et Publius nuntium Calvi acceperant et ad molum venerant. Prima, Quintus, Syra, Castor, Sabina atque Stephanus cum eis erant. Myrina inter Stephanum et Primam stabat. Hilarus eam primo ex ponte vidit.
+
+Navis ligata est antequam quisquam descendit. Menander homines numeravit, custos merces accepit. Deinde pons positus est. Hilarus primus inter viatores ivit, sed non cucurrit. Myrina ad eum accessit. Amplexus eorum quietus et longus fuit.
+
+Tertia Liviam et Publium salutavit. Prima filum purpureum in tunica invenit; adhuc integrum erat. Quintus de mari statim quaerere voluit, sed Syra eum paulisper retinuit. Omnes voces post ordinem navis venerunt.
+
+Castor relationem lucernarum accepit. Tres fractas, quinque laesas, pretia mutata et arcam reparatam legit. Tristis de opere amisso fuit, sed Sexti rationem probavit. Fragmenta unius lucernae Tertia attulerat; Castor argillam suam agnovit.
+
+Sabina lanam residuam inspexit. Mercatoris pretium minus pro duobus fasciculis accepit, sed venditio tota adhuc utilis erat. Sextus summam ei coram Marco reddidit. Nullum damnum in verbis celatum erat.
+
+Capsae chartae ad horreum Hermogenis translatae sunt. Numeri et sigilla cum pacto congruebant. Publius unum fasciculum aperuit et folium sub luce vidit. Nondum de tota emptione iudicavit, sed manus Marci laudavit.
+
+Myrina domum Liviae ad cenam venit. Libera erat, sed cognomen Crispi adhuc gerebat et pecuniam parvam tantum habebat. Syra iuxta eam sedit. Duae feminae aetate et origine diversae multa sine explicatione communia sentiebant.
+
+Nocte Tertia in cubiculo suo veterem et novam lucernam vidit. Concha nigra iuxta albam posita est. Iter plus rerum quam sarcinae attulerat: documenta, pacta, amicitias, damna et libertatem diu petitam. Nulla summa omnia simul numerare poterat.
+
+Prima imaginem Vettiae super pluteum posuit. Navis picta inter duas lucernas stabat. Tertia narravit quomodo pictura facta esset; Prima de itinere per epistulas iam multa sciebat, sed vultus Calvi et odor officinae deerant. Narratio coram facta lacunas suas quoque habuit, sicut tabula vetus.
+
+Capitulum 36: Duae viae in una ratione
+
+Per hebdomadam post reditum taberna plena laboris erat. Marcus chartam per genera disposuit. Hilarus tesseras in indice posuit. Publius folia in epistulis et rationibus temptavit. Clientes differentiam inter primum et secundum genus videre poterant.
+
+Tabula patris Publii in scrinium rediit, sed nunc cum exemplari tesserae, indice navis et retractatione Calvi ligata erat. Titulus plenus additus est. Posteri qui eam invenirent non solam lineam fractam legerent.
+
+Sextus relationem itineris composuit. Prima columna viam maris habebat: Portus, Antium, Puteoli. Secunda viam terrae: Astura, Tarracina, Formiae, Minturnae, Sinuessa, Capua, Cumae. Dies utriusque lineae inter se occurrebant.
+
+Tertia epistulas in ordine posuit. Nuntii interdum viatores praecesserant, interdum post eos venerant. Una epistula Liviae per Capuam ad Formias celeriter transierat; alia Menandri post reditum demum lecta est. Tempus scriptum et tempus acceptum differebant.
+
+Myrina bis in hebdomada in taberna laborare coepit, mercede sua. Optime funes et texta agnoscebat, quia in villa horreum curaverat. Non litteras multas sciebat, sed signa mercium memoria tenebat. Hilarus eam vesperi scribere adiuvabat, si ipsa volebat.
+
+Prima Lucano responsum tandem dedit. Matrimonium accipiebat ea condicione ut opus cum Sabina continuaret et pecunia sua maneret. Lucanus consenserat. Nuptiae post aestatem futurae erant. Tertia iter alterum in vita familiae aperiri sensit.
+
+Castor ex fragmentis lucernae non novam lucernam, sed parvum exemplum arcae fecit. Angulum unum colore nigro notavit. Id in taberna ponebatur ut memoria mercium fragilium. Non erat monumentum tempestatis magnae; erat res parva ex damno mutata.
+
+Calvus epistulam post mensem misit. Alia duo debita patris documentis soluta esse invenerat et petitiones retraxerat. De tertio adhuc agebat. Sexto gratias non egit magnifice; tantum exempla rationum clare posita utilem morem esse scripsit.
+
+Tertia parentes visitare ante nuptias Primae constituit. Hoc iter Via Appia faceret sine arca aliena aut controversia. Tamen sciebat viam numquam omnino vacuam esse. In mansionibus, pontibus et portibus historiae aliorum semper occurrebant.
+
+Ultimo vespere ante novam hebdomadam familia ad litus ambulavit. Hilarus et Myrina simul venerunt; Marcus pactum chartae domi reliquit; Prima de futuro marito loquebatur. Fortuna procul ad Portum stabat. Duae viae itineris in ratione coniungebantur, sed vita eorum iam ad plures vias dividebatur.
+
+Tertia in arena duas lineas fecit, unam rectam, alteram flexam. Fluctus utramque mox delevit. Rationes in taberna diutius manerent, memoriae aliter mutarentur. Viatores domum redierant, sed mutationes itineris in officiis, pactis et libertate Myrinae permanserunt.
+
+Ante reditum a litore Myrina concham albam invenit. Tertiae non dedit; sibi servavit. Prima res quam post libertatem ad mare sua voluntate collegerat in sacculo eius mansit. Hilarus eam non numeravit neque titulo notavit. Quaedam possessio simpliciter ad eum pertinet qui rem eligit.
+
+Apud portam Myrina paulisper restitit et mare post se respexit. Hilarus iuxta eam tacuit. In prima parte anni mater in villa manserat, filius inter Ostiam et Portum laboraverat; nunc uterque liber eandem portam sua voluntate transibat. Nummi ad libertatem emendam necessarii fuerant, sed hic gradus nullo pretio aestimari poterat. Tertia eos paulo ante se ambulare vidit et nihil ad tabulam itineris addidit.
+
+Sol iam infra nubes descendebat, cum grex ad portam maritimam rediit. Tertia post alios ambulavit et vestigia in arena respexit. Tot itinera per aquam, saxum et chartam facta erant, sed domus ad cenam eos exspectabat. Postridie taberna aperiretur, charta venderetur, nuptiae pararentur, et Myrina primam mercedem suam pacta acciperet. Finis viae non quietem perpetuam, sed potestatem novum diem aliter incipiendi dabat.

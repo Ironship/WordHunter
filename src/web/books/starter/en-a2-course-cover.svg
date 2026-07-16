@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">English A2: Wider Horizons course cover</title>
-  <desc id="desc">A deep blue English A2 cover with a golden compass, orbiting words, and expanding route lines.</desc>
+  <title id="title">A Stage by the Sea: An A2 Graded Reader</title>
+  <desc id="desc">A deep blue cover for an original English A2 graded reader, with a golden compass, orbiting words, and expanding route lines.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="1" x2="1" y2="0">
       <stop offset="0" stop-color="#101d4d"/>
@@ -42,7 +42,7 @@
     <circle cx="504" cy="640" r="5"/>
     <circle cx="170" cy="642" r="5"/>
   </g>
-  <text x="54" y="80" fill="#fff3c4" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="54" y="80" fill="#fff3c4" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">GRADED READER</text>
   <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">A2</text>
   <path d="M54 275 H274" stroke="#f4b942" stroke-width="12"/>
   <text x="55" y="325" fill="#9ce5df" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">WIDER HORIZONS</text>

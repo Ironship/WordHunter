@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Curso de español A2: Vivir y comunicarse</title>
-  <desc id="desc">Cubierta crema, verde y azul con una ciudad modular recorrida por una línea de comunicación naranja.</desc>
+  <title id="title">Lectura graduada A2: Cartas desde el andén</title>
+  <desc id="desc">Cubierta de una lectura graduada de español A2, con una ciudad modular recorrida por una línea narrativa naranja.</desc>
   <rect width="600" height="900" fill="#f3edd8"/>
   <path d="M0 0h600v24H0zM0 876h600v24H0z" fill="#12355b"/>
   <path d="M420 0h180v306H420z" fill="#0f8b8d"/>
   <circle cx="513" cy="95" r="54" fill="#ff8c42"/>
 
   <text x="48" y="73" fill="#12355b" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-  <text x="48" y="154" fill="#12355b" font-family="sans-serif" font-size="30" font-weight="700">CURSO DE ESPAÑOL</text>
+  <text x="48" y="154" fill="#12355b" font-family="sans-serif" font-size="30" font-weight="700">LECTURA GRADUADA</text>
   <text x="44" y="218" fill="#0f8b8d" font-family="sans-serif" font-size="61" font-weight="900">VIVIR</text>
   <text x="48" y="263" fill="#c34f28" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="2">Y COMUNICARSE</text>
 

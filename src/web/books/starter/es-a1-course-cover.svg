@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Curso de español A1: Primeros pasos</title>
-  <desc id="desc">Cubierta azul, coral y amarilla con un camino de palabras que conduce a una puerta luminosa.</desc>
+  <title id="title">Lectura graduada A1: Las ventanas de Puerto de Alba</title>
+  <desc id="desc">Cubierta de una lectura graduada de español A1, con un camino de palabras que conduce a una puerta luminosa.</desc>
   <rect width="600" height="900" fill="#102a43"/>
   <circle cx="500" cy="104" r="66" fill="#ffd166"/>
   <circle cx="500" cy="104" r="45" fill="#ff6b5f"/>
   <path d="M0 0h26v900H0zM574 0h26v900h-26z" fill="#ffd166"/>
 
   <text x="58" y="82" fill="#ffd166" font-family="sans-serif" font-size="24" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-  <text x="58" y="168" fill="#ffffff" font-family="sans-serif" font-size="31" font-weight="700" letter-spacing="1">CURSO DE ESPAÑOL</text>
+  <text x="58" y="168" fill="#ffffff" font-family="sans-serif" font-size="31" font-weight="700" letter-spacing="1">LECTURA GRADUADA</text>
   <text x="54" y="229" fill="#ff6b5f" font-family="sans-serif" font-size="53" font-weight="900">PRIMEROS</text>
   <text x="58" y="276" fill="#b9e4e4" font-family="sans-serif" font-size="39" font-weight="700" letter-spacing="6">PASOS</text>
 

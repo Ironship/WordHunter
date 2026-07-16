@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Premiers échanges en français, cours A1</title>
-  <desc id="desc">Couverture corail et bleu nuit avec une porte lumineuse, des bulles de dialogue et des pas menant vers le français.</desc>
+  <title id="title">Les Jours de la Traverse</title>
+  <desc id="desc">Couverture d’une lecture graduée de français A1, avec une porte lumineuse, des bulles de texte et des pas.</desc>
   <rect width="600" height="900" fill="#17243a"/>
   <rect x="24" y="24" width="552" height="852" rx="24" fill="none" stroke="#ffcc70" stroke-width="4"/>
   <path d="M24 188H576V340H24Z" fill="#ed6a5a"/>
   <circle cx="492" cy="104" r="52" fill="#ffcc70"/>
   <text x="492" y="121" text-anchor="middle" fill="#17243a" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">A1</text>
   <text x="58" y="86" fill="#fff8e8" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-  <text x="58" y="142" fill="#ffcc70" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">COURS DE FRANÇAIS</text>
+  <text x="58" y="142" fill="#ffcc70" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">LECTURE GRADUÉE</text>
   <text x="300" y="246" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700">Premiers</text>
   <text x="300" y="306" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700">échanges</text>
 
@@ -30,6 +30,6 @@
     <ellipse cx="188" cy="735" rx="22" ry="13" transform="rotate(18 188 735)"/>
     <ellipse cx="231" cy="767" rx="22" ry="13" transform="rotate(-15 231 767)"/>
   </g>
-  <text x="300" y="827" text-anchor="middle" fill="#fff8e8" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">PARLER • COMPRENDRE • AGIR</text>
+  <text x="300" y="827" text-anchor="middle" fill="#fff8e8" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">LIRE • COMPRENDRE • DÉCOUVRIR</text>
   <text x="300" y="856" text-anchor="middle" fill="#ffcc70" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
 </svg>

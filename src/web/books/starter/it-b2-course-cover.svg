@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Tra le righe, corso d’italiano B2</title>
-  <desc id="desc">Pagine geometriche color avorio e turchese si sovrappongono su un fondo prugna, attraversate da linee che suggeriscono analisi e connessioni.</desc>
+  <title id="title">LE CITTÀ POSSIBILI</title>
+  <desc id="desc">Copertina di una lettura graduata d’italiano B2, con pagine geometriche e linee che suggeriscono analisi e connessioni.</desc>
   <rect width="600" height="900" fill="#3f1f3f"/>
   <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#f3dfb8" stroke-width="4"/>
   <g transform="translate(78 370)">
@@ -26,8 +26,8 @@
   </g>
   <g fill="#f3dfb8" font-family="Georgia, 'Times New Roman', serif">
     <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="62" y="205" font-size="43" font-weight="700">CORSO</text>
-    <text x="62" y="255" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="205" font-size="43" font-weight="700">LETTURA</text>
+    <text x="62" y="255" font-size="43" font-weight="700">GRADUATA</text>
     <text x="62" y="305" font-size="20" font-style="italic">Tra le righe</text>
   </g>
   <g transform="translate(477 302)">
@@ -36,6 +36,6 @@
   </g>
   <g fill="#f3dfb8" font-family="Arial, sans-serif">
     <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 CAPITOLI</text>
   </g>
 </svg>

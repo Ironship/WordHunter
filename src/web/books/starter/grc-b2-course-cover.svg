@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Μαθήματα Ἑλληνικῆς B2, Κρίσις καὶ πειθώ</title>
-  <desc id="desc">Βαθυπόρφυρον κάλυμμα μετὰ γλαυκός, ζυγοῦ κρίσεως καὶ στεφάνου δάφνης.</desc>
+  <title id="title">Ἀνάγνωσμα B2: Ὁ λίθος καὶ ἡ θάλαττα</title>
+  <desc id="desc">Κάλυμμα Ἑλληνικοῦ ἀναγνώσματος βαθμοῦ B2 μετὰ γλαυκός, ζυγοῦ κρίσεως καὶ στεφάνου δάφνης.</desc>
   <defs>
     <radialGradient id="bg-b2" cx="70%" cy="42%" r="85%">
       <stop offset="0" stop-color="#5a2639"/>
@@ -50,7 +50,7 @@
   <rect x="30" y="30" width="540" height="840" fill="none" stroke="#d8ad69" stroke-width="2"/>
   <rect x="30" y="61" width="540" height="26" fill="url(#tri-b2)" opacity=".9"/>
   <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
-    <text x="54" y="145" fill="#e9cb92" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="54" y="145" fill="#e9cb92" font-size="24" letter-spacing="1">ΕΛΛΗΝΙΚΟΝ ΑΝΑΓΝΩΣΜΑ</text>
     <text x="47" y="312" fill="#fff3dd" font-size="142">B2</text>
     <text x="55" y="360" fill="#e0a162" font-size="29">ΚΡΙΣΙΣ ΚΑΙ ΠΕΙΘΩ</text>
   </g>
