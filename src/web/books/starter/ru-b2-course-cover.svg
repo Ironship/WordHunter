@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Русский: точность и аргумент. Курс B2</title>
-  <desc id="desc">Фиолетово-синяя обложка продвинутого курса русского языка B2 с призмой, связями и слоями аргументации.</desc>
+  <title id="title">Окна Старого Берега — Право на свет. Адаптированное чтение B2</title>
+  <desc id="desc">Фиолетово-синяя обложка книги для чтения на русском языке уровня B2 с призмой, связями и слоями аргументации.</desc>
   <defs>
     <linearGradient id="b2-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#18183f"/>
@@ -15,7 +15,7 @@
   <rect x="27" y="27" width="546" height="846" rx="22" fill="none" stroke="#f5f0e2" stroke-width="4"/>
   <rect x="58" y="58" width="302" height="32" rx="16" fill="#7656a8"/>
   <text x="209" y="80" fill="#fffaf0" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="1.5">ТОЧНОСТЬ И АРГУМЕНТ</text>
-  <text x="58" y="132" fill="#f5f0e2" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КУРС РУССКОГО ЯЗЫКА</text>
+  <text x="58" y="132" fill="#f5f0e2" font-family="Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1">КНИГА ДЛЯ ЧТЕНИЯ</text>
   <path d="M28 158H572" stroke="#b8ea63" stroke-width="8"/>
 
   <text x="58" y="300" fill="#ffffff" font-family="Arial, sans-serif" font-size="166" font-weight="900" letter-spacing="-8">B2</text>

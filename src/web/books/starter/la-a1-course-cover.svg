@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Cursus linguae Latinae A1: Primi Gradus per Urbem</title>
-  <desc id="desc">Porta Romana aperta, via clara et tres gradus initium itineris per urbem significant.</desc>
+  <title id="title">ARCA CUM DELPHINO</title>
+  <desc id="desc">Tegumentum libri Latini ad legendum gradu A1, porta Romana aperta, via clara et tribus gradibus ornatum.</desc>
   <rect width="600" height="900" fill="#f4e7cc"/>
   <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#243d3a" stroke-width="4"/>
   <path d="M0 666 Q148 614 300 660 T600 650 V900 H0Z" fill="#2e6159"/>
@@ -15,8 +15,8 @@
   <path d="M238 664 C246 603 265 568 300 532 C335 568 354 603 362 664Z" fill="#efc05b"/>
   <g fill="#243d3a" font-family="Georgia, 'Times New Roman', serif">
     <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
-    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="178" font-size="39" font-weight="700">LIBER LATINUS</text>
+    <text x="58" y="224" font-size="39" font-weight="700">AD LEGENDUM</text>
     <text x="58" y="274" font-size="22" font-style="italic">Primi Gradus per Urbem</text>
   </g>
   <g transform="translate(476 292)">
@@ -25,6 +25,6 @@
   </g>
   <g fill="#f4e7cc" font-family="Arial, sans-serif">
     <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV CAPITULA</text>
   </g>
 </svg>

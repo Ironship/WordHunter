@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Polski samodzielnie. Kurs B1</title>
-  <desc id="desc">Bordowa okładka kursu polskiego B1 z mostem zbudowanym ze zdań i dwiema postaciami symbolizującymi samodzielną komunikację.</desc>
+  <title id="title">Polski samodzielnie. Czytanka B1</title>
+  <desc id="desc">Bordowa okładka polskiej czytanki B1 z mostem zbudowanym ze zdań i dwiema postaciami symbolizującymi samodzielne czytanie.</desc>
   <defs>
     <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#351735"/>
@@ -17,7 +17,7 @@
   <rect x="61" y="56" width="203" height="34" rx="17" fill="#36a7a2"/>
   <text x="162" y="79" fill="#fffaf0" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="2">POLSKI SAMODZIELNIE</text>
 
-  <text x="60" y="121" fill="#fff5e6" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">KURS JĘZYKA POLSKIEGO</text>
+  <text x="60" y="121" fill="#fff5e6" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" letter-spacing="2">CZYTANKA PO POLSKU</text>
   <text x="58" y="294" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="164" font-weight="900" letter-spacing="-8">B1</text>
   <text x="65" y="338" fill="#ffd166" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5">SAMODZIELNY GŁOS</text>
 

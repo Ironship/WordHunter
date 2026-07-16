@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">English B2: Ideas in Context course cover</title>
-  <desc id="desc">An aubergine English B2 cover with a faceted prism balancing multiple beams of evidence and perspective.</desc>
+  <title id="title">The Space Between Voices: A B2 Graded Reader</title>
+  <desc id="desc">An aubergine cover for an original English B2 graded reader, with a faceted prism balancing multiple beams of evidence and perspective.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#27143f"/>
@@ -48,7 +48,7 @@
     <text x="477" y="535">NUANCE</text>
     <text x="465" y="710">DECISION</text>
   </g>
-  <text x="54" y="80" fill="#eadff8" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="54" y="80" fill="#eadff8" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">GRADED READER</text>
   <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">B2</text>
   <path d="M54 275 H274" stroke="#ff7f6e" stroke-width="12"/>
   <text x="55" y="325" fill="#63dfcf" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">IDEAS IN CONTEXT</text>

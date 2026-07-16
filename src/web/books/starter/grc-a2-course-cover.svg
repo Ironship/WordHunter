@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Μαθήματα Ἑλληνικῆς A2, Ὁδοὶ καὶ λόγοι</title>
-  <desc id="desc">Πράσινον καὶ ὠχρὸν κάλυμμα μετὰ ἱερᾶς ὁδοῦ, ὁροσήμων καὶ κλάδων ἐλαίας.</desc>
+  <title id="title">Ἀνάγνωσμα A2: Ἡ σφραγὶς ἐν τῇ Ἱερᾷ Ὁδῷ</title>
+  <desc id="desc">Κάλυμμα Ἑλληνικοῦ ἀναγνώσματος βαθμοῦ A2 μετὰ ἱερᾶς ὁδοῦ, ὁροσήμων καὶ κλάδων ἐλαίας.</desc>
   <defs>
     <linearGradient id="bg-a2" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#173f3a"/>
@@ -40,7 +40,7 @@
   <rect x="32" y="31" width="536" height="838" fill="none" stroke="#f2d89b" stroke-width="2"/>
   <rect x="32" y="65" width="536" height="22" fill="url(#wave-a2)" opacity=".8"/>
   <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
-    <text x="54" y="145" fill="#f2d89b" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="54" y="145" fill="#f2d89b" font-size="24" letter-spacing="1">ΕΛΛΗΝΙΚΟΝ ΑΝΑΓΝΩΣΜΑ</text>
     <text x="48" y="310" fill="#fff8df" font-size="142">A2</text>
     <text x="55" y="358" fill="#e5a458" font-size="29">ΟΔΟΙ ΚΑΙ ΛΟΓΟΙ</text>
   </g>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Cursus linguae Latinae B1: Viae Civium</title>
-  <desc id="desc">Aquaeductus Romanus supra viam longam stat, laurea et tabula civica opus commune significant.</desc>
+  <title id="title">MEMORIA CANALIS</title>
+  <desc id="desc">Tegumentum libri Latini ad legendum gradu B1, aquaeductu Romano, laurea et tabula civica ornatum.</desc>
   <rect width="600" height="900" fill="#e9e2ca"/>
   <rect x="28" y="28" width="544" height="844" rx="8" fill="none" stroke="#263b2d" stroke-width="4"/>
   <path d="M0 682Q148 627 300 680T600 669V900H0Z" fill="#516b45"/>
@@ -16,8 +16,8 @@
   </g>
   <g fill="#263b2d" font-family="Georgia, 'Times New Roman', serif">
     <text x="58" y="98" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="58" y="178" font-size="39" font-weight="700">CURSUS LINGUAE</text>
-    <text x="58" y="224" font-size="39" font-weight="700">LATINAE</text>
+    <text x="58" y="178" font-size="39" font-weight="700">LIBER LATINUS</text>
+    <text x="58" y="224" font-size="39" font-weight="700">AD LEGENDUM</text>
     <text x="58" y="274" font-size="22" font-style="italic">Viae Civium</text>
   </g>
   <g transform="translate(476 292)">
@@ -26,6 +26,6 @@
   </g>
   <g fill="#e9e2ca" font-family="Arial, sans-serif">
     <text x="58" y="824" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="542" y="824" text-anchor="end" font-size="15">XXIV LECTIONES</text>
+    <text x="542" y="824" text-anchor="end" font-size="15">XXIV CAPITULA</text>
   </g>
 </svg>

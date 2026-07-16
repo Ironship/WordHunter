@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Voci e percorsi, corso d’italiano B1</title>
-  <desc id="desc">Archi color terracotta e onde sonore attraversano una notte blu, evocando racconti, viaggi e voci del quartiere.</desc>
+  <title id="title">FUORI CAMPO</title>
+  <desc id="desc">Copertina di una lettura graduata d’italiano B1, con archi color terracotta e linee che evocano racconti e viaggi.</desc>
   <rect width="600" height="900" fill="#18263d"/>
   <rect x="34" y="34" width="532" height="832" rx="28" fill="none" stroke="#f0d8aa" stroke-width="4"/>
   <circle cx="470" cy="170" r="78" fill="#e7b84a"/>
@@ -16,8 +16,8 @@
   </g>
   <g fill="#f0d8aa" font-family="Georgia, 'Times New Roman', serif">
     <text x="62" y="112" font-size="19" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-    <text x="62" y="205" font-size="43" font-weight="700">CORSO</text>
-    <text x="62" y="255" font-size="43" font-weight="700">D’ITALIANO</text>
+    <text x="62" y="205" font-size="43" font-weight="700">LETTURA</text>
+    <text x="62" y="255" font-size="43" font-weight="700">GRADUATA</text>
     <text x="62" y="305" font-size="20" font-style="italic">Voci e percorsi</text>
   </g>
   <g transform="translate(486 301)">
@@ -26,6 +26,6 @@
   </g>
   <g fill="#f0d8aa" font-family="Arial, sans-serif">
     <text x="62" y="814" font-size="17" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
-    <text x="500" y="814" text-anchor="end" font-size="15">30 LEZIONI</text>
+    <text x="500" y="814" text-anchor="end" font-size="15">30 CAPITOLI</text>
   </g>
 </svg>

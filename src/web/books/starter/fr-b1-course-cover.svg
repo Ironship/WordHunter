@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Prendre la parole en français, cours B1</title>
-  <desc id="desc">Couverture bleu cobalt et jaune représentant un pont entre des idées, une ville et une tribune.</desc>
+  <title id="title">Deux villes, une Traverse</title>
+  <desc id="desc">Couverture d’une lecture graduée de français B1, représentant un pont entre des textes, des idées et une ville.</desc>
   <rect width="600" height="900" fill="#173f73"/>
   <rect x="24" y="24" width="552" height="852" rx="24" fill="none" stroke="#f5cf55" stroke-width="4"/>
   <path d="M24 188H576V340H24Z" fill="#2d7dd2"/>
   <circle cx="492" cy="104" r="52" fill="#f5cf55"/>
   <text x="492" y="121" text-anchor="middle" fill="#173f73" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="900">B1</text>
   <text x="58" y="86" fill="#f7f4ea" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="4">WORD HUNTER</text>
-  <text x="58" y="142" fill="#f5cf55" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">COURS DE FRANÇAIS</text>
+  <text x="58" y="142" fill="#f5cf55" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="800" letter-spacing="2">LECTURE GRADUÉE</text>
   <text x="300" y="246" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="51" font-weight="700">Prendre</text>
   <text x="300" y="306" text-anchor="middle" fill="#ffffff" font-family="Georgia, 'Times New Roman', serif" font-size="51" font-weight="700">la parole</text>
 
@@ -20,6 +20,6 @@
   <path d="M118 552H229M354 447H489M354 472H452" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/>
   <path d="M269 676H331V734H269Z" fill="#ea6a47" stroke="#102c50" stroke-width="6"/>
   <path d="M252 676H348L330 642H270Z" fill="#f5cf55" stroke="#102c50" stroke-width="6" stroke-linejoin="round"/>
-  <text x="300" y="827" text-anchor="middle" fill="#f7f4ea" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">RACONTER • ARGUMENTER • RELIER</text>
+  <text x="300" y="827" text-anchor="middle" fill="#f7f4ea" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="700" letter-spacing="3">LIRE • RELIER • INTERPRÉTER</text>
   <text x="300" y="856" text-anchor="middle" fill="#f5cf55" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="3">WORD HUNTER ORIGINALS</text>
 </svg>

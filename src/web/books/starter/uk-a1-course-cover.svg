@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="900" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Українська крок за кроком. Курс A1</title>
-  <desc id="desc">Синьо-золота обкладинка курсу української мови A1 зі сходинками, діалоговими хмарками та стилізованою квіткою як образами перших мовних кроків.</desc>
+  <title id="title">Українська крок за кроком. Читанка A1</title>
+  <desc id="desc">Синьо-золота обкладинка української читанки A1 зі сходинками, діалоговими хмарками та стилізованою квіткою як образами перших кроків у читанні.</desc>
   <defs>
     <linearGradient id="a1-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#12355b"/>
@@ -20,7 +20,7 @@
   <path d="M25 158H575" stroke="#f3b83f" stroke-width="9"/>
   <rect x="60" y="54" width="284" height="36" rx="18" fill="#d85852"/>
   <text x="202" y="78" fill="#ffffff" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.5">УКРАЇНСЬКА КРОК ЗА КРОКОМ</text>
-  <text x="60" y="122" fill="#fff8df" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">КУРС УКРАЇНСЬКОЇ МОВИ</text>
+  <text x="60" y="122" fill="#fff8df" font-family="Arial, Helvetica, sans-serif" font-size="29" font-weight="700" letter-spacing="1">УКРАЇНСЬКА ЧИТАНКА</text>
   <text x="57" y="304" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="168" font-weight="900" letter-spacing="-8">A1</text>
   <text x="65" y="347" fill="#ffe18a" font-family="Arial, Helvetica, sans-serif" font-size="23" font-weight="700" letter-spacing="4">ПЕРШІ КРОКИ</text>
 

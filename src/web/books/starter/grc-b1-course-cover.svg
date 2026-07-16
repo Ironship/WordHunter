@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">Μαθήματα Ἑλληνικῆς B1, Πόλις ἐν λόγοις</title>
-  <desc id="desc">Κυανοῦν κάλυμμα μετὰ στοᾶς, δημοσίου κυλίνδρου καὶ χάλκινων γραμμῶν πόλεως.</desc>
+  <title id="title">Ἀνάγνωσμα B1: Τὰ γράμματα μετὰ τὴν θύελλαν</title>
+  <desc id="desc">Κάλυμμα Ἑλληνικοῦ ἀναγνώσματος βαθμοῦ B1 μετὰ στοᾶς, δημοσίου κυλίνδρου καὶ χάλκινων γραμμῶν πόλεως.</desc>
   <defs>
     <linearGradient id="bg-b1" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#102e4a"/>
@@ -48,7 +48,7 @@
   <rect x="31" y="31" width="538" height="838" fill="none" stroke="#d6a66e" stroke-width="2"/>
   <rect x="31" y="64" width="538" height="28" fill="url(#key-b1)" opacity=".86"/>
   <g font-family="Georgia, 'Times New Roman', serif" font-weight="700">
-    <text x="54" y="145" fill="#e8cfaa" font-size="24" letter-spacing="1">ΜΑΘΗΜΑΤΑ ΕΛΛΗΝΙΚΗΣ</text>
+    <text x="54" y="145" fill="#e8cfaa" font-size="24" letter-spacing="1">ΕΛΛΗΝΙΚΟΝ ΑΝΑΓΝΩΣΜΑ</text>
     <text x="47" y="313" fill="#fff7e5" font-size="142">B1</text>
     <text x="55" y="361" fill="#d77a55" font-size="28">ΠΟΛΙΣ ΕΝ ΛΟΓΟΙΣ</text>
   </g>

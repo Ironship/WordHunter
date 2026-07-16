@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">汉语A2《日子越过越明白》课程封面</title>
-  <desc id="desc">靛蓝与玉绿色封面，城市街区、窗灯和连续路线组成一幅生活地图，象征扩展日常沟通能力。</desc>
+  <title id="title">汉语A2分级读物：照片里的桂花巷</title>
+  <desc id="desc">汉语A2分级读物封面，靛蓝与玉绿色的城市街区、窗灯和连续路线组成一幅生活地图。</desc>
   <defs>
     <linearGradient id="a2-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#18264f"/>
@@ -45,7 +45,7 @@
     <circle cx="390" cy="500" r="8"/>
     <circle cx="506" cy="574" r="8"/>
   </g>
-  <text x="55" y="83" fill="#eef0d3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="55" y="83" fill="#eef0d3" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语分级读物</text>
   <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">A2</text>
   <path d="M55 310h229" stroke="#4db39e" stroke-width="11"/>
   <text x="57" y="360" fill="#f3bd62" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">日子越过越明白</text>

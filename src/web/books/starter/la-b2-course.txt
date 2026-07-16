@@ -1,197 +1,1309 @@
-VERBA, TESTES, CIVITAS
-Cursus linguae Latinae B2
+Monitum lectori
+
+Hic liber ad simplicem lectionem et comprehensionem atque ad vocabula ex contextu intellegenda tantum destinatur; nihil ultra praebet. Gradus B2 aestimationem proximam difficultatis legendi, ratione CEFR inspiratam, tantum indicat; officialis non est. Liber neque translatio neque institutio plena est nec rationem systematicam audiendi, loquendi aut scribendi continet. Commendatur ut quisque libros suos aliasque materias licite possessas, non secretas, per importatorem Word Hunter inferat; data personalia aliorum inferenda non sunt. Omnes homines, loci, epistulae, tabulae ceteraque documenta huius fabulae ficta vel ad fictionem accommodata sunt. Nihil hic pro consilio medico aut iuridico habendum est.
+
+LIMUS SUB AQUA
+Liber legendus B2
 Word Hunter Originals
 
-Hic liber gradus ratione CEFR inspiratos sequitur, non normam examinis Latini publice constitutam. Omnia scripta, etiam quae speciem inscriptionis, epistulae aut annalium imitantur, nova et ficta sunt. Exerce lectionem accuratam, morphologiam, recitationem, scripturam argumentativam; dialogum activum adhibe tantum si tibi prodest. Nulla exercitatio certum eventum promittit.
+Capitulum 1: Mandatum sine potestate
 
-LECTIO I — QUAESTIO ANTE RESPONSUM
+Uno anno postquam canalis orientalis refectus erat, Tertia ad Portum rediit non ut viatrix, sed ut mandatum novum audiret. Sextus eam per lacum hexagonum duxit ad horreum naviculariorum, ubi domini navium, procuratores horreorum et duo legati magistratus convenerant. Nihil adhuc scriptum erat praeter epistulam invitationis.
 
-Post opus viarum collegium, curatoribus iterum consentientibus, Tertiam rogat ut novam investigationem ducat. Hoc quoque mandatum privatum est; Tertia magistratum non gerit, et publica potestas penes magistratus manet. Magistratus vult scire cur regio veteris portus minus frequentetur. Quaestio primo simplex videtur, sed verba incerta sunt. “Minus” quo tempore comparatur? “Frequentetur” a mercatoribus, incolis, vectoribus an omnibus? “Vetus portus” quos vicos continet?
+Regio de qua agebatur inter lacum veterem et molum occidentalem iacebat. Olim ibi merces, fabri, cauponae et deversoria frequentes fuerant. Nunc complures tabernae clausae, moles luto circumdata et viae minus plenae videbantur. Attamen verbum "declinatio" iam interpretationem, non nudum factum, continebat.
 
-Tertia quaestionem restringit: “Quomodo numerus tabernarum apertarum, vectura mercium et usus fontium in tribus vicis maritimis per quinquennium mutati sunt, et quas causas scripta atque testes proponunt?” Ne haec quidem formula causam praesumit. Investigatio mutationem describet, explicationes aestimabit, limites patefaciet.
+Collegium naviculariorum affirmabat naves maiores propter limum ad molum accedere non posse. Domini horreorum vias angustas et vecturam tardam culpabant. Incolae autem dicebant commercium ad lacum novum consilio potentiorum translatum esse. Singulae partes causam suam ante investigationem habebant.
 
-Cur regio minus frequentetur interrogatio obliqua est et coniunctivum habet; quomodo mutati sunt in verbis Tertiae interrogatio recta est et indicativum habet. Patefaciet forma activa est, cui investigatio subiectum est. Discerne verbum, agentem, mensuram, tempus. Rescribe tres quaestiones nimis latas ita ut examinari possint, nec tamen responsum anteferant.
+Titus Aelius Sabinus, procurator senatoris cui duo horrea pertinebant, consilium renovationis attulit. Moles altius fodire, viam plaustris aperire, officinas veteres in alteram regionem transferre volebat. Sumptus magnus erat, sed senator partem pecuniae promittebat, si magistratus cito consentirent.
 
-LECTIO II — PERSONA ET GENUS DICENDI
+Myrtis, liberta quae cauponam iuxta forum maritimum regebat, consilio obstitit. Via latior mensas et porticum eius tolleret. Fabri translati clientes et domos amitterent. "Renovatio" ei non idem significabat ac Sabino. Uterque verbo bono rem diversam tegebat.
 
-Tertia se diversis hominibus aliter, non falso, praesentat. Senatoris legato scribit: “Claudia Tertia, collegii scribarum mandato, scripta regionis maritimae colligo.” Cauponi autem dicit: “Tertia sum; intellegere cupio quo tempore viatores hic manere desierint.” Identitas eadem est, sed quod ad rem pertinet mutatur.
+Priscus magistratus Tertiam monuit mandatum privatum futurum esse, sicut opus canalis initio fuerat. Ea neque fossas iubere, neque tabulas publicas sine custode auferre, neque de possessione decernere posset. Relatio argumenta praeberet; potestas apud magistratus et dominos maneret.
 
-Prima epistula eius nimis ornata erat: “Si maiestati officii vestri non molestum fuerit…” Marcus monet reverentiam obscuritatem non postulare. Tertia simplicius petit ut indices vectigalium intra decem dies, si praesto sint, inspicere liceat; si terminus incommodus sit, alium diem rogat.
+Tertia hunc finem palam repeti voluit. Experientia prior docuerat homines scriptori potestatem tribuere posse quam non haberet, deinde eius verba vel timere vel uti. Sabinus consensit, sed investigationem intra quattuor menses perfici postulavit. Senator ante hiemem responsum volebat.
 
-Coniunctivi liceat et sit petitionem mitigant; si praesto sint incertitudinem realem relinquit. Dativus maiestati ab adiectivo molestum recte regitur, quamquam tota formula prior inutiliter tumida erat. Scribe eandem petitionem amico collegae, magistratui et custodi qui auxilium dare non tenetur; differentias iustifica.
+Marcus, qui Tertiam comitabatur, quaesivit quid exacte responsum deberet continere. Num frequentiam navium, causam limi, utilitatem viae, condicionem incolarum an omnia simul explorarent? Mandatum nimis latum intra quattuor menses ad summas leves duceret.
 
-LECTIO III — CONSILIUM UNIUS PAGINAE
+Sextus proposuit quaestionem mercatoriam: cur merces apud molum occidentalem pauciores essent quam quinque annis ante. Myrtis quaesivit cur annus quintus fundamentum esset; eo anno extraordinaria copia frumenti advenerat. Comparatio ipsa eventum eligebat.
 
-Consilium investigationis septem partes habet: quaestio, regio, fontes, homines consulendi, tempora, sumptus, pericula. Tertia non promittit se “veritatem portus reperturam”; promittit se causas assertas cum indiciis comparaturam. Verba modestiora propositum non minus amplum, sed maiorem disciplinam ostendunt.
+Lucius Crispus, nunc consiliarius publicorum scriptorum, verba in tabula posuit: naves, merces, tabernae, incolae, limus, viae, anni. Tertia sub singulis quid mensurari posset addidit. "Frequentia" numerum navium, pondus mercium aut dies laboris significare poterat.
 
-Periculum principale est scripta recentiora integra, vetera lacunosa esse. Etiam testes qui hodie adsunt eos qui discesserunt repraesentare non possunt. Itaque cursores ad familias emigratas mittentur, quamquam responsa pauca futura esse Tertia suspicatur.
+Sabinus celeritatem desiderabat, sed obscuritatem quaestionis agnovit. Duo dies ad formulam dedit. Interim Tertia regionem sine comitatu partium ambularet, ne primus aspectus ab uno patrono regeretur. Myrtis custodis filium viam ostensurum obtulit; Tertia recusavit eadem causa.
 
-Consulendi gerundivum est quod ad homines refertur; comparaturam participium futurum est, cum se congruit, et esse subauditur. Relativum qui discesserunt antecedentem eos habet. Redige consilium amplum ad ducenta verba servatis fine, methodo, limite et effectu concreto.
+Post conventum Sextus eam ad molum duxit. Aqua fusca erat, sed aestus recedebat; limus partim apparebat, partim sub aqua latebat. Navis parva sine difficultate accessit. Maior navis in lacu medio mansit et merces in scaphas minores transtulit.
 
-LECTIO IV — GRADUS TESTIMONIORUM
+Translatio mercium sumptum et tempus augebat, sed nautas scapharum alebat. Quod uni incommodum erat, alteri opus praebebat. Renovatio quae naves magnas ad molum reduceret hunc laborem minueret. Relatio utilitatem sine distributo effectu nominare non posset.
 
-In archivo reperiuntur rationes vectigalium, duae inscriptiones, epistula privata, index navium sine die et narratio post quadraginta annos scripta. Tertia vetustissimum scriptum non statim optimum appellat. Ratio coaeva numerum praebet, sed merces vectigali immunes omittit; narratio sera fontes antiquos fortasse adhibuit, sed eos non nominat.
+Via iuxta horrea revera angusta erat. Duo plaustra sibi obviam non transibant. Tamen pulvis minor et pueri inter tabernas tutius ambulabant quam in via principali. Latitudo eadem commodum et impedimentum secundum usum fiebat.
 
-Idem scriptum ad unam quaestionem testimonium proximum, ad alteram remotius esse potest. Epistula fabri testimonium proximum est de eo quod ipse vidit, non necessario de consilio senatorum quod ex rumore referat. Auctoritas, propinquitas, propositum et transmissio separatim aestimantur.
+Livianus, navium faber, e porta officinae eos salutavit. Tertiam ex relatione canalis nomine noverat. Dixit se non limum tantum, sed carum lignum, discipulos pauciores et naves alio genere factas pati. Si moles reficeretur, ars sua tamen statim non rediret.
 
-Quod ipse vidit indicativum rem ab auctore assertam ponit; quod ex rumore referat coniunctivus distantiam iudicii exprimere potest. Fac tabulam sex fontium fictorum: auctor, dies, genus, usus, defectus, quaestio aperta.
+Tertia nullum colloquium plenum eo die egit. Nomen, officium et primam sententiam tantum notavit, deinde tempus futurum petivit. Prima ambulatione omnia testimonia colligere simulatam diligentiam fecisset. Locus ante voces suas formam accipere debebat.
 
-LECTIO V — INSCRIPTIO SE IPSAM LAUDAT
+Ad vesperum lacum veterem circumivit. Clausae tabernae non omnes relictae erant: una ad horreum privatum versa, altera tantum hieme clausa, tertia post mortem domini heredem exspectabat. Numerus valvarum clausarum sine causis rem exaggerare poterat.
 
-Primum fragmentum fictum lapidi simile est: “Aulus Varius, curator vigilantissimus, horrea mari vexata sua impensa restituit, securitate civibus reddita.” Verba non tantum factum tradunt. Epitheton vigilantissimus iudicium imponit; sua impensa liberalitatem ostentat; civibus universis commodum attribuit.
+In caupona Myrtis aquam bibit et pretium solvit, ne hospitium cum testimonio misceretur. Mulier de consilio Sabini tacuit, quia Tertia diem colloquii nondum constituerat. Silentium voluntarium inter eas fidem magis quam familiaritas celeris creavit.
 
-Ratio operis tamen partem pecuniae ex arca collegii datam esse indicat. Ex hoc non sequitur inscriptionem totam mentiri. Fortasse Varius sumptum reliquum solvit; fortasse formula honorem auxit. Tertia distinguit quod lapis dicat, quod ratio confirmet, quod conici tantum possit.
+Navicula vespere Ostiam petiit. Tertia in aqua imaginem horreorum fractam fluctibus vidit. Mandatum non adhuc acceperat; tantum verba partium et limites audiverat. Sine quaestione definita, quattuor menses facile in quattuor narrationes separatas solverentur.
 
-Ablativo absoluto securitate reddita actio perfecta compendiose exprimitur. Superlativus vigilantissimus vim encomiasticam habet. Recita inscriptionem quasi dedicationem publicam, deinde voce neutrali. Scribe analysin formae, agentis occultati et utilitatis proclamatae.
+In taberna paries post opus canalis vacuus iterum titulos accepit. Primum non fuit CAUSA, sed QUAESTIO. Sub eo Tertia scripsit: "Quae mutationes in usu molis occidentalis per sex annos documentis et testibus apparent, quibus causis probabiliter coniunguntur, et quos effectus consilia proposita inter partes dividunt?" Formula longa erat, sed neutram solutionem praesumebat.
 
-LECTIO VI — QUOMODO ACTA REM CINGANT
+Capitulum 2: Verba definiuntur
 
-Duo acta ficta eundem conventum describunt. Unum titulum habet: “Mercatores salutarem renovationem poscunt.” Alterum: “Inquilini timent ne consilium merces cotidianas pellat.” Utrumque verum testimonium eligit, sed alter titulus rem salutarem, alter periculum rei familiaris esse ostendit.
+Postridie Marcus formulam legit et vocem "usus" nimis latam putavit. Hilarus, ad consilium vocatus, respondit latitudinem utilem esse si partes infra definirentur. Tertia quattuor indicia sub ea posuit: accessus navium, vectura mercium, officinae apertae, usus cotidianus incolarum.
 
-Verba quoque iudicium movent. Mercatores “monent,” inquilini “conqueruntur”; magistratus “explicat,” caupo “fatetur.” Tertia verba neutriora substituit: dicit, respondet, affirmat, negat. Deinde verba affectu plena servat tantum ubi modus loquendi ipse ad argumentum pertinet.
+Crispus addidit vectigalia portus, sed Sextus monuit non omnes merces vectigal solvere aut in eadem ratione apparere. Numeri publici utiles erant, non totum commercium. Quae immunia aut alibi numerata essent in limite explicanda erant.
 
-Ne… pellat coniunctivus timendi est. Utrumque hic nominativus neuter singularis est et ad actum refertur; uterque ad duo masculina, utraque ad duo feminina referri potest, forma ambo autem numero plurali utitur. Fac duas aperturas diversas ex iisdem quinque factis et tertiam quae contentionem palam nominet.
+"Per sex annos" quoque deliberatum est. Quinque anni Sabini annum frumenti abundantem initium faciebant; sex annos addere annum ordinariorem praebebat. Tertia tamen series longior documenta vetustiora et lacunosa requirebat. Pactum lacunas accepturum esse debebat.
 
-LECTIO VII — NUMERI SINE FUNDAMENTO
+Myrtis per nuntium postulavit ut inquilini, non tantum domini tabernarum, inter partes nominarentur. Si officina transferretur, dominus pretium loci accipere posset, conductor autem clientelam nullo pretio reddito amitteret. Verbum "incolae" utrumque obscurabat.
 
-Legatus gloriatur vecturam mercium triplam factam esse. Tertia basim quaerit. Anno tempestatis decem plaustra transierant; anno sequente triginta. Proportio magna est, numerus ipse adhuc minor quam quinque annis ante, cum octoginta plaustra numerata essent.
+Sabinus contra volebat senatorem et conductores horreorum separari. Proprietas a cotidiano usu differebat. Ipse consilium domini gerebat, sed non omnes mercatores in horreis sententiam eius sequebantur. Quaestio ergo partes non in duas acies simplices dividebat.
 
-Praeterea ratio naves non continet et per duos menses custos aberat. Numerus igitur mutationem realem indicare potest, sed plenam frequentiam non mensurat. Tertia numerum plerisque diebus repertum mavult quam solam summam, quia unum festum transitum extraordinarium fecit.
+Tertia tabulam personarum fecit: domini terrae, conductores horreorum, mercatores, navicularii, fabri, vectores, tabernarii, inquilini, magistratus, operarii serviles et liberi. Eadem persona in pluribus ordinibus esse poterat. Sextus navis dominus et mercator simul erat.
 
-Quo maius incrementum praedicatur, eo magis numerus primus, ad quem incrementum refertur, quaerendus est. Ablativus mensurae in triplo maior vel viginti plaustris minor comparationem definit. Describe seriem numericam: numerus ipse, proportio, tempus, lacuna, interpretatio cauta. Noli causam e sola coniunctione inferre.
+Marcus quaesivit quomodo servi audirentur, cum domini potestatem haberent et consilium publicum fortasse eos transferret. Pactum secretum absolutum promittere non poterat. Myrina proposuit condiciones colloquii clare dici et nomina, ubi ad rem non necessaria essent, in summa omitti.
 
-LECTIO VIII — MARE, LIMUS, CAUSA
+Crispus cautus fuit. Testimonium sine nomine facilius fingi vel mutari poterat. Tandem originalis nota nomen apud tabernam sub custodia teneret, relatio autem munus tantum adhiberet, nisi persona consensisset aut factum publicum postularet. Hoc non periculum omne tollebat.
 
-Architectus fragmentum observationis fictae tradit: “Post ventos ab austro, aqua fluminis fusca ad moles fertur; ubi cursus tardior fit, limus deponitur. Hoc mense profunditas iuxta horreum palmo minor inventa est.” Stilus mensuras et condicionem refert, non deos aut culpam invocat.
+Sabinus formulam causae mutare volebat: "quibus causis coniunguntur" in "an limo causentur." Tertia recusavit. Limus una hypothesis esset, non porta unica. Livianus iam lignum et discipulos nominaverat; naves maiores, viae et decreta quoque exploranda erant.
 
-Tertia quaerit quot locis, quibus horis, quo instrumento mensura capta sit. Una observatio hypothesin sustinet, legem universalem non constituit. Architectus fatetur mare aestu variari; proximis mensibus profunditas eadem ratione mensuranda erit.
+Sextus timuit ne relatio in infinitum cresceret. Tertia fines negativos addidit. Non designaret molem novam, non aestimaret totum commercium Portus, non de iure possessionum decerneret, non vitam omnium vicorum historia completa narraret. Quattuor menses ita spatium certius acceperunt.
 
-In mensura capta sit, participium perfectum passivum cum mensura congruit. In sententia profunditas mensuranda erit, mensuranda gerundivum est quod ad profunditatem refertur et necessitatem futuram exprimit. Moles, molis nomen femininum tertiae declinationis est; accusativum singularem molem, ablativum mole habet. Forma moles nominativum singularem, nominativum pluralem vel accusativum pluralem indicare potest; hic post ad accusativus pluralis est. Verte observationem in summam publicam sine verbis artis supervacuis, servatis methodo, invento et incertitudine.
+Effectus consiliorum inter partes "dividi" verbum Sabino nimis politicum videbatur. Dicebat utilitatem communem spectandam esse. Marcus respondit utilitatem communem ex commodis et oneribus singulorum constitui; distributio non factionem, sed rem concretam significabat.
 
-LECTIO IX — ARTIFEX INTERROGATUR
+Myrtis exemplum dedit: via lata vecturam celeraret, sed porticum cauponae auferret. Summa urbis forte positiva esset, tamen ipsa iacturam certam ferret. Relatio quae hoc taceret decisionem faciliorem, non iustiorem, faceret. Sabinus tandem vocem mansuram concessit.
 
-Tertia Livianum navium fabrum convenit. Non rogat “Cur portus periit?”, quia verbum perire conclusionem exaggerat. Rogat quas mutationes in navibus, materiis et clientibus viderit. Livianus memorat naves maiores altiorem aquam requirere, picem carius venire, iuvenes ad alia collegia transire.
+Pactum fontium enumeravit: rationes vectigalium, indices navium, mercedes horreorum, instrumenta conductionis, acta magistratuum, tabulae mensurarum, epistulae privata voluntate datae, testimonia et inspectiones loci. Nullum genus per se summum erat.
 
-Cum faber dicat “omnes iuvenes” abire, Tertia exempla et numerum petit. Ex duodecim discipulis quinque manserunt, quattuor ad portum novum ierunt, tres artem reliquerunt. Vox omnes experientiam animi, non summam arithmeticam exprimit.
+Tertia originale ab exemplo, scriptum coaeva aetate factum a memoria posteriore, decretum ab exsecutione distinguere volebat. Non idem pondus epistulae privatae, rationi mercium et actis magistratus tribueret. Experientia canalis hunc ordinem firmaverat.
 
-Cum dicat coniunctivum circumstantiam vel distantiam ab assertione praebet. Requirere, venire, transire infinitivi in serie sunt; venire hic a veneo est et vendi significat, non motum. Para octo quaestiones quae definitionem, exemplum, exceptionem, numerum et causam explorent; ad responsum unum quaestionem sequentem finge.
+Tempora intermedia pacta sunt. Mense primo inventarium et mensurae; secundo testimonia et documenta remota; tertio comparatio consiliorum; quarto relatio et audientia. Si tabularium maiorem lacunam haberet, finis non occultaretur neque terminus sine conventu mutaretur.
 
-LECTIO X — SUMMA SINE CONSENSU FICTO
+Merces tabernae maior quam opere canalis fuit, sed etiam sumptus. Quattuor scribae, cursores ad familias emigratas, naviculae et exemplaria requirebantur. Senator dimidiam partem, collegium naviculariorum quartam, domini et magistratus reliquam partem pro suis exemplis ferrent.
 
-Tres partes de foro maritimo dissentiunt. Mercatores spatium plaustris apertum volunt; incolae pulverem et strepitum metuunt; caupones viatores pedibus ambulantes utiliores putant. Omnes tamen signa confusa et cloacas laesas memorant.
+Myrtis rogavit cur partes pauperiores pecuniam non darent sed tamen audirentur. Pactum respondit testimonium pretium non habere aditumque ad relationem contributione non emi. Donatores nullum caput extra ordinem reciperent. Sabinus hoc sigillo senatoris confirmavit.
 
-Tertia in actis non scribit “conventus renovationem probavit.” Scribit: “Conventus de signis et cloacis consensit; de usu plaustrorum dissensio mansit. Mercatores accessum quieti, incolae quietem accessui plaustrorum, caupones moram viatorum transitui celeri praeponunt.” Ita communia et discreta servantur.
+Potestas correctionis eadem ac prius constituta est. Quisque verba sibi attributa et facta sua inspicere posset; conclusiones alienas delere non posset. Tabula omnium mutationum servaretur. Tituli publici ante summam intermediam a collegio non ederentur.
 
-Verba praeponunt et anteponunt dativum rei posterius aestimatae regere possunt. Si haec post verbum dicendi in orationem obliquam vertuntur, tempora infinitivorum ad verbum regens relative referuntur; coniunctivi in sententiis subordinatis consecutionem temporum plerumque sequuntur. Audi tres sententias semel recitatas et scribe summam quae nullam vocem deleat.
+Crispus addidit quid fieret si pars pactum violaret. Documenta eius non statim expellerentur; eventus et effectus in relatione notarentur, deinde magistratus de continuatione decerneret. Poena privata a taberna non imponenda erat. Fines sine via responsionis parum valebant.
 
-LECTIO XI — DE FINIBUS OPERIS AGENDUM
+Formula finalis paulo brevior facta est: "Quomodo usus molis occidentalis per sex annos mutatus est, quae causae documentis et testibus sustinentur, et quae commoda vel onera tria consilia proposita singulis partibus afferant?" Tria consilia erant nihil magnum mutare, molum reficere, totam regionem ordinare.
 
-Magistratus vult investigationi etiam consilium novae molis addere, neque tempus neque pecuniam auget. Tertia utilitatem agnoscit, sed effectum explicat: “Si molis rationem integram addiderimus, aut fontes vicorum omittendi erunt aut terminus differendus. Possumus tamen quaestiones primas colligere et opus separatum definire.”
+Omnes partes sigilla posuerunt, non quia responsum commune iam haberent, sed quia quaestionem et modum accipiebant. Tertia mandatum tandem suscepit. Paries tabernae sub QUAESTIO alterum titulum accepit: FINES.
 
-Non simpliciter negat. Res quae magistratui curae est, scilicet ne altera inquisitio ab initio fiat, servatur. Simul Tertia qualitatem praesentis operis tuetur. Pactum fit ut appendix ad rem explorandam, non consilium architectonicum, addatur.
+Capitulum 3: Domus inter opera
 
-Dativus curae duplicem dativum efficit: res magistratui curae est. Condicionalis addiderimus… erunt rem futuram ponit; adderemus… essent condicionem praesentem rebus contrariam exprimit. Age tractationem cum fine, duobus vinculis et duabus viis inter se comparandis.
+Mandatum Portus vitam familiae quoque mutavit. Tertia quattuor dies extra Ostiam futura erat, Marcus tabernam saepius solus regeret, Hilarus exemplaria sub mercede separata faceret. Publius nullum opus cotidianum accipere volebat quod iuvenes nimis oneraret.
 
-LECTIO XII — DISSENSUS APERTUS, NON ACER
+Senex septuaginta annos nondum habebat, sed manus post longam scripturam tremere coeperat. Oculi vesperi parum videbant. Tabernam statim relinquere noluit; consilium tamen parabat ut Marcus partem maiorem emeret et Tertia si vellet socia fieret.
 
-Collega Crispus censet solos vectigalium indices satis esse. Tertia respondet: “Intellego cur eos praeferas: continui sunt et facile comparantur. Non tamen demonstrant quomodo regio ab incolis adhibeatur, neque merces immunes numerant. Nisi testimonia et inspectiones addiderimus, quaestioni ex parte respondebitur quasi tota explorata sit.”
+Tertia de societate dubitabat. Pecuniam aliquam servaverat, sed pars tabernae magnam summam poscebat. Praeterea opera publica vel collegialia eam a mensa venditionis saepe abducebant. Marcus magis cotidie aderat. Aequalis pars non necessario aequum onus ferebat.
 
-Attenuatio positionem non celat. Tertia argumentum adversum accurate resumit, defectum nominat, remedium offert. Crispus vicissim monet testimonia memoriae erroribus obnoxia esse. Conveniunt ut genera fontium se invicem corrigant.
+Livia dixit decisionem post investigationem fieri posse. Publius tamen instrumenta dum valeret ordinare volebat. Familia mortem non praedicebat; prudentia de successione agebat. Tertia promisit se ante hiemem responsum daturam esse.
 
-Quasi tota explorata sit coniunctivus comparationem irrealem exprimit. Obnoxius dativum regit: erroribus obnoxia. Rescribe quattuor sententias nimis asperas et quattuor nimis vagas, servatis thesi, ratione, limite et altera via.
+Prima cum Lucano alterum pistrinum conduxerat. Aemilia tres annos nondum habebat. Domi puella nomina familiae a matre audita lineis in cera imitari conabatur, deinde eas digito planabat et alias figuras faciebat.
 
-LECTIO XIII — SI ALITER ACTUM ESSET
+Quintus viginti annis appropinquabat et Castoris filiam Vettiam, non eandem ac Vettiam Puteolanam, diligebat. Nomen commune interdum epistulas confuderat; itaque familia eam Vettillam vocabat. Nuptiae adhuc pactae non erant. Quintus officinam propriam ante matrimonium stabilire volebat.
 
-Prima collectio testium male procedit: conventus hora sexta habitus est, cum artifices adhuc laborarent. Adsunt praecipue possessores seniores. Tertia eventum sine accusatione recognoscit. “Si duas horas exspectavissemus, plures operarii venire potuissent; si curatores tabernarum antea moniti essent, nuntium latius tulissent.”
+Syra minus laborabat, sed rationes culinae relinquere aegre poterat. Daphnis nunc totam cenam curabat et mercedem a Livia directe accipiebat. Syra interdum eam corrigebat etiam cum nihil corrigendum esset. Aetas potestatem paulatim mutare difficile faciebat.
 
-Deinde casum mixtum ponit: “Si nomina in primo conventu collegissemus, nunc absentibus scribere possemus.” Non affirmat omnes certo venturos fuisse. Condicionalis contrafactualis occasionem amissam, non eventum probatum exprimit.
+Myrina cellam maiorem conduxerat. Hilarus apud eam non habitabat; mensam suam et cubiculum supra Stephanum tenebat. Mater et filius libertatem suam spatio separato exercebant. Cenam tamen ter in hebdomada simul sumebant.
 
-Plusquamperfectum coniunctivi in utraque parte praeteritum irreale format: exspectavissemus, potuissent. In casu mixto tempus causae et effectus differt. Scribe recognitionem: eventus, indicia, duae causae, tres condiciones contrariae, mutatio futura.
+Hilarus ad mandatum Portus libenter accessit, sed clientes proprios perdere timebat. Tertia ei duas horas cotidie ad mensam suam reservandas esse in pacto interno posuit. Taberna Publii totum tempus eius emere non poterat. Independentia verbis et horis servabatur.
 
-LECTIO XIV — PECUNIA ET ORDO OPERUM
+Marcus novam scribam nomine Caeciliam Herais conduxit, libertam quae Graece et Latine celeriter scribebat. Herais epistulas mercatorum orientis legeret et indicem navium adiuvaret. Non propter genus aut originem, sed propter artem mercedem parem Hilaro ad hoc opus accepit.
 
-Ex arca octo milia nummorum praesto sunt. Mensurae limi tribus milibus nummorum, testimoniorum transcriptio duobus milibus, exemplar ligneum regionis quattuor milibus, conventus publici mille nummis constabunt. Omnia simul fieri non possunt. Minimum pretium non necessario maximam utilitatem praebet.
+Quidam clientes mulierem ignotam ad mensam Marci videre mirati sunt, quamquam Tertia iam annos ibi laboraverat. Fama singularem personam accipere poterat, ordinem latiorem tardius. Herais admirationem neque gratam neque gravem fecit; opus suum ostendit.
 
-Tertia tria iudicandi capita declarat: quantum quaestioni respondeatur, quos cives modus includat, num opus postea iterari possit. Exemplar pulchrum est, sed mensurae ad causam naturalem explorandam graviores sunt. Proponit exemplar simplicius fieri, ne transcriptio tollatur.
+Prima cena post pactum plena tabulis fuit. Tertia dies Portus, Marcus officia tabernae, Hilarus tempora exemplarium posuerunt. Livia postulavit saltem unum vesperum sine relatione manere. Dies Lunae familiae datus est, nisi periculum verum nasceretur.
 
-Genitivus pretii et ablativus pretii variantur secundum locutionem: magni aestimare, tribus milibus constare. Ne tollatur propositum negativum. Scribe commendationem ducentorum verborum cum summa, iudicandi capitibus, concessione et periculo residuo.
+Publius risit sigillum rubrum pro periculo proponens. Tertia recusavit; tabellae coloratae in Portu facile cum signis navium confunderentur. Nuntius urgentissimus verbo et die claro veniret. Omnia urgentia appellare vim vocabuli consumeret.
 
-LECTIO XV — RELATIO QUAE ADHIBERI POSSIT
+Sextus saepe adesset, sed partem mercatorum gerebat, non membrum tabernae. Affinitas cum Tertia in relatione nominata est. Quicumque testimonium eius inspiceret sciret avunculum familiae esse. Fides non ex secreto cognationis cresceret.
 
-Relatio Tertiae non incipit ab itinere primo die facto. Lectorem prius docet quid inventum sit: frequentia non ubique eodem modo cecidit; limus naves maiores arcet; mutatio artium et viarum clientes alio duxit; testimonia de quiete et commercio pugnant. Methodus post summam explicatur.
+Una epistula e Capua nuntiavit Gaium agrum minorem filio Lucio tradidisse. Tertia partem hereditatis futurae pecunia iam acceperat, quia urbem elegerat. Instrumentum a perito locali factum et singulis partibus explicatum erat. Pecunia societatem tabernae possibilem faciebat.
 
-In prima forma nimiae nominales locutiones erant: “effectio collectionis testimoniorum.” Marcus suadet ut verbum restituatur: “testimonia collegimus.” Passivum tamen retinetur ubi agens incertus aut minus gravis est: “quinque tabernae clausae sunt.”
+Tertia tamen nummos statim non promisit. Voluit scire utrum taberna ipsam propter operam an pecuniam propter necessitatem quaereret. Publius respondit utrumque adesse, sed decisionem liberam manere. Sinceritas rem non faciliorem, sed honestiorem fecit.
 
-Quid inventum sit interrogatio obliqua est. Variatio vocabulorum portus, regio, vici, ora repetitionem mechanicam vitat, sed singula vocabula ambitum diversum habent. Ordina relationem et scribe summam ad usum lectoris cum tribus inventis, limite et commendatione.
+Vespere sine relatione tandem venit. Familia in horto cenavit. Aemilia conchas Tertiae ordinavit, albam Ostiensem et nigram Cumanam. Quaesivit cur altera melior non esset. Tertia dixit utrasque diversa litora servare. Responsum ad plures res vitae suae pertinere videbatur.
 
-LECTIO XVI — CORRECTIO QUAE TEXTUM MUTAT
+Post cenam Publius veterem lucernam stellae tenuit. Rima adhuc apparebat. Narravit se die adventus Tertiae putavisse eam paucos tantum menses mansuram esse. Nunc illa de portibus, canalibus et tabernae successione agebat. Tempus non consilium primum secutum erat.
 
-Crispus in margine scribit: “Haec pars infirma.” Tertia rogat utrum indicia desint, an ordo lateat, an verba nimis certa sint. Crispus tertiam causam eligit: duae tabernae “propter limum” clausae dicuntur, cum domini ipsi etiam pretia mercium et aetatem suam nominaverint.
+Tertia cubiculum suum respexit. Multae res veteres manebant, sed ipsa non eadem erat. Negotium quoque difficilius factum erat: non iam una arca ad dominum reducenda, sed utilitates inter se pugnantes sine fine perfecto ponderandae erant. Historia tamen ex eisdem manibus et viis continuabatur.
 
-Tertia corrigit: “Domini limum inter causas posuerunt; rationes autem non sinunt pondus singularum causarum metiri.” Non omnem reprehensionem accipit. Crispus titulum totius operis mutare vult, sed propositum eius quaestionem nimis angustam faceret.
+Capitulum 4: Prima tabula regionis
 
-Utrum… an membra interrogationis disiunctivae aperte opponit; an ante tertium membrum repeti potest. Cum… nominaverint hic concessionem exprimit. Da scriptori tria responsa utilia: locum, effectum in lectore, quaestionem. Deinde explica quam correctionem accipias et quam recuses.
+Opus a tabula loci coepit. Vetus Portus saepe nominabatur quasi regio finibus certis, sed partes aliter eum definiebant. Sabinus molum, tria horrea et viam principalem includebat. Myrtis forum, insulas habitationis et officinas usque ad canalem addebat.
 
-LECTIO XVII — CURSORES ET MORA
+Tertia fines duos posuit. Regio stricta ad mensuras mercium; regio lata ad effectus incolarum et officinarum. In relatione coloribus uti poterat, sed textus ipse nomina locorum clare repetere debebat. "Portus vetus" sine limite non sufficiebat.
 
-Nuntii inter collegium et magistratum saepe ambigui sunt. Tabella “quam primum” responsum petit, sed cursor nescit utrum hoc hodie an intra septem dies significet. Tertia formulam mutat: “Responsum ante horam tertiam diei Veneris petimus; si fieri non potest, diem possibilem hodie nuntiate.”
+Varro, structor canalis iam notus, ad aedificia vocatus est, sed mensuras maris peritus non erat. Collegium architectum portuum nomine Lucium Camurium dedit. Camurius profunditatem, moles et aestum curaret. Varro vias et parietes inspiceret.
 
-Etiam signa necessitatis constituit. Sigillum rubrum periculum praesens indicat, sigillum nigrum rem intra diem decernendam indicat, sigillum sine colore rem ordinariam indicat. Ne omnia rubro signentur, usus eius postea recensetur. Nuntius qui semper urgentissimus dicitur mox vim amittit.
+Camurius primum diem aestus observavit. Aqua bis cotidie surgebat et recedebat; mensura una hora capta falsam constantiam daret. In sex locis palos posuit et horas notavit. Nautae loci eum adiuvarunt, quia vada experientia noverant.
 
-Quam primum locutio superlativa adverbialis est; utrum significet interrogatio obliqua. Ne signentur sententia finalis negativa. Crea rationem nuntiorum pro periculo, mora, rogatione et confirmatione; singulis terminum et eum qui respondeat adde.
+Tertia tabulam praesentem ex itinere pedestri fecit. Herais nomina Graeca tabernarum sicut scripta erant servavit. Hilarus numeros ianuarum privatos non finxit; signa picta adhibuit: ancora, capra, urna, palma. Urbs se imaginibus magis quam serie numerorum monstrabat.
 
-LECTIO XVIII — SALUS PUBLICA ET RUMOR
+Prima clausae tabernae causa investigata est. Taberna ancorae ad depositum privata versa erat. Secunda, caprae, dominum mortuum habebat. Tertia, urna, conductor ad portum novum migraverat. Quarta tantum per hiemem claudebatur. Numerus quattuor quattuor historias habebat.
 
-Post pluviam rumor currit aquam omnium fontium veneno infectam esse. Medicus publicus unum fontem prope horrea claudi iusserat, quia aqua turbida erat; de ceteris nondum iudicaverat. Acta tamen titulum terribilem sine loco certo posuerunt.
+Myrtis duxit eos per porticum quae consilio Sabini tolleretur. Columnae veteres erant, sed tectum ante quinque annos refectum. Cauponae mensae, sutoris scamnum et venditoris panis sportae ibi stabant. Spatium non vacuum, quamquam vectigal magnum non producebat.
 
-Tertia cum medico nuntium componit: quis fons claudatur, quibus indiciis, ubi aqua interim petatur, quando examen repetatur. Addit quod ignoratur. Nomina aegrotorum non publicantur, cum ad viam tutam indicandam necessaria non sint.
+Sabinus contra viam post porticum ostendit. Plaustra ibi exspectabant et merces interdum pluvia laedebantur. Una rota in angulo saepe haerebat. Si porticus pars removeretur, transitus rectior fieret. Incommodum reale erat, non tantum cupiditas senatoris.
 
-Infectam esse infinitivus perfectus passivus est. Cum… necessaria non sint causam ex iudicio loquentis praebet. Scribe nuntium salutis publicae qui actionem claram sine terrore iniusto postulet et discrimen inter confirmatum, possibile, ignotum servet.
+Tertia utrumque usum in tabula posuit: porticus pedestrianis et via vecturae. Non color boni et mali, sed horae diversae adhibitae sunt. Mane plaustra dominabantur; meridie mercatores et incolae. Fortasse ordinatio temporum, non sola demolitionis quaestio, explorari poterat.
 
-LECTIO XIX — NOMINA, MEMORIA, DIGNITAS
+Apud molum Livianus officinam ostendit. Area navem mediocrem capiebat, non novas naves frumentarias maximas. Tamen scaphas, remos et gubernacula reficiebat. Consilium Sabini officinam ad extremum lacum transferret, ubi aqua alta sed clientes pedestres pauciores erant.
 
-In epistulis veteribus Tertia nomina debitorum et notas de morbis invenit. Historico utilia esse possunt, sed familiae eorum adhuc in urbe vivunt. Num omnia in expositione publica legenda sunt? Lex aperta de tali casu non est.
+Faber dixit translationem instrumentorum triginta dies opus clausuram esse. Lignum grave, fornax, tecta et discipulorum cellae movebantur. Sabinus in aestimatione tantum pretium novi loci posuerat. Dies sine mercede et amissio clientium deerant.
 
-Tertia utilitatem, damnum, tempus et consensum considerat. Summas sine nominibus proponit, epistulas integras tantum studiosis certa causa inspiciendas relinquit, nomina ubi ad officium publicum pertinent servat. Hoc consilium disputari potest; ideo rationes decisionis et condiciones quibus consilium retractetur scribit.
+Sabinus correctionem accepit, sed quaesivit num officina post translationem plures naves acciperet. Livianus respondit posse, si discipuli manerent et lignum adveniret. Commodum futurum conditionale erat. Tertia utramque condicionem notavit.
 
-Gerundivum inspiciendas ad epistulas refertur; studiosis dativus agentis est. Num interrogationem introducit cui responsum negativum plerumque exspectatur. Elabora argumentum ethicum: partes affectae, bona pugnantia, consilia, effectus, cautela, condicio qua consilium mutetur.
+In insula habitationis scalae angustae et parietes humidi erant. Consilium renovationis eas non tangebat, quamquam incolae pulverem plaustrorum timebant. Myrtis dixit pecuniam ad domos potius quam ad molum dandam esse. Mandatum autem de usu portus, non tota habitatione, agebat.
 
-LECTIO XX — IN ROSTRIS
+Tertia tamen effectus in domos includere poterat. Fines negativi prohibebant relationem architectonicam domorum, non observationem pulveris, strepitus et accessus. Varro locos ubi via prope fenestras transiret mensus est. Distantia in tribus angulis minima erat.
 
-Duae orationes fictae de regione maritima habentur. Mercator clamat: “Si portum deserimus, ipsam memoriam urbis deserimus.” Incola respondet: “Non memoriae adversamur, sed domos nostras in viam plaustrorum mutari recusamus.” Uterque identitatem civitatis invocat, sed conclusionem diversam ducit.
+Camurius meridie primam profunditatem rettulit. Iuxta molum aqua duobus palmis minor quam in canali principali erat, sed aestus tunc recedebat. Series septem dierum necessaria erat. Sabinus numerum singularem ad orationem statim uti volebat; Tertia eum a titulo retinuit.
 
-Tertia figuras examinat. Repetitio deserimus animum movet; memoriae non adversamur, sed… antithesin correctivam format; domos in viam mutari imago est, non mutatio litteralis. Quaerit num affectus argumentum sustineat an defectum indiciorum tegat.
+Sextus navem Fortunam ad probationem non obtulit, quia ipsa pars relationis erat. Collegium navem similis magnitudinis postea daret. Si navis actoris principalis adhiberetur, eventus suspicionem commodi privati acciperet. Separatio difficilis, sed possibilis erat.
 
-Anaphora, tricolon, interrogatio rhetorica, chiasmus instrumenta sunt, non probationes. Scribe duas orationes breves ex adversis partibus et tertiam responsionem quae figuram agnoscat, rem factualem restituat, medium consilium proponat.
+Ad finem diei tabula ampla iam plena erat. Tertia tamen duas areas albas reliquit: domos post officinas et ripam ubi scaphae stabant. Spatium vacuum non significabat nihil ibi esse, sed inspectionem nondum factam. Hilarus titulum Nondum visum addidit.
 
-LECTIO XXI — HISTORIA CUIUS CIVITATIS?
+Myrtis tabulam intuens dixit regionem primum integram videri. Sabinus respondit integritatem imaginis nullum consilium dare. Ambo recte loquebantur. Tabula quaestionem communem ostendebat; conflictum non solvebat.
 
-Expositio futura portum ut opus senatorum et mercatorum narratura erat. Syra monet libertos, nautas, mulieres tabernarias, peregrinos paene abesse. Non postulat ut omnis titulus omnibus aequalem locum tribuat; rogat tamen cur labor cotidianus sub nomine unius patroni lateat.
+Vespere exemplar in taberna suspensum est, sed non publice. Partes per tres dies fines et nomina corrigere possent. Deinde tabula communis fieret. Prima res investigationis non conclusio, sed locus in quo omnes saltem eadem via et eadem aqua agnoscerent.
 
-Tertia fontes iterum quaerit. Rationes collegiorum nomina operariorum servant; sigilla amphorarum regiones longinquas demonstrant; instrumenta sarciendi de labore sine verbis testantur. Expositio nunc modo decretum publicum, modo diem ordinarium ostendet.
+Capitulum 5: Sex anni in arca
 
-Cuius civitatis genitivus quaestionem possessionis et prospectus facit. Testantur deponens est; demonstrant et servant activa sunt. Elige narrationem omissam, reperi genera indiciorum, cave ne absentiam scripti in certam fabulam vertas.
+Inventarium scriptorum a rationibus collegii naviculariorum coepit. Sex anni in tribus arcis servabantur, sed divisio non eadem erat. Prima arca naves secundum dominos, secunda merces secundum genera, tertia sumptus secundum menses ordinabat. Series temporum ex omnibus construenda erat.
 
-LECTIO XXII — PACTUM DE FORO
+Herais nomina Graeca et Phoenicia in indicibus invenit. Eadem navis interdum Graeco, interdum Latino nomine apparebat; Isis Magna etiam Fortuna Alexandrina vocabatur. Sine magistro navis et signo puppis pro duabus haberi poterat. Herais duplicia nomina in unam lineam coniunxit.
 
-Ultima controversia usum fori tangit. Mercatores duas horas mane plaustris reservatas manere volunt; incolae totum forum peditibus patere volunt; caupones mensas meridie ponere cupiunt. Magistratus remedium ante Kalendas poscit.
+Hilarus dies qui deerant notavit. Anno quarto duo menses integri absentes erant. Custos dixit tabulas ad magistratum missas nec redditas esse. Crispus tabularium quaereret. Interim summa annua sine illis mensibus comparari non poterat quasi plena esset.
 
-Tertia utilitates, non tantum positiones, colligit: merces mature tradi, pueros tuto ire, hospites sedere. Pactum ad experiendum fit: plaustra hora prima et secunda, claustra mobilia postea, semita semper libera, mensae post horam quintam. Post mensem vis soni aestimabitur, morae et querelae numerabuntur.
+Marcus pondera mercium examinavit. Modius, libra, amphora et numerus arcarum in diversis rationibus adhibebantur. Una columna communis omnia sine coniectura convertere non poterat. Genera mensurarum servata sunt; comparatio tantum ubi aequivalens satis certum erat facta est.
 
-Reservatas participium ad horas refertur; mobilia adiectivum est quod ad claustra refertur. Forma numerabuntur futurum passivum est et mensuram promittit, non successum. Scribe pactum cum definitionibus, exceptione, modo querelae, die revisionis et causa qua experimentum sistatur.
+Sabinus tabulam paratam attulit. Ea vecturam apud molum tribus quintis partibus imminutam esse dicebat. Tertia numeros originales petivit, non proportionem solam. Ex viginti navibus ad octo descenderant in duobus mensibus electis; electio mensium igitur diligenter examinanda erat.
 
-LECTIO XXIII — SIGNA ET CONSILIUM FUTURUM
+Menses tamen non congruebant. Annus prior tempus post messem, posterior hiemem saevam continebat. Sabinus dixit tabulam a scriba senatoris factam esse, non a se. Comparisonem defendere noluit, sed utilitatem inclinationis generalis tenuit.
 
-Consilium quinque annorum tres gradus habet. Primo canales mensurabuntur et signa temporaria probabuntur. Deinde, si vectura et salus simul meliores factae erunt, margo reficietur. Tandem de mole maiore, novis indiciis collectis, deliberabitur.
+Tertia eosdem menses per sex annos posuit. Numerus navium descendebat quidem, sed non aequaliter: viginti, sedecim, duodeviginti, quindecim, undecim, novem. Annus duodeviginti exceptionem habebat. Series declinationem probabilem, non ruinam continuam, ostendebat.
 
-Signa non solum verba ferunt. Color, altitudo, lumen et locus sensum efficiunt. “Forum apertum” sine hora ambiguum est; “Forum peditibus apertum post horam III” rem definit. Signum quoque indicare debet quis mutationem iusserit et ubi querela mittatur.
+Pondus mercium minus ceciderat quam numerus navium, quia naves posteriores maiores erant. Octo naves anni ultimi plus ferebant quam duodecim naves anni tertii. Si frequentia numero navium tantum metiretur, vis commercii nimis parva videretur.
 
-Ablativo absoluto novis indiciis collectis condicio temporalis compendiosa est. Futurum exactum factae erunt condicionem ante gradum alterum ponit. Construe consilium graduum cum mensura effectus, periculo, eo qui respondeat et puncto quo iter mutetur.
+Sextus contra monuit merces in scaphas translatas bis numerari posse: semel in nave magna extra molum, iterum in scaphis intrantibus. Rationes custodum hoc discrimen non semper servabant. Tertia columnam "translatum" quaesivit; tantum ultimis duobus annis aderat.
 
-LECTIO XXIV — IUDICIUM PUBLICUM
+Myrina sigilla arcarum inspexit. Quidam fasciculi a lacu novo ad vetus molum postea translati erant, quia scrinium principale mutatum erat. Locus custodiae non locus rei gestae. Hilarus singulas tabulas ex titulo interiori, non arca externa, classificavit.
 
-In basilica Tertia investigationem concludit. Non totam relationem recitat. Primo inscriptionem laudatoriam et rationem pecuniae iuxta ponit; deinde numeros vecturae ad fundamentum suum refert; postremo testimonia mercatoris, incolae et fabri sine consensu ficto resumit. Explicat limum partem causae esse, non causam solam, atque consilium fori experimentum, non victoriam unius partis, appellat.
+In ratione sumptuum merces custodum minuebantur. Primis tribus annis quattuor custodes, postea duo erant. Unus custos navibus et plaustris simul respondebat. Numeri inferiores ex minus accurata observatione partim oriri poterant. Absentia rei et absentia notationis separandae erant.
 
-Senator quaerit cur pecunia in mensuras potius quam in monumentum ponenda sit. Syra rogat quorum memoria monumento celebretur. Caupo timet ne experimentum clientes pellat. Tertia argumenta singula suis verbis repetit; respondet ubi indicia habet; ubi non habet, diem promittit quo responsum post inquisitionem datura sit. Conventus pactum unius mensis probat. Postea Tertia cum familia ad cauponam ambulat; verba publica ad vitam ordinariam redeunt, ubi eorum vis tandem probabitur.
+Crispus ex tabulario cum duobus mensibus rediit. Tabulae ibi sub causa incendii servatae erant. Quinto anno parvum incendium in horreo orientali viam ad molum per sex hebdomadas clauserat. Merces ad lacum novum directae erant. Post refectionem non omnes redierant.
 
-Exercitatio coniuncta: textum et tria scriptorum genera relege. Nota casus insolentiores, structuram periodorum, coniunctivos, infinitivos obliquos, participia et gerundiva, atque explica quid unaquaeque forma efficiat. Scribe relationem trecentorum verborum quae argumentum, contrarium, indicia, limitem, consilium et condicionem revisionis contineat. Tum textus semel ab alio aut a te clara voce recitetur; clauso libro facta, numeros, voces et incerta restitue. Orationem quattuor minutorum habe et duabus quaestionibus responde. Dialogus publicus voluntarius est; analysis scripta et recitatio integra sufficiunt.
+Decretum clausuram temporalem dicebat, sed nullum decretum reditus repertum est. Consuetudo interim mutata esse poterat. Sabinus hanc rem in consilio suo non habuerat. Senator horrea post incendium emerat; procurator vetera acta plena non acceperat.
+
+Myrtis per nuntium affirmavit cauponam eo tempore clientes amisisse et numquam plene recepisse. Haec memoria cum serie conveniebat. Tertia colloquium plenum postea faceret. Nunc tantum nexum temporalem notavit, non causam solam.
+
+Arca sumptuum ostendebat viam post incendium refectam, sed signum ad lacum novum per annum integrum mansisse. Cur mansisset ratio non dicebat. Fortasse custos neglexerat, fortasse mercatores viam novam maluerant. Signum ipsum consuetudinem firmare poterat.
+
+Hilarus duas inscriptiones mercium eodem die invenit. Una navem ad molum vetus destinabat; altera manu posteriori "ad lacum Traiani" mutabat. Causa addita erat: via clausa. Mutationes posteriores saepe plus quam prima decreta de usu cotidiano narrabant.
+
+Marcus summam ad tempus scripsit. Numerus navium, pondus, custodes, incendium et translatio in quinque columnis aderant. Nullus numerus singularis titulum totius mutationis accipiebat. Sabinus tabulam senatoris iuxta seriem plenam poni consensit.
+
+Tertia quaesivit quis tabulam sexaginta partium composuisset. Scriba nomine Eutyches in domo senatoris laborabat. Mandatum acceperat argumentum breve pro sumptu molis facere. Numeros non finxerat; menses aptos elegerat. Propositum documenti formam eius explicabat.
+
+Eutyches ad colloquium invitatus est, non ut reus fraudis. Tertia volebat scire quibus tabulis usus esset et quis menses elegisset. Sabinus epistulam misit. Potens patronus non impediebat, saltem adhuc, ut ratio sua examinaretur.
+
+In fine primae hebdomadis sex anni iam aliam imaginem dederant. Usus molis ceciderat, sed incendium, via temporarie clausa, custodes pauciores, naves maiores et translatio mercium numeros movebant. Limus nondum excludebatur; solus tamen regnum causae amisit.
+
+Capitulum 6: Eadem via tribus horis
+
+Tertia regionem tribus horis observare constituit: prima luce, meridie et vespere. Non omnes dies aequales erant, itaque observationes per quattuor dies repetirentur. Hilarus numeros plaustrorum, Herais pedestres, Myrina usus porticus, Tertia morae et conflictus notaret.
+
+Prima luce via plena plaustrorum erat. Intra horam duodecim intraverunt, novem exierunt. Duo sibi obviam apud angulum haeserunt. Vector alter retro ire debuit, quod quindecim fere minuta sumpsit. Mensura clepsydrae parvae imperfecta, sed mora manifesta erat.
+
+Porticus eadem hora paene vacua erat, praeter pistorem, duos servos aquam ferentes et tres nautas dormientes. Si pars columnarum amoveretur, vectura matutina facilius transiret. Myrtis tamen mensas nondum posuerat; iactura usus eius mane parva videbatur.
+
+Hora quarta tabernae aperiebantur. Pueri, operarii et mercatores porticum implebant. Plaustra adhuc transibant, sed pauciores. Unum plaustrum rotam prope sutoris scamnum vertit et corium luto aspersit. Sutor pretium damni a vectore petivit; contentio brevis orta est.
+
+Meridie via ipsa paene vacua erat propter morem quietis. Porticus autem umbram dabat. Myrtis quattuor mensas, sutor scamnum, scriba itinerans sellam, venditor panis duas sportas habebant. Incolae ibi nuntios et laborem commutabant.
+
+Herais numeravit homines, sed non vultus aut nomina sine causa descripsit. Sexaginta tres transitus intra horam erant; quidam eadem persona bis. Numerus pedum non numerus personarum fuit. In nota hoc discrimen clare posuit.
+
+Vespere nautae redibant et caupona implebatur. Plaustra vix aderant. Porticus lumen lucernarum tenebat. Duo musici cantum ad hanc horam compositum fecerunt. Spatium usum mercatorium, domesticum et communem simul habebat.
+
+Secundo die pluvia levis observationem mutavit. Porticus plus hominum texit, plaustra tardius ibant, via luto deterior facta est. Comparatio diei sereni et pluviosi ostendit tectum maiorem utilitatem quam mensae solae habere.
+
+Sabinus quaesivit num porticus partim, non tota, removeri posset. Varro columnas inspexisset. Duae extremae post refectionem recentem munus structurae minus habebant, sed tectum earum ope ad viam extendebatur. Mutatio architectonica opus separatum postulabat.
+
+Myrtis consilium temporum proposuit: plaustra prima et secunda hora prioritatem haberent, post tertiam semita clausa eis esset nisi merces urgentes. Sabinus timuit navium tempora aestum sequi, non horam civium. Quaedam merces meridie necessario venirent.
+
+Sextus exempla ex Fortuna dedit. Navis aestu alto interdum hora quinta intrabat. Si plaustra tum vetarentur, arcae ad noctem manerent. Exceptio navis recens receptae fieri posset, sed quis eam confirmaret? Custos viae auctoritatem claram habere debebat.
+
+Tertia tres dies plaustrorum cum horis navium comparavit. Pleraque onera ordinaria mane disponebantur; tantum quinque ex quadraginta post tertiam horam ad navem recens receptam pertinebant. Regula cum exceptione tractabilis videbatur, quamquam probatio longior requirebatur.
+
+Livianus monuit plaustra ligni saepe vespere venire, quia e silvis longo itinere procedebant. Lignum in via relinquere non poterat. Officinae igitur alia exceptio erat. Si exceptiones crescerent, regula vim amitteret. Tertia genus mercium, non nomina amicorum, definiri voluit.
+
+Incolae domorum superiorum de strepitu prima luce querebantur. Plaustrorum rotae super lapides sonabant, clamores vectorum pueros excitabant. Via latior plura plaustra simul admittere posset et strepitum augere, quamquam moram minueret. Commodum vecturae quieti adversabatur.
+
+Faustus, qui semel ad Portum venit, viam cum crure rigido transire difficile habuit. Nullus gradus altus erat, sed plaustra inter se spatium parvum relinquebant. Semita porticus ei tutior fuit. Si columnae tollerentur, margo pedestris clare servandus esset.
+
+Tertia observationem eius non pro voce omnium hominum cum laesione simili posuit. Faustus unam experientiam dabat. Alius senex, caecus partim, sonum columnarum ad directionem utilem esse dixit. Mutationes diversis corporibus effectus diversos habebant.
+
+Quarto die nundinae erant. Numeri omnium horarum creverunt. Tabula quae dies ordinarios tantum haberet summam usus festivi omitteret. Tertia nundinas separatim notavit. Regio non eodem modo per totam hebdomadam vivebat.
+
+Myrtis numeros videns concessit moram plaustrorum gravem esse. Sabinus vicissim usum porticus ampliorem quam putaverat agnovit. Neuter statim sententiam mutavit, sed argumentum alterius iam verbis suis repetere poterat. Hoc parvum progressum signavit.
+
+Relatio observationis non dixit quot homines regionem "usarentur" numero uno. Dedit horas, dies, genera transitus, moras, exceptiones et condiciones caeli. Complexitas non ornatus erat; simplicior summa decisiones oppositas celavisset.
+
+Tertia in tabula regionis lineas temporum addidit. Eadem via mane rubra vecturae, meridie caerulea peditibus, vespere aurea cauponis erat. Color in exemplari tantum adiuvari poterat; textus omnia verbis quoque tenebat. Documentum sine colore sensum non amitteret.
+
+Capitulum 7: Livianus de navibus loquitur
+
+Colloquium cum Liviano in officina habitum est. Tertia, Herais et Camurius aderant. Faber malleos sisti non iussit; labor ordinarius pergebat. Itaque verba interdum repetenda erant. Sonus ipse condicionem artis ostendebat.
+
+Livianus a patre libero natus erat, avus autem servus navalis fuerat. Officinam per triginta annos familia tenuerat. Ipse naves magnas non aedificabat, sed scaphas, remos, gubernacula et latera laesa reficiebat. Clientes ex utroque lacu veniebant.
+
+Tertia quaestionem "cur portus periit" non posuit. Rogavit quas mutationes in clientibus, materiis, navibus et operariis per sex annos vidisset. Verbum perire conclusionem ante testimonium imposuisset. Livianus hanc moderationem probavit.
+
+Primum lignum nominavit. Abies bona carior facta erat, quia contractus magni ad portum novum eam prius emebant. Officina parva residuum accipiebat aut longius exspectabat. Sumptus unius remi tertia parte creverat, merces clientium non tantum.
+
+Deinde discipulos. Ex duodecim qui sex annis ante laboraverant, quattuor manebant, tres ad officinas maiores transierant, duo artem reliquerant, unus mortuus, duo libertatem cum dominis alibi petiverant. "Omnes iuvenes abeunt" affectum, non arithmeticam exactam, exprimebat.
+
+Herais nomina ex ratione mercedum comparavit. Unus quem Livianus manere putaverat per tres menses tantum redierat, deinde ad Misenum ierant. Faber memoriam correxit. Testimonium eius ex hac correctione infirmum non factum est; potius fines suos ostendit.
+
+Naves maiores altiorem aquam requirebant, sed etiam alium genus refectionis. Domino magis placebat officina iuxta lacum novum ubi navis ipsa accedere poterat. Scaphae tamen ad molum vetus semper necessariae manebant, si translatio mercium continuaretur.
+
+Si moles altius foderetur, naves maiores accederent et scaphae pauciores laborarent. Officina Liviani clientes scapharum amitteret, sed naves maiores fortasse acciperet. Ad eas tamen maiora tecta, trochleae et plus ligni opus esset. Moles sola facultatem non crearet.
+
+Sabini consilium locum novum Liviano promittebat. Faber eum inspexerat: aqua alta, sed ventus fortior et nullum cenaculum discipulis. Sumptus translationis fornacis, instrumentorum et ligni in ratione deerant. Officina per mensem vel amplius clauderetur.
+
+Camurius quaesivit an moles vetus tam alte purgari posset ut maximae naves venirent. Livianus de arte aquae non iudicavit. Dixit tantum naves quas ipse videret quattuor genera habere. Camurius mensuras earum petivit, non opinionem fabrilis de limo.
+
+Tertia instrumenta conductionis officinae videre rogavit. Livianus terram non possidebat; quinquennium conductionis duo anni manebant. Sabinus translationem cum domino terrae tractaverat, non cum conductore. Faber epistulam generalem tantum acceperat.
+
+Haec lacuna gravis erat. Dominus pretium novi usus reciperet, Livianus autem contractum fortasse amitteret. Sabinus postea dixit se conductores in secunda parte tractaturum esse. Tertia ordinem ipsum effectum habere monuit: consilium iam publice laudabatur ante condiciones eorum.
+
+Livianus tabulam mercedum dedit voluntate sua. Nomina servorum dominorum, libertorum et liberorum operariorum miscebantur. Duobus servis praemium post opus promissum erat. Utrum acceperint, tabula non dicebat. Myrina postea hanc partem inspiceret.
+
+In angulo officinae erat gubernaculum vetus Fortunae. Menander id ante quattuor annos mutaverat. Tertia tesseram rotae ex sacculo suo non iam cotidie gerebat, sed navem agnovit ex signo inciso. Vita privata et testimonium publicum breviter convenerunt.
+
+Livianus Sextum clientem fidelem appellavit, deinde statim addidit eum interdum pretium nimis premere. Tertia utrumque scripsit, quia cognatio sua cum Sexto nota erat. Laudationem solam servare favorem familiarem videri poterat.
+
+Herais quaesivit quibus testimoniis faber sententiam suam falsam putaret. Livianus respondit, si rationes ostenderent clientes non ad portum novum, sed omnino ad alias urbes abisse. Distinctio migrationis intra Portum et declinationis artis totius magni momenti erat.
+
+Tertia epistulas ad tres discipulos emigratos mitti rogavit. Livianus duas inscriptiones habebat; tertius Misenum sine loco certo petiverat. Cursor per collegium fabrum eum quaereret, sed responsum non promitti poterat. Absentes quoque, quantum fieri posset, audirentur.
+
+In fine colloquii faber summam Herais legit. Unam vocem mutavit: non "discipuli defecerunt," sed "discipuli discesserunt." Primum verbum culpam vel mortem sonare poterat. Discessus rationes diversas habebat. Correctio parva dignitatem eorum servavit.
+
+Tertia officinam relinquens vidit puerum servum serram trahere. Nomen in tabula mercedum non erat; nuper venerat. Livianus eum Themisonem appellavit et addidit rationi. Historia laboris semper post inventarium crescere poterat.
+
+Vespere Camurius dixit testimonium Liviani limum neque probare neque refellere. Ostendebat consilium molis cum materia, arte, locatione et habitatione iungendum esse. Causa naturalis et ordo socialis in eodem litore se contingebant.
+
+Capitulum 8: Caupona sub porticu
+
+Myrtis colloquium post ultimam cenam diei elegit. Tertia et Myrina adfuerunt; nomina similia saepe confundebantur, itaque scriba in tabula CAUPONA MYRTIDIS, SCRIBA MYRINA posuit. Utraque femina distinctionem risit.
+
+Myrtis in Achaia nata, pueritia vendita et Puteolis postea liberata erat. Cauponam ex pecunia sua et mutuo patronae aperuerat. Decem annos ad molum veterem habitabat. Conductionis instrumentum quotannis renovabatur; securitatem longam non habebat.
+
+Porticus mensas eius continebat, sed ipsa columnae publicae an privatae essent nesciebat. Domino insulae pretium pro usu anteriori solvebat. Sabinus putabat dominum nullum ius super porticum publicam vendere posse. Haec quaestio ad magistratum, non ad Tertiam, pertinebat.
+
+Myrtis clientes per annos in tabulis ciborum non numeraverat. Rationes emptionis vini, panis, olei et piscium tamen servabat. Sumptus vini sex annis paulatim ceciderat, praeter annum festi. Potuit pauciores clientes aut plus parsimoniae significare.
+
+Myrina poculorum fracturam et linteorum usum quaesivit. Haec quoque minuebantur. Tria genera rationum in eandem directionem ibant. Caupona minus negotii habebat, quamvis numerus exactus hospitum deesset.
+
+Declinatio maxima post incendium horrei facta erat. Signa mercium ad lacum novum viatores quoque illuc duxerant. Myrtis primo putabat clausuram brevem esse; pecuniam in novo tecto impenderat. Cum via rediit, mos clientium iam mutatus erat.
+
+Tabernae clausae effectum inter se augebant. Sutor discessit, itaque nautae calceos alibi reficiebant et ibi cenabant. Deversorium clausum est, itaque familiares navium ad aliam regionem ibant. Una iactura proximam nutriebat.
+
+Myrtis tamen omnem culpam senatoris non dabat. Senator horrea post incendium emerat. Procuratores novi saltem tectum refecerant et custodes reddiderant. Consilium molis clientes afferre posset, sed via lata cauponam ipsam mutaret. Ea commodum generale et damnum proprium simul agnoscebat.
+
+In cenaculis supra cauponam quinque familiae habitabant. Duae ad officinam Liviani pertinebant, una panem vendebat, duae mercede varia vivebant. Si porticus tolleretur, pulvis et plaustra propius ad ianuas venirent. Sabini tabula habitationem non ostendebat.
+
+Tertia familias separatim audire volebat. Myrtis non pro omnibus loqui debebat, quamquam eos bene noverat. Mulier consensit et dies diversos proposuit. Inquilini qui domino debebant fortasse in caupona eius libere quoque non loquerentur; locus neuter quaerendus erat.
+
+Colloquia in porticu templi minoris constituta sunt. Dominus insulae certior factus est, sed non ad singula invitatus. Pactum investigationis hoc sine secreto absoluto sinebat. Originalia nomina in capsa clausa servarentur.
+
+Prima familia strepitum et pulverem timebat, sed filius eorum vector erat et viam latiorem volebat. Una domus intra se duas utilitates habebat. Mater quietem, filius mercedem, pater conductionis pretium spectabat. "Incolae adversantur" rem falsam fecisset.
+
+Altera familia translationem officinae Liviani sequeretur, si cenaculum ibi daretur. Consilium Sabini habitationem non promiserat. Sine ea faber operarios amitteret. Tertia condicionem inter sumptus translationis addidit.
+
+Panis venditrix, Iunia, porticum servari volebat sed mensas Myrtis nimis multas esse dicebat. Spatium pedestrium interdum claudebatur. Myrtis hoc audita duas mensas in horis frequentibus removit. Investigatio ante relationem parvam mutationem cotidianam peperit.
+
+Dominus insulae, Aulus Flavius, postea tabernam venit. Negavit se inquilinos metuere fecisse. Instrumenta conductionis ostendit, in quibus porticus "usus anterior" inclusus erat. Si magistratus eum tolleret, pretium conductionis fortasse minueretur. Ipse quoque iacturam habebat.
+
+Flavius a Sabino pretium emptionis nondum acceperat, tantum quaestionem. Rumor dicebat pactum iam factum esse. Myrtis eum dominum cum senatore coniurasse suspicata erat. Documentum demonstrabat tractationem adhuc primam esse. Suspicio non ex nihilo, sed ex silentio orta erat.
+
+Tertia rogavit cur Flavius inquilinis non dixisset. Ille respondit se rem incertam divulgare noluisse. Silentium eos a rumore non servaverat; potius alii vacuum impleverant. Flavius consensit tabellam status praesentis ad ianuam ponere.
+
+Tabella dicebat nullam venditionem aut translationem adhuc pactam esse; consilium examinari; conductores ante mutationem audiendos esse. Sabinus verba probavit. Nuntius non promisit neminem umquam motum iri, sed statum hodiernum clare tenuit.
+
+Myrtis summam colloquii legit. Vocem "resistit" in "condiciones poscit" mutari voluit. Non omnem renovationem recusabat. Porticum, habitationem et pretium morae servari petebat. Tertia correctionem accepit; positio eius ex negatione simplici in argumentum conditionale mutata est.
+
+Nocte caupona clausit. Tertia et Myrina ad naviculam ambulaverunt. Myrina dixit libertas Myrtidis conductionem fragilem non removisse; dominus corporis abierat, domini terrae et pecuniae manebant. Tertia hanc sententiam ut opinionem Myrinae in nota privata servavit, non sine consensu publicavit.
+
+Capitulum 9: Mercatores in eadem mensa
+
+Collegium mercatores ad unum conventum vocare volebat, sed Tertia prius scripta eorum accepit. Decem mercatores inter se valde differebant. Tres frumentum, duo oleum, unus vitrum, unus ligna, ceteri merces mixtas curabant. Via et moles unicuique aliter serviebant.
+
+Mercatores frumenti naves maximas habebant et lacum novum iam malebant. Moles vetus eis vix utilis erat. Tamen horrea senatoris ibi conducebant propter pretium minus. Merces in scaphis transferebantur, quod sumptum augebat sed conductionem vilem compensabat.
+
+Olearii amphoras fragiles portabant. Translatio inter navem et scapham plures fracturas faciebat. Eorum rationes quinque annorum damnum duplicatum ostendebant. Moles altior eis commodum directum daret, quamquam naves non maximae erant.
+
+Vitri mercator, Iulius Primitivus, plaustra potius quam aquam culpabat. Via angusta moram faciebat, sed latior et velocior etiam plus collisionum afferre poterat. Volebat locum certum ubi arcae deponerentur, non solam latitudinem.
+
+Mercator ligni Liviani consilium movebat. Ipse plaustra vespere adducebat et exceptionem horarum requirebat. Dicebat porticum parvi lucri esse. Myrtis rationes cauponae contra habebat. Quae pars "parvum" appellabat, ex arca propria aestimabat.
+
+Sextus conventui ut mercator adfuit, sed cognatio cum Tertia in titulo scripta erat. Is consilium gradatim probare suadebat: primum limum in parte molis removere, deinde unam navem maioris generis adhibere. Totam regionem ante probationem mutare nimis carum videbatur.
+
+Sabinus respondit fodere partem molis sine via apta utilitatem dimidiam dare. Navis adveniret, plaustra tamen haererent. Experimentum componendum erat: aqua, spatium deponendi et hora vecturae simul. Argumentum eius validum erat.
+
+Mercator Syriacus nomine Sampsigeramus quaestionem de vectigalibus posuit. Merces eius partim ad templum destinatae immunes erant et in indicibus publicis deerant. Rationes privatae ostendebant eum usum molis non minuisse. Unus casus summam non evertebat, sed lacunam confirmabat.
+
+Herais epistulas Graecas eius legit. Nomen molis periphrasi "apud veteres arcus" dabatur. Index Latinus locum alium putaverat, quia custos arcus lacum novum interpretatus erat. Quinque naves in serie priore falso positae erant. Linguarum varietas numerum movebat.
+
+Alius mercator, Decimus Laetus, dicebat omnes clientes regionem deseruisse propter latrones. Cum exempla rogata sunt, unum furtum ante tres annos nominavit. Vigiles acta duo furta in sex annis habebant, alterum apud lacum novum. Timor realis esse poterat, sed verbum omnes et causa unica sustentationem non habebant.
+
+Myrtis addidit lucernas in via post incendium paucas fuisse. Tenebrae sensum periculi augebant, etiam si furta rara erant. Sabinus novas lucernas in consilio iam habebat. Hoc punctum commune sine disputatione inventum est.
+
+Tertia conventum ad utilitates, non solas positiones, duxit. Mercatores volebant merces integre, certo tempore et sumptu tolerabili transferri. Myrtis clientes et porticum, incolae quietem, fabri locum et discipulos servare volebant. Quaedam utilitates componi poterant.
+
+Spatium deponendi iuxta horreum vacuum fortasse vitrum et oleum adiuvaret sine porticu tota tollenda. Dominus horrei, senator Sabini, locum praebere posset. Sabinus pretium conductionis postulavit. Mercatores responderunt hoc pretium parte sumptus scapharum compensari posse.
+
+Tertia calculum non ipsa finxit. Singuli mercatores sumptus trium mensium darent; Marcus eos sine nominibus in summa compararet. Res mercatoriae privatae intra fines pacti servarentur. Relatio summas coniunctas, non lucrum singulorum, ostenderet.
+
+Quidam mercatores scripta dare recusaverunt. Hoc ius habebant, sed conclusiones ex parte fontium fierent. Tertia non dixit silentium fraudem probare. Tantum notavit sex ex decem rationes completas, duae summas, duae nihil praebuisse.
+
+Eutyches, scriba senatoris, conventui in fine adfuit. Audivit tabulam suam de tribus quintis partibus reprehendi. Non se offensum ostendit. Mandatum eius orationem brevem pro molis sumptu, non historiam integram, postulaverat. Menses maximam mutationem ostendentes elegerat.
+
+Tertia quaesivit num sciret incendium et tabulas absentes. Eutyches incendium noverat, sed putaverat id causam declinationis, non impedimentum comparationis, esse. Tabulas mensium non viderat. Sabinus ei tantum summas annuas dederat. Origo numeri per tres manus transierat.
+
+Sabinus officium suum in hac re agnovit: summas sine tabulis primis Eutychi dederat. Eutyches selectionem fecit, senator titulum approbavit. Nulla manus sola totum effectum creaverat. Tertia seriem transmissionis descripsit.
+
+Conventus finem non habuit in quo omnes consilium probaverunt. Tamen lucernae viae, spatium deponendi et experimentum compositum partes communes factae sunt. Porticus, translatio officinarum et sumptus molis adhuc dividebant. Summa hoc dissensum integrum servavit.
+
+Post conventum Sextus Tertiae dixit eam suum argumentum nimis severe tractavisse. Ea respondit cognationem maiorem, non minorem, cautelam postulare. Sextus paulisper iratus fuit, deinde rationes Fortunae plenas misit. Necessitudo eorum contentionem ferre poterat.
+
+Capitulum 10: Limus mensuratur
+
+Camurius septem dies aestuum observarat. Sex loca palis signata erant: introitus, caput molis, media ripa, horreum senatoris, officina Liviani, exitus canalis. Mensurae eadem hora relativa ad ortum solis capiebantur, sed tempestates eas movebant.
+
+Profunditas apud horreum media duobus palmis minor quam ad caput molis erat. In alveo navium linea luti ad unum locum progrediebatur. Aqua fluminis fusca post ventos austros plus materiae afferebat. Haec observatio hypothesin limi sustinebat.
+
+Camurius tamen dixit septem dies legem anni non facere. Hieme flumen, aestate mare plus valere poterat. Rationes purgationis antiquae quaerendae erant. Si profunditas ante quinque annos eodem modo mensa non erat, mutatio numerica directe probari non posset.
+
+Scriba molis duas tabulas veteres invenit. Mensurae "ad cingulum nautae" et "ad remum dimidium" scriptae erant, non palmis. Homines et remi mensuram variabilem faciebant. Camurius eas in intervalla lata tantum convertere potuit.
+
+Una epistula magistri navis ante quattuor annos dicebat carinam bis lutum tetigisse. Navis genus et pondus notata erant. Eadem navis nunc ad lacum novum ibat. Testimonium proximum erat, sed unum iter et unum aestum referebat.
+
+Menander Fortunam, navem minorem, per alveum duxit. Carina lutum non tetigit. Deinde navis collegii maior sine merce media intravit et semel leviter haesit. Cum onere pleno altius sederet et plus difficultatis haberet. Probatio condicionem gravem nondum imitata erat.
+
+Sabinus eventum pro confirmatione consilii habuit. Myrtis respondit navem maximam ad molum vetus semper venire non debere. Quaestio erat quae naves regioni necessariae essent. Altitudo infinita nec possibilis nec gratuita erat.
+
+Camurius tria genera finis posuit. Purgatio minima naves mediocres tutius acciperet. Purgatio maior plerasque onerarias, non maximas, admitteret. Moles omnino mutata etiam naves magnas ferret, sed saxa et curam continuam postularet.
+
+Sumptus non semel fiebat. Limus rediret. Camurius rationem annuae purgationis addidit. Consilium Sabini pretium primi operis habebat, non quinque annorum curae. Procurator omissionem agnovit et fabros suos novam summam parare iussit.
+
+Nautae scapharum auditi sunt. Dixerunt translationem mercium periculosam et laboriosam esse, sed artem suam ex ea vivere. Si moles purgaretur, quidam ad naves maiores operam transferre possent; alii scaphas perderent. Nullum collegium eis compensationem promiserat.
+
+Unus scapharius, Bithus, servus erat. Dominus duas scaphas habebat et consilium molis probabat, quia naves maiores plus mercis afferrent. Bithus contra timebat se ad laborem graviorem venditum iri. Eadem domus duas voces, sed impari potestate, habebat.
+
+Tertia nomen Bithi in relatione sine consensu domini ponere non poterat tuto. Munus "scapharius servilis" usurpavit; originalis nota in capsa mansit. Hoc eum ab omni periculo non servabat. Pactum limites suos palam confitebatur.
+
+Camurius limum ex tribus locis in vascula posuit. Color et gravitas differebant: prope canalem terra fluminis, prope officinam ramenta et cinis, ad introitum arena maris. "Limus" unum verbum pro materiis et causis pluribus erat.
+
+Livianus officinam partem materiae facere posse concessit. Ramenta lignea per canales cadebant, quamquam crates habebat. Promisit se crates saepius purgaturum. Cinis autem ex pluribus fornacibus veniebat. Culpa unius artificis ex vasculo probari non poterat.
+
+Varro vias inspexit et invenit aquam pluvialem cinerem ac pulverem ad molum ferre. Canalis parvus prope horreum fractus erat. Reparatio vilis partem materiae minuere posset. Sabinus eam in consilium addidit sine exspectatione totius relationis.
+
+Tertia dubitavit num mutatio ante finem investigationis fieri deberet. Camurius respondit canalem fractum factum apertum et remedium parvum esse; nulla pars damnum ex refectione patiebatur. Pactum non vetabat actionem manifestam, si magistratus permitteret.
+
+Priscus licentiam dedit. Tabella dixit refectionem pulverem et aquam directuram esse, non declinationem portus soluturam. Verba modesta impediebant ne parvum opus postea pro victoria totius consilii venderetur.
+
+Series mensurarum ad quattuordecim dies extensa est. Post imbrem profunditas ad canalem minor facta, post aestum magnum iterum aucta est. Variatio intra hebdomadam magnam erat. Una mensura Sabini forte vera, sed sine hora parum utilis, fuisset.
+
+Camurius summam scripsit: limus accessum navium mediocrium et magnarum minuebat; magnitudo effectus per annum incerta; fontes materiae multiplices; purgatio gradibus aestimanda; cura futura necessaria. Tertia nullum verbum mutavit praeter unum pronomen ambiguum.
+
+In vespera mensurae ultimae Menander dixit mare tabulas hominum legere non solere. Camurius respondit tabulas non mari imperare, sed homines ab memoria fallaci servare. Uterque risit. Scientia et experientia in ripa sine inimicitia convenerunt.
+
+Capitulum 11: Duo indices, duae urbes
+
+Crispus tabulas vectigalium publicas attulit, Herais indices navium collegii. Eosdem sex annos continebant, sed summae non congruebant. In anno secundo publicus index triginta duas naves, collegium quadraginta unam numerabat. Differentia nimis magna erat ad errorem stilorum parvum.
+
+Prima explicatio merces immunes fuit. Naves ad annonam, exercitum aut templa pertinentes non semper eodem vectigali tenebantur. Index collegii eas numerabat si molum adhibebant. Publicus ad pecuniam, non ad omnem frequentiam, factus erat.
+
+Secunda differentia genus diei erat. Navis quae vespere intrabat et mane exibat in duobus foliis collegii apparere poterat, publice semel. Hilarus nomina magistrorum comparavit et quinque duplicationes invenit. Numerus quadraginta unus ad triginta sex descendit.
+
+Tertia differentia locus. Publicus scriba "Portus" interdum totum complexum significabat, collegium molum occidentalem tantum. Titulus anni tertii medio anno mutatus erat sine nota. Prima pars regionem latam, altera strictam numerabat.
+
+Tertia utrumque indicem utilem esse scripsit, sed ad quaestiones diversas. Vectigalia reditum aerarii; collegium laborem molis; neutrum motum incolarum aut officinarum ostendebat. Prima discrepantia ex proposito et definitione orta erat.
+
+Sabinus publicos numeros auctoritate superiores putavit. Crispus, quamquam tabularium defendebat, dissentiebat. Auctoritas custodiam et originem confirmabat, non aptitudinem ad omnem quaestionem. Tabula publica quoque finem suum habebat.
+
+Eutyches indices suos protulit. Usus erat summis publicis quia senator sumptum publicum petiturus erat. Ad argumentum aerarii electio rationabilis fuit. Ad assertionem "commercium tribus quintis partibus cecidit" nimis lata. Contextus mutabat iudicium.
+
+Herais quaesivit quis verba assertionis scripsisset. Eutyches formam "vectigalia apud molum his mensibus..." dederat. Sabini adiutor titulum "commercium molis" mutaverat. Senator in oratione "vita portus" dixerat. Singulis gradibus nomen latius factum erat.
+
+Nullus gradus numerum ipsum mutaverat. Verba circa eum ambitum auxerant. Tertia seriem in relatione posuit, non ut senator mendax appellaretur, sed ut transmissio ostenderetur. Sabinus hoc aegre, tamen aperte accepit.
+
+Myrtis dixit vitam portus nullo vectigali mensurari posse. Tertia respondit vectigal partem vitae esse, sed non totam. Neque cauponae ratio totam regionem repraesentabat. Singuli fontes fenestras dabant, non domum integram.
+
+In anno incendii publicus index cecidit, sed collegium apud lacum novum crevit. Summa totius Portus paene eadem mansit. Commercium non omnino periit; locus mutatus est. Haec inventio contentionem de decreto publico vel operibus portus non solvebat, sed declinationem regionalem confirmabat.
+
+Post incendium totius Portus summa etiam paulatim crevit, dum moles occidentalis non rediit. Portus novus incrementum cepit. Renovatio veteris regionis ergo clientes ab alio loco reduceret aut novum commercium creare deberet. Duae res ad rationem mercatoriam diversae erant.
+
+Sextus putabat incrementum futurum utrumque lacum alere posse. Myrtis timebat senatorem tantum conductiones suas implere velle, merces ab aliis horreis transferendo. Sabinus nullum documentum de fonte futuri commercii habebat. Consilium spem, non probationem, continebat.
+
+Marcus rationes conductionis senatoris inspexit. Horrea occidentalia dimidia parte vacua erant. Si moles reficeretur, lucrum privatum magnum esset. Hoc consilium invalidum non faciebat; utilitas privata cum publica convenire poterat. Relatio tamen ostendere debebat quis lucrum acciperet.
+
+Sabinus consensit hanc condicionem publicari, si sumptus senatoris quoque nominaretur. Dominus dimidiam pecuniam primi operis ferebat et spatium deponendi promittebat. Relatio lucrum et contributionem simul ostenderet. Una sine altera imaginem partium praeberet.
+
+Crispus indicem publicum lacunis suis signavit. Anni quarti duo menses nunc reperti erant; annus primus tres dies sine nomine loci habebat. Hilarus totam seriem non uno numero correxit, sed intervallum minimum et maximum dedit.
+
+Interpretatio numerorum difficilior fiebat, sed non inutilis. Naves molis inter circiter tertiam et dimidiam partem ceciderant secundum genus indicis; pondus mercium minus; vectigalia plus propter immunitates mutatas. Nulla proportio sola titulum vitae portus merebatur.
+
+Tertia summam intermediam paravit. Sabinus petivit ut declinationem primo verbo nominaret. Myrtis volebat migrationem dicere. Formula facta est: "Usus mercatorius molis occidentalis imminutus est, dum magna pars commercii ad lacum novum migravit." Utraque res aderat.
+
+Acta publica summam acceperunt et titulum suum posuerunt: VETUS MOLES PARTEM COMMERCII AMISIT. Herais orthographiam antequam tabula penderet iterum inspexit. Etiam magna argumenta litteris singulis nitebantur.
+
+Post diem Myrtis dixit titulum satis aequum esse. Sabinus quoque. Consensio de una linea totam controversiam non solvebat, sed communem fundamentum dabat: mutatio regionalis vera, interitus totius Portus falsus, causae plures adhuc aestimandae.
+
+Capitulum 12: Consilium senatoris aperitur
+
+Sabinus tandem totum consilium senatoris, non summam orationis, ad tabernam attulit. Quattuor tabulae magnae erant: moles, via, horrea, translatio officinarum. Quinta sumptus continebat. Tertia receptionem sub sigillo utriusque partis notavit.
+
+Moles ad profunditatem maiorem purgaretur et saxis novis muniretur. Via inter porticum et horrea pedibus sex latior fieret. Duo horrea iungerentur. Officinae quinque ad ripam septentrionalem transferrentur. Opus per duos annos procederet.
+
+Sumptus primi anni senator dimidiam partem, aerarium quartam, collegia quartam ferrent. Secundi anni cura adhuc "postea definienda" erat. Camurius hanc lacunam gravem putavit. Purgatio continua et moles post tempestates inspectionem requirebant.
+
+Translatio pretium novi soli habebat, non mercedes dierum clausorum, instrumenta, habitationes aut clientes amissos. Sabinus dixit singula pacta post decretum generalem fieri solere. Tertia respondit decretum sine aestimatione horum sumptuum utilitatem falsam monstrare posse.
+
+Tabula viae porticum linea punctata delevit, sed munus columnarum in structura non examinaverat. Varro iam sciebat duas fortasse moveri posse, ceteras tectum tenere. Consilium architecti senatorii ex mensuris veteribus factum erat, ante refectionem porticus.
+
+Architectus nomine Aemilius Cotta ad colloquium vocatus est. Is Romae manebat et per decem dies venire non poterat. Interim Sabinus notas eius legit. Cotta regionem tribus diebus inspexerat, aestu semel menso et conductorum nominibus a domino acceptis.
+
+Tertia eum neglegentem ante praesentiam non appellavit. Mandatum eius fortasse formam primam, non consilium operi exsequendo paratum, postulaverat. Sabinus confirmavit tabulas ad primam aestimationem factas esse. Oratio senatoris eas tamen quasi perfectas exhibuerat.
+
+Eutyches interfuit et transmissionem iterum agnovit. Verbum "prima forma" ex titulo cum exemplar ad senatorem missum esset omissum erat, quia patronus brevitatem voluerat. Omissio incertitudinem delevit. Nemo lineas falsas addiderat.
+
+Hilarus omnes versiones tituli quaesivit. Prima: FORMA AD DELIBERANDUM. Secunda: CONSILIUM MOLIS OCCIDENTALIS. Tertia in oratione: MOLES RESTITUENDA. Gradus ab exploratione ad necessitatem in tribus mutationibus apparebat.
+
+Sabinus rogavit num patronus suus in relatione hoc modo reprehenderetur. Tertia respondit transmissionem documenti, non animum senatoris, exponendam esse. Senator fortasse vere opus necessarium putabat. Relatio tamen fundamentum crescente certitudini ostenderet.
+
+In tabula horreorum spatium deponendi ad usum mercatorum promittebatur, sed pretium non erat. Sabinus nunc minimum pretium quinquennii offerre poterat, si aerarium partem viae solveret. Mercatores numerum accipere et in calculos suos ponere poterant.
+
+Myrtis conditiones cauponae misit: porticus tectum saltem dimidia parte servari, pulvis per saepimenta minui, accessus cotidie manere, si translatio necessaria fieret, pretium sex mensium dari. Sabinus ultimam condicionem nimiam putavit, sed tractationem non recusavit.
+
+Livianus pretium translationis instrumentorum a tribus vectoribus accepit. Intervallum erat magnum, quia fornax integra aut partibus moveri poterat. Faber malebat novam aedificare et veterem usque ad finem uti. Hoc duplicem locum per duos menses requirebat.
+
+Consilium senatoris nullum locum duplicem habebat. Ripa septentrionalis nunc area navium erat; unam partem ad tempus dare poterat. Collegium naviculariorum timebat ne spatium suum amitteret. Renovatio plures utilitates inter se commutabat.
+
+Camurius tria genera molis ex capitulo decimo addidit. Cotta maximam formam elegerat. Media forma sumptum paene dimidium requirebat et naves olearias plerasque admitteret. Maxima frumentarias quoque, sed earum domini lacum novum iam aptiorem putabant.
+
+Sextus quaesivit cui maxima forma revera prodesset. Horrea senatoris frumentum accipere volebant, sed mercatores frumenti ad molum redire non promiserant. Duo ex tribus litteris dixerunt se pretio conductionis et sumptu vecturae comparatis deliberaturos esse. Utilitas nondum contracta erat.
+
+Tertia tria consilia inter se comparanda statuit: curam minimam cum via ordinata, molem mediam cum porticu servata, consilium maximum senatoris. Nihil prorsus facere quoque effectus haberet, sed cura minima statum praesentem sine neglectu repraesentabat.
+
+Sabinus timebat comparationem consilium patroni minuere. Crispus respondit consilium quod tantum sine aliis optionibus bonum videretur iam infirmum esse. Si maximum re vera optimum esset, comparatio id ostenderet. Sabinus rationem accepit.
+
+Tabulae senatoris in cella clausa manserunt, sed exemplaria partibus data sunt. Nullam rem mercatoriam privatam continebant praeter pretia, quae consensu divulgabantur. Incolae tandem rem de qua rumores audiverant videre poterant. Verba "prima forma" litteris magnis supra posita sunt.
+
+Vespere Myrtis tabulas legit. Non dixit timorem suum evanuisse. Saltem nunc sciebat quae columnae, quae officinae, qui anni tangerentur. Incertitudo definita minus vasta erat, quamquam contentio magis concreta facta est.
+
+Capitulum 13: Decretum quod finem amisit
+
+Crispus fasciculum incendii e tabulario iterum aperuit. Decretum primum viam molis per quadraginta dies claudi iubebat, donec paries horrei reficeretur. Merces interim ad lacum novum mitterentur. Dies initii et finis clare scripti erant.
+
+Post quadraginta dies paries nondum perfectus erat. Alterum decretum clausuram viginti diebus extendebat. Tertium non repertum est. Acta autem duobus mensibus post viam apertam nuntiabant. Quare signa translationis per annum mansissent, adhuc nesciebatur.
+
+In ratione fabrorum paries die septuagesimo tertio firmus declaratus erat. Signa viarum a collegio vectorum posita, non a magistratu, fuerant. Collegium post aperturam ea removere debebat, sed mandatum scriptum nullum inveniebatur.
+
+Custos signorum eo anno mortuus erat. Successor officia accepit sine indice completo. Tabula receptionis viginti duo signa numerabat, cum prima ratio viginti quattuor habuisset. Duo signa iam deerant. Potuit negligentia ordinaria consuetudinem mercatorum mutavisse.
+
+Collegium vectorum acta privata servabat. In conventu post aperturam quidam socius proposuerat signa ad lacum novum manere, quia viae ibi latiores essent. Decisio in margine erat: "placet ad proximas nundinas." Post proximas nundinas nulla revisio apparuit.
+
+Formula temporaria ita finem suum amisit. Non magnus decretum occultum, sed conventus parvus et absentia secundae deliberationis usum diuturnum creaverant. Cum mercatores semel horrea nova conduxissent, reversio etiam sine signis difficilior facta est.
+
+Sabinus hanc seriem magni momenti putavit. Demonstrabat mutationem non ex limo solo venisse. Simul argumentum renovationis firmare poterat: si via vetus aptior fieret, mos reversibilis fortasse esset. Myrtis eandem seriem pro iniustitia neglectae regionis habebat.
+
+Tertia neutram conclusionem statim elegit. Decretum causam primi motus ostendebat; non probabat quid hodie mercatores reduceret. Sex anni pretia, contractus et naves mutaverant. Causa originis non necessario remedium praesentis erat.
+
+Eutyches quaesivit num senator in oratione incendium nominare posset. Tertia respondit documentum publicum esse; usus eius liber erat, si finis decretorum et mora signorum simul dicerentur. Dimidium narrationis ad persuasionem commodam, sed iniquam, duceret.
+
+Acta fori summam ediderunt: VIA POST INCENDIUM APERTA, SIGNA DIUTIUS MANSERUNT. Infra explicaverunt collegium vectorum usum ad nundinas tantum prorogavisse. Nemo "conspiratio" aut simile verbum adhibuit. Error ordinis sine dolo quoque effectum magnum habere poterat.
+
+Veteres vectores quaesiti sunt. Unus meminit mercatores signa probavisse quia minor vectura ad lacum novum dabatur. Rationes pretiorum hoc confirmabant: collegium per sex menses pretium introitu novo minuerat. Subsidium privatum migrationem aluit.
+
+Pretium minus datum erat quia horrea nova initio vacua erant et clientes requirebant. Domini partem sumptus solverant. Post sex menses pretium crevit, sed mercatores iam pacta annua habebant. Consilium breve structuram longam pepererat.
+
+Sextus ipse eo tempore unam mercium partem ad lacum novum moverat. In prima narratione hoc non nominaverat, quia de incendio tantum rogabatur. Nunc rationes suas dedit. Pretium minus et via aperta eum traxerant; limum tum vix consideraverat.
+
+Tertia avunculum rogavit cur postea non redisset. Horrea nova sicciora, custodes plures, navis Fortunae apta erant. Moles vetus tantum ad certas merces usui mansit. Responsum eius ostendebat consuetudinem post causam primam propriis commodis sustineri.
+
+Myrtis hoc audita Sextum accusavit se regionem reliquisse quam nunc investigaret. Sextus negavit se cauponae promissum umquam fecisse. Contentio acris fuit. Tertia utriusque verba resumit: Myrtis effectum communem, Sextus libertatem negotii privati spectabat.
+
+Relatio mercatores ad clientes veteres conservandos cogere non poterat. Poterat tamen sumptus publicos pro reditu petitos cum libertate futura comparare. Antequam aerarium molum reficeret, promissa mercatorum de reditu in pacta concreta vertenda erant.
+
+Sabinus tres maiores mercatores rogavit. Unus quinquennium conducere paratus erat, si moles media fieret. Duo tantum pretium post opus videre volebant. Senatoris horrea igitur certitudinem unius partis habebant, non totius lucri promissi.
+
+Crispus in summa scripsit: "Translatio tempore incendii instituta, pretio minore et viis commodioribus continuata est; limus reditum aliquarum navium postea impedivit." Ordo causarum mutabatur per tempus. Una causa initium, aliae permanentiam explicabant.
+
+Tertia hanc sententiam in pariete sub titulo TEMPORA posuit. Investigatio iam non arborem unius causae, sed seriem decisionum, pretiorum et materiarum ostendebat. Remedium quod initium tantum spectaret sex annos posteriores ignoraret.
+
+Capitulum 14: Epistulae ad absentes
+
+Duae inscriptiones discipulorum Liviani repertae erant. Herais epistulas misit, propositum investigationis et usum responsorum explicans. Tertia nihil de secreto ultra pactum promisit. Responsa, si venirent, voluntaria essent.
+
+Prima epistula a Misenum post duodecim dies rediit. Discipulus, Cassianus, ad officinam navalem maiorem transierat quia merces duplex et libertatis promissio certa data erat. Limus molis veteris decisionem suam non moverat. Officina Liviani eum retinere pecunia non poterat.
+
+Secunda a portu novo venit. Apollonius scripsit se naves maiores discere voluisse. Livianus optimus magister scapharum erat, sed ars ad quam iuvenis aspirabat alibi exercebatur. Si officina Liviani transferretur et cresceret, fortasse rediret, sed familiam nunc prope novum lacum habebat.
+
+Verbum "fortasse" in epistula spem, non pactum, erat. Sabinus tamen reditum discipulorum inter beneficia translationis ponere volebat. Tertia unum responsum conditionale ad plures iuvenes extendere recusavit. Cassianus contra nullo consilio rediturus videbatur.
+
+Tertius discipulus, Menophilus, per collegium Misenense inventus est, sed scribere noluit. Cursor tantum confirmavit eum epistulam accepisse. Silentium eius neque consensum neque accusationem significabat. In indice scriptum est: responsum non datum.
+
+Epistulae ad quinque familias quae regionem reliquerant quoque missae sunt. Inscriptiones ex tabulis conductionis antiquae venerant. Una familia mortua aut dispersa, una ignota erat; tres responderunt. Absentes non facile in investigationem praesentem reducebantur.
+
+Familia sutoris discesserat quia dominus pretium auxerat, non quia clientes soli deessent. Taberna vacua postea ad depositum versa erat. Dominus Flavius rationem pretiorum ostendit: tectum refecerat et sumptum conductoribus transtulerat. Causa mercatoria multiplex erat.
+
+Vidua deversorii scripsit maritum aegrotavisse et filios negotium nolle. Declinatio portus decisionem faciliorem fecerat, sed causa familiae quoque aderat. Clausam ianuam ex numero mercatorio simplici legere hanc historiam delevisset.
+
+Tertia familia tabernarii olei ad lacum novum migraverat. Eorum responsum clientes secutos esse dicebat, sed etiam horreum ibi mundius et contractum triennii fuisse. Redire non volebant, etiamsi moles vetus reficeretur. Investitio iam radices novas fecerat.
+
+Myrtis epistulas legit consentientibus auctoribus. Tristitia eam cepit, quia nomina nota erant. Tamen intellexit renovationem non omnes amicos reducturam esse. Spes regionis in praesentibus et novis usibus quoque poni debebat, non in restitutione exacta praeteriti.
+
+Tertia hoc punctum in comparatione consiliorum addidit. Consilium maximum "reviviscere veterem portum" promittebat. Verbum reviviscere metaphoram unius corporis adhibebat. Regio autem non ad eandem aetatem rediret; nova mixtura officinarum, horreorum et domuum nasceretur.
+
+Sabinus metaphoram defendit ut auditores moveret. Crispus respondit rhetoricam licere, si non effectum impossibilem pro contractu poneret. In oratione spes, in ratione promissa mensurabilia distinguerentur. Senator utrumque genus textus habere poterat.
+
+Herais responsa secundum causam primariam non in unam columnam coegit. Singula plures rationes habebant: merces, ars, familia, pretium, valetudo, clientes. Ea notas per capita disposuit, ut una epistula sub pluribus causis apparere posset.
+
+Hilarus observavit responsuros eos esse qui inscriptionem stabilem et litteras noverant. Pauperrimi, servi venditi aut familiae dispersae minus apparebant. Epistulae absentium igitur absentiam non solvebant; tantum quosdam addebant. Hic limes in relatione positus est.
+
+Myrina quaesivit de servis qui cum officinis translati erant. Instrumenta eos res domini habebant et novas inscriptiones non dabant. Duo liberti recentes per patronos reperti sunt. Alter translationem meliorem, alter familiam divisam esse dixit. Utraque experientia vera erat.
+
+Servus qui familiam amiserat nomen publicari nolebat. Testimonium sub munere tantum relatum est. Myrina irata fuit quod dominus nullum damnum in ratione habebat; homo tamen coniugem cotidie non videbat. Sumptus translationis pecunia sola non continebatur.
+
+Sabinus respondit consilium novum familias serviles simul transferre conari posse. Verbum conari satis non erat. Tertia condicionem scriptam proposuit, sed status servorum dominis potestatem dabat. Magistratus quantum talem condicionem exigere posset, peritus loci aestimaret.
+
+Relatio in hac parte nullam solutionem universalem finxit. Nominavit periculum separationis, promissum Sabini et limites potestatis. Homines ipsi condiciones suas agebant intra ordinem Romanum iniquum, quem unum pactum privatum tollere non poterat.
+
+Ultima epistula a Vettia Puteolana casu venit, non ad investigationem. Quaerebat de Tertia et charta tabernae. Tertia post longas voces absentium amicae respondit. Omnis epistula non documentum publicum fieri debebat; haec in arca privata mansit.
+
+Capitulum 15: Fragmentum in foro
+
+Mense secundo, antequam summa testimoniorum publicaretur, tabella sine nomine in foro apparuit. Textus dicebat: "Scribae iam concluserunt porticum delendam, officinas movendas, incolas pretio nullo relinquendos." Sub eo tres sententiae e forma interna relationis positae erant.
+
+Sententiae verae, sed ex diversis partibus decerptae erant. Una consilium Sabini describebat, altera sumptum habitationis deesse, tertia dicebat porticum vecturam impedire. Verba quae haec assertiones aliis fontibus vel condicionibus iungebant omissa erant.
+
+Myrtis primo putavit Sabinum tabellam ad timorem faciendum posuisse; Sabinus contra incolas Tertiam premere velle dixit. Utraque suspicio sine indicio erat. Tertia tabellam sustulit tantum postquam custos fori exemplum publicum fecit.
+
+Pactum titulos ante summam intermediam vetuerat, sed auctor ignotus pars pacti fortasse non erat. Quaestio maior erat quomodo forma interna ex cella exisset. Quinque exemplaria numerata apud Tertiam, Marcum, Crispum, Sabinum et collegium erant.
+
+Hilarus sigilla inspexit. Exemplar tabernae integrum erat. Crispus suum attulit. Sabinus etiam. Collegium dixit exemplar in scrinio manere, sed custos aberat. Numerus sententiarum in tabella ordinem exemplaris collegii sequi videbatur.
+
+Marcus noluit collegium statim accusare. Eadem verba in notis colloquiorum quoque erant. Herais et duo scribae conducti partes transcripserant. Cursores fragmenta ad correctionem partibus tulerant. Catena longior quam quinque exemplaria erat.
+
+Tertia responsum publicum brevi forma posuit. Negavit conclusionem ullam factam esse; tres sententias in contextu pleno reddidit; diem summae intermediae nuntiavit. Non promisit porticum certo servari. Correctio falsam certitudinem altera falsa certitudine non mutavit.
+
+Tabella correctionis eadem magnitudine ac fragmentum fuit et iuxta locum eius posita. Myrtis eam in caupona quoque suspendit. Sabinus ad horrea misit. Celeritas hoc tempore necessaria erat, quia rumor iam ad familiam Primae Ostiae venerat.
+
+Tertia formas transmissionis recensuit. Sententia de porticu ad Flavium dominum missa erat. De sumptu habitationis ad Livianum. De vectura ad collegium. Nullus praeter tabernam omnes tres eodem fasciculo acceperat, nisi quis fragmenta collegisset.
+
+Herais recordata est cursorem iuvenem tria involucra eodem die tulisse. Nomen ei Nereus erat, libertus collegii. Is negavit se aperuisse, sed dixit unum involucrum apud porticum pluvia solutum esse. Myrtis cum duobus clientibus ibi chartas colligere adiuvaverat.
+
+Myrtis hoc primum non memoraverat. Nunc dixit se verba casu vidisse, sed nihil descripsisse. Unus cliens, Callistus sutor, diu chartam tenuit. Callistus tabellam posuisse confessus est, cum a custode interrogatus esset.
+
+Callistus non putabat se mentiri. Tres sententias ipsa verba scribarum esse dicebat. Officina eius iuxta porticum erat, et translationem timebat. Contextum omiserat quia verba brevia plus hominum moverent. Intentio defendendi locum effectum falsi nuntii pepererat.
+
+Tertia potestatem puniendi non habebat. Custos fori de tabella sine nomine secundum morem civitatis ageret. Ipsa Callistum ad testimonium de timore suo invitavit, sed pactum communicationis violatum in relatione nominaretur. Nomen eius non necessario publicum fieret.
+
+Sabinus volebat Callisti nomen edi. Dicebat anonymum fragmentum patroni sui famam laesisse. Myrtis contra hominem pauperem protegebat, quamquam actionem eius non probabat. Priscus statuit acta rem sine nomine interim referre, donec quaestio tabellae publicae finiretur.
+
+Callistus testimonium dedit. Dominus officinae eum de consilio non certiorem fecerat. Rumor translationis sine pretio per mensem cucurrerat. Tabella sua prava erat, sed ex absentia nuntii certi orta. Tertia causam actionis a iustificatione separavit.
+
+Marcus rationem internam mutavit. Fragmenta ad correctionem posthac singula titulo et contextu brevi mitterentur; cursores funes ceratos acciperent; receptor diem signaret. Non omnia documenta clauderentur ut secreta, sed casus chartarum minueretur.
+
+Crispus timebat ne cura nimia partes a correctione arceret. Tertia processum brevem servavit. Receptor non formulam longam, tantum nomen fasciculi et diem scriberet. Minimum necessarium, non apparatus gravis, quaerebatur.
+
+Myrtis Callisto dixit se tabellam eius defendere non posse. Tamen eum in caupona laborare permisit. Sabinus postea sutoris officinam in aestimatione translationis addidit; antea inter quinque officinas non erat. Rumor pravus lacunam veram patefecerat.
+
+Tertia vespere se culpavit quod sententias sine contextu per urbem misisset. Marcus respondit nullum modum omnem usum pravum impedire. Responsum tamen mutationem rationabilem postulabat. Culpa absoluta aut defensio absoluta utraque doctrinam impediret.
+
+Paries tabernae tertium titulum accepit: TRANSMISSIO. Sub eo non nomen Callisti, sed catena chartarum et correctiones positae sunt. Investigatio non solum portum, sed suas vias informationis examinabat.
+
+Capitulum 16: Conventus qui paene deficit
+
+Summa intermedia die promisso in porticu basilicae Portus legenda erat. Post fragmentum anonymum multi incolae venerunt. Sabinus mercatores et architectos adduxit. Spatium plenum erat antequam Tertia mensam attingeret.
+
+Priscus regulas breves dixit: summa primo integra legeretur, deinde partes quaestiones ordinarent. Non omnes hunc ordinem servaverunt. Callistus in extremo stabat; nomen eius publice non dictum est. Myrtis prope inquilinos sedebat.
+
+Tertia primam partem de numeris coepit. Cum dixit usum molis imminutum esse, mercator clamavit hoc iam omnibus notum esse. Incola respondit mercatores ipsos eum deseruisse. Sonus aliarum vocum crevit. Priscus conventum paulisper constitit.
+
+Myrtis surrexit et rogavit ut summa audiretur, quamquam ipsa de consilio timebat. Sabinus quoque suos socios sedere iussit. Duo adversarii ordinem communem defenderunt. Tertia lectionem continuavit.
+
+Incendium, signa, pretium vecturae, naves maiores, limus, via, officinae et habitationes ordine exposita sunt. Nullam causam solam nominavit. Cum fragmentum contextu pleno apparuit, quidam auditores intellexerunt quomodo verba separata sensum mutaverint.
+
+Post summam Priscus quaestiones per capita accepit. Prima de porticu: num delenda esset. Tertia respondit investigationem adhuc tria consilia comparare; observationes usum porticus et moram plaustrorum utrumque confirmare. Responsum non ita aut non erat.
+
+Auditor iratus hoc evasionem appellavit. Tertia argumentum eius repetivit: timor erat ne dilatio demolitionem tacite pararet. Deinde diem formae comparativae dedit et promisit condiciones translationis ante decisionem palam fore. Timorem agnovit sine conclusione falsa.
+
+Mercator quaesivit cur servi et caupones tantum spatii acciperent, cum pecuniam operis non darent. Myrina respondit effectus consilii contributionem non sequi. Magistratus de pondere vocum decernerent; relatio autem damnum invisibile facere non deberet.
+
+Sabinus de lucro senatoris palam locutus est. Horrea eius valorem acciperent, sed dimidiam pecuniam et spatium deponendi daret. Auditores sibilaverunt et laudaverunt simul. Procurator non finxit patronum sine commodo agere.
+
+Camurius mensuras limi exposuit. Cum maxima navis haesisse diceretur, quidam victoriam consilii clamavit. Architectus addidit navem sine onere fuisse et tres gradus purgationis exstare. Exemplum non decretum maximum postulabat.
+
+Livianus pretium translationis ostendit. Sabinus locum duplicem per duos menses nunc offerre posse dixit, post tractationem cum collegio. Hoc novum erat. Faber respondit habitationes discipulorum adhuc deesse. Quaestio ad pactum propius movebatur.
+
+Callistus tandem loqui petivit. Non confessus est tabellam, quia causa publica nondum finita erat, sed timorem sutoris exposuit: instrumenta levia, clientes tamen loco ligati, dominus alius, conductor sine voce. Sabinus sutorem inter transferendos iam additum confirmavit.
+
+Conventus iterum asper factus est, cum Rufus Ostiensis, qui curiositate venerat, maximum opus statim faciendum clamavit. Myrtis eum interrogavit num porticum suam dare paratus esset. Priscus personas ad rem Portus redire iussit. Tertia veterem socium postea privatim reprehendit.
+
+Crispus in margine totius conventus notas faciebat. Observavit quaestiones de habitatione et mercede plures quam de limo fuisse. Hoc non significabat limum parvum esse; auditores de rebus quas directe patiebantur loquebantur. Ordo conventuum futurorum igitur mutandus erat.
+
+Ultima pars pacta est. Tres conventus minores fierent: de mole, de via et porticu, de translatione et habitatione. Magnum conventum omnes voces simul in clamorem vertere videbatur. Separatio rem tractabilem faceret, deinde summa communis rediret.
+
+Priscus conventum sine suffragio clausit. Quidam hoc defectum putaverunt. Tertia contra dixit suffragium ante consilia comparata sententias in acies fixisset. Propositum diei notitia et quaestiones, non victoria, fuerat.
+
+Acta titulum cautum posuerunt: SUMMA PORTUS LECTA; TRES TRACTATIONES SEQUENTUR. Fragmentum anonymum in textu nominatum est, cum correctione. Nomen auctoris adhuc omissum mansit. Fides paulatim, non uno nuntio, reparanda erat.
+
+Post conventum Sabinus et Myrtis sub eadem porticu paulisper steterunt. Neuter alteri gratias egit, sed ambo fatentur sine interventu mutuo summa lecta non esset. Cooperatio momentanea contentionem de fine non delevit.
+
+Tertia navicula nocte rediit. Caput dolebat ex strepitu et lassitudine; nullum consilium medicum ex hoc sequebatur. Livia domi cibum servaverat et nullas quaestiones primo posuit. Silentium familiae post voces basilicae donum fuit.
+
+Capitulum 17: Tres altitudines molis
+
+Prima tractatio de mole in horreo vacuo senatoris habita est. Camurius tres formas in tabulis separatis posuit, ne maxima magnitudine imaginis ceteras vinceret. Sumptus primi operis et quinque annorum cura iuxta quamque formam apparebant.
+
+Forma minima alveum praesentem purgaret, canalem pluvialem reficeret et palos directionis renovaret. Naves mediocres aestu idoneo accederent; maximae extra molum manerent. Sumptus parvus, sed translatio scapharum permaneret.
+
+Forma media alveum latiorem et altiorem faceret, caput molis muniret, spatium deponendi pararet. Pleraeque oleariae et vitriariae naves directe venirent. Frumentariae maximae lacu novo uterentur. Cura annua moderata esset.
+
+Forma maxima Cottae saxa exteriora mutaret et alveum ad naves maximas aperiret. Via, horrea et moles uno opere coniungerentur. Sumptus plus quam duplum formae mediae, cura quoque maior. Beneficium pendebat ex mercatoribus frumenti redeuntibus.
+
+Camurius indicavit mensuras suas quattuordecim dierum esse. Forma media satis firmo fundamento nitebatur; maxima probationes hiemales desiderabat. Cotta, qui tandem aderat, respondit suam formam principium deliberationis, non ultimam delineationem fuisse. Titulus omissus eam nimis certam fecerat.
+
+Cotta rationes suas defendit. Si urbs post decem annos cresceret, forma media cito angusta fieri posset. Opus maximum semel factum futuram copiam acciperet. Camurius contra limum et mutationem navium praedici non posse dixit; amplior structura etiam maius onus futurum erat.
+
+Disputatio inter futurum amplum et praesentem probationem vertebatur. Tertia rogavit quae indicia decisionem post quinque annos mutarent. Cotta numerum navium maximarum et occupationem horreorum nominavit. Camurius sedimentum annuum et sumptum curae addidit.
+
+Sabinus proposuit formam mediam ita fieri ut postea augeri posset. Fundamenta capitis molis ad pondus maius pararentur, sed alveus nunc tantum mediocriter purgaretur. Cotta hanc viam technice possibilem dixit, pretio paulo supra mediam.
+
+Mercatores olei consilium probaverunt. Frumentarii promissum reditus adhuc non dederunt. Unus dixit se si pretium horrei minueretur duas naves anno mittere posse. Duae naves opus maximum non iustificabant, sed initium probationis praebebant.
+
+Scapharii formam mediam timebant minus quam maximam. Translatio mercium maximarum maneret; opus eorum minueretur, non evanesceret. Bithus tamen dixit domini scapharum lucrum servaturos, operarios pauciores forsitan vendituros esse. Condicio laboris iterum separatim tractanda erat.
+
+Collegium scaphariorum, dominis compositum, numerum operariorum post formam mediam servandum promittere noluit. Tertia hoc in onere residuo posuit. Magistratus compensationem vel opus alternum suadere posset, sed relatio non fingebat pactum quod deerat.
+
+Sextus Fortunam et duas naves comparavit. Forma media navem suam sine exspectatione aestus extremi admitteret. Sumptus scapharum pro quibusdam mercibus minueretur. Rationes trium annorum ostendit. Cognatio eius in fonte iterum nominata est.
+
+Myrtis quaesivit num forma media porticum servaret. Moles ipsa ita fieri poterat; via separata manebat. Sabinus consensit quaestiones non necessario uno consilio alligari. Hoc magnum mutationis punctum erat: moles media sine demolitione tota iam possibilis.
+
+Senator tamen dimidiam pecuniam formae maximae promiserat. Sabinus epistulam novam petere deberet. Patronus fortasse mediam minus gloriosam putaret. Tertia scripsit dependentiam pecuniae a voluntate unius donatoris periculum esse, non argumentum technicum.
+
+Priscus aerarium formam minimam sine senatore solvere posse dixit. Formam mediam cum collegiis et contributione privata fortasse. Maximam nullo modo sine patrono. Tres optiones igitur non solum sumptu, sed potestate pecuniae differebant.
+
+In fine tractationis nemo suffragium tulit. Partes tamen formam minimam parum ambitiosam, maximam nondum probatam, mediam augeri posse tractabilem putabant. Cotta et Camurius tabulam communem facerent. Dissensio artis in consilium compositum transibat.
+
+Tertia summam eodem die dedit. Non dixit formam mediam electam esse. Scripsit eam plurima commoda cum minoribus condicionibus adhuc coniungere et ad aestimationem plenam procedere. Verba gradum deliberationis servabant.
+
+Acta titulum "Moles media favorem accipit" proposuerunt. Tertia "Moles media amplius aestimabitur" emendavit. Favor quidam aderat, sed pactum pecuniae et probationes nondum. Titulus minus iucundus, magis verus fuit.
+
+Capitulum 18: Porticus et horae
+
+Secunda tractatio in ipsa porticu habita est, ut omnes spatium de quo loquebantur viderent. Mensae ad tempus remotae, semita creta in pavimento signata est. Varro latitudinem viae praesentem et duas mutationes demonstravit.
+
+Prima mutatio duas columnas extremas removeret. Varro tectum trabe lignea et arcu latericio sustineri proposuit; porticus dimidia maneret, angulus plaustrorum latior fieret. Materia nota et in officinis loci parari poterat. Sumptus medius erat.
+
+Secunda nullam columnam tolleret. Plaustra horis primis unam directionem sequerentur: intrarent per viam horreorum, exirent per vicum posticum. Vicus posticus tamen iuxta domos transibat et pavimentum debile habebat. Commodum ad alios transferre poterat.
+
+Tertia compositio columnam unam moveret, spatium deponendi in horreo vacuo aperiret et horas plaustrorum ordinaret. Via non duobus vehiculis ubique, sed apud angulum difficilem sufficeret. Sumptus minor, disciplina cotidiana maior erat.
+
+Vectores disciplinam horarum suspectam habebant. Aestus, rotae et morae viarum tempus mutabant. Regula cum exceptionibus ad naves recentes, ligna et cibum necessarium parata est. Custos viae exceptionem in tabula signaret.
+
+Myrtis nolebat custodem a collegio mercatorum solum eligi. Is amicis facile exceptiones daret. Priscus proposuit mercedem communem et nominationem alternam inter collegium et vicum. Mensis probationis corruptionem omnem non prohiberet, sed rationes palam essent.
+
+Flavius dominus insulae porticum in instrumento conductionis inclusam ostendit. Si columna moveretur, mensae duae perirent. Myrtis pretium conductionis minui postulavit. Flavius consensit, si magistratus usum spatii publici mutaret. Pactum privatum condicionem publicam sequi posset.
+
+Iunia venditrix panis semitam ante mensas servari volebat. Faustus et duo alii viatores spatia probaverunt. Scamnum sutoris plus quam mensae viam claudebat. Callistus scamnum rotis parvis instruere promisit, ut horis frequentibus moveretur.
+
+Callistus post tabellam anonymam adhuc verecundus erat. Tertia eum non ab tractatione exclusit. Actio prior fidem laeserat, non omne ius de officina loquendi sustulerat. Ipse palam dixit se fragmentum posuisse; custos fori parvam multam iam dederat.
+
+Confessio rumores de auctore finivit. Sabinus nomen eius ad patronum misit, sed poenam ampliorem non petivit. Myrtis hoc ut signum moderationis accepit. Callistus correctionem in officina sua per mensem servaret, sicut custos constituerat.
+
+Varro columnam extremam inspexit. Tectum sine ea novo arcu sustineri posset, sed opus per decem dies porticum clauderet. Myrtis tempus post festum nauticum elegit, cum clientes pauciores essent. Vectores contra ante imbres autumnales volebant.
+
+Calendarium medium repertum est: statim post festum, ante tempus pluviosum speratum. Caelum promitti non poterat; tegumentum temporarium in sumptu additum est. Si ventus fortis veniret, opus sisteretur. Conditio practica, non fausta precatio, erat.
+
+Incolae de strepitu prima luce pactum petiverunt. Rotae ante horam primam in area externa exspectarent, nisi navis urgente aestu venisset. Vectorum collegium hoc accepit, si area satis magna et custodita esset. Senator horreum vacuum ad exspectationem dedit.
+
+Spatium deponendi et area exspectationis idem horreum utebantur. Horas diviserunt: nocte plaustra, die merces. Sabinus pretium conductionis dimidium primae formae posuit. Mercatores calculum probaverunt; iactura morae maior erat.
+
+Herais pactum in capitibus scripsit: via, horae, exceptiones, custos, porticus, conductio, probatio. Crispus primam formam una periodo longa composuerat; eam quoque in capita divisit. Priscus formulam civitatis ipse addidit. Taberna claritatem totius servavit.
+
+Probatio unius mensis ante columnam movendam fieret. Si mora plaustrorum saltem parte quarta minueretur et querelae strepitus non crescerent, mutatio structurae aestimaretur. Numerus querelarum solus facile moveri poterat; tempora transitus et observationes quoque adhiberentur.
+
+Myrtis rogavit ne successus a solo numero plaustrorum definiretur. Semita pedestris et clientes porticus numerarentur. Pactum tria indicia aeque posuit. Unum consilium plures usus servire debebat.
+
+Sabinus tractationem utiliorem quam speraverat dixit. Consilium maximum porticum totam tollebat; nunc mora fortasse minore opere solvebatur. Patronus pecuniam ad molum potius servare posset. Myrtis primum eum sine suspicione subrisisse visa est.
+
+Tertia tamen in summa pericula servavit: exceptiones nimiae, custos partibus favens, horreum duplici usu confusum, vicus posticus si plaustra errarent. Pactum successum non praesumebat. Mensis probationis propter haec instituebatur.
+
+In vespera mensae in locum redierunt. Lineae cretae adhuc in pavimento erant. Myrtis super unam sellam posuit et risit se iam inter duas vias cenam dare. Post primam pluviam creta deleretur, sed tabula mensurarum maneret.
+
+Capitulum 19: Ubi fabri habitent
+
+Tertia tractatio difficillima fuit, quia translationem non solum officinarum, sed hominum tangebat. Livianus, Callistus, duo fabri funium, caupo minor et domini locorum aderant. Operarii liberi et serviles separatim quoque auditi erant.
+
+Sabinus ripam septentrionalem obtulit. Quinque areae delineatae, aqua alta, via ad lignum satis lata erat. Tecta autem nondum exstabant. Consilium Cottae duas officinas magnas, tres parvas et cellas mercium habebat, non habitationes.
+
+Livianus explicavit officinam navium sine hominibus prope manentibus nocte servari non posse. Tempestates horam non eligebant. Discipuli et custodes in cellis supra officinam habitabant. Si domus longe essent, merces et responsum tardarentur.
+
+Cotta respondit habitationes iuxta fornaces et picem periculum habere. Spatium separatum paulo longius tutius esset. Hoc argumentum artis verum erat, sed pretium novi aedificii requirebat. Sabinus duas insulas parvas in terra senatoris proponere potuit.
+
+Conductio earum quanti esset prima quaestio fuit. Si pretium mercatorium plenum, operarii mercedem maiorem requirebant. Senator decem annis pretium moderatum offerret, deinde revisio fieret. Livianus pactum decem annorum stabilitatem maiorem quam praesens quinquennium daret.
+
+Callistus autem clientes pedestres amitteret. Sutor navibus non solum, incolis et viatoribus serviebat. Ripa septentrionalis paucas domos habebat. Ei taberna parva sub porticu manere poterat, dum officinae navales moverentur. Consilium unum quinque artes frustra simul tractaverat.
+
+Funium faber Philetus Minor aquam altam non requirebat. Funiculos in area sicca extendebat. Locus praesens melior erat. Translatio eius viam tantum vacuam faceret, sed via officinam non tangebat. Sabinus eum ex indice transferendorum sustulit.
+
+Caupo minor, Dasius, ad clientes Liviani pendebat. Si faber moveretur, ipse sequi vel manere posset. Utraque via periculum habebat. Dasius petivit optionem tabernae novae, non obligationem. Senator primum annum sine pretio obtulit, postea conductionem certam.
+
+Operarii Liviani de domibus interrogati sunt. Quattuor liberi cum familiis, tres liberti, quinque servi erant. Domini servorum Livianus et duo socii. Familia unius servi in altera insula manebat; translatio eum longius ab ea duceret. Sabinus locum ei prope domum veterem servare posse dixit, sed opus cotidianum distaret.
+
+Myrina dixit dominum de tempore servi facile disponere, sed relatio effectum nominare deberet. Nulla solutio sine voluntate domini certa erat. Pactum saltem vetaret familias serviles ut singulas merces in tabula translationis tacite dividi; nomina relationis privata manerent.
+
+Priscus consuluit quid magistratus exigere posset. Non omnia quae aequa viderentur potestate publica imponi poterant. Condiciones terrae senatoris et pecuniae publicae tamen usum praebebant. Si subsidium acciperetur, habitationes promissae ante translationem paratae esse deberent.
+
+Haec condicio fortis et concreta erat. Nulla officina clauderetur antequam locus novus, instrumenta maiora et cellae pactae inspicerentur. Livianus duas hebdomadas duplicis usus acciperet. Merces operariorum per moram ex summa operis solverentur.
+
+Sabinus sex menses compensationis Myrtidis nimios putaverat; nunc unum mensem fabris et cauponibus offerebat. Myrtis quaesivit cur sua iactura minor haberetur. Porticus probabiliter maneret, sed si opus eam clauderet, dies clausi pari ratione compensarentur. Regula latius facta est.
+
+Domini locorum veterum instrumenta conductionis ante finem solvere consentirent, si conductores moverentur. Flavius pretium trium mensium remittere promisit. Alius dominus recusavit, quia contractus translationem publicam non nominabat. Quaestio ad tractationem privatam mansit.
+
+Tertia hunc defectum in consilio servavit. Translatio Liviani fieri posset; altera officina sub domino recusante incerta erat. Totam ripam uno die vacuam promitti non poterat. Sabinus consilium in gradus divisit, voluntariis primum motis.
+
+Livianus nondum consensit. Volebat videre mensuras hiemales molis et litteras discipulorum. Si forma media fieret, officina praesens fortasse satis clientes acciperet sine motu. Translatio solutionem quaestionis quae aliter solvebatur fieri poterat.
+
+Cotta dixit officina praesens etiam post molem mediam spatium angustum habere. Crescere non posset. Livianus respondit se crescere velle, sed non omni pretio. "Maius" non idem ac "melius" erat, quamquam ars futura occasiones requirebat.
+
+Tractatio conclusionem distulit donec forma molis et mensura hiemalis clarescerent. Interim Sabinus tabulas habitationum pararet, Livianus inventarium translationis, Priscus condiciones subsidii. Mora hic defectus non erat; decisiones inter se pendebant.
+
+Tertia summam scripsit: duae artes loco manere posse, una optionem sequi, officina navium condicionibus considerare, quinta a domino impediri. Verbum "officinae transferendae" in prima forma quinque historias diversas celaverat.
+
+Myrtis post conventum dixit se primum videre Sabinum non solum consilium patroni defendere, sed mutare. Tertia respondit procuratorem adhuc lucrum senatoris quaerere; hoc cooperationem non negabat. Motiva mixta saepe actiones utiles parere poterant.
+
+Capitulum 20: Causae in ordine temporum
+
+Tertia mense tertio omnes causas in unam seriem ordinavit. Non arborem cum radice unica fecit, sed sex annos per paginas. Singulis annis opera portus, pretia, pacta, naves, officinae et usus domesticus iuxta se ponebantur.
+
+Anno primo moles iam limum habebat, sed usus altus erat. Naves minores plures veniebant. Via angusta moras faciebat, tamen horrea plena erant. Hoc ostendebat limum et viam solos declinationem statim non fecisse.
+
+Anno secundo incendium viam clausit. Decreta merces ad lacum novum miserunt. Pretium vecturae ibi sex mensibus minutum est. Mercatores contractus novos fecerunt. Haec mutatio abrupta in numeris et epistulis apparebat.
+
+Anno tertio via vetus rediit, signa tamen manserunt. Horrea nova sicciora et latiora erant. Naves paulo maiores fieri coeperant. Tres tabernae veteris molis clientes amiserunt. Prima migratio artificum notata est.
+
+Anno quarto duo menses publicorum indicum aberant, sed documenta collegii pondus mercium adhuc satis altum ostendebant. Custodes a quattuor ad duos redacti sunt. Numeri navium minus certi facti sunt. Una officina post pretium conductionis auctum clausa est.
+
+Anno quinto limus a magistris navium saepius memorabatur. Naves maiores extra molum manebant. Translatio in scaphas crescebat. Livianus discipulos ad officinas maiores amisit. Caupona Myrtidis rationes vini minimae factae sunt.
+
+Anno sexto usus stabilis sed minor erat. Non amplius celeriter cadebat. Regio ad scaphas, officinas parvas, habitationes et commercium secundarium accommodata erat. "Declinatio" in "mutatio cum imminutione" partim conversa est.
+
+Crispus quaesivit num haec stabilitas argumentum contra renovationem esset. Tertia respondit non necessario. Ostendebat regionem non mortuam esse et consilium praesentem usum aestimare debere. Etiam status stabilis minus utilis emendari poterat.
+
+Sabinus decretum incendii in primo loco timebat. Patronus eius tunc dominus non fuerat. Tertia hoc clare dixit. Relatio senatorem pro prima migratione non culpabat, sed consilium hodiernum ex mutatione lucrum petebat.
+
+Myrtis volebat pretium vecturae minutum "donum potentium" appellare. Documenta dominos lacus novi nominabant, sed causa eorum mercatoria erat. Verbum donum favorem moralem imposuisset. Tertia "subsidium privatum" scripsit et commodum eorum qui id acceperant exposuit.
+
+Camurius limum per annos in serie posuit. Mensurae veteres imperfectae erant, sed epistulae magistrorum post annum quartum creverant. Potuit limus augeri, aut naves maiores eum sensibilem facere. Utraque res probabiliter coniuncta erat.
+
+Cotta addidit moles ipsam post incendium minus curatam esse, quia vectigalia regionalia ceciderant. Minus usus minorem pecuniam, minor pecunia plus limi, plus limus minus usus parere poterat. Circulus, non linea simplex, formabatur.
+
+Marcus rationes custodiae confirmavit. Sumptus purgationis tertia parte ceciderat anno tertio, ante querelas limi frequentiores. Collegium pecuniam ad lacum novum transtulerat. Decisio rationalis tunc visa effectum posterioris neglectus habuit.
+
+Sextus quaesivit utrum commercium rediret si circulus contrario modo verteretur: pecunia ad molem, plus usus, plus vectigal, plus cura. Tertia hoc pro hypothesi consilii posuit. Contractus mercatorum et mutatio navium fines dabant; circulus bonus non automaticus erat.
+
+Herais voces absentium seriei addidit. Non omnes propter eandem causam discesserant. Merces, ars, familia, valetudo et contractus miscuerant. Causa regionalis opportunitatem aut pressionem dabat, sed decisiones privatae vias proprias habebant.
+
+Myrina effectus in servos et libertos inseruit. Translatio commercii non solum numeros locorum mutaverat; familias diviserat, alios ad libertatem propius, alios longius tulerat. Haec effecta mensura communi caruerunt, sed testimonia certa aliquot aderant.
+
+Tertia seriem partibus ad correctionem misit. Sabinus tres dies mutavit, Myrtis unam causam cauponae, Livianus numerum discipulorum. Nemo ordinem generalem negavit. Communis chronologia contentionem ad interpretationem, non facta basica, restrinxit.
+
+Eutyches ex serie orationem brevem fecit et Tertiae ostendit: "Incendium viam avertit; commoda nova morem fixerunt; cura minor limum auxit; naves mutatae reditum difficilem fecerunt." Quattuor membra vim rhetoricam habebant, sed limites in oratione secunda parte addebat.
+
+Tertia formulam probavit, si "auxit" pro limo cautius "augere potuit" fieret. Eutyches respondit rhythmum laedi. Crispus risit et proposuit "cura minor limo favit," quod et breve et cautum erat. Rhetorica et subtilitas aliquando componi poterant.
+
+Paries tabernae sub TEMPORA plenus erat. Tertia vidit primam quaestionem nunc responsum ex parte habere. Restabat non quid accidisset tantum, sed quid ex tribus consiliis futurum esset et quis pretium mutationis ferret.
+
+Capitulum 21: Pretium quinque annorum
+
+Marcus omnes sumptus ad quinque annos extendit. Forma minima primo vilissima erat, sed scaphae et morae mercatorum pergebant. Forma media plus initio poscebat, minus translationis mercium et curam moderatam. Maxima maximam spem, maximum debitum et curam annuam habebat.
+
+Calculi non lucrum certum praedicebant. Tres eventus ponebantur: pauci mercatores redeunt, mediocris numerus, multi redeunt. Sub singulis vectigalia, conductiones, mercedes scapharum et sumptus curae comparabantur. Numeri futuri intervalla, non puncta certa, erant.
+
+Sabinus eventum medium pro fundamento volebat. Myrtis pessimum quoque palam poni postulavit. Tertia omnes tres servavit neque aequam probabilitatem eis tribuit. Eventus medius documentis maxime sustentabatur; pessimus et optimus fines possibilitatis ostendebant.
+
+Procuratores sperabant fore ut horrea senatoris intra duos annos dimidia parte occuparentur. Unus mercator pactum conditionale dederat, alii nullum. Marcus igitur reditum minimum ex pacto uno, reliquum ex intentionibus non obligantibus distinxit. Spes ore dicta in eadem columna ac pactum stare non poterat.
+
+Myrtis rationes cauponae ad effectum viae dedit. Si porticus maneret et merces crescerent, clientes fortasse redirent. Si opus eam tribus mensibus clauderet, pecunia statim deesset. Compensatio dierum clausorum in sumptu formae mediae addita est.
+
+Livianus translationem adhuc incertam habebat. Duo calculi facti sunt: officina manet et crescit modice; officina movetur cum habitatione et duplici loco. Secundus plus pecuniae poscebat, sed ripam septentrionalem ad artem navalem aptiorem facere poterat.
+
+Scapharii iacturam laboris in nummos convertere difficillimum erat. Domini scapharum rationes dederunt, operarii mercedes suas. Forma media translationes fere tertia parte minueret. Non omnes mercedes perirent; scaphae ad maximas naves manerent. Intervallum amissorum dierum positum est.
+
+Sabinus proposuit scapharios ad purgationem et curam molis conduci. Ars aquae, funium et navicularum utilis erat. Collegium tamen opus quinque annorum, non perpetuum, promittere poterat. Transitus laboris tempus daret, non finem certum.
+
+Bithus servus ex hoc beneficio parum acciperet nisi dominus eum ad opus mitteret. Dominus consensit quia mercedem reciperet. Tertia in summa non "scapharii compensantur" scripsit, sed "nonnullis dominis et operariis opus temporarium offertur." Distributio verborum rem servabat.
+
+Aerarium publicum sumptus viae et lucernarum partim ferre posset. Moles media ad utilitatem privatam et publicam simul pertinebat. Priscus partes fractionibus expressit: duas quintas partes senator, quintam aerarium, reliquas duas quintas collegia et domini ferrent.
+
+Sabinus senatoris partem ad dimidiam augeri posse dixit, si horreum publicae exspectationi decem annis sine pretio daretur. Donum spatii valorem habebat. Marcus eum separatim aestimavit, ne pecunia et usus rei bis numerarentur.
+
+Forma maxima etiam cum dono senatoris aerarium gravaret. Vectigalia optimi eventus post quinque annos sumptum reddere poterant, sed pessimi non. Forma media in eventu mediocri intra idem tempus propius ad aequilibrium veniret. Haec aestimatio consilium, non fides mathematica, erat.
+
+Crispus timebat ne tot intervalla obscura essent. Eutyches proposuit tria exempla familiarum mercatoriarum. Tertia exempla accepit, si numeri generales iuxta manerent. Casus concreti calculum explicarent, non substituerent.
+
+Unum exemplum olearium erat: fracturae amphorarum, scaphae, morae. Alterum frumentarium: lacus novus iam melior. Tertium vitriarium: spatium deponendi plus quam altitudo molis. Ex tribus apparebat nullam formam omnibus eodem modo prodesse.
+
+Myrina alia onera addidit: familiae motae, dies officinarum clausarum, strepitus, pulvis, periculum laboris amissi. Non omnia in nummos verti poterant. Iuxta calculos, non infra eos, posita sunt.
+
+Sabinus quaesivit quomodo magistratus incomparabilia ponderarent. Tertia respondit hoc ipsam decisionem esse; relatio mensuram moralem occultam fingere non posset. Pecunia clara erat, sed non omne bonum communi unitate veniebat. Magistratus rationes suas postea exponere deberent.
+
+In summa forma media optimum aequilibrium videbatur, si porticus plerumque servaretur, via mense probaretur, cura quinquennii pacta et translationes voluntariae condicionibus fierent. Verbum "si" totam commendationem regebat. Sine condicionibus forma media aliud consilium erat.
+
+Tertia commendationem ad tempus scripsit. Crispus eam fortiorem volebat, Myrtis cautiorem, Sabinus maximam formam adhuc relinquere. Formula partibus missa est. Disputatio nunc de condicionibus certis, non imaginibus renovationis aut interitus, agebatur.
+
+Capitulum 22: Mensis viae
+
+Probatio viae Kalendis coepit. Horrea senatoris nocte plaustra exspectantia, die merces deponendas acceperunt. Custodes duo alternis diebus a collegio et vico nominati sunt. Tabula exceptionum apud ianuam pendebat.
+
+Prima hebdomada mora apud angulum fere dimidia parte cecidit, quamquam columna nondum mota erat. Plaustra una directione horis primis ibant et spatium exspectationis utebantur. Vectoribus regula nova primo molesta, post tres dies nota facta est.
+
+Exceptiones autem cito creverunt. Ligna Liviani, navis recens, panis, amphora fracta, mulus lassus, nuntius magistratus. Custos collegii septem uno die dedit, custos vici duas. Discrimen suspicionem favoris excitavit.
+
+Tertia casus legit. Quattuor exceptiones collegii ad eandem navem pertinebant et una permissione iungi poterant. Duae vere urgentes, una tantum commodior erat. Priscus regulam mutavit: navis recens unum signum omnibus plaustris eius acciperet; commoditas sola non sufficeret.
+
+Custos collegii se reprehensum sensit. Dicebat se mercaturam nosse melius quam vicani. Tertia artem eius non negavit, sed rationes palam postulavit. Post mutationem exceptiones ad numerum moderatum redierunt. Persona mansit; modus correctus est.
+
+Strepitus prima luce minuitur, quia plaustra extra regionem exspectabant. Incolae tamen de clamore in area externa querebantur. Domus ibi quoque erant, quamquam prima tabula eas extra regionem strictam posuerat. Effectus fines chartae transierat.
+
+Area exspectationis in interiorem partem horrei mota est. Senator spatium minus mercium habuit, sed pactum experimenti hoc sine pretio sivit. Sabinus concessit consilium quod quietem uni vico dabat alteri damnum dare non debere.
+
+Semita porticus numerata est. Pedestres meridie creverunt, fortasse quia mensae duae remotae erant et nuntius experimenti curiosos adduxerat. Effectus observationis ipsius numerum movere poterat. Quarta hebdomada curiositas minor futura erat.
+
+Myrtis clientes paulo plures habuit. Rationes vini hoc confirmabant, sed nundinae in secunda hebdomada aderant. Tertia incrementum experimenti soli non tribuit. Mulier, quamquam lucro gaudebat, hanc cautelam accepit.
+
+Unum plaustrum vitri contra columnam pulsavit. Arca exterior laesa, vitrum intus integrum erat. Vector directionem novam tarde intellexerat; signum umbra tectum erat. Herais locum nocte et die inspexit. Signum altius positum est.
+
+Callistus scamnum mobile fecit. Rotae parvae in pavimento inaequali haeserunt, sed duo homines id movere poterant. Semita horis frequentibus latior facta est. Solutio imperfecta satis utilis erat; sutor totam officinam relinquere non debuit.
+
+Faustus et alii viatores porticum probaverunt. Columna extrema adhuc angulum occultabat, sed custos hora plaustrorum pedestres admonebat. Si columna moveretur, visus melior fieret. Mensura non solum vehiculis, sed lineae visus favebat.
+
+Tertia hebdomada imber cecidit. Horrea exspectationis merces siccas servaverunt. Porticus pedestres texit. Via una directione luto minus haesit, sed vicus exitus aquam accepit. Canalis eius palea plenus erat; purgatio statim facta est.
+
+Varro monuit consilium viae canales quoque tangere. Plaustra exitus plus pulveris et paleae ferebant. Sumptus purgationis vici postici addendus erat, nisi exitus alternis diebus mutaretur. Regula simplex iterum structuram latiorem ostendit.
+
+Quarta hebdomada numeri stabiliores facti sunt. Tertia dixit pleraque plaustra dimidio fere tempore priore transire; maxima mora quoque minor erat. Querelae strepitus in regione principali ceciderant, posticae primo creverant, deinde post canalem purgatum minuerant.
+
+Mercatores experimentum probaverunt. Myrtis et Iunia porticum servari posse viderunt. Sabinus columnam unam movere adhuc utile putabat, sed totam demolitionem a consilio sustulit. Haec mutatio publica facta est ante relationem finalem.
+
+Flavius conductionem Myrtidis propter duas mensas remotas paulo minuit. Mulier contra semitam liberam certis horis servare promisit. Pactum privatum ex observatione publica ortum est, sed partes ipsae eum fecerunt. Tertia testis, non auctor, fuit.
+
+Mensis clausus est relatione cum numeris, querelis, casu vitri et mutationibus regulae. Successus non soli primo consilio tribuebatur, quia experimentum per hebdomadas correctum erat. Quod probatum est forma finalis, non prima.
+
+Priscus probationem tribus mensibus extendit sine columnam statim movendo. Si mora hieme iterum cresceret, structura consideraretur. Minimum opus nunc satis videbatur. Pecunia columnae ad canales et lucernas servari poterat.
+
+Capitulum 23: Tempestas ab austro
+
+Ante finem mensis tertii ventus ab austro per duos dies flavit. Camurius aquam fluminis fuscam fieri observavit et mensuras auxit. Naves parvae ad molum ligatae sunt; maiora onera in lacu novo manserunt. Tempestas hiemalis probationem naturalem, non sine periculo, afferebat.
+
+Imber nocte coepit. Via experimenti regulas temporarie suspendit; custodes plaustra extra regionem retinuerunt nisi ad merces tegendas necessaria erant. Horrea senatoris spatium praebuerunt. Porticus incolas et operarios accepit.
+
+Tertia apud Portum manebat, sed ad molum non descendit dum ventus maximus erat. Nuntios in horreo collegii accepit. Camurius et Menander cum custodibus aquae aderant. Unusquisque munus suum agebat; scriptor non omnia oculis suis videre debebat.
+
+Prima hora aestus alta cum aqua fluminis concurrit. Limus et ramenta ad caput molis congesta sunt. Navis minor funem alterum postulavit. Scapharii eam ad locum interiorem duxerunt. Ars eorum, quam consilium minueret, in tempestate necessaria manebat.
+
+Canalis nuper refectus aquam pluvialem melius direxit, sed cratis bis purganda fuit. Livianus operarios suos misit, quia ramenta officinae partem materiae faciebant. Munus communis curae palam suscepit.
+
+Apud viam posticam aqua ad ianuam unius insulae venit. Canalis ibi palea ex area plaustrorum plenus erat. Experimentum fluxum mutaverat. Custodes paleam removerunt; aqua recessit. Varro postea cratem maiorem proponeret.
+
+Myrtis porticum aperuit sine pretio dormientibus nautis. Cibum tamen rationi collegii vendidit; liberalitas tectum, non omnes res, continebat. Tertia distinctionem probavit. Auxilium non requirebat ut mulier lucrum totius noctis amitteret.
+
+Sabinus horrea patroni ad sarcinas vicinorum aperuit. Quidam eum gloriam quaerere dixerunt, sed spatium re vera utile erat. Tertia animum non iudicavit; actum et eos qui auxilium acceperant notavit. Causae mixtae effectum bonum non tollebant.
+
+Mane ventus minuitur. Nulla navis perdita erat; duo funes fracti erant, tres arcae aqua tactae erant, una cella inferior insulae madida erat. Nemo graviter laesus nuntiabatur. Damnum minus quam rumor noctis fecerat.
+
+Camurius post tempestatem profunditatem mensus est. Limus apud horreum uno palmo creverat, ad introitum arena mutata erat. Una tempestas brevi tempore effectum mensurabilem fecerat. Cura annua in calculis iam minus abstracta videbatur.
+
+Forma media molis, si facta esset, partem materiae retinere et purgationem post tempestatem requirere debebat. Cotta tabulam mutavit: sinus parvus ad limum colligendum additus est, unde facilius tolleretur. Primus sumptus paulo crevit, annuus fortasse minueretur.
+
+Scapharii noctis laborem in conventu nominaverunt. Sabinus promisit eos ad custodiam molis novae prioriter conduci. Bithus, quia servus, per dominum suum tantum acciperet. Myrina postulavit ut numerus hominum, non solum scapharum, in pacto operis poneretur.
+
+Collegium quinque operarios per triennium pro cura promisit, ex quibus saltem duo ex grege scaphariorum praesentium eligerentur. Status libertatis non promissus est. Condicio parva aliquod transitum laboris servabat, sed omnes non tegebat.
+
+Via experimenti post tempestatem unum diem clausa est, deinde rediit. Cratis postica maior posita est. Sumptus ex pecunia columnae nondum motae venit. Myrtis dixit columnam immobilis iam plus utilitatis dare quam si mota esset; Sabinus risit, sed calculum accepit.
+
+Acta titulum tempestatis non terribilem fecerunt. Dixerunt: VENTUS ET AESTUS LIMUm AUXERUNT; DAMNA MODICA REFERUNTUR. Horae et loca infra aderant. Nomina dominorum arcarum non necessaria omissa sunt.
+
+Tertia relationem noctis ex nuntiis quinque composuit. Duae horae inter se pugnabant; clepsydrae horreorum non eodem initio positae erant. Ea ordinem rerum, non horam falso accuratam, servavit. Certitudo horarum instrumentis imparibus limitata erat.
+
+Camurius dixit tempestatem argumentum pro forma maxima videri posse. Sed maxima quoque limum acciperet; maior alveus non sine cura maneret. Eventus pro opere aliquo, non necessario amplissimo, loquebatur. Tertia hanc distinctionem in summa posuit.
+
+Myrtis post noctem formam mediam iam non recusavit. Viderat naves et scaphas in spatio angusto laborare. Conditiones porticus, habitationis et sumptuum tamen manebant. Mutatio sententiae partem argumenti, non deditionem totius, significabat.
+
+Sabinus vicissim demolitionem porticus publice reliquit. Via experimenti et horreum exspectationis satis promiserant. Patrono suo scriberet pecuniam ad molum, lucernas, canales et spatium deponendi melius dari. Consilium maximum duas partes amisit, sed propositum centrale superfuit.
+
+Tertia nocte post reditum lucernam stellae accendit. Tempestas primae navigationis, imber canalis et ventus Portus in memoria convenerunt. In omni casu documenta post eventum facta erant; sed hoc tempore pacta ante tempestatem iam aliquem ordinem dederant.
+
+Capitulum 24: Prima forma relationis
+
+Terminus quarti mensis appropinquabat. Tertia summam finalem scribere coepit antequam omnia pacta perfecta essent. Relatio non exspectare poterat ut vita regionis finem haberet. Debebat statum, indicia, commendationem et quaestiones residuas certo die sistere.
+
+Prima pars responsum directum dedit. Usus mercatorius molis imminutus erat; mutatio incendio coepta, commodis lacus novi stabilita, navibus maioribus et limo aucta, cura minore difficilior facta. Regio tamen habitationem, artes parvas et commercium secundarium servabat.
+
+Secunda pars tria consilia comparavit. Cura minima damnum maius vitaret, sed oleum et vitrum translationem continuarent. Forma media plerasque naves utiles acciperet et augeri posset. Maxima sumptum et motum socialem maiorem sine contractibus satis firmis postulabat.
+
+Commendatio formam mediam condicionibus elegit: porticus servata, via experimenti continuata, horreum exspectationis, cura quinquennii, limi sinus, canalis refectus, translationes voluntariae post habitationes paratas, scapharii ad curam partim conducti.
+
+Crispus verbum "elegit" nimis forte putavit, quia taberna potestate decernendi carebat. "Commendat" positum est. Tertia relatio non suffragium neque decretum erat. Auctoritatem suam accurate nominare debebat.
+
+Marcus partem sumptuum restruxit. Donum senatoris, usus horrei, aerarium, collegia, domini et cura annua separata sunt. Spatium sine pretio valoris aestimati mentionem habuit, sed non nummos fictos in summa pecuniae intravit.
+
+Herais omnes nomina navium contulit. Isis Magna semel iterum duplicata erat in appendice. Error correctus summam unius mensis mutavit, non conclusionem. Tabula correctionum diem et effectum servavit. Nulla perfectio ante collationem praesumpta est.
+
+Hilarus testimonia servilia legit. In tribus locis verba generalia "operarii" statum celabant. Distinctiones restitutae sunt. Ubi nomen publicum periculum afferret, munus et condicio satis erant. Originalia post relationem sub custodia ad tempus manerent.
+
+Myrina partem de translatione asperam putavit: "familiae serviles simul movendae." Hoc dominorum linguam repetebat et homines sicut sarcinas faciebat. Formula facta est: "separatio coniugum et liberorum vitanda, condicionibus ante motum scriptis," cum limite potestatis addito.
+
+Sabinus formam accepit, sed patroni contributionem primo capite clarius volebat. Tertia eam in summa sumptuum servavit, non in inventis causalibus. Pecunia futura historiam praeteritam mutare non debebat. Procurator post disputationem consensit.
+
+Myrtis timebat verbum "servata" de porticu, quia columna una post probationem adhuc moveri posset. Tertia "maxima parte servata" scripsit et condicionem mensurae hiemalis addidit. Certitudo totius tecti promitti non poterat.
+
+Camurius partem limi probavit, Cotta formam molis. Inter eos una dissensio mansit: fundamenta ad augmentum futurum quanto pretio pararentur. Relatio utramque summam dedit et magistratui electionem reliquit. Consensus artificialis non creatus est.
+
+Livianus translationem voluntariam vocari volebat. Sabinus dixit, si terra publica alium usum acciperet, voluntas absoluta non maneret. Formula "primo gradu ex pacto cum conductoribus" facta est. Officina cuius dominus recusabat extra primum gradum mansit.
+
+Callistus rogavit ut fragmentum anonymum in limite investigationis poneretur, non in capite culpae. Tertia iam ita fecerat. Nomen eius in exemplari publico omissum, in actis custodis manebat. Eventus de contextu et fide, non de infamia perpetua, docebat.
+
+Priscus quaesivit quomodo successus post opus iudicaretur. Relatio quinque indicia proposuit: profunditas post tempestates, naves mediocres directae, tempus vecturae, occupationes officinarum, querelae incolarum. Vectigalia sola non sufficerent.
+
+Myrtis addidit usum porticus et tabernas apertas. Sabinus addidit occupationem horreorum. Tertia utrumque accepit. Successus regionis non solum naves neque solum quietem, sed compositionem plurium usuum spectaret.
+
+Crispus ultimam partem nimis longam putavit. Tertia quaedam exempla ad appendicem movit, sed limites et dissensus in summa servavit. Brevitas quae condiciones absconderet decisionem aliam faceret. Appendix non locus incommodorum sepeliendorum erat.
+
+Eutyches summam rhetoricam paravit, quam senator in audientia uti posset. Tertiae commendationem recte referebat, sed verbum "renasci" addebat. Ea non vetuit; orator suum genus habebat. Rogavit tantum ut condicio curae quinquennii clare audiretur.
+
+Prima forma ad partes missa est. Tres dies correctionibus, non novis argumentis infinitis, dati sunt. Quae indicia iam nota erant considerata; documentum novum grave exceptionem facere posset. Terminus sine tali fine numquam veniret.
+
+Tertia post missionem parietem tabernae aspexit. QUAESTIO, FINES, TRANSMISSIO, TEMPORA, SUMPTUS. Sub eis centenas lineas viderat. Nunc totum in unam commendationem conditionalem comprimebatur. Selectio ipsa maximum onus scribae erat.
+
+Capitulum 25: Epistula patroni
+
+Correctiones partium iam veniebant, cum Sabinus epistulam senatoris attulit. Patronus formam mediam pecunia sustinere paratus erat, sed duas condiciones posuit. Nomen suum in dedicatione principali appareret, et relatio mentionem lucri horreorum "invidiosam" mitigaret.
+
+Prima condicio more aetatis insolita non erat. Donatores publici nomen in lapide saepe accipiebant. Secunda autem inventum substantivum tangebat. Horrea senatoris valorem acceptura erant; hoc conflictum consilii non invalidabat, sed omitti non debebat.
+
+Sabinus ipse omissionem non postulavit. Proposuit formulam aequam: "Contributio senatoris utilitati regionis et praediorum suorum simul favet." Tertia eam probavit. Verbum lucrum in parte numerorum maneret, sed summa motivum mixtum sine accusatione diceret.
+
+Crispus timebat ne patronus hanc formulam quoque recusaret. Marcus pactum initii ostendit: donatores nullum caput extra ordinem acciperent, correctiones facta non delerent. Si pecunia propter hunc finem subtraheretur, relatio eventum palam nominaret.
+
+Tertia responsum scripsit, Sabino legendum dedit. Senatoris contributionem, horreum exspectationis et mutationem a consilio maximo ad medium laudavit. Deinde explicavit utilitatem privatam ad aestimationem publicae pecuniae pertinere. Non de animo patroni, sed de effectu possessionum agi.
+
+Epistula per cursorem celerem missa est. Per triduum nemo scivit utrum dimidia pecunia maneret. Myrtis rumoribus prohibere conata est, sed silentium iterum vacuum creabat. Sabinus tabellam posuit: tractatio pecuniae pergit; nullum donum retractatum est.
+
+Interim aliae correctiones tractatae sunt. Mercatores frumenti pondus mercium suarum in appendice nimis parvum invenerunt; quinque naves immunes deerant. Herais errorem loci ex Graeco titulo repperit. Summa totius Portus mutata, molis occidentalis non mutata est.
+
+Livianus unum discipulum inter liberos posuerat qui revera servus peculium administrans erat. Status correctus est, sed ars et merces eius manserunt. Tertia vidit quam facile facultas agendi libertati similis in tabula videretur. Formula condicionem apertam fecit.
+
+Flavius dominus insulae volebat pretium conductionis omitti ut secretum. Numerus individualis ad publicam rationem non necessarius erat; proportio reductionis Myrtidis consensu manere poterat. Tertia pretium exactum in originali privato servavit, relatione summam relativam tantum dedit.
+
+Callistus petivit nomen in indice testium quoque omitti. Testimonium eius de sutore sub munere adhibitum est. Acta culpae tabellae alibi publica erant, sed relatio non omnes res de persona in unum locum colligebat. Proportio ad propositum servabatur.
+
+Die quarto responsum senatoris venit. Formulam Sabini accepit, si dedicatio contributionem eius accurate nominaret et alios donatores quoque non celaret. Pecunia manebat. Patronus fortasse moderationem elegit quia consilium sine relatione minus credibile fieret; animus eius documentis non aperiebatur.
+
+Myrtis laetata est, sed quaesivit cur nomen divitis in lapide certum esset, dum operarii in indice tantum manerent. Memoria Chrestes ex opere canalis omnibus nota erat. Tertia proposuit duas partes dedicationis: donatores in lapide, genera et nomina operariorum in tabula iuxta molem sub tecto.
+
+Sabinus consensit nomina liberorum et libertorum, servorum vero cum dominorum permissione poni. Myrina restitit; dominus gloriam operis servi accipere posset, nomen ipsius negare. Priscus quaestionem ad morem publicum et peritos detulit. Responsum perfectum non erat.
+
+Tandem tabula operis omnia nomina operariorum qui consensum dare poterant servaret; pro servis munera et numerus, nisi dominus et homo ipse nomen permitterent. Originalis ratio nomina plena ad mercedes et custodiam haberet. Silentium publicum statum servilem non celaret.
+
+Hilarus hoc compromissum aegre accepit. Myrina dixit nullam tabulam in ordine servitutis plenam aequitatem facere posse. Melius erat limitem nominare quam consensum servi simulare. Bithus nomen suum poni volebat, dominus permisit quia gloriam collegio suo dabat.
+
+Epistula patroni in appendice relationis posita est, cum responso Tertiae. Non ut controversia privata spectaretur, sed quia condicio pecuniae formam publicae narrationis tangere conata erat. Exitum moderatum quoque servavit.
+
+Sabinus Tertiae dixit se inter patronum et investigationem saepe dividi sensisse. Ea respondit eum procuratorem esse, itaque talis tensio muneri inerat. Fides non requirebat ut partes suas fingeret non exstare; requirebat ut eas palam agnosceret.
+
+Forma finalis correctionibus clausa est. Post hoc tantum errores transcriptionis mutarentur, nisi novum documentum conclusionem graviter everteret. Terminus quarti mensis servatus erat. Audientia post decem dies constituta est.
+
+Capitulum 26: Pactum ante audientiam
+
+Ante audientiam partes condiciones formae mediae in pactum ad tempus convertere temptaverunt. Si magistratus commendationem acciperent, pecunia et officia iam definita essent. Alioquin decretum pulchrum sine exsecutione manere poterat, sicut mensura canalis olim omissa.
+
+Senator duas quintas partes pecuniae et horreum exspectationis decem annis daret. Aerarium quintam partem ad molem, canales et lucernas. Collegia naviculariorum atque mercatorum reliquas duas quintas partes, secundum usum, ferrent. Cura annua seorsum dividebatur.
+
+Forma fractionum in tabula clare scripta est, non signis incertis. Si sumptus aestimationem plus quam decima parte superarent, opus sisteretur et conventus novus haberetur. Nemo pecuniam infinitam ante rem promisit.
+
+Camurius curam primis quinque annis suscipere nolebat solus. Collegium duos magistros molis, quinque operarios, ex quibus duo scapharii, et scribam rationum nominaret. Magistratus semel anno inspectionem publicam faceret.
+
+Cotta fundamenta capitis molis ad augmentum futurum pararet, sed alveus media forma purgaretur. Camurius mensuras hiemales ante ultimum lapidem confirmaret. Si sedimentum diversum appareret, forma sinus limi mutari posset intra summam pactam.
+
+Via experimenti tribus mensibus continuaretur. Columna nondum moveretur. Horrea exspectationis, regulae exceptionum et cratis postica manerent. Post tres menses morae, strepitus et usus porticus iterum conferrentur. Mutatio structurae ex eventu, non ex prima imagine, penderet.
+
+Porticus ergo in decreto operis non delenda erat. Myrtis hoc palam confirmari voluit. Sabinus consensit: "porticus integra manet, nisi post probationem de una columna novo pacto agatur." Una clausula timorem principalem sustulit.
+
+Translationes a primo opere separatae sunt. Livianus optionem novae officinae per decem annos habebat, cum habitationibus et duabus hebdomadis duplicis loci. Consentire post mensuras molis posset. Callistus, Philetus Minor et Iunia loco manerent.
+
+Dasius caupo optionem tabernae novae annum sine pretio accepit, si Livianum sequeretur. Non obligabatur. Dominus loci veteris instrumentum sine poena finiret. Pacta privata exemplaria apud collegium ponerentur, ne promissa oraliter evanescerent.
+
+Scapharii ad opus molis et curam posteriorem prioritatem acciperent, sed numerus quinque omnes non tegebat. Collegium tabulam aliorum operum aperiret. Tertia in pacto non "nemo laborem amittet" scripsit; tale promissum probari non poterat.
+
+Servi cum scaphis laborantes per dominos tractabantur. Bithus ad curam molis nominatus est. Dominus eius mercedem acciperet, Bithus peculium parvum ex singulis mensibus promissum habebat. Promissum in tabula positum, libertas non promissa est.
+
+Myrina rogavit Bithum ipsum num verba intellegeret. Dominus primo iratus est, deinde permisit. Bithus correctionem fecit: peculium non ex singulis mensibus, sed post annum promissum fuerat. Formula mutata est; differentia ei magna erat.
+
+Pactum familias serviles non dividendas quantum domini permitterent dicebat. Formula infirma videbatur, sed potestas realis limitata erat. Priscus condicionem subsidii fortiorem fecit: dominus qui pecuniam operis acciperet coniuges aut liberos propter translationem separare non posset intra tempus pacti.
+
+Haec tantum eos quorum domini subsidium accipiebant tegebat. Tertia limitem addidit. Relatio non totum ordinem emendare poterat, sed pecuniam communem sine condicione dare quoque recusabat. Sabinus hanc clausulam patrono suo persuadere promisit.
+
+Dedicationis forma pactum ipsum non intravit; post opus deliberaretur. Solum statutum est contributiones omnium generum servandas esse et tabulam operariorum sub tecto poni. Gloria lapidis exsecutionem pecuniae non retardaret.
+
+Myrtis et Flavius pactum conductionis suum addiderunt. Duarum mensarum pretium remissum, semita servata, dies operis compensandi. Haec pars ad viam, non molem, pertinebat. Tertia appendicem fecit, ne omnia in corpus principale miscerentur.
+
+Sabinus sigillum senatoris nondum posuit; epistula potestatem pecuniae dabat, non omnium clausularum. Cursor ad patronum iterum missus est. Pactum ad tempus valebat. Audientia condicionibus iam visis deliberaret, non charta vacua.
+
+Tertia pactum cum decreto canalis comparavit. Illud opus permittebat, sed cura posterior per annos perierat. Hoc quinque annos, nomina, summas, revisionem et condiciones mutationis habebat. Longitudo non perfectionem garantiebat, sed plures nexus visibiles faciebat.
+
+Capitulum 27: Voces ante magistratus
+
+Audientia in basilica Portus primo die sereno habita est. Relatio quinque exemplaria in mensa habebat. Magistratus, procuratores, collegia, incolae et artifices aderant. Tertia sciebat quattuor menses in paucas horas comprimendos esse.
+
+Priscus mandatum iterum legit: taberna privata indicia collegerat, magistratus decernerent. Hoc initium expectationes ordinavit. Clepsydra spatium certum lectioni dabat; summa intra illud mansit.
+
+Usus molis, causae per tempus, mensurae limi, viae experimentum, consilia tria et commendatio conditionalis ordine venerunt. Tertia tabulas tantum ubi verba non sufficiebant ostendit. Auditores appendicibus non oneravit.
+
+Sabinus post eam locutus est. Senatoris pecuniam et utilitatem horreorum palam nominavit. Formam mediam pro consilio quod ex investigatione melius factum esset commendavit. Non finxit patronum ab initio idem voluisse.
+
+Myrtis argumentum adversum accurate rettulit: regio commercium et curam molis requirebat. Deinde condiciones suas servatas ostendit: porticus manet, via probatur, conductores audiuntur. Formam mediam iam sustinebat, si pactum exsecutionis sigillaretur.
+
+Livianus neutram translationem elegit. Moles media officinae praesenti forte prodesset; locum novum optionem utilem dabat. Rogavit ut sex menses ad decisionem haberet. Sabinus tres proposuerat. Magistratus sex concessit, quia opus molis ipsum tempus caperet.
+
+Camurius et Cotta dissensum fundamentorum exposuerunt. Magistratus pretium paulo maius ad augmentum futurum probavit, si mensura hiemalis idonea esset. Alveus maximus non statim fieret. Decisio inter praesentem usum et futuram facultatem medium tenuit.
+
+Mercator frumenti quaesivit cur pecunia publica ad molum daretur sine promisso plurium navium. Priscus respondit oleum, vitrum, scaphae, via et regio quoque utilitatem publicam habere. Unum mercis genus totum iudicium non regebat. Pactum unius mercatoris minimum usum confirmabat.
+
+Incola domus postica de strepitu experimenti locutus est. Varro cratem et aream motam ostendit, sed querelam non negavit. Trimestris probatio utrum effectus rediret mensuraret. Magistratus diem responsi post probationem posuit.
+
+Callistus coram omnibus tabellam sine nomine confessus est. Dixit se verba vera male iunxisse. Priscus multam iam datam confirmavit et rem clausit. Tertia explicavit rationem transmissionis post casum mutatam esse. Auditores errorem non solum hominis, sed etiam ordinis nuntiorum viderunt.
+
+Eutyches de proportione sua locutus est. Numeros non falsos, selectionem ad persuasionem factam esse dixit. Relatio eos in serie latiore correxerat. Quidam eum mendacem clamavit; Crispus distinctionem inter falsum numerum et ambitum fallacem explicavit.
+
+Bithus loqui non potuit sine domino, sed tabella correctionis eius lecta est consentiente utroque. Peculium post annum, non singulis mensibus. Una clausula servi ostendit quare partes minores pactum legere deberent. Dominus vultum durum servavit, sed sigillum suum iam posuerat.
+
+Rufus Ostiensis iterum magna verba facere temptavit, sed Tertia eum ante audientiam rogaverat ne causam alienam caperet. Is tantum de canali experientiam brevem dedit: cura post opus necessaria esse. Hoc ad pactum quinquennii pertinuit et satis fuit.
+
+Senatoris responsum in media audientia per cursorem venit. Omnes clausulas pecuniae et condicionem familiarum pro recipientibus subsidii accepit. Dedicationem post opus deliberari sinebat. Sabinus sigillum patroni in pacto posuit.
+
+Magistratus quaesiverunt quid accideret si sumptus plus quam decima parte crescerent. Marcus caput sistendi legit. Sabinus nullum supplementum automaticum promisit. Collegia conventum novum haberent. Disciplina pecuniae ante lapides, non post debitum, aderat.
+
+Ultima quaestio Tertiae directa erat: num formam mediam certo successuram putaret. Respondit eam indicia maxime sustinere, sed successum ex cura, contractibus mercatorum, sedimentis et exsecutione pendere. Ideo pactum mensuras et revisionem habere. Certitudo condicionata honestum responsum erat.
+
+Magistratus eo die suffragium non tulerunt. Exemplaria per noctem legerent et mane decernerent. Turba hoc tempore dissolutionem sine tumultu accepit; pactum iam publicum erat. Tertia primum per horas quievit, sed somnus levis fuit.
+
+Mane decuriones formam mediam maiore parte probaverunt. Duo dissentientes maximum opus futurum praeferebant, unus pecuniam publicam omnino recusabat. Acta opiniones minores breviter servaverunt. Decretum unanimem voluntatem non finxit.
+
+Pactum exsecutionis cum decreto valere coepit. Relatio non lex facta erat; argumenta eius ad decisionem ducta erant. Tertia sigillum tabernae in exemplari finali posuit et mandatum quadrimensium formaliter clausit.
+
+Capitulum 28: Decretum non est victoria
+
+Acta titulum magnum paraverunt: PORTUS VETUS RENASCETUR. Tertia et Myrtis verbum futurum certum nimis amplum putaverunt. Sabinus quoque, post tot correctiones, cautior factus erat. Titulus mutatus est: MOLES MEDIA ET CURA QUINQUENNIS PROBANTUR.
+
+Quidam cives titulum frigidum appellaverunt. Eutyches dixit non omnis tabella carmen esse. Oratio senatoris verbum renasci uti poterat, sed decretum quid fieret dicere debebat. Genera textuum officia diversa habebant.
+
+Post decisionem mercatores frumenti subito redire non promiserunt. Unus contractus manebat. Olearii autem duo loca in horreis senatoris reservaverunt. Vitriarius spatium deponendi probaturus erat. Prima utilitas concreta, sed minor quam orationes, apparuit.
+
+Myrtis porticum servavit, tamen decem dies operis canalis et lucernarum clientes perturbarent. Pactum compensationis adhiberetur. Ea nummos ante clausuram accipere volebat, non post longam rationem. Flavius et Sabinus partes suas ante diem solverunt.
+
+Livianus sex menses deliberandi habebat. Discipuli de ripa nova curiosi erant. Faber utrumque locum metiri coepit. Non omnis persona in die decreti finem proprium accepit. Relatio condicionem apertam servaverat.
+
+Scapharii quinque ad opus nominati sunt. Alii se relictos senserunt. Collegium tabulam operum alternorum posuit, sed mercedes pauciores erant. Forma media onus distribuebat, non delebat. Tertia hoc residuum in summa post decretum addidit.
+
+Bithus inter quinque erat. Dominus tabellam peculii sub sigillo accepit. Myrina exemplar apud tabernam servavit consentientibus. Si annus compleretur, promissum documentum haberet. Si dominus aliter ageret, potestas Bithi adhuc parva esset; hoc in relatione palam mansit.
+
+Sabinus dedicationem iam parare volebat. Tertia eum ad finem operis remisit. In opere canalis lapis ante curae rationem paene centrum factus erat. Hic primum moles, sumptus et inspectio procederent. Nomen patroni exspectare poterat.
+
+Crispus tabularium ordinavit. Decretum incendii, acta vectorum, indices navium, relatio et decretum novum uno fasciculo conexa sunt. Signa temporaria quae finem amiserant nunc exemplum in nota custodis facta sunt. Omne mandatum temporarium diem revisionis acciperet.
+
+Priscus hanc regulam ad alia signa Portus extendit. Viginti septem tabellae sine die inventae sunt. Non omnes statim remotae; custodes auctorem et usum quaerebant. Investigatio regionalis parvum ordinem latiorem movebat.
+
+Tertia mercedem finalem tabernae accepit, sed pars pro audientia et exemplis adhuc solvebatur. Marcus rationem divisit. Herais et Hilarus partes suas statim acceperunt. Publius lucrum societatis nondum mutatae in arca posuit.
+
+Domum reversa Tertia de decreto cum familia cenavit. Quintus "vicisse" eam dixit. Ea respondit formam commendatam probatam esse, non se adversarios vicisse. Myrtis, Sabinus, Camurius, Cotta et alii textum mutaverant. Victoria unius falsam historiam fecisset.
+
+Publius rogavit num opus bonum esset. Tertia dixit melius quam prima forma, sed exsecutionem adhuc posse deficere. Senex hoc responsum probavit. Taberna quoque instrumentum successionis habebat, sed usus futurus ex hominibus penderet.
+
+Livia cenam melle dulcem tamen paraverat. Cautela celebrationem non vetabat. Familia quattuor menses laboris finitos agnovit. Aemilia tabulam portus e cera delebat, quia novam navem fingere volebat. Adultis hoc signum aptum visum est.
+
+Postridie Tertia ad molum rediit. Nihil adhuc materialiter mutatum erat. Aqua fusca, porticus, officinae et plaustra eadem. Tantum tabella decreti nova pendebat. Decisio initium operis, non opus ipsum, erat.
+
+Camurius palos hiemales inspexit. Cotta lapides probabat. Scapharii instrumenta numerabant. Myrtis dies clausurae in ratione ponebat. Sabinus pacta conductoribus mittebat. Victoria si qua futura erat ex his laboribus parvis, non ex suffragio solo, nasceretur.
+
+Tertia relationem post decretum uno capite auxit: quid acceptum, quid mutatum, quid reiectum, quae onera manerent. Forma maxima non "victa," sed propter sumptum et indicia insufficientia nunc non electa erat. Futurum eam numquam examinare vetitum non est.
+
+Paries tabernae titulos paulatim amisit. Decretum et pactum in capsa ad Portum redierunt. Tertia QUAESTIO ultimam sustulit. Sub ea pulvis albus formam litterarum servabat. Quaestio clausa non erat in aeternum; tantum responsum huius anni acceperat.
+
+Capitulum 29: Opus sub oculis
+
+Opus molis vere coepit, post mensuras hiemales. Camurius invenit sedimentum minus quam post tempestatem, sed alveum media forma adhuc necessarium. Cotta fundamenta futuri augmenti probavit. Summa intra pactum manebat, quamquam pretium saxi paulo creverat.
+
+Scapharii limum in lintres tulerunt. Bithus funes et numeros curabat. Quinque operarii promissi aderant; alii per dies conducebantur. Myrina mercedes et status ex tabulis semel in mense inspiciebat, non ut domina operis, sed ut pactum collegii sequeretur.
+
+Prima hebdomada lignum vetus sub limo repertum est. Trabs ad molem antiquiorem pertinere poterat. Cotta volebat eam removere; Camurius prius locum et directionem describi iussit. Trabs structuram novam non impediebat usque ad diem alterum.
+
+In ligno signum navis et litterae L A V erant. Quidam Lucium Aurelium Varronem, patronum Chrestes, statim nominavit. Tempus molis fortasse congruebat, sed litterae multos viros significare poterant. Tertia, ad nuntium vocata, antiquam fabulam in novum opus temere transferri vetuit.
+
+Crispus indices veteres quaesivit. L A V magister navis Lucius Annius Vitalis ante quadraginta annos apparuit. Navis eius ligna ad molem dederat. Hoc probabilior explicatio erat. Aurelius Varro ad canalem Ostiensium, non hanc molem, pertinebat.
+
+Acta titulum modicum posuerunt: TRABS VETERIS MOLIS REPERTA. Signum Vitalis ut probabile, non certum, addebatur. Historia Chrestes iam celebris facile omnes litteras ad se trahere poterat; disciplina contextus hanc attractionem restitit.
+
+Trabs tandem remota et pars parva sub custodia servata est; reliquum lignum nimis putridum erat. Cotta novam structuram posuit. Opus non propter omnem rem veterem sisti poterat, sed documentatio ante iacturam facta est.
+
+Mense secundo sinus limi completus est. Prima navis olearia directe accessit. Amphorae sine scaphis depositae sunt. Mercator tempus et fracturas comparavit. Eventus bonus erat, sed una navis aestu apto venerat. Camurius seriem plurium exspectavit.
+
+Myrtis cauponam plena nave impletam vidit. Porticus mansit, via experimenti plaustra ordinavit. Ea Sabino vinum obtulit et pretium tamen accepit. Relatio non eos amicos intimos fecerat; mutua praedictibilitas satis erat.
+
+Livianus officinam movere tandem constituit, sed non totam. Pars scapharum in loco veteri maneret, pars navium maiorum ad ripam novam iret. Duo loca per annum temptaret. Primum consilium unam translationem posuerat; faber structuram artis suae divisit.
+
+Sabinus habitationes ad ripam paravit. Tres familiae moverunt, duae loco veteri manserunt. Servus cuius coniunx procul fuisset ad officinam veterem assignatus est, quia dominus subsidium accipiebat et clausula pacti valebat. Una separatio ita vitata est, non omnes ordinis iniuriae.
+
+Callistus et Philetus Minor porticum servaverunt. Iunia panem nunc etiam ad horreum exspectationis mittebat. Nova via clientium ex mutatione orta est. Commodum non in prima aestimatione fuerat; effectus futuri semper plures quam tabula continere poterant.
+
+Sumptus tertio mense undecima parte aestimationem superavit propter saxum et trabem veterem. Quia limes pacti decima pars erat, incrementum intra eum manebat. Marcus rationem bis computavit, ne confusio fractionum errorem faceret.
+
+Sabinus pecuniam additam ex parte patroni sine novo conventu dare volebat. Quia limes non transgressus erat, pactum hoc sinebat. Tertia tamen causam et summam in tabella publica posuit. Liberalitas postea gloriam sine numero accipere non debebat.
+
+Una die lintres limi propter funem fractum inter se pulsaverunt. Operarius in aquam cecidit, sed socii eum statim receperunt; medicus portus eum inspexit et nullam gravem laesionem invenit. Opus dimidio die constitit dum causa funis exploraretur.
+
+Funis vetus ex horreo per errorem datus erat, tessera anni deleta. Myrina signum Phileti simile, sed fibras putridas agnovit. Omnes funes laboris gravis inspecti et annis notati sunt. Incidentis relatio culpam unius operarii, qui nodum ligaverat, recusavit; materia principalis causa erat.
+
+Bithus funem ante usum non inspexerat, quamquam munus numerorum habebat. Dominus eum punire voluit. Camurius respondit horreum funem idoneum praebere debuisse et inspectio communis defuisse. Poena remissa est; ratio operis duos gradus inspectionis addidit.
+
+Post quattuor menses moles media aperta est, non tamen dedicata. Quinque naves mediocres directe venerant, duae aestum exspectaverant, nulla haeserat. Cura limi iam bis facta erat. Prima indicia bona, series adhuc brevis erant.
+
+Capitulum 30: Taberna sine solo domino
+
+Dum moles mutabatur, Publius instrumentum tabernae perfecit. Marcus dimidiam partem emeret; Tertia quartam ex pecunia Capuana; Publius quartam usque ad mortem aut recessum retineret. Hilarus socius operis, non dominus, pactum separatum haberet.
+
+Tertia primum quaesivit cur Marcus partem duplo maiorem acciperet. Rationes decem annorum ostendebant eum plures horas cotidie, clientes constantes et curam pecuniae tulisse. Tertia opera maiora ducebat, sed taberna sine praesentia Marci clauderetur. Aequalitas partium onera vera ignoravisset.
+
+Pretium partium ab duobus mercatoribus librorum aestimatum est. Publius minorem summam filiis laboris dare volebat. Marcus et Tertia recusaverunt donum occultum; pactum pretium aequum, sed solutionem per quinque annos posuit. Cognatio affectum, instrumentum claritatem servabat.
+
+Livia domum a taberna separari voluit. Ianua communis et cella posterior fines ambiguos habebant. Instrumentum usum cellae tabernae, atrii ad merces temporarias et sumptum refectionis definivit. Familia futura aliter componi posset, sed status praesens scriptus est.
+
+Prima et Quintus hereditatem domus aliquando acciperent, non lucrum tabernae sine labore. Ambo consenserunt. Quintus officinam suam cum Vettilla parabat; Prima pistrina et textrinam habebat. Nullus filius ex solo sanguine artem librorum postulavit.
+
+Hilarus partem emere invitatus erat. Ipse recusavit quia pecuniam suam mensae propriae servare eamque crescere volebat. Pactum ei mercedem per opus, usum chartae pretio minore et nomen in relationibus communibus dabat. Libertas iterum non idem omnibus significabat.
+
+Herais apud tabernam mansit et partem lucri ex clientibus Graecis accepit. Nomen eius supra mensam positum est. Quaedam familiae eam nunc specialiter quaerebant. Taberna Apri paulatim ex domo unius Fabii in societatem plurium scribarum mutabatur.
+
+Publius signum apri retineri voluit. Tertia nomen novum non quaesivit. Signum historiam loci, non dominium perpetuum familiae, ferebat. Sub eo tabella nomina sociorum et scribarum praesentium clare ponebat; aper solus non omnia dicebat.
+
+Instrumentum a perito Ostiensi factum et coram testibus signatum est. Tertia verba ad sensum legit, deinde quaestiones suas perito posuit. Socii condiciones singulas audiverunt antequam sigilla sua adderent.
+
+Die mutationis Publius valvas ipse aperuit. Marcus arcam pecuniae, Tertia scrinium relationum, Hilarus merces, Herais epistulas Graecas curavit. Nullum sacrificium ingens aut convivium publicum fuit. Familia vesperi panem et vinum sub porticu sumpsit.
+
+Publius primam rationem patris sui Lucii attulit. Chartam iam fragilem in capsa servavit. In ea erant nomina clientium quorum nepotes adhuc veniebant. Non omnia debita aut notae publicari debebant; documentum memoria privata tabernae mansit.
+
+Tertia arcam delphini memoravit. Publius dixit eam se tunc puellam curiosam, sed nondum cautam vidisse. Marcus respondit omnes tunc minus cautos fuisse, alioquin arca statim ad Crispum ivisset et fabula brevior esset. Risus finem sollemnitati dedit.
+
+Syra ad cenam venit, quamquam ambulare lente poterat. Vidit Myrinam, olim servam villae, rationes mercium legere; Hilarum propriam mensam habere; Tertiam partem tabernae possidere. Mutatio vera erat, sed servi alii adhuc in viis laborabant. Familia suum progressum pro fine ordinis non habuit.
+
+Prima ad cenam filiam Aemiliam secum adduxit. Puella inter adultos de partibus tabernae loquentes imagines in cera faciebat. Tertia intellexit negotia publica et domestica sub eodem tecto saepe simul procedere, quamquam rationes eorum separatae erant.
+
+Quintus et Vettilla nuptias vere proximo constituerunt. Officina eorum lucernas et replicas inscriptionum clare recentium faceret. Castor paulatim recederet, sicut Publius. Duae artes per successionem, non monumentum, vivebant.
+
+Tertia primam mercedem ut socia non statim sibi tulit. Pars ad solutionem pretii, pars ad chartam novam, pars ad scribas ibat. Dominium lucrum sine onere non erat. Marcus hoc cotidie iam noverat; Tertia nunc numeris propriis sensit.
+
+Nocte Publius claves tabernae Marco tradidit, unam sibi retinens. Tertia clavem scrinii relationum habebat. Claves diversa munera, non impedimentum mutuum, significabant; ianua communis una clave solita aperiebatur.
+
+Mane Publius solita hora descendit et clientem veterem accepit. Recessus gradatim fieret. Instrumentum diem mutationis habebat, vita consuetudinem tardius mutabat. Tertia ad Portum profecta est, sciens tabernam etiam absente ea non solum stare, sed ad se partim pertinere.
+
+Capitulum 31: Post annum integrum
+
+Uno anno post decretum opus recognitum est. Prior relatio diem hunc iam posuerat. Eadem indicia, quantum fieri potuit, eodem modo collecta sunt: profunditas, naves directae, tempora viae, occupationes, usus porticus, querelae.
+
+Moles media sedimentum acceperat, sed sinus limi purgationem faciliorem fecerat. Sumptus annuus paulo supra aestimationem erat, quia duae tempestates venerant. Structura ipsa nullum grave damnum ostendebat. Camurius mensuras sub sigillo dedit.
+
+Naves mediocres directae a novem ad viginti creverant. Pondus mercium apud molum fere dimidia parte auctum erat, sed totius Portus parum mutatum. Pars commercii redierat, pars nova erat; lacus novus non propterea ceciderat.
+
+Horreum senatoris tres partes ex quattuor occupatum erat. Lucrum privatum auctum, sicut relatio praedixerat. Senator contributionem et curam anni solverat. Acta utrumque simul nominaverunt. Gloria dedicationis sola numerum non abscondit.
+
+Viae mora post initium paulo creverat, quia plus mercium veniebat, sed adhuc minor quam ante experimentum erat. Columna non mota est. Horrea exspectationis et regulae horarum sufficiebant. Pecunia structurae ad cratem alteram et pavimentum posticum data erat.
+
+Porticus plures pedestres habebat, caupona Myrtidis vinum plus emebat. Duae tabernae novae apertae erant: scriptor navium et venditor funium. Una taberna vetus tamen clausa mansit, quia dominus pretium nimis auxerat. Renovatio omnes ianuas non aperuit.
+
+Livianus duas officinas per annum tenuerat. Nunc ripam novam principalem, veterem ad scaphas et clientes parvos servabat. Discipulus Apollonius non redierat; Cassianus semel visitaverat, sed Miseni mansit. Duo discipuli novi Portu nati accesserant.
+
+Dasius caupo ad ripam novam moverat et primum annum sine pretio bene egerat. Nunc de pretio secundi cum Sabino disputabat. Pactum summam certam iam habebat, itaque procurator eam mutare non potuit sine consensu. Scriptum temporis initii vim adhuc praebebat.
+
+Scaphariorum labor tertia fere parte minor erat. Quinque in cura molis manebant; quattuor alii ad navem vel horrea transierant; duo opus regulare amiserant. Collegium promissum omnium non fecerat. Residuum grave in revisione nominatum est.
+
+Bithus peculium post annum accepit, sicut tabella dicebat. Libertatem inde statim emere non poterat. Dominus tamen alterum annum eadem condicione obtulit, quia opus bene fecerat. Myrina gaudium moderatum sensit; promissum parvum completum, ordo servitutis mansit.
+
+Familiae ad ripam novam habitabant, nulla subsidium accipientium divisa esse nuntiabatur. Hoc ex nominibus pacti verificatum est, sed servi extra subsidium non omnes secuti sunt. Tertia conclusionem ad gregem tectum restrinxit.
+
+Querelae strepitus in via principali ceciderant, posticae post cratem et aream motam ad numerum priorem redierant. Pulvis autem aestate creverat propter plura plaustra. Varro aquam modicam ad viam et pavimentum melius proposuit, sumptu novo parvo.
+
+Myrtis dixit successum se agnoscere, sed conductionem iam Flavium augere velle. Valor regionis creverat; domini fructum capiebant. Conductores qui renovationem sustinuerant novum onus accipiebant. Relatio anni secundi hanc consequentiam non praedixerat satis.
+
+Flavius tectum iterum reficere et pretium paulatim, non subito, augere consensit. Pactum trium annorum factum est. Tertia tractationi non praesedit; partes iam exemplum claritatis habebant. Myrtis exemplar tabernae tantum custodiendum dedit.
+
+Sabinus dedicationem tandem paravit. Lapis senatoris nomen, magistratus, collegia et formam molis habebat. Tabella lignea sub tecto operarios, scapharios, architectos et sumptus nominabat. Nomina servorum consentientibus partibus, inter ea Bithus, aderant.
+
+Myrina quaesivit cur tabella lignea citius quam lapis peritura esset. Sabinus duplicem tabulam in tabulario et collegio servari iussit. Lignum sub tecto pice munitum erat. Memoria operariorum cura requirebat, sicut moles ipsa. Haec imperfectio palam accepta est.
+
+Revisio conclusionem dedit: forma media pleraque proposita intra annum assecutus erat, onera tamen in scapharios, conductores et vias posticas partim transierant. Cura et pacta corrigenda erant. Successus condicionalis, non triumphus sine reliquo, fuit.
+
+Magistratus alterum annum sine magna mutatione probaverunt. Sumptus pulveris, auxilium duobus scaphariis sine opere et inspectio conductionum addita sunt. Relatio ad actionem iterum duxit, sed non ad consilium totum novum.
+
+Tertia mandatum anniversarium clausit et exemplaria reddidit. Sabinus, Myrtis, Livianus et Camurius iam sine ea conventus ordinarios habere poterant. Opus bene factum se ipsum aliquatenus supervacuum faciebat. Haec erat melior forma exitus quam dependentia perpetua a scriba.
+
+Capitulum 32: Lucerna ad utrumque mare
+
+Vere eodem anno familia ad nuptias Quinti et Vettillae convenit. Castor officinam iuvenibus tradidit, partem sibi retinens sicut Publius fecerat. Lucernae in horto pendebant, sed ignis procul a velis et foliis ordinatus erat. Festa priorum annorum memoriam reddebant.
+
+Gaius et Claudia e Capua venerunt, iam canis et vultibus maturis. Fratres Tertiae cum liberis suis aderant. Mater cubiculum filiae Ostiense vidit, duas conchas, tesseram Fortunae, imaginem Vettiae Puteolanae et volumina relationum. Via ad mare totam vitam expleverat.
+
+Publius nuptiis paulisper adfuit, deinde quietem petiit. Tabernam cotidie non iam aperiebat. Marcus claves gerebat, Tertia partem consiliorum, Herais et Hilarus clientes suos. Aper supra ianuam coloribus novis tamen vetus signum mansit.
+
+Syra in sella iuxta Myrinam sedebat. Daphnis cibum regebat sine correctionibus. Syra tandem hoc sine inquietudine accepit. Duae libertae, quarum itinera nullo documento plene servabantur, spectabant familiam quae aliquas mutationes didicerat, multas iniurias mundi nondum solvebat.
+
+Faustus ad nuptias venire non potuit, sed carmen de Athenai misit. Aemilia, nunc litteras melius sciens, illud legit adiuvante Prima. Carmen familiare, non textus antiqui poetae, erat. Nomen operariae fontis inter panes, rosas et risus sonuit.
+
+Sextus e Portu navicula venit. Fortuna vetus adhuc navigabat, sed minora itinera faciebat. Menander magistratum navis iuveni Chioni paulatim tradebat. In omni arte successio apparebat: taberna, officina, navis, pistrinum, cura documentorum.
+
+Post nuptias Tertia parentes ad Portum duxit. Claudia mare Ostiense olim viderat, lacum hexagonum autem numquam. Gaius horrea et moles miratus est. Tertia non omnia opera sua ostendit quasi monumenta; tantum vias quibus familiae fabula coniuncta erat.
+
+Apud molum occidentalem navis olearia merces directe deposuit. Scapharii alteram navem maximam exteriorem serviebant. Porticus plena erat, via ordine horarum procedebat, pulvis tamen in sole surgebat. Regio nec restituta ad praeteritum nec deleta erat; aliam formam ceperat.
+
+Myrtis familiam aqua et pane accepit, pretium a Sexto exigens. Sabinus per viam transiit et Tertiam salutavit. Livianus e scapha ad ripam novam ibat. Bithus numerum sportarum in tabula ponebat. Personae contentionis nunc in laboribus ordinariis apparebant.
+
+Claudia inscriptionem molis legit. Nomen senatoris magnum, operariorum tabula minor erat. Tertia rationem duplicis custodiae explicavit. Mater dixit memoriam semper aliquem qui pulverem removeret postulare. Sententia simplex tot relationibus congruebat.
+
+Vespere ad litus Ostiense redierunt. Tertia veterem lucernam matris secum attulerat, vacuam et rimatam. Novam lucernam stellae Castor olim fecerat; Quintus nunc tertiam, cum concha et rota, ad nuptias sorori donaverat.
+
+Tres lucernae res vitae erant. Prima Capuam, secunda adventum Ostiensem, tertia vias maris et tabernae societatem memorabat. Formae, rimae et imagines singula tempora sine titulo longo servabant.
+
+Tertia novam lucernam accendit, veterem non. Flamma in imagine conchae lucebat. Pueri familiae circa arenam currebant. Aemilia Quintum rogavit quomodo forma facta esset; ille argillam, formam et furnum simpliciter narravit.
+
+Marcus epistulam e taberna attulit: cliens Puteolanus chartam novam petebat. Hilarus nuntium de instrumento conductionis habebat. Herais cras navem Graecam conveniret. Etiam die festo labor futurus aderat, sed hanc noctem non occupavit.
+
+Publius, qui domi mansit, tabellam brevem miserat: "Lucernae bene ardeant; valvae cras aperientur." Tertia verba legit et risit. Magister senex finem sollemnem scribere noluerat. Vita tabernae crastinum ordinarium malebat.
+
+Sol in mare descendit sicut primo die quo Tertia litus viderat. Nunc sciebat solem non cadere, portus non una causa crescere aut minui, documenta non totam vitam tenere, pacta sine cura non durare. Haec omnia tacita in visu eius manserunt.
+
+Gaius filiam quaesivit utrum Capuam aliquando rediret. Tertia respondit se semper redire, sed Ostiam domum quoque esse. Duas domos eligere non iam contradictionem putabat. Via inter eas pars vitae eius facta erat, non spatium vacuum.
+
+Nocte lucernae Portus procul apparebant et lucernae Ostiae post eos ardebant. Inter duo lumina flumen ad mare currebat. Arca delphini, tabula Calvi, canalis Chrestes et limus molis partes unius temporis familiae factae erant, quamquam singulae causam propriam habuerant.
+
+Tertia lucernam ex arena sustulit antequam ventus cresceret. Familia ad portam rediit. Nullus index omnium futurorum exstabat. Satis erat vias apertas, nomina quantum liceret servata, incerta palam relicta et curam ad alios traditam esse.
+
+Series quarta et tota narratio hic finitur. Mane taberna Apri aperietur, moles mensurabitur, canalis purgabitur, epistula ad Puteolos mittetur. Historia non promittit civitatem perfectam. Ostendit tantum homines, scripta, aquam et memoriam per annos inter se laborare.

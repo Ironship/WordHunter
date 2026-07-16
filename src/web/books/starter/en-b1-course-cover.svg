@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">English B1: Independent Voices course cover</title>
-  <desc id="desc">A forest green English B1 cover with an illuminated bridge built from connected lines and story fragments.</desc>
+  <title id="title">The Quiet Mile: A B1 Graded Reader</title>
+  <desc id="desc">A forest green cover for an original English B1 graded reader, with an illuminated bridge built from connected lines and story fragments.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#102b2c"/>
@@ -41,7 +41,7 @@
     <circle cx="423" cy="519" r="7"/>
     <circle cx="487" cy="565" r="7"/>
   </g>
-  <text x="54" y="80" fill="#f7e5aa" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="54" y="80" fill="#f7e5aa" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">GRADED READER</text>
   <text x="48" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">B1</text>
   <path d="M54 275 H274" stroke="#5de0b4" stroke-width="12"/>
   <text x="55" y="325" fill="#f3c969" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" letter-spacing="1.5">INDEPENDENT VOICES</text>

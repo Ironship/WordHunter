@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">汉语B1《把经历讲成故事》课程封面</title>
-  <desc id="desc">深蓝与橙红色封面，多条采访声音汇成穿过城市的一条长河，象征连贯叙述和独立表达。</desc>
+  <title id="title">汉语B1分级读物：沿河六公里</title>
+  <desc id="desc">汉语B1分级读物封面，深蓝与橙红色的多条叙事线汇成穿过城市的一条长河。</desc>
   <defs>
     <linearGradient id="b1-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#101b3d"/>
@@ -44,7 +44,7 @@
     <text x="301" y="399">行动</text>
     <text x="438" y="507">结果</text>
   </g>
-  <text x="55" y="83" fill="#f5f0dc" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语课程</text>
+  <text x="55" y="83" fill="#f5f0dc" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="5">汉语分级读物</text>
   <text x="49" y="276" fill="#ffffff" font-family="Arial, sans-serif" font-size="160" font-weight="900" letter-spacing="-7">B1</text>
   <path d="M55 310h229" stroke="#ef7357" stroke-width="11"/>
   <text x="57" y="360" fill="#f6c96b" font-family="Noto Sans SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">把经历讲成故事</text>

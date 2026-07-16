@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">English A1: First Steps course cover</title>
-  <desc id="desc">A warm coral and teal English A1 cover with a rising path of speech-shaped stepping stones.</desc>
+  <title id="title">Lantern House: An A1 Graded Reader</title>
+  <desc id="desc">A warm coral and teal cover for an original English A1 graded reader, with a rising path of speech-shaped stepping stones.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#092f3a"/>
@@ -34,7 +34,7 @@
     <text x="287" y="573" font-size="27">PLEASE</text>
     <text x="399" y="462" font-size="22">LET'S GO</text>
   </g>
-  <text x="54" y="80" fill="#f7e4ae" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">ENGLISH</text>
+  <text x="54" y="80" fill="#f7e4ae" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="7">GRADED READER</text>
   <text x="50" y="246" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="154" font-weight="900" letter-spacing="-8">A1</text>
   <path d="M54 275 H274" stroke="#ff795f" stroke-width="12"/>
   <text x="55" y="325" fill="#f7e4ae" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="700" letter-spacing="2">FIRST STEPS</text>

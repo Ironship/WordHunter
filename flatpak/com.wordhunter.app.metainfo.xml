@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5~rc.10" date="2026-07-16" type="development">
+      <description>
+        <ul>
+          <li>Replace course-style claims with 48 original A1-B2 graded readers across all 12 named learning languages.</li>
+          <li>Provide continuous, progressively leveled stories for reading comprehension and contextual vocabulary.</li>
+          <li>Correct reader titles and cover metadata throughout the built-in Library catalog.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.9" date="2026-07-15" type="development">
       <description>
         <ul>

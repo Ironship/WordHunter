@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 900" role="img" aria-labelledby="title desc">
-  <title id="title">日本語 A1 はじめの一歩 コース表紙</title>
-  <desc id="desc">朱色の朝日と、ひらがなの石が一歩ずつ続く日本語A1コースの表紙。</desc>
+  <title id="title">月舟文庫の春　日本語レベル別読み物 A1</title>
+  <desc id="desc">朱色の朝日と、ひらがなの石が一歩ずつ続く日本語A1読み物の表紙。</desc>
   <defs>
     <linearGradient id="a1-bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#17324d"/>
@@ -35,7 +35,7 @@
     </g>
   </g>
   <rect x="54" y="60" width="222" height="42" rx="21" fill="#f26b4f"/>
-  <text x="165" y="88" fill="#ffffff" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="700" letter-spacing="3">日本語コース</text>
+  <text x="165" y="88" fill="#ffffff" text-anchor="middle" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="21" font-weight="700" letter-spacing="3">日本語の読み物</text>
   <text x="53" y="257" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="150" font-weight="900" letter-spacing="-8">A1</text>
   <path d="M56 283H294" stroke="#ffd98a" stroke-width="11"/>
   <text x="56" y="333" fill="#f7ead3" font-family="'Noto Sans JP','Yu Gothic',sans-serif" font-size="30" font-weight="700" letter-spacing="4">はじめの一歩</text>
