@@ -4,6 +4,7 @@ import {
   classifyTokenOccurrences,
   findGermanSeparableVerbMatches,
   getSentenceForWord,
+  getTextFromWordIndex,
   getTokenStats,
   normalizeVocabularyWord,
   tokenizeText
@@ -86,6 +87,16 @@ describe("token stats", () => {
       getSentenceForWord(text, "bank", "en", "modern", 2),
       "The first bank is closed."
     );
+  });
+
+  it("slices reading text from the exact repeated word occurrence", () => {
+    const text = "First target is here. The second target is selected.";
+
+    assert.equal(
+      getTextFromWordIndex(text, 6, "en", "modern"),
+      "target is selected."
+    );
+    assert.equal(getTextFromWordIndex(text, 99, "en", "modern"), null);
   });
 
   it("treats separated German verb parts as one vocabulary phrase", () => {

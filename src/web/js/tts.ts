@@ -22,6 +22,10 @@ interface TtsWordTracker {
   sentenceRuns: TtsWordRun[];
 }
 
+export interface SpeakTextOptions {
+  startTokenIndex?: number;
+}
+
 type AndroidSpeakBridge = WhAndroidBridge & {
   speak: (text: string, language: string, rate: number, requestId: string) => boolean;
 };
@@ -165,7 +169,8 @@ export function stopSpeaking(): void {
 export function speakText(
   text: string,
   containerElement?: HTMLElement | null,
-  onFinish?: (() => void) | null
+  onFinish?: (() => void) | null,
+  options: SpeakTextOptions = {}
 ): void {
   stopSpeaking();
   onFinishCallback = onFinish;
@@ -174,7 +179,11 @@ export function speakText(
   const textToRead = selectedText || text;
 
   const sentences = splitTextForTts(textToRead);
-  const tracker = createTtsWordTracker(containerElement, textToRead);
+  const tracker = createTtsWordTracker(
+    containerElement,
+    textToRead,
+    selectedText ? undefined : options.startTokenIndex
+  );
   
   speaking = true;
 
@@ -410,7 +419,8 @@ function clearHighlights(): void {
 
 function createTtsWordTracker(
   containerElement: HTMLElement | null | undefined,
-  textToRead: string
+  textToRead: string,
+  startTokenIndex?: number
 ): TtsWordTracker | null {
   if (state.preferences.ttsWordHighlight !== true || !containerElement?.querySelectorAll) return null;
   const tokens = [...containerElement.querySelectorAll<HTMLElement>(".word-token")]
@@ -418,9 +428,15 @@ function createTtsWordTracker(
     .filter((token) => token.word);
   if (!tokens.length) return null;
 
+  const exactStart = Number.isInteger(startTokenIndex)
+    && Number(startTokenIndex) >= 0
+    && Number(startTokenIndex) < tokens.length
+    ? Number(startTokenIndex)
+    : null;
+
   return {
     tokens,
-    tokenIndex: findTtsTokenStart(tokens, getTtsWordRuns(textToRead).map((run) => run.word)),
+    tokenIndex: exactStart ?? findTtsTokenStart(tokens, getTtsWordRuns(textToRead).map((run) => run.word)),
     sentenceRuns: []
   };
 }

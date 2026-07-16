@@ -187,9 +187,8 @@ export function findGermanSeparableVerbMatches(tokens: readonly TextToken[], voc
   return matches;
 }
 
-function getWordCharacterIndex(text: string, word: string, lang: string, algorithm: string, wordIndex: number | null) {
+function getWordAtIndex(text: string, lang: string, algorithm: string, wordIndex: number | null) {
   if (!Number.isInteger(wordIndex) || wordIndex < 0) return null;
-  const expectedParts = normalizeWord(word).split(/\s+/).map((part) => normalizeVocabularyWord(part, lang)).filter(Boolean);
   let characterIndex = 0;
   let currentWordIndex = 0;
   for (const part of tokenizeText(text, lang, algorithm)) {
@@ -198,13 +197,28 @@ function getWordCharacterIndex(text: string, word: string, lang: string, algorit
     characterIndex = partIndex + part.value.length;
     if (part.type !== "word") continue;
     if (currentWordIndex === wordIndex) {
-      return expectedParts.includes(normalizeVocabularyWord(part.value, lang))
-        ? { characterIndex: partIndex, word: part.value }
-        : null;
+      return { characterIndex: partIndex, word: part.value };
     }
     currentWordIndex++;
   }
   return null;
+}
+
+function getWordCharacterIndex(text: string, word: string, lang: string, algorithm: string, wordIndex: number | null) {
+  const indexedWord = getWordAtIndex(text, lang, algorithm, wordIndex);
+  if (!indexedWord) return null;
+  const expectedParts = normalizeWord(word).split(/\s+/).map((part) => normalizeVocabularyWord(part, lang)).filter(Boolean);
+  return expectedParts.includes(normalizeVocabularyWord(indexedWord.word, lang)) ? indexedWord : null;
+}
+
+export function getTextFromWordIndex(
+  text: string,
+  wordIndex: number,
+  lang = "en",
+  algorithm = "modern"
+): string | null {
+  const indexedWord = getWordAtIndex(text, lang, algorithm, wordIndex);
+  return indexedWord ? text.slice(indexedWord.characterIndex) : null;
 }
 
 function getClassicSentenceForWord(text: string, word: string, lang: string, preferredIndex = -1): string {

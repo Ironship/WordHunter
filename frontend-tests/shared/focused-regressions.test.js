@@ -82,14 +82,17 @@ async function evaluateWithMocks(file, importValues, globals = {}, dynamicImport
   return module.namespace;
 }
 
-async function globalActionsHarness() {
+async function globalActionsHarness(options = {}) {
   const listeners = new Map();
   const calls = [];
   const state = {
     currentView: "reader",
     selectedWord: "wort",
+    selectedWordIndex: 3,
+    readerSelectionRange: null,
     preferences: { highlightTokens: true, readerWordPanelVisible: true },
-    readerFontSize: 18
+    readerFontSize: 18,
+    ...options.state
   };
   class FakeInput {
     static [Symbol.hasInstance](value) { return value?.isInput === true; }
@@ -97,7 +100,7 @@ async function globalActionsHarness() {
   const document = {
     documentElement: { classList: classList() },
     addEventListener(type, listener) { listeners.set(type, listener); },
-    getElementById() { return null; }
+    getElementById(id) { return options.elements?.[id] || null; }
   };
   const module = await evaluateWithMocks("dist/web/js/events/global-actions.js", {
     "../state.js": { registerFrontendStateFlusher() {}, state },
@@ -116,9 +119,15 @@ async function globalActionsHarness() {
     "../preferences.js": { setReaderFontSize() {}, syncSettingsControls() {}, updatePreferenceValue() {} },
     "../youglish.js": { openYouGlish() {} },
     "../tts.js": {
-      speakText() {},
+      speakText(text, container, onFinish, speakOptions) { calls.push(["speakText", text, container, speakOptions]); },
       speakWord(word) { calls.push(["speak", word]); },
       stopSpeaking() {}
+    },
+    "../tokenizer_v2.js": {
+      getTextFromWordIndex: options.getTextFromWordIndex || (() => null)
+    },
+    "../translator-preferences.js": {
+      effectiveLearningLanguage() { return "de"; }
     },
     "./shared.js": {
       copySelectedWordToClipboard() {},
@@ -210,6 +219,77 @@ describe("focused frontend regressions", () => {
       assert.equal(state.selectedWord, surface);
       assert.equal(calls.length, before);
     }
+  });
+
+  it("starts Reader Play at the exact selected repeated word", async () => {
+    const sliceCalls = [];
+    const tokens = [3, 17, 22].map((wordIndex) => ({
+      dataset: { wordIndex: String(wordIndex) },
+      classList: { contains() { return false; } }
+    }));
+    const readerText = {
+      dataset: { ttsText: "target first. Other words target selected." },
+      querySelectorAll(selector) { return selector === ".word-token" ? tokens : []; },
+      contains() { return false; }
+    };
+    const playButton = { hidden: false };
+    const stopButton = { hidden: true };
+    const { calls, listeners } = await globalActionsHarness({
+      state: { selectedWord: "target", selectedWordIndex: 17, readerSelectionRange: { anchor: 1, focus: 1 } },
+      elements: { "reader-text": readerText, "tts-stop-text": stopButton },
+      getTextFromWordIndex(text, wordIndex, language, algorithm) {
+        sliceCalls.push([text, wordIndex, language, algorithm]);
+        return "target selected.";
+      }
+    });
+
+    listeners.get("click")({
+      target: closestTarget({
+        "#tts-play-text": playButton,
+        "#reader-text, #word-panel, #reader-view .reader-toolbar, dialog": { id: "toolbar" }
+      }),
+      composedPath() { return []; }
+    });
+
+    assert.deepEqual(sliceCalls, [[readerText.dataset.ttsText, 1, "de", "modern"]]);
+    const speakCall = calls.find((call) => call[0] === "speakText");
+    assert.equal(speakCall[1], "target selected.");
+    assert.equal(speakCall[2], readerText);
+    assert.equal(speakCall[3].startTokenIndex, 1);
+    assert.equal(playButton.hidden, true);
+    assert.equal(stopButton.hidden, false);
+  });
+
+  it("uses the PDF page word index while keeping the exact overlay token", async () => {
+    const sliceCalls = [];
+    const tokens = [
+      { dataset: { wordIndex: "31", pdfPageWordIndex: "4" }, classList: { contains() { return false; } } },
+      { dataset: { wordIndex: "47", pdfPageWordIndex: "9" }, classList: { contains() { return false; } } }
+    ];
+    const readerText = {
+      dataset: { ttsText: "Page text with OCR words and the selected target." },
+      querySelectorAll(selector) { return selector === ".word-token" ? tokens : []; },
+      contains() { return false; }
+    };
+    const { calls, listeners } = await globalActionsHarness({
+      state: { selectedWord: "target", selectedWordIndex: 47 },
+      elements: { "reader-text": readerText, "tts-stop-text": { hidden: true } },
+      getTextFromWordIndex(text, wordIndex) {
+        sliceCalls.push([text, wordIndex]);
+        return "target.";
+      }
+    });
+
+    listeners.get("click")({
+      target: closestTarget({
+        "#tts-play-text": { hidden: false },
+        "#reader-text, #word-panel, #reader-view .reader-toolbar, dialog": { id: "toolbar" }
+      }),
+      composedPath() { return []; }
+    });
+
+    assert.deepEqual(sliceCalls, [[readerText.dataset.ttsText, 9]]);
+    assert.equal(calls.find((call) => call[0] === "speakText")[3].startTokenIndex, 1);
   });
 
   it("keeps keyboard navigation lightweight and routes swipes through automatic translation", async () => {

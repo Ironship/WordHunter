@@ -1097,7 +1097,7 @@ html.pocket-mode {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-bottom: 1rem;
+  padding: 0 1rem 1rem;
   border-radius: 0 0 12px 12px;
   background: var(--word-panel-status-bg, var(--panel));
   touch-action: pan-y pinch-zoom;
@@ -1128,7 +1128,7 @@ html.pocket-mode {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.35rem 0 0.65rem;
+  padding: 1.35rem 0 0.65rem;
   background: var(--word-panel-status-bg, var(--panel));
 }
 
