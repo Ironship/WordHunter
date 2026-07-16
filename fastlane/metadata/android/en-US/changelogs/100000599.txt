@@ -1,0 +1,6 @@
+Stable 1.0.5 release.
+
+- Added 48 original A1-B2 graded readers across 12 languages.
+- Added configurable selected-word controls and grammatical articles.
+- Improved Pocket word panels, flashcards, progress charts, themes, layouts, and accessibility.
+- Fixed Reader refreshes, synchronization races, review conflicts, selection return, and delayed translations.
