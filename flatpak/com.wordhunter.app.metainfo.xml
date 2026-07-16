@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.5" date="2026-07-16">
+      <description>
+        <ul>
+          <li>Add 48 original A1-B2 graded readers across 12 learning languages.</li>
+          <li>Let readers choose and reorder selected-word controls and save grammatical articles.</li>
+          <li>Improve Pocket word panels, flashcards, progress charts, themes, accessibility, and desktop layouts.</li>
+          <li>Fix Reader refreshes, stale synchronization updates, review races, selection return, and delayed translations.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5~rc.10" date="2026-07-16" type="development">
       <description>
         <ul>

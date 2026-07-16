@@ -33,13 +33,7 @@ Project website: https://ironship.github.io/WordHunter-site/
 
 ## Project Status
 
-Current stable release: `1.0.4`. Current test prerelease: `1.0.5-rc.10`.
-
-> [!CAUTION]
-> **Version 1.0.5-rc.10 is intended only for testing and may contain bugs.**
-> Back up your Word Hunter data before installing it. GitHub prereleases are
-> excluded from the in-app stable update notification and are not distributed
-> through stable package-manager channels.
+Current stable release: `1.0.5`.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
