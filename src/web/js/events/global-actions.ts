@@ -17,11 +17,67 @@ import { speakText, speakWord, stopSpeaking } from "../tts.js";
 import { copySelectedWordToClipboard, getSelectedReaderActionText, openDictionary } from "./shared.js";
 import { renderImageSearch } from "./image-search.js";
 import { formatHeadword } from "../vocabulary/article.js";
+import { getTextFromWordIndex } from "../tokenizer_v2.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
+
+interface ReaderTtsStart {
+  tokenIndex: number;
+  textWordIndex: number;
+}
+
+function readerTtsStartAt(tokens: HTMLElement[], tokenIndex: number): ReaderTtsStart | null {
+  const token = tokens[tokenIndex];
+  if (!token) return null;
+  const pdfPageWordIndex = Number(token.dataset.pdfPageWordIndex);
+  return {
+    tokenIndex,
+    textWordIndex: Number.isInteger(pdfPageWordIndex) && pdfPageWordIndex >= 0
+      ? pdfPageWordIndex
+      : tokenIndex
+  };
+}
+
+function getReaderTtsStart(readerTextEl: HTMLElement | null): ReaderTtsStart | null {
+  if (!readerTextEl) return null;
+  const tokens = Array.from(readerTextEl.querySelectorAll<HTMLElement>(".word-token"));
+  if (!tokens.length) return null;
+
+  const anchor = Number(state.readerSelectionRange?.anchor);
+  const focus = Number(state.readerSelectionRange?.focus);
+  if (Number.isInteger(anchor) && Number.isInteger(focus)) {
+    const rangeStart = Math.min(anchor, focus);
+    if (rangeStart >= 0 && rangeStart < tokens.length) return readerTtsStartAt(tokens, rangeStart);
+  }
+
+  if (Number.isInteger(state.selectedWordIndex)) {
+    const exactIndex = tokens.findIndex((token) => Number(token.dataset.wordIndex) === state.selectedWordIndex);
+    if (exactIndex >= 0) return readerTtsStartAt(tokens, exactIndex);
+  }
+
+  const activeToken = window.lastActiveToken;
+  if (activeToken instanceof HTMLElement && readerTextEl.contains(activeToken)) {
+    const activeIndex = tokens.indexOf(activeToken);
+    if (activeIndex >= 0) return readerTtsStartAt(tokens, activeIndex);
+  }
+
+  return readerTtsStartAt(tokens, tokens.findIndex((token) => token.classList.contains("selected")));
+}
 
 function playReaderText(playTextBtn: HTMLElement): void {
   const readerTextEl = document.getElementById("reader-text");
   let currentText = getReaderTextForTts(readerTextEl);
-  if (state.selectedWord && currentText) {
+  const start = getReaderTtsStart(readerTextEl);
+  const indexedText = start && currentText
+    ? getTextFromWordIndex(
+        currentText,
+        start.textWordIndex,
+        effectiveLearningLanguage(state.preferences),
+        state.preferences.wordDetectionAlgorithm || "modern"
+      )
+    : null;
+  if (indexedText) {
+    currentText = indexedText;
+  } else if (state.selectedWord && currentText) {
     const wordIndex = currentText.toLowerCase().indexOf(state.selectedWord.toLowerCase());
     if (wordIndex >= 0) currentText = currentText.slice(wordIndex);
   }
@@ -29,7 +85,7 @@ function playReaderText(playTextBtn: HTMLElement): void {
   if (playTextBtn && stopBtn) { playTextBtn.hidden = true; stopBtn.hidden = false; }
   speakText(currentText, readerTextEl, () => {
     if (playTextBtn && stopBtn) { playTextBtn.hidden = false; stopBtn.hidden = true; }
-  });
+  }, { startTokenIndex: indexedText ? start?.tokenIndex : undefined });
 }
 
 function getReaderTextForTts(readerTextEl: HTMLElement | null): string {

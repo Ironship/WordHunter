@@ -70,10 +70,11 @@ describe("Android Pocket bridges", () => {
         return { isCollapsed: true };
       }
     };
-    const tokenClasses = [new Set(), new Set()];
+    const tokenClasses = [new Set(), new Set(), new Set()];
     const tokens = [
       { textContent: "Hallo", dataset: {}, classList: { add: (name) => tokenClasses[0].add(name), remove: (name) => tokenClasses[0].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } }
+      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } },
+      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[2].add(name), remove: (name) => tokenClasses[2].delete(name) } }
     ];
     globalThis.localStorage = { getItem: () => null, setItem: () => {} };
     globalThis.document = {
@@ -112,6 +113,13 @@ describe("Android Pocket bridges", () => {
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "done" } });
     assert.equal(finished, true);
     assert.equal(stopped, true);
+
+    speakText("Welt.", container, null, { startTokenIndex: 2 });
+    assert.equal(calls.length, 3);
+    listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "range", start: 0, end: 4 } });
+    assert.equal(tokenClasses[1].has("tts-current-word"), false);
+    assert.equal(tokenClasses[2].has("tts-current-word"), true);
+    listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "done" } });
   });
 
   it("forwards dictionary URLs through the live Android bridge", async () => {
