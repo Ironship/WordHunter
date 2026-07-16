@@ -1,2 +1,3 @@
-THIRD-PARTY-LICENSES.html -whitespace
-OCR-THIRD-PARTY-LICENSES.html -whitespace
+THIRD-PARTY-LICENSES.html -whitespace linguist-generated=true
+OCR-THIRD-PARTY-LICENSES.html -whitespace linguist-generated=true
+frontend-tests/** linguist-detectable=false

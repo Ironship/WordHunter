@@ -23,11 +23,11 @@ globalThis.CustomEvent = class CustomEvent {
   constructor(type, init) { this.type = type; this.detail = init?.detail; }
 };
 
-const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../src/web/js/state.js");
-const { buildSavePayload } = await import("../../src/web/js/api.js");
-const { bookTexts } = await import("../../src/web/js/books.js");
-const { els } = await import("../../src/web/js/dom.js");
-const { importStateFile } = await import("../../src/web/js/sync-actions.js");
+const { STATE_SCHEMA_VERSION, createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { buildSavePayload } = await import("../../dist/web/js/api.js");
+const { bookTexts } = await import("../../dist/web/js/books.js");
+const { els } = await import("../../dist/web/js/dom.js");
+const { importStateFile } = await import("../../dist/web/js/sync-actions.js");
 
 els.navItems = [];
 els.views = [];
@@ -52,6 +52,7 @@ describe("state import cache invalidation", () => {
       if (url === "/__store/save?snapshot=1") {
         return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
       }
+      if (url === "/__store/ack_snapshot") return { ok: true, json: async () => ({}) };
       return { ok: true, text: async () => `${url} ${"word ".repeat(50)}` };
     };
     globalThis.FileReader = class FileReader {
@@ -82,7 +83,8 @@ describe("state import cache invalidation", () => {
     globalThis.fetch = async (url) => {
       if (url === "/__store/save") return { ok: true, json: async () => ({}) };
       if (url === "/__store/save?snapshot=1") return { ok: false, status: 500 };
-      if (url === "/__store/load") return { ok: true, json: async () => currentSnapshot };
+      if (url === "/__store/load?ack=0") return { ok: true, json: async () => currentSnapshot };
+      if (url === "/__store/ack_snapshot") return { ok: true, json: async () => ({}) };
       return { ok: true, text: async () => `${url} ${"word ".repeat(50)}` };
     };
     globalThis.FileReader = class FileReader {

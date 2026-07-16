@@ -49,8 +49,8 @@ globalThis.CustomEvent = class CustomEvent {
   constructor(type, init) { this.type = type; this.detail = init?.detail; }
 };
 
-const { createDefaultState, normalizeState, replaceState, state } = await import("../../src/web/js/state.js");
-const { playStatusSound } = await import("../../src/web/js/status-sounds.js");
+const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { playStatusSound } = await import("../../dist/web/js/status-sounds.js");
 
 describe("status sounds", () => {
   beforeEach(() => {

@@ -1,9 +1,13 @@
 use regex::Regex;
 use serde_json::{Value, json};
 
+pub const LATEST_STABLE_RELEASE_URL: &str =
+    "https://api.github.com/repos/Ironship/WordHunter/releases/latest";
+
 pub fn check(user_agent: &str, app_version: &str) -> Value {
     match crate::http::agent()
-        .get("https://api.github.com/repos/Ironship/WordHunter/releases/latest")
+        // GitHub's latest endpoint intentionally excludes drafts and prereleases.
+        .get(LATEST_STABLE_RELEASE_URL)
         .set("User-Agent", user_agent)
         .set("Accept", "application/vnd.github.v3+json")
         .call()
@@ -25,13 +29,51 @@ pub fn check(user_agent: &str, app_version: &str) -> Value {
 
 pub fn normalize_release_version(tag: &str) -> String {
     let trimmed = tag.trim().trim_start_matches(['v', 'V']);
-    match Regex::new(r"\d+(?:\.\d+){1,3}") {
+    match Regex::new(r"\d+(?:\.\d+){1,3}(?:-[0-9A-Za-z.-]+)?") {
         Ok(regex) => regex
             .find(trimmed)
             .map(|m| m.as_str().to_string())
             .unwrap_or_else(|| trimmed.to_string()),
         Err(_) => trimmed.to_string(),
     }
+}
+
+fn split_version(version: &str) -> (Vec<u32>, Option<Vec<&str>>) {
+    let normalized = version
+        .trim()
+        .trim_start_matches(['v', 'V'])
+        .split('+')
+        .next()
+        .unwrap_or("");
+    let (core, prerelease) = normalized
+        .split_once('-')
+        .map_or((normalized, None), |(core, prerelease)| {
+            (core, Some(prerelease.split('.').collect()))
+        });
+    (parse_version(core), prerelease)
+}
+
+fn compare_prerelease(a: &[&str], b: &[&str]) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+
+    for index in 0..a.len().max(b.len()) {
+        let Some(left) = a.get(index) else {
+            return Ordering::Less;
+        };
+        let Some(right) = b.get(index) else {
+            return Ordering::Greater;
+        };
+        let ordering = match (left.parse::<u64>(), right.parse::<u64>()) {
+            (Ok(left), Ok(right)) => left.cmp(&right),
+            (Ok(_), Err(_)) => Ordering::Less,
+            (Err(_), Ok(_)) => Ordering::Greater,
+            (Err(_), Err(_)) => left.cmp(right),
+        };
+        if ordering != Ordering::Equal {
+            return ordering;
+        }
+    }
+    Ordering::Equal
 }
 
 pub fn parse_version(version: &str) -> Vec<u32> {
@@ -46,8 +88,10 @@ pub fn parse_version(version: &str) -> Vec<u32> {
 }
 
 pub fn is_newer(latest: &str, current: &str) -> bool {
-    let a = parse_version(latest);
-    let b = parse_version(current);
+    use std::cmp::Ordering;
+
+    let (a, a_prerelease) = split_version(latest);
+    let (b, b_prerelease) = split_version(current);
     let len = a.len().max(b.len());
     for i in 0..len {
         let an = a.get(i).copied().unwrap_or(0);
@@ -59,7 +103,12 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
             return false;
         }
     }
-    false
+    match (a_prerelease, b_prerelease) {
+        (None, Some(_)) => true,
+        (Some(_), None) => false,
+        (Some(a), Some(b)) => compare_prerelease(&a, &b) == Ordering::Greater,
+        (None, None) => false,
+    }
 }
 
 pub fn handle(payload: Value) -> Result<Value, String> {

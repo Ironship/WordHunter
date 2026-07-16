@@ -1,0 +1,6 @@
+Test prerelease. Back up your data before installing.
+
+- Added automatic translation after Reader word swipes.
+- Added a draggable collapsed or expanded Pocket word panel.
+- Added smoother layered card drag and transition animations.
+- Improved gesture release, reduced motion, and accessibility behavior.

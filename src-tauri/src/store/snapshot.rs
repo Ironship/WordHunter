@@ -111,6 +111,42 @@ impl Store {
         self.snapshot_unlocked()
     }
 
+    pub fn snapshot_unacknowledged(&self) -> Value {
+        let _guard = match self.lock_writes() {
+            Ok(guard) => guard,
+            Err(error) => return add_snapshot_error(empty_snapshot(self.dir()), error),
+        };
+        if let Err(error) = self.recover_pending_save() {
+            return add_snapshot_error(empty_snapshot(self.dir()), format!("recovery: {error}"));
+        }
+        let dir = self.dir();
+        let mut snapshot = match record_files::load_records(&dir) {
+            Ok(records) if records.is_empty() => empty_snapshot(dir.clone()),
+            Ok(records) => snapshot_payload(&dir, &records),
+            Err(error) => {
+                add_snapshot_error(empty_snapshot(dir.clone()), format!("records: {error}"))
+            }
+        };
+        add_sync_dir_to_snapshot(&mut snapshot);
+        add_sync_status_to_snapshot(&mut snapshot, &dir);
+        add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
+        snapshot
+    }
+
+    pub fn acknowledge_frontend_snapshot(&self, payload: &Value) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        validate_snapshot_payload_schema(payload)?;
+        let previous = self.base_records.lock().unwrap().clone();
+        let now = record_files::now_millis();
+        let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
+        self.hydrate_text_records(&mut incoming)?;
+        let incoming_fingerprints = record_files::fingerprints(&incoming);
+        let current = record_files::load_records(&self.dir())?;
+        *self.base_records.lock().unwrap() =
+            acknowledged_frontend_base(&previous, &incoming_fingerprints, &current);
+        Ok(())
+    }
+
     pub(crate) fn snapshot_unlocked(&self) -> Value {
         let mut snapshot = match self.records_snapshot() {
             Ok(snapshot) => snapshot,
@@ -170,11 +206,6 @@ impl Store {
         Ok(())
     }
 
-    #[cfg(not(target_os = "android"))]
-    pub(crate) fn seed_or_refresh_records(&self) -> Result<(), String> {
-        self.records_snapshot().map(|_| ())
-    }
-
     pub fn sync_with_directory(&self, sync_dir: PathBuf) -> Result<Value, String> {
         self.sync_with_directory_inner(sync_dir)
     }
@@ -187,7 +218,6 @@ impl Store {
         let local_dir = self.dir();
         record_files::prune_sync_folder_private_records(&sync_dir)?;
         self.write_sync_journal(&sync_dir, "start")?;
-        self.records_snapshot()?;
         self.write_sync_journal(&sync_dir, "snapshotted-local")?;
         let now = record_files::now_millis();
         record_files::ingest_syncthing_conflict_copies(&sync_dir, self.device_id())?;
@@ -219,7 +249,6 @@ impl Store {
         record_files::write_records(&sync_dir, &applied_sync_records)?;
         record_files::prune_sync_folder_private_records(&sync_dir)?;
         self.write_sync_journal(&sync_dir, "verified-records")?;
-        *self.base_records.lock().unwrap() = record_files::fingerprints(&applied_records);
         let mut snapshot = snapshot_payload(&local_dir, &applied_records);
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &local_dir);
@@ -262,7 +291,6 @@ impl Store {
             record_files::now_millis(),
         )?;
         let records = record_files::load_records(&dir)?;
-        *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
         let mut snapshot = snapshot_payload(&dir, &records);
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &dir);
@@ -859,16 +887,22 @@ mod tests {
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
 
         pc_store.bulk_save(profile_payload("wort", "pc")).unwrap();
         phone_store
             .bulk_save(profile_payload("wort", "phone"))
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
@@ -1257,6 +1291,64 @@ mod tests {
     }
 
     #[test]
+    fn save_from_an_unacknowledged_frontend_keeps_records_imported_by_sync() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        store
+            .bulk_save(profile_payload("lokal", "before-sync"))
+            .unwrap();
+
+        let remote_payload = profile_payload("fern", "remote");
+        let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
+        record_files::write_records(remote.path(), &remote_records).unwrap();
+        store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        let _ = store.snapshot_unacknowledged();
+
+        store
+            .bulk_save(profile_payload("lokal", "after-sync"))
+            .unwrap();
+        let snapshot = store.snapshot();
+
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["lokal"]["translation"],
+            "after-sync"
+        );
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["fern"]["translation"],
+            "remote"
+        );
+    }
+
+    #[test]
+    fn acknowledged_sync_snapshot_becomes_the_frontend_merge_base() {
+        let local = tempfile::tempdir().unwrap();
+        let remote = tempfile::tempdir().unwrap();
+        let store = store_at(&local);
+        store.bulk_save(profile_payload("lokal", "local")).unwrap();
+
+        let remote_payload = profile_payload("fern", "remote");
+        let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
+        record_files::write_records(remote.path(), &remote_records).unwrap();
+        let mut snapshot = store
+            .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        store.acknowledge_frontend_snapshot(&snapshot).unwrap();
+        snapshot["vocab"]["de"]["vocab"]["fern"]["translation"] = json!("edited");
+
+        store.bulk_save(snapshot).unwrap();
+        let saved = store.snapshot();
+
+        assert_eq!(
+            saved["vocab"]["de"]["vocab"]["fern"]["translation"],
+            "edited"
+        );
+        assert_eq!(saved["syncConflictCount"].as_u64(), Some(0));
+    }
+
+    #[test]
     fn sync_directory_keeps_preferences_local_and_out_of_sync_folder() {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
@@ -1347,8 +1439,11 @@ mod tests {
         pc_store
             .sync_with_directory(remote.path().to_path_buf())
             .unwrap();
-        phone_store
+        let phone_snapshot = phone_store
             .sync_with_directory(remote.path().to_path_buf())
+            .unwrap();
+        phone_store
+            .acknowledge_frontend_snapshot(&phone_snapshot)
             .unwrap();
 
         phone_store

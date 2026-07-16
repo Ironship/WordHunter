@@ -17,7 +17,12 @@ if [[ ! "$jobs" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js is required to validate the completed Flatpak bundle." >&2
+  echo "Node.js is required to build the frontend and validate the completed Flatpak bundle." >&2
+  exit 1
+fi
+
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm is required to restore and build the frontend." >&2
   exit 1
 fi
 
@@ -56,6 +61,11 @@ else
   echo "Install the host flatpak-builder package or the org.flatpak.Builder Flatpak, then rerun this script." >&2
   exit 1
 fi
+
+if [[ ! -f node_modules/typescript/bin/tsc ]]; then
+  npm ci --ignore-scripts --no-audit --no-fund
+fi
+npm run build:frontend
 
 mkdir -p "$(dirname "$bundle")" "$repo_dir"
 install_kde_gtk_theme

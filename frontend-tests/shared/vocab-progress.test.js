@@ -11,7 +11,7 @@ const {
   formatVocabProgressDate,
   getCefrThresholds,
   getCurrentLevel
-} = await import("../../src/web/js/graphs/charts.js");
+} = await import("../../dist/web/js/graphs/charts.js");
 
 describe("vocabulary CEFR progress", () => {
   it("uses language-specific thresholds", () => {

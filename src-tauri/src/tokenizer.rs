@@ -16,7 +16,7 @@ const STRIP_PUNCTUATION: &str =
     "\u{201e}\u{201c}\u{201d}\"\u{2018}\u{2019}.,!?;:()[]{}<>\u{00ab}\u{00bb}";
 
 static CLASSIC_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"[\p{L}\p{N}]+(?:[-'][\p{L}\p{N}]+)*").expect("classic word pattern compiles")
+    Regex::new(r"[\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*").expect("classic word pattern compiles")
 });
 
 static IMAGE_PATTERN: LazyLock<Regex> =
@@ -179,9 +179,32 @@ pub fn normalize_word(value: &str) -> String {
     let stripped: String = value
         .to_lowercase()
         .chars()
+        .map(|c| if c == '’' { '\'' } else { c })
         .filter(|c| !STRIP_PUNCTUATION.contains(*c))
         .collect();
     stripped.trim().to_string()
+}
+
+pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
+    let language = lang.split(['-', '_']).next().unwrap_or("").to_lowercase();
+    let prefixes: &[(&str, &str)] = match language.as_str() {
+        "fr" => &[("l'", "l’")],
+        "it" => &[("un'", "un’"), ("l'", "l’")],
+        _ => &[],
+    };
+    let lowered = value.to_lowercase();
+    for &(straight, curly) in prefixes {
+        let remainder = lowered
+            .strip_prefix(straight)
+            .or_else(|| lowered.strip_prefix(curly));
+        if let Some(remainder) = remainder {
+            let word = normalize_word(remainder);
+            if !word.is_empty() {
+                return word;
+            }
+        }
+    }
+    normalize_word(value)
 }
 
 pub fn normalize_search_variants(value: &str) -> Vec<String> {
@@ -229,7 +252,7 @@ pub fn clean_gutenberg_text(raw: &str) -> String {
 pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>) -> Value {
     let mut words = std::collections::HashMap::new();
     for_each_word(text, lang, algorithm, |word| {
-        let normalized = normalize_word(word);
+        let normalized = vocabulary_word_key(word, lang);
         if !normalized.is_empty() {
             *words.entry(normalized).or_insert(0usize) += 1;
         }
@@ -241,9 +264,23 @@ pub fn text_stats(text: &str, vocab: &Value, lang: &str, algorithm: Option<&str>
     stats.insert("ignored".to_string(), json!(0));
     stats.insert("new".to_string(), json!(0));
     let vocab_obj = vocab.as_object();
+    let mut canonical_vocab = std::collections::HashMap::new();
+    if let Some(vocab_obj) = vocab_obj {
+        for (word, entry) in vocab_obj {
+            canonical_vocab
+                .entry(vocabulary_word_key(word, lang))
+                .or_insert(entry);
+        }
+        for (word, entry) in vocab_obj {
+            let canonical = vocabulary_word_key(word, lang);
+            if normalize_word(word) == canonical {
+                canonical_vocab.insert(canonical, entry);
+            }
+        }
+    }
     for (word, freq) in &words {
-        let status = vocab_obj
-            .and_then(|v| v.get(word))
+        let status = canonical_vocab
+            .get(word)
             .and_then(|entry| entry.get("status"))
             .and_then(Value::as_str)
             .unwrap_or("new");

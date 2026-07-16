@@ -129,6 +129,40 @@ fn handle_classic_keeps_hyphenated_words() {
 }
 
 #[test]
+fn handle_canonicalizes_attached_articles_and_legacy_vocab_keys() {
+    let canonical = vocab_index::handle(json!({
+        "text": "L'homme l’homme",
+        "vocab": { "homme": { "status": "known" } },
+        "lang": "fr",
+        "algorithm": "classic"
+    }))
+    .expect("canonical index");
+    assert_eq!(canonical["unique"], 1);
+    assert_eq!(canonical["known"], 2);
+    assert_eq!(canonical["words"], json!(["homme"]));
+
+    let modern = vocab_index::handle(json!({
+        "text": "L’homme",
+        "vocab": { "homme": { "status": "known" } },
+        "lang": "fr",
+        "algorithm": "modern"
+    }))
+    .expect("modern canonical index");
+    assert_eq!(modern["known"], 1);
+    assert_eq!(modern["words"], json!(["homme"]));
+
+    let legacy = vocab_index::handle(json!({
+        "text": "L’homme",
+        "vocab": { "l’homme": { "status": "learning" } },
+        "lang": "fr",
+        "algorithm": "classic"
+    }))
+    .expect("legacy index");
+    assert_eq!(legacy["learning"], 1);
+    assert_eq!(legacy["words"], json!(["homme"]));
+}
+
+#[test]
 fn handle_handles_empty_text() {
     let payload = json!({
         "text": "",

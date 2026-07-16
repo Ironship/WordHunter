@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-const { STATE_SCHEMA_VERSION } = await import("../../src/web/js/constants.js");
-const { getCachedTextStats, getCachedUniqueWordCount } = await import("../../src/web/js/stats-cache.js");
-const { computeSignature, invalidateBookId, requestVocabIndex, VOCAB_INDEX_CACHE_VERSION } = await import("../../src/web/js/vocab-index-client.js");
-const { getTextStats } = await import("../../src/web/js/tokenizer_v2.js");
+const { STATE_SCHEMA_VERSION } = await import("../../dist/web/js/constants.js");
+const { getCachedTextStats, getCachedUniqueWordCount } = await import("../../dist/web/js/stats-cache.js");
+const { computeSignature, invalidateBookId, requestVocabIndex, VOCAB_INDEX_CACHE_VERSION } = await import("../../dist/web/js/vocab-index-client.js");
+const { getTextStats } = await import("../../dist/web/js/tokenizer_v2.js");
 
 describe("cached unique word count", () => {
   it("reads the count without starting another vocabulary lookup", async () => {

@@ -15,9 +15,11 @@ const {
   nextTheme,
   normalizeTheme,
   resolveTheme
-} = await import("../../src/web/js/theme.js");
-const { normalizeState } = await import("../../src/web/js/state/normalize.js");
-const { themeIcon } = await import("../../src/web/js/icons.js");
+} = await import("../../dist/web/js/theme.js");
+const { loadState, normalizeState } = await import("../../dist/web/js/state/normalize.js");
+const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
+const { STATE_SCHEMA_VERSION } = await import("../../dist/web/js/constants.js");
+const { themeIcon } = await import("../../dist/web/js/icons.js");
 
 function themeBlock(styles, selector) {
   const start = styles.indexOf(`${selector} {`);
@@ -98,14 +100,41 @@ describe("named themes", () => {
     assert.equal(root.style.colorScheme, "light");
   });
 
+  it("keeps Familiar themes dark on desktop while Pocket follows the system", () => {
+    const root = { dataset: { platform: "desktop" }, style: { setProperty(name, value) { this[name] = value; } } };
+    assert.equal(applyTheme("familiar", root, false).mode, "dark");
+    assert.equal(root.dataset.theme, "dark");
+    assert.equal(root.style.colorScheme, "dark");
+    assert.equal(meta.content, "#00395d");
+
+    root.dataset.platform = "android";
+    assert.equal(applyTheme("alternative-familiar", root, false).mode, "light");
+    assert.equal(root.dataset.theme, "light");
+    assert.equal(meta.content, "#5e2750");
+  });
+
   it("uses named dark browser chrome colors", () => {
     assert.equal(resolveTheme("familiar", true).color, "#00395d");
     assert.equal(resolveTheme("alternative-familiar", true).color, "#2c001e");
+    assert.equal(resolveTheme("classic-light", true).color, "#f7f9f6");
   });
 
   it("migrates the legacy darkMode preference through full state normalization", () => {
     assert.equal(normalizeState({ preferences: { darkMode: true } }).preferences.theme, "classic-dark");
     assert.equal(normalizeState({ preferences: { darkMode: false } }).preferences.theme, "classic-light");
+  });
+
+  it("migrates the legacy darkMode preference from a bridge snapshot before adding defaults", () => {
+    window.__qtBridge = true;
+    window.__bridgeState = { schemaVersion: STATE_SCHEMA_VERSION, prefs: { darkMode: false }, vocab: {} };
+    try {
+      assert.equal(loadState().preferences.theme, "classic-light");
+      window.__bridgeState.prefs.darkMode = true;
+      assert.equal(loadState().preferences.theme, "classic-dark");
+    } finally {
+      delete window.__qtBridge;
+      delete window.__bridgeState;
+    }
   });
 
   it("keeps theme global instead of restoring a per-language value", () => {
@@ -122,10 +151,12 @@ describe("named themes", () => {
       profiles: { pl: { preferences: { theme: "alternative-familiar" } } }
     });
     assert.equal(polish.preferences.theme, "classic-light");
+    assert.equal(Object.hasOwn(createDefaultState().profiles.de.preferences, "theme"), false);
+    assert.equal(Object.hasOwn(normalized.profiles.pl.preferences, "theme"), false);
   });
 
   it("defines complete, contrasting light and dark named palettes", () => {
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
     const selectors = [
       ':root[data-color-theme="familiar"]',
       ':root[data-color-theme="alternative-familiar"]',
@@ -146,8 +177,13 @@ describe("named themes", () => {
   });
 
   it("wires the Settings selector to all themes and themed control colors", () => {
-    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
-    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    assert.match(html, /<link rel="stylesheet" href="theme\.css[^>]*>/);
+    assert.match(html, /<link rel="stylesheet" href="styles\.css[^>]*>/);
+    assert.match(html, /<link rel="stylesheet" href="platforms\/android-pocket\.css[^>]*>/);
+    assert.ok(html.indexOf("theme.css") < html.indexOf("styles.css"));
+    assert.ok(html.indexOf("styles.css") < html.indexOf("platforms/android-pocket.css"));
     assert.match(html, /id="pref-theme" data-pref="theme"/);
     for (const theme of ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"]) {
       assert.match(html, new RegExp(`option value="${theme}"`));
@@ -158,5 +194,69 @@ describe("named themes", () => {
     assert.match(styles, /\.reader-zoom-slider input\[type="range"\]::-(?:webkit-slider-thumb|moz-range-thumb)\s*\{[^}]*background:\s*var\(--control-accent\)/s);
     assert.doesNotMatch(styles, /\.primary-button\s*\{[^}]*(?:background|border-color):\s*var\(--green\)/s);
     assert.match(html, /id="theme-toggle"[^>]*>[\s\S]*?<svg class="theme-toggle-icon"/);
+    assert.doesNotMatch(html, /var\(--(?:text-color-muted|gray-soft)\)/);
+  });
+
+  it("uses distinct themed surfaces for light desktop layouts", () => {
+    const themeStyles = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
+    const componentStyles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const backgrounds = [];
+    const panels = [];
+    for (const selector of [':root', ':root[data-color-theme="familiar"]', ':root[data-color-theme="alternative-familiar"]']) {
+      const block = themeBlock(themeStyles, selector);
+      const background = token(block, "--desktop-bg");
+      const panel = token(block, "--desktop-panel");
+      const ink = token(block, "--ink");
+      backgrounds.push(background);
+      panels.push(panel);
+      assert.notEqual(background, "#ffffff", `${selector} desktop background must be themed`);
+      assert.notEqual(panel, "#ffffff", `${selector} desktop panel must be themed`);
+      assert.ok(contrast(ink, background) >= 4.5, `${selector} desktop background contrast`);
+      assert.ok(contrast(ink, panel) >= 4.5, `${selector} desktop panel contrast`);
+    }
+    assert.equal(new Set(backgrounds).size, backgrounds.length, "desktop theme backgrounds must differ");
+    assert.equal(new Set(panels).size, panels.length, "desktop theme panels must differ");
+    const desktop = themeBlock(componentStyles, ':root:not(.pocket-mode)[data-theme="light"]');
+    assert.match(desktop, /--bg:\s*var\(--desktop-bg\)/);
+    assert.match(desktop, /--panel:\s*var\(--desktop-panel\)/);
+  });
+
+  it("keeps theme-sensitive component overrides visible and palette-driven", () => {
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const pocket = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const charts = readFileSync(new URL("../../dist/web/js/graphs/charts.js", import.meta.url), "utf8");
+    const helpers = readFileSync(new URL("../../dist/web/js/graphs/helpers.js", import.meta.url), "utf8");
+    assert.match(styles, /\.nav-item\.active:not\(\.nav-item-locked\)[^}]*var\(--sidebar-active-accent\)/s);
+    assert.match(styles, /\.book-card\.archived\s*\{[^}]*border-style:\s*dashed/s);
+    assert.doesNotMatch(themeBlock(styles, ".book-card.archived"), /opacity/);
+    assert.match(pocket, /#reader-highlight-toggle\[aria-pressed="true"\][^}]*background:\s*var\(--sidebar-nav-active\)/s);
+    assert.match(helpers, /labelMuted\s*=\s*muted/);
+    assert.doesNotMatch(charts, /rgba\(79,\s*179,\s*142/);
+    assert.doesNotMatch(charts, /rgba\(255,\s*255,\s*255,\s*0\.6\)/);
+  });
+
+  it("propagates named themes to the offline translator with contrasting button ink", () => {
+    const sharedEvents = readFileSync(new URL("../../dist/web/js/events/shared.js", import.meta.url), "utf8");
+    const youglish = readFileSync(new URL("../../dist/web/js/youglish.js", import.meta.url), "utf8");
+    const popup = readFileSync(new URL("../../dist/web/templates/translator-popup.html", import.meta.url), "utf8");
+    const popupRuntime = readFileSync(new URL("../../dist/web/translator-popup.js", import.meta.url), "utf8");
+    assert.match(sharedEvents, /family=\$\{theme\.family\}/);
+    assert.match(sharedEvents, /document\.documentElement\.dataset\.theme === "dark"/);
+    assert.match(youglish, /youglishWidgetTheme === theme/);
+    assert.match(youglish, /replaceChildren\(\)/);
+    assert.match(youglish, /export function refreshYouGlishTheme/);
+    assert.match(youglish, /youglishLastRequest = \{ word, language: ygLang \}/);
+    assert.match(youglish, /youglishWidget\.fetch\(youglishLastRequest\.word, youglishLastRequest\.language\)/);
+    assert.match(popup, /data-color-theme="\{\{color_theme\}\}"/);
+    assert.match(popup, /<link rel="stylesheet" href="\/theme\.css[^>]*>/);
+    assert.ok(popup.indexOf("/theme.css") < popup.indexOf("<style>"));
+    assert.doesNotMatch(popup, /--(?:bg|panel|panel-strong|ink|muted|line|shadow):\s*#/);
+    assert.match(popup, /--popup-accent:\s*#297a5b/);
+    assert.match(popup, /<script type="module" src="\/translator-popup\.js"><\/script>/);
+    assert.match(popupRuntime, /dataset\.theme\s*!==\s*"auto"/);
+    assert.match(popupRuntime, /media\.addListener\(apply\)/);
+    assert.match(popup, /\.primary-button[^}]*color:\s*var\(--popup-accent-ink\)/s);
+    assert.match(popup, /box-shadow:[^;]*rgba\([^;]+;\s*box-shadow:[^;]*color-mix/s);
+    assert.doesNotMatch(popup, /\.engine-info[^}]*opacity:/s);
   });
 });

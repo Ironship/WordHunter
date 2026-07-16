@@ -1,9 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { cleanCatalogTitle } from "../../src/web/js/utils.js";
-import { createDefaultState } from "../../src/web/js/state/defaults.js";
-import { normalizeState } from "../../src/web/js/state/normalize.js";
+import { cleanCatalogTitle } from "../../dist/web/js/utils.js";
+import { createDefaultState } from "../../dist/web/js/state/defaults.js";
+import { normalizeState } from "../../dist/web/js/state/normalize.js";
 
 describe("catalog title cleanup", () => {
   it("strips MARC subfield markers from Gutenberg titles", () => {

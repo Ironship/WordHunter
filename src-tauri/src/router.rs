@@ -9,7 +9,7 @@ use crate::{
     youtube_captions,
 };
 
-pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../src/web");
+pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
 
 macro_rules! read_json_or_400 {
     ($request:ident) => {
@@ -147,7 +147,15 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
 
     match (method, path.as_str()) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
-        (Method::Get, "/__store/load") => response::json_response(request, state.store.snapshot()),
+        (Method::Get, "/__store/load") => {
+            let snapshot =
+                if response::parse_query(&query).get("ack").map(String::as_str) == Some("0") {
+                    state.store.snapshot_unacknowledged()
+                } else {
+                    state.store.snapshot()
+                };
+            response::json_response(request, snapshot)
+        }
         (Method::Get, "/__store/data_dir") => {
             response::json_response(request, json!({ "path": state.store.dir() }))
         }
@@ -226,7 +234,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                         {
                             response::json_response(
                                 request,
-                                json!({ "snapshot": state.store.snapshot() }),
+                                json!({ "snapshot": state.store.snapshot_unacknowledged() }),
                             )
                         } else {
                             response::no_content(request)
@@ -235,10 +243,17 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     Err(error) => response::error_response(request, 500, &error),
                 }
             }
+            "/__store/ack_snapshot" => {
+                let payload = read_json_or_400!(request);
+                match state.store.acknowledge_frontend_snapshot(&payload) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
+            }
             "/__store/choose_data_dir" => match handlers::choose_data_dir(&state) {
                 Ok(Some(path)) => response::json_response(
                     request,
-                    json!({ "path": path, "snapshot": state.store.snapshot() }),
+                    json!({ "path": path, "snapshot": state.store.snapshot_unacknowledged() }),
                 ),
                 Ok(None) => response::json_response(request, json!({ "path": null })),
                 Err(err) => response::error_response(request, 500, &err),
