@@ -83,10 +83,12 @@ GitHub-hosted runner it:
    That disables only D-Bus message mediation on the private test bus; the
    kernel-enforced strict Snap profile remains active for every process.
    The Xvfb-only launch also sets `GDK_DEBUG=nogl` and
-   `WEBKIT_DISABLE_COMPOSITING_MODE=1`, preventing GTK and WebKitGTK from
-   requesting a hardware GL/EGL context that a headless hosted runner cannot
-   provide. These variables are not part of the Snap manifest or normal runtime;
-   installed desktop launches keep their standard graphics acceleration.
+   `WEBKIT_DISABLE_COMPOSITING_MODE=1`, plus
+   `WEBKIT_DISABLE_DMABUF_RENDERER=1`, preventing GTK and WebKitGTK from
+   requesting hardware GL/EGL or DMA-BUF rendering paths that a headless hosted
+   runner cannot provide. These variables are not part of the Snap manifest or
+   normal runtime; installed desktop launches keep their standard graphics
+   acceleration.
 
 No workflow publishes to the Snap Store and no store credentials are read.
 

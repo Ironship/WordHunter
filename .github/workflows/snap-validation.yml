@@ -137,6 +137,7 @@ jobs:
             grep -Fq "<apparmor mode=\"disabled\"/>" "$session_config"
             export GDK_DEBUG=nogl
             export WEBKIT_DISABLE_COMPOSITING_MODE=1
+            export WEBKIT_DISABLE_DMABUF_RENDERER=1
             exec "$SNAP/usr/bin/dbus-run-session" --config-file="$session_config" -- "$SNAP/usr/bin/word-hunter-rustified"' \
             >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
           status=$?
