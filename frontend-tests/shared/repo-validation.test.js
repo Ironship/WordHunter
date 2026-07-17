@@ -205,10 +205,12 @@ describe("repository validation wiring", () => {
     const outputFiles = filesBelow(new URL("../../dist/web/", import.meta.url));
     const buildScript = read("../../scripts/build-frontend.mjs");
     const rustBuild = read("../../src-tauri/build.rs");
+    const sourceModules = sourceFiles.filter((file) => file.pathname.endsWith(".ts"));
+    const outputModules = outputFiles.filter((file) => file.pathname.endsWith(".js"));
 
-    assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".ts")).length, 91);
+    assert.ok(sourceModules.length > 0);
     assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".js")).length, 0);
-    assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".js")).length, 91);
+    assert.equal(outputModules.length, sourceModules.length);
     assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".ts")).length, 0);
     for (const html of [read("../../src/web/index.html"), read("../../src/web/templates/translator-popup.html")]) {
       assert.doesNotMatch(html, /<script>[^]*?<\/script>/i);
