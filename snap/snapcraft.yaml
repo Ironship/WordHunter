@@ -1,5 +1,5 @@
 name: word-hunter
-base: core22
+base: core24
 version: '1.0.6'
 summary: Local-first reader and vocabulary trainer
 description: |
@@ -13,18 +13,12 @@ confinement: strict
 license: AGPL-3.0-or-later
 icon: src/assets/icon-256.png
 
-architectures:
-  - build-on:
+platforms:
+  amd64:
+    build-on:
       - amd64
     build-for:
       - amd64
-
-# Tauri uses WebKitGTK 4.1, while the core22 GNOME extension also carries a
-# WebKitGTK 4.0 layout. Bind the staged 4.1 runtime at the absolute path its
-# subprocesses expect, as recommended by Tauri's Snapcraft guide.
-layout:
-  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
-    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
 
 apps:
   word-hunter:
@@ -57,7 +51,6 @@ parts:
       - dbus
       - gstreamer1.0-plugins-base
       - gstreamer1.0-plugins-good
-      - libwebkit2gtk-4.1-0
       - libxdo3
     override-build: |
       craftctl default

@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build-and-smoke-test:
     name: Build, inspect, and smoke-test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
 
     steps:
@@ -78,10 +78,13 @@ jobs:
           test -f "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           test -f "$root/snap/manifest.yaml"
           test -f "$root/snap/snapcraft.yaml"
+          test -x "$root/snap/command-chain/gpu-2404-wrapper"
+          test -x "$root/snap/command-chain/desktop-launch"
           test -x "$root/usr/lib/Word Hunter/ocr-runtime/bin/wordhunter-paddleocr"
           test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libpdfium.so"
           test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libwebgpu_dawn.so"
-          test -d "$root/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0.0.0"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/dri/swrast_dri.so"
 
           model_count="$(find "$root/usr/lib/Word Hunter/ocr-runtime/models" \
             -maxdepth 1 -type f -name '*.onnx' -print | wc -l)"
@@ -95,7 +98,12 @@ jobs:
             "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
           grep -Eq "^version: ['\"]?1\\.0\\.6['\"]?$" "$root/meta/snap.yaml"
+          grep -Fx 'base: core24' "$root/meta/snap.yaml"
           grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: mesa-2404' "$root/meta/snap.yaml"
+          grep -Fq 'snap/command-chain/gpu-2404-wrapper' "$root/meta/snap.yaml"
+          grep -Fq 'webkit2gtk-4.1' "$root/meta/snap.yaml"
 
           "$root/usr/bin/syncthing" --version | grep -F 'v2.1.0'
           syncthing_home="$RUNNER_TEMP/syncthing-generate"
