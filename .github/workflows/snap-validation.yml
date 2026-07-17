@@ -63,6 +63,7 @@ jobs:
           SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
         run: |
           set -Eeuo pipefail
+          trap 'echo "Snap payload inspection failed at line $LINENO: $BASH_COMMAND" >&2' ERR
           test -f "$SNAP_PATH"
 
           root="$RUNNER_TEMP/word-hunter-snap-root"

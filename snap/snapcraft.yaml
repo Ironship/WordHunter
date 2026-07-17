@@ -33,7 +33,7 @@ apps:
       XDG_DATA_HOME: $SNAP_USER_DATA/.local/share
     plugs:
       # The GNOME extension supplies the standard desktop, graphics, settings,
-      # Wayland/X11, and mount-observe interfaces.
+      # and Wayland/X11 interfaces.
       - browser-support
       - network
       - network-bind
