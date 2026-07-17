@@ -42,6 +42,8 @@ declare global {
     difficulty: number;
     srsAlgorithm: "sm2" | "fsrs";
     nextDate: string;
+    addedAt?: string;
+    learningStartedAt?: string;
     knownAt?: string;
     lastReviewedAt?: string;
     updatedAt?: string;

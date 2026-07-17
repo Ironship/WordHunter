@@ -10,7 +10,6 @@ import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, tog
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
 import { canUseTranslationProvider, translateText } from "./translation-provider.js";
-import { scheduleFirstLearningReview } from "./sm2.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
 import { resolveProfileTranslationPair } from "./translator-preferences.js";
@@ -89,7 +88,6 @@ export function selectWord(
   if (isFresh && state.preferences?.autoLearnOnClick) {
     setEntryStatus(entry, "learning");
     playStatusSound("learning");
-    scheduleFirstLearningReview(entry);
     statusChanged = true;
   }
   saveState();
@@ -152,7 +150,6 @@ export function setWordStatus(word: string, status: string): void {
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   setEntryStatus(entry, status);
   if (previousStatus !== status) playStatusSound(status);
-  if (status === "learning" && previousStatus !== "learning") scheduleFirstLearningReview(entry);
   saveState();
   renderShell();
   updateWordStatusInReader(word, status);
