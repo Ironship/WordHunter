@@ -227,6 +227,19 @@ describe("in-text SRS grading", () => {
     assert.equal(isInTextReviewDue(entry, "2026-06-24"), true);
   });
 
+  it("does not prompt a word added today even when stale data says it is due", () => {
+    const entry = {
+      status: "learning",
+      addedAt: "2026-07-17T08:00:00.000Z",
+      updatedAt: "2026-07-17T10:00:00.000Z",
+      repetition: 0,
+      nextDate: "2026-07-17"
+    };
+
+    assert.equal(isInTextReviewDue(entry, "2026-07-17"), false);
+    assert.equal(isInTextReviewDue(entry, "2026-07-18"), true);
+  });
+
   const expectedEase = new Map([[1, 1.96], [2, 2.18], [3, 2.36], [4, 2.5], [5, 2.6]]);
   for (const quality of expectedEase.keys()) {
     it(`routes grade ${quality} through the existing SRS scheduler`, async () => {

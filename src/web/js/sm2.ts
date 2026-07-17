@@ -6,6 +6,9 @@ type FsrsRating = "again" | "hard" | "good" | "easy";
 
 export interface SrsEntry {
   status?: string;
+  addedAt?: string;
+  updatedAt?: string;
+  learningStartedAt?: string;
   repetition?: number;
   interval?: number;
   efactor?: number;
@@ -165,8 +168,21 @@ export function isDue(nextDate: unknown, today = todayISO()): boolean {
   return String(nextDate) <= today;
 }
 
+function localDateISO(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : todayISO(date);
+}
+
 export function isInTextReviewDue(entry: SrsEntry | null | undefined, today = todayISO()): boolean {
-  return entry?.status === "learning" && isDue(entry.nextDate, today);
+  if (entry?.status !== "learning") return false;
+  const firstLearningDate = localDateISO(entry.learningStartedAt)
+    || localDateISO(entry.addedAt)
+    || (!entry.lastReviewedAt && (Number(entry.repetition) || 0) <= 0
+      ? localDateISO(entry.updatedAt)
+      : "");
+  if (firstLearningDate && firstLearningDate >= today) return false;
+  return isDue(entry.nextDate, today);
 }
 
 /**
