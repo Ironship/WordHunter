@@ -40,6 +40,7 @@ apps:
     plugs:
       # The GNOME extension supplies the standard desktop, graphics, settings,
       # Wayland/X11, and mount-observe interfaces.
+      - browser-support
       - network
       - network-bind
       - audio-playback
@@ -57,15 +58,30 @@ parts:
       - gstreamer1.0-plugins-good
       - libwebkit2gtk-4.1-0
       - libxdo3
-      - syncthing
     override-build: |
       craftctl default
 
       desktop="$CRAFT_PART_INSTALL/usr/share/applications/Word Hunter.desktop"
       canonical_desktop="$CRAFT_PART_INSTALL/usr/share/applications/word-hunter.desktop"
+      appstream="$CRAFT_PART_INSTALL/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
       test -f "$desktop"
+      test -f "$appstream"
       mv "$desktop" "$canonical_desktop"
       sed -i \
         -e 's|^Exec=.*$|Exec=word-hunter|' \
         -e 's|^Icon=.*$|Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png|' \
         "$canonical_desktop"
+      sed -i \
+        -e 's|<launchable type="desktop-id">[^<]*</launchable>|<launchable type="desktop-id">word-hunter.desktop</launchable>|' \
+        "$appstream"
+
+  syncthing:
+    plugin: nil
+    source: https://github.com/syncthing/syncthing/releases/download/v2.1.0/syncthing-linux-amd64-v2.1.0.tar.gz
+    source-type: tar
+    source-checksum: sha256/624c2f3303c9ed7d6f27a98ad9767ab95a7b5e453c3c5e17ce8a60f166e47011
+    override-build: |
+      syncthing="$(find "$CRAFT_PART_BUILD" -maxdepth 2 -type f -name syncthing -print -quit)"
+      test -n "$syncthing"
+      test -x "$syncthing"
+      install -Dm755 "$syncthing" "$CRAFT_PART_INSTALL/usr/bin/syncthing"

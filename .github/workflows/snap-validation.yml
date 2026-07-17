@@ -90,11 +90,16 @@ jobs:
             "$root/usr/share/applications/word-hunter.desktop"
           grep -Fx 'Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png' \
             "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
+            "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
           grep -Eq "^version: ['\"]?1\\.0\\.6['\"]?$" "$root/meta/snap.yaml"
           grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
 
-          "$root/usr/bin/syncthing" --version
+          "$root/usr/bin/syncthing" --version | grep -F 'v2.1.0'
+          syncthing_home="$RUNNER_TEMP/syncthing-generate"
+          "$root/usr/bin/syncthing" generate --home "$syncthing_home"
+          test -f "$syncthing_home/config.xml"
 
       - name: Smoke-test strict Snap
         env:
@@ -104,6 +109,8 @@ jobs:
           sudo snap install --dangerous "$SNAP_PATH"
           snap list word-hunter
           snap connections word-hunter
+          snap run --shell word-hunter -c \
+            '"$SNAP/usr/bin/syncthing" generate --home "$SNAP_USER_DATA/syncthing-ci" && test -f "$SNAP_USER_DATA/syncthing-ci/config.xml"'
 
           set +e
           dbus-run-session -- xvfb-run -a \

@@ -23,6 +23,7 @@ the interfaces required by its own features:
 - `network` for online dictionaries, model downloads, and Syncthing peers;
 - `network-bind` for Word Hunter's local server and the embedded Syncthing
   process;
+- `browser-support` for the sandboxed WebKitGTK web content used by Tauri;
 - `audio-playback` for text-to-speech and media playback;
 - `home` for books, subtitles, exports, and user-selected sync folders under
   the non-hidden part of the home directory;
@@ -35,9 +36,12 @@ the interfaces required by its own features:
 sudo snap connect word-hunter:removable-media
 ```
 
-The public Debian package expects distro-provided WebKitGTK 4.1, GStreamer,
-libxdo, and Syncthing. These are staged into the Snap from the core22 archive.
-`WORDHUNTER_SYNCTHING` points Word Hunter at the staged
+The public Debian package expects distro-provided WebKitGTK 4.1, GStreamer, and
+libxdo. These are staged into the Snap from the core22 archive. The core22
+Syncthing package is too old for the `generate --home` command used by Word
+Hunter, so the recipe instead downloads the same upstream Syncthing 2.1.0
+archive as the validated AppImage and verifies its pinned SHA-256.
+`WORDHUNTER_SYNCTHING` points Word Hunter at that staged
 `$SNAP/usr/bin/syncthing`, so binary discovery does not depend on the host
 `PATH`. The WebKitGTK 4.1 layout follows Tauri's official Snapcraft example.
 
@@ -57,7 +61,8 @@ GitHub-hosted runner it:
    immutable commit, on the Snapcraft `9.x/stable` track;
 2. uploads the resulting `.snap` as a workflow artifact;
 3. unpacks it and checks its metadata, application binary, desktop entry,
-   icons, OCR runtime/models, WebKitGTK runtime, and Syncthing binary;
+   icons, OCR runtime/models, WebKitGTK runtime, Syncthing version, and the
+   Syncthing configuration-generation command used by Word Hunter;
 4. installs it with `--dangerous` only inside the disposable CI runner and
    verifies that the GUI remains alive under Xvfb for the smoke-test window.
 

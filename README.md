@@ -41,6 +41,10 @@ review, so use the GitHub Release downloads until those listings are accepted.
 - **Android - F-Droid (requested):** the
   [inclusion request for `com.wordhunter.pocket`](https://gitlab.com/fdroid/rfp/-/work_items/4109)
   is open; the app is not yet present in `fdroiddata`.
+- **Linux - Homebrew (available):** install from the
+  [official Word Hunter tap](https://github.com/Ironship/homebrew-wordhunter)
+  with `brew install --cask Ironship/wordhunter/wordhunter`. This is the
+  project-maintained tap, not a listing in the central Homebrew Cask repository.
 - **Linux - Flatpak:** download
   [`WordHunter.flatpak`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter.flatpak)
   and run `flatpak install --user ./WordHunter.flatpak`.
@@ -53,6 +57,16 @@ review, so use the GitHub Release downloads until those listings are accepted.
   and install it with `sudo apt install ./word-hunter_1.0.6_amd64.deb`. The DEB
   uses the distribution's `syncthing` package and does not replace
   `/usr/bin/syncthing`.
+- **Linux - AppImageHub (under review):**
+  [submission #3794](https://github.com/AppImage/appimage.github.io/pull/3794)
+  is waiting for maintainer review. Word Hunter is not yet listed in the
+  AppImageHub catalog.
+- **Linux - Snap (package prepared):** the
+  [strict-confinement recipe and CI instructions](packaging/snap/README.md) are
+  tracked in this repository. The package is not published in the Snap Store.
+- **Linux - AUR (package prepared):** the
+  [`wordhunter-bin` recipe and maintainer instructions](packaging/aur/README.md)
+  are tracked in this repository. The package is not published in AUR.
 
 Project website: https://ironship.github.io/WordHunter-site/
 

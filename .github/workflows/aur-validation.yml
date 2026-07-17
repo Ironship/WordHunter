@@ -80,7 +80,14 @@ jobs:
         run: |
           set -euo pipefail
           runuser -u aur-builder -- bash -c \
-            "cd '${AUR_BUILD_DIR}' && namcap PKGBUILD && makepkg --syncdeps --noconfirm --cleanbuild"
+            "set -euo pipefail
+             cd '${AUR_BUILD_DIR}'
+             namcap PKGBUILD | tee namcap-pkgbuild.log
+             if grep -Eq ' E: ' namcap-pkgbuild.log; then
+               echo 'namcap reported a PKGBUILD error.' >&2
+               exit 1
+             fi
+             makepkg --syncdeps --noconfirm --cleanbuild"
 
           mapfile -t packages < <(
             find "${AUR_BUILD_DIR}" -maxdepth 1 -type f \
@@ -91,7 +98,11 @@ jobs:
             exit 1
           fi
           package="${packages[0]}"
-          namcap "${package}"
+          namcap "${package}" | tee "${AUR_BUILD_DIR}/namcap-package.log"
+          if grep -Eq ' E: ' "${AUR_BUILD_DIR}/namcap-package.log"; then
+            echo 'namcap reported a package error.' >&2
+            exit 1
+          fi
           printf 'AUR_PACKAGE=%s\n' "${package}" >> "${GITHUB_ENV}"
 
       - name: Validate package metadata and contents

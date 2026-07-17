@@ -87,6 +87,25 @@ machine. The draft must target the exact commit selected for the workflow run.
 Scheduled runs do not attach or replace assets. Publishing the draft does not
 rebuild the same artifacts a second time.
 
+## Distribution Package Validation
+
+Store-specific recipes have independent GitHub Actions checks so their tools
+and target operating systems stay outside the normal repository gate:
+
+- `.github/workflows/package-store-validation.yml` validates the Chocolatey
+  package lifecycle on a disposable Windows runner;
+- `.github/workflows/snap-validation.yml` builds a strict Snap from the pinned
+  stable DEB, inspects its payload, installs it only on the disposable Ubuntu
+  runner, and performs a GUI smoke test; and
+- `.github/workflows/aur-validation.yml` builds `wordhunter-bin` from the pinned
+  stable AppImage in an Arch Linux container, inspects and installs the package,
+  exercises its bundled tools and GUI, and removes it again.
+
+The Snap and AUR workflows are validation-only. They do not read store
+credentials, reserve package names, publish releases, or claim that Word Hunter
+is available from either catalog. Store publication remains a separate manual,
+account-gated maintainer step.
+
 ## Android Version Code
 
 Android builds derive `versionName` and `versionCode` from
