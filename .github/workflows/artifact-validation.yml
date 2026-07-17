@@ -220,6 +220,7 @@ jobs:
   linux-native:
     name: Linux AppImage and DEB
     needs: frontend-validation
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
     runs-on: ubuntu-22.04
     timeout-minutes: 180
     outputs:
@@ -292,6 +293,7 @@ jobs:
   linux-native-runtime:
     name: Linux native clean-runtime validation
     needs: linux-native
+    if: ${{ !cancelled() && needs.linux-native.result == 'success' }}
     runs-on: ubuntu-22.04
     container: ubuntu:22.04
     timeout-minutes: 45

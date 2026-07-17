@@ -153,6 +153,7 @@ describe("repository validation wiring", () => {
       stepByName(workflow.jobs["linux-native"], "Build frontend, AppImage, and DEB through the release recipe").run,
       /build-linux-native\.sh/,
     );
+    assert.match(workflow.jobs["linux-native"].if, /frontend-validation\.result == 'success'/);
     for (const name of ["android", "windows", "flatpak", "linux-native"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
@@ -162,6 +163,7 @@ describe("repository validation wiring", () => {
     }
     const linuxRuntime = workflow.jobs["linux-native-runtime"];
     assert.equal(linuxRuntime.needs, "linux-native");
+    assert.match(linuxRuntime.if, /linux-native\.result == 'success'/);
     assert.equal(linuxRuntime.container, "ubuntu:22.04");
     assert.equal(
       stepByName(linuxRuntime, "Download validated Linux native packages").with.name,
