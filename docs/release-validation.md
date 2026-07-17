@@ -96,15 +96,22 @@ and target operating systems stay outside the normal repository gate:
   package lifecycle on a disposable Windows runner;
 - `.github/workflows/snap-validation.yml` builds a strict Snap from the pinned
   stable DEB, inspects its payload, installs it only on the disposable Ubuntu
-  runner, and performs a GUI smoke test; and
+  runner, and performs a GUI smoke test;
 - `.github/workflows/aur-validation.yml` builds `wordhunter-bin` from the pinned
   stable AppImage in an Arch Linux container, inspects and installs the package,
-  exercises its bundled tools and GUI, and removes it again.
+  exercises its bundled tools and GUI, and removes it again; and
+- `.github/workflows/nix-validation.yml` builds the pinned AppImage wrapper with
+  an exact `nixpkgs` revision, verifies that the bundled Syncthing executable is
+  replaced by the Nixpkgs package while legal notices remain, validates desktop
+  metadata, and exercises the OCR helper, Syncthing, and GUI on a disposable
+  runner.
 
-The Snap and AUR workflows are validation-only. They do not read store
+The Snap, AUR, and Nix workflows are validation-only. They do not read store
 credentials, reserve package names, publish releases, or claim that Word Hunter
-is available from either catalog. Store publication remains a separate manual,
-account-gated maintainer step.
+is available from those catalogs. Store publication remains a separate manual,
+account-gated maintainer step. A central Nixpkgs submission additionally requires
+the upstream maintainer entry, policy checks, and human review described in the
+packaging instructions.
 
 ## Android Version Code
 

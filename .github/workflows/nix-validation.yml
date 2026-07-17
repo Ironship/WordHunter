@@ -1,0 +1,245 @@
+name: Nix package validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/nix-validation.yml"
+      - "packaging/nix/**"
+  push:
+    branches:
+      - main
+      - "chore/nix-**"
+    paths:
+      - ".github/workflows/nix-validation.yml"
+      - "packaging/nix/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: AppImage wrapper and GUI smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NIXPKGS_COMMIT: 2ed212fb5baa53d54fe7b4d50364ef9ab28c71c7
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Install Nix on the disposable runner
+        uses: cachix/install-nix-action@b4b293eae0b79aac8a161bb32925a5508c9cca93
+        with:
+          nix_path: nixpkgs=https://github.com/NixOS/nixpkgs/archive/2ed212fb5baa53d54fe7b4d50364ef9ab28c71c7.tar.gz
+          enable_kvm: false
+
+      - name: Install desktop validation tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            appstream \
+            dbus-x11 \
+            desktop-file-utils \
+            jq \
+            xvfb
+
+      - name: Evaluate the pinned expression and metadata
+        run: |
+          set -euo pipefail
+          case "${NIX_PATH:-}" in
+            *"${NIXPKGS_COMMIT}"*) ;;
+            *)
+              printf 'NIX_PATH does not contain the pinned nixpkgs revision: %s\n' \
+                "${NIX_PATH:-<unset>}" >&2
+              exit 1
+              ;;
+          esac
+
+          nix-instantiate --parse packaging/nix/package.nix >/dev/null
+          metadata="$({
+            nix-instantiate --eval --strict --json -E '
+              let
+                pkgs = import <nixpkgs> { };
+                package = pkgs.callPackage ./packaging/nix/package.nix { };
+              in
+              {
+                inherit (package) pname version;
+                binaryNativeCode = builtins.elem
+                  pkgs.lib.sourceTypes.binaryNativeCode
+                  package.meta.sourceProvenance;
+                license = package.meta.license.spdxId;
+                mainProgram = package.meta.mainProgram;
+                platformSupported = builtins.elem
+                  builtins.currentSystem
+                  package.meta.platforms;
+                syncthingExecutable = package.syncthingExecutable;
+                systemSyncthing = toString package.systemSyncthing;
+                wrapperProfile = package.wrapperProfile;
+              }
+            '
+          })"
+          printf '%s\n' "${metadata}" | jq .
+          printf '%s\n' "${metadata}" | jq -e '
+            .systemSyncthing as $syncthing |
+            .syncthingExecutable as $syncthingExecutable |
+            .pname == "wordhunter" and
+            .version == "1.0.6" and
+            .binaryNativeCode == true and
+            .license == "AGPL-3.0-or-later" and
+            .mainProgram == "wordhunter" and
+            .platformSupported == true and
+            $syncthingExecutable == ($syncthing + "/bin/syncthing") and
+            (.wrapperProfile | contains($syncthingExecutable))
+          ' >/dev/null
+
+      - name: Build from the pinned nixpkgs revision
+        run: |
+          set -euo pipefail
+          package_expression='
+            let
+              pkgs = import <nixpkgs> { };
+            in
+            pkgs.callPackage ./packaging/nix/package.nix { }
+          '
+          contents_expression='
+            let
+              pkgs = import <nixpkgs> { };
+              package = pkgs.callPackage ./packaging/nix/package.nix { };
+            in
+            package.appimageContents
+          '
+          syncthing_expression='
+            let
+              pkgs = import <nixpkgs> { };
+              package = pkgs.callPackage ./packaging/nix/package.nix { };
+            in
+            package.systemSyncthing
+          '
+
+          package_path="$(nix-build --no-out-link -E "${package_expression}")"
+          contents_path="$(nix-build --no-out-link -E "${contents_expression}")"
+          syncthing_path="$(nix-build --no-out-link -E "${syncthing_expression}")"
+
+          test -d "${package_path}"
+          test -d "${contents_path}"
+          test -d "${syncthing_path}"
+          printf 'NIX_PACKAGE=%s\n' "${package_path}" >> "${GITHUB_ENV}"
+          printf 'NIX_APPIMAGE_CONTENTS=%s\n' "${contents_path}" >> "${GITHUB_ENV}"
+          printf 'NIX_SYNCTHING=%s\n' "${syncthing_path}" >> "${GITHUB_ENV}"
+
+      - name: Verify the modified AppImage and system Syncthing
+        run: |
+          set -euo pipefail
+          test -x "${NIX_APPIMAGE_CONTENTS}/usr/bin/word-hunter-rustified"
+          test ! -e "${NIX_APPIMAGE_CONTENTS}/usr/bin/syncthing"
+          if find "${NIX_APPIMAGE_CONTENTS}" \
+            \( -type f -o -type l \) -name syncthing -print -quit | grep -q .; then
+            echo 'The modified AppImage still contains a bundled Syncthing executable.' >&2
+            exit 1
+          fi
+
+          for notice in SYNCTHING-LICENSE.txt SYNCTHING-AUTHORS.txt; do
+            match="$(
+              find "${NIX_APPIMAGE_CONTENTS}" -type f -name "${notice}" \
+                -print -quit
+            )"
+            test -n "${match}" || {
+              printf 'The extracted AppImage lost legal notice %s.\n' "${notice}" >&2
+              exit 1
+            }
+            printf 'Preserved notice: %s\n' "${match}"
+          done
+
+          ocr_runner="$(
+            find "${NIX_APPIMAGE_CONTENTS}/usr/lib" -type f \
+              -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
+          )"
+          test -n "${ocr_runner}"
+          test -x "${ocr_runner}"
+          for executable in \
+            "${NIX_APPIMAGE_CONTENTS}/usr/bin/word-hunter-rustified" \
+            "${ocr_runner}"; do
+            ldd_output="$(ldd "${executable}" 2>&1 || true)"
+            if grep -Fq 'not found' <<<"${ldd_output}"; then
+              printf 'Unresolved dynamic dependency in %s\n%s\n' \
+                "${executable}" "${ldd_output}" >&2
+              exit 1
+            fi
+          done
+
+          ocr_help="$("${ocr_runner}" --help 2>&1)"
+          printf '%s\n' "${ocr_help}"
+          grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}"
+
+          system_syncthing="${NIX_SYNCTHING}/bin/syncthing"
+          test -x "${system_syncthing}"
+          syncthing_version="$("${system_syncthing}" --version 2>&1)"
+          printf '%s\n' "${syncthing_version}"
+          grep -iqF syncthing <<<"${syncthing_version}"
+          syncthing_home="${RUNNER_TEMP}/wordhunter-nix-syncthing"
+          "${system_syncthing}" generate --home "${syncthing_home}"
+          test -f "${syncthing_home}/config.xml"
+
+          nix-store --query --requisites "${NIX_PACKAGE}" \
+            | grep -Fxq "${NIX_SYNCTHING}"
+
+      - name: Validate installed desktop metadata
+        run: |
+          set -euo pipefail
+          launcher="${NIX_PACKAGE}/bin/wordhunter"
+          desktop="${NIX_PACKAGE}/share/applications/com.wordhunter.app.desktop"
+          metainfo="${NIX_PACKAGE}/share/metainfo/com.wordhunter.app.metainfo.xml"
+
+          test -x "${launcher}"
+          test -f "${desktop}"
+          test -f "${metainfo}"
+          test -f "${NIX_PACKAGE}/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
+          desktop-file-validate "${desktop}"
+          appstreamcli validate --no-net "${metainfo}"
+          grep -Fxq 'Exec=wordhunter' "${desktop}"
+          grep -Fq \
+            '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
+            "${metainfo}"
+          grep -Fq '<binary>wordhunter</binary>' "${metainfo}"
+
+      - name: Start Word Hunter under Xvfb
+        run: |
+          set -euo pipefail
+          home="${RUNNER_TEMP}/wordhunter-nix-home"
+          runtime="${RUNNER_TEMP}/wordhunter-nix-runtime"
+          mkdir -p "${home}" "${runtime}"
+          chmod 700 "${runtime}"
+
+          Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
+            >"${RUNNER_TEMP}/wordhunter-nix-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          cleanup() {
+            kill "${xvfb_pid}" 2>/dev/null || true
+            wait "${xvfb_pid}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for _ in {1..40}; do
+            [[ -S /tmp/.X11-unix/X99 ]] && break
+            sleep 0.25
+          done
+          test -S /tmp/.X11-unix/X99
+
+          set +e
+          timeout --signal=TERM --kill-after=5s 20s \
+            dbus-run-session -- env \
+              DISPLAY=:99 \
+              HOME="${home}" \
+              XDG_CONFIG_HOME="${home}/.config" \
+              XDG_DATA_HOME="${home}/.local/share" \
+              XDG_RUNTIME_DIR="${runtime}" \
+              "${NIX_PACKAGE}/bin/wordhunter"
+          status=$?
+          set -e
+          if [[ "${status}" -ne 124 ]]; then
+            printf 'Word Hunter exited with status %s instead of reaching the smoke-test timeout.\n' \
+              "${status}" >&2
+            exit 1
+          fi

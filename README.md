@@ -67,6 +67,10 @@ review, so use the GitHub Release downloads until those listings are accepted.
 - **Linux - AUR (package prepared):** the
   [`wordhunter-bin` recipe and maintainer instructions](packaging/aur/README.md)
   are tracked in this repository. The package is not published in AUR.
+- **Linux - Nixpkgs (package prepared):** the
+  [pinned AppImage wrapper and validation instructions](packaging/nix/README.md)
+  are tracked in this repository. The package is not yet available from the
+  central `nixpkgs` repository.
 
 Project website: https://ironship.github.io/WordHunter-site/
 
