@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.6" date="2026-07-17">
+      <description>
+        <ul>
+          <li>Keep Reader keyboard focus and playback anchored to the exact word after page and phrase changes.</li>
+          <li>Delay the first in-text review of newly learned words until the following day.</li>
+          <li>Correct Italian interface copy and normalize built-in reader title headers.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.5" date="2026-07-16">
       <description>
         <ul>

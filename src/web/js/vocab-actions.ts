@@ -100,15 +100,20 @@ export function selectWord(
   if (word.includes(" ") && isFresh) {
     import("./reader/renderer.js").then(({ renderReader }) => {
       const scrollY = preserveScroll ? window.scrollY : 0;
-      const readerScrollTop = preserveScroll ? (document.getElementById("reader-text")?.scrollTop || 0) : 0;
+      const readerText = document.getElementById("reader-text");
+      const readerScrollTop = preserveScroll ? (readerText?.scrollTop || 0) : 0;
+      if (readerText) {
+        if (Number.isInteger(state.selectedWordIndex)) readerText.dataset.focusWordIndex = String(state.selectedWordIndex);
+        else delete readerText.dataset.focusWordIndex;
+        readerText.dataset.focusWord = state.selectedWord || "";
+        delete readerText.dataset.focusAfterPageChange;
+      }
       renderReader();
       if (preserveScroll) {
         setTimeout(() => {
           window.scrollTo({ top: scrollY, behavior: "instant" });
           const rt = document.getElementById("reader-text");
           if (rt) rt.scrollTop = readerScrollTop;
-          const tok = document.querySelector(`#reader-text .word-token[data-word="${CSS.escape(state.selectedWord)}"]`);
-          if (tok instanceof HTMLElement) { tok.focus(); window.lastActiveToken = tok; }
         }, 0);
       }
     });

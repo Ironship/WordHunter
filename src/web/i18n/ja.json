@@ -820,8 +820,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>1.0.5 の新機能：A1～B2 レベルのオリジナルレベル別読み物を48冊内蔵し、12の定義済み学習言語ごとに4冊ずつ収録しています。読解と文脈内の語彙だけを目的とする連続した物語であり、完全な語学コースではありません。現代語は CEFR のおおよその読解難度、ラテン語と古代ギリシャ語は CEFR を参考にした読解難度を示します。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.5",
+    "whatsNew": "<strong>1.0.6 の新機能：ページを切り替えると最初の単語にキーボードフォーカスが自動的に移ります。読み上げと複数語の候補は選択した正確な位置を維持し、今日学習を始めた単語は翌日までリーダー内の復習に表示されません。イタリア語の画面文言と内蔵読み物のタイトル見出しも修正しました。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.6",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditSync": "<strong>Syncthing 2.1.0</strong> — デスクトップ版にMPL-2.0の独立したプログラムとして同梱しています。ソース: https://github.com/syncthing/syncthing/tree/v2.1.0",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。"
