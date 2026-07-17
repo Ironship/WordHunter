@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 import { inspectLinuxTree } from "../../scripts/inspect-artifact.mjs";
 
 const linuxConfig = JSON.parse(
-  readFileSync(new URL("../../src-tauri/tauri.linux.conf.json", import.meta.url), "utf8"),
+  readFileSync(new URL("../../src-tauri/tauri.linux-bundle.conf.json", import.meta.url), "utf8"),
 );
 const buildScript = readFileSync(
   new URL("../../scripts/build-linux-native.sh", import.meta.url),

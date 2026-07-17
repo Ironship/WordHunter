@@ -1,4 +1,5 @@
 {
+  "$schema": "./gen/schemas/desktop-schema.json",
   "bundle": {
     "targets": ["appimage", "deb"],
     "publisher": "Ironship <25068602+Ironship@users.noreply.github.com>",

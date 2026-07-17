@@ -45,7 +45,10 @@ EPUB import uses the shared Rust ebook parser on every platform. MOBI/AZW still 
 
 - `src-tauri/tauri.conf.json` is the shared Tauri config.
 - `src-tauri/tauri.windows.conf.json` is Windows-specific.
-- `src-tauri/tauri.linux.conf.json` is Linux-specific.
+- `src-tauri/tauri.linux-bundle.conf.json` is passed explicitly by the Linux
+  package script. Keeping it out of Tauri's automatic platform-config name
+  prevents ordinary Rust tests from requiring package resources that are only
+  staged during AppImage and DEB builds.
 - `src-tauri/tauri.android.conf.json` is Android/Pocket-specific.
 
 ## Tests

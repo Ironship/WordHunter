@@ -298,7 +298,7 @@ CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-2}" \
 CARGO_PROFILE_RELEASE_STRIP=symbols \
 cargo tauri build \
   --bundles appimage,deb \
-  --config "$root/src-tauri/tauri.linux.conf.json"
+  --config "$root/src-tauri/tauri.linux-bundle.conf.json"
 
 single_artifact() {
   local directory="$1"
