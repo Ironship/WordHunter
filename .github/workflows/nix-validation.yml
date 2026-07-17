@@ -212,14 +212,36 @@ jobs:
           mkdir -p "${home}" "${runtime}"
           chmod 700 "${runtime}"
 
+          # Ubuntu 24.04 restricts unprivileged user namespaces with AppArmor,
+          # while appimageTools uses bubblewrap to enter its Nix FHS runtime.
+          # Relax that host-only policy for this smoke test and restore it on
+          # exit; the package itself is not modified.
+          userns_setting=kernel.apparmor_restrict_unprivileged_userns
+          userns_original=""
+          xvfb_pid=""
+          cleanup() {
+            if [[ -n "${xvfb_pid}" ]]; then
+              kill "${xvfb_pid}" 2>/dev/null || true
+              wait "${xvfb_pid}" 2>/dev/null || true
+            fi
+            if [[ -n "${userns_original}" ]]; then
+              sudo sysctl -w "${userns_setting}=${userns_original}" >/dev/null \
+                || true
+            fi
+          }
+          trap cleanup EXIT
+
+          if userns_original="$(sysctl -n "${userns_setting}" 2>/dev/null)"; then
+            if [[ "${userns_original}" != 0 ]]; then
+              sudo sysctl -w "${userns_setting}=0"
+            fi
+          else
+            userns_original=""
+          fi
+
           Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
             >"${RUNNER_TEMP}/wordhunter-nix-xvfb.log" 2>&1 &
           xvfb_pid=$!
-          cleanup() {
-            kill "${xvfb_pid}" 2>/dev/null || true
-            wait "${xvfb_pid}" 2>/dev/null || true
-          }
-          trap cleanup EXIT
           for _ in {1..40}; do
             [[ -S /tmp/.X11-unix/X99 ]] && break
             sleep 0.25

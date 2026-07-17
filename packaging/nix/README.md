@@ -46,7 +46,11 @@ revision used for evaluation and building. The workflow:
    test timeout.
 
 No Nix installation or package build is required on a Word Hunter maintainer's
-workstation for this validation path.
+workstation for this validation path. The Ubuntu 24.04 runner's AppArmor policy
+normally blocks the unprivileged user namespace used by the final Bubblewrap
+launcher. The GUI step temporarily relaxes that host-only setting and restores
+its previous value on exit; the package and its runtime dependencies remain
+unchanged.
 
 ## Conditions for a central nixpkgs pull request
 
