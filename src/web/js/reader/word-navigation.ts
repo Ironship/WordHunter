@@ -18,10 +18,6 @@ export function readerTokens(): ReaderToken[] {
   return Array.from(document.getElementById("reader-text")?.querySelectorAll<ReaderToken>(".word-token") || []);
 }
 
-export function requestReaderPageFocus(readerText = document.getElementById("reader-text")): void {
-  if (readerText) readerText.dataset.focusAfterPageChange = "1";
-}
-
 export function applyPendingReaderPageFocus(readerText = document.getElementById("reader-text")): boolean {
   if (!readerText || readerText.dataset.focusAfterPageChange !== "1") return false;
   delete readerText.dataset.focusAfterPageChange;
