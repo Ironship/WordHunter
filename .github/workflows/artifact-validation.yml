@@ -1,11 +1,6 @@
 name: Release artifact validation
 
 on:
-  # Temporary validation trigger for the Linux native packaging branch. Remove
-  # it before merging the packaging workflow to main.
-  push:
-    branches:
-      - chore/linux-native-packages
   schedule:
     - cron: "23 3 * * *"
   workflow_dispatch:
@@ -77,7 +72,6 @@ jobs:
   android:
     name: Android APK and AAB
     needs: frontend-validation
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: windows-2022
     timeout-minutes: 120
 
@@ -134,7 +128,6 @@ jobs:
   windows:
     name: Windows portable ZIP and NSIS installer
     needs: frontend-validation
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: windows-2022
     timeout-minutes: 180
 
@@ -185,7 +178,6 @@ jobs:
   flatpak:
     name: Flatpak bundle and installed file list
     needs: frontend-validation
-    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 

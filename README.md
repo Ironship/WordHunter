@@ -27,11 +27,11 @@ review, so use the GitHub Release downloads until those listings are accepted.
   [1.0.6 package submission](https://github.com/microsoft/winget-pkgs/pull/401481)
   is waiting for moderator approval. Once accepted, install with
   `winget install --exact --id Ironship.WordHunter`.
-- **Windows - Scoop manifest:** the
-  [maintained manifest](packaging/scoop/wordhunter.json) is checked against the
-  release archive in GitHub Actions. Until the dedicated bucket is published,
-  download that JSON file and install it with
-  `scoop install .\wordhunter.json`.
+- **Windows - Scoop (available):** add the
+  [official Word Hunter bucket](https://github.com/Ironship/scoop-wordhunter)
+  with
+  `scoop bucket add wordhunter https://github.com/Ironship/scoop-wordhunter`,
+  then install with `scoop install wordhunter/wordhunter`.
 - **Windows - Chocolatey (package prepared):** the
   [package source and update instructions](packaging/chocolatey/README.md) are
   tested on a disposable CI runner. The package is not yet listed in the
@@ -44,6 +44,15 @@ review, so use the GitHub Release downloads until those listings are accepted.
 - **Linux - Flatpak:** download
   [`WordHunter.flatpak`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter.flatpak)
   and run `flatpak install --user ./WordHunter.flatpak`.
+- **Linux - AppImage (x86_64):** download
+  [`WordHunter-1.0.6-x86_64.AppImage`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter-1.0.6-x86_64.AppImage),
+  make it executable with `chmod +x WordHunter-1.0.6-x86_64.AppImage`, and run
+  it directly. This package includes its own Syncthing executable.
+- **Linux - Debian package (amd64):** download
+  [`word-hunter_1.0.6_amd64.deb`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/word-hunter_1.0.6_amd64.deb)
+  and install it with `sudo apt install ./word-hunter_1.0.6_amd64.deb`. The DEB
+  uses the distribution's `syncthing` package and does not replace
+  `/usr/bin/syncthing`.
 
 Project website: https://ironship.github.io/WordHunter-site/
 
@@ -76,8 +85,9 @@ Active targets:
 - Windows and Linux desktop: `Word Hunter`
 - Android: `Word Hunter Pocket`
 
-The Windows setup and portable archive, Android APK, and Linux Flatpak are
-published as GitHub Release assets rather than tracked in the source tree.
+Seven validated artifacts are published through GitHub Releases rather than
+tracked in the source tree: Windows setup and portable builds, Android APK and
+AAB, and Linux Flatpak, AppImage, and DEB packages.
 
 Release `1.0.0` marks the new compatibility baseline after breaking storage and
 sync changes. It introduces durable per-record local storage, safer recovery and
@@ -96,7 +106,8 @@ and refreshed packaging and platform validation.
 - Translation and dictionary tools with language-aware handling for modern and
   historical languages.
 - Android Pocket layout for mobile reading, review, and PDF zoom/pan.
-- Linux Flatpak packaging for local installation and release distribution.
+- Linux Flatpak, AppImage, and DEB packaging with clean-runtime validation in
+  GitHub Actions.
 - Optional folder sync for library data, vocabulary, review state, and backups.
 
 ## Supported Learning Languages
@@ -237,9 +248,11 @@ sync.
 ## Sync and Backups
 
 Word Hunter does not require an account or a central server. The app stores data
-locally and can copy changes through a folder chosen by the user. Desktop builds
-bundle Syncthing 2.1.0 as a separate MPL-2.0 executable; Android uses a folder
-shared with a separately installed Syncthing client.
+locally and can copy changes through a folder chosen by the user. Windows,
+Flatpak, and AppImage builds bundle Syncthing 2.1.0 as a separate MPL-2.0
+executable. The Debian package uses the distribution-provided `syncthing`
+dependency and deliberately leaves `/usr/bin/syncthing` untouched. Android
+shares a folder with a separately installed Syncthing client.
 
 - Desktop can use a local data folder and an optional sync folder.
 - Android keeps local data inside the app and lets the user pick a separate sync
@@ -374,10 +387,12 @@ Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
 Android System WebView. Desktop translation and OCR can use CTranslate2,
 SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
 providers. OCR uses DirectML on Windows and WebGPU/Vulkan on Linux, with a safe
-CPU fallback. Desktop sync uses the separately bundled Syncthing executable.
-The Flatpak routes file dialogs through XDG Desktop Portal and can use the
-active GTK theme extension, so KDE sessions receive their portal dialogs and
-the matching Breeze GTK styling when that extension is installed.
+CPU fallback. Windows, Flatpak, and AppImage sync use the separately bundled
+Syncthing executable, while the Debian package uses the distribution-provided
+`syncthing` dependency. The Flatpak routes file dialogs through XDG Desktop
+Portal and can use the active GTK theme extension, so KDE sessions receive
+their portal dialogs and the matching Breeze GTK styling when that extension
+is installed.
 
 Word Hunter data is stored as local record files and JSON snapshots; the current
 application does not use SQLite. The built-in scheduler is Word Hunter's own

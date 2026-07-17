@@ -1,8 +1,16 @@
 # Scoop manifest maintenance
 
 The manifest in this directory installs the official 64-bit Word Hunter
-portable ZIP from GitHub Releases. It is usable as a local manifest while a
-small dedicated Scoop bucket is being prepared.
+portable ZIP from GitHub Releases. The canonical public copy is published in
+the [official Word Hunter Scoop bucket](https://github.com/Ironship/scoop-wordhunter);
+this source copy keeps release validation close to the application version.
+
+Install the public package with:
+
+```powershell
+scoop bucket add wordhunter https://github.com/Ironship/scoop-wordhunter
+scoop install wordhunter/wordhunter
+```
 
 For each stable release:
 
@@ -12,8 +20,8 @@ For each stable release:
    `WordHunter<version>` release-tag convention;
 3. let the package-store GitHub Actions workflow verify Scoop `checkver`, the
    archive checksum, and required files;
-4. after a dedicated bucket exists, use Scoop's `checkver.ps1 -Update` there to
-   generate the version bump and test the resulting manifest on CI.
+4. let the bucket's pinned Excavator workflow update and test its public copy,
+   and review the generated commit before announcing the new package version.
 
 The official Extras request currently cannot be submitted honestly because its
 request form requires the app to be reasonably well-known (for example, at
