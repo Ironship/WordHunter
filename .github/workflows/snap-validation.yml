@@ -71,6 +71,7 @@ jobs:
           unsquashfs -no-progress -d "$root" "$SNAP_PATH"
 
           test -x "$root/usr/bin/word-hunter-rustified"
+          test -x "$root/usr/bin/dbus-run-session"
           test -x "$root/usr/bin/syncthing"
           test -f "$root/usr/share/applications/word-hunter.desktop"
           test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
@@ -113,14 +114,14 @@ jobs:
             '"$SNAP/usr/bin/syncthing" generate --home "$SNAP_USER_DATA/syncthing-ci" && test -f "$SNAP_USER_DATA/syncthing-ci/config.xml"'
 
           set +e
-          # GitHub-hosted runners live in hosted-compute-agent.service, which
-          # snapd cannot re-tag as an application cgroup. --shell still enters
-          # the app's confined environment and runs its command chain, so use
-          # it to exercise the real GUI binary under Xvfb on this runner.
-          dbus-run-session -- xvfb-run -a \
+          # GitHub-hosted runners live in hosted-compute-agent.service. Enter
+          # the confined app environment before creating the private D-Bus
+          # session, otherwise snapd tries to resolve the runner through that
+          # private bus and rejects its host service cgroup.
+          xvfb-run -a \
             timeout --signal=TERM --kill-after=5s 20s \
             snap run --shell word-hunter -c \
-            'exec "$SNAP/usr/bin/word-hunter-rustified"' \
+            'exec "$SNAP/usr/bin/dbus-run-session" -- "$SNAP/usr/bin/word-hunter-rustified"' \
             >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
           status=$?
           set -e

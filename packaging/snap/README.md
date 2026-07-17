@@ -36,11 +36,12 @@ the interfaces required by its own features:
 sudo snap connect word-hunter:removable-media
 ```
 
-The public Debian package expects distro-provided WebKitGTK 4.1, GStreamer, and
-libxdo. These are staged into the Snap from the core22 archive. The core22
-Syncthing package is too old for the `generate --home` command used by Word
-Hunter, so the recipe instead downloads the same upstream Syncthing 2.1.0
-archive as the validated AppImage and verifies its pinned SHA-256.
+The public Debian package expects distro-provided WebKitGTK 4.1, GStreamer,
+libxdo, and D-Bus session tools. These are staged into the Snap from the core22
+archive. The core22 Syncthing package is too old for the `generate --home`
+command used by Word Hunter, so the recipe instead downloads the same upstream
+Syncthing 2.1.0 archive as the validated AppImage and verifies its pinned
+SHA-256.
 `WORDHUNTER_SYNCTHING` points Word Hunter at that staged
 `$SNAP/usr/bin/syncthing`, so binary discovery does not depend on the host
 `PATH`. The WebKitGTK 4.1 layout follows Tauri's official Snapcraft example.
@@ -67,7 +68,8 @@ GitHub-hosted runner it:
    verifies that the GUI remains alive under Xvfb for the smoke-test window.
    GitHub-hosted runners cannot move their agent service into a Snap app cgroup,
    so the GUI is launched through `snap run --shell`, which still enters the
-   app's confined environment and executes its command chain.
+   app's confined environment and executes its command chain. The private D-Bus
+   session is created only after entering that environment.
 
 No workflow publishes to the Snap Store and no store credentials are read.
 
