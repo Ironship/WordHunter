@@ -45,8 +45,7 @@ const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/rea
 const {
   applyPendingReaderPageFocus,
   applyPendingReaderWordFocus,
-  findCurrentReaderToken,
-  requestReaderPageFocus
+  findCurrentReaderToken
 } = await import("../../dist/web/js/reader/word-navigation.js");
 const { handleFlashcardKeys } = await import("../../dist/web/js/events/keyboard/flashcards-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
@@ -216,12 +215,12 @@ describe("keyboard shortcut dispatch", () => {
       querySelector(selector) { return selector === ".word-token" ? first : null; }
     };
 
-    requestReaderPageFocus(readerText);
+    readerText.dataset.focusAfterPageChange = "1";
     assert.equal(applyPendingReaderPageFocus(readerText), true);
     assert.deepEqual(focusCalls, [{ preventScroll: true }]);
     assert.equal(window.lastActiveToken, first);
     assert.equal(readerText.dataset.focusAfterPageChange, undefined);
-    assert.equal(state.selectedWord, null);
+    assert.equal(state.selectedWord, "wort");
   });
 
   it("restores focus to the exact repeated Reader occurrence after rendering", () => {
@@ -300,5 +299,6 @@ describe("keyboard shortcut documentation", () => {
     assert.doesNotMatch(reader, /event\.key === "5"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.prevPageTitle"\)\)\}"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.nextPageTitle"\)\)\}"/);
+    assert.match(pagination, /readerText\.dataset\.focusAfterPageChange = "1"/);
   });
 });
