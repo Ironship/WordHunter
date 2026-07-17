@@ -86,8 +86,11 @@ describe("built-in starter catalog", () => {
 
       const text = readFileSync(new URL(`../../dist/web/${course.localPath}`, import.meta.url), "utf8");
       const cover = readFileSync(new URL(`../../dist/web/${course.coverPath}`, import.meta.url), "utf8");
+      const openingLines = text.split(/\r?\n/).slice(0, 5);
 
       assert.ok(text.length >= 12_000, `${course.lang} ${course.level} course is unexpectedly short`);
+      assert.equal(openingLines[0], course.title, `${course.lang} ${course.level} course must start with its catalog title`);
+      assert.ok(openingLines.includes("Word Hunter Originals"), `${course.lang} ${course.level} course must put its attribution after the title`);
       assert.match(cover, /^<svg\b/);
       assert.match(cover, /<title\b/);
       assert.match(cover, /<desc\b/);

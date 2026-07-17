@@ -10,7 +10,6 @@ import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, tog
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
 import { canUseTranslationProvider, translateText } from "./translation-provider.js";
-import { scheduleFirstLearningReview } from "./sm2.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
 import { resolveProfileTranslationPair } from "./translator-preferences.js";
@@ -89,7 +88,6 @@ export function selectWord(
   if (isFresh && state.preferences?.autoLearnOnClick) {
     setEntryStatus(entry, "learning");
     playStatusSound("learning");
-    scheduleFirstLearningReview(entry);
     statusChanged = true;
   }
   saveState();
@@ -102,15 +100,20 @@ export function selectWord(
   if (word.includes(" ") && isFresh) {
     import("./reader/renderer.js").then(({ renderReader }) => {
       const scrollY = preserveScroll ? window.scrollY : 0;
-      const readerScrollTop = preserveScroll ? (document.getElementById("reader-text")?.scrollTop || 0) : 0;
+      const readerText = document.getElementById("reader-text");
+      const readerScrollTop = preserveScroll ? (readerText?.scrollTop || 0) : 0;
+      if (readerText) {
+        if (Number.isInteger(state.selectedWordIndex)) readerText.dataset.focusWordIndex = String(state.selectedWordIndex);
+        else delete readerText.dataset.focusWordIndex;
+        readerText.dataset.focusWord = state.selectedWord || "";
+        delete readerText.dataset.focusAfterPageChange;
+      }
       renderReader();
       if (preserveScroll) {
         setTimeout(() => {
           window.scrollTo({ top: scrollY, behavior: "instant" });
           const rt = document.getElementById("reader-text");
           if (rt) rt.scrollTop = readerScrollTop;
-          const tok = document.querySelector(`#reader-text .word-token[data-word="${CSS.escape(state.selectedWord)}"]`);
-          if (tok instanceof HTMLElement) { tok.focus(); window.lastActiveToken = tok; }
         }, 0);
       }
     });
@@ -152,7 +155,6 @@ export function setWordStatus(word: string, status: string): void {
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   setEntryStatus(entry, status);
   if (previousStatus !== status) playStatusSound(status);
-  if (status === "learning" && previousStatus !== "learning") scheduleFirstLearningReview(entry);
   saveState();
   renderShell();
   updateWordStatusInReader(word, status);

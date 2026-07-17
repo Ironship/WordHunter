@@ -43,6 +43,7 @@ const { handleGlobalKeydown } = await import("../../dist/web/js/events/navigatio
 const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
 const { findCurrentReaderToken } = await import("../../dist/web/js/reader/word-navigation.js");
+const { applyPendingReaderPageFocus, applyPendingReaderWordFocus } = await import("../../dist/web/js/reader/focus.js");
 const { handleFlashcardKeys } = await import("../../dist/web/js/events/keyboard/flashcards-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
 Object.assign(els, {
@@ -199,6 +200,49 @@ describe("keyboard shortcut dispatch", () => {
     assert.doesNotMatch(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
   });
 
+  it("focuses the first Reader token after a page change without selecting it", () => {
+    resetState("reader");
+    const focusCalls = [];
+    const first = {
+      dataset: { word: "first", wordIndex: "40" },
+      focus(options) { focusCalls.push(options); }
+    };
+    const readerText = {
+      dataset: {},
+      querySelector(selector) { return selector === ".word-token" ? first : null; }
+    };
+
+    readerText.dataset.focusAfterPageChange = "1";
+    assert.equal(applyPendingReaderPageFocus(readerText), true);
+    assert.deepEqual(focusCalls, [{ preventScroll: true }]);
+    assert.equal(window.lastActiveToken, first);
+    assert.equal(readerText.dataset.focusAfterPageChange, undefined);
+    assert.equal(state.selectedWord, "wort");
+  });
+
+  it("restores focus to the exact repeated Reader occurrence after rendering", () => {
+    const focusCalls = [];
+    const exact = {
+      dataset: { word: "target phrase", wordIndex: "17" },
+      focus(options) { focusCalls.push(options); }
+    };
+    const selectors = [];
+    const readerText = {
+      dataset: { focusWordIndex: "17", focusWord: "target phrase" },
+      querySelector(selector) {
+        selectors.push(selector);
+        return selector.includes('data-word-index="17"') ? exact : null;
+      }
+    };
+
+    assert.equal(applyPendingReaderWordFocus(readerText), true);
+    assert.deepEqual(selectors, ['.word-token[data-word-index="17"]']);
+    assert.deepEqual(focusCalls, [{ preventScroll: true }]);
+    assert.equal(window.lastActiveToken, exact);
+    assert.equal(readerText.dataset.focusWordIndex, undefined);
+    assert.equal(readerText.dataset.focusWord, undefined);
+  });
+
   it("handles Ctrl+Enter from a word-panel field without falling back to the first token", () => {
     resetState("reader");
     const event = keyEvent({
@@ -252,5 +296,6 @@ describe("keyboard shortcut documentation", () => {
     assert.doesNotMatch(reader, /event\.key === "5"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.prevPageTitle"\)\)\}"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.nextPageTitle"\)\)\}"/);
+    assert.match(pagination, /requestReaderPageFocus\(\)/);
   });
 });

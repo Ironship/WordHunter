@@ -33,7 +33,7 @@ Project website: https://ironship.github.io/WordHunter-site/
 
 ## Project Status
 
-Current stable release: `1.0.5`.
+Current stable release: `1.0.6`.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
