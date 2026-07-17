@@ -14,26 +14,46 @@ data.
 
 ## Installation
 
-The recommended package-manager channels are being added. Until their reviews
-are complete, use the files from the
-[latest GitHub release](https://github.com/Ironship/WordHunter/releases/latest).
+The current stable build is
+[Word Hunter 1.0.6](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.6).
+The package-manager submissions also track 1.0.6, but remain under review, so
+use the signed-off GitHub Release files until those listings are accepted.
 
-- **Windows - WinGet (work in progress):** the package submission is under
-  review. Once accepted, install with
+- **Windows - direct download:** use
+  [`Word.Hunter.Setup.exe`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Setup.exe)
+  or the
+  [portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.portable.zip).
+- **Windows - WinGet (under review):** the
+  [1.0.6 package submission](https://github.com/microsoft/winget-pkgs/pull/401481)
+  is waiting for moderator approval. Once accepted, install with
   `winget install --exact --id Ironship.WordHunter`.
-- **Android - F-Droid (work in progress):** inclusion is being prepared for
-  `com.wordhunter.pocket`. Until it is available, use the APK from GitHub
-  Releases.
-- **Linux - Flatpak:** download `WordHunter.flatpak` from GitHub Releases and
-  run `flatpak install --user ./WordHunter.flatpak`.
-- **Windows - direct download:** choose `Word.Hunter.Setup.exe` or the portable
-  ZIP from GitHub Releases.
+- **Android - direct download:** install the
+  [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Pocket.debug.apk).
+- **Android - F-Droid (requested):** the
+  [inclusion request for `com.wordhunter.pocket`](https://gitlab.com/fdroid/rfp/-/work_items/4109)
+  is open; the app is not yet present in `fdroiddata`.
+- **Linux - Flatpak:** download
+  [`WordHunter.flatpak`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter.flatpak)
+  and run `flatpak install --user ./WordHunter.flatpak`.
 
 Project website: https://ironship.github.io/WordHunter-site/
 
 ## Project Status
 
-Current stable release: `1.0.6`.
+Current stable release:
+[1.0.6](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.6).
+
+### What's new in 1.0.6
+
+- Reader page changes restore keyboard focus so playback and shortcuts continue
+  from the current selection.
+- Playback and multi-word suggestions keep the exact selected occurrence when a
+  word or phrase appears more than once.
+- Words first moved to Learning today are not shown as in-text review prompts
+  until the following day.
+- Pocket word-card content stays below its fixed header while scrolling.
+- Italian interface copy and the title headers of all built-in A1-B2 readers
+  were corrected.
 
 > [!WARNING]
 > **Back up your Word Hunter words and library before installing version 1.0.0.**
