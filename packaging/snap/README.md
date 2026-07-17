@@ -65,6 +65,9 @@ GitHub-hosted runner it:
    Syncthing configuration-generation command used by Word Hunter;
 4. installs it with `--dangerous` only inside the disposable CI runner and
    verifies that the GUI remains alive under Xvfb for the smoke-test window.
+   GitHub-hosted runners cannot move their agent service into a Snap app cgroup,
+   so the GUI is launched through `snap run --shell`, which still enters the
+   app's confined environment and executes its command chain.
 
 No workflow publishes to the Snap Store and no store credentials are read.
 

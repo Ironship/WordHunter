@@ -113,9 +113,14 @@ jobs:
             '"$SNAP/usr/bin/syncthing" generate --home "$SNAP_USER_DATA/syncthing-ci" && test -f "$SNAP_USER_DATA/syncthing-ci/config.xml"'
 
           set +e
+          # GitHub-hosted runners live in hosted-compute-agent.service, which
+          # snapd cannot re-tag as an application cgroup. --shell still enters
+          # the app's confined environment and runs its command chain, so use
+          # it to exercise the real GUI binary under Xvfb on this runner.
           dbus-run-session -- xvfb-run -a \
             timeout --signal=TERM --kill-after=5s 20s \
-            snap run word-hunter \
+            snap run --shell word-hunter -c \
+            'exec "$SNAP/usr/bin/word-hunter-rustified"' \
             >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
           status=$?
           set -e

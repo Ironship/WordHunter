@@ -185,7 +185,11 @@ jobs:
             grep -n '<binary>' "${metainfo}" >&2 || true
             exit 1
           }
-          test "$(command -v wordhunter)" = '/usr/bin/wordhunter'
+          launcher="$(command -v wordhunter || true)"
+          test "${launcher}" = '/usr/bin/wordhunter' || {
+            printf 'Unexpected public launcher path: %s\n' "${launcher:-<missing>}" >&2
+            exit 1
+          }
 
           main=/opt/wordhunter/usr/bin/word-hunter-rustified
           ocr_runner="$(
@@ -193,7 +197,13 @@ jobs:
               -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
           )"
           syncthing=/opt/wordhunter/usr/bin/syncthing
-          test -x "${main}" && test -x "${ocr_runner}" && test -x "${syncthing}"
+          for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
+            test -x "${executable}" || {
+              printf 'Expected executable is missing or not executable: %s\n' \
+                "${executable:-<empty path>}" >&2
+              exit 1
+            }
+          done
 
           for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
             ldd_output="$(ldd "${executable}" 2>&1 || true)"
@@ -202,8 +212,29 @@ jobs:
               exit 1
             fi
           done
-          "${ocr_runner}" --help | grep -F 'wordhunter-paddleocr'
-          "${syncthing}" --version | grep -i -F 'syncthing'
+          ocr_help="$("${ocr_runner}" --help 2>&1)" || {
+            status=$?
+            printf '%s\nOCR helper --help exited with status %s.\n' \
+              "${ocr_help}" "${status}" >&2
+            exit 1
+          }
+          printf '%s\n' "${ocr_help}"
+          grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}" || {
+            echo 'OCR helper output does not identify wordhunter-paddleocr.' >&2
+            exit 1
+          }
+
+          syncthing_version="$("${syncthing}" --version 2>&1)" || {
+            status=$?
+            printf '%s\nSyncthing --version exited with status %s.\n' \
+              "${syncthing_version}" "${status}" >&2
+            exit 1
+          }
+          printf '%s\n' "${syncthing_version}"
+          grep -iqF 'syncthing' <<<"${syncthing_version}" || {
+            echo 'Syncthing version output is unexpected.' >&2
+            exit 1
+          }
 
           Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
             >"${RUNNER_TEMP}/wordhunter-xvfb.log" 2>&1 &
