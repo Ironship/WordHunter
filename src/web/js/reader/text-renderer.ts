@@ -11,6 +11,7 @@ import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { paginationHtml } from "./pagination.js";
+import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./word-navigation.js";
 import { getLearningColor } from "../reader-colors.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import type { TextToken } from "../tokenizer_v2.js";
@@ -59,6 +60,7 @@ export function renderPlainText({ current, tokens, globalWordIndexes, pageStartI
         }
       }
       updateReaderSelection();
+      if (!applyPendingReaderWordFocus(els.readerText)) applyPendingReaderPageFocus(els.readerText);
       els.readerText.dataset.rendering = "0";
       els.readerText.removeAttribute("aria-busy");
       return;

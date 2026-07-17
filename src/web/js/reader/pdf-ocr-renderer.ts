@@ -11,6 +11,7 @@ import type { TextToken } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
+import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./word-navigation.js";
 import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
 import { getLearningColor } from "../reader-colors.js";
@@ -232,6 +233,7 @@ export function renderPdfOcrReader(current: PdfOcrDocument, scrollPerPageKey: st
     }
   }
   updateReaderSelection();
+  if (!applyPendingReaderWordFocus(readerEls.readerText)) applyPendingReaderPageFocus(readerEls.readerText);
   readerEls.readerText.dataset.rendering = "0";
   readerEls.readerText.removeAttribute("aria-busy");
 }
@@ -272,6 +274,7 @@ function renderPdfOcrTextMode(
     }
   }
   updateReaderSelection();
+  if (!applyPendingReaderWordFocus(readerEls.readerText)) applyPendingReaderPageFocus(readerEls.readerText);
   readerEls.readerText.dataset.rendering = "0";
   readerEls.readerText.removeAttribute("aria-busy");
 }

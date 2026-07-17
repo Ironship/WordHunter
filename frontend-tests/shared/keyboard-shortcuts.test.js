@@ -42,7 +42,12 @@ const { createDefaultState, replaceState, state } = await import("../../dist/web
 const { handleGlobalKeydown } = await import("../../dist/web/js/events/navigation.js");
 const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
-const { findCurrentReaderToken } = await import("../../dist/web/js/reader/word-navigation.js");
+const {
+  applyPendingReaderPageFocus,
+  applyPendingReaderWordFocus,
+  findCurrentReaderToken,
+  requestReaderPageFocus
+} = await import("../../dist/web/js/reader/word-navigation.js");
 const { handleFlashcardKeys } = await import("../../dist/web/js/events/keyboard/flashcards-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
 Object.assign(els, {
@@ -197,6 +202,49 @@ describe("keyboard shortcut dispatch", () => {
     const readerKeys = readFileSync(new URL("../../dist/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
     assert.match(readerKeys, /const token = findCurrentReaderToken\(tokens\);/);
     assert.doesNotMatch(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
+  });
+
+  it("focuses the first Reader token after a page change without selecting it", () => {
+    resetState("reader");
+    const focusCalls = [];
+    const first = {
+      dataset: { word: "first", wordIndex: "40" },
+      focus(options) { focusCalls.push(options); }
+    };
+    const readerText = {
+      dataset: {},
+      querySelector(selector) { return selector === ".word-token" ? first : null; }
+    };
+
+    requestReaderPageFocus(readerText);
+    assert.equal(applyPendingReaderPageFocus(readerText), true);
+    assert.deepEqual(focusCalls, [{ preventScroll: true }]);
+    assert.equal(window.lastActiveToken, first);
+    assert.equal(readerText.dataset.focusAfterPageChange, undefined);
+    assert.equal(state.selectedWord, null);
+  });
+
+  it("restores focus to the exact repeated Reader occurrence after rendering", () => {
+    const focusCalls = [];
+    const exact = {
+      dataset: { word: "target phrase", wordIndex: "17" },
+      focus(options) { focusCalls.push(options); }
+    };
+    const selectors = [];
+    const readerText = {
+      dataset: { focusWordIndex: "17", focusWord: "target phrase" },
+      querySelector(selector) {
+        selectors.push(selector);
+        return selector.includes('data-word-index="17"') ? exact : null;
+      }
+    };
+
+    assert.equal(applyPendingReaderWordFocus(readerText), true);
+    assert.deepEqual(selectors, ['.word-token[data-word-index="17"]']);
+    assert.deepEqual(focusCalls, [{ preventScroll: true }]);
+    assert.equal(window.lastActiveToken, exact);
+    assert.equal(readerText.dataset.focusWordIndex, undefined);
+    assert.equal(readerText.dataset.focusWord, undefined);
   });
 
   it("handles Ctrl+Enter from a word-panel field without falling back to the first token", () => {

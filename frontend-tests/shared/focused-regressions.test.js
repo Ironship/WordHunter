@@ -343,6 +343,7 @@ describe("focused frontend regressions", () => {
     assert.match(vocabActions, /maybeAutoTranslateWord\(word, entry\)/);
     assert.match(vocabActions, /pendingAutoTranslations\.has\(entry\)/);
     assert.match(vocabActions, /state\.currentView === "reader" && state\.selectedWord === word/);
+    assert.match(vocabActions, /focusWordIndex = String\(state\.selectedWordIndex\)/);
   });
 
   it("selects the next word immediately while a ghost card animates out", async () => {
