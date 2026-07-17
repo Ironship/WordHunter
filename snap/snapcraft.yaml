@@ -1,0 +1,71 @@
+name: word-hunter
+base: core22
+version: '1.0.6'
+summary: Local-first reader and vocabulary trainer
+description: |
+  Read real texts, save vocabulary with its original context, and review it
+  with spaced repetition. Word Hunter keeps learning data local and supports
+  text to speech, offline translation models, imported books, PDFs, EPUB
+  files, subtitles, OCR, and optional device sync through Syncthing.
+
+grade: stable
+confinement: strict
+license: AGPL-3.0-or-later
+icon: src/assets/icon-256.png
+
+architectures:
+  - build-on:
+      - amd64
+    build-for:
+      - amd64
+
+# Tauri uses WebKitGTK 4.1, while the core22 GNOME extension also carries a
+# WebKitGTK 4.0 layout. Bind the staged 4.1 runtime at the absolute path its
+# subprocesses expect, as recommended by Tauri's Snapcraft guide.
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
+
+apps:
+  word-hunter:
+    command: usr/bin/word-hunter-rustified
+    desktop: usr/share/applications/word-hunter.desktop
+    common-id: com.wordhunter.app
+    extensions: [gnome]
+    environment:
+      # Make binary discovery deterministic inside strict confinement.
+      WORDHUNTER_SYNCTHING: $SNAP/usr/bin/syncthing
+      XDG_CONFIG_HOME: $SNAP_USER_DATA/.config
+      XDG_DATA_HOME: $SNAP_USER_DATA/.local/share
+    plugs:
+      # The GNOME extension supplies the standard desktop, graphics, settings,
+      # Wayland/X11, and mount-observe interfaces.
+      - network
+      - network-bind
+      - audio-playback
+      - home
+      - removable-media
+
+parts:
+  word-hunter:
+    plugin: dump
+    source: https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/word-hunter_1.0.6_amd64.deb
+    source-type: deb
+    source-checksum: sha256/774eda03b1904ee7c3ebe793c31a21f5b842543835c5267a513711383278b4b5
+    stage-packages:
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
+      - libwebkit2gtk-4.1-0
+      - libxdo3
+      - syncthing
+    override-build: |
+      craftctl default
+
+      desktop="$CRAFT_PART_INSTALL/usr/share/applications/Word Hunter.desktop"
+      canonical_desktop="$CRAFT_PART_INSTALL/usr/share/applications/word-hunter.desktop"
+      test -f "$desktop"
+      mv "$desktop" "$canonical_desktop"
+      sed -i \
+        -e 's|^Exec=.*$|Exec=word-hunter|' \
+        -e 's|^Icon=.*$|Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png|' \
+        "$canonical_desktop"

@@ -1,0 +1,120 @@
+name: Validate Snap package
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - snap/**
+      - packaging/snap/**
+      - .github/workflows/snap-validation.yml
+  push:
+    branches:
+      - main
+    paths:
+      - snap/**
+      - packaging/snap/**
+      - .github/workflows/snap-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snap-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke-test:
+    name: Build, inspect, and smoke-test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build Snap
+        id: snapcraft
+        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
+        with:
+          build-info: true
+          snapcraft-channel: 9.x/stable
+
+      - name: Upload build-only artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: word-hunter-snap-${{ github.sha }}
+          path: ${{ steps.snapcraft.outputs.snap }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Install inspection and smoke-test tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            dbus-x11 \
+            squashfs-tools \
+            xvfb
+
+      - name: Inspect Snap payload
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+        run: |
+          set -Eeuo pipefail
+          test -f "$SNAP_PATH"
+
+          root="$RUNNER_TEMP/word-hunter-snap-root"
+          rm -rf "$root"
+          unsquashfs -no-progress -d "$root" "$SNAP_PATH"
+
+          test -x "$root/usr/bin/word-hunter-rustified"
+          test -x "$root/usr/bin/syncthing"
+          test -f "$root/usr/share/applications/word-hunter.desktop"
+          test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
+          test -f "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          test -f "$root/snap/manifest.yaml"
+          test -f "$root/snap/snapcraft.yaml"
+          test -x "$root/usr/lib/Word Hunter/ocr-runtime/bin/wordhunter-paddleocr"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libpdfium.so"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libwebgpu_dawn.so"
+          test -d "$root/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1"
+
+          model_count="$(find "$root/usr/lib/Word Hunter/ocr-runtime/models" \
+            -maxdepth 1 -type f -name '*.onnx' -print | wc -l)"
+          test "$model_count" -ge 3
+
+          grep -Fx 'Exec=word-hunter' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fx 'Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
+          grep -Eq "^version: ['\"]?1\\.0\\.6['\"]?$" "$root/meta/snap.yaml"
+          grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
+
+          "$root/usr/bin/syncthing" --version
+
+      - name: Smoke-test strict Snap
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+        run: |
+          set -Eeuo pipefail
+          sudo snap install --dangerous "$SNAP_PATH"
+          snap list word-hunter
+          snap connections word-hunter
+
+          set +e
+          dbus-run-session -- xvfb-run -a \
+            timeout --signal=TERM --kill-after=5s 20s \
+            snap run word-hunter \
+            >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-snap-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi
