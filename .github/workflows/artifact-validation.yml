@@ -318,6 +318,7 @@ jobs:
             libfontconfig1 \
             libfribidi0 \
             libgbm1 \
+            libgles2 \
             libharfbuzz0b \
             lintian \
             xauth \

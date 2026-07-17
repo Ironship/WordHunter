@@ -174,6 +174,7 @@ describe("repository validation wiring", () => {
       "libfontconfig1",
       "libfribidi0",
       "libgbm1",
+      "libgles2",
       "libharfbuzz0b",
     ]) {
       assert.match(linuxRuntimeInstall, new RegExp(`\\b${hostLibrary}\\b`));
