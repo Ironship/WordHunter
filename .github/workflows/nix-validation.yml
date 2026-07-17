@@ -159,16 +159,15 @@ jobs:
           )"
           test -n "${ocr_runner}"
           test -x "${ocr_runner}"
-          for executable in \
-            "${NIX_APPIMAGE_CONTENTS}/usr/bin/word-hunter-rustified" \
-            "${ocr_runner}"; do
-            ldd_output="$(ldd "${executable}" 2>&1 || true)"
-            if grep -Fq 'not found' <<<"${ldd_output}"; then
-              printf 'Unresolved dynamic dependency in %s\n%s\n' \
-                "${executable}" "${ldd_output}" >&2
-              exit 1
-            fi
-          done
+          # The desktop binary relies on the FHS environment supplied by
+          # wrapAppImage and is exercised through that final wrapper below.
+          # The standalone OCR runtime must remain self-contained.
+          ldd_output="$(ldd "${ocr_runner}" 2>&1 || true)"
+          if grep -Fq 'not found' <<<"${ldd_output}"; then
+            printf 'Unresolved dynamic dependency in %s\n%s\n' \
+              "${ocr_runner}" "${ldd_output}" >&2
+            exit 1
+          fi
 
           ocr_help="$("${ocr_runner}" --help 2>&1)"
           printf '%s\n' "${ocr_help}"
