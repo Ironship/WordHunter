@@ -2,8 +2,11 @@
 
 import { inflateRawSync } from "node:zlib";
 import {
+  chmodSync,
+  lstatSync,
   mkdtempSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   rmSync,
   statSync,
@@ -256,7 +259,7 @@ function assertElfMachine(bytes, machine, description) {
   ) {
     fail(`${description} is not an ELF binary`);
   }
-  if (bytes[5] !== 1 || bytes.readUInt16LE(18) !== machine) {
+  if (bytes[4] !== 2 || bytes[5] !== 1 || bytes.readUInt16LE(18) !== machine) {
     fail(`${description} has the wrong machine architecture`);
   }
 }
@@ -325,6 +328,7 @@ export function inspectWindowsPortable(path, requiredDlls = []) {
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
+    cwd: options.cwd,
     encoding: options.binary ? null : "utf8",
     maxBuffer: 128 * 1024 * 1024,
     windowsHide: true,
@@ -353,6 +357,207 @@ function walkFiles(root, current = root) {
     else if (item.isFile()) files.push(path.slice(root.length + 1).replaceAll("\\", "/"));
   }
   return files;
+}
+
+function localArtifactPath(root, name) {
+  return join(root, ...name.split("/"));
+}
+
+function assertExecutable(root, name, description) {
+  // Windows cannot represent POSIX executable bits in a temporary fixture.
+  // Real AppImage and DEB inspection only runs on Linux.
+  if (process.platform === "win32") return;
+  if ((statSync(localArtifactPath(root, name)).mode & 0o111) === 0) {
+    fail(`${description}:${name} is not executable`);
+  }
+}
+
+function requireRootSymlink(root, name, targetSuffix, description) {
+  const path = join(root, name);
+  let metadata;
+  try {
+    metadata = lstatSync(path);
+  } catch {
+    fail(`${description} is missing AppImage root entry: ${name}`);
+  }
+  if (!metadata.isSymbolicLink()) fail(`${description}:${name} must be a symbolic link`);
+  const target = readlinkSync(path).replaceAll("\\", "/");
+  if (!target.endsWith(targetSuffix)) {
+    fail(`${description}:${name} points to ${target}; expected */${targetSuffix}`);
+  }
+  try {
+    if (!statSync(path).isFile()) fail(`${description}:${name} does not resolve to a file`);
+  } catch {
+    fail(`${description}:${name} is a broken symbolic link`);
+  }
+}
+
+function requireLinuxResource(names, suffix) {
+  const lower = suffix.toLowerCase();
+  const found = names.find((name) => {
+    const normalized = name.toLowerCase();
+    return (
+      normalized.startsWith("usr/lib/") &&
+      (normalized === lower || normalized.endsWith(`/${lower}`))
+    );
+  });
+  if (!found) fail(`Artifact is missing required Linux resource: usr/lib/**/${suffix}`);
+  return found;
+}
+
+export function inspectLinuxTree(root, description = root, options = {}) {
+  const format = options.format ?? "appimage";
+  if (!new Set(["appimage", "deb"]).has(format)) fail(`Unknown Linux package tree format: ${format}`);
+  const names = walkFiles(root);
+  const main = requireSuffix(names, "usr/bin/word-hunter-rustified");
+  const ocrRunner = requireLinuxResource(names, "ocr-runtime/bin/wordhunter-paddleocr");
+  const pdfium = requireLinuxResource(names, "ocr-runtime/bin/libpdfium.so");
+  const webGpuDawn = requireLinuxResource(names, "ocr-runtime/bin/libwebgpu_dawn.so");
+  let syncthing = null;
+  const mediaRuntime = [];
+  if (format === "appimage") {
+    syncthing = requireSuffix(names, "usr/bin/syncthing");
+    requireSuffix(names, "apprun-hooks/linuxdeploy-plugin-gstreamer.sh");
+    for (const plugin of [
+      "usr/lib/gstreamer-1.0/libgstcoreelements.so",
+      "usr/lib/gstreamer-1.0/libgstplayback.so",
+      "usr/lib/gstreamer-1.0/libgstautodetect.so",
+    ]) {
+      mediaRuntime.push(requireSuffix(names, plugin));
+    }
+  } else if (names.some((name) => /(?:^|\/)syncthing$/i.test(name))) {
+    fail(`${description} must use the Debian syncthing dependency instead of bundling the executable`);
+  }
+
+  const models = names.filter((name) => (
+    name.toLowerCase().startsWith("usr/lib/") &&
+    /\/ocr-runtime\/models\/[^/]+\.onnx$/i.test(name)
+  ));
+  if (models.length < 3) fail(`${description} must contain all three PaddleOCR ONNX models`);
+
+  for (const legalFile of [
+    ...legalFiles,
+    "SYNCTHING-LICENSE.txt",
+    "SYNCTHING-AUTHORS.txt",
+  ]) {
+    requireSuffix(names, legalFile);
+  }
+
+  const desktopEntries = names.filter((name) => /^usr\/share\/applications\/[^/]+\.desktop$/i.test(name));
+  const desktopEntry = "usr/share/applications/Word Hunter.desktop";
+  if (desktopEntries.length !== 1 || desktopEntries[0] !== desktopEntry) {
+    fail(`${description} must contain exactly the canonical ${desktopEntry} launcher`);
+  }
+  const appStream = "usr/share/metainfo/com.wordhunter.app.metainfo.xml";
+  if (!names.includes(appStream)) fail(`${description} is missing ${appStream}`);
+  const icons = names.filter((name) => (
+    /^usr\/share\/icons\/hicolor\/[^/]+\/apps\/(?:com\.wordhunter\.app|word[-_. ]?hunter)[^/]*\.png$/i
+      .test(name)
+  ));
+  if (icons.length === 0) fail(`${description} contains no Word Hunter hicolor application icon`);
+
+  const desktopSource = readFileSync(localArtifactPath(root, desktopEntry), "utf8");
+  for (const expected of [
+    /^\[Desktop Entry\]$/m,
+    /^Type=Application$/m,
+    /^Name=Word Hunter$/m,
+    /^Exec=word-hunter-rustified$/m,
+    /^Icon=com\.wordhunter\.app$/m,
+    /^Terminal=false$/m,
+    /^Categories=Education;Languages;$/m,
+    /^StartupWMClass=com\.wordhunter\.app$/m,
+  ]) {
+    if (!expected.test(desktopSource)) {
+      fail(`${description}:${desktopEntry} is missing required desktop metadata: ${expected}`);
+    }
+  }
+  const appStreamSource = readFileSync(localArtifactPath(root, appStream), "utf8");
+  if (
+    !/<component(?:\s|>)/.test(appStreamSource) ||
+    !/<id>com\.wordhunter\.app<\/id>/.test(appStreamSource) ||
+    !/<launchable type="desktop-id">Word Hunter\.desktop<\/launchable>/.test(appStreamSource)
+  ) {
+    fail(`${description}:${appStream} is not Word Hunter AppStream metadata`);
+  }
+
+  for (const name of [main, ocrRunner, pdfium, webGpuDawn, syncthing, ...mediaRuntime].filter(Boolean)) {
+    assertElfMachine(
+      readFileSync(localArtifactPath(root, name)),
+      62,
+      `${description}:${name}`,
+    );
+  }
+  assertExecutable(root, main, description);
+  assertExecutable(root, ocrRunner, description);
+  if (syncthing) assertExecutable(root, syncthing, description);
+  if (format === "deb") requireSuffix(names, "usr/share/doc/word-hunter/copyright");
+  return names;
+}
+
+export function inspectLinuxAppImage(path) {
+  const absolutePath = resolve(path);
+  assertElfMachine(readFileSync(absolutePath), 62, absolutePath);
+  const temp = mkdtempSync(join(tmpdir(), "wordhunter-appimage-"));
+  const originalMode = statSync(absolutePath).mode;
+  try {
+    // GitHub artifact downloads do not preserve executable bits. The AppImage
+    // runtime's extraction mode unpacks the SquashFS without launching the app.
+    chmodSync(absolutePath, originalMode | 0o100);
+    run(absolutePath, ["--appimage-extract"], { cwd: temp });
+    const root = join(temp, "squashfs-root");
+    if (!statSync(root).isDirectory()) fail(`${absolutePath} did not extract an AppImage filesystem`);
+    const appRun = join(root, "AppRun");
+    if (!lstatSync(appRun).isFile()) fail(`${absolutePath} is missing its AppRun executable`);
+    if ((statSync(appRun).mode & 0o111) === 0) fail(`${absolutePath}:AppRun is not executable`);
+    requireRootSymlink(root, ".DirIcon", "Word Hunter.png", absolutePath);
+    requireRootSymlink(
+      root,
+      "Word Hunter.desktop",
+      "usr/share/applications/Word Hunter.desktop",
+      absolutePath,
+    );
+    const names = inspectLinuxTree(root, absolutePath, { format: "appimage" });
+    console.log(`Validated Linux AppImage: ${absolutePath} (${names.length} files, x86_64)`);
+  } finally {
+    chmodSync(absolutePath, originalMode);
+    rmSync(temp, { recursive: true, force: true });
+  }
+}
+
+export function inspectLinuxDeb(path) {
+  const packageName = run("dpkg-deb", ["--field", path, "Package"]).trim();
+  if (packageName !== "word-hunter") fail(`${path} has Debian package name ${packageName || "unknown"}; expected word-hunter`);
+  const version = run("dpkg-deb", ["--field", path, "Version"]).trim();
+  const filename = basename(path).match(/^word-hunter_(.+)_amd64\.deb$/);
+  if (!filename || version !== filename[1]) {
+    fail(`${path} has Debian version ${version || "unknown"} inconsistent with its release filename`);
+  }
+  const architecture = run("dpkg-deb", ["--field", path, "Architecture"]).trim();
+  if (architecture !== "amd64") fail(`${path} has Debian architecture ${architecture || "unknown"}; expected amd64`);
+  const maintainer = run("dpkg-deb", ["--field", path, "Maintainer"]).trim();
+  if (!/^Ironship <[^<>\s]+@users\.noreply\.github\.com>$/.test(maintainer)) {
+    fail(`${path} has invalid Debian Maintainer metadata: ${maintainer || "missing"}`);
+  }
+  const dependencies = run("dpkg-deb", ["--field", path, "Depends"]).trim();
+  for (const dependency of [
+    "libgtk-3-0",
+    "libwebkit2gtk-4.1-0",
+    "libxdo3",
+    "gstreamer1.0-plugins-base",
+    "gstreamer1.0-plugins-good",
+    "syncthing",
+  ]) {
+    const pattern = new RegExp(`(?:^|,\\s*)${dependency.replaceAll(".", "\\.")}(?:\\s*\\([^)]*\\))?(?:,|$)`);
+    if (!pattern.test(dependencies)) fail(`${path} is missing Debian dependency: ${dependency}`);
+  }
+  const temp = mkdtempSync(join(tmpdir(), "wordhunter-deb-"));
+  try {
+    run("dpkg-deb", ["--extract", path, temp]);
+    const names = inspectLinuxTree(temp, path, { format: "deb" });
+    console.log(`Validated Linux DEB: ${path} (${names.length} files, amd64)`);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
 }
 
 export function inspectWindowsNsis(path, requiredDlls = []) {
@@ -453,6 +658,8 @@ function usage() {
   console.error("  node scripts/inspect-artifact.mjs windows-portable <zip> [--require-dll <name>]...");
   console.error("  node scripts/inspect-artifact.mjs windows-nsis <exe> [--require-dll <name>]...");
   console.error("  node scripts/inspect-artifact.mjs flatpak <flatpak>");
+  console.error("  node scripts/inspect-artifact.mjs linux-appimage <appimage>");
+  console.error("  node scripts/inspect-artifact.mjs linux-deb <deb>");
 }
 
 function optionValues(args, name) {
@@ -491,6 +698,12 @@ function main(args) {
       break;
     case "flatpak":
       inspectFlatpak(path);
+      break;
+    case "linux-appimage":
+      inspectLinuxAppImage(path);
+      break;
+    case "linux-deb":
+      inspectLinuxDeb(path);
       break;
     default:
       usage();

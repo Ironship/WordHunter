@@ -2,7 +2,7 @@
 name = "word-hunter"
 version = "1.0.6"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
-authors = ["Word Hunter"]
+authors = ["Ironship <25068602+Ironship@users.noreply.github.com>"]
 edition = "2024"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"

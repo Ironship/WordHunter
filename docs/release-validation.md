@@ -45,16 +45,36 @@ dispatched. It rebuilds and validates:
   Syncthing notices, compiler runtime DLLs discovered by the build, and all
   legal reports;
 - the x86_64 Flatpak ref, installed file list, native ELF architecture, OCR
-  models, Syncthing notices, desktop metadata, and legal reports.
+  models, Syncthing notices, desktop metadata, and legal reports;
+- x86_64 Linux AppImage and DEB installed file trees, native ELF architecture,
+  OCR models and runtime, Syncthing integration, canonical desktop and
+  AppStream metadata, Debian control fields, executable modes, and legal
+  reports.
 
 Every expected CI upload uses `if-no-files-found: error`. The Windows recipe
 also fails if 7-Zip is unavailable or cannot read an archive; release archive
 inspection is never silently skipped. `scripts/build-flatpak.sh` inspects the
-completed bundle before reporting success.
+completed bundle before reporting success. Native Linux packages are built on
+Ubuntu 22.04, the oldest GitHub-hosted runner used by the release workflow with
+WebKitGTK 4.1 development packages. `scripts/build-linux-native.sh` emits
+`WordHunter-<version>-x86_64.AppImage` and
+`word-hunter_<version>_amd64.deb`; the workflow reinspects both files before
+uploading them. All AppImage assembly tools are staged under
+`src-tauri/target/.tauri` from checksum-verified downloads, including scripts
+from the exact pinned Tauri CLI revision.
+
+A separate Ubuntu 22.04 container downloads the completed workflow artifact
+without inheriting the build job's development packages. It validates the
+desktop and AppStream files with upstream tools, rejects unresolved ELF
+dependencies, runs the OCR helper and Syncthing, and starts the AppImage under
+Xvfb before installing the DEB. It then runs Lintian, installs the DEB and its
+declared system Syncthing dependency, repeats the sidecar and GUI smoke tests,
+and removes the package. The AppImage contains its own Syncthing executable;
+the DEB deliberately does not overwrite `/usr/bin/syncthing`.
 
 The workflow always uploads validated files as workflow artifacts. A manual
 dispatch may additionally provide an existing draft `release_tag`; after every
-platform job succeeds, a final GitHub-hosted job attaches the five validated
+platform job succeeds, a final GitHub-hosted job attaches all seven validated
 files to that draft. This keeps release binaries off the maintainer's local
 machine. The draft must target the exact commit selected for the workflow run.
 Scheduled runs do not attach or replace assets. Publishing the draft does not
@@ -125,7 +145,9 @@ instead of introducing formatting-only drift.
 Static tests validate recipes and policy, but they do not pretend to validate a
 binary that was not built. Windows PE/NSIS validation runs on Windows, Android
 Gradle compilation runs with the Android toolchain, and Flatpak OSTree file-list
-validation runs on Linux. Installer launch behavior, WebView2 availability,
-Android device behavior, Google Play signing/acceptance, and interactive
-Flatpak desktop integration remain platform or store tests and require release
-hardware/accounts.
+validation runs on Linux. AppImage and DEB validation also runs on Linux,
+extracts each completed package, and starts both GUI payloads under Xvfb on a
+clean runtime container. Installer launch
+behavior, WebView2 availability, Android device behavior, Google Play
+signing/acceptance, and interactive Flatpak/AppImage/DEB desktop integration
+remain platform or store tests and require release hardware/accounts.

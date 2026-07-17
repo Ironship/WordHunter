@@ -1,5 +1,53 @@
 {
   "bundle": {
-    "targets": ["appimage", "deb"]
+    "targets": ["appimage", "deb"],
+    "publisher": "Ironship <25068602+Ironship@users.noreply.github.com>",
+    "homepage": "https://ironship.github.io/WordHunter-site/",
+    "copyright": "Copyright © 2026 Word Hunter contributors",
+    "category": "Education",
+    "shortDescription": "Local-first reader and vocabulary trainer",
+    "longDescription": "Read real texts, save vocabulary with its original context, and review it with spaced repetition. Word Hunter keeps learning data local and supports text to speech, offline translation models, imported books, PDFs, EPUB files, and subtitles.",
+    "useLocalToolsDir": true,
+    "resources": {
+      "ocr-runtime/bin/**/*": "ocr-runtime/bin/",
+      "ocr-runtime/models/**/*": "ocr-runtime/models/",
+      "syncthing/SYNCTHING-AUTHORS.txt": "SYNCTHING-AUTHORS.txt",
+      "syncthing/SYNCTHING-LICENSE.txt": "SYNCTHING-LICENSE.txt"
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": true,
+        "files": {
+          "/usr/bin/syncthing": "syncthing/syncthing",
+          "/usr/share/icons/hicolor/16x16/apps/com.wordhunter.app.png": "../src/assets/icon-16.png",
+          "/usr/share/icons/hicolor/32x32/apps/com.wordhunter.app.png": "../src/assets/icon-32.png",
+          "/usr/share/icons/hicolor/48x48/apps/com.wordhunter.app.png": "../src/assets/icon-48.png",
+          "/usr/share/icons/hicolor/64x64/apps/com.wordhunter.app.png": "../src/assets/icon-64.png",
+          "/usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png": "../src/assets/icon-128.png",
+          "/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png": "../src/assets/icon-256.png",
+          "/usr/share/metainfo/com.wordhunter.app.metainfo.xml": "../packaging/linux/com.wordhunter.app.metainfo.xml"
+        }
+      },
+      "deb": {
+        "depends": [
+          "libxdo3",
+          "gstreamer1.0-plugins-base",
+          "gstreamer1.0-plugins-good",
+          "syncthing"
+        ],
+        "section": "education",
+        "desktopTemplate": "../flatpak/com.wordhunter.app.desktop",
+        "files": {
+          "/usr/share/icons/hicolor/16x16/apps/com.wordhunter.app.png": "../src/assets/icon-16.png",
+          "/usr/share/icons/hicolor/32x32/apps/com.wordhunter.app.png": "../src/assets/icon-32.png",
+          "/usr/share/icons/hicolor/48x48/apps/com.wordhunter.app.png": "../src/assets/icon-48.png",
+          "/usr/share/icons/hicolor/64x64/apps/com.wordhunter.app.png": "../src/assets/icon-64.png",
+          "/usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png": "../src/assets/icon-128.png",
+          "/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png": "../src/assets/icon-256.png",
+          "/usr/share/metainfo/com.wordhunter.app.metainfo.xml": "../packaging/linux/com.wordhunter.app.metainfo.xml",
+          "/usr/share/doc/word-hunter/copyright": "../packaging/linux/debian-copyright"
+        }
+      }
+    }
   }
 }

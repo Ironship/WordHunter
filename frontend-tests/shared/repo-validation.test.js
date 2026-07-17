@@ -116,7 +116,16 @@ describe("repository validation wiring", () => {
     assert.equal(workflow.permissions.contents, "read");
     assert.equal(workflow.on.release, undefined);
     assert.ok(workflow.on.workflow_dispatch !== undefined);
-    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "release-preflight", "windows"]);
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), [
+      "android",
+      "flatpak",
+      "frontend-validation",
+      "linux-native",
+      "linux-native-runtime",
+      "publish-release",
+      "release-preflight",
+      "windows",
+    ]);
     const releasePreflight = workflow.jobs["release-preflight"];
     const frontendValidation = workflow.jobs["frontend-validation"];
     const revisionCheck = stepByName(releasePreflight, "Match a requested draft release to this revision");
@@ -140,15 +149,34 @@ describe("repository validation wiring", () => {
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-portable/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-nsis/);
     assert.equal(stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
-    for (const name of ["android", "windows", "flatpak"]) {
+    assert.match(
+      stepByName(workflow.jobs["linux-native"], "Build frontend, AppImage, and DEB through the release recipe").run,
+      /build-linux-native\.sh/,
+    );
+    for (const name of ["android", "windows", "flatpak", "linux-native"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
       const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
       assert.ok(upload, `${job.name} does not upload its validated artifact`);
       assert.equal(upload.with["if-no-files-found"], "error");
     }
+    const linuxRuntime = workflow.jobs["linux-native-runtime"];
+    assert.equal(linuxRuntime.needs, "linux-native");
+    assert.equal(linuxRuntime.container, "ubuntu:22.04");
+    assert.equal(
+      stepByName(linuxRuntime, "Download validated Linux native packages").with.name,
+      "validated-linux-native",
+    );
+    assert.match(
+      stepByName(linuxRuntime, "Validate and smoke-test the self-contained AppImage").run,
+      /appstreamcli validate[\s\S]*wordhunter-paddleocr[\s\S]*syncthing[\s\S]*xvfb-run/,
+    );
+    assert.match(
+      stepByName(linuxRuntime, "Validate, install, smoke-test, and remove the DEB").run,
+      /lintian[\s\S]*apt-get install[\s\S]*xvfb-run[\s\S]*apt-get remove/,
+    );
     const publish = workflow.jobs["publish-release"];
-    assert.deepEqual(publish.needs, ["android", "windows", "flatpak"]);
+    assert.deepEqual(publish.needs, ["android", "windows", "flatpak", "linux-native", "linux-native-runtime"]);
     assert.equal(publish.permissions.contents, "write");
     assert.match(publish.if, /workflow_dispatch[\s\S]*release_tag/);
     const finalRevisionCheck = stepByName(publish, "Revalidate the draft release revision");

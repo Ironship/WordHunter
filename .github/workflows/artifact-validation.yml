@@ -1,6 +1,11 @@
 name: Release artifact validation
 
 on:
+  # Temporary validation trigger for the Linux native packaging branch. Remove
+  # it before merging the packaging workflow to main.
+  push:
+    branches:
+      - chore/linux-native-packages
   schedule:
     - cron: "23 3 * * *"
   workflow_dispatch:
@@ -72,6 +77,7 @@ jobs:
   android:
     name: Android APK and AAB
     needs: frontend-validation
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: windows-2022
     timeout-minutes: 120
 
@@ -128,6 +134,7 @@ jobs:
   windows:
     name: Windows portable ZIP and NSIS installer
     needs: frontend-validation
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: windows-2022
     timeout-minutes: 180
 
@@ -178,6 +185,7 @@ jobs:
   flatpak:
     name: Flatpak bundle and installed file list
     needs: frontend-validation
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/chore/linux-native-packages' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 
@@ -209,10 +217,216 @@ jobs:
           path: outputs/WordHunter.flatpak
           if-no-files-found: error
 
+  linux-native:
+    name: Linux AppImage and DEB
+    needs: frontend-validation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    outputs:
+      version: ${{ steps.package-version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Install Linux native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            clang \
+            cmake \
+            curl \
+            file \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            libayatana-appindicator3-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libgstreamer1.0-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libwayland-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config \
+            unzip
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
+
+      - name: Install pinned Tauri CLI
+        run: cargo install tauri-cli --version 2.11.4 --locked
+
+      - name: Read package version
+        id: package-version
+        run: |
+          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version)")"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build frontend, AppImage, and DEB through the release recipe
+        run: bash scripts/build-linux-native.sh
+
+      - name: Inspect Linux native release packages
+        run: |
+          node scripts/inspect-artifact.mjs linux-appimage "outputs/WordHunter-${{ steps.package-version.outputs.version }}-x86_64.AppImage"
+          node scripts/inspect-artifact.mjs linux-deb "outputs/word-hunter_${{ steps.package-version.outputs.version }}_amd64.deb"
+
+      - name: Upload validated Linux native artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: validated-linux-native
+          path: |
+            outputs/WordHunter-${{ steps.package-version.outputs.version }}-x86_64.AppImage
+            outputs/word-hunter_${{ steps.package-version.outputs.version }}_amd64.deb
+          if-no-files-found: error
+
+  linux-native-runtime:
+    name: Linux native clean-runtime validation
+    needs: linux-native
+    runs-on: ubuntu-22.04
+    container: ubuntu:22.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Install only runtime test tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            appstream \
+            ca-certificates \
+            dbus-x11 \
+            desktop-file-utils \
+            file \
+            git \
+            lintian \
+            xauth \
+            xvfb
+
+      - name: Checkout validation sources
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "22"
+
+      - name: Download validated Linux native packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: validated-linux-native
+          path: release-assets
+
+      - name: Reinspect packages on the clean runner
+        env:
+          VERSION: ${{ needs.linux-native.outputs.version }}
+        run: |
+          node scripts/inspect-artifact.mjs linux-appimage "release-assets/WordHunter-${VERSION}-x86_64.AppImage"
+          node scripts/inspect-artifact.mjs linux-deb "release-assets/word-hunter_${VERSION}_amd64.deb"
+
+      - name: Validate and smoke-test the self-contained AppImage
+        env:
+          APPIMAGE_PATH: ${{ github.workspace }}/release-assets/WordHunter-${{ needs.linux-native.outputs.version }}-x86_64.AppImage
+        run: |
+          chmod +x "$APPIMAGE_PATH"
+          extracted="$(mktemp -d)"
+          cleanup() { rm -rf "$extracted"; }
+          trap cleanup EXIT
+          (
+            cd "$extracted"
+            "$APPIMAGE_PATH" --appimage-extract >/dev/null
+          )
+          root="$extracted/squashfs-root"
+          desktop-file-validate "$root/usr/share/applications/Word Hunter.desktop"
+          appstreamcli validate --no-net "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+
+          main="$root/usr/bin/word-hunter-rustified"
+          ocr_runner="$(find "$root/usr/lib" -type f -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit)"
+          syncthing="$root/usr/bin/syncthing"
+          test -x "$main" && test -x "$ocr_runner" && test -x "$syncthing"
+          for executable in "$main" "$ocr_runner" "$syncthing"; do
+            ldd_output="$(ldd "$executable" 2>&1 || true)"
+            if grep -F "not found" <<<"$ldd_output"; then
+              echo "Unresolved dynamic dependency in $executable" >&2
+              exit 1
+            fi
+          done
+          "$ocr_runner" --help | grep -F "wordhunter-paddleocr"
+          "$syncthing" --version | grep -i -F "syncthing"
+
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 timeout 20s dbus-run-session -- xvfb-run -a "$APPIMAGE_PATH"
+          status=$?
+          set -e
+          if [[ "$status" -ne 124 ]]; then
+            echo "AppImage exited with status $status instead of remaining alive until the smoke-test timeout." >&2
+            exit 1
+          fi
+
+      - name: Validate, install, smoke-test, and remove the DEB
+        env:
+          DEB_PATH: ${{ github.workspace }}/release-assets/word-hunter_${{ needs.linux-native.outputs.version }}_amd64.deb
+        run: |
+          lintian --fail-on error "$DEB_PATH"
+          extracted="$(mktemp -d)"
+          dpkg-deb --extract "$DEB_PATH" "$extracted"
+          desktop-file-validate "$extracted/usr/share/applications/Word Hunter.desktop"
+          appstreamcli validate --no-net "$extracted/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          rm -rf "$extracted"
+
+          package_name="$(dpkg-deb --field "$DEB_PATH" Package)"
+          if [[ ! "$package_name" =~ ^[a-z0-9][a-z0-9+.-]+$ ]]; then
+            echo "Invalid Debian package name: $package_name" >&2
+            exit 1
+          fi
+          cleanup() { apt-get remove -y "$package_name" >/dev/null || true; }
+          trap cleanup EXIT
+          DEBIAN_FRONTEND=noninteractive apt-get install -y "$DEB_PATH"
+
+          main=/usr/bin/word-hunter-rustified
+          package_files="$(dpkg-query -L "$package_name")"
+          ocr_runner="$(awk '/\/ocr-runtime\/bin\/wordhunter-paddleocr$/ { print; exit }' <<<"$package_files")"
+          syncthing="$(command -v syncthing)"
+          ! grep -Fqx "/usr/bin/syncthing" <<<"$package_files"
+          dpkg-query -S "$syncthing" | grep -E '^syncthing:'
+          test -x "$main" && test -x "$ocr_runner" && test -x "$syncthing"
+          for executable in "$main" "$ocr_runner" "$syncthing"; do
+            ldd_output="$(ldd "$executable" 2>&1 || true)"
+            if grep -F "not found" <<<"$ldd_output"; then
+              echo "Unresolved dynamic dependency in $executable" >&2
+              exit 1
+            fi
+          done
+          "$ocr_runner" --help | grep -F "wordhunter-paddleocr"
+          "$syncthing" --version | grep -i -F "syncthing"
+
+          set +e
+          timeout 20s dbus-run-session -- xvfb-run -a "$main"
+          status=$?
+          set -e
+          if [[ "$status" -ne 124 ]]; then
+            echo "Installed DEB application exited with status $status instead of remaining alive until the smoke-test timeout." >&2
+            exit 1
+          fi
+
+          trap - EXIT
+          apt-get remove -y "$package_name"
+
   publish-release:
     name: Attach validated artifacts to draft release
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
-    needs: [android, windows, flatpak]
+    needs: [android, windows, flatpak, linux-native, linux-native-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -227,13 +441,17 @@ jobs:
           merge-multiple: true
 
       - name: Require the complete release asset set
+        env:
+          LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
         run: |
           for asset in \
             Word.Hunter.Pocket.debug.apk \
             Word.Hunter.Pocket.release.aab \
             Word.Hunter.portable.zip \
             Word.Hunter.Setup.exe \
-            WordHunter.flatpak; do
+            WordHunter.flatpak \
+            WordHunter-${LINUX_VERSION}-x86_64.AppImage \
+            word-hunter_${LINUX_VERSION}_amd64.deb; do
             test -f "release-assets/$asset"
           done
 
@@ -256,6 +474,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
+          LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
         run: |
           gh release upload "$RELEASE_TAG" \
             release-assets/Word.Hunter.Pocket.debug.apk \
@@ -263,4 +482,6 @@ jobs:
             release-assets/Word.Hunter.portable.zip \
             release-assets/Word.Hunter.Setup.exe \
             release-assets/WordHunter.flatpak \
+            "release-assets/WordHunter-${LINUX_VERSION}-x86_64.AppImage" \
+            "release-assets/word-hunter_${LINUX_VERSION}_amd64.deb" \
             --clobber

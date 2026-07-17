@@ -24,7 +24,7 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.0.6
 | HTML, CSS, TypeScript | Shared user interface | Web standards; Word Hunter code is AGPL-3.0-or-later | https://github.com/Ironship/WordHunter |
 | AndroidX and Material Components | Android application integration and controls | Apache-2.0 | https://source.android.com/ and https://github.com/material-components/material-components-android |
 | Microsoft Edge WebView2 | Windows system WebView and loader | Microsoft Edge WebView2 SDK license; loader sources use the repository's stated license | https://github.com/MicrosoftEdge/WebView2Samples and https://developer.microsoft.com/microsoft-edge/webview2/ |
-| WebKitGTK and GTK | Linux system WebView and desktop toolkit | LGPL-2.1-or-later for the principal libraries; supplied by the system or Flatpak runtime | https://webkitgtk.org/ and https://www.gtk.org/ |
+| WebKitGTK and GTK | Linux WebView and desktop toolkit | LGPL-2.1-or-later for the principal libraries; supplied by the system, Flatpak runtime, or AppImage payload | https://webkitgtk.org/ and https://www.gtk.org/ |
 | Android System WebView | Android WebView runtime | Supplied by the Android system | https://developer.android.com/reference/android/webkit/WebView |
 | Inter | Optional interface font loaded from Google Fonts | SIL Open Font License 1.1; copyright Rasmus Andersson | https://github.com/rsms/inter |
 
@@ -44,19 +44,29 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.0.6
 | DirectML | Windows OCR execution provider | Microsoft Software License Terms for DirectML; https://www.nuget.org/packages/Microsoft.AI.DirectML/1.15.4/license |
 
 The model and native-runtime URLs and SHA-256 checksums used for release builds
-are pinned in `src-tauri/ocr-runtime/prepare-runtime.ps1` and
-`com.wordhunter.app.yml`.
+are pinned in `src-tauri/ocr-runtime/prepare-runtime.ps1`,
+`scripts/build-linux-native.sh`, and `com.wordhunter.app.yml`.
 
 ## Synchronization
 
 Syncthing 2.1.0 is distributed as a separate executable next to Word Hunter on
-Windows and under `/app/bin` in the Flatpak. Syncthing is licensed under
-MPL-2.0. Its corresponding source is available at:
+Windows, under `/app/bin` in the Flatpak, and under `/usr/bin` inside the
+AppImage. The DEB declares the distribution's `syncthing` package as a runtime
+dependency instead of installing a second copy into `/usr/bin`. Syncthing is
+licensed under MPL-2.0. Its corresponding source is available at:
 
 https://github.com/syncthing/syncthing/tree/v2.1.0
 
 Word Hunter communicates with Syncthing through its local HTTP API. Syncthing
 is not linked into the Word Hunter executable.
+
+## Linux Packaging Tools
+
+The AppImage is assembled with Tauri's pinned AppRun, linuxdeploy, and
+linuxdeploy GTK, GStreamer, and AppImage output plugins. Their immutable source
+revisions or release URLs and SHA-256 checksums are recorded in
+`scripts/build-linux-native.sh`. These build-time tools are not installed by
+the AppImage or DEB.
 
 ## Windows Compiler Runtimes
 
