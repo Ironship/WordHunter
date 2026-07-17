@@ -128,11 +128,13 @@ jobs:
             sed \
               -e "/<standard_session_servicedirs/d" \
               -e "/<include/d" \
+              -e "/<\/busconfig>/i\  <apparmor mode=\"disabled\"/>" \
               "$SNAP/usr/share/dbus-1/session.conf" >"$session_config"
             test -s "$session_config"
             ! grep -Fq "/etc/dbus-1" "$session_config"
             ! grep -Fq "<standard_session_servicedirs" "$session_config"
             ! grep -Fq "<include" "$session_config"
+            grep -Fq "<apparmor mode=\"disabled\"/>" "$session_config"
             exec "$SNAP/usr/bin/dbus-run-session" --config-file="$session_config" -- "$SNAP/usr/bin/word-hunter-rustified"' \
             >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
           status=$?

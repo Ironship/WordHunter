@@ -77,7 +77,11 @@ GitHub-hosted runner it:
    directives. The resulting config retains the packaged listen, authentication,
    policy, and limit settings without trying to read host-absolute `/usr/share`
    or `/etc/dbus-1` paths that strict confinement intentionally blocks. Normal
-   desktop launches continue to use the user's existing session bus.
+   desktop launches continue to use the user's existing session bus. The
+   ephemeral bus also sets `<apparmor mode="disabled"/>`, because a nested D-Bus
+   daemon cannot query its own bus mediation context from this Snap profile.
+   That disables only D-Bus message mediation on the private test bus; the
+   kernel-enforced strict Snap profile remains active for every process.
 
 No workflow publishes to the Snap Store and no store credentials are read.
 
