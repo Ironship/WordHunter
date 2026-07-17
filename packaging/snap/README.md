@@ -38,10 +38,12 @@ sudo snap connect word-hunter:removable-media
 
 The public Debian package expects distro-provided WebKitGTK 4.1, GStreamer,
 libxdo, and D-Bus session tools. These are staged into the Snap from the core22
-archive. The core22 Syncthing package is too old for the `generate --home`
-command used by Word Hunter, so the recipe instead downloads the same upstream
-Syncthing 2.1.0 archive as the validated AppImage and verifies its pinned
-SHA-256.
+archive. On core22, the `dbus` package supplies both `dbus-daemon` and
+`dbus-run-session`; `dbus-x11` only supplies the X11 launcher and is not enough
+for the private session used by the GUI smoke test. The core22 Syncthing package
+is too old for the `generate --home` command used by Word Hunter, so the recipe
+instead downloads the same upstream Syncthing 2.1.0 archive as the validated
+AppImage and verifies its pinned SHA-256.
 `WORDHUNTER_SYNCTHING` points Word Hunter at that staged
 `$SNAP/usr/bin/syncthing`, so binary discovery does not depend on the host
 `PATH`. The WebKitGTK 4.1 layout follows Tauri's official Snapcraft example.

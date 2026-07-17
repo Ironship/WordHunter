@@ -55,7 +55,6 @@ jobs:
           set -Eeuo pipefail
           sudo apt-get update
           sudo apt-get install --no-install-recommends --yes \
-            dbus-x11 \
             squashfs-tools \
             xvfb
 

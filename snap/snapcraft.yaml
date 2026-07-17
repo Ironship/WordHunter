@@ -54,7 +54,7 @@ parts:
     source-type: deb
     source-checksum: sha256/774eda03b1904ee7c3ebe793c31a21f5b842543835c5267a513711383278b4b5
     stage-packages:
-      - dbus-x11
+      - dbus
       - gstreamer1.0-plugins-base
       - gstreamer1.0-plugins-good
       - libwebkit2gtk-4.1-0
