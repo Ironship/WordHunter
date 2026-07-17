@@ -1,0 +1,195 @@
+name: Package store validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/package-store-validation.yml"
+      - "packaging/**"
+      - "src-tauri/tauri.conf.json"
+  push:
+    branches:
+      - main
+      - "chore/package-store-**"
+    paths:
+      - ".github/workflows/package-store-validation.yml"
+      - "packaging/**"
+      - "src-tauri/tauri.conf.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scoop:
+    name: Scoop manifest and portable archive
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Validate Scoop metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifestPath = "packaging/scoop/wordhunter.json"
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          $appVersion = (Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+
+          if ($manifest.version -ne $appVersion) {
+            throw "Scoop version $($manifest.version) does not match app version $appVersion"
+          }
+          if ($manifest.architecture.'64bit'.hash -notmatch '^[0-9a-f]{64}$') {
+            throw "Scoop SHA-256 must contain exactly 64 lowercase hexadecimal characters"
+          }
+
+          $expectedUrl = "https://github.com/Ironship/WordHunter/releases/download/WordHunter$appVersion/Word.Hunter.portable.zip"
+          if ($manifest.architecture.'64bit'.url -ne $expectedUrl) {
+            throw "Scoop URL does not point to the stable $appVersion portable archive"
+          }
+
+      - name: Verify Scoop checkver and autoupdate
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $scoopRoot = Join-Path $env:RUNNER_TEMP "scoop-source"
+          git init --quiet $scoopRoot
+          git -C $scoopRoot remote add origin https://github.com/ScoopInstaller/Scoop.git
+          git -C $scoopRoot fetch --quiet --depth 1 origin b588a06e41d920d2123ec70aee682bae14935939
+          git -C $scoopRoot checkout --quiet FETCH_HEAD
+
+          & (Join-Path $scoopRoot "bin/checkver.ps1") -App wordhunter -Dir (Resolve-Path "packaging/scoop")
+          if ($LASTEXITCODE -ne 0) {
+            throw "Scoop checkver failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Download and inspect portable archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifest = Get-Content -LiteralPath "packaging/scoop/wordhunter.json" -Raw | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP "Word.Hunter.portable.zip"
+
+          curl.exe --fail --location --retry 3 --output $archive $manifest.architecture.'64bit'.url
+          if ($LASTEXITCODE -ne 0) {
+            throw "Portable archive download failed with exit code $LASTEXITCODE"
+          }
+
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $manifest.architecture.'64bit'.hash) {
+            throw "Portable archive SHA-256 mismatch: $actualHash"
+          }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            $entries = @($zip.Entries | ForEach-Object FullName)
+            foreach ($required in @(
+              "Word.Hunter.portable.exe",
+              "THIRD-PARTY-NOTICES.md",
+              "THIRD-PARTY-LICENSES.html"
+            )) {
+              if ($required -notin $entries) {
+                throw "Portable archive does not contain $required"
+              }
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
+  chocolatey:
+    name: Chocolatey pack, install, upgrade, and uninstall
+    runs-on: windows-2022
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Validate Chocolatey metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          [xml]$nuspec = Get-Content -LiteralPath "packaging/chocolatey/wordhunter.nuspec" -Raw
+          $appVersion = (Get-Content -LiteralPath "src-tauri/tauri.conf.json" -Raw | ConvertFrom-Json).version
+          $packageVersion = $nuspec.package.metadata.version
+
+          if ($packageVersion -ne $appVersion) {
+            throw "Chocolatey version $packageVersion does not match app version $appVersion"
+          }
+
+          $installScript = Get-Content -LiteralPath "packaging/chocolatey/tools/chocolateyInstall.ps1" -Raw
+          $expectedUrl = "https://github.com/Ironship/WordHunter/releases/download/WordHunter$appVersion/Word.Hunter.Setup.exe"
+          if ($installScript -notmatch [regex]::Escape($expectedUrl)) {
+            throw "Chocolatey install script does not use the stable $appVersion installer"
+          }
+          if ($installScript -notmatch "checksum64\s*=\s*'[0-9a-f]{64}'") {
+            throw "Chocolatey install script is missing a lowercase SHA-256 checksum"
+          }
+
+      - name: Pack Chocolatey package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $output = Join-Path $env:RUNNER_TEMP "chocolatey-package"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          choco pack "packaging/chocolatey/wordhunter.nuspec" --outputdirectory $output --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "choco pack failed with exit code $LASTEXITCODE"
+          }
+          $package = Get-ChildItem -LiteralPath $output -Filter "wordhunter.*.nupkg"
+          if ($package.Count -ne 1) {
+            throw "Expected exactly one Chocolatey package, found $($package.Count)"
+          }
+          "CHOCO_PACKAGE_SOURCE=$output" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install and force-upgrade from local package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          [xml]$nuspec = Get-Content -LiteralPath "packaging/chocolatey/wordhunter.nuspec" -Raw
+          $version = $nuspec.package.metadata.version
+
+          choco install wordhunter --version $version --source $env:CHOCO_PACKAGE_SOURCE --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey install failed with exit code $LASTEXITCODE"
+          }
+
+          choco upgrade wordhunter --version $version --source $env:CHOCO_PACKAGE_SOURCE --force --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey force-upgrade failed with exit code $LASTEXITCODE"
+          }
+
+          $uninstallRoots = @(
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+          )
+          $installed = Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -Like "Word Hunter*"
+          if (-not $installed) {
+            throw "Word Hunter was not registered after Chocolatey installation"
+          }
+
+      - name: Uninstall and verify cleanup
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          choco uninstall wordhunter --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey uninstall failed with exit code $LASTEXITCODE"
+          }
+
+          $uninstallRoots = @(
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+          )
+          $remaining = Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -Like "Word Hunter*"
+          if ($remaining) {
+            throw "Word Hunter remains registered after Chocolatey uninstall"
+          }

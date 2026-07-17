@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>wordhunter</id>
+    <version>1.0.6</version>
+    <title>Word Hunter</title>
+    <authors>Ironship</authors>
+    <owners>Ironship</owners>
+    <projectUrl>https://ironship.github.io/WordHunter-site/</projectUrl>
+    <projectSourceUrl>https://github.com/Ironship/WordHunter</projectSourceUrl>
+    <packageSourceUrl>https://github.com/Ironship/WordHunter/tree/main/packaging/chocolatey</packageSourceUrl>
+    <bugTrackerUrl>https://github.com/Ironship/WordHunter/issues</bugTrackerUrl>
+    <licenseUrl>https://github.com/Ironship/WordHunter/blob/WordHunter1.0.6/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <iconUrl>https://raw.githubusercontent.com/Ironship/WordHunter/WordHunter1.0.6/src/assets/icon-256.png</iconUrl>
+    <releaseNotes>https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.6</releaseNotes>
+    <copyright>Copyright (c) 2026 Ironship</copyright>
+    <summary>Local-first reader and vocabulary trainer for language learners.</summary>
+    <description>Word Hunter is a local-first reader, vocabulary trainer, and language-learning workspace. Read real texts, click words to save them together with their context, and review vocabulary with spaced repetition while keeping control of your data.</description>
+    <tags>wordhunter reader vocabulary language-learning spaced-repetition local-first desktop admin</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

@@ -16,8 +16,8 @@ data.
 
 The current stable build is
 [Word Hunter 1.0.6](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.6).
-The package-manager submissions also track 1.0.6, but remain under review, so
-use the signed-off GitHub Release files until those listings are accepted.
+The package-manager submissions also track 1.0.6. Some channels remain under
+review, so use the GitHub Release downloads until those listings are accepted.
 
 - **Windows - direct download:** use
   [`Word.Hunter.Setup.exe`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Setup.exe)
@@ -27,6 +27,15 @@ use the signed-off GitHub Release files until those listings are accepted.
   [1.0.6 package submission](https://github.com/microsoft/winget-pkgs/pull/401481)
   is waiting for moderator approval. Once accepted, install with
   `winget install --exact --id Ironship.WordHunter`.
+- **Windows - Scoop manifest:** the
+  [maintained manifest](packaging/scoop/wordhunter.json) is checked against the
+  release archive in GitHub Actions. Until the dedicated bucket is published,
+  download that JSON file and install it with
+  `scoop install .\wordhunter.json`.
+- **Windows - Chocolatey (package prepared):** the
+  [package source and update instructions](packaging/chocolatey/README.md) are
+  tested on a disposable CI runner. The package is not yet listed in the
+  Chocolatey Community Repository.
 - **Android - direct download:** install the
   [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Pocket.debug.apk).
 - **Android - F-Droid (requested):** the
