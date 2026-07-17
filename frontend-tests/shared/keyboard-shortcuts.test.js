@@ -42,11 +42,8 @@ const { createDefaultState, replaceState, state } = await import("../../dist/web
 const { handleGlobalKeydown } = await import("../../dist/web/js/events/navigation.js");
 const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
-const {
-  applyPendingReaderPageFocus,
-  applyPendingReaderWordFocus,
-  findCurrentReaderToken
-} = await import("../../dist/web/js/reader/word-navigation.js");
+const { findCurrentReaderToken } = await import("../../dist/web/js/reader/word-navigation.js");
+const { applyPendingReaderPageFocus, applyPendingReaderWordFocus } = await import("../../dist/web/js/reader/focus.js");
 const { handleFlashcardKeys } = await import("../../dist/web/js/events/keyboard/flashcards-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
 Object.assign(els, {
@@ -299,6 +296,6 @@ describe("keyboard shortcut documentation", () => {
     assert.doesNotMatch(reader, /event\.key === "5"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.prevPageTitle"\)\)\}"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.nextPageTitle"\)\)\}"/);
-    assert.match(pagination, /readerText\.dataset\.focusAfterPageChange = "1"/);
+    assert.match(pagination, /requestReaderPageFocus\(\)/);
   });
 });

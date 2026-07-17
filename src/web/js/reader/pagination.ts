@@ -6,6 +6,7 @@
 import { state, saveUiState } from "../state.js";
 import { escapeAttribute, escapeHtml } from "../utils.js";
 import { renderReader } from "./renderer.js";
+import { requestReaderPageFocus } from "./focus.js";
 import type { TextToken } from "../tokenizer_v2.js";
 
 interface PageSlice {
@@ -72,8 +73,7 @@ function applyReaderPage(next: number): void {
   if (!state.readerPages) state.readerPages = {};
   if (state.currentTextId) state.readerPages[state.currentTextId] = next;
   saveUiState();
-  const readerText = document.getElementById("reader-text");
-  if (readerText) readerText.dataset.focusAfterPageChange = "1";
+  requestReaderPageFocus();
   renderReader();
 }
 

@@ -11,7 +11,7 @@ import type { TextToken } from "../tokenizer_v2.js";
 import { restoreReaderScrollPosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
-import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./word-navigation.js";
+import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./focus.js";
 import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
 import { getLearningColor } from "../reader-colors.js";
