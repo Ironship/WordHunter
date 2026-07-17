@@ -167,12 +167,24 @@ jobs:
           desktop-file-validate /usr/share/applications/com.wordhunter.app.desktop
           appstreamcli validate --no-net \
             /usr/share/metainfo/com.wordhunter.app.metainfo.xml
-          grep -Fxq 'Exec=wordhunter' \
-            /usr/share/applications/com.wordhunter.app.desktop
+          desktop=/usr/share/applications/com.wordhunter.app.desktop
+          metainfo=/usr/share/metainfo/com.wordhunter.app.metainfo.xml
+          grep -Fxq 'Exec=wordhunter' "${desktop}" || {
+            echo 'The installed desktop launcher has an unexpected Exec line.' >&2
+            grep -n '^Exec=' "${desktop}" >&2 || true
+            exit 1
+          }
           grep -Fq '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
-            /usr/share/metainfo/com.wordhunter.app.metainfo.xml
-          grep -Fq '<binary>wordhunter</binary>' \
-            /usr/share/metainfo/com.wordhunter.app.metainfo.xml
+            "${metainfo}" || {
+              echo 'The installed AppStream launchable does not match the desktop file.' >&2
+              grep -n '<launchable' "${metainfo}" >&2 || true
+              exit 1
+            }
+          grep -Fq '<binary>wordhunter</binary>' "${metainfo}" || {
+            echo 'The installed AppStream binary does not match the public launcher.' >&2
+            grep -n '<binary>' "${metainfo}" >&2 || true
+            exit 1
+          }
           test "$(command -v wordhunter)" = '/usr/bin/wordhunter'
 
           main=/opt/wordhunter/usr/bin/word-hunter-rustified
