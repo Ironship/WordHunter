@@ -300,9 +300,13 @@ jobs:
         shell: bash
 
     steps:
-      - name: Install only runtime test tools
+      - name: Install AppImage host baseline and runtime test tools
         run: |
           apt-get update
+          # AppImage's curated excludelist deliberately leaves these font and
+          # graphics-driver-facing libraries on every supported desktop host.
+          # The ubuntu container is not a desktop image, so install that host
+          # baseline without installing GTK, WebKitGTK, or GStreamer runtimes.
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             appstream \
             ca-certificates \
@@ -310,6 +314,11 @@ jobs:
             desktop-file-utils \
             file \
             git \
+            libegl1 \
+            libfontconfig1 \
+            libfribidi0 \
+            libgbm1 \
+            libharfbuzz0b \
             lintian \
             xauth \
             xvfb

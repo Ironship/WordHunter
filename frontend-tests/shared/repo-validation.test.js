@@ -165,6 +165,20 @@ describe("repository validation wiring", () => {
     assert.equal(linuxRuntime.needs, "linux-native");
     assert.match(linuxRuntime.if, /linux-native\.result == 'success'/);
     assert.equal(linuxRuntime.container, "ubuntu:22.04");
+    const linuxRuntimeInstall = stepByName(
+      linuxRuntime,
+      "Install AppImage host baseline and runtime test tools",
+    ).run;
+    for (const hostLibrary of [
+      "libegl1",
+      "libfontconfig1",
+      "libfribidi0",
+      "libgbm1",
+      "libharfbuzz0b",
+    ]) {
+      assert.match(linuxRuntimeInstall, new RegExp(`\\b${hostLibrary}\\b`));
+    }
+    assert.doesNotMatch(linuxRuntimeInstall, /libgtk-3-0|libwebkit2gtk-4\.1-0|gstreamer1\.0-plugins/);
     assert.equal(
       stepByName(linuxRuntime, "Download validated Linux native packages").with.name,
       "validated-linux-native",
