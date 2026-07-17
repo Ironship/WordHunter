@@ -81,7 +81,17 @@ function createLinuxTree(root, format = "appimage") {
     '<component type="desktop-application"><id>com.wordhunter.app</id><launchable type="desktop-id">Word Hunter.desktop</launchable></component>',
   );
   write(root, "usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png");
-  if (format === "deb") write(root, "usr/share/doc/word-hunter/copyright");
+  if (format === "deb") {
+    write(root, "usr/share/doc/word-hunter/copyright");
+    write(root, "usr/share/doc/word-hunter/changelog.gz");
+    write(
+      root,
+      "usr/share/lintian/overrides/word-hunter",
+      ["freetype", "lcms2", "openjpeg"]
+        .map((library) => `word-hunter: embedded-library ${library} usr/lib/*/ocr-runtime/bin/libpdfium.so`)
+        .join("\n"),
+    );
+  }
 }
 
 describe("Linux native artifact inspection", () => {
@@ -93,11 +103,20 @@ describe("Linux native artifact inspection", () => {
     assert.equal(bundle.linux.appimage.files["/usr/bin/syncthing"], "syncthing/syncthing");
     assert.equal(bundle.resources["syncthing/syncthing"], undefined);
     assert.ok(bundle.linux.deb.depends.includes("syncthing"));
+    assert.ok(bundle.linux.deb.depends.includes("libc6 (>= 2.35)"));
     assert.equal(bundle.linux.deb.desktopTemplate, "../flatpak/com.wordhunter.app.desktop");
     assert.equal(bundle.linux.deb.files["/usr/bin/syncthing"], undefined);
     assert.equal(
       bundle.linux.deb.files["/usr/share/doc/word-hunter/copyright"],
       "../packaging/linux/debian-copyright",
+    );
+    assert.equal(
+      bundle.linux.deb.files["/usr/share/doc/word-hunter/changelog.gz"],
+      "target/.tauri/word-hunter-changelog.gz",
+    );
+    assert.equal(
+      bundle.linux.deb.files["/usr/share/lintian/overrides/word-hunter"],
+      "../packaging/linux/word-hunter.lintian-overrides",
     );
 
     for (const digest of [
@@ -111,6 +130,8 @@ describe("Linux native artifact inspection", () => {
     }
     assert.doesNotMatch(buildScript, /ORT_PREFER_DYNAMIC_LINK/);
     assert.match(buildScript, /extract_tgz "\$ort_archive" "\$ort_dir" 1/);
+    assert.match(buildScript, /gzip -9 -n -c .*debian-changelog/);
+    assert.match(buildScript, /CARGO_PROFILE_RELEASE_STRIP=symbols/);
   });
 
   it("accepts a complete x86_64 tree and rejects architecture drift", () => {

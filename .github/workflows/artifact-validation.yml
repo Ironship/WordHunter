@@ -388,7 +388,7 @@ jobs:
         env:
           DEB_PATH: ${{ github.workspace }}/release-assets/word-hunter_${{ needs.linux-native.outputs.version }}_amd64.deb
         run: |
-          lintian --fail-on error "$DEB_PATH"
+          lintian --show-overrides --fail-on error "$DEB_PATH"
           extracted="$(mktemp -d)"
           dpkg-deb --extract "$DEB_PATH" "$extracted"
           desktop-file-validate "$extracted/usr/share/applications/Word Hunter.desktop"

@@ -30,6 +30,7 @@
       },
       "deb": {
         "depends": [
+          "libc6 (>= 2.35)",
           "libxdo3",
           "gstreamer1.0-plugins-base",
           "gstreamer1.0-plugins-good",
@@ -45,7 +46,9 @@
           "/usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png": "../src/assets/icon-128.png",
           "/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png": "../src/assets/icon-256.png",
           "/usr/share/metainfo/com.wordhunter.app.metainfo.xml": "../packaging/linux/com.wordhunter.app.metainfo.xml",
-          "/usr/share/doc/word-hunter/copyright": "../packaging/linux/debian-copyright"
+          "/usr/share/doc/word-hunter/copyright": "../packaging/linux/debian-copyright",
+          "/usr/share/doc/word-hunter/changelog.gz": "target/.tauri/word-hunter-changelog.gz",
+          "/usr/share/lintian/overrides/word-hunter": "../packaging/linux/word-hunter.lintian-overrides"
         }
       }
     }

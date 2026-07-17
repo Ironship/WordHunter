@@ -1,0 +1,6 @@
+# The pinned upstream PDFium binary statically embeds these private libraries.
+# Ubuntu 22.04 does not provide a compatible system PDFium shared library, so
+# security updates are handled by advancing the pinned PDFium build and hash.
+word-hunter: embedded-library freetype usr/lib/*/ocr-runtime/bin/libpdfium.so
+word-hunter: embedded-library lcms2 usr/lib/*/ocr-runtime/bin/libpdfium.so
+word-hunter: embedded-library openjpeg usr/lib/*/ocr-runtime/bin/libpdfium.so

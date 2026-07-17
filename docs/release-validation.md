@@ -72,6 +72,13 @@ declared system Syncthing dependency, repeats the sidecar and GUI smoke tests,
 and removes the package. The AppImage contains its own Syncthing executable;
 the DEB deliberately does not overwrite `/usr/bin/syncthing`.
 
+Lintian errors remain release-blocking. The DEB ships three narrowly scoped
+overrides for `freetype`, `lcms2`, and `openjpeg` detected inside the pinned
+upstream PDFium shared library. The matching PDFium build and checksum are part
+of the release recipe because Ubuntu 22.04 does not provide a compatible system
+PDFium library. Missing package dependencies, changelog metadata, and
+unstripped Word Hunter binaries are fixed by the recipe rather than overridden.
+
 The workflow always uploads validated files as workflow artifacts. A manual
 dispatch may additionally provide an existing draft `release_tag`; after every
 platform job succeeds, a final GitHub-hosted job attaches all seven validated

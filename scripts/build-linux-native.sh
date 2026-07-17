@@ -40,7 +40,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "$1 is required"
 }
 
-for command_name in cargo curl find install npm node sha256sum strip tar unzip; do
+for command_name in cargo curl find gzip install npm node sha256sum strip tar unzip; do
   require_command "$command_name"
 done
 
@@ -147,6 +147,8 @@ prepare_tauri_appimage_tools() {
   install -m 0755 "$gtk_plugin" "$tools_dir/linuxdeploy-plugin-gtk.sh"
   install -m 0755 "$gstreamer_plugin" "$tools_dir/linuxdeploy-plugin-gstreamer.sh"
   install -m 0755 "$appimage_plugin" "$tools_dir/linuxdeploy-plugin-appimage.AppImage"
+  gzip -9 -n -c "$root/packaging/linux/debian-changelog" \
+    > "$tools_dir/word-hunter-changelog.gz"
 }
 
 prepare_ctranslate2_sources() {
@@ -293,6 +295,7 @@ rm -rf \
 
 CTRANSLATE2_RELEASE="$ctranslate2_release" \
 CMAKE_BUILD_PARALLEL_LEVEL="${CMAKE_BUILD_PARALLEL_LEVEL:-2}" \
+CARGO_PROFILE_RELEASE_STRIP=symbols \
 cargo tauri build \
   --bundles appimage,deb \
   --config "$root/src-tauri/tauri.linux.conf.json"

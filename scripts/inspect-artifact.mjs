@@ -490,7 +490,21 @@ export function inspectLinuxTree(root, description = root, options = {}) {
   assertExecutable(root, main, description);
   assertExecutable(root, ocrRunner, description);
   if (syncthing) assertExecutable(root, syncthing, description);
-  if (format === "deb") requireSuffix(names, "usr/share/doc/word-hunter/copyright");
+  if (format === "deb") {
+    requireSuffix(names, "usr/share/doc/word-hunter/copyright");
+    requireSuffix(names, "usr/share/doc/word-hunter/changelog.gz");
+    const lintianOverrides = requireSuffix(names, "usr/share/lintian/overrides/word-hunter");
+    const overrideSource = readFileSync(localArtifactPath(root, lintianOverrides), "utf8");
+    for (const embeddedLibrary of ["freetype", "lcms2", "openjpeg"]) {
+      const pattern = new RegExp(
+        `^word-hunter: embedded-library ${embeddedLibrary} usr/lib/\\*/ocr-runtime/bin/libpdfium\\.so$`,
+        "m",
+      );
+      if (!pattern.test(overrideSource)) {
+        fail(`${description} is missing the scoped PDFium ${embeddedLibrary} Lintian override`);
+      }
+    }
+  }
   return names;
 }
 
@@ -540,6 +554,7 @@ export function inspectLinuxDeb(path) {
   }
   const dependencies = run("dpkg-deb", ["--field", path, "Depends"]).trim();
   for (const dependency of [
+    "libc6",
     "libgtk-3-0",
     "libwebkit2gtk-4.1-0",
     "libxdo3",
