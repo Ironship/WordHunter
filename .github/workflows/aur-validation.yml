@@ -186,8 +186,10 @@ jobs:
             exit 1
           }
           launcher="$(command -v wordhunter || true)"
-          test "${launcher}" = '/usr/bin/wordhunter' || {
-            printf 'Unexpected public launcher path: %s\n' "${launcher:-<missing>}" >&2
+          canonical_launcher="$(readlink -f "${launcher}" 2>/dev/null || true)"
+          test "${canonical_launcher}" = '/usr/bin/wordhunter' || {
+            printf 'Unexpected public launcher path: %s (canonical: %s)\n' \
+              "${launcher:-<missing>}" "${canonical_launcher:-<missing>}" >&2
             exit 1
           }
 
