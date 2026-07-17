@@ -715,7 +715,7 @@
     "contactIssues": "<strong>Fehlerberichte und Ideen:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Lizenz:</strong> AGPL-3.0-or-later. Geschlossene kommerzielle Nutzung abgeleiteten Codes erfordert eine separate schriftliche Lizenz. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Neu in Version 1.0.6: Nach einem Seitenwechsel erhält das erste Wort automatisch den Tastaturfokus. Wiedergabe und mehrteilige Wortvorschläge bleiben an der exakt gewählten Stelle, und heute neu gelernte Wörter werden im Lesetext erst am folgenden Tag abgefragt. Außerdem wurden italienische Oberflächentexte und die Titelzeilen der integrierten Lektüren korrigiert.</strong>",
+    "whatsNew": "<strong>Neu in Version 1.0.6: Nach einem Seitenwechsel erhält das erste Wort automatisch den Tastaturfokus. Wiedergabe und mehrteilige Wortvorschläge bleiben an der exakt gewählten Stelle, und heute neu gelernte Wörter werden im Lesetext erst am folgenden Tag abgefragt. Unter Android bleibt der scrollende Inhalt der Wortkarte nun unter ihrer festen Kopfzeile. Außerdem wurden italienische Oberflächentexte und die Titelzeilen der integrierten Lektüren korrigiert.</strong>",
     "version": "<strong>Version:</strong> Word Hunter 1.0.6",
     "focusHint1": "Drücke <kbd>Strg</kbd>+<kbd>Eingabe</kbd>, um den Text zu betreten oder zurückzukehren",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> um Wörter zu navigieren",

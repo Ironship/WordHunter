@@ -1090,16 +1090,25 @@ html.pocket-mode {
   position: relative;
   z-index: 2;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
   max-height: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   padding: 0 1rem 1rem;
   border-radius: 0 0 12px 12px;
   background: var(--word-panel-status-bg, var(--panel));
+  touch-action: pan-y pinch-zoom;
+}
+
+.pocket-mode .word-panel .word-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   touch-action: pan-y pinch-zoom;
 }
 
@@ -1125,9 +1134,9 @@ html.pocket-mode {
 }
 
 .pocket-mode .word-panel-header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 1;
+  flex: 0 0 auto;
   padding: 1.35rem 0 0.65rem;
   background: var(--word-panel-status-bg, var(--panel));
 }

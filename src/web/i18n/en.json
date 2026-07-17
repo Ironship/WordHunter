@@ -795,7 +795,7 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>What's new in 1.0.6: Reader page changes now restore keyboard focus, Play and multi-word suggestions keep the exact selected occurrence, and words first learned today are not reviewed in the Reader until the following day. Italian interface copy and built-in reader title headers were also corrected.</strong>",
+    "whatsNew": "<strong>What's new in 1.0.6: Reader page changes now restore keyboard focus, Play and multi-word suggestions keep the exact selected occurrence, and words first learned today are not reviewed in the Reader until the following day. On Android, scrolling word-card content now stays below its fixed header. Italian interface copy and built-in reader title headers were also corrected.</strong>",
     "version": "<strong>Version:</strong> Word Hunter 1.0.6",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
