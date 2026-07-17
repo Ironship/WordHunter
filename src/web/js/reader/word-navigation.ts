@@ -91,8 +91,8 @@ function transitionWordPanel(
   ghost.classList.add("word-panel-card-ghost", `word-panel-exit-${direction}`);
   host.appendChild(ghost);
   ghost.scrollTop = panel.scrollTop;
-  const panelForm = panel.querySelector<HTMLElement>(".word-form");
-  const ghostForm = ghost.querySelector<HTMLElement>(".word-form");
+  const panelForm = panel.querySelector?.<HTMLElement>(".word-form");
+  const ghostForm = ghost.querySelector?.<HTMLElement>(".word-form");
   if (panelForm && ghostForm) ghostForm.scrollTop = panelForm.scrollTop;
 
   panel.dataset.wordCardTransition = transitionId;
