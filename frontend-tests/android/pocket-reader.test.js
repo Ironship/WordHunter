@@ -180,9 +180,10 @@ describe("Android Pocket reader", () => {
       declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-text")["padding-bottom"],
       /var\(--pocket-word-sheet-collapsed-size\)/
     );
-    assertDeclarations(css, ".pocket-mode .word-panel", { flex: "1 1 auto", "min-height": "0", height: "auto", "max-height": "none", "overflow-y": "auto", padding: "0 1rem 1rem", background: "var(--word-panel-status-bg, var(--panel))", "touch-action": "pan-y pinch-zoom" });
+    assertDeclarations(css, ".pocket-mode .word-panel", { display: "flex", "flex-direction": "column", flex: "1 1 auto", "min-height": "0", height: "auto", "max-height": "none", overflow: "hidden", padding: "0 1rem 1rem", background: "var(--word-panel-status-bg, var(--panel))", "touch-action": "pan-y pinch-zoom" });
+    assertDeclarations(css, ".pocket-mode .word-panel .word-form", { flex: "1 1 auto", "min-height": "0", "overflow-x": "hidden", "overflow-y": "auto", "overscroll-behavior": "contain", "touch-action": "pan-y pinch-zoom" });
     assert.match(css, /@media \(prefers-reduced-motion: no-preference\)[\s\S]*pocket-word-sheet-dragging[\s\S]*transition: top 200ms/);
-    assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "sticky", top: "0", padding: "1.35rem 0 0.65rem", background: "var(--word-panel-status-bg, var(--panel))" });
+    assertDeclarations(css, ".pocket-mode .word-panel-header", { position: "relative", flex: "0 0 auto", padding: "1.35rem 0 0.65rem", background: "var(--word-panel-status-bg, var(--panel))" });
     assertDeclarations(css, ".pocket-mode .word-panel-close", { display: "inline-flex" });
     assert.equal(css.includes("pocket-word-dictionary"), false);
     assertDeclarations(css, ".pocket-mode #word-panel .word-actions .secondary-button", { flex: "1 1 44px", "min-width": "44px" });

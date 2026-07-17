@@ -3,4 +3,5 @@ Stable 1.0.6 release.
 - Restored Reader keyboard focus after page changes.
 - Kept playback and repeated phrases anchored to the exact selected occurrence.
 - Deferred in-text review of newly learned words until the following day.
+- Kept scrolling word-card content below its fixed header.
 - Corrected Italian interface copy and built-in reader title headers.

@@ -715,7 +715,7 @@
     "contactIssues": "<strong>Bugs et idées :</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact :</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licence :</strong> AGPL-3.0-or-later. L'utilisation commerciale fermée de code dérivé nécessite une licence écrite séparée. Détails : https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Nouveautés de la version 1.0.6 : après un changement de page, le premier mot reçoit automatiquement le focus clavier. La lecture et les suggestions de plusieurs mots conservent l’occurrence exacte sélectionnée, et les mots appris aujourd’hui ne sont révisés dans le lecteur qu’à partir du lendemain. Des textes de l’interface italienne et les en-têtes des lectures intégrées ont également été corrigés.</strong>",
+    "whatsNew": "<strong>Nouveautés de la version 1.0.6 : après un changement de page, le premier mot reçoit automatiquement le focus clavier. La lecture et les suggestions de plusieurs mots conservent l’occurrence exacte sélectionnée, et les mots appris aujourd’hui ne sont révisés dans le lecteur qu’à partir du lendemain. Sur Android, le contenu défilant de la fiche de mot reste désormais sous son en-tête fixe. Des textes de l’interface italienne et les en-têtes des lectures intégrées ont également été corrigés.</strong>",
     "version": "<strong>Version :</strong> Word Hunter 1.0.6",
     "focusHint1": "Appuyez sur <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour entrer ou revenir dans le texte",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> pour naviguer les mots",
