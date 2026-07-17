@@ -224,7 +224,7 @@ prepare_native_runtime() {
   syncthing_archive="$(download_checked "syncthing-linux-amd64-v2.1.0.tar.gz" "$syncthing_url" "$syncthing_sha256")"
 
   note "Extracting OCR and Syncthing runtime inputs"
-  extract_tgz "$ort_archive" "$ort_dir"
+  extract_tgz "$ort_archive" "$ort_dir" 1
   extract_tgz "$pdfium_archive" "$pdfium_dir"
   extract_zip "$models_archive" "$models_dir"
   extract_tgz "$syncthing_archive" "$syncthing_dir" 1

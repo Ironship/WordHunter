@@ -110,6 +110,7 @@ describe("Linux native artifact inspection", () => {
       assert.match(buildScript, new RegExp(digest));
     }
     assert.doesNotMatch(buildScript, /ORT_PREFER_DYNAMIC_LINK/);
+    assert.match(buildScript, /extract_tgz "\$ort_archive" "\$ort_dir" 1/);
   });
 
   it("accepts a complete x86_64 tree and rejects architecture drift", () => {
