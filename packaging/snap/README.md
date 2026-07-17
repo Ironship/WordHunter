@@ -71,7 +71,9 @@ GitHub-hosted runner it:
    GitHub-hosted runners cannot move their agent service into a Snap app cgroup,
    so the GUI is launched through `snap run --shell`, which still enters the
    app's confined environment and executes its command chain. The private D-Bus
-   session is created only after entering that environment.
+   session is created only after entering that environment. Its configuration
+   is passed explicitly from `$SNAP/usr/share/dbus-1/session.conf`, because the
+   daemon's host-absolute default path is not readable under strict confinement.
 
 No workflow publishes to the Snap Store and no store credentials are read.
 

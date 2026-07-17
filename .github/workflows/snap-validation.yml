@@ -71,6 +71,7 @@ jobs:
 
           test -x "$root/usr/bin/word-hunter-rustified"
           test -x "$root/usr/bin/dbus-run-session"
+          test -r "$root/usr/share/dbus-1/session.conf"
           test -x "$root/usr/bin/syncthing"
           test -f "$root/usr/share/applications/word-hunter.desktop"
           test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
@@ -116,11 +117,12 @@ jobs:
           # GitHub-hosted runners live in hosted-compute-agent.service. Enter
           # the confined app environment before creating the private D-Bus
           # session, otherwise snapd tries to resolve the runner through that
-          # private bus and rejects its host service cgroup.
+          # private bus and rejects its host service cgroup. Point D-Bus at the
+          # staged config because its compiled host path is not confined.
           xvfb-run -a \
             timeout --signal=TERM --kill-after=5s 20s \
             snap run --shell word-hunter -c \
-            'exec "$SNAP/usr/bin/dbus-run-session" -- "$SNAP/usr/bin/word-hunter-rustified"' \
+            'exec "$SNAP/usr/bin/dbus-run-session" --config-file="$SNAP/usr/share/dbus-1/session.conf" -- "$SNAP/usr/bin/word-hunter-rustified"' \
             >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
           status=$?
           set -e
