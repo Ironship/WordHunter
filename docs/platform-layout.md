@@ -6,16 +6,17 @@ Active targets in this repository right now:
 
 - Windows desktop
 - Linux desktop
+- macOS desktop (Apple Silicon)
 - Android Pocket
 
-macOS and iOS are intentionally outside the current layout.
+Intel Macs and iOS are intentionally outside the current layout.
 
 ## Shared code
 
 - `src/web/` contains the shared HTML, TypeScript, i18n, flags, and base CSS.
 - `dist/web/` is the generated, untracked browser runtime embedded by Tauri.
 - `src-tauri/src/` contains shared Rust handlers, storage, SRS, tokenization, subtitles, and export logic.
-- `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Android APK/AAB builds, and frontend tests. Linux packages use `scripts/build-flatpak.sh`.
+- `scripts/build.bat` is the shared build entrypoint for Windows desktop artifacts, Android APK/AAB builds, and frontend tests. Linux packages use `scripts/build-flatpak.sh`; Apple Silicon DMGs use `scripts/build-macos.sh`.
 
 ## Web platform layers
 
@@ -25,7 +26,7 @@ macOS and iOS are intentionally outside the current layout.
 
 ## Native platform layers
 
-- `src-tauri/src/platform/web_app.rs` contains shared Windows/Linux desktop startup glue.
+- `src-tauri/src/platform/web_app.rs` contains shared Windows/Linux/macOS desktop startup glue.
 - `src-tauri/src/platform/android.rs` contains Android startup glue.
 - `src-tauri/platforms/android/MainActivity.kt` contains the Android WebView bridge, including the sync folder picker.
 - `src-tauri/platforms/android/AndroidManifest.xml` contains the Android manifest template copied into Tauri's generated project.
@@ -45,6 +46,7 @@ EPUB import uses the shared Rust ebook parser on every platform. MOBI/AZW still 
 
 - `src-tauri/tauri.conf.json` is the shared Tauri config.
 - `src-tauri/tauri.windows.conf.json` is Windows-specific.
+- `src-tauri/tauri.macos.conf.json` is the Apple Silicon DMG configuration.
 - `src-tauri/tauri.linux-bundle.conf.json` is passed explicitly by the Linux
   package script. Keeping it out of Tauri's automatic platform-config name
   prevents ordinary Rust tests from requiring package resources that are only

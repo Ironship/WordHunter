@@ -100,12 +100,12 @@ Current stable release:
 
 Active targets:
 
-- Windows and Linux desktop: `Word Hunter`
+- Windows, Linux, and macOS desktop: `Word Hunter`
 - Android: `Word Hunter Pocket`
 
-Seven validated artifacts are published through GitHub Releases rather than
+Eight validated artifacts are published through GitHub Releases rather than
 tracked in the source tree: Windows setup and portable builds, Android APK and
-AAB, and Linux Flatpak, AppImage, and DEB packages.
+AAB, an Apple Silicon macOS DMG, and Linux Flatpak, AppImage, and DEB packages.
 
 Release `1.0.0` marks the new compatibility baseline after breaking storage and
 sync changes. It introduces durable per-record local storage, safer recovery and
@@ -291,9 +291,10 @@ shares a folder with a separately installed Syncthing client.
 
 - Windows desktop
 - Linux desktop
+- macOS desktop (Apple Silicon)
 - Android Pocket
 
-macOS and iOS are not active targets right now.
+Intel Macs and iOS are not active targets right now.
 
 ## Build From Source
 
@@ -305,6 +306,7 @@ macOS and iOS are not active targets right now.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
+- Apple Silicon macOS for the DMG build.
 - Python 3 and `curl` when refreshing or checking Flatpak Cargo sources.
 - OCR runtime/model assets only when preparing desktop OCR support.
 
@@ -336,6 +338,17 @@ Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 .\scripts\build.bat play         # build signed Google Play AAB
 .\scripts\build.bat ocr-runtime  # prepare bundled native PaddleOCR runtime
 ```
+
+On Apple Silicon macOS, build and validate the DMG with:
+
+```bash
+./scripts/build-macos.sh
+```
+
+It writes `outputs/WordHunter-<version>-aarch64.dmg`. The current recipe
+uses an ad-hoc signature, so macOS may require approval in Privacy & Security
+after download. A Developer ID certificate and notarization are still required
+for a warning-free public install.
 
 Rust backend tests can also be run directly:
 
