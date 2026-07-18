@@ -231,7 +231,7 @@ describe("repository validation wiring", () => {
     assert.match(buildScript, /--target aarch64-apple-darwin/);
     assert.match(buildScript, /hdiutil verify/);
     assert.match(buildScript, /for attempt in 1 2 3/);
-    assert.match(buildScript, /hdiutil attach -mountrandom \/tmp -readonly -noverify -noautoopen -nobrowse/);
+    assert.match(buildScript, /hdiutil attach -acceptlicense -mountrandom \/tmp -readonly -noverify -noautoopen -nobrowse/);
     assert.match(buildScript, /hdiutil detach "\$device"/);
     assert.match(buildScript, /codesign --verify --deep --strict/);
     assert.match(buildScript, /kill -0 "\$app_pid"/);

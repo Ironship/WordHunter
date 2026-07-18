@@ -49,7 +49,7 @@ trap cleanup EXIT
 
 hdiutil verify "$output" >/dev/null
 for attempt in 1 2 3; do
-  if attach_output="$(hdiutil attach -mountrandom /tmp -readonly -noverify -noautoopen -nobrowse "$output")"; then
+  if attach_output="$(hdiutil attach -acceptlicense -mountrandom /tmp -readonly -noverify -noautoopen -nobrowse "$output")"; then
     device="$(printf '%s\n' "$attach_output" | awk '/^\/dev\// { print $1; exit }')"
     break
   fi
