@@ -72,6 +72,7 @@ jobs:
   android:
     name: Android APK and AAB
     needs: frontend-validation
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
     runs-on: windows-2022
     timeout-minutes: 120
 
@@ -128,6 +129,7 @@ jobs:
   windows:
     name: Windows portable ZIP and NSIS installer
     needs: frontend-validation
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
     runs-on: windows-2022
     timeout-minutes: 180
 
@@ -178,6 +180,7 @@ jobs:
   macos:
     name: macOS Apple Silicon DMG
     needs: frontend-validation
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
     runs-on: macos-15
     timeout-minutes: 180
     outputs:
@@ -221,6 +224,7 @@ jobs:
   flatpak:
     name: Flatpak bundle and installed file list
     needs: frontend-validation
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 

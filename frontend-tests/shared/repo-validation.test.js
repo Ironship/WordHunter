@@ -167,6 +167,7 @@ describe("repository validation wiring", () => {
     for (const name of ["android", "windows", "macos", "flatpak", "linux-native"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
+      assert.match(job.if, /frontend-validation\.result == 'success'/);
       const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
       assert.ok(upload, `${job.name} does not upload its validated artifact`);
       assert.equal(upload.with["if-no-files-found"], "error");
