@@ -175,6 +175,49 @@ jobs:
             outputs/Word.Hunter.Setup.exe
           if-no-files-found: error
 
+  macos:
+    name: macOS Apple Silicon DMG
+    needs: frontend-validation
+    runs-on: macos-15
+    timeout-minutes: 180
+    outputs:
+      version: ${{ steps.package-version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install pinned Tauri CLI
+        run: cargo install tauri-cli --version 2.11.4 --locked
+
+      - name: Read package version
+        id: package-version
+        run: |
+          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version)")"
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build and smoke-test the Apple Silicon DMG
+        run: ./scripts/build-macos.sh
+
+      - name: Upload validated macOS DMG
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: validated-macos
+          path: outputs/WordHunter-${{ steps.package-version.outputs.version }}-aarch64.dmg
+          if-no-files-found: error
+
   flatpak:
     name: Flatpak bundle and installed file list
     needs: frontend-validation
@@ -428,7 +471,7 @@ jobs:
   publish-release:
     name: Attach validated artifacts to draft release
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
-    needs: [android, windows, flatpak, linux-native, linux-native-runtime]
+    needs: [android, windows, macos, flatpak, linux-native, linux-native-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -445,12 +488,14 @@ jobs:
       - name: Require the complete release asset set
         env:
           LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
+          MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           for asset in \
             Word.Hunter.Pocket.debug.apk \
             Word.Hunter.Pocket.release.aab \
             Word.Hunter.portable.zip \
             Word.Hunter.Setup.exe \
+            WordHunter-${MACOS_VERSION}-aarch64.dmg \
             WordHunter.flatpak \
             WordHunter-${LINUX_VERSION}-x86_64.AppImage \
             word-hunter_${LINUX_VERSION}_amd64.deb; do
@@ -477,12 +522,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
           LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
+          MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           gh release upload "$RELEASE_TAG" \
             release-assets/Word.Hunter.Pocket.debug.apk \
             release-assets/Word.Hunter.Pocket.release.aab \
             release-assets/Word.Hunter.portable.zip \
             release-assets/Word.Hunter.Setup.exe \
+            "release-assets/WordHunter-${MACOS_VERSION}-aarch64.dmg" \
             release-assets/WordHunter.flatpak \
             "release-assets/WordHunter-${LINUX_VERSION}-x86_64.AppImage" \
             "release-assets/word-hunter_${LINUX_VERSION}_amd64.deb" \

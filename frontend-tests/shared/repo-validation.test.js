@@ -122,6 +122,7 @@ describe("repository validation wiring", () => {
       "frontend-validation",
       "linux-native",
       "linux-native-runtime",
+      "macos",
       "publish-release",
       "release-preflight",
       "windows",
@@ -148,13 +149,22 @@ describe("repository validation wiring", () => {
     assert.match(stepByName(workflow.jobs.windows, "Build frontend and Windows release packages").run, /build\.bat all/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-portable/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-nsis/);
+    assert.equal(workflow.jobs.macos["runs-on"], "macos-15");
+    assert.equal(
+      stepByName(workflow.jobs.macos, "Build and smoke-test the Apple Silicon DMG").run,
+      "./scripts/build-macos.sh",
+    );
+    assert.match(
+      stepByName(workflow.jobs.macos, "Upload validated macOS DMG").with.path,
+      /WordHunter-\$\{\{ steps\.package-version\.outputs\.version \}\}-aarch64\.dmg/,
+    );
     assert.equal(stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
     assert.match(
       stepByName(workflow.jobs["linux-native"], "Build frontend, AppImage, and DEB through the release recipe").run,
       /build-linux-native\.sh/,
     );
     assert.match(workflow.jobs["linux-native"].if, /frontend-validation\.result == 'success'/);
-    for (const name of ["android", "windows", "flatpak", "linux-native"]) {
+    for (const name of ["android", "windows", "macos", "flatpak", "linux-native"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
       const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
@@ -193,7 +203,7 @@ describe("repository validation wiring", () => {
       /lintian[\s\S]*apt-get install[\s\S]*xvfb-run[\s\S]*apt-get remove/,
     );
     const publish = workflow.jobs["publish-release"];
-    assert.deepEqual(publish.needs, ["android", "windows", "flatpak", "linux-native", "linux-native-runtime"]);
+    assert.deepEqual(publish.needs, ["android", "windows", "macos", "flatpak", "linux-native", "linux-native-runtime"]);
     assert.equal(publish.permissions.contents, "write");
     assert.match(publish.if, /workflow_dispatch[\s\S]*release_tag/);
     const finalRevisionCheck = stepByName(publish, "Revalidate the draft release revision");
@@ -206,6 +216,21 @@ describe("repository validation wiring", () => {
     const attach = stepByName(publish, "Attach validated assets to the draft release");
     assert.equal(attach.env.GH_REPO, "${{ github.repository }}");
     assert.match(attach.run, /gh release upload[\s\S]*--clobber/);
+  });
+
+  it("keeps the macOS package native, ad-hoc signed, and artifact-validated", () => {
+    const config = JSON.parse(read("../../src-tauri/tauri.macos.conf.json"));
+    const buildScript = read("../../scripts/build-macos.sh");
+    const platform = read("../../src-tauri/src/platform/mod.rs");
+
+    assert.deepEqual(config.bundle.targets, ["dmg"]);
+    assert.equal(config.bundle.macOS.signingIdentity, "-");
+    assert.equal(config.bundle.macOS.minimumSystemVersion, "11.0");
+    assert.match(platform, /target_os = "macos"/);
+    assert.match(buildScript, /--target aarch64-apple-darwin/);
+    assert.match(buildScript, /hdiutil attach/);
+    assert.match(buildScript, /codesign --verify --deep --strict/);
+    assert.match(buildScript, /kill -0 "\$app_pid"/);
   });
 
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {

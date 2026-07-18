@@ -44,6 +44,8 @@ dispatched. It rebuilds and validates:
 - x86_64 Windows portable ZIP and NSIS contents, native executables, OCR models,
   Syncthing notices, compiler runtime DLLs discovered by the build, and all
   legal reports;
+- the Apple Silicon macOS DMG, app bundle, arm64 executable, ad-hoc signature,
+  drag-to-Applications layout, and a launch smoke test;
 - the x86_64 Flatpak ref, installed file list, native ELF architecture, OCR
   models, Syncthing notices, desktop metadata, and legal reports;
 - x86_64 Linux AppImage and DEB installed file trees, native ELF architecture,
@@ -81,7 +83,7 @@ unstripped Word Hunter binaries are fixed by the recipe rather than overridden.
 
 The workflow always uploads validated files as workflow artifacts. A manual
 dispatch may additionally provide an existing draft `release_tag`; after every
-platform job succeeds, a final GitHub-hosted job attaches all seven validated
+platform job succeeds, a final GitHub-hosted job attaches all eight validated
 files to that draft. This keeps release binaries off the maintainer's local
 machine. The draft must target the exact commit selected for the workflow run.
 Scheduled runs do not attach or replace assets. Publishing the draft does not
@@ -178,9 +180,12 @@ instead of introducing formatting-only drift.
 Static tests validate recipes and policy, but they do not pretend to validate a
 binary that was not built. Windows PE/NSIS validation runs on Windows, Android
 Gradle compilation runs with the Android toolchain, and Flatpak OSTree file-list
-validation runs on Linux. AppImage and DEB validation also runs on Linux,
+validation runs on Linux. DMG validation runs on Apple Silicon macOS, mounts the
+image, verifies its ad-hoc signature and architecture, and launches the packaged
+application. AppImage and DEB validation also runs on Linux,
 extracts each completed package, and starts both GUI payloads under Xvfb on a
-clean runtime container. Installer launch
-behavior, WebView2 availability, Android device behavior, Google Play
+clean runtime container. Installer launch behavior, WebView2 availability,
+macOS Gatekeeper approval for the ad-hoc signature, Android device behavior,
+Google Play
 signing/acceptance, and interactive Flatpak/AppImage/DEB desktop integration
 remain platform or store tests and require release hardware/accounts.
