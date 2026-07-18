@@ -36,18 +36,34 @@ review, so use the GitHub Release downloads until those listings are accepted.
   [package source and update instructions](packaging/chocolatey/README.md) are
   tested on a disposable CI runner. The package is not yet listed in the
   Chocolatey Community Repository.
+- **macOS - direct download (Apple Silicon):** download
+  [`WordHunter-1.0.6-aarch64.dmg`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter-1.0.6-aarch64.dmg),
+  open it, and drag Word Hunter to **Applications**. The app uses an ad-hoc
+  signature and is not notarized, so macOS may block the first launch. If it
+  does:
+  1. Try to open Word Hunter once.
+  2. Open **System Settings -> Privacy & Security**.
+  3. Under **Security**, click **Open Anyway**.
+  4. Enter your password and confirm **Open**.
+
+  macOS saves this approval for later launches. See
+  [Apple's instructions for opening an app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac).
+  Word Hunter is not currently distributed through the Mac App Store.
 - **Android - direct download:** install the
   [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Pocket.debug.apk).
 - **Android - F-Droid (requested):** the
   [inclusion request for `com.wordhunter.pocket`](https://gitlab.com/fdroid/rfp/-/work_items/4109)
   is open; the app is not yet present in `fdroiddata`.
+- **Android - Google Play (not published):** release bundle support is prepared,
+  but Word Hunter Pocket does not currently have a Google Play listing.
 - **Linux - Homebrew (available):** install from the
   [official Word Hunter tap](https://github.com/Ironship/homebrew-wordhunter)
   with `brew install --cask Ironship/wordhunter/wordhunter`. This is the
   project-maintained tap, not a listing in the central Homebrew Cask repository.
-- **Linux - Flatpak:** download
+- **Linux - Flatpak (direct package):** download
   [`WordHunter.flatpak`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter.flatpak)
-  and run `flatpak install --user ./WordHunter.flatpak`.
+  and run `flatpak install --user ./WordHunter.flatpak`. Word Hunter is not yet
+  listed on Flathub.
 - **Linux - AppImage (x86_64):** download
   [`WordHunter-1.0.6-x86_64.AppImage`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter-1.0.6-x86_64.AppImage),
   make it executable with `chmod +x WordHunter-1.0.6-x86_64.AppImage`, and run
