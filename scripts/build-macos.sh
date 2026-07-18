@@ -49,8 +49,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-hdiutil attach "$output" -nobrowse -readonly -mountpoint "$mount_dir" >/dev/null
-attached=1
+hdiutil verify "$output" >/dev/null
+for attempt in 1 2 3; do
+  if hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$mount_dir" "$output" >/dev/null; then
+    attached=1
+    break
+  fi
+  sleep 2
+done
+[[ "$attached" == "1" ]] || die "failed to mount the completed DMG after 3 attempts"
 
 app="$mount_dir/Word Hunter.app"
 binary="$app/Contents/MacOS/word-hunter-rustified"

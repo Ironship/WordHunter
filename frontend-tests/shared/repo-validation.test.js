@@ -229,7 +229,9 @@ describe("repository validation wiring", () => {
     assert.equal(config.bundle.macOS.minimumSystemVersion, "11.0");
     assert.match(platform, /target_os = "macos"/);
     assert.match(buildScript, /--target aarch64-apple-darwin/);
-    assert.match(buildScript, /hdiutil attach/);
+    assert.match(buildScript, /hdiutil verify/);
+    assert.match(buildScript, /for attempt in 1 2 3/);
+    assert.match(buildScript, /hdiutil attach -nobrowse -readonly -noautoopen/);
     assert.match(buildScript, /codesign --verify --deep --strict/);
     assert.match(buildScript, /kill -0 "\$app_pid"/);
   });
