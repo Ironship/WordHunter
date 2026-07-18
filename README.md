@@ -1,5 +1,16 @@
 <p align="center">
   <img src="src/web/favicon.svg" width="128" alt="Word Hunter logo">
+  <br>
+  <a href="#install-windows"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" height="18" alt="Windows" title="Windows"></a>
+  <a href="#install-macos"><img src="https://cdn.simpleicons.org/apple/555555/FFFFFF" height="18" alt="macOS" title="macOS"></a>
+  <a href="#install-android"><img src="https://cdn.simpleicons.org/android" height="18" alt="Android" title="Android"></a>
+  <a href="#install-linux"><img src="https://cdn.simpleicons.org/linux" height="18" alt="Linux" title="Linux"></a>
+  &nbsp;&nbsp;
+  <a href="#install-scoop"><img src="https://scoop.sh/favicon.ico" height="18" alt="Scoop" title="Scoop"></a>
+  <a href="#install-homebrew"><img src="https://cdn.simpleicons.org/homebrew" height="18" alt="Homebrew" title="Homebrew"></a>
+  <a href="#install-flatpak"><img src="https://cdn.simpleicons.org/flatpak" height="18" alt="Flatpak" title="Flatpak"></a>
+  <a href="#install-appimage"><img src="https://cdn.simpleicons.org/appimage/2A2A2A/FFFFFF" height="18" alt="AppImage" title="AppImage"></a>
+  <a href="#install-debian"><img src="https://cdn.simpleicons.org/debian" height="18" alt="Debian" title="Debian package"></a>
 </p>
 
 <h1 align="center">Word Hunter</h1>
@@ -19,6 +30,7 @@ The current stable build is
 The package-manager submissions also track 1.0.6. Some channels remain under
 review, so use the GitHub Release downloads until those listings are accepted.
 
+<a id="install-windows"></a>
 - **Windows - direct download:** use
   [`Word.Hunter.Setup.exe`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Setup.exe)
   or the
@@ -27,6 +39,7 @@ review, so use the GitHub Release downloads until those listings are accepted.
   [1.0.6 package submission](https://github.com/microsoft/winget-pkgs/pull/401481)
   is waiting for moderator approval. Once accepted, install with
   `winget install --exact --id Ironship.WordHunter`.
+<a id="install-scoop"></a>
 - **Windows - Scoop (available):** add the
   [official Word Hunter bucket](https://github.com/Ironship/scoop-wordhunter)
   with
@@ -36,6 +49,7 @@ review, so use the GitHub Release downloads until those listings are accepted.
   [package source and update instructions](packaging/chocolatey/README.md) are
   tested on a disposable CI runner. The package is not yet listed in the
   Chocolatey Community Repository.
+<a id="install-macos"></a>
 - **macOS - direct download (Apple Silicon):** download
   [`WordHunter-1.0.6-aarch64.dmg`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter-1.0.6-aarch64.dmg),
   open it, and drag Word Hunter to **Applications**. The app uses an ad-hoc
@@ -49,6 +63,7 @@ review, so use the GitHub Release downloads until those listings are accepted.
   macOS saves this approval for later launches. See
   [Apple's instructions for opening an app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac).
   Word Hunter is not currently distributed through the Mac App Store.
+<a id="install-android"></a>
 - **Android - direct download:** install the
   [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/Word.Hunter.Pocket.debug.apk).
 - **Android - F-Droid (requested):** the
@@ -56,18 +71,22 @@ review, so use the GitHub Release downloads until those listings are accepted.
   is open; the app is not yet present in `fdroiddata`.
 - **Android - Google Play (not published):** release bundle support is prepared,
   but Word Hunter Pocket does not currently have a Google Play listing.
+<a id="install-linux"></a><a id="install-homebrew"></a>
 - **Linux - Homebrew (available):** install from the
   [official Word Hunter tap](https://github.com/Ironship/homebrew-wordhunter)
   with `brew install --cask Ironship/wordhunter/wordhunter`. This is the
   project-maintained tap, not a listing in the central Homebrew Cask repository.
+<a id="install-flatpak"></a>
 - **Linux - Flatpak (direct package):** download
   [`WordHunter.flatpak`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter.flatpak)
   and run `flatpak install --user ./WordHunter.flatpak`. Word Hunter is not yet
   listed on Flathub.
+<a id="install-appimage"></a>
 - **Linux - AppImage (x86_64):** download
   [`WordHunter-1.0.6-x86_64.AppImage`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/WordHunter-1.0.6-x86_64.AppImage),
   make it executable with `chmod +x WordHunter-1.0.6-x86_64.AppImage`, and run
   it directly. This package includes its own Syncthing executable.
+<a id="install-debian"></a>
 - **Linux - Debian package (amd64):** download
   [`word-hunter_1.0.6_amd64.deb`](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/word-hunter_1.0.6_amd64.deb)
   and install it with `sudo apt install ./word-hunter_1.0.6_amd64.deb`. The DEB
