@@ -71,11 +71,15 @@ describe("Android Pocket bridges", () => {
       }
     };
     const tokenClasses = [new Set(), new Set(), new Set()];
-    const tokens = [
-      { textContent: "Hallo", dataset: {}, classList: { add: (name) => tokenClasses[0].add(name), remove: (name) => tokenClasses[0].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[2].add(name), remove: (name) => tokenClasses[2].delete(name) } }
-    ];
+    const scrolls = [];
+    let container;
+    const tokens = ["Hallo", "Welt", "Welt"].map((textContent, index) => ({
+      textContent,
+      dataset: {},
+      classList: { add: (name) => tokenClasses[index].add(name), remove: (name) => tokenClasses[index].delete(name) },
+      closest: () => container,
+      getBoundingClientRect: () => ({ top: 20 + index * 120, bottom: 40 + index * 120, height: 20 })
+    }));
     globalThis.localStorage = { getItem: () => null, setItem: () => {} };
     globalThis.document = {
       querySelectorAll(selector) {
@@ -91,7 +95,16 @@ describe("Android Pocket bridges", () => {
 
     const { speakText } = await import("../../dist/web/js/tts.js");
     let finished = false;
-    const container = { classList: { add() {} }, querySelectorAll: () => tokens };
+    container = {
+      classList: { add() {} },
+      querySelectorAll: () => tokens,
+      contains: (token) => tokens.includes(token),
+      clientHeight: 100,
+      scrollHeight: 500,
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),
+      scrollTo(options) { scrolls.push(options); this.scrollTop = options.top; }
+    };
     speakText("Hallo. Welt.", container, () => { finished = true; });
 
     assert.equal(calls.length, 1);
@@ -109,6 +122,7 @@ describe("Android Pocket bridges", () => {
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "range", start: 0, end: 4 } });
     assert.equal(tokenClasses[0].has("tts-current-word"), false);
     assert.equal(tokenClasses[1].has("tts-current-word"), true);
+    assert.deepEqual(scrolls, [{ top: 100, behavior: "auto" }]);
 
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "done" } });
     assert.equal(finished, true);

@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { normalizeWord } from "./tokenizer_v2.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
+import { keepReaderTokenVisible } from "./reader/visibility.js";
 
 let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
@@ -469,7 +470,10 @@ function setCurrentTtsWordToken(token: Element): void {
   if (currentTtsWordToken === token) return;
   if (currentTtsWordToken) currentTtsWordToken.classList.remove(TTS_WORD_CLASS);
   currentTtsWordToken = token;
-  if (currentTtsWordToken) currentTtsWordToken.classList.add(TTS_WORD_CLASS);
+  if (currentTtsWordToken) {
+    currentTtsWordToken.classList.add(TTS_WORD_CLASS);
+    keepReaderTokenVisible(currentTtsWordToken);
+  }
 }
 
 function findTtsTokenStart(tokens: TtsWordTracker["tokens"], words: string[]): number {
