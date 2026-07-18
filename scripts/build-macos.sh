@@ -39,25 +39,25 @@ mkdir -p "$root/outputs"
 output="$root/outputs/WordHunter-${version}-aarch64.dmg"
 cp "${built_dmgs[0]}" "$output"
 
-mount_dir="$(mktemp -d)"
-attached=0
+device=""
 cleanup() {
-  if [[ "$attached" == "1" ]]; then
-    hdiutil detach "$mount_dir" -quiet || true
+  if [[ -n "$device" ]]; then
+    hdiutil detach "$device" -quiet || true
   fi
-  rmdir "$mount_dir" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 hdiutil verify "$output" >/dev/null
 for attempt in 1 2 3; do
-  if hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$mount_dir" "$output" >/dev/null; then
-    attached=1
+  if attach_output="$(hdiutil attach -mountrandom /tmp -readonly -noverify -noautoopen -nobrowse "$output")"; then
+    device="$(printf '%s\n' "$attach_output" | awk '/^\/dev\// { print $1; exit }')"
     break
   fi
   sleep 2
 done
-[[ "$attached" == "1" ]] || die "failed to mount the completed DMG after 3 attempts"
+[[ -n "$device" ]] || die "failed to mount the completed DMG after 3 attempts"
+mount_dir="$(hdiutil info | awk -v device="$device" 'index($1, device) == 1 && NF >= 3 { mount = $3 } END { print mount }')"
+[[ -n "$mount_dir" ]] || die "mounted DMG does not expose a volume path"
 
 app="$mount_dir/Word Hunter.app"
 binary="$app/Contents/MacOS/word-hunter-rustified"
