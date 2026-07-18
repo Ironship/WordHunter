@@ -14,6 +14,7 @@ import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuse
 import { normalizeLearningColors } from "../reader-colors.js";
 import { normalizeTheme } from "../theme.js";
 import { normalizeTranslationLanguageCode } from "../translator-preferences.js";
+import { loadUiStateCache } from "./ui-cache.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -337,11 +338,15 @@ export function loadState(): WhAppState {
           customTexts.push(text);
         }
       }
+      Object.assign(merged, loadUiStateCache());
       return normalizeState(merged);
     } catch (error) {
       console.warn("Bridge state load failed", error);
       throw error;
     }
+  }
+  if (window.__qtBridge || window.WordHunterAndroid) {
+    return normalizeState({ ...fallback, ...loadUiStateCache() });
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
