@@ -346,6 +346,41 @@ describe("focused frontend regressions", () => {
     assert.match(vocabActions, /focusWordIndex = String\(state\.selectedWordIndex\)/);
   });
 
+  it("follows the exact selected Reader occurrence", async () => {
+    const first = { dataset: { word: "beta", wordIndex: "3" }, classList: classList() };
+    const selected = { dataset: { word: "beta", wordIndex: "17" }, classList: classList() };
+    const followed = [];
+    const readerText = {
+      childNodes: [],
+      querySelector: () => null,
+      querySelectorAll: () => [first, selected]
+    };
+    const state = {
+      currentTextId: "book-1",
+      readerSelectionRange: null,
+      selectedWord: "beta",
+      selectedWordIndex: 17
+    };
+    const selection = await evaluateWithMocks("dist/web/js/reader/selection.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word },
+      "./renderer.js": { getTextById: () => ({ id: "book-1" }) },
+      "./word-panel.js": { renderWordPanel() {} },
+      "./visibility.js": { keepReaderTokenVisible: (token) => followed.push(token) },
+      "../views/shell.js": { renderShell() {} }
+    }, {
+      Node: { TEXT_NODE: 3 },
+      HTMLElement: class {}
+    });
+
+    selection.updateReaderSelection();
+
+    assert.equal(first.classList.contains("selected"), true);
+    assert.equal(selected.classList.contains("selected"), true);
+    assert.deepEqual(followed, [selected]);
+  });
+
   it("selects the next word immediately while a ghost card animates out", async () => {
     class FakeElement {
       constructor(classes = []) {

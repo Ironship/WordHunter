@@ -59,6 +59,42 @@ async function evaluateWithMocks(file, importValues, globals = {}, dynamicImport
 }
 
 describe("render performance guards", () => {
+  it("keeps a Reader token above the open Pocket word sheet", async () => {
+    const scrolls = [];
+    const container = {
+      clientHeight: 500,
+      scrollHeight: 1500,
+      scrollTop: 100,
+      contains: (element) => element === token,
+      getBoundingClientRect: () => ({ top: 100, bottom: 600, height: 500 }),
+      scrollTo(options) {
+        scrolls.push(options);
+        this.scrollTop = options.top;
+      }
+    };
+    const token = {
+      closest: () => container,
+      getBoundingClientRect: () => ({ top: 450, bottom: 470, height: 20 })
+    };
+    const panel = { getBoundingClientRect: () => ({ top: 400, bottom: 700, height: 300 }) };
+    const classes = new Set(["pocket-mode", "pocket-word-panel-open"]);
+    const document = {
+      documentElement: { classList: { contains: (name) => classes.has(name) } },
+      getElementById: () => container,
+      querySelector: () => panel
+    };
+    const { keepReaderTokenVisible } = await evaluateWithMocks("../../dist/web/js/reader/visibility.js", {}, { document });
+
+    assert.equal(keepReaderTokenVisible(token), true);
+    assert.equal(scrolls.length, 1);
+    assert.equal(scrolls[0].top, 310);
+    assert.equal(scrolls[0].behavior, "auto");
+
+    token.getBoundingClientRect = () => ({ top: 220, bottom: 240, height: 20 });
+    assert.equal(keepReaderTokenVisible(token), false);
+    assert.equal(scrolls.length, 1);
+  });
+
   it("persists imprecise reader scrolls without hit-testing the document", async () => {
     let elementFromPointCalls = 0;
     let persistedWrites = 0;
