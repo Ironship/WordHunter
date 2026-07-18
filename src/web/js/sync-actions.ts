@@ -1,5 +1,5 @@
 import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
-import { STORAGE_KEY } from "./constants.js";
+import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -493,6 +493,7 @@ export async function clearLocalState(): Promise<void> {
       const result = await postStoreCommand("/__store/wipe");
       await applyBridgeCommandResult(result);
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(UI_STORAGE_KEY);
     } catch (error) {
       console.warn("wipe failed", error);
       showToast(t("toast.syncUnavailable"), "error");
@@ -500,6 +501,7 @@ export async function clearLocalState(): Promise<void> {
     }
   } else {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(UI_STORAGE_KEY);
     replaceState(createDefaultState());
     await saveState();
   }

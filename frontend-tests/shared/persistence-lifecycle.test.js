@@ -317,6 +317,56 @@ describe("persistence lifecycle", () => {
     assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
+  it("writes an explicit bridge UI save to the local UI cache", async () => {
+    const saved = [];
+    let durableSaves = 0;
+    const rawState = {
+      currentView: "reader",
+      currentTextId: "book",
+      readerPage: 4,
+      readerPages: { book: 4 },
+      vocab: {}
+    };
+    const autosave = {
+      wrap: (value) => value,
+      saveState() { durableSaves += 1; return Promise.resolve(); },
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: (value) => value,
+        saveUiStateCache: (value) => saved.push(value),
+        UI_STATE_KEYS: []
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true },
+      console
+    });
+
+    await stateModule.saveUiState();
+
+    assert.equal(durableSaves, 0);
+    assert.deepEqual(saved, [rawState]);
+  });
+
   it("queues autosaves behind an exclusive state write", async () => {
     const savedThemes = [];
     let synchronousWrites = 0;
@@ -542,7 +592,7 @@ describe("persistence lifecycle", () => {
         resetInitialVocabKeys: () => downstreamCalls.push("resetInitialVocabKeys"),
         clearLastReadTextForLanguage: () => downstreamCalls.push("clearLastReadTextForLanguage")
       },
-      "./constants.js": { STORAGE_KEY: "wordhunter-state" },
+      "./constants.js": { STORAGE_KEY: "wordhunter-state", UI_STORAGE_KEY: "wordhunter-ui-state" },
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./i18n.js": { t: (key) => key },

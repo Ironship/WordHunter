@@ -3,6 +3,7 @@
 import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
+import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
 import { OTHER_PROFILE_ID } from "./constants.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
@@ -16,23 +17,6 @@ export const initialVocabKeys = new Set(Object.keys(state.vocab || {}));
 const frontendStateFlushers = new Set<() => unknown>();
 const bridgeSnapshotHandlers = new Set<(change: WhBridgeSnapshotChange) => unknown>();
 
-const UI_STATE_KEYS = [
-  "currentView",
-  "currentTextId",
-  "selectedWord",
-  "selectedWordIndex",
-  "readerSelectionRange",
-  "reviewIndex",
-  "readerFontSize",
-  "readerPdfZoom",
-  "readerPdfViewMode",
-  "readerPage",
-  "readerPages",
-  "readerScrolls",
-  "readerScrollsPerPage",
-  "filters"
-];
-
 function rawState(): WhAppState {
   return state._raw || state;
 }
@@ -44,15 +28,14 @@ function clonePlain<T>(value: T): T {
 
 function captureLocalUiState(): WhRecord {
   const raw = rawState();
-  const captured: WhRecord = {};
-  for (const key of UI_STATE_KEYS) captured[key] = clonePlain(raw[key]);
+  const captured = captureUiState(raw);
   if (raw.discover) captured.discover = clonePlain(raw.discover);
   return captured;
 }
 
 function restoreLocalUiState(nextState: WhAppState, captured: WhRecord): void {
   for (const key of UI_STATE_KEYS) {
-    if (captured[key] !== undefined) nextState[key] = captured[key];
+    if (captured[key] !== undefined) (nextState as WhRecord)[key] = captured[key];
   }
   if (captured.discover && !nextState.discover) nextState.discover = captured.discover;
 }
@@ -62,7 +45,10 @@ export function saveState(): Promise<WhBridgeSaveResult | void> {
 }
 
 export function saveUiState(): Promise<WhBridgeSaveResult | void> {
-  if (window.__qtBridge) return Promise.resolve();
+  if (window.__qtBridge) {
+    saveUiStateCache(rawState());
+    return Promise.resolve();
+  }
   return saveState();
 }
 
