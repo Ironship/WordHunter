@@ -1,3 +1,12 @@
+word-hunter (1.0.7+1) stable; urgency=medium
+
+  * Hotfix flashcard word and sentence text-to-speech on Android.
+  * Keep the desktop Word Panel synchronized with keyboard navigation.
+  * Restore spoken-word highlighting for Edge TTS on Windows.
+  * Add and document desktop Reader keyboard shortcuts.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Mon, 20 Jul 2026 11:00:00 +0000
+
 word-hunter (1.0.7) stable; urgency=medium
 
   * Add exact-word bookmarks and restore the last Reader position.

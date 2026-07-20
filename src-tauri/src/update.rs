@@ -4,7 +4,12 @@ use serde_json::{Value, json};
 pub const LATEST_STABLE_RELEASE_URL: &str =
     "https://api.github.com/repos/Ironship/WordHunter/releases/latest";
 
+pub fn display_version(version: &str) -> String {
+    version.replace('+', ".")
+}
+
 pub fn check(user_agent: &str, app_version: &str) -> Value {
+    let display_version = display_version(app_version);
     match crate::http::agent()
         // GitHub's latest endpoint intentionally excludes drafts and prereleases.
         .get(LATEST_STABLE_RELEASE_URL)
@@ -19,11 +24,11 @@ pub fn check(user_agent: &str, app_version: &str) -> Value {
                     .and_then(Value::as_str)
                     .unwrap_or("")
                     .to_string();
-                json!({ "latest": normalize_release_version(&latest), "current": app_version })
+                json!({ "latest": normalize_release_version(&latest), "current": display_version })
             }
-            Err(err) => json!({ "error": err.to_string(), "current": app_version }),
+            Err(err) => json!({ "error": err.to_string(), "current": display_version }),
         },
-        Err(err) => json!({ "error": err.to_string(), "current": app_version }),
+        Err(err) => json!({ "error": err.to_string(), "current": display_version }),
     }
 }
 

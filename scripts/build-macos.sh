@@ -16,8 +16,9 @@ done
 [[ "$(uname -s)" == "Darwin" ]] || die "the macOS DMG must be built on macOS"
 [[ "$(uname -m)" == "arm64" ]] || die "the current DMG recipe targets Apple Silicon"
 
-version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")); if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(c.version)) process.exit(1); process.stdout.write(c.version);')" \
+package_version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")); if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(c.version)) process.exit(1); process.stdout.write(c.version);')" \
   || die "src-tauri/tauri.conf.json does not contain a valid package version"
+release_version="${package_version/+/.}"
 
 if [[ ! -d node_modules ]]; then
   npm ci --ignore-scripts --no-audit --no-fund
@@ -36,7 +37,7 @@ shopt -u nullglob
 [[ ${#built_dmgs[@]} -eq 1 ]] || die "expected exactly one DMG in $bundle_dir, found ${#built_dmgs[@]}"
 
 mkdir -p "$root/outputs"
-output="$root/outputs/WordHunter-${version}-aarch64.dmg"
+output="$root/outputs/WordHunter-${release_version}-aarch64.dmg"
 cp "${built_dmgs[0]}" "$output"
 
 device=""

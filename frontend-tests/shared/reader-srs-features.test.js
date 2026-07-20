@@ -15,7 +15,9 @@ const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocab
 const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
-const appVersion = JSON.parse(readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8")).version;
+const appVersion = JSON.parse(
+  readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+).version.replace("+", ".");
 
 describe("learning colors", () => {
   it("enables learning colors, in-text reviews, and learning-only flashcards by default", () => {

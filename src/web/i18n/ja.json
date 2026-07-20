@@ -852,8 +852,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.7：単語の正確な位置に付けるブックマークと読書位置の復元、より安全な同期・バックアップ・インポート、Android の大規模同期と競合解決の改善、Apple Silicon 用 DMG、Linux パッケージの強化。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.7",
+    "whatsNew": "<strong>Word Hunter 1.0.7.1 はホットフィックスです。フラッシュカードの単語・文の読み上げが表示中のカードに追従し、デスクトップの矢印移動で単語パネルが更新され、Edge TTS の読み上げ中の単語強調が復旧し、新しいリーダーのキーボードショートカットをヘルプと画面ヒントに記載しました。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.7.1",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditSync": "<strong>Syncthing 2.1.0</strong> — デスクトップ版にMPL-2.0の独立したプログラムとして同梱しています。ソース: https://github.com/syncthing/syncthing/tree/v2.1.0",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。"

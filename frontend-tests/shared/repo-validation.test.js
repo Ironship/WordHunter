@@ -240,6 +240,8 @@ describe("repository validation wiring", () => {
     assert.match(buildScript, /hdiutil detach "\$device"/);
     assert.match(buildScript, /codesign --verify --deep --strict/);
     assert.match(buildScript, /kill -0 "\$app_pid"/);
+    assert.match(buildScript, /release_version="\$\{package_version\/\+\/\.\}"/);
+    assert.match(buildScript, /WordHunter-\$\{release_version\}-aarch64\.dmg/);
   });
 
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {

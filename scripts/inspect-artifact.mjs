@@ -543,7 +543,7 @@ export function inspectLinuxDeb(path) {
   if (packageName !== "word-hunter") fail(`${path} has Debian package name ${packageName || "unknown"}; expected word-hunter`);
   const version = run("dpkg-deb", ["--field", path, "Version"]).trim();
   const filename = basename(path).match(/^word-hunter_(.+)_amd64\.deb$/);
-  if (!filename || version !== filename[1]) {
+  if (!filename || version.replace("+", ".") !== filename[1]) {
     fail(`${path} has Debian version ${version || "unknown"} inconsistent with its release filename`);
   }
   const architecture = run("dpkg-deb", ["--field", path, "Architecture"]).trim();
