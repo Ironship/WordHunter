@@ -49,8 +49,9 @@ case "$(uname -m)" in
   *) die "the native Linux packages currently support x86_64 runners only" ;;
 esac
 
-version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")); if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(c.version)) process.exit(1); process.stdout.write(c.version);')" \
+package_version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")); if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(c.version)) process.exit(1); process.stdout.write(c.version);')" \
   || die "src-tauri/tauri.conf.json does not contain a valid package version"
+release_version="${package_version/+/.}"
 
 mkdir -p "$cache_dir" "$outputs_dir"
 
@@ -314,8 +315,8 @@ single_artifact() {
 
 appimage_source="$(single_artifact "$root/src-tauri/target/release/bundle/appimage" '*.AppImage')"
 deb_source="$(single_artifact "$root/src-tauri/target/release/bundle/deb" '*.deb')"
-appimage_output="$outputs_dir/WordHunter-$version-x86_64.AppImage"
-deb_output="$outputs_dir/word-hunter_${version}_amd64.deb"
+appimage_output="$outputs_dir/WordHunter-$release_version-x86_64.AppImage"
+deb_output="$outputs_dir/word-hunter_${release_version}_amd64.deb"
 
 cp "$appimage_source" "$appimage_output"
 cp "$deb_source" "$deb_output"

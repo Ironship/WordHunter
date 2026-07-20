@@ -5,6 +5,8 @@ import { setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
 import { openYouGlish } from "../../youglish.js";
 import { findCurrentReaderToken, navigateReaderWord, readerTokens, selectReaderToken } from "../../reader/word-navigation.js";
+import { toggleReaderBookmarkAtCurrentWord } from "../../reader/bookmarks.js";
+import { isAndroidPlatform } from "../../platform.js";
 
 function focusSelectedWordField(field: "translation" | "note"): boolean {
   if (!state.selectedWord) return false;
@@ -12,6 +14,22 @@ function focusSelectedWordField(field: "translation" | "note"): boolean {
   if (!input) return false;
   input.focus();
   input.select?.();
+  return true;
+}
+
+function toggleReaderPaneFocus(): boolean {
+  const panel = document.getElementById("word-panel");
+  if (!(panel instanceof HTMLElement) || state.preferences.readerWordPanelVisible === false) return false;
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && (active === panel || panel.contains(active))) {
+    const tokens = readerTokens();
+    const token = findCurrentReaderToken(tokens) || tokens[0];
+    if (!token) return false;
+    token.focus({ preventScroll: true });
+    window.lastActiveToken = token;
+    return true;
+  }
+  panel.focus({ preventScroll: true });
   return true;
 }
 
@@ -34,6 +52,44 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   }
 
   const isSpace = key === " " || key === "spacebar" || event.code === "Space";
+  if (isSpace && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if (isAndroidPlatform()) return false;
+    const play = document.getElementById("tts-play-text") as HTMLButtonElement | null;
+    const stop = document.getElementById("tts-stop-text") as HTMLButtonElement | null;
+    const control = stop && !stop.hidden ? stop : play;
+    if (!control || control.disabled) return false;
+    event.preventDefault();
+    control.click();
+    return true;
+  }
+
+  if (key === "b" && plainKey) {
+    if (isAndroidPlatform()) return false;
+    const token = findCurrentReaderToken(readerTokens());
+    const wordIndex = Number(token?.dataset.wordIndex);
+    if (!Number.isInteger(wordIndex) || wordIndex < 0) return false;
+    event.preventDefault();
+    toggleReaderBookmarkAtCurrentWord(wordIndex);
+    return true;
+  }
+
+  if (key === "f6" && plainKey) {
+    if (isAndroidPlatform()) return false;
+    if (!toggleReaderPaneFocus()) return false;
+    event.preventDefault();
+    return true;
+  }
+
+  if (exactCtrl && (key === "home" || key === "end")) {
+    if (isAndroidPlatform()) return false;
+    const tokens = readerTokens();
+    const token = key === "home" ? tokens[0] : tokens[tokens.length - 1];
+    if (!token) return false;
+    event.preventDefault();
+    selectReaderToken(token);
+    return true;
+  }
+
   if (key === "x" && plainKey && state.selectedWord) {
     event.preventDefault();
     const tokens = readerTokens();

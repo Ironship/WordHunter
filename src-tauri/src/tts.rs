@@ -1,6 +1,6 @@
-use edge_tts_rust::{Boundary, EdgeTtsClient, SpeakOptions};
+use edge_tts_rust::{Boundary, EdgeTtsClient, SpeakOptions, SynthesisResult};
 
-pub fn synthesize(text: &str, lang: &str, rate: &str) -> Result<Vec<u8>, String> {
+pub fn synthesize(text: &str, lang: &str, rate: &str) -> Result<SynthesisResult, String> {
     let text = text.to_string();
     let voice = voice_for(lang).to_string();
     let rate = rate_for(rate).to_string();
@@ -21,13 +21,13 @@ pub fn synthesize(text: &str, lang: &str, rate: &str) -> Result<Vec<u8>, String>
                 SpeakOptions {
                     voice,
                     rate,
-                    boundary: Boundary::Sentence,
+                    boundary: Boundary::Word,
                     ..SpeakOptions::default()
                 },
             )
             .await
             .map_err(|e| e.to_string())?;
-        Ok(result.audio)
+        Ok(result)
     })
 }
 
