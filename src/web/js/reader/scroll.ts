@@ -4,6 +4,8 @@
 import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 
+let scrollRestoreGeneration = 0;
+
 export interface ReaderScrollPosition {
   wordIndex: number | null;
   scrollTop: number;
@@ -47,6 +49,14 @@ function visibleWordIndexFromPoint(container: HTMLElement): number | null {
     }
   }
 
+  for (const token of container.querySelectorAll<HTMLElement>(".word-token[data-word-index]")) {
+    const tokenRect = token.getBoundingClientRect();
+    if (tokenRect.bottom <= rect.top || tokenRect.top >= rect.bottom) continue;
+    if (tokenRect.right <= rect.left || tokenRect.left >= rect.right) continue;
+    const idx = readWordIndex(token);
+    if (idx !== null) return idx;
+  }
+
   return null;
 }
 
@@ -83,18 +93,30 @@ export function rememberReaderScrollPosition({ precise = true, flush = false }: 
   if (flush) saveUiState();
 }
 
-export function restoreReaderScrollPosition(textId: string, saved: unknown, attempt = 0): void {
+export function restoreReaderScrollPosition(
+  textId: string,
+  saved: unknown,
+  attempt = 0,
+  expectedPage = state.readerPage,
+  expectedGeneration = ++scrollRestoreGeneration
+): void {
   const container = els.readerText as HTMLElement | null;
-  if (state.currentTextId !== textId || !container) return;
+  if (
+    expectedGeneration !== scrollRestoreGeneration
+    || state.currentTextId !== textId
+    || state.readerPage !== expectedPage
+    || !container
+  ) return;
   const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
 
   // Content hasn't been laid out yet — retry after a tick
   if (maxScroll <= 0 && attempt < 8) {
-    setTimeout(() => restoreReaderScrollPosition(textId, saved, attempt + 1), 60);
+    setTimeout(() => restoreReaderScrollPosition(textId, saved, attempt + 1, expectedPage, expectedGeneration), 60);
     return;
   }
 
   let target = 0;
+  let anchoredToWord = false;
   if (saved && typeof saved === "object") {
     const position = saved as Partial<ReaderScrollPosition>;
     // 1. Global word index — most precise
@@ -105,11 +127,12 @@ export function restoreReaderScrollPosition(textId: string, saved: unknown, atte
         const cr = container.getBoundingClientRect();
         if (tr.height > 0) {
           target = Math.round(tr.top - cr.top + container.scrollTop - container.clientHeight / 2 + tr.height / 2);
+          anchoredToWord = true;
         }
       }
     }
     // 2. Direct scrollTop as backup
-    if (target === 0 && typeof position.scrollTop === "number" && position.scrollTop > 0) {
+    if (!anchoredToWord && typeof position.scrollTop === "number" && position.scrollTop > 0) {
       target = position.scrollTop;
     }
   } else if (typeof saved === "number" && saved > 0) {
@@ -118,4 +141,27 @@ export function restoreReaderScrollPosition(textId: string, saved: unknown, atte
 
   container.scrollTop = Math.max(0, Math.min(target, maxScroll));
   container.dataset.rendering = "0";
+}
+
+export function restoreReaderPagePosition(textId: string, perPageKey: string | null, saved: unknown): void {
+  const restoreGeneration = ++scrollRestoreGeneration;
+  const container = els.readerText as HTMLElement | null;
+  if (state.currentTextId !== textId || !container) return;
+  const position = saved && typeof saved === "object" ? saved as Partial<ReaderScrollPosition> : null;
+  if (position && position.readerPage === state.readerPage) {
+    restoreReaderScrollPosition(textId, position, 0, state.readerPage, restoreGeneration);
+    return;
+  }
+  const perPageScroll = perPageKey ? state.readerScrollsPerPage?.[perPageKey] : undefined;
+  if (typeof perPageScroll === "number") {
+    container.scrollTop = Math.max(0, perPageScroll);
+    container.dataset.rendering = "0";
+    return;
+  }
+  if (position?.readerPage != null && position.readerPage !== state.readerPage) {
+    container.scrollTop = 0;
+    container.dataset.rendering = "0";
+    return;
+  }
+  restoreReaderScrollPosition(textId, saved, 0, state.readerPage, restoreGeneration);
 }

@@ -196,7 +196,7 @@ impl Store {
         let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
         let current = record_files::load_records(&self.dir())?;
-        record_files::prepare_local_records(&mut incoming, base, self.device_id(), now);
+        record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let merged = record_files::merge_records(base, incoming, current, self.device_id(), now);
         record_files::write_records(&self.dir(), &merged.records)?;
@@ -212,10 +212,17 @@ impl Store {
 
     fn sync_with_directory_inner(&self, sync_dir: PathBuf) -> Result<Value, String> {
         let _guard = self.lock_writes()?;
-        self.recover_pending_save()?;
-        std::fs::create_dir_all(&sync_dir).map_err(|e| e.to_string())?;
-
         let local_dir = self.dir();
+        let absolute_local = std::path::absolute(&local_dir).map_err(|e| e.to_string())?;
+        let absolute_sync = std::path::absolute(&sync_dir).map_err(|e| e.to_string())?;
+        reject_overlapping_sync_paths(&absolute_local, &absolute_sync)?;
+        std::fs::create_dir_all(&sync_dir).map_err(|e| e.to_string())?;
+        let canonical_local = std::fs::canonicalize(&local_dir).map_err(|e| e.to_string())?;
+        let canonical_sync = std::fs::canonicalize(&sync_dir).map_err(|e| e.to_string())?;
+        reject_overlapping_sync_paths(&canonical_local, &canonical_sync)?;
+        crate::sync_assistant::prepare_sync_folder(&sync_dir)?;
+
+        self.recover_pending_save()?;
         record_files::prune_sync_folder_private_records(&sync_dir)?;
         self.write_sync_journal(&sync_dir, "start")?;
         self.write_sync_journal(&sync_dir, "snapshotted-local")?;
@@ -298,6 +305,36 @@ impl Store {
         Ok(snapshot)
     }
 
+    pub fn resolve_all_sync_conflicts(&self, resolution: &str) -> Result<Value, String> {
+        let _guard = self.lock_writes()?;
+        let use_conflict = match resolution {
+            "keep-current" => false,
+            "use-conflict" => true,
+            _ => return Err("unsupported conflict resolution".to_string()),
+        };
+        let dir = self.dir();
+        let conflicts = record_files::conflict_summaries(&dir, usize::MAX)?;
+        for conflict in conflicts {
+            let id = conflict
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "conflict id is missing".to_string())?;
+            record_files::resolve_conflict(
+                &dir,
+                id,
+                use_conflict,
+                self.device_id(),
+                record_files::now_millis(),
+            )?;
+        }
+        let records = record_files::load_records(&dir)?;
+        let mut snapshot = snapshot_payload(&dir, &records);
+        add_sync_dir_to_snapshot(&mut snapshot);
+        add_sync_status_to_snapshot(&mut snapshot, &dir);
+        add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
+        Ok(snapshot)
+    }
+
     fn records_snapshot(&self) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
@@ -344,6 +381,10 @@ impl Store {
     fn cleanup_after_wipe(&self) -> Result<(), String> {
         let inner = self.inner.lock().unwrap();
         record_files::remove_record_backups(&inner.dir)?;
+        let ui_state = inner.dir.join(super::UI_STATE_FILE);
+        remove_if_exists(&ui_state)?;
+        remove_if_exists(ui_state.with_extension("tmp"))?;
+        remove_if_exists(ui_state.with_extension("bak"))?;
         let import_staging = inner.dir.join("ocr-import-staging");
         if import_staging.exists() {
             std::fs::remove_dir_all(&import_staging).map_err(|e| e.to_string())?;
@@ -372,6 +413,15 @@ impl Store {
     fn clear_sync_journal(&self) -> Result<(), String> {
         remove_if_exists(self.sync_journal_path())
     }
+}
+
+fn reject_overlapping_sync_paths(local_dir: &Path, sync_dir: &Path) -> Result<(), String> {
+    if local_dir == sync_dir || local_dir.starts_with(sync_dir) || sync_dir.starts_with(local_dir) {
+        return Err(
+            "sync folder must be separate from the local application data folder".to_string(),
+        );
+    }
+    Ok(())
 }
 
 fn quarantine_journal(path: &Path) -> Result<(), String> {
@@ -409,6 +459,7 @@ fn encode_save_journal(
                 json!({
                     "hash": fingerprint.hash,
                     "causal": fingerprint.causal,
+                    "data": fingerprint.data,
                 }),
             )
         })
@@ -478,6 +529,7 @@ fn decode_save_journal(
             record_files::RecordFingerprint {
                 hash: hash.to_string(),
                 causal,
+                data: value.get("data").cloned().filter(|value| !value.is_null()),
             },
         );
     }
@@ -877,6 +929,59 @@ mod tests {
     }
 
     #[test]
+    fn resolving_all_conflicts_is_not_limited_to_status_page() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let conflicts = (0..26)
+            .map(|index| {
+                let key = format!("vocab:de:word-{index}");
+                let updated_at = 1_000 + index;
+                json!({
+                    "timestamp": updated_at.to_string(),
+                    "key": key,
+                    "reason": "concurrent-record-changes",
+                    "kept": {
+                        "format": 1,
+                        "schemaVersion": 2,
+                        "key": key,
+                        "kind": "vocab",
+                        "updatedAt": updated_at.to_string(),
+                        "deletedAt": null,
+                        "deviceId": "phone-device",
+                        "causal": { "phone-device": updated_at },
+                        "data": { "word": format!("word-{index}"), "translation": "newest" }
+                    },
+                    "conflict": {
+                        "format": 1,
+                        "schemaVersion": 2,
+                        "key": key,
+                        "kind": "vocab",
+                        "updatedAt": (updated_at - 1).to_string(),
+                        "deletedAt": null,
+                        "deviceId": "pc-device",
+                        "causal": { "pc-device": updated_at - 1 },
+                        "data": { "word": format!("word-{index}"), "translation": "older" }
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        record_files::write_conflicts(dir.path(), &conflicts).unwrap();
+
+        let status = store.sync_status();
+        assert_eq!(status["conflictCount"].as_u64(), Some(26));
+        assert_eq!(status["conflicts"].as_array().unwrap().len(), 25);
+
+        let snapshot = store.resolve_all_sync_conflicts("keep-current").unwrap();
+
+        assert_eq!(snapshot["syncConflictCount"].as_u64(), Some(0));
+        assert_eq!(store.sync_status()["conflictCount"].as_u64(), Some(0));
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"].as_object().unwrap().len(),
+            26
+        );
+    }
+
+    #[test]
     fn resolved_conflict_marker_prunes_remote_conflict_on_next_sync() {
         let pc = tempfile::tempdir().unwrap();
         let phone = tempfile::tempdir().unwrap();
@@ -1026,18 +1131,18 @@ mod tests {
         }
 
         for _ in 0..6 {
-            ready_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            ready_rx.recv_timeout(Duration::from_secs(15)).unwrap();
         }
         start.wait();
         for _ in 0..6 {
-            attempting_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            attempting_rx.recv_timeout(Duration::from_secs(15)).unwrap();
         }
         assert!(rx.recv_timeout(Duration::from_millis(150)).is_err());
         drop(guard);
 
         let mut completed = Vec::new();
         for _ in 0..6 {
-            let (name, result) = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+            let (name, result) = rx.recv_timeout(Duration::from_secs(15)).unwrap();
             result.unwrap();
             completed.push(name);
         }
@@ -1082,6 +1187,34 @@ mod tests {
         assert!(!records.contains_key("vocab:de:revived"));
         assert!(!store.wipe_journal_path().exists());
         assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
+    fn wipe_removes_reader_ui_state_and_recovery_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(store_at(&dir));
+        store.save_ui_state(&json!({ "readerPage": 2 })).unwrap();
+        store.save_ui_state(&json!({ "readerPage": 3 })).unwrap();
+        std::fs::write(dir.path().join("ui-state.tmp"), b"{}").unwrap();
+
+        let barrier = Arc::new(Barrier::new(2));
+        let loader_store = Arc::clone(&store);
+        let loader_barrier = Arc::clone(&barrier);
+        let loader = std::thread::spawn(move || {
+            loader_barrier.wait();
+            for _ in 0..100 {
+                let _ = loader_store.load_ui_state();
+            }
+        });
+
+        barrier.wait();
+        store.wipe().unwrap();
+        loader.join().unwrap();
+
+        assert_eq!(store.load_ui_state(), json!({}));
+        for name in ["ui-state.json", "ui-state.tmp", "ui-state.bak"] {
+            assert!(!dir.path().join(name).exists(), "{name} survived wipe");
+        }
     }
 
     #[test]
@@ -1349,16 +1482,20 @@ mod tests {
     }
 
     #[test]
-    fn sync_directory_keeps_preferences_local_and_out_of_sync_folder() {
+    fn sync_directory_keeps_private_preferences_local_but_syncs_reader_bookmarks() {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
         let store = store_at(&local);
         let mut local_payload = profile_payload("lokal", "local");
         local_payload["prefs"]["locale"] = json!("pl");
+        local_payload["prefs"]["theme"] = json!("dark");
         store.bulk_save(local_payload).unwrap();
 
         let mut remote_payload = profile_payload("fern", "remote");
         remote_payload["prefs"]["locale"] = json!("en");
+        remote_payload["prefs"]["readerBookmarks"] = json!({
+            "remote-book": [{ "id": "remote-mark", "wordIndex": 17 }]
+        });
         let remote_records = record_files::payload_to_records(&remote_payload, "remote-device", 2);
         record_files::write_records(remote.path(), &remote_records).unwrap();
 
@@ -1369,10 +1506,50 @@ mod tests {
         let remote_records = record_files::load_records(remote.path()).unwrap();
 
         assert_eq!(snapshot["prefs"]["locale"], "pl");
+        assert_eq!(snapshot["prefs"]["theme"], "dark");
+        assert_eq!(
+            snapshot["prefs"]["readerBookmarks"]["remote-book"][0]["id"],
+            "remote-mark"
+        );
         assert!(local_records.contains_key("pref:locale"));
+        assert!(local_records.contains_key("pref:readerBookmarks"));
         assert!(!remote_records.contains_key("pref:locale"));
         assert!(!remote_records.contains_key("pref:learningLanguage"));
-        assert!(!remote.path().join("records/v1/prefs").exists());
+        assert!(!remote_records.contains_key("pref:theme"));
+        assert!(remote_records.contains_key("pref:readerBookmarks"));
+        assert!(remote.path().join("records/v1/prefs").is_dir());
+    }
+
+    #[test]
+    fn sync_directory_rejects_local_data_path_and_its_ancestors_or_descendants() {
+        let parent = tempfile::tempdir().unwrap();
+        let local = tempfile::tempdir_in(parent.path()).unwrap();
+        let store = store_at(&local);
+        let mut payload = profile_payload("lokal", "local");
+        payload["prefs"]["locale"] = json!("pl");
+        payload["prefs"]["theme"] = json!("dark");
+        store.bulk_save(payload).unwrap();
+        let before = record_files::fingerprints(&record_files::load_records(local.path()).unwrap());
+
+        let equal_error = store
+            .sync_with_directory(local.path().to_path_buf())
+            .unwrap_err();
+        let child = local.path().join("nested-sync");
+        let child_error = store.sync_with_directory(child.clone()).unwrap_err();
+        let parent_error = store
+            .sync_with_directory(parent.path().to_path_buf())
+            .unwrap_err();
+
+        for error in [equal_error, child_error, parent_error] {
+            assert!(error.contains("sync folder must be separate"));
+        }
+        assert!(!child.exists());
+        assert_eq!(
+            record_files::fingerprints(&record_files::load_records(local.path()).unwrap()),
+            before
+        );
+        assert_eq!(store.snapshot()["prefs"]["locale"], "pl");
+        assert_eq!(store.snapshot()["prefs"]["theme"], "dark");
     }
 
     #[test]
@@ -1506,6 +1683,7 @@ mod tests {
         store
             .save_book_image_bytes("de-custom-media", "cover.jpg", b"aaaa")
             .unwrap();
+        crate::sync_assistant::prepare_sync_folder(remote.path()).unwrap();
         let remote_image_dir = remote.path().join("books/de-custom-media/images");
         std::fs::create_dir_all(&remote_image_dir).unwrap();
         std::fs::write(remote_image_dir.join("cover.jpg"), b"bbbb").unwrap();

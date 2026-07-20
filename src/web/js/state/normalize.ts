@@ -14,6 +14,7 @@ import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuse
 import { normalizeLearningColors } from "../reader-colors.js";
 import { normalizeTheme } from "../theme.js";
 import { normalizeTranslationLanguageCode } from "../translator-preferences.js";
+import { captureUiState, loadUiStateCache } from "./ui-cache.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -62,6 +63,41 @@ function objectArray(value: unknown): UnknownRecord[] {
 
 function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? (value as unknown[]).filter((item): item is string => typeof item === "string") : [];
+}
+
+export function normalizeReaderBookmarks(value: unknown): Record<string, WhReaderBookmark[]> {
+  const colors = new Set<WhReaderBookmarkColor>(["amber", "red", "green", "blue", "purple"]);
+  const result: Record<string, WhReaderBookmark[]> = {};
+  for (const [textId, rawBookmarks] of objectEntries(value)) {
+    if (!textId || !Array.isArray(rawBookmarks)) continue;
+    const seen = new Set<string>();
+    const bookmarks: WhReaderBookmark[] = [];
+    for (const raw of rawBookmarks) {
+      if (!isRecord(raw) || typeof raw.id !== "string") continue;
+      const id = raw.id.trim().slice(0, 128);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      bookmarks.push({
+        id,
+        label: typeof raw.label === "string" ? raw.label.trim().replace(/\s+/g, " ").slice(0, 160) : "",
+        ...(colors.has(raw.color as WhReaderBookmarkColor) ? { color: raw.color as WhReaderBookmarkColor } : {}),
+        page: Math.min(1_000_000, Math.max(1, Math.trunc(Number(raw.page) || 1))),
+        scrollTop: Math.min(1_000_000_000, Math.max(0, Math.round(Number(raw.scrollTop) || 0))),
+        wordIndex: Number.isInteger(raw.wordIndex) && Number(raw.wordIndex) >= 0 ? Number(raw.wordIndex) : null,
+        ...(Number.isInteger(raw.anchorOffset) && Number(raw.anchorOffset) >= 0
+          ? { anchorOffset: Number(raw.anchorOffset) }
+          : {}),
+        ...(typeof raw.anchorWord === "string" && raw.anchorWord.trim() ? { anchorWord: raw.anchorWord.trim().slice(0, 160) } : {}),
+        ...(typeof raw.anchorBefore === "string" && raw.anchorBefore.trim() ? { anchorBefore: raw.anchorBefore.trim().slice(0, 160) } : {}),
+        ...(typeof raw.anchorAfter === "string" && raw.anchorAfter.trim() ? { anchorAfter: raw.anchorAfter.trim().slice(0, 160) } : {}),
+        ...(raw.wordAlgorithm === "classic" || raw.wordAlgorithm === "modern" ? { wordAlgorithm: raw.wordAlgorithm } : {}),
+        createdAt: typeof raw.createdAt === "string" ? raw.createdAt : ""
+      });
+      if (bookmarks.length >= 200) break;
+    }
+    if (bookmarks.length) result[textId] = bookmarks;
+  }
+  return result;
 }
 
 export class UnsupportedStateSchemaError extends Error {
@@ -228,6 +264,7 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.preferences.learningColors = normalizeLearningColors(nextState.preferences.learningColors);
   nextState.preferences.lastReadTextIds = nextState.preferences.lastReadTextIds && typeof nextState.preferences.lastReadTextIds === "object" && !Array.isArray(nextState.preferences.lastReadTextIds)
     ? nextState.preferences.lastReadTextIds : {};
+  nextState.preferences.readerBookmarks = normalizeReaderBookmarks(rawPreferences.readerBookmarks);
   nextState.readerFontSize = clamp(Number(rawPreferences.readerFontSize ?? nextState.readerFontSize) || 18, 14, 28);
   nextState.preferences.readerFontSize = nextState.readerFontSize;
   nextState.readerPdfZoom = clamp(Number(nextState.readerPdfZoom) || 1, 0.75, 3);
@@ -337,11 +374,18 @@ export function loadState(): WhAppState {
           customTexts.push(text);
         }
       }
+      const bridgeUiState = isRecord(snap.uiState) && snap.uiState.schemaVersion === STATE_SCHEMA_VERSION
+        ? captureUiState(snap.uiState)
+        : loadUiStateCache();
+      Object.assign(merged, bridgeUiState);
       return normalizeState(merged);
     } catch (error) {
       console.warn("Bridge state load failed", error);
       throw error;
     }
+  }
+  if (window.__qtBridge || window.WordHunterAndroid) {
+    return normalizeState({ ...fallback, ...loadUiStateCache() });
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

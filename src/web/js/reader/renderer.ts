@@ -21,6 +21,7 @@ import {
 } from "./pagination.js";
 import { getReaderSession } from "./session.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { renderReaderBookmarks } from "./bookmarks.js";
 import type { TextStats } from "../tokenizer_v2.js";
 
 interface ReaderLoadingBook {
@@ -47,6 +48,12 @@ function getAllTexts(): WhText[] {
     text: bookTexts.get(ct.id) || ct.text || ""
   }));
   return [...fromBooks, ...fromCustom];
+}
+
+function readerBodyReady(current: WhText): boolean {
+  if (isPdfOcrText(current) || bookTexts.has(current.id)) return true;
+  const customText = (state.customTexts || []).find((text) => text.id === current.id);
+  return Boolean(customText && typeof customText.text === "string" && customText.text.trim());
 }
 
 export function getTextById(id: string | null): WhText | undefined {
@@ -105,6 +112,7 @@ export function renderReader(): void {
   delete els.readerText.dataset.renderId;
   els.readerText.classList.remove("pdf-ocr-reader", "pdf-text-layer-reader");
   if (loadingBook) {
+    renderReaderBookmarks(null);
     els.readerText.setAttribute("aria-busy", "true");
     els.readerText.dataset.rendering = "1";
     delete els.readerText.dataset.ttsText;
@@ -134,6 +142,7 @@ export function renderReader(): void {
   const current = texts.find((text) => text.id === state.currentTextId);
 
   if (!current) {
+    renderReaderBookmarks(null);
     els.readerText.removeAttribute("aria-busy");
     delete els.readerText.dataset.ttsText;
     if (els.textSelect) {
@@ -161,18 +170,25 @@ export function renderReader(): void {
 
   els.readerHeading.textContent = current.title;
   els.readerSource.textContent = current.author || current.source || t("reader.localSource");
+  renderReaderBookmarks(current.id);
   els.readerText.style.fontSize = "";
   els.readerText.classList.toggle("pdf-ocr-reader", isPdfOcrText(current));
   els.readerText.classList.remove("pdf-text-layer-reader");
   delete els.readerText.dataset.ttsText;
 
+  if (!readerBodyReady(current)) {
+    els.readerText.setAttribute("aria-busy", "true");
+    els.readerText.dataset.rendering = "0";
+    els.readerText.innerHTML = `<div class="reader-loading" role="status" aria-live="polite" aria-atomic="true"><div class="spinner" aria-hidden="true"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`;
+    return;
+  }
+
   els.readerText.dataset.rendering = "1";
   els.readerText.setAttribute("aria-busy", "true");
-  const scrollPerPageKey = state.currentTextId ? `${state.currentTextId}-p${state.readerPage}` : null;
   const savedPos = state.readerScrolls?.[current.id] || 0;
 
   if (isPdfOcrText(current)) {
-    renderPdfOcrReader(current, scrollPerPageKey, savedPos);
+    renderPdfOcrReader(current, savedPos);
     return;
   }
 
@@ -208,12 +224,14 @@ export function renderReader(): void {
       if (!state.readerPages) state.readerPages = {};
       state.readerPages[current.id] = state.readerPage;
       saveUiState();
+      const scrollPerPageKey = `${current.id}-p${state.readerPage}`;
 
       const { pageStartIndex, pageEndIndex } = computePageSlice(tokens, state.readerPage, wordsPerPage);
       renderPlainText({
         current,
         tokens,
         globalWordIndexes: session.globalWordIndexes,
+        globalCharOffsets: session.globalCharOffsets,
         pageStartIndex,
         pageEndIndex,
         totalPages,

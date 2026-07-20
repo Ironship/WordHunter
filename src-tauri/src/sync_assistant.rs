@@ -7,6 +7,8 @@ use crate::store::record_files;
 
 #[cfg(not(target_os = "android"))]
 const MANAGED_SYNC_FOLDER: &str = "WordHunterSync";
+const SYNC_MARKER_NAME: &str = ".wordhunter-sync.json";
+const SYNC_MARKER_MAX_BYTES: u64 = 4096;
 
 #[cfg(not(target_os = "android"))]
 pub(crate) fn managed_sync_dir() -> Result<PathBuf, String> {
@@ -14,6 +16,77 @@ pub(crate) fn managed_sync_dir() -> Result<PathBuf, String> {
         return Ok(home.join("Documents").join(MANAGED_SYNC_FOLDER));
     }
     Err("could not locate the user home folder".to_string())
+}
+
+pub(crate) fn prepare_sync_folder(dir: &Path) -> Result<(), String> {
+    if !dir.is_dir() {
+        return Err("Word Hunter sync path is not a folder".to_string());
+    }
+    let marker = dir.join(SYNC_MARKER_NAME);
+    if marker.exists() {
+        if !marker.is_file() {
+            return Err("Word Hunter sync marker is not a file".to_string());
+        }
+        let metadata = std::fs::metadata(&marker).map_err(|e| e.to_string())?;
+        if metadata.len() > SYNC_MARKER_MAX_BYTES {
+            return Err("Word Hunter sync marker is too large".to_string());
+        }
+        let value: Value =
+            serde_json::from_slice(&std::fs::read(&marker).map_err(|e| e.to_string())?)
+                .map_err(|_| "Word Hunter sync marker is invalid".to_string())?;
+        if value.get("app").and_then(Value::as_str) != Some("WordHunter")
+            || value.get("schemaVersion").and_then(Value::as_u64) != Some(1)
+        {
+            return Err("selected folder belongs to an unsupported sync format".to_string());
+        }
+        return Ok(());
+    }
+
+    let allowed_legacy_names = [
+        "records",
+        "books",
+        "argos-packages",
+        ".stfolder",
+        ".stversions",
+        ".stignore",
+        ".DS_Store",
+        "desktop.ini",
+        "Thumbs.db",
+    ];
+    let mut has_word_hunter_data = false;
+    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| {
+            format!("could not inspect every entry in the selected sync folder: {e}")
+        })?;
+        let name = entry.file_name();
+        let allowed = allowed_legacy_names
+            .iter()
+            .any(|allowed| name == std::ffi::OsStr::new(allowed))
+            || name
+                .to_str()
+                .is_some_and(|name| name.starts_with(".stfolder.removed-"));
+        if !allowed {
+            return Err(
+                "select a dedicated or existing Word Hunter sync folder; this folder contains unrelated files"
+                    .to_string(),
+            );
+        }
+        if name == std::ffi::OsStr::new("records")
+            || name == std::ffi::OsStr::new("books")
+            || name == std::ffi::OsStr::new("argos-packages")
+        {
+            has_word_hunter_data = true;
+        }
+    }
+    if has_word_hunter_data && !dir.join("records").join("v1").is_dir() {
+        return Err("existing Word Hunter data is incomplete: records/v1 is missing".to_string());
+    }
+    crate::store::durable::write_json_atomic(
+        &marker,
+        &json!({ "app": "WordHunter", "schemaVersion": 1 }),
+        false,
+        false,
+    )
 }
 
 pub(crate) fn configured_sync_health() -> Value {
@@ -174,6 +247,77 @@ fn unescape_mountinfo_field(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sync_folder_ownership_rejects_unrelated_files_before_writing_marker() {
+        let dir = tempfile::tempdir().unwrap();
+        let sentinel = dir.path().join("private-document.txt");
+        std::fs::write(&sentinel, "private").unwrap();
+
+        let error = prepare_sync_folder(dir.path()).unwrap_err();
+
+        assert!(error.contains("unrelated files"));
+        assert_eq!(std::fs::read_to_string(&sentinel).unwrap(), "private");
+        assert!(!dir.path().join(SYNC_MARKER_NAME).exists());
+        assert!(!dir.path().join("records").exists());
+        assert!(!dir.path().join("books").exists());
+    }
+
+    #[test]
+    fn sync_folder_ownership_marks_empty_and_accepts_legacy_layouts() {
+        let empty = tempfile::tempdir().unwrap();
+        prepare_sync_folder(empty.path()).unwrap();
+        prepare_sync_folder(empty.path()).unwrap();
+        let marker: Value =
+            serde_json::from_slice(&std::fs::read(empty.path().join(SYNC_MARKER_NAME)).unwrap())
+                .unwrap();
+        assert_eq!(marker["app"], "WordHunter");
+        assert_eq!(marker["schemaVersion"], 1);
+
+        let legacy = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(legacy.path().join("records/v1")).unwrap();
+        std::fs::create_dir_all(legacy.path().join("argos-packages")).unwrap();
+        std::fs::create_dir_all(legacy.path().join(".stversions")).unwrap();
+        std::fs::create_dir_all(legacy.path().join(".stfolder.removed-20260720")).unwrap();
+        std::fs::write(legacy.path().join(".stignore"), "(?d).stversions").unwrap();
+        prepare_sync_folder(legacy.path()).unwrap();
+        assert!(legacy.path().join(SYNC_MARKER_NAME).is_file());
+
+        let system_metadata = tempfile::tempdir().unwrap();
+        std::fs::write(system_metadata.path().join(".DS_Store"), "metadata").unwrap();
+        std::fs::write(system_metadata.path().join("desktop.ini"), "metadata").unwrap();
+        std::fs::write(system_metadata.path().join("Thumbs.db"), "metadata").unwrap();
+        prepare_sync_folder(system_metadata.path()).unwrap();
+        assert!(system_metadata.path().join(SYNC_MARKER_NAME).is_file());
+    }
+
+    #[test]
+    fn sync_folder_ownership_does_not_trust_an_unrelated_books_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join("books")).unwrap();
+        std::fs::write(dir.path().join("books/private.pdf"), "private").unwrap();
+
+        let error = prepare_sync_folder(dir.path()).unwrap_err();
+
+        assert!(error.contains("records/v1 is missing"));
+        assert!(dir.path().join("books/private.pdf").is_file());
+        assert!(!dir.path().join(SYNC_MARKER_NAME).exists());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn sync_folder_ownership_rejects_non_utf8_names() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let name = std::ffi::OsString::from_vec(vec![b'p', b'r', b'i', b'v', 0xff]);
+        std::fs::write(dir.path().join(name), "private").unwrap();
+
+        let error = prepare_sync_folder(dir.path()).unwrap_err();
+
+        assert!(error.contains("unrelated files"));
+        assert!(!dir.path().join(SYNC_MARKER_NAME).exists());
+    }
 
     #[test]
     fn health_reports_corrupt_record_files_without_deleting_them() {

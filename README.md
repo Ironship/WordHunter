@@ -4,73 +4,130 @@
 
 <h1 align="center">Word Hunter</h1>
 
-Word Hunter is a local-first reader, vocabulary trainer, and language-learning
-workspace for desktop and Android. The Android version is called Word Hunter
-Pocket.
+<p align="center">
+  <strong>Read real texts. Save words with context. Review them on your terms.</strong>
+</p>
+
+<p align="center">
+  <a href="https://ironship.github.io/WordHunter-site/">Website</a> ·
+  <a href="#download-and-install">Download</a> ·
+  <a href="#first-5-minutes">First 5 minutes</a> ·
+  <a href="#feature-tour">Feature tour</a> ·
+  <a href="#sync-and-backups">Sync and backups</a>
+</p>
+
+Word Hunter is a local-first reader and vocabulary trainer for Windows, macOS,
+Linux, and Android. The Android app is called **Word Hunter Pocket**.
 
 The project is built around one idea: read real texts, click words you want to
 learn, keep the context, and review them later without losing control of your
 data.
 
-## Installation
+> [!TIP]
+> New here? Install the current stable release, open a text, and click an
+> unfamiliar word. No account or cloud setup is required.
 
-The recommended package-manager channels are being added. Until their reviews
-are complete, use the files from the
-[latest GitHub release](https://github.com/Ironship/WordHunter/releases/latest).
+## Download and install
 
-- **Windows - WinGet (work in progress):** the package submission is under
-  review. Once accepted, install with
-  `winget install --exact --id Ironship.WordHunter`.
-- **Android - F-Droid (work in progress):** inclusion is being prepared for
-  `com.wordhunter.pocket`. Until it is available, use the APK from GitHub
-  Releases.
-- **Linux - Flatpak:** download `WordHunter.flatpak` from GitHub Releases and
-  run `flatpak install --user ./WordHunter.flatpak`.
-- **Windows - direct download:** choose `Word.Hunter.Setup.exe` or the portable
-  ZIP from GitHub Releases.
+The recommended version for new users is
+**[Word Hunter 1.0.7](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.7)**.
+Choose your platform below. All direct downloads come from the official GitHub
+Release.
 
-Project website: https://ironship.github.io/WordHunter-site/
+| Platform | Recommended download | Other supported option |
+| --- | --- | --- |
+| **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/Word.Hunter.portable.zip) |
+| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/Word.Hunter.Pocket.debug.apk) | Android may ask you to allow installation from your browser or file manager. |
+| **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/WordHunter-1.0.7-aarch64.dmg) | Intel Macs and iOS are not supported. |
+| **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/WordHunter-1.0.7-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.7/word-hunter_1.0.7_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
 
-## Project Status
+<details>
+<summary><strong>Command-line installation</strong></summary>
 
-Current stable release: `1.0.6`.
+```powershell
+# Windows — Scoop
+scoop bucket add wordhunter https://github.com/Ironship/scoop-wordhunter
+scoop install wordhunter/wordhunter
+```
 
-> [!WARNING]
-> **Back up your Word Hunter words and library before installing version 1.0.0.**
-> This release changes the storage and synchronization compatibility baseline.
-> Use the in-app JSON export and keep a separate copy of your current Word Hunter
-> data folder before upgrading, especially if more than one device uses the same
-> sync folder.
+```bash
+# Linux x86_64 — project-maintained Homebrew tap
+brew install --cask Ironship/wordhunter/wordhunter
 
-Active targets:
+# Linux — install a downloaded Flatpak bundle
+flatpak install --user ./WordHunter.flatpak
 
-- Windows and Linux desktop: `Word Hunter`
-- Android: `Word Hunter Pocket`
+# Linux — run a downloaded AppImage
+chmod +x WordHunter-1.0.7-x86_64.AppImage
+./WordHunter-1.0.7-x86_64.AppImage
 
-The Windows setup and portable archive, Android APK, and Linux Flatpak are
-published as GitHub Release assets rather than tracked in the source tree.
+# Debian/Ubuntu — install the downloaded DEB
+sudo apt install ./word-hunter_1.0.7_amd64.deb
+```
 
-Release `1.0.0` marks the new compatibility baseline after breaking storage and
-sync changes. It introduces durable per-record local storage, safer recovery and
-cross-device merging, guided Syncthing setup on desktop, Android sync staging,
-and refreshed packaging and platform validation.
+</details>
 
-## What It Includes
+<details>
+<summary><strong>First launch on macOS</strong></summary>
 
-- Local-first reading for pasted text, PDFs, EPUB files, URLs, subtitles, and
-  library imports.
-- Vocabulary states, spaced-repetition review, TTS, keyboard shortcuts, and
-  reading progress.
-- Configurable selected-word panels with per-item visibility and ordering.
-- PDF reading with OCR/text-layer support, page-background overlays, and a clean
-  text mode for focused reading.
-- Translation and dictionary tools with language-aware handling for modern and
-  historical languages.
-- Android Pocket layout for mobile reading, review, and PDF zoom/pan.
-- Linux Flatpak packaging for local installation and release distribution.
-- Optional folder sync for library data, vocabulary, review state, and backups.
+The DMG is signed ad hoc and is not notarized with an Apple Developer ID:
 
-## Supported Learning Languages
+1. Open the DMG and drag **Word Hunter** to **Applications**.
+2. Try to open Word Hunter once.
+3. Open **System Settings → Privacy & Security**.
+4. In **Security**, choose **Open Anyway** and confirm the launch.
+
+</details>
+
+## First 5 minutes
+
+1. Choose the language you are learning. Each language gets its own library and
+   vocabulary profile.
+2. Add something to read: paste text, import a file, open a public-domain book,
+   or add a supported URL.
+3. Click or tap an unfamiliar word. Save its status, translation, note, or
+   example sentence in the word panel.
+4. Continue reading. Your saved words remain highlighted in context.
+5. Open **Word Base** to manage vocabulary or **Flashcards** to review due words.
+
+You can start locally and configure sync later. Before testing sync or moving
+data between devices, create a JSON backup from the app.
+
+## Why Word Hunter
+
+- Read pasted text, PDFs, EPUB files, subtitles, URLs, and built-in books.
+- Keep vocabulary status, translation, notes, examples, and source context in
+  one record.
+- Review with spaced repetition, pronunciation, keyboard shortcuts, and TTS.
+- Use OCR and PDF text layers locally in desktop packages.
+- Read and review on Android with the Pocket interface.
+- Optionally synchronize books, vocabulary, settings, and progress through a
+  folder you choose.
+
+## Your data stays yours
+
+- No account is required.
+- Books, vocabulary, progress, and settings are stored locally.
+- Sync is optional and uses a folder selected by you.
+- Online requests happen only when you use an online feature such as catalog
+  discovery, dictionary links, translation, or online speech.
+
+## Release status
+
+- **Stable:** [1.0.7](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.7)
+
+<details>
+<summary><strong>Upgrading an older installation</strong></summary>
+
+- Versions older than `1.0.0` predate the current storage and sync compatibility
+  baseline. Export a JSON backup before upgrading.
+- If Android reports an incompatible signature when moving from an early 1.0.7
+  test APK, export a backup before uninstalling.
+  Uninstalling an Android app clears its local app data.
+
+</details>
+
+## Supported learning languages
 
 Word Hunter keeps a separate library and vocabulary profile for each learning
 language:
@@ -107,7 +164,7 @@ and provider. The named languages include built-in original stories and A1-B2
 course books; the Other profile has none. Set its source and target language
 codes under Translator & Dictionary settings before using automatic translation.
 
-## Feature Walkthrough
+## Feature tour
 
 ### Themes
 
@@ -205,12 +262,14 @@ Pocket intentionally keeps heavy import work lighter than desktop. Larger
 conversion and OCR work is best done on desktop, then moved to Pocket through
 sync.
 
-## Sync and Backups
+## Sync and backups
 
 Word Hunter does not require an account or a central server. The app stores data
-locally and can copy changes through a folder chosen by the user. Desktop builds
-bundle Syncthing 2.1.0 as a separate MPL-2.0 executable; Android uses a folder
-shared with a separately installed Syncthing client.
+locally and can copy changes through a folder chosen by the user. Windows,
+Flatpak, and AppImage builds bundle Syncthing 2.1.0 as a separate MPL-2.0
+executable. The Debian package uses the distribution-provided `syncthing`
+dependency and deliberately leaves `/usr/bin/syncthing` untouched. Android
+shares a folder with a separately installed Syncthing client.
 
 - Desktop can use a local data folder and an optional sync folder.
 - Android keeps local data inside the app and lets the user pick a separate sync
@@ -227,15 +286,10 @@ shared with a separately installed Syncthing client.
   complete before opening another device.
 - Full backup export is useful before testing new sync setups.
 
-## Supported Targets
+## For contributors
 
-- Windows desktop
-- Linux desktop
-- Android Pocket
-
-macOS and iOS are not active targets right now.
-
-## Build From Source
+End users do not need any of the tools below. This section is for contributors
+who want to validate or package the application from source.
 
 ### Requirements
 
@@ -245,10 +299,11 @@ macOS and iOS are not active targets right now.
 - Tauri 2 native prerequisites for the desktop platform being built.
 - PowerShell when using the bundled `scripts\build.bat` helper on Windows.
 - Android SDK, NDK, and JDK for Android Pocket builds.
+- Apple Silicon macOS for the DMG build.
 - Python 3 and `curl` when refreshing or checking Flatpak Cargo sources.
 - OCR runtime/model assets only when preparing desktop OCR support.
 
-### Common Commands
+### Common commands
 
 Install the pinned validation dependencies after checkout:
 
@@ -271,11 +326,22 @@ Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
 .\scripts\build.bat test         # run shared, desktop, and Android frontend tests
 .\scripts\build.bat installer    # build outputs\Word.Hunter.Setup.exe
 .\scripts\build.bat portable     # build outputs\Word.Hunter.portable.zip
-.\scripts\build.bat apk          # build outputs\Word.Hunter.Pocket.debug.apk
+.\scripts\build.bat apk          # build APK; WH_ANDROID_* signs an update-compatible package
 .\scripts\build.bat aab          # build outputs\Word.Hunter.Pocket.release.aab
 .\scripts\build.bat play         # build signed Google Play AAB
 .\scripts\build.bat ocr-runtime  # prepare bundled native PaddleOCR runtime
 ```
+
+On Apple Silicon macOS, build and validate the DMG with:
+
+```bash
+./scripts/build-macos.sh
+```
+
+It writes `outputs/WordHunter-<version>-aarch64.dmg`. The current recipe
+uses an ad-hoc signature, so macOS may require approval in Privacy & Security
+after download. A Developer ID certificate and notarization are still required
+for a warning-free public install.
 
 Rust backend tests can also be run directly:
 
@@ -323,7 +389,7 @@ To check for drift without rewriting the file, run:
 The build script writes distributable files to `outputs/`. That directory is
 generated output, not source.
 
-## Repository Layout
+## Repository layout
 
 - `src/web/` - shared frontend application code.
 - `dist/web/` - generated, untracked browser JavaScript and copied web assets.
@@ -338,17 +404,19 @@ generated output, not source.
 - `.cargo/` - Cargo configuration used by the workspace.
 - `scripts/build.bat` - Windows convenience entrypoint for tests and release artifacts.
 
-## Technology and Third-Party Licenses
+## Technology and third-party licenses
 
 Word Hunter uses a Rust backend and a shared HTML/CSS/TypeScript interface in a
 Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
 Android System WebView. Desktop translation and OCR can use CTranslate2,
 SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
 providers. OCR uses DirectML on Windows and WebGPU/Vulkan on Linux, with a safe
-CPU fallback. Desktop sync uses the separately bundled Syncthing executable.
-The Flatpak routes file dialogs through XDG Desktop Portal and can use the
-active GTK theme extension, so KDE sessions receive their portal dialogs and
-the matching Breeze GTK styling when that extension is installed.
+CPU fallback. Windows, Flatpak, and AppImage sync use the separately bundled
+Syncthing executable, while the Debian package uses the distribution-provided
+`syncthing` dependency. The Flatpak routes file dialogs through XDG Desktop
+Portal and can use the active GTK theme extension, so KDE sessions receive
+their portal dialogs and the matching Breeze GTK styling when that extension
+is installed.
 
 Word Hunter data is stored as local record files and JSON snapshots; the current
 application does not use SQLite. The built-in scheduler is Word Hunter's own
@@ -370,19 +438,6 @@ graphs are generated into `THIRD-PARTY-LICENSES.html` and
 After changing either Rust lockfile, install `cargo-about` and refresh the
 reports with `./scripts/update-third-party-licenses.sh`.
 
-## Privacy and Data Ownership
-
-Word Hunter is designed as a local-first app:
-
-- No account is required.
-- Books, custom texts, vocabulary, progress, and settings are stored locally.
-- Sync uses a folder chosen by the user.
-- Online requests happen only when the user uses features that need them, such
-  as public catalog discovery, dictionary links, online translation, or online
-  speech features.
-- User data should be backed up before risky sync experiments or before moving
-  data folders.
-
 ## License
 
 Word Hunter is licensed under `AGPL-3.0-or-later`.
@@ -390,6 +445,10 @@ Word Hunter is licensed under `AGPL-3.0-or-later`.
 Closed-source commercial derivative use requires a separate written commercial
 license. See `COMMERCIAL-LICENSE.md` for details.
 
-## AI USAGE
+## Development note
 
-Yes frontend was writen mostly with AI. I am not frontend developer. I have used those scripts for long time  and I see value for people to use this COMPLETELY FREE and WITHOUT dependency on cloud or paid services like Readlang, Lingq, Babbel or AnkiWeb. If you would love to help then please just use it and put your thoughts. I use it every day myself.
+Much of the frontend was developed with AI assistance. I am not a frontend
+developer; Word Hunter grew from scripts I had used for years into an app I use
+every day. The goal is to keep it free, useful, and independent of mandatory
+cloud accounts or paid services. Feedback, bug reports, and contributions are
+welcome.

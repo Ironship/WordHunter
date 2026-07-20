@@ -63,8 +63,8 @@ describe("selected-word panel", () => {
     for (const status of ["new", "learning", "known", "ignored"]) {
       assert.match(styles, new RegExp(`reader-sidebar-wrapper\\.word-panel-status-${status}`));
     }
-    assert.ok(constants.indexOf('{ id: "status", visible: true }') < constants.indexOf('{ id: "article", visible: true }'));
-    assert.ok(constants.indexOf('{ id: "article", visible: true }') < constants.indexOf('{ id: "dictionary", visible: true }'));
+    assert.ok(constants.indexOf('{ id: "status", visible: true }') < constants.indexOf('{ id: "article", visible: false }'));
+    assert.ok(constants.indexOf('{ id: "article", visible: false }') < constants.indexOf('{ id: "dictionary", visible: true }'));
     assert.ok(constants.indexOf('{ id: "dictionary", visible: true }') < constants.indexOf('{ id: "speech", visible: true }'));
     assert.ok(constants.indexOf('{ id: "speech", visible: true }') < constants.indexOf('{ id: "youglish", visible: true }'));
     assert.ok(constants.indexOf('{ id: "remove", visible: true }') < constants.indexOf('{ id: "suggestion", visible: true }'));

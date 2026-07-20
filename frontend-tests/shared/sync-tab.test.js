@@ -163,7 +163,11 @@ const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { handleGlobalKeys } = await import("../../dist/web/js/events/keyboard/global-keys.js");
 const { bindNavigationEvents } = await import("../../dist/web/js/events/navigation.js");
-const { parseAnkiTsvLocally } = await import("../../dist/web/js/sync-actions.js");
+const {
+  importAnkiTsv,
+  parseAnkiTsvLocally,
+  saveWithAndroidBridge
+} = await import("../../dist/web/js/sync-actions.js");
 
 function setupRenderControls() {
   const syncNav = control({ dataset: { view: "sync" } });
@@ -196,6 +200,24 @@ function resetState() {
 }
 
 describe("Anki TSV compatibility", () => {
+  it("rejects oversized TSV files before allocating a FileReader", () => {
+    let readers = 0;
+    globalThis.FileReader = class FileReader { constructor() { readers += 1; } };
+    const target = { files: [{ size: 33 * 1024 * 1024 }], value: "large.tsv" };
+
+    importAnkiTsv({ target });
+
+    assert.equal(readers, 0);
+    assert.equal(target.value, "");
+  });
+
+  it("waits for the durable state commit before reporting Anki import success", () => {
+    const source = readFileSync(new URL("../../dist/web/js/sync-actions.js", import.meta.url), "utf8");
+    const body = source.slice(source.indexOf("export function importAnkiTsv"), source.indexOf("export function parseAnkiTsvLocally"));
+    assert.ok(body.indexOf("await saveStateAndReloadBridge()") < body.indexOf("toast.importDoneCount"));
+    assert.match(body, /Anki import recovery reload failed/);
+  });
+
   it("parses an optional article column after every localized first-column header", () => {
     for (const header of ["Word", "Słowo", "Wort", "Palabra", "Mot", "Parola", "単語", "Слово"]) {
       const rows = parseAnkiTsvLocally(`${header}\tTranslation\tContext\tArticle\nhaus\thouse\texample\tdas\n`);
@@ -217,6 +239,26 @@ describe("Anki TSV compatibility", () => {
       { word: "alpha", translation: "alef", context: "example", article: "" },
       { word: "Word", translation: "term", context: "context", article: "" }
     ]);
+  });
+});
+
+describe("Pocket export memory guard", () => {
+  it("rejects oversized UTF-8 data before calling the Kotlin bridge", async () => {
+    let bridgeCalls = 0;
+    window.WordHunterAndroid = {
+      saveExport() {
+        bridgeCalls += 1;
+        return true;
+      }
+    };
+    const oversized = "€".repeat(11 * 1024 * 1024);
+
+    await assert.rejects(
+      saveWithAndroidBridge(oversized, "backup.json", "application/json"),
+      /32 MB safety limit/
+    );
+    assert.equal(bridgeCalls, 0);
+    delete window.WordHunterAndroid;
   });
 });
 describe("Sync navigation behavior", () => {

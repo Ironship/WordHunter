@@ -1,0 +1,277 @@
+name: AUR package validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/aur-validation.yml"
+      - "packaging/aur/**"
+  push:
+    branches:
+      - main
+      - "chore/aur-**"
+    paths:
+      - ".github/workflows/aur-validation.yml"
+      - "packaging/aur/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: makepkg and installed AppImage smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: archlinux:base-devel-20260712.0.555161@sha256:212b1e518e94ee9c52be55e8a32da75fcf11e7b5610b80b49479e67880102406
+    defaults:
+      run:
+        shell: bash
+    env:
+      AUR_BUILD_DIR: /tmp/wordhunter-aur-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Update Arch and install validation tools
+        run: |
+          set -euo pipefail
+          pacman -Syu --noconfirm --needed \
+            appstream \
+            dbus \
+            desktop-file-utils \
+            namcap \
+            sudo \
+            xorg-server-xvfb
+
+      - name: Stage an unprivileged makepkg workspace
+        run: |
+          set -euo pipefail
+          useradd --create-home --shell /bin/bash aur-builder
+          printf '%s\n' 'aur-builder ALL=(ALL:ALL) NOPASSWD: /usr/bin/pacman' \
+            > /etc/sudoers.d/aur-builder
+          chmod 440 /etc/sudoers.d/aur-builder
+
+          install -d -o aur-builder -g aur-builder "${AUR_BUILD_DIR}"
+          cp -a "${GITHUB_WORKSPACE}/packaging/aur/." "${AUR_BUILD_DIR}/"
+          chown -R aur-builder:aur-builder "${AUR_BUILD_DIR}"
+
+      - name: Require committed SRCINFO to match PKGBUILD
+        run: |
+          set -euo pipefail
+          generated="$(mktemp)"
+          runuser -u aur-builder -- bash -c \
+            "cd '${AUR_BUILD_DIR}' && makepkg --printsrcinfo" > "${generated}"
+          diff -u "${AUR_BUILD_DIR}/.SRCINFO" "${generated}"
+
+      - name: Verify the pinned release source
+        run: |
+          set -euo pipefail
+          runuser -u aur-builder -- bash -c \
+            "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
+
+          asset="${AUR_BUILD_DIR}/WordHunter-1.0.6-x86_64.AppImage"
+          printf '%s  %s\n' \
+            '01194b3a0855cfd4c76e67977b4bd2eb4aa233c393cbdaf17b7a9a9bd009db3f' \
+            "${asset}" | sha256sum -c -
+
+      - name: Build and inspect the Arch package
+        run: |
+          set -euo pipefail
+          runuser -u aur-builder -- bash -c \
+            "set -euo pipefail
+             cd '${AUR_BUILD_DIR}'
+             namcap PKGBUILD | tee namcap-pkgbuild.log
+             if grep -Eq ' E: ' namcap-pkgbuild.log; then
+               echo 'namcap reported a PKGBUILD error.' >&2
+               exit 1
+             fi
+             makepkg --syncdeps --noconfirm --cleanbuild"
+
+          mapfile -t packages < <(
+            find "${AUR_BUILD_DIR}" -maxdepth 1 -type f \
+              -name 'wordhunter-bin-*.pkg.tar.zst' -print
+          )
+          if [[ "${#packages[@]}" -ne 1 ]]; then
+            printf 'Expected one package, found %s\n' "${#packages[@]}" >&2
+            exit 1
+          fi
+          package="${packages[0]}"
+          namcap "${package}" | tee "${AUR_BUILD_DIR}/namcap-package.log"
+          # namcap reports the intentionally extracted AppImage under /opt and
+          # its bundled GTK libraries as package errors. Keep that full report
+          # for maintainer review; the targeted payload, ldd, install, and GUI
+          # assertions below decide whether this binary package is usable.
+          printf 'AUR_PACKAGE=%s\n' "${package}" >> "${GITHUB_ENV}"
+
+      - name: Validate package metadata and contents
+        run: |
+          set -euo pipefail
+          contents="$(mktemp)"
+          metadata="$(mktemp)"
+          bsdtar -tf "${AUR_PACKAGE}" | tee "${contents}"
+          bsdtar -xOf "${AUR_PACKAGE}" .PKGINFO | tee "${metadata}"
+
+          for required in \
+            opt/wordhunter/AppRun \
+            opt/wordhunter/usr/bin/word-hunter-rustified \
+            opt/wordhunter/usr/bin/syncthing \
+            opt/wordhunter/usr/lib/libcairo.so.2 \
+            opt/wordhunter/usr/lib/libgdk_pixbuf-2.0.so.0 \
+            opt/wordhunter/usr/lib/libpango-1.0.so.0 \
+            opt/wordhunter/usr/lib/librsvg-2.so.2 \
+            usr/bin/wordhunter \
+            usr/share/applications/com.wordhunter.app.desktop \
+            usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png \
+            usr/share/metainfo/com.wordhunter.app.metainfo.xml; do
+            grep -Fxq "${required}" "${contents}" || {
+              printf 'Package is missing %s\n' "${required}" >&2
+              exit 1
+            }
+          done
+          grep -Eq '^opt/wordhunter/usr/lib/.*/ocr-runtime/bin/wordhunter-paddleocr$' \
+            "${contents}"
+
+          if grep -Eq '\.AppImage$' "${contents}"; then
+            echo 'The package must contain extracted files, not a FUSE-backed AppImage.' >&2
+            exit 1
+          fi
+
+          grep -Fxq 'pkgname = wordhunter-bin' "${metadata}"
+          grep -Fxq 'pkgver = 1.0.6-1' "${metadata}"
+          for dependency in \
+            fontconfig \
+            fribidi \
+            glibc \
+            harfbuzz \
+            hicolor-icon-theme \
+            libglvnd \
+            mesa \
+            xdg-utils; do
+            grep -Fxq "depend = ${dependency}" "${metadata}"
+          done
+          if grep -Eq '^depend = fuse2([<>=].*)?$' "${metadata}"; then
+            echo 'FUSE must not be a package dependency.' >&2
+            exit 1
+          fi
+
+      - name: Install and smoke-test the package
+        run: |
+          set -euo pipefail
+          pacman -U --noconfirm "${AUR_PACKAGE}"
+          test "$(pacman -Q wordhunter-bin)" = 'wordhunter-bin 1.0.6-1'
+          pacman -Qkk wordhunter-bin
+          pacman -Ql wordhunter-bin
+
+          desktop-file-validate /usr/share/applications/com.wordhunter.app.desktop
+          appstreamcli validate --no-net \
+            /usr/share/metainfo/com.wordhunter.app.metainfo.xml
+          desktop=/usr/share/applications/com.wordhunter.app.desktop
+          metainfo=/usr/share/metainfo/com.wordhunter.app.metainfo.xml
+          grep -Fxq 'Exec=wordhunter' "${desktop}" || {
+            echo 'The installed desktop launcher has an unexpected Exec line.' >&2
+            grep -n '^Exec=' "${desktop}" >&2 || true
+            exit 1
+          }
+          grep -Fq '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
+            "${metainfo}" || {
+              echo 'The installed AppStream launchable does not match the desktop file.' >&2
+              grep -n '<launchable' "${metainfo}" >&2 || true
+              exit 1
+            }
+          grep -Fq '<binary>wordhunter</binary>' "${metainfo}" || {
+            echo 'The installed AppStream binary does not match the public launcher.' >&2
+            grep -n '<binary>' "${metainfo}" >&2 || true
+            exit 1
+          }
+          launcher="$(command -v wordhunter || true)"
+          canonical_launcher="$(readlink -f "${launcher}" 2>/dev/null || true)"
+          test "${canonical_launcher}" = '/usr/bin/wordhunter' || {
+            printf 'Unexpected public launcher path: %s (canonical: %s)\n' \
+              "${launcher:-<missing>}" "${canonical_launcher:-<missing>}" >&2
+            exit 1
+          }
+
+          main=/opt/wordhunter/usr/bin/word-hunter-rustified
+          ocr_runner="$(
+            find /opt/wordhunter/usr/lib -type f \
+              -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
+          )"
+          syncthing=/opt/wordhunter/usr/bin/syncthing
+          for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
+            test -x "${executable}" || {
+              printf 'Expected executable is missing or not executable: %s\n' \
+                "${executable:-<empty path>}" >&2
+              exit 1
+            }
+          done
+
+          for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
+            ldd_output="$(ldd "${executable}" 2>&1 || true)"
+            if grep -F 'not found' <<<"${ldd_output}"; then
+              printf 'Unresolved dynamic dependency in %s\n' "${executable}" >&2
+              exit 1
+            fi
+          done
+          ocr_help="$("${ocr_runner}" --help 2>&1)" || {
+            status=$?
+            printf '%s\nOCR helper --help exited with status %s.\n' \
+              "${ocr_help}" "${status}" >&2
+            exit 1
+          }
+          printf '%s\n' "${ocr_help}"
+          grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}" || {
+            echo 'OCR helper output does not identify wordhunter-paddleocr.' >&2
+            exit 1
+          }
+
+          syncthing_version="$("${syncthing}" --version 2>&1)" || {
+            status=$?
+            printf '%s\nSyncthing --version exited with status %s.\n' \
+              "${syncthing_version}" "${status}" >&2
+            exit 1
+          }
+          printf '%s\n' "${syncthing_version}"
+          grep -iqF 'syncthing' <<<"${syncthing_version}" || {
+            echo 'Syncthing version output is unexpected.' >&2
+            exit 1
+          }
+
+          Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
+            >"${RUNNER_TEMP}/wordhunter-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          cleanup() {
+            kill "${xvfb_pid}" 2>/dev/null || true
+            wait "${xvfb_pid}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for _ in {1..40}; do
+            [[ -S /tmp/.X11-unix/X99 ]] && break
+            sleep 0.25
+          done
+          test -S /tmp/.X11-unix/X99
+
+          set +e
+          runuser -u aur-builder -- env \
+            DISPLAY=:99 \
+            HOME=/home/aur-builder \
+            timeout 20s dbus-run-session -- wordhunter
+          status=$?
+          set -e
+          if [[ "${status}" -ne 124 ]]; then
+            printf 'Word Hunter exited with status %s instead of reaching the smoke-test timeout.\n' \
+              "${status}" >&2
+            exit 1
+          fi
+
+      - name: Remove the package and verify public paths
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if pacman -Q wordhunter-bin >/dev/null 2>&1; then
+            pacman -Rns --noconfirm wordhunter-bin
+          fi
+          test ! -e /usr/bin/wordhunter
+          test ! -e /usr/share/applications/com.wordhunter.app.desktop
+          test ! -e /opt/wordhunter

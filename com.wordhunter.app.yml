@@ -20,6 +20,8 @@ finish-args:
   - --filesystem=xdg-documents
   - --filesystem=xdg-download
   - --filesystem=host-os:ro
+  - --talk-name=org.com_wordhunter_app.SingleInstance
+  - --own-name=org.com_wordhunter_app.SingleInstance
 
 modules:
   - name: word-hunter

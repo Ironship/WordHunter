@@ -108,15 +108,25 @@ describe("repository validation wiring", () => {
     assert.doesNotMatch(prCommands, /build-flatpak|build\.bat all|tauri build/);
   });
 
-  it("parses the release/nightly artifact matrix and requires each artifact", () => {
+  it("parses the manually dispatched release matrix and requires each artifact", () => {
     const workflow = parseSimpleYaml(read("../../.github/workflows/artifact-validation.yml"));
 
-    assert.ok(workflow.on.schedule[0].cron);
+    assert.equal(workflow.on.schedule, undefined);
     assertActionsArePinned(workflow);
     assert.equal(workflow.permissions.contents, "read");
     assert.equal(workflow.on.release, undefined);
     assert.ok(workflow.on.workflow_dispatch !== undefined);
-    assert.deepEqual(Object.keys(workflow.jobs).sort(), ["android", "flatpak", "frontend-validation", "publish-release", "release-preflight", "windows"]);
+    assert.deepEqual(Object.keys(workflow.jobs).sort(), [
+      "android",
+      "flatpak",
+      "frontend-validation",
+      "linux-native",
+      "linux-native-runtime",
+      "macos",
+      "publish-release",
+      "release-preflight",
+      "windows",
+    ]);
     const releasePreflight = workflow.jobs["release-preflight"];
     const frontendValidation = workflow.jobs["frontend-validation"];
     const revisionCheck = stepByName(releasePreflight, "Match a requested draft release to this revision");
@@ -133,22 +143,72 @@ describe("repository validation wiring", () => {
     );
     assert.equal(stepByName(frontendValidation, "Build and validate frontend sources").run, "npm run check:frontend");
     assert.match(stepByName(frontendValidation, "Validate frontend behavior and repository data").run, /validate-json-i18n[\s\S]*--test/);
+    const signingStep = stepByName(workflow.jobs.android, "Restore stable Android signing key");
+    assert.equal(signingStep.env.KEYSTORE_BASE64, "${{ secrets.WH_ANDROID_KEYSTORE_BASE64 }}");
+    assert.match(signingStep.run, /WH_ANDROID_REQUIRE_SIGNING=1[\s\S]*WH_ANDROID_EXPECTED_CERT_SHA256=b3b8336e4168d231b34a2483b4d444b92ee0324d04ec7dc6a8d92e628af6c85b/);
+    assert.ok(read("../../scripts/build.bat").includes("'(?i)certificate SHA-256 digest:\\s*([0-9a-f]{64})'"));
     assert.match(stepByName(workflow.jobs.android, "Build frontend, APK, and AAB through the release recipe").run, /build\.bat apk aab/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.apk --abi arm64-v8a/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.aab --abi arm64-v8a/);
     assert.match(stepByName(workflow.jobs.windows, "Build frontend and Windows release packages").run, /build\.bat all/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-portable/);
     assert.match(stepByName(workflow.jobs.windows, "Inspect Windows release packages").run, /windows-nsis/);
+    assert.equal(workflow.jobs.macos["runs-on"], "macos-15");
+    assert.equal(
+      stepByName(workflow.jobs.macos, "Build and smoke-test the Apple Silicon DMG").run,
+      "./scripts/build-macos.sh",
+    );
+    assert.match(
+      stepByName(workflow.jobs.macos, "Upload validated macOS DMG").with.path,
+      /WordHunter-\$\{\{ steps\.package-version\.outputs\.version \}\}-aarch64\.dmg/,
+    );
     assert.equal(stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
-    for (const name of ["android", "windows", "flatpak"]) {
+    assert.match(
+      stepByName(workflow.jobs["linux-native"], "Build frontend, AppImage, and DEB through the release recipe").run,
+      /build-linux-native\.sh/,
+    );
+    assert.match(workflow.jobs["linux-native"].if, /frontend-validation\.result == 'success'/);
+    for (const name of ["android", "windows", "macos", "flatpak", "linux-native"]) {
       const job = workflow.jobs[name];
       assert.equal(job.needs, "frontend-validation");
+      assert.match(job.if, /frontend-validation\.result == 'success'/);
       const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact@"));
       assert.ok(upload, `${job.name} does not upload its validated artifact`);
       assert.equal(upload.with["if-no-files-found"], "error");
     }
+    const linuxRuntime = workflow.jobs["linux-native-runtime"];
+    assert.equal(linuxRuntime.needs, "linux-native");
+    assert.match(linuxRuntime.if, /linux-native\.result == 'success'/);
+    assert.equal(linuxRuntime.container, "ubuntu:22.04");
+    const linuxRuntimeInstall = stepByName(
+      linuxRuntime,
+      "Install AppImage host baseline and runtime test tools",
+    ).run;
+    for (const hostLibrary of [
+      "libegl1",
+      "libfontconfig1",
+      "libfribidi0",
+      "libgbm1",
+      "libgles2",
+      "libharfbuzz0b",
+    ]) {
+      assert.match(linuxRuntimeInstall, new RegExp(`\\b${hostLibrary}\\b`));
+    }
+    assert.doesNotMatch(linuxRuntimeInstall, /libgtk-3-0|libwebkit2gtk-4\.1-0|gstreamer1\.0-plugins/);
+    assert.equal(
+      stepByName(linuxRuntime, "Download validated Linux native packages").with.name,
+      "validated-linux-native",
+    );
+    assert.match(
+      stepByName(linuxRuntime, "Validate and smoke-test the self-contained AppImage").run,
+      /appstreamcli validate[\s\S]*wordhunter-paddleocr[\s\S]*syncthing[\s\S]*xvfb-run/,
+    );
+    assert.match(
+      stepByName(linuxRuntime, "Validate, install, smoke-test, and remove the DEB").run,
+      /lintian[\s\S]*apt-get install[\s\S]*xvfb-run[\s\S]*apt-get remove/,
+    );
     const publish = workflow.jobs["publish-release"];
-    assert.deepEqual(publish.needs, ["android", "windows", "flatpak"]);
+    assert.deepEqual(publish.needs, ["android", "windows", "macos", "flatpak", "linux-native", "linux-native-runtime"]);
     assert.equal(publish.permissions.contents, "write");
     assert.match(publish.if, /workflow_dispatch[\s\S]*release_tag/);
     const finalRevisionCheck = stepByName(publish, "Revalidate the draft release revision");
@@ -161,6 +221,25 @@ describe("repository validation wiring", () => {
     const attach = stepByName(publish, "Attach validated assets to the draft release");
     assert.equal(attach.env.GH_REPO, "${{ github.repository }}");
     assert.match(attach.run, /gh release upload[\s\S]*--clobber/);
+  });
+
+  it("keeps the macOS package native, ad-hoc signed, and artifact-validated", () => {
+    const config = JSON.parse(read("../../src-tauri/tauri.macos.conf.json"));
+    const buildScript = read("../../scripts/build-macos.sh");
+    const platform = read("../../src-tauri/src/platform/mod.rs");
+
+    assert.deepEqual(config.bundle.targets, ["dmg"]);
+    assert.equal(config.bundle.licenseFile, null);
+    assert.equal(config.bundle.macOS.signingIdentity, "-");
+    assert.equal(config.bundle.macOS.minimumSystemVersion, "11.0");
+    assert.match(platform, /target_os = "macos"/);
+    assert.match(buildScript, /--target aarch64-apple-darwin/);
+    assert.match(buildScript, /hdiutil verify/);
+    assert.match(buildScript, /for attempt in 1 2 3/);
+    assert.match(buildScript, /hdiutil attach -mountrandom \/tmp -readonly -noverify -noautoopen -nobrowse/);
+    assert.match(buildScript, /hdiutil detach "\$device"/);
+    assert.match(buildScript, /codesign --verify --deep --strict/);
+    assert.match(buildScript, /kill -0 "\$app_pid"/);
   });
 
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {

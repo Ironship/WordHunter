@@ -206,10 +206,22 @@ globalThis.document = {
 globalThis.requestAnimationFrame = (callback) => callback();
 
 const { els } = await import("../../dist/web/js/dom.js");
+const { bookTexts } = await import("../../dist/web/js/books.js");
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../dist/web/js/preferences.js");
 const { bindGlobalActionEvents } = await import("../../dist/web/js/events/global-actions.js");
 const { bindReaderEvents } = await import("../../dist/web/js/views/reader.js");
+const {
+  addReaderBookmark,
+  captureCurrentBookmarkPosition,
+  getReaderBookmarkPage,
+  getReaderBookmarks,
+  renderInlineBookmarkIndicators,
+  renderReaderBookmarks,
+  remapReaderBookmarksForAlgorithm,
+  removeReaderBookmark,
+  renameReaderBookmark
+} = await import("../../dist/web/js/reader/bookmarks.js");
 const {
   getPdfOcrViewMode,
   getPdfOcrZoom,
@@ -280,6 +292,254 @@ describe("desktop reader behavior", () => {
     assert.equal(normalized.ttsWordHighlight, true);
   });
 
+  it("normalizes and manages reader bookmarks with precise positions", () => {
+    const normalized = normalizeState({
+      ...createDefaultState(),
+      preferences: {
+        readerBookmarks: {
+          book: [
+            { id: " first ", label: "  Chapter   one  ", color: "blue", page: 3.7, scrollTop: 120.4, wordIndex: 42, anchorOffset: 314, createdAt: "2026-01-01" },
+            { id: " first ", label: "duplicate", page: 9 },
+            { id: "", label: "invalid" }
+          ],
+          invalid: "not-an-array"
+        }
+      }
+    }).preferences.readerBookmarks;
+    assert.deepEqual(normalized, {
+      book: [{ id: "first", label: "Chapter one", color: "blue", page: 3, scrollTop: 120, wordIndex: 42, anchorOffset: 314, createdAt: "2026-01-01" }]
+    });
+    const unsafeColor = normalizeState({
+      ...createDefaultState(),
+      preferences: { readerBookmarks: { book: [{ id: "unsafe", color: "url(javascript:bad)", page: 1 }] } }
+    }).preferences.readerBookmarks.book[0];
+    assert.equal(unsafeColor.color, undefined);
+
+    resetBehaviorState({ currentTextId: "book", preferences: { readerBookmarks: {} } });
+    const added = addReaderBookmark("  Important   passage  ", { page: 4, scrollTop: 275, wordIndex: 87 }, "purple");
+    assert.ok(added);
+    assert.deepEqual(getReaderBookmarks("book").map(({ label, color, page, scrollTop, wordIndex }) => ({ label, color, page, scrollTop, wordIndex })), [
+      { label: "Important passage", color: "purple", page: 4, scrollTop: 275, wordIndex: 87 }
+    ]);
+    state.preferences.wordsPerPage = 25;
+    assert.equal(getReaderBookmarkPage(added, "book"), 4);
+    state.customTexts = [{ id: "pdf", pdfOcrPages: [{}] }];
+    assert.equal(getReaderBookmarkPage({ ...added, page: 8 }, "pdf"), 8);
+    assert.equal(renameReaderBookmark(added.id, "Ending", "red"), true);
+    assert.equal(getReaderBookmarks("book")[0].label, "Ending");
+    assert.equal(getReaderBookmarks("book")[0].color, "red");
+    assert.equal(removeReaderBookmark(added.id), true);
+    assert.deepEqual(getReaderBookmarks("book"), []);
+  });
+
+  it("anchors a new bookmark to the exact selected word", () => {
+    resetBehaviorState({
+      currentTextId: "book",
+      selectedWord: "genau",
+      selectedWordIndex: 87,
+      readerPage: 2,
+      readerScrolls: { book: { readerPage: 2, scrollTop: 275, wordIndex: 61 } }
+    });
+
+    const before = { textContent: "sehr", dataset: { wordIndex: "86", charOffset: "505" } };
+    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const after = { textContent: "hier", dataset: { wordIndex: "88", charOffset: "516" } };
+    const originalGetElementById = document.getElementById;
+    document.getElementById = (id) => id === "reader-text"
+      ? {
+          querySelector: (selector) => selector.includes('data-word-index="87"') ? selected : null,
+          querySelectorAll: () => [before, selected, after]
+        }
+      : originalGetElementById.call(document, id);
+    try {
+      assert.deepEqual(captureCurrentBookmarkPosition(), {
+        page: 2,
+        scrollTop: 275,
+        wordIndex: 87,
+        anchorOffset: 510,
+        anchorWord: "genau",
+        anchorBefore: "sehr",
+        anchorAfter: "hier"
+      });
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+  });
+
+  it("ignores a stale selected word index that is not on the current page", () => {
+    resetBehaviorState({
+      currentTextId: "book",
+      selectedWord: "stale",
+      selectedWordIndex: 999,
+      readerPage: 2,
+      readerScrolls: { book: { readerPage: 2, scrollTop: 410, wordIndex: 61 } }
+    });
+
+    assert.equal(captureCurrentBookmarkPosition().wordIndex, 61);
+  });
+
+  it("keeps 1000 bookmarks across books while rendering at most 200 for the active book", () => {
+    resetBehaviorState({ currentTextId: "book", preferences: { readerBookmarks: {} } });
+    state.preferences.readerBookmarks = Object.fromEntries(Array.from({ length: 5 }, (_, bookIndex) => [
+      bookIndex === 0 ? "book" : `book-${bookIndex}`,
+      Array.from({ length: 200 }, (_, index) => ({
+        id: `bookmark-${bookIndex}-${index}`,
+        label: `Bookmark ${index}`,
+        page: 1,
+        scrollTop: index,
+        wordIndex: index,
+        createdAt: `2026-01-01T00:00:${String(index % 60).padStart(2, "0")}Z`
+      }))
+    ]));
+
+    assert.equal(addReaderBookmark("Too many", { page: 1, scrollTop: 0, wordIndex: 201 }), null);
+    assert.equal(getReaderBookmarks("book").length, 200);
+    assert.equal(Object.values(state.preferences.readerBookmarks).reduce((total, items) => total + items.length, 0), 1000);
+
+    const button = control();
+    const count = control();
+    const tabs = control();
+    const readerText = { querySelectorAll: () => [], querySelector: () => null };
+    const originalGetElementById = document.getElementById;
+    document.getElementById = (id) => ({
+      "reader-bookmarks-button": button,
+      "reader-bookmarks-count": count,
+      "reader-bookmark-tabs": tabs,
+      "reader-text": readerText
+    })[id] || originalGetElementById.call(document, id);
+    try {
+      renderReaderBookmarks("book");
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+    assert.equal(count.textContent, "200");
+    assert.equal((tabs.innerHTML.match(/data-bookmark-jump=/g) || []).length, 200);
+    assert.match(tabs.innerHTML, /data-bookmark-color="amber"/);
+  });
+
+  it("puts the inline marker on the bookmarked token rather than the line start", () => {
+    resetBehaviorState({
+      currentTextId: "book",
+      preferences: {
+        readerBookmarks: {
+          book: [{ id: "exact", label: "Exact word", color: "green", page: 1, scrollTop: 0, wordIndex: 87, createdAt: "2026-01-01" }]
+        }
+      }
+    });
+    const exact = {
+      classList: fakeClassList(), dataset: { wordIndex: "87" }, title: "",
+      hasAttribute: () => false, removeAttribute() {}
+    };
+    const lineStart = {
+      classList: fakeClassList(), dataset: { wordIndex: "80" }, title: "",
+      hasAttribute: () => false, removeAttribute() {}
+    };
+    const readerText = {
+      querySelectorAll: () => [],
+      querySelector: (selector) => selector.includes('data-word-index="87"') ? exact : lineStart
+    };
+    const originalGetElementById = document.getElementById;
+    document.getElementById = (id) => id === "reader-text" ? readerText : originalGetElementById.call(document, id);
+    try {
+      renderInlineBookmarkIndicators("book");
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+
+    assert.equal(exact.classList.contains("reader-inline-bookmark"), true);
+    assert.equal(exact.dataset.readerBookmarkCount, "1");
+    assert.equal(exact.dataset.bookmarkColor, "green");
+    assert.equal(lineStart.classList.contains("reader-inline-bookmark"), false);
+  });
+
+  it("remaps an exact bookmark when the word-detection algorithm changes", async () => {
+    resetBehaviorState({
+      currentTextId: "book",
+      customTexts: [{ id: "book", title: "Hyphenated", text: "zero state-of-the-art one two three" }],
+      preferences: {
+        wordDetectionAlgorithm: "classic",
+        readerBookmarks: {
+          book: [{
+            id: "stable", label: "One", page: 1, scrollTop: 0, wordIndex: 2,
+            anchorOffset: 22,
+            anchorWord: "one", anchorBefore: "state-of-the-art", anchorAfter: "two",
+            wordAlgorithm: "classic", createdAt: "2026-01-01"
+          }],
+          "other-book": [{
+            id: "inside-compound", label: "Art", page: 1, scrollTop: 0, wordIndex: 1,
+            anchorOffset: 18,
+            anchorWord: "state-of-the-art", anchorBefore: "zero", anchorAfter: "one",
+            wordAlgorithm: "classic", createdAt: "2026-01-01"
+          }]
+        }
+      }
+    });
+    state.profiles.fr = {
+      vocab: {},
+      customTexts: [{ id: "other-book", title: "Inactive profile", lang: "fr" }],
+      userBooks: [],
+      hiddenBuiltInBooks: [],
+      archivedBookIds: [],
+      preferences: {}
+    };
+    bookTexts.delete("other-book");
+    let inactiveTextReads = 0;
+    window.__qtBridge = true;
+    globalThis.fetch = async (path) => {
+      if (String(path).startsWith("/__book/text?id=other-book")) {
+        inactiveTextReads += 1;
+        return { ok: true, json: async () => ({ text: "zero state-of-the-art one two three" }) };
+      }
+      return { ok: true, json: async () => ({}) };
+    };
+
+    try {
+      assert.equal(await remapReaderBookmarksForAlgorithm("modern"), 2);
+      assert.equal(inactiveTextReads, 1);
+      state.preferences.wordDetectionAlgorithm = "modern";
+      assert.equal(getReaderBookmarks("book")[0].wordIndex, 5);
+      assert.equal(getReaderBookmarks("other-book")[0].wordIndex, 4);
+      assert.equal(state.preferences.readerBookmarks.book[0].wordIndex, 2);
+      assert.equal(state.preferences.readerBookmarks.book[0].wordAlgorithm, "classic");
+      assert.equal(state.preferences.readerBookmarks["other-book"][0].anchorWord, "state-of-the-art");
+      assert.equal(await remapReaderBookmarksForAlgorithm("classic"), 0);
+      assert.equal(inactiveTextReads, 1);
+      state.preferences.wordDetectionAlgorithm = "classic";
+      assert.equal(getReaderBookmarks("book")[0].wordIndex, 2);
+      assert.equal(getReaderBookmarks("other-book")[0].wordIndex, 1);
+      assert.equal(await remapReaderBookmarksForAlgorithm("modern"), 2);
+      state.preferences.wordDetectionAlgorithm = "modern";
+      assert.equal(state.preferences.readerBookmarks.book[0].wordIndex, 2);
+      assert.equal(state.preferences.readerBookmarks["other-book"][0].wordIndex, 1);
+    } finally {
+      window.__qtBridge = false;
+      delete globalThis.fetch;
+    }
+  });
+
+  it("keeps a bookmark on its anchored word after text is inserted before it", async () => {
+    resetBehaviorState({
+      currentTextId: "edited-book",
+      customTexts: [{ id: "edited-book", title: "Edited", text: "zero verylong target end" }],
+      preferences: {
+        wordDetectionAlgorithm: "modern",
+        readerBookmarks: {
+          "edited-book": [{
+            id: "stable", label: "Target", page: 1, scrollTop: 0, wordIndex: 1,
+            anchorOffset: 5,
+            anchorWord: "target", anchorBefore: "zero", anchorAfter: "end",
+            wordAlgorithm: "modern", createdAt: "2026-01-01"
+          }]
+        }
+      }
+    });
+
+    assert.equal(await remapReaderBookmarksForAlgorithm("modern"), 1);
+    assert.equal(getReaderBookmarks("edited-book")[0].wordIndex, 2);
+    assert.equal(state.preferences.readerBookmarks["edited-book"][0].wordIndex, 1);
+    assert.equal(state.preferences.readerBookmarks["edited-book"][0].anchorOffset, 5);
+  });
+
   it("applies desktop preferences to classes and synchronized controls", () => {
     resetBehaviorState();
 
@@ -306,6 +566,34 @@ describe("desktop reader behavior", () => {
     assert.equal(document.documentElement.classList.contains("reader-focus-mode"), false);
     assert.equal(document.documentElement.classList.contains("reader-word-panel-hidden"), false);
     assert.equal(document.documentElement.classList.contains("touch-controls-mode"), false);
+  });
+
+  it("applies desktop UI scale through the native WebView in request order", async () => {
+    resetBehaviorState({ preferences: { uiScale: 80 } });
+    const requests = [];
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    globalThis.fetch = async (path, options) => {
+      requests.push({ path, options });
+      return { ok: true, async json() { return {}; } };
+    };
+
+    try {
+      const first = applyPreferences();
+      state.preferences.uiScale = 150;
+      const second = applyPreferences();
+      await Promise.all([first, second]);
+
+      assert.equal(document.documentElement.style.zoom, "1");
+      assert.equal(rootStyle.values.get("--ui-scale"), "1");
+      assert.deepEqual(requests.map(({ path }) => path), ["/__window/zoom", "/__window/zoom"]);
+      assert.deepEqual(requests.map(({ options }) => JSON.parse(options.body).percent), [80, 150]);
+      assert.equal(requests.every(({ options }) => options.headers["X-WH-Token"] === "test-token"), true);
+    } finally {
+      window.__qtBridge = false;
+      delete window.WH_TOKEN;
+      delete globalThis.fetch;
+    }
   });
 
   it("executes reader toolbar preference toggles", () => {
@@ -362,6 +650,22 @@ describe("desktop reader behavior", () => {
 });
 
 describe("desktop reader markup and style contracts", () => {
+  it("renders accessible bookmark controls and protruding edge tabs", () => {
+    const button = elementById(html, "reader-bookmarks-button");
+    assert.equal(attribute(openingTag(button), "aria-haspopup"), "dialog");
+    assert.equal(attribute(openingTag(button), "aria-controls"), "reader-bookmarks-dialog");
+    assert.ok(containingElementById(html, "section", "reader-bookmark-tabs"));
+    assert.ok(elementById(html, "reader-bookmarks-dialog"));
+    assert.equal((html.match(/name="reader-bookmark-color"/g) || []).length, 5);
+    assert.equal(cssDeclarations(css, ".reader-bookmark-tabs").position, "absolute");
+    assert.equal(cssDeclarations(css, "button.reader-bookmark-tab")["pointer-events"], "auto");
+    assert.equal(cssDeclarations(css, ".word-token.reader-inline-bookmark").position, "relative");
+    assert.equal(cssDeclarations(css, ".word-token.reader-inline-bookmark::before")["pointer-events"], "none");
+    assert.equal(cssDeclarations(css, ".reader-bookmark-color").width, "44px");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode #reader-bookmarks-button").order, "6");
+    assert.equal(cssDeclarations(pocketCss, ".pocket-mode .reader-bookmark-tabs").right, "0");
+  });
+
   it("declares desktop-only focus, panel, touch, and TTS controls", () => {
     for (const [id, preference] of [
       ["pref-reader-focus-mode", "readerFocusMode"],
@@ -589,6 +893,19 @@ describe("desktop platform contracts", () => {
     assert.match(desktopWindow, /set_above_child\(false\)/);
     assert.match(desktopWindow, /gdk_wayland_window_set_application_id/);
   });
+
+  it("flushes state for both window close and system app exit", () => {
+    const lib = readFileSync(new URL("../../src-tauri/src/lib.rs", import.meta.url), "utf8");
+    const webApp = readFileSync(new URL("../../src-tauri/src/platform/web_app.rs", import.meta.url), "utf8");
+    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
+
+    assert.match(lib, /RunEvent::ExitRequested/);
+    assert.match(lib, /api\.prevent_exit\(\)/);
+    assert.match(webApp, /WindowEvent::CloseRequested/);
+    assert.match(webApp, /api\.prevent_close\(\)/);
+    assert.match(webApp, /requestWordHunterClose/);
+    assert.match(router, /"\/__app\/close"[\s\S]*permit_exit/);
+  });
 });
 
 describe("desktop PDF reader contracts", () => {
@@ -661,7 +978,11 @@ describe("desktop PDF reader contracts", () => {
     assert.match(renderer, /readerEls\.readerText\.classList\.toggle\("pdf-text-layer-reader", !overlayMode\)/);
     assert.match(renderer, /function renderPdfOcrTextMode\(/);
     assert.match(renderer, /function renderPdfOcrTextTokens\(/);
-    assert.match(renderer, /const globalIndex = overlayWordIndexes\[index\]/);
+    assert.match(renderer, /const pageWords = reconcilePdfPageWords\(/);
+    assert.doesNotMatch(renderer, /Object\.hasOwn\(page, "correctedText"\)\s*\?\s*reconcilePdfPageWords/);
+    assert.match(renderer, /const position = overlayWordPositions\[index\]/);
+    assert.match(renderer, /position\?\.charOffset/);
+    assert.match(renderer, /data-char-offset/);
     assert.match(renderer, /globalIndex - globalOffset/);
     assert.doesNotMatch(renderer, /globalOffset \+ index \+ 1/);
     assert.match(renderer, /classifications\.get\(index \* 2\)\?\.key/);

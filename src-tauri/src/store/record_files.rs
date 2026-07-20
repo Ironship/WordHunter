@@ -31,6 +31,7 @@ pub(crate) type CausalClock = BTreeMap<String, u64>;
 pub(crate) struct RecordFingerprint {
     pub hash: String,
     pub causal: CausalClock,
+    pub data: Option<Value>,
 }
 
 pub(crate) type Fingerprints = BTreeMap<String, RecordFingerprint>;
@@ -248,7 +249,38 @@ pub(crate) fn write_conflicts(dir: &Path, conflicts: &[Value]) -> Result<(), Str
 }
 
 pub(crate) fn prune_sync_folder_private_records(dir: &Path) -> Result<(), String> {
-    remove_path_if_exists(&records_root(dir).join("prefs"))
+    let prefs = records_root(dir).join("prefs");
+    if !prefs.exists() {
+        return Ok(());
+    }
+    for entry in std::fs::read_dir(&prefs).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let value = std::fs::read(&path)
+            .ok()
+            .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok());
+        let future_record = value.as_ref().is_some_and(|value| {
+            value
+                .get("format")
+                .and_then(Value::as_u64)
+                .is_some_and(|format| format > FORMAT)
+                || value
+                    .get("schemaVersion")
+                    .and_then(Value::as_u64)
+                    .is_some_and(|schema| schema > PAYLOAD_SCHEMA_VERSION)
+        });
+        let key = value
+            .as_ref()
+            .and_then(|value| value.get("key"))
+            .and_then(Value::as_str);
+        if !future_record && key.map(is_local_only_key).unwrap_or(false) {
+            durable::remove_file_if_exists(&path)?;
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn sync_resolved_conflict_markers(left: &Path, right: &Path) -> Result<(), String> {
@@ -555,6 +587,7 @@ pub(crate) fn fingerprints(records: &BTreeMap<String, SyncRecord>) -> Fingerprin
                 RecordFingerprint {
                     hash: fingerprint(record),
                     causal: record.causal.clone(),
+                    data: (record.key == "pref:readerBookmarks").then(|| record.data.clone()),
                 },
             )
         })
@@ -564,6 +597,7 @@ pub(crate) fn fingerprints(records: &BTreeMap<String, SyncRecord>) -> Fingerprin
 pub(crate) fn prepare_local_records(
     records: &mut BTreeMap<String, SyncRecord>,
     base: &Fingerprints,
+    current: &BTreeMap<String, SyncRecord>,
     device_id: &str,
     now: u128,
 ) {
@@ -577,6 +611,12 @@ pub(crate) fn prepare_local_records(
         }
         let mut causal = base_entry
             .map(|entry| entry.causal.clone())
+            .or_else(|| {
+                current
+                    .get(&record.key)
+                    .filter(|current| current.deleted_at.is_some())
+                    .map(|current| current.causal.clone())
+            })
             .unwrap_or_default();
         bump_causal(&mut causal, device_id, now);
         record.causal = causal;
@@ -646,12 +686,42 @@ pub(crate) fn merge_records(
                             (current_candidate, incoming_candidate)
                         };
                     merge_missing_text_media_metadata(&mut keep, &lose);
+                    let original_keep = keep.clone();
+                    let mut conflict_choice = lose.clone();
+                    let bookmark_merge_handled = match base_entry {
+                        None => merge_reader_bookmark_data(&mut keep, &lose, None, false),
+                        Some(base) => base
+                            .data
+                            .as_ref()
+                            .map(|data| {
+                                merge_reader_bookmark_data(&mut keep, &lose, Some(data), false)
+                            })
+                            .unwrap_or(false),
+                    };
+                    if bookmark_merge_handled {
+                        let base_data = base_entry.and_then(|base| base.data.as_ref());
+                        let _ = merge_reader_bookmark_data(
+                            &mut conflict_choice,
+                            &original_keep,
+                            base_data,
+                            true,
+                        );
+                        for (device, counter) in lose.causal.iter() {
+                            keep.causal
+                                .entry(device.clone())
+                                .and_modify(|value| *value = (*value).max(*counter))
+                                .or_insert(*counter);
+                        }
+                        bump_causal(&mut keep.causal, device_id, now);
+                        keep.updated_at = now;
+                        keep.device_id = device_id.to_string();
+                    }
                     conflicts.push(json!({
                         "timestamp": now.to_string(),
                         "key": key,
                         "reason": "concurrent-record-changes",
                         "kept": record_value(&keep),
-                        "conflict": record_value(&lose),
+                        "conflict": record_value(&conflict_choice),
                     }));
                     Some(keep)
                 }
@@ -806,7 +876,6 @@ pub(crate) fn tombstone_all(
     for record in records.values() {
         write_record_with_backup(dir, record, false)?;
     }
-    remove_record_backups(dir)?;
     Ok(records)
 }
 
@@ -971,6 +1040,18 @@ fn write_record_with_backup(
 ) -> Result<(), String> {
     let path = record_path(dir, record);
     reject_future_record_at_path(&path)?;
+    if record.deleted_at.is_some() {
+        let value = record_value(record);
+        if path.exists()
+            && parse_record_file(&path)
+                .map(|existing| records_equal(&existing, record))
+                .unwrap_or(false)
+        {
+            return write_record_recovery_backup(&path);
+        }
+        atomic_json(&path, &value, false)?;
+        return write_record_recovery_backup(&path);
+    }
     if path.exists()
         && read_record_file(&path)
             .map(|existing| records_equal(&existing, record))
@@ -979,6 +1060,36 @@ fn write_record_with_backup(
         return Ok(());
     }
     atomic_json(&path, &record_value(record), keep_backup)
+}
+
+fn write_record_recovery_backup(path: &Path) -> Result<(), String> {
+    let backup = path.with_extension("bak");
+    let temp = path.with_extension("bak.tmp");
+    durable::remove_file_if_exists(&temp)?;
+    std::fs::copy(path, &temp).map_err(|e| {
+        format!(
+            "could not stage record recovery backup {} from {}: {e}",
+            temp.display(),
+            path.display()
+        )
+    })?;
+    durable::sync_file(&temp)?;
+    if let Err(first_error) = std::fs::rename(&temp, &backup) {
+        if !backup.exists() {
+            return Err(format!(
+                "could not install record recovery backup {}: {first_error}",
+                backup.display()
+            ));
+        }
+        durable::remove_file_if_exists(&backup)?;
+        std::fs::rename(&temp, &backup).map_err(|e| {
+            format!(
+                "could not replace record recovery backup {} after {first_error}: {e}",
+                backup.display()
+            )
+        })?;
+    }
+    durable::sync_parent(&backup)
 }
 
 fn read_record_file(path: &Path) -> Result<SyncRecord, String> {
@@ -1102,17 +1213,6 @@ fn remove_backup_files(dir: &Path) -> Result<(), String> {
             durable::remove_file_if_exists(&path)
                 .map_err(|e| format!("could not remove record backup {}: {e}", path.display()))?;
         }
-    }
-    Ok(())
-}
-
-fn remove_path_if_exists(path: &Path) -> Result<(), String> {
-    if path.is_dir() {
-        std::fs::remove_dir_all(path)
-            .map_err(|e| format!("could not remove {}: {e}", path.display()))?;
-        durable::sync_parent(path)?;
-    } else if path.exists() {
-        durable::remove_file_if_exists(path)?;
     }
     Ok(())
 }
@@ -1278,30 +1378,35 @@ fn parse_record(value: &Value) -> Result<SyncRecord, String> {
 }
 
 fn reject_future_record_at_path(path: &Path) -> Result<(), String> {
-    if !path.exists() {
-        return Ok(());
-    }
-    let Ok(raw) = std::fs::read(path) else {
-        return Ok(());
-    };
-    let Ok(value) = serde_json::from_slice::<Value>(&raw) else {
-        return Ok(());
-    };
-    let future_format = value
-        .get("format")
-        .and_then(Value::as_u64)
-        .map(|format| format > FORMAT)
-        .unwrap_or(false);
-    let future_schema = value
-        .get("schemaVersion")
-        .and_then(Value::as_u64)
-        .map(|schema| schema > PAYLOAD_SCHEMA_VERSION)
-        .unwrap_or(false);
-    if future_format || future_schema {
-        return Err(format!(
-            "refusing to overwrite newer unsupported record {}",
-            path.display()
-        ));
+    for candidate in [path.to_path_buf(), path.with_extension("bak")] {
+        if !candidate.exists() {
+            continue;
+        }
+        let raw = std::fs::read(&candidate).map_err(|e| {
+            format!(
+                "could not inspect record before replacing {}: {e}",
+                candidate.display()
+            )
+        })?;
+        let Ok(value) = serde_json::from_slice::<Value>(&raw) else {
+            continue;
+        };
+        let future_format = value
+            .get("format")
+            .and_then(Value::as_u64)
+            .map(|format| format > FORMAT)
+            .unwrap_or(false);
+        let future_schema = value
+            .get("schemaVersion")
+            .and_then(Value::as_u64)
+            .map(|schema| schema > PAYLOAD_SCHEMA_VERSION)
+            .unwrap_or(false);
+        if future_format || future_schema {
+            return Err(format!(
+                "refusing to overwrite newer unsupported record {}",
+                candidate.display()
+            ));
+        }
     }
     Ok(())
 }
@@ -1419,11 +1524,115 @@ fn scan_conflict_problems(dir: &Path, limit: usize) -> ScanProblems {
 }
 
 fn is_sync_record(record: &SyncRecord) -> bool {
-    SYNC_RECORD_KINDS.contains(&record.kind.as_str()) && !is_local_only_key(&record.key)
+    record.key == "pref:readerBookmarks"
+        || (SYNC_RECORD_KINDS.contains(&record.kind.as_str()) && !is_local_only_key(&record.key))
+}
+
+fn bookmark_identity(value: &Value) -> Option<String> {
+    let id = value_id(value);
+    if id.is_empty() {
+        serde_json::to_string(value).ok()
+    } else {
+        Some(id)
+    }
+}
+
+fn bookmark_values(value: Option<&Value>) -> Option<BTreeMap<String, Value>> {
+    let Some(value) = value else {
+        return Some(BTreeMap::new());
+    };
+    value
+        .as_array()?
+        .iter()
+        .map(|bookmark| Some((bookmark_identity(bookmark)?, bookmark.clone())))
+        .collect()
+}
+
+fn merge_reader_bookmark_data(
+    existing: &mut SyncRecord,
+    source: &SyncRecord,
+    base: Option<&Value>,
+    preserve_concurrent_edits: bool,
+) -> bool {
+    if existing.key != "pref:readerBookmarks"
+        || source.key != "pref:readerBookmarks"
+        || existing.deleted_at.is_some()
+        || source.deleted_at.is_some()
+    {
+        return false;
+    }
+    let Some(existing_books) = existing.data.as_object() else {
+        return false;
+    };
+    let Some(source_books) = source.data.as_object() else {
+        return false;
+    };
+    let base_books = match base {
+        Some(value) => {
+            let Some(books) = value.as_object() else {
+                return false;
+            };
+            Some(books)
+        }
+        None => None,
+    };
+    let book_ids = existing_books
+        .keys()
+        .chain(source_books.keys())
+        .chain(base_books.into_iter().flat_map(|books| books.keys()))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let mut merged_books = Map::new();
+    for book_id in book_ids {
+        let Some(base_bookmarks) =
+            bookmark_values(base_books.and_then(|books| books.get(&book_id)))
+        else {
+            return false;
+        };
+        let Some(existing_bookmarks) = bookmark_values(existing_books.get(&book_id)) else {
+            return false;
+        };
+        let Some(source_bookmarks) = bookmark_values(source_books.get(&book_id)) else {
+            return false;
+        };
+        let mut merged = Vec::new();
+        let mut merged_ids = BTreeSet::new();
+        for (identity, bookmark) in &existing_bookmarks {
+            if base_bookmarks.contains_key(identity) && !source_bookmarks.contains_key(identity) {
+                let changed_from_base = base_bookmarks.get(identity) != Some(bookmark);
+                if !preserve_concurrent_edits || !changed_from_base {
+                    continue;
+                }
+            }
+            let selected = match (base_bookmarks.get(identity), source_bookmarks.get(identity)) {
+                (Some(base), Some(source)) if bookmark == base && source != base => source,
+                _ => bookmark,
+            };
+            merged_ids.insert(identity.clone());
+            merged.push(selected.clone());
+        }
+        for (identity, bookmark) in &source_bookmarks {
+            let deleted_by_existing =
+                base_bookmarks.contains_key(identity) && !existing_bookmarks.contains_key(identity);
+            let changed_from_base = base_bookmarks.get(identity) != Some(bookmark);
+            if merged_ids.contains(identity)
+                || (deleted_by_existing && (!preserve_concurrent_edits || !changed_from_base))
+            {
+                continue;
+            }
+            merged_ids.insert(identity.clone());
+            merged.push(bookmark.clone());
+        }
+        if !merged.is_empty() {
+            merged_books.insert(book_id, Value::Array(merged));
+        }
+    }
+    existing.data = Value::Object(merged_books);
+    true
 }
 
 fn is_local_only_key(key: &str) -> bool {
-    key.starts_with("pref:")
+    key.starts_with("pref:") && key != "pref:readerBookmarks"
 }
 
 fn is_local_only_conflict(value: &Value) -> bool {
@@ -1443,23 +1652,21 @@ fn is_local_only_conflict(value: &Value) -> bool {
 }
 
 fn is_local_only_record_value(value: &Value) -> bool {
+    if let Some(key) = value.get("key").and_then(Value::as_str) {
+        return is_local_only_key(key);
+    }
     value
-        .get("key")
+        .get("kind")
         .and_then(Value::as_str)
-        .map(is_local_only_key)
+        .map(|kind| kind == "pref")
         .unwrap_or(false)
-        || value
-            .get("kind")
-            .and_then(Value::as_str)
-            .map(|kind| kind == "pref")
-            .unwrap_or(false)
 }
 
 fn display_relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
         .to_string_lossy()
-        .into_owned()
+        .replace(std::path::MAIN_SEPARATOR, "/")
 }
 
 fn live_record(
@@ -1807,17 +2014,18 @@ fn upsert_profile_book(profiles: &mut Map<String, Value>, lang: &str, book: Valu
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use serde_json::{Value, json};
 
     use super::{
         FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, conflict_count, conflict_summaries,
         fingerprints, ingest_syncthing_conflict_copies, live_record, load_records,
-        load_sync_records, merge_records, parse_record, payload_to_records, read_record_file,
-        record_path, record_value, records_to_mobile_snapshot_payload, records_to_payload,
-        records_to_snapshot_payload, recovery_status, stable_hash, tombstone_all, write_conflicts,
-        write_record, write_records,
+        load_sync_records, merge_records, parse_record, parse_record_file, payload_to_records,
+        prepare_local_records, prune_sync_folder_private_records, read_record_file, record_path,
+        record_value, records_to_mobile_snapshot_payload, records_to_payload,
+        records_to_snapshot_payload, recovery_status, resolve_conflict, stable_hash, tombstone_all,
+        value_id, write_conflicts, write_record, write_records,
     };
 
     fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
@@ -2135,9 +2343,14 @@ mod tests {
     }
 
     #[test]
-    fn sync_record_set_keeps_preferences_private() {
+    fn sync_record_set_keeps_preferences_private_except_reader_bookmarks() {
         let dir = tempfile::tempdir().unwrap();
-        let records = payload_to_records(&vocab_payload(&["haus"]), "device-a", 1);
+        let mut source = vocab_payload(&["haus"]);
+        source["prefs"]["theme"] = json!("dark");
+        source["prefs"]["readerBookmarks"] = json!({
+            "book": [{ "id": "mark", "wordIndex": 12 }]
+        });
+        let records = payload_to_records(&source, "device-a", 1);
         write_records(dir.path(), &records).unwrap();
 
         let local = load_records(dir.path()).unwrap();
@@ -2147,7 +2360,9 @@ mod tests {
         assert!(local.contains_key("pref:learningLanguage"));
         assert_eq!(payload["prefs"]["learningLanguage"], "de");
         assert!(syncable.contains_key("vocab:de:haus"));
+        assert!(syncable.contains_key("pref:readerBookmarks"));
         assert!(!syncable.contains_key("pref:learningLanguage"));
+        assert!(!syncable.contains_key("pref:theme"));
     }
 
     #[test]
@@ -2185,6 +2400,19 @@ mod tests {
 
         assert_eq!(conflict_count(dir.path()).unwrap(), 0);
         assert!(conflict_summaries(dir.path(), 25).unwrap().is_empty());
+
+        let mut bookmark_conflict = pref_conflict;
+        bookmark_conflict["key"] = json!("pref:readerBookmarks");
+        bookmark_conflict["kept"]["key"] = json!("pref:readerBookmarks");
+        bookmark_conflict["kept"]["data"] = json!({ "book": [{ "id": "pc" }] });
+        bookmark_conflict["conflict"]["key"] = json!("pref:readerBookmarks");
+        bookmark_conflict["conflict"]["data"] = json!({ "book": [{ "id": "phone" }] });
+        write_conflicts(dir.path(), std::slice::from_ref(&bookmark_conflict)).unwrap();
+
+        assert_eq!(conflict_count(dir.path()).unwrap(), 1);
+        let summaries = conflict_summaries(dir.path(), 25).unwrap();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0]["key"], "pref:readerBookmarks");
     }
 
     #[test]
@@ -2299,6 +2527,74 @@ mod tests {
 
         assert!(error.contains("refusing to overwrite newer unsupported record"));
         assert_eq!(std::fs::read_to_string(path).unwrap(), newer);
+    }
+
+    #[test]
+    fn pruning_private_preferences_preserves_future_reader_bookmarks() {
+        let dir = tempfile::tempdir().unwrap();
+        let bookmark = live_record(
+            "pref:readerBookmarks".to_string(),
+            "pref",
+            json!({ "book": [{ "id": "future-mark" }] }),
+            "future-device",
+            10,
+        );
+        let bookmark_path = record_path(dir.path(), &bookmark);
+        std::fs::create_dir_all(bookmark_path.parent().unwrap()).unwrap();
+        let future = r#"{
+          "format": 1,
+          "schemaVersion": 99,
+          "key": "pref:readerBookmarks",
+          "kind": "pref",
+          "updatedAt": "10",
+          "deletedAt": null,
+          "deviceId": "future-device",
+          "causal": { "future-device": 10 },
+          "data": { "book": [{ "id": "future-mark" }] }
+        }"#;
+        std::fs::write(&bookmark_path, future).unwrap();
+        let private = live_record(
+            "pref:theme".to_string(),
+            "pref",
+            json!("classic-dark"),
+            "device-a",
+            11,
+        );
+        let private_path = record_path(dir.path(), &private);
+        write_record(dir.path(), &private).unwrap();
+
+        prune_sync_folder_private_records(dir.path()).unwrap();
+
+        assert_eq!(std::fs::read_to_string(bookmark_path).unwrap(), future);
+        assert!(!private_path.exists());
+
+        let future_preference = live_record(
+            "pref:readerHighlights".to_string(),
+            "pref",
+            json!({ "book": [] }),
+            "future-device",
+            12,
+        );
+        let future_preference_path = record_path(dir.path(), &future_preference);
+        let future_preference_raw = r#"{
+          "format": 1,
+          "schemaVersion": 99,
+          "key": "pref:readerHighlights",
+          "kind": "pref",
+          "updatedAt": "12",
+          "deletedAt": null,
+          "deviceId": "future-device",
+          "causal": { "future-device": 12 },
+          "data": { "book": [] }
+        }"#;
+        std::fs::write(&future_preference_path, future_preference_raw).unwrap();
+
+        prune_sync_folder_private_records(dir.path()).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(future_preference_path).unwrap(),
+            future_preference_raw
+        );
     }
 
     #[test]
@@ -2481,6 +2777,45 @@ mod tests {
     }
 
     #[test]
+    fn readded_record_descends_from_the_current_tombstone() {
+        let key = "vocab:de:haus".to_string();
+        let tombstone = SyncRecord {
+            key: key.clone(),
+            kind: "vocab".to_string(),
+            data: Value::Null,
+            updated_at: 9_999_999,
+            deleted_at: Some(9_999_999),
+            device_id: "remote-device".to_string(),
+            causal: causal(&[("remote-device", 9)]),
+        };
+        let live = SyncRecord {
+            key: key.clone(),
+            kind: "vocab".to_string(),
+            data: json!({ "word": "haus", "translation": "house" }),
+            updated_at: 100,
+            deleted_at: None,
+            device_id: "local-device".to_string(),
+            causal: BTreeMap::new(),
+        };
+        let mut incoming = [(key.clone(), live)].into_iter().collect();
+        let current = [(key.clone(), tombstone)].into_iter().collect();
+
+        prepare_local_records(
+            &mut incoming,
+            &BTreeMap::new(),
+            &current,
+            "local-device",
+            100,
+        );
+        let merged = merge_records(&BTreeMap::new(), incoming, current, "merge-device", 101);
+
+        assert!(merged.records[&key].deleted_at.is_none());
+        assert_eq!(merged.records[&key].causal.get("remote-device"), Some(&9));
+        assert!(merged.records[&key].causal.get("local-device") >= Some(&100));
+        assert!(merged.conflicts.is_empty());
+    }
+
+    #[test]
     fn deleted_vocab_becomes_tombstone_instead_of_disappearing() {
         let base = payload_to_records(&vocab_payload(&["haus", "boot"]), "pc-device", 1);
         let incoming = payload_to_records(&vocab_payload(&["haus"]), "phone-device", 2);
@@ -2632,6 +2967,324 @@ mod tests {
         );
         assert_eq!(merged.conflicts.len(), 1);
         assert_eq!(merged.conflicts[0]["reason"], "concurrent-record-changes");
+    }
+
+    #[test]
+    fn concurrent_reader_bookmark_additions_are_unioned_and_survive_resolution() {
+        let base_record = SyncRecord {
+            key: "pref:readerBookmarks".to_string(),
+            kind: "pref".to_string(),
+            data: json!({ "book": [{ "id": "base", "page": 1 }] }),
+            updated_at: 1000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 1)]),
+        };
+        let incoming = SyncRecord {
+            data: json!({ "book": [
+                { "id": "base", "page": 1 },
+                { "id": "phone", "page": 2 }
+            ] }),
+            updated_at: 2000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let current = SyncRecord {
+            data: json!({ "book": [
+                { "id": "base", "page": 1 },
+                { "id": "laptop", "page": 3 }
+            ] }),
+            updated_at: 3000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+        let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
+        let current_records = [(current.key.clone(), current)].into_iter().collect();
+
+        let merged = merge_records(
+            &fingerprints(&base),
+            incoming_records,
+            current_records,
+            "merge-device",
+            6000,
+        );
+        let merged_record = &merged.records["pref:readerBookmarks"];
+        let ids = merged_record.data["book"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(value_id)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(
+            ids,
+            BTreeSet::from(["base".into(), "laptop".into(), "phone".into()])
+        );
+        assert_eq!(merged_record.causal["phone-device"], 2);
+        assert_eq!(merged_record.causal["laptop-device"], 2);
+        assert_eq!(merged.conflicts.len(), 1);
+
+        let dir = tempfile::tempdir().unwrap();
+        write_record(dir.path(), merged_record).unwrap();
+        write_conflicts(dir.path(), &merged.conflicts).unwrap();
+        let id = format!("6000-{}", stable_hash("pref:readerBookmarks"));
+        let resolved = resolve_conflict(dir.path(), &id, false, "resolve-device", 7000)
+            .unwrap()
+            .unwrap();
+        let resolved_ids = resolved.data["book"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(value_id)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(resolved_ids, ids);
+
+        let dir = tempfile::tempdir().unwrap();
+        write_record(dir.path(), merged_record).unwrap();
+        write_conflicts(dir.path(), &merged.conflicts).unwrap();
+        let resolved = resolve_conflict(dir.path(), &id, true, "resolve-device", 7000)
+            .unwrap()
+            .unwrap();
+        let resolved_ids = resolved.data["book"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(value_id)
+            .collect::<BTreeSet<_>>();
+        assert_eq!(resolved_ids, ids);
+    }
+
+    #[test]
+    fn concurrent_large_reader_bookmark_sets_merge_to_one_thousand() {
+        let make_data = |prefix: &str| {
+            let mut books = serde_json::Map::new();
+            for book_index in 0..5 {
+                books.insert(
+                    format!("book-{book_index}"),
+                    Value::Array(
+                        (0..100)
+                            .map(|index| {
+                                json!({
+                                    "id": format!("{prefix}-{book_index}-{index}"),
+                                    "label": format!("Bookmark {index}"),
+                                    "page": index / 20 + 1,
+                                    "wordIndex": index
+                                })
+                            })
+                            .collect(),
+                    ),
+                );
+            }
+            Value::Object(books)
+        };
+        let base_record = SyncRecord {
+            key: "pref:readerBookmarks".to_string(),
+            kind: "pref".to_string(),
+            data: json!({}),
+            updated_at: 1000,
+            deleted_at: None,
+            device_id: "base-device".to_string(),
+            causal: causal(&[("base-device", 1)]),
+        };
+        let incoming = SyncRecord {
+            data: make_data("phone"),
+            updated_at: 2000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("base-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let current = SyncRecord {
+            data: make_data("laptop"),
+            updated_at: 3000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("base-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+        let started = std::time::Instant::now();
+        let merged = merge_records(
+            &fingerprints(&base),
+            [(incoming.key.clone(), incoming)].into_iter().collect(),
+            [(current.key.clone(), current)].into_iter().collect(),
+            "merge-device",
+            6000,
+        );
+        let books = merged.records["pref:readerBookmarks"]
+            .data
+            .as_object()
+            .unwrap();
+        let counts = books
+            .values()
+            .map(|bookmarks| bookmarks.as_array().unwrap().len())
+            .collect::<Vec<_>>();
+
+        eprintln!("merged 1000 Reader bookmarks in {:?}", started.elapsed());
+        assert_eq!(counts, vec![200, 200, 200, 200, 200]);
+        assert_eq!(counts.iter().sum::<usize>(), 1000);
+        assert_eq!(merged.conflicts.len(), 1);
+    }
+
+    #[test]
+    fn concurrent_reader_bookmark_deletion_is_not_resurrected_by_union() {
+        let base_record = SyncRecord {
+            key: "pref:readerBookmarks".to_string(),
+            kind: "pref".to_string(),
+            data: json!({ "book": [{ "id": "removed", "page": 1 }] }),
+            updated_at: 1000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 1)]),
+        };
+        let incoming = SyncRecord {
+            data: json!({ "book": [
+                { "id": "removed", "page": 1 },
+                { "id": "phone", "page": 2 }
+            ] }),
+            updated_at: 2000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let current = SyncRecord {
+            data: json!({ "book": [] }),
+            updated_at: 3000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+        let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
+        let current_records = [(current.key.clone(), current)].into_iter().collect();
+
+        let merged = merge_records(
+            &fingerprints(&base),
+            incoming_records,
+            current_records,
+            "merge-device",
+            6000,
+        );
+
+        assert_eq!(
+            merged.records["pref:readerBookmarks"].data["book"],
+            json!([{ "id": "phone", "page": 2 }])
+        );
+        assert_eq!(merged.conflicts.len(), 1);
+        assert_eq!(
+            merged.conflicts[0]["conflict"]["data"]["book"],
+            json!([{ "id": "phone", "page": 2 }])
+        );
+    }
+
+    #[test]
+    fn concurrent_reader_bookmark_edit_is_preserved_in_delete_conflict() {
+        let base_record = SyncRecord {
+            key: "pref:readerBookmarks".to_string(),
+            kind: "pref".to_string(),
+            data: json!({ "book": [{ "id": "a", "label": "old", "page": 1 }] }),
+            updated_at: 1000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 1)]),
+        };
+        let incoming = SyncRecord {
+            data: json!({ "book": [{ "id": "a", "label": "edited", "color": "purple", "page": 1 }] }),
+            updated_at: 2000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let current = SyncRecord {
+            data: json!({ "book": [] }),
+            updated_at: 3000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+        let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
+        let current_records = [(current.key.clone(), current)].into_iter().collect();
+
+        let merged = merge_records(
+            &fingerprints(&base),
+            incoming_records,
+            current_records,
+            "merge-device",
+            6000,
+        );
+
+        assert!(
+            merged.records["pref:readerBookmarks"]
+                .data
+                .get("book")
+                .is_none()
+        );
+        assert_eq!(merged.conflicts.len(), 1);
+        assert_eq!(
+            merged.conflicts[0]["conflict"]["data"]["book"],
+            json!([{ "id": "a", "label": "edited", "color": "purple", "page": 1 }])
+        );
+    }
+
+    #[test]
+    fn concurrent_bookmark_edit_survives_an_unrelated_addition() {
+        let base_record = SyncRecord {
+            key: "pref:readerBookmarks".to_string(),
+            kind: "pref".to_string(),
+            data: json!({ "book": [{ "id": "a", "label": "old", "page": 1 }] }),
+            updated_at: 1000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 1)]),
+        };
+        let incoming = SyncRecord {
+            data: json!({ "book": [{ "id": "a", "label": "edited", "color": "purple", "page": 1 }] }),
+            updated_at: 2000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let current = SyncRecord {
+            data: json!({ "book": [
+                { "id": "a", "label": "old", "page": 1 },
+                { "id": "b", "label": "new", "page": 2 }
+            ] }),
+            updated_at: 3000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+        let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
+        let current_records = [(current.key.clone(), current)].into_iter().collect();
+
+        let merged = merge_records(
+            &fingerprints(&base),
+            incoming_records,
+            current_records,
+            "merge-device",
+            6000,
+        );
+        let bookmarks = merged.records["pref:readerBookmarks"].data["book"]
+            .as_array()
+            .unwrap();
+
+        assert_eq!(bookmarks.len(), 2);
+        assert_eq!(bookmarks[0]["id"], "a");
+        assert_eq!(bookmarks[0]["label"], "edited");
+        assert_eq!(bookmarks[0]["color"], "purple");
+        assert_eq!(bookmarks[1]["id"], "b");
     }
 
     #[test]
@@ -2794,7 +3447,7 @@ mod tests {
     }
 
     #[test]
-    fn tombstone_all_removes_record_backups() {
+    fn tombstone_all_replaces_live_record_backups_with_tombstones() {
         let dir = tempfile::tempdir().unwrap();
         let live = SyncRecord {
             key: "vocab:de:haus".to_string(),
@@ -2825,6 +3478,73 @@ mod tests {
             loaded["vocab:de:haus"].causal.get("remote-device"),
             Some(&9)
         );
-        assert!(!record_path.with_extension("bak").exists());
+        let recovery_backup = record_path.with_extension("bak");
+        assert!(recovery_backup.exists());
+        assert!(
+            parse_record_file(&recovery_backup)
+                .unwrap()
+                .deleted_at
+                .is_some()
+        );
+        std::fs::remove_file(&record_path).unwrap();
+        assert!(recovery_backup.exists());
+        let recovered = load_records(dir.path()).unwrap();
+        assert!(recovered["vocab:de:haus"].deleted_at.is_some());
+        assert_eq!(
+            recovered["vocab:de:haus"].causal.get("remote-device"),
+            Some(&9)
+        );
+    }
+
+    #[test]
+    fn rewriting_tombstone_repairs_a_corrupt_primary_without_destroying_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let live = SyncRecord {
+            key: "vocab:de:haus".to_string(),
+            kind: "vocab".to_string(),
+            data: json!({ "word": "haus", "translation": "house" }),
+            updated_at: 1,
+            deleted_at: None,
+            device_id: "device-a".to_string(),
+            causal: causal(&[("device-a", 1)]),
+        };
+        write_record(dir.path(), &live).unwrap();
+        tombstone_all(dir.path(), "device-a").unwrap();
+
+        let path = record_path(dir.path(), &live);
+        let tombstone = parse_record_file(&path).unwrap();
+        let backup = path.with_extension("bak");
+        assert!(parse_record_file(&backup).unwrap().deleted_at.is_some());
+        std::fs::write(&path, b"{corrupt primary").unwrap();
+
+        write_record(dir.path(), &tombstone).unwrap();
+
+        assert!(parse_record_file(&path).unwrap().deleted_at.is_some());
+        assert!(parse_record_file(&backup).unwrap().deleted_at.is_some());
+    }
+
+    #[test]
+    fn corrupt_primary_does_not_hide_a_future_format_recovery_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = SyncRecord {
+            key: "vocab:de:haus".to_string(),
+            kind: "vocab".to_string(),
+            data: json!({ "word": "haus", "translation": "house" }),
+            updated_at: 1,
+            deleted_at: None,
+            device_id: "device-a".to_string(),
+            causal: causal(&[("device-a", 1)]),
+        };
+        let path = record_path(dir.path(), &record);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, b"{corrupt primary").unwrap();
+        let future = br#"{"format":99,"schemaVersion":99,"key":"vocab:de:haus"}"#;
+        let backup = path.with_extension("bak");
+        std::fs::write(&backup, future).unwrap();
+
+        let error = write_record(dir.path(), &record).unwrap_err();
+
+        assert!(error.contains("newer unsupported record"));
+        assert_eq!(std::fs::read(&backup).unwrap(), future);
     }
 }

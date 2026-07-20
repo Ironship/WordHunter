@@ -1,7 +1,10 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use tauri::webview::PageLoadEvent;
-use tauri::{WebviewUrl, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use url::Url;
 
 use crate::{APP_NAME, HOST, server, store::Store};
@@ -11,7 +14,50 @@ use super::SetupResult;
 #[cfg(target_os = "linux")]
 const LINUX_DESKTOP_APP_ID: &str = "com.wordhunter.app";
 
+#[derive(Default)]
+struct ExitCoordinator {
+    permitted: AtomicBool,
+}
+
+pub(crate) fn exit_is_permitted(app_handle: &tauri::AppHandle) -> bool {
+    app_handle
+        .state::<ExitCoordinator>()
+        .permitted
+        .load(Ordering::Acquire)
+}
+
+pub(crate) fn permit_exit(app_handle: &tauri::AppHandle) {
+    app_handle
+        .state::<ExitCoordinator>()
+        .permitted
+        .store(true, Ordering::Release);
+}
+
+pub(crate) fn request_graceful_exit(app_handle: &tauri::AppHandle) {
+    let Some(window) = app_handle.get_webview_window("main") else {
+        permit_exit(app_handle);
+        app_handle.exit(0);
+        return;
+    };
+    let script = r#"
+        if (typeof window.requestWordHunterClose === "function") {
+            window.requestWordHunterClose();
+        } else {
+            fetch("/__app/close", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+                body: "{}"
+            });
+        }
+    "#;
+    if window.eval(script).is_err() {
+        permit_exit(app_handle);
+        app_handle.exit(0);
+    }
+}
+
 pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
+    app.manage(ExitCoordinator::default());
     let store = Arc::new(Store::new(APP_NAME).map_err(boxed_string)?);
     let token = server::make_token();
     let app_handle = app.handle().clone();
@@ -30,16 +76,28 @@ pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
     .inner_size(1360.0, 880.0)
     .min_inner_size(960.0, 640.0);
 
+    let page_ready = Arc::new(AtomicBool::new(false));
+    let page_ready_on_load = Arc::clone(&page_ready);
     let builder = builder
         // ponytail: desktop WebView2 resize race.
         .visible(false)
-        .on_page_load(|window, payload| {
+        .on_page_load(move |window, payload| {
             if matches!(payload.event(), PageLoadEvent::Finished) {
+                page_ready_on_load.store(true, Ordering::Release);
                 let _ = window.show();
             }
         });
 
     let window = builder.build()?;
+    let close_app_handle = window.app_handle().clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event
+            && page_ready.load(Ordering::Acquire)
+        {
+            api.prevent_close();
+            request_graceful_exit(&close_app_handle);
+        }
+    });
 
     #[cfg(target_os = "linux")]
     install_linux_window_workarounds(&window);

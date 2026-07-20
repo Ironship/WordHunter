@@ -1,0 +1,159 @@
+name: Validate Snap package
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - snap/**
+      - packaging/snap/**
+      - .github/workflows/snap-validation.yml
+  push:
+    branches:
+      - main
+    paths:
+      - snap/**
+      - packaging/snap/**
+      - .github/workflows/snap-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snap-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke-test:
+    name: Build, inspect, and smoke-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build Snap
+        id: snapcraft
+        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
+        with:
+          build-info: true
+          snapcraft-channel: 9.x/stable
+
+      - name: Upload build-only artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: word-hunter-snap-${{ github.sha }}
+          path: ${{ steps.snapcraft.outputs.snap }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Install inspection and smoke-test tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            squashfs-tools \
+            xvfb
+
+      - name: Inspect Snap payload
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "Snap payload inspection failed at line $LINENO: $BASH_COMMAND" >&2' ERR
+          test -f "$SNAP_PATH"
+
+          root="$RUNNER_TEMP/word-hunter-snap-root"
+          rm -rf "$root"
+          unsquashfs -no-progress -d "$root" "$SNAP_PATH"
+
+          test -x "$root/usr/bin/word-hunter-rustified"
+          test -x "$root/usr/bin/dbus-run-session"
+          test -r "$root/usr/share/dbus-1/session.conf"
+          test -x "$root/usr/bin/syncthing"
+          test -f "$root/usr/share/applications/word-hunter.desktop"
+          test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
+          test -f "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          test -f "$root/snap/manifest.yaml"
+          test -f "$root/snap/snapcraft.yaml"
+          test -x "$root/snap/command-chain/gpu-2404-wrapper"
+          test -x "$root/snap/command-chain/desktop-launch"
+          test -x "$root/usr/lib/Word Hunter/ocr-runtime/bin/wordhunter-paddleocr"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libpdfium.so"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libwebgpu_dawn.so"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0.0.0"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/dri/swrast_dri.so"
+
+          model_count="$(find "$root/usr/lib/Word Hunter/ocr-runtime/models" \
+            -maxdepth 1 -type f -name '*.onnx' -print | wc -l)"
+          test "$model_count" -ge 3
+
+          grep -Fx 'Exec=word-hunter' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fx 'Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
+            "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
+          grep -Eq "^version: ['\"]?1\\.0\\.6['\"]?$" "$root/meta/snap.yaml"
+          grep -Fx 'base: core24' "$root/meta/snap.yaml"
+          grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: mesa-2404' "$root/meta/snap.yaml"
+          grep -Fq 'snap/command-chain/gpu-2404-wrapper' "$root/meta/snap.yaml"
+          grep -Fq 'webkit2gtk-4.1' "$root/meta/snap.yaml"
+
+          "$root/usr/bin/syncthing" --version | grep -F 'v2.1.0'
+          syncthing_home="$RUNNER_TEMP/syncthing-generate"
+          "$root/usr/bin/syncthing" generate --home "$syncthing_home"
+          test -f "$syncthing_home/config.xml"
+
+      - name: Smoke-test strict Snap
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+        run: |
+          set -Eeuo pipefail
+          sudo snap install --dangerous "$SNAP_PATH"
+          snap list word-hunter
+          snap connections word-hunter
+          snap run --shell word-hunter -c \
+            '"$SNAP/usr/bin/syncthing" generate --home "$SNAP_USER_DATA/syncthing-ci" && test -f "$SNAP_USER_DATA/syncthing-ci/config.xml"'
+
+          set +e
+          # GitHub-hosted runners live in hosted-compute-agent.service. Enter
+          # the confined app environment before creating the private D-Bus
+          # session, otherwise snapd tries to resolve the runner through that
+          # private bus and rejects its host service cgroup. The CI-only bus
+          # keeps the staged session policy but must not load host service or
+          # local-override directories that strict confinement cannot read.
+          xvfb-run -a \
+            timeout --signal=TERM --kill-after=5s 20s \
+            snap run --shell word-hunter -c \
+            'set -Eeuo pipefail
+            session_config="$SNAP_USER_DATA/dbus-session-ci.conf"
+            sed \
+              -e "/<standard_session_servicedirs/d" \
+              -e "/<include/d" \
+              -e "/<\/busconfig>/i\  <apparmor mode=\"disabled\"/>" \
+              "$SNAP/usr/share/dbus-1/session.conf" >"$session_config"
+            test -s "$session_config"
+            ! grep -Fq "/etc/dbus-1" "$session_config"
+            ! grep -Fq "<standard_session_servicedirs" "$session_config"
+            ! grep -Fq "<include" "$session_config"
+            grep -Fq "<apparmor mode=\"disabled\"/>" "$session_config"
+            export GDK_DEBUG=nogl
+            export WEBKIT_DISABLE_COMPOSITING_MODE=1
+            export WEBKIT_DISABLE_DMABUF_RENDERER=1
+            exec "$SNAP/usr/bin/dbus-run-session" --config-file="$session_config" -- "$SNAP/usr/bin/word-hunter-rustified"' \
+            >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-snap-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi

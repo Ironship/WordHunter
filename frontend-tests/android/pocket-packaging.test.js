@@ -137,7 +137,7 @@ describe("Android Pocket packaging", () => {
     const elements = descendants(manifest);
     assert.deepEqual(
       elements.filter((node) => node.name === "uses-permission").map((node) => node.attributes["android:name"]),
-      ["android.permission.INTERNET"],
+      ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"],
     );
     assert.equal(elements.some((node) => /LEANBACK|FileProvider|file_paths/.test(JSON.stringify(node))), false);
     const launcher = elements.find(

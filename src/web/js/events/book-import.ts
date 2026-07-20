@@ -3,7 +3,7 @@ import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { isAndroidPlatform } from "../platform.js";
-import { parseImportedTextFile, titleFromImportedFileName } from "../subtitles.js";
+import { decodeImportedTextBytes, parseImportedTextFile, titleFromImportedFileName } from "../subtitles.js";
 import {
   cancelEditBook,
   importCustomText,
@@ -83,6 +83,9 @@ let youtubeTracks: YoutubeTrack[] = [];
 let youtubeTracksUrl = "";
 const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
 const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+const MAX_DESKTOP_IMPORT_FILE_BYTES = 64 * 1024 * 1024;
+const MAX_POCKET_IMPORT_FILE_BYTES = 24 * 1024 * 1024;
+const MAX_SERIALIZED_IMPORT_TEXT_BYTES = 96 * 1024 * 1024;
 const POCKET_PDF_SCAN_ERROR = "PDF_TEXT_LAYER_EMPTY";
 let pdfImportRunning = false;
 
@@ -126,7 +129,9 @@ function safeImportErrorMessage(error: unknown): string {
     t("toast.importFailed"),
     t("toast.ebookRequiresApp"),
     t("toast.importedEbookEmpty"),
-    t("toast.importedFileEmpty")
+    t("toast.importedFileEmpty"),
+    t("toast.importFileTooLarge", { mb: Math.floor(MAX_POCKET_IMPORT_FILE_BYTES / (1024 * 1024)) }),
+    t("toast.importFileTooLarge", { mb: Math.floor(MAX_DESKTOP_IMPORT_FILE_BYTES / (1024 * 1024)) })
   ]);
   return localizedMessages.has(message) ? message : t("toast.fileError");
 }
@@ -613,9 +618,19 @@ async function loadImportFile(file: File): Promise<boolean | void> {
     return importPdfFile(file);
   }
 
+  const maxImportBytes = isAndroidPlatform()
+    ? MAX_POCKET_IMPORT_FILE_BYTES
+    : MAX_DESKTOP_IMPORT_FILE_BYTES;
+  if (file.size > maxImportBytes) {
+    throw new Error(t("toast.importFileTooLarge", { mb: Math.floor(maxImportBytes / (1024 * 1024)) }));
+  }
+
   if (isEbookFile(file)) {
     const ebook = await importEbookFile(file);
     if (!ebook.text) throw new Error(t("toast.importedEbookEmpty"));
+    if (new TextEncoder().encode(JSON.stringify(ebook.text)).byteLength > MAX_SERIALIZED_IMPORT_TEXT_BYTES) {
+      throw new Error(t("toast.importFileTooLarge", { mb: Math.floor(maxImportBytes / (1024 * 1024)) }));
+    }
     els.importText.value = ebook.text;
     if (!els.importTitle.value.trim()) els.importTitle.value = ebook.title || titleFromImportedFileName(file.name);
     if (els.importAuthor && !els.importAuthor.value.trim()) els.importAuthor.value = ebook.author || "";
@@ -623,9 +638,15 @@ async function loadImportFile(file: File): Promise<boolean | void> {
     return;
   }
 
-  const rawText = await file.text();
+  const rawText = decodeImportedTextBytes(
+    await file.arrayBuffer(),
+    effectiveLearningLanguage(state.preferences)
+  );
   const text = parseImportedTextFile(file, rawText);
   if (!text) throw new Error(t("toast.importedFileEmpty"));
+  if (new TextEncoder().encode(JSON.stringify(text)).byteLength > MAX_SERIALIZED_IMPORT_TEXT_BYTES) {
+    throw new Error(t("toast.importFileTooLarge", { mb: Math.floor(maxImportBytes / (1024 * 1024)) }));
+  }
   els.importText.value = text;
   if (!els.importTitle.value.trim()) {
     els.importTitle.value = titleFromImportedFileName(file.name);

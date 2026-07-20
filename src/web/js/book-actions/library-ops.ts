@@ -5,7 +5,7 @@ import { state, saveState, clearLastReadTextId } from "../state.js";
 import { showToast as displayToast } from "../toast.js";
 import { render, ensureCurrentText } from "../render.js";
 import { renderLibrary } from "../views/library.js";
-import { bookTexts, clearBookTextCache } from "../books.js";
+import { bookTexts, clearBookTextCache, loadCustomTextContent } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { t as translate } from "../i18n.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "../bridge-commit.js";
@@ -15,6 +15,7 @@ import {
   clearCurrentBookSelectionIfMatches,
   forgetArchivedBook,
   hideBuiltInBookId,
+  isCustomTextReferenced,
   moveCustomTextToProfile,
   moveUserBookToProfile,
   planCustomTextMove,
@@ -23,6 +24,35 @@ import {
 
 const t = translate as (key: string, vars?: WhRecord) => string;
 const showToast = displayToast as (message: string, kind?: string) => void;
+
+function cloneMoveUiState(): WhRecord {
+  const keys = [
+    "currentTextId",
+    "selectedWord",
+    "selectedWordIndex",
+    "readerSelectionRange",
+    "readerPage",
+    "readerPages",
+    "readerScrolls",
+    "readerScrollsPerPage"
+  ];
+  const snapshot: WhRecord = {};
+  for (const key of keys) {
+    const value = state[key];
+    snapshot[key] = value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  }
+  snapshot.lastReadTextIds = JSON.parse(JSON.stringify(state.preferences.lastReadTextIds || {}));
+  return snapshot;
+}
+
+function restoreMoveUiState(snapshot: WhRecord): void {
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (key === "lastReadTextIds") continue;
+    if (value === undefined) delete state[key];
+    else state[key] = JSON.parse(JSON.stringify(value));
+  }
+  state.preferences.lastReadTextIds = JSON.parse(JSON.stringify(snapshot.lastReadTextIds || {}));
+}
 
 export function archiveBook(id: string): void {
   if (!id) return;
@@ -41,19 +71,7 @@ export function unarchiveBook(id: string): void {
 }
 
 async function loadCustomTextBodyForMove(id: string, textObj: WhText): Promise<string> {
-  const cached = bookTexts.get(id);
-  if (typeof cached === "string" && cached.trim()) return cached;
-  if (typeof textObj?.text === "string" && textObj.text.trim()) return textObj.text;
-  if (!window.__qtBridge) return "";
-  const response = await fetch(`/__book/text?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-  if (!response.ok) throw new Error(`/__book/text HTTP ${response.status}`);
-  const data: unknown = await response.json();
-  const body = typeof data === "object"
-    && data !== null
-    && "text" in data
-    && typeof data.text === "string"
-    ? data.text
-    : "";
+  const body = await loadCustomTextContent({ ...textObj, id });
   if (!body.trim()) throw new Error("custom text body is empty");
   return body;
 }
@@ -61,6 +79,8 @@ async function loadCustomTextBodyForMove(id: string, textObj: WhText): Promise<s
 export async function moveBookToProfile(id: string, targetLang: string, isCustom: boolean): Promise<boolean> {
   const currentLang = state.preferences.learningLanguage;
   if (currentLang === targetLang) return false;
+  const previousUiState = cloneMoveUiState();
+  let movedCustom: { oldId: string; newId: string; textBody: string } | null = null;
 
   if (isCustom) {
     const planned = planCustomTextMove(id, targetLang);
@@ -70,7 +90,6 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
       textBody = await loadCustomTextBodyForMove(id, planned.textObj);
       if (window.__qtBridge) {
         await upsertStoredText({ ...planned.textObj, text: textBody });
-        await deleteStoredText(id);
       }
     } catch (error) {
       console.warn("move custom text backend write failed", error);
@@ -80,9 +99,10 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
     const moved = moveCustomTextToProfile(id, targetLang);
     if (!moved) return false;
     const { textObj, newId } = moved;
+    movedCustom = { oldId: id, newId, textBody };
     if (!window.__qtBridge) textObj.text = textBody;
     if (textBody) bookTexts.set(newId, textBody);
-    bookTexts.delete(id);
+    if (!isCustomTextReferenced(id)) bookTexts.delete(id);
     invalidateBookId(id);
     invalidateBookId(newId);
 
@@ -99,11 +119,32 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
     await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("move book profile save failed", error);
-    await reloadBridgeSnapshot().catch((reloadError) => {
+    let recovered = false;
+    try {
+      recovered = await reloadBridgeSnapshot();
+    } catch (reloadError) {
       console.warn("move book recovery reload failed", reloadError);
-    });
+    }
+    if (movedCustom && recovered) {
+      restoreMoveUiState(previousUiState);
+      bookTexts.delete(movedCustom.newId);
+      if (movedCustom.textBody) bookTexts.set(movedCustom.oldId, movedCustom.textBody);
+      invalidateBookId(movedCustom.oldId);
+      invalidateBookId(movedCustom.newId);
+      if (window.__qtBridge && !isCustomTextReferenced(movedCustom.newId)) {
+        await deleteStoredText(movedCustom.newId).catch((cleanupError) => {
+          console.warn("move custom text rollback cleanup failed", cleanupError);
+        });
+      }
+    }
+    if (!movedCustom && recovered) restoreMoveUiState(previousUiState);
     showToast(t("toast.syncUnavailable"), "error");
     return false;
+  }
+  if (movedCustom && window.__qtBridge && !isCustomTextReferenced(movedCustom.oldId)) {
+    await deleteStoredText(movedCustom.oldId).catch((cleanupError) => {
+      console.warn("move custom text cleanup failed", cleanupError);
+    });
   }
   render();
   showToast(t("toast.bookMoved"));

@@ -29,6 +29,19 @@ export interface MediaWikiSearchResponse {
   continueToken: string | null;
 }
 
+export function mediaWikiBookId(
+  source: MediaWikiSource,
+  apiLang: string,
+  pageId: string | number,
+  profileId = ""
+): string {
+  const language = String(apiLang || "en").toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+  const id = String(pageId).replace(/[^a-zA-Z0-9-]+/g, "-");
+  const profile = String(profileId).toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+  const profileNamespace = profile ? `${profile}-` : "";
+  return `mw-${profileNamespace}${source}-${language}-${id}`;
+}
+
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord | null {
@@ -81,7 +94,7 @@ export async function searchMediaWiki(
     const extract = typeof pageData.extract === "string" ? pageData.extract : "";
     const thumbnail = asRecord(pageData.thumbnail);
     return {
-      id: source === "wikisource" ? `wikisource-${pageId}` : `mw-${pageId}`,
+      id: mediaWikiBookId(source, apiLang, pageId),
       mwId: pageId,
       apiLang,
       title: typeof pageData.title === "string" ? pageData.title : "",

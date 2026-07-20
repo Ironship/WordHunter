@@ -346,6 +346,70 @@ describe("focused frontend regressions", () => {
     assert.match(vocabActions, /focusWordIndex = String\(state\.selectedWordIndex\)/);
   });
 
+  it("follows the exact selected Reader occurrence", async () => {
+    const first = { dataset: { word: "beta", wordIndex: "3" }, classList: classList() };
+    const selected = { dataset: { word: "beta", wordIndex: "17" }, classList: classList() };
+    const followed = [];
+    const readerText = {
+      childNodes: [],
+      querySelector: () => null,
+      querySelectorAll: () => [first, selected]
+    };
+    const state = {
+      currentTextId: "book-1",
+      readerSelectionRange: null,
+      selectedWord: "beta",
+      selectedWordIndex: 17
+    };
+    const selection = await evaluateWithMocks("dist/web/js/reader/selection.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word },
+      "./renderer.js": { getTextById: () => ({ id: "book-1" }) },
+      "./word-panel.js": { renderWordPanel() {} },
+      "./visibility.js": { keepReaderTokenVisible: (token) => followed.push(token) },
+      "../views/shell.js": { renderShell() {} }
+    }, {
+      Node: { TEXT_NODE: 3 },
+      HTMLElement: class {}
+    });
+
+    selection.updateReaderSelection();
+
+    assert.equal(first.classList.contains("selected"), true);
+    assert.equal(selected.classList.contains("selected"), true);
+    assert.deepEqual(followed, [selected]);
+
+    followed.length = 0;
+    selection.updateReaderSelection({ keepVisible: false });
+    assert.deepEqual(followed, []);
+  });
+
+  it("clears a stale word selection when the Reader page changes", async () => {
+    const state = {
+      currentTextId: "book-1",
+      readerPage: 1,
+      readerPages: {},
+      selectedWord: "old",
+      selectedWordIndex: 77,
+      readerSelectionRange: { anchor: 3, focus: 3 }
+    };
+    const pagination = await evaluateWithMocks("dist/web/js/reader/pagination.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../utils.js": { escapeAttribute: String, escapeHtml: String },
+      "./renderer.js": { renderReader() {} },
+      "./focus.js": { requestReaderPageFocus() {} }
+    }, { window: { lastActiveToken: {} } });
+
+    pagination.cacheTotalPages("book-1", 3);
+    pagination.changeReaderPage(1);
+
+    assert.equal(state.readerPage, 2);
+    assert.equal(state.selectedWord, null);
+    assert.equal(state.selectedWordIndex, null);
+    assert.equal(state.readerSelectionRange, null);
+  });
+
   it("selects the next word immediately while a ghost card animates out", async () => {
     class FakeElement {
       constructor(classes = []) {
@@ -444,7 +508,11 @@ describe("focused frontend regressions", () => {
       "../state.js": { state },
       "../dom.js": { els },
       "../toast.js": { showToast() {} },
-      "../books.js": { bookTexts: new Map(), findBookById() { return null; } },
+      "../books.js": {
+        bookTexts: new Map([["custom-1", "stale body"]]),
+        findBookById() { return null; },
+        async loadCustomTextContent() { return "fresh synced body"; }
+      },
       "../vocab-index-client.js": { invalidateBookId() {} },
       "../utils.js": { formatTagList() { return ""; }, parseTagList() { return []; } },
       "../i18n.js": { t: (key) => key },
@@ -455,6 +523,7 @@ describe("focused frontend regressions", () => {
     }, { window: { __qtBridge: false } });
 
     await module.openEditBookModal("custom-1");
+    assert.equal(els.editBookText.value, "fresh synced body");
     module.setPendingEditCoverDataUrl("data:image/png;base64,test");
     assert.equal(module.isEditBookDirty(), true);
 
@@ -464,6 +533,47 @@ describe("focused frontend regressions", () => {
     assert.equal(module.isEditBookDirty(), false);
     assert.equal(els.editBookText.readOnly, false);
     assert.equal(closeCount, 1);
+  });
+
+  it("does not open a writable editor when the synced body refresh fails", async () => {
+    let showCount = 0;
+    const toasts = [];
+    const els = {
+      editBookTitle: { value: "" },
+      editBookAuthor: { value: "" },
+      editBookTags: { value: "" },
+      editBookLevel: { value: "" },
+      editBookText: { value: "stale body", readOnly: false },
+      editBookCoverImg: { src: "" },
+      editBookCoverPreview: { hidden: true },
+      editBookDialog: { showModal() { showCount += 1; }, close() {} },
+      editBookCancel: { disabled: false },
+      editBookSave: { disabled: false }
+    };
+    const state = { customTexts: [{ id: "custom-1", title: "Title" }], userBooks: [] };
+    const module = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
+      "../state.js": { state },
+      "../dom.js": { els },
+      "../toast.js": { showToast(message) { toasts.push(message); } },
+      "../books.js": {
+        bookTexts: new Map([["custom-1", "stale body"]]),
+        findBookById() { return null; },
+        async loadCustomTextContent() { throw new Error("refresh failed"); }
+      },
+      "../vocab-index-client.js": { invalidateBookId() {} },
+      "../utils.js": { formatTagList() { return ""; }, parseTagList() { return []; } },
+      "../i18n.js": { t: (key) => key },
+      "../views/library.js": { renderLibrary() {} },
+      "../reader/renderer.js": { renderReader() {} },
+      "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
+      "../store-bridge.js": { upsertStoredText() {} }
+    }, { window: { __qtBridge: true }, console: { warn() {} } });
+
+    await module.openEditBookModal("custom-1");
+
+    assert.equal(showCount, 0);
+    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+    assert.equal(module.isEditBookDirty(), false);
   });
 
   it("locks move-book Cancel, select, and dialog cancellation until the move settles", async () => {

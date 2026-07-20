@@ -70,6 +70,10 @@ export function computePageSlice(tokens: readonly TextToken[], readerPage: numbe
 function applyReaderPage(next: number): void {
   if (next === state.readerPage) return;
   state.readerPage = next;
+  state.selectedWord = null;
+  state.selectedWordIndex = null;
+  state.readerSelectionRange = null;
+  window.lastActiveToken = null;
   if (!state.readerPages) state.readerPages = {};
   if (state.currentTextId) state.readerPages[state.currentTextId] = next;
   saveUiState();

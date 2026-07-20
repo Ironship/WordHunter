@@ -1,0 +1,24 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Word Hunter
+Upstream-Contact: https://github.com/Ironship/WordHunter/issues
+Source: https://github.com/Ironship/WordHunter
+
+Files: *
+Copyright: 2026 Word Hunter contributors
+License: AGPL-3+
+ This program is free software: you can redistribute it and/or modify it under
+ the terms of the GNU Affero General Public License as published by the Free
+ Software Foundation, either version 3 of the License, or (at your option) any
+ later version.
+ .
+ On Debian systems, the complete text of the GNU Affero General Public License
+ version 3 can be found in /usr/share/common-licenses/AGPL-3.
+
+Files: src-tauri/ocr-runtime/* src-tauri/syncthing/*
+Copyright: respective ONNX Runtime, WebGPU Dawn, PDFium, PaddleOCR, and Syncthing contributors
+License: bundled-third-party
+ These components are redistributed under their respective free-software
+ licenses. The package installs the corresponding notices and complete license
+ reports under /usr/lib/Word Hunter/ as SYNCTHING-LICENSE.txt,
+ SYNCTHING-AUTHORS.txt, THIRD-PARTY-NOTICES.md,
+ THIRD-PARTY-LICENSES.html, and OCR-THIRD-PARTY-LICENSES.html.

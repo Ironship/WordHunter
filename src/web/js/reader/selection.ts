@@ -6,6 +6,7 @@ import { els } from "../dom.js";
 import { normalizeWord } from "../tokenizer_v2.js";
 import { getTextById } from "./renderer.js";
 import { renderWordPanel } from "./word-panel.js";
+import { keepReaderTokenVisible } from "./visibility.js";
 import { renderShell } from "../views/shell.js";
 
 interface ReaderRangeBounds {
@@ -17,6 +18,7 @@ interface ReaderRangeBounds {
 
 export interface UpdateReaderSelectionOptions {
   renderPanel?: boolean;
+  keepVisible?: boolean;
 }
 
 function getReaderWordTokens(): HTMLButtonElement[] {
@@ -160,6 +162,10 @@ export function updateReaderSelection(options: UpdateReaderSelectionOptions = {}
       token.classList.remove("selected");
     }
   });
+  const activeToken = useRange
+    ? tokens[rangeBounds.focus]
+    : tokens.find((token) => Number(token.dataset.wordIndex) === state.selectedWordIndex);
+  if (options.keepVisible !== false) keepReaderTokenVisible(activeToken);
 
   const sentenceButton = (els.readerText as HTMLElement).querySelector<HTMLButtonElement>("[data-pdf-correct-sentence]");
   if (sentenceButton) {

@@ -1,6 +1,7 @@
 import { state } from "./state.js";
 import { normalizeWord } from "./tokenizer_v2.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
+import { keepReaderTokenVisible } from "./reader/visibility.js";
 
 let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
@@ -54,6 +55,16 @@ function getTtsRate(rate: string): number {
   return 1.0;
 }
 
+function getTtsRatePreset(rate: string): "slow" | "normal" | "fast" {
+  if (rate === "slow" || rate === "fast") return rate;
+  return "normal";
+}
+
+function edgeTtsUrl(text: string, lang: string): string {
+  const rate = getTtsRatePreset(state.preferences.ttsRate || "normal");
+  return `/__tts?text=${encodeURIComponent(text)}&lang=${lang}&rate=${rate}`;
+}
+
 function getAndroidTtsBridge(): AndroidSpeakBridge | null {
   const bridge = window.WordHunterAndroid;
   return bridge && typeof bridge.speak === "function" ? bridge as AndroidSpeakBridge : null;
@@ -105,10 +116,9 @@ export function speakWord(word: string): void {
     }
     
     const lang = activeTtsLanguage();
-    const url = `/__tts?text=${encodeURIComponent(word)}&lang=${lang}`;
+    const url = edgeTtsUrl(word, lang);
     
     currentAudio = new Audio(url);
-    currentAudio.playbackRate = getTtsRate(state.preferences.ttsRate || "normal");
     
     currentAudio.play().catch((err: unknown) => {
       console.warn("Edge TTS audio play failed", err);
@@ -264,10 +274,9 @@ function readNextSentenceEdge(
   }
 
   const lang = activeTtsLanguage();
-  const url = `/__tts?text=${encodeURIComponent(sentence)}&lang=${lang}`;
+  const url = edgeTtsUrl(sentence, lang);
   
   currentAudio = new Audio(url);
-  currentAudio.playbackRate = getTtsRate(state.preferences.ttsRate || "normal");
   
   currentAudio.onplay = () => {
     highlightContainer(containerElement);
@@ -469,7 +478,10 @@ function setCurrentTtsWordToken(token: Element): void {
   if (currentTtsWordToken === token) return;
   if (currentTtsWordToken) currentTtsWordToken.classList.remove(TTS_WORD_CLASS);
   currentTtsWordToken = token;
-  if (currentTtsWordToken) currentTtsWordToken.classList.add(TTS_WORD_CLASS);
+  if (currentTtsWordToken) {
+    currentTtsWordToken.classList.add(TTS_WORD_CLASS);
+    keepReaderTokenVisible(currentTtsWordToken);
+  }
 }
 
 function findTtsTokenStart(tokens: TtsWordTracker["tokens"], words: string[]): number {

@@ -147,7 +147,9 @@ describe("Android Pocket reader", () => {
     assert.match(learningToken["box-shadow"], /var\(--token-learning-bg/);
     assert.equal(learningToken["border-bottom-color"], undefined);
     assertDeclarations(css, ".pocket-mode .shortcut-badge", { display: "none" });
-    assertDeclarations(css, ".pocket-mode #reader-view .toolbar-buttons", { position: "fixed", right: "0", bottom: "0", left: "0", "grid-template-columns": "repeat(5, minmax(0, 1fr))", background: "var(--sidebar-bg)", "box-shadow": "0 -12px 28px rgba(0, 0, 0, 0.2)" });
+    assertDeclarations(css, ".pocket-mode #reader-view .toolbar-buttons", { position: "fixed", right: "0", bottom: "0", left: "0", "grid-template-columns": "repeat(6, minmax(0, 1fr))", background: "var(--sidebar-bg)", "box-shadow": "0 -12px 28px rgba(0, 0, 0, 0.2)" });
+    assertDeclarations(css, ".pocket-mode #reader-bookmarks-button", { order: "6", width: "100%", height: "56px" });
+    assertDeclarations(sharedCss, ".reader-bookmark-color", { width: "44px", height: "44px" });
     assertDeclarations(css, ".pocket-mode #reader-view .toolbar-buttons [data-font]", { display: "none" });
     assertDeclarations(css, ".pocket-mode #reader-view .reader-zoom-slider", { display: "none" });
     assertDeclarations(css, ".pocket-mode #reader-view .pocket-word-navigation", { display: "inline-flex", width: "100%", height: "56px" });

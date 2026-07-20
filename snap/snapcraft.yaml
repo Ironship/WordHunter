@@ -1,0 +1,97 @@
+name: word-hunter
+base: core24
+version: '1.0.6'
+summary: Local-first reader and vocabulary trainer
+description: |
+  Read real texts, save vocabulary with its original context, and review it
+  with spaced repetition. Word Hunter keeps learning data local and supports
+  text to speech, offline translation models, imported books, PDFs, EPUB
+  files, subtitles, OCR, and optional device sync through Syncthing.
+
+grade: stable
+confinement: strict
+license: AGPL-3.0-or-later
+icon: src/assets/icon-256.png
+
+platforms:
+  amd64:
+    build-on:
+      - amd64
+    build-for:
+      - amd64
+
+slots:
+  single-instance:
+    interface: dbus
+    bus: session
+    name: org.com_wordhunter_app.SingleInstance
+
+plugs:
+  single-instance-plug:
+    interface: dbus
+    bus: session
+    name: org.com_wordhunter_app.SingleInstance
+
+apps:
+  word-hunter:
+    command: usr/bin/word-hunter-rustified
+    desktop: usr/share/applications/word-hunter.desktop
+    common-id: com.wordhunter.app
+    extensions: [gnome]
+    environment:
+      # Make binary discovery deterministic inside strict confinement.
+      WORDHUNTER_SYNCTHING: $SNAP/usr/bin/syncthing
+      XDG_CONFIG_HOME: $SNAP_USER_DATA/.config
+      XDG_DATA_HOME: $SNAP_USER_DATA/.local/share
+    plugs:
+      # The GNOME extension supplies the standard desktop, graphics, settings,
+      # and Wayland/X11 interfaces.
+      - browser-support
+      - network
+      - network-bind
+      - audio-playback
+      - home
+      - removable-media
+      - single-instance-plug
+    slots:
+      - single-instance
+
+parts:
+  word-hunter:
+    plugin: dump
+    source: https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/word-hunter_1.0.6_amd64.deb
+    source-type: deb
+    source-checksum: sha256/774eda03b1904ee7c3ebe793c31a21f5b842543835c5267a513711383278b4b5
+    stage-packages:
+      - dbus-daemon
+      - dbus-session-bus-common
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-plugins-good
+      - libxdo3
+    override-build: |
+      craftctl default
+
+      desktop="$CRAFT_PART_INSTALL/usr/share/applications/Word Hunter.desktop"
+      canonical_desktop="$CRAFT_PART_INSTALL/usr/share/applications/word-hunter.desktop"
+      appstream="$CRAFT_PART_INSTALL/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+      test -f "$desktop"
+      test -f "$appstream"
+      mv "$desktop" "$canonical_desktop"
+      sed -i \
+        -e 's|^Exec=.*$|Exec=word-hunter|' \
+        -e 's|^Icon=.*$|Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png|' \
+        "$canonical_desktop"
+      sed -i \
+        -e 's|<launchable type="desktop-id">[^<]*</launchable>|<launchable type="desktop-id">word-hunter.desktop</launchable>|' \
+        "$appstream"
+
+  syncthing:
+    plugin: nil
+    source: https://github.com/syncthing/syncthing/releases/download/v2.1.0/syncthing-linux-amd64-v2.1.0.tar.gz
+    source-type: tar
+    source-checksum: sha256/624c2f3303c9ed7d6f27a98ad9767ab95a7b5e453c3c5e17ce8a60f166e47011
+    override-build: |
+      syncthing="$(find "$CRAFT_PART_BUILD" -maxdepth 2 -type f -name syncthing -print -quit)"
+      test -n "$syncthing"
+      test -x "$syncthing"
+      install -Dm755 "$syncthing" "$CRAFT_PART_INSTALL/usr/bin/syncthing"

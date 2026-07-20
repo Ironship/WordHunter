@@ -1,5 +1,6 @@
 // App constants. Data only, no logic.
 export const STORAGE_KEY = "wordHunterStateV2";
+export const UI_STORAGE_KEY = `${STORAGE_KEY}:ui`;
 export const STATE_SCHEMA_VERSION = 2;
 
 export type VocabStatus = "new" | "learning" | "known" | "ignored";
@@ -24,18 +25,18 @@ export const SELECTED_WORD_PANEL_ITEM_IDS: readonly WhSelectedWordPanelItemId[] 
 
 export const DEFAULT_SELECTED_WORD_PANEL_ITEMS: readonly WhSelectedWordPanelItem[] = [
   { id: "status", visible: true },
-  { id: "article", visible: true },
+  { id: "article", visible: false },
   { id: "dictionary", visible: true },
   { id: "speech", visible: true },
   { id: "youglish", visible: true },
   { id: "remove", visible: true },
   { id: "suggestion", visible: true },
   { id: "translation", visible: true },
-  { id: "note", visible: true },
-  { id: "image", visible: true },
+  { id: "note", visible: false },
+  { id: "image", visible: false },
   { id: "context", visible: true },
   { id: "copy", visible: false },
-  { id: "edit", visible: false }
+  { id: "edit", visible: true }
 ];
 
 export const FONT_STACKS: Record<string, string> = {

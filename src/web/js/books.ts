@@ -130,7 +130,7 @@ export async function loadCustomTextContent(text: WhText): Promise<string> {
   if (!text?.id) return "";
   if (bookTexts.has(text.id) && !staleBookTextIds.has(text.id)) return bookTexts.get(text.id);
   if (textLoadingById.has(text.id)) return textLoadingById.get(text.id);
-  if (text.text) {
+  if (typeof text.text === "string" && text.text.trim()) {
     bookTexts.set(text.id, text.text);
     staleBookTextIds.delete(text.id);
     return text.text;
@@ -155,6 +155,7 @@ function fetchCustomTextContent(text: WhText): Promise<string> {
         && typeof data.text === "string"
         ? data.text
         : "";
+      if (!value.trim()) throw new Error(t("toast.noTextSource"));
       if ((textCacheGenerationById.get(text.id) || 0) === generation) {
         bookTexts.set(text.id, value);
         staleBookTextIds.delete(text.id);
@@ -192,6 +193,30 @@ export async function hydrateActiveLibraryTexts() {
   // A previous profile can still own the shared built-in batch promise.
   await Promise.all([loadAllBookTexts(), loadAllCustomTextContents()]);
   return state.preferences?.learningLanguage === language;
+}
+
+export async function hydrateCurrentReaderText(): Promise<boolean> {
+  if (state.currentView !== "reader" || !state.currentTextId) return true;
+  const textId = state.currentTextId;
+  const customText = (state.customTexts || []).find((text) => text.id === state.currentTextId);
+  let ready = false;
+  if (customText) {
+    if (customText.pdfOcrPages?.length || (typeof customText.text === "string" && Boolean(customText.text.trim()))) ready = true;
+    else {
+      await loadCustomTextContent(customText);
+      ready = bookTexts.has(customText.id);
+    }
+  } else {
+    const book = findBookById(textId);
+    if (!book) return false;
+    await loadBookText(book);
+    ready = bookTexts.has(book.id);
+  }
+  if (!ready || state.currentView !== "reader" || state.currentTextId !== textId) return ready;
+  const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
+  await import("./reader/bookmarks.js")
+    .then(({ remapReaderBookmarksForAlgorithm }) => remapReaderBookmarksForAlgorithm(algorithm, textId));
+  return true;
 }
 
 export function clearBookTextCache(id: string): void {
@@ -244,12 +269,24 @@ registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds, preserveActive
         return;
       }
       const activeId = state.currentTextId;
-      if (state.currentView !== "reader" || !activeId || !currentTextIds?.has(activeId)) return;
+      const activeReadable = activeId && (
+        Boolean(findBookById(activeId))
+        || (state.customTexts || []).some((text) => text.id === activeId)
+      );
+      if (state.currentView !== "reader" || !activeId || !activeReadable) return;
+      const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
+      const { remapReaderBookmarksForAlgorithm, renderInlineBookmarkIndicators, renderReaderBookmarks } = await import("./reader/bookmarks.js");
+      await remapReaderBookmarksForAlgorithm(algorithm, activeId);
+      if (state.currentView !== "reader" || state.currentTextId !== activeId) return;
       if (
         preserveActiveReader
         && activeId === activeReaderTextId
         && bookTexts.get(activeId) === activeReaderBody
-      ) return;
+      ) {
+        renderReaderBookmarks(activeId);
+        renderInlineBookmarkIndicators(activeId);
+        return;
+      }
       const { renderReader } = await import("./reader/renderer.js");
       renderReader();
     })

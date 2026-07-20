@@ -2,9 +2,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 const { buildSavePayload, saveToLocalStorage } = await import("../../dist/web/js/api.js");
-const { STATE_SCHEMA_VERSION, STORAGE_KEY } = await import("../../dist/web/js/constants.js");
+const { STATE_SCHEMA_VERSION, STORAGE_KEY, UI_STORAGE_KEY } = await import("../../dist/web/js/constants.js");
 const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
 const { loadState, normalizeState } = await import("../../dist/web/js/state/normalize.js");
+const { loadUiStateCache, saveUiStateCache } = await import("../../dist/web/js/state/ui-cache.js");
 
 describe("profile save payload", () => {
   it("keeps books, texts, and vocabulary from every language profile", () => {
@@ -104,6 +105,34 @@ describe("profile save payload", () => {
 
     assert.equal(storedKey, STORAGE_KEY);
     assert.equal(JSON.parse(storedValue).schemaVersion, STATE_SCHEMA_VERSION);
+  });
+
+  it("stores only local Reader UI in the bridge-side cache", () => {
+    const stored = new Map();
+    globalThis.localStorage = {
+      getItem: (key) => stored.get(key) || null,
+      setItem: (key, value) => stored.set(key, value),
+      removeItem: (key) => stored.delete(key)
+    };
+
+    saveUiStateCache({
+      currentView: "reader",
+      currentTextId: "de-book-1",
+      readerPage: 7,
+      readerPages: { "de-book-1": 7 },
+      readerScrolls: { "de-book-1": { readerPage: 7, scrollTop: 240 } },
+      preferences: { learningLanguage: "de", theme: "classic-dark" },
+      vocab: { geheim: { status: "known" } }
+    });
+
+    const serialized = JSON.parse(stored.get(UI_STORAGE_KEY));
+    const restored = loadUiStateCache();
+    assert.equal(serialized.schemaVersion, STATE_SCHEMA_VERSION);
+    assert.equal(restored.currentTextId, "de-book-1");
+    assert.equal(restored.readerPage, 7);
+    assert.deepEqual(restored.readerPages, { "de-book-1": 7 });
+    assert.equal(restored.preferences, undefined);
+    assert.equal(restored.vocab, undefined);
   });
 
   it("does not throw when localStorage quota rejects a cache write", () => {
@@ -376,10 +405,105 @@ describe("profile save payload", () => {
     assert.throws(() => loadState(), /schema version/);
   });
 
+  it("restores the last local Reader page on top of a bridge snapshot", () => {
+    globalThis.localStorage = {
+      getItem(key) {
+        if (key !== UI_STORAGE_KEY) return null;
+        return JSON.stringify({
+          schemaVersion: STATE_SCHEMA_VERSION,
+          currentView: "reader",
+          currentTextId: "de-custom-session",
+          readerPage: 5,
+          readerPages: { "de-custom-session": 5 },
+          readerScrolls: { "de-custom-session": { readerPage: 5, scrollTop: 180 } },
+          preferences: { theme: "stale-theme" }
+        });
+      },
+      setItem() {},
+      removeItem() {}
+    };
+    globalThis.window = {
+      __qtBridge: true,
+      __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "de", theme: "familiar" },
+        vocab: { de: { vocab: {}, preferences: {} } },
+        texts: [{ id: "de-custom-session", title: "Session", text: "Page content" }]
+      }
+    };
+
+    const restored = loadState();
+
+    assert.equal(restored.currentView, "reader");
+    assert.equal(restored.currentTextId, "de-custom-session");
+    assert.equal(restored.readerPage, 5);
+    assert.equal(restored.readerPages["de-custom-session"], 5);
+    assert.deepEqual(restored.readerScrolls["de-custom-session"], { readerPage: 5, scrollTop: 180 });
+    assert.equal(restored.preferences.theme, "familiar");
+  });
+
+  it("restores Reader position from backend UI state when the local origin changes", () => {
+    globalThis.localStorage = {
+      getItem() { return null; },
+      setItem() {},
+      removeItem() {}
+    };
+    globalThis.window = {
+      __qtBridge: true,
+      __bridgeState: {
+        schemaVersion: STATE_SCHEMA_VERSION,
+        prefs: { learningLanguage: "de" },
+        vocab: { de: { vocab: {}, preferences: {} } },
+        texts: [],
+        uiState: {
+          schemaVersion: STATE_SCHEMA_VERSION,
+          currentView: "reader",
+          currentTextId: "starter-de-common-stories",
+          readerPage: 3,
+          readerPages: { "starter-de-common-stories": 3 },
+          readerScrolls: { "starter-de-common-stories": { readerPage: 3, scrollTop: 420, wordIndex: 81 } }
+        }
+      }
+    };
+
+    const restored = loadState();
+
+    assert.equal(restored.currentView, "reader");
+    assert.equal(restored.currentTextId, "starter-de-common-stories");
+    assert.equal(restored.readerPage, 3);
+    assert.deepEqual(restored.readerScrolls["starter-de-common-stories"], { readerPage: 3, scrollTop: 420, wordIndex: 81 });
+  });
+
+  it("keeps the local Reader page while the first bridge snapshot is still loading", () => {
+    globalThis.localStorage = {
+      getItem(key) {
+        return key === UI_STORAGE_KEY
+          ? JSON.stringify({
+              schemaVersion: STATE_SCHEMA_VERSION,
+              currentView: "reader",
+              currentTextId: "de-book-delayed",
+              readerPage: 9,
+              readerPages: { "de-book-delayed": 9 }
+            })
+          : null;
+      },
+      setItem() {},
+      removeItem() {}
+    };
+    globalThis.window = { __qtBridge: true };
+
+    const restored = loadState();
+
+    assert.equal(restored.currentView, "reader");
+    assert.equal(restored.currentTextId, "de-book-delayed");
+    assert.equal(restored.readerPage, 9);
+    assert.equal(restored.readerPages["de-book-delayed"], 9);
+  });
+
   it("prefers a valid bridge snapshot over stale localStorage cache", () => {
     globalThis.localStorage = {
       getItem(key) {
-        assert.equal(key, STORAGE_KEY);
+        if (key === UI_STORAGE_KEY) return null;
         return JSON.stringify({
           schemaVersion: STATE_SCHEMA_VERSION,
           preferences: { learningLanguage: "de" },

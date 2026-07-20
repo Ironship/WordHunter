@@ -65,9 +65,10 @@ function cssDeclarations(source, selectorPattern) {
   return match[1];
 }
 
-async function loadAppHarness() {
+async function loadAppHarness({ hydrateCurrentReaderText = async () => true } = {}) {
   const calls = [];
   const animationFrames = [];
+  const timers = [];
   let android = false;
   const classNames = new Set(["app-booting"]);
   const classList = {
@@ -110,13 +111,15 @@ async function loadAppHarness() {
       loadBooksCatalog: asyncNoOp,
       loadAllBookTexts: asyncNoOp,
       loadAllCustomTextContents: asyncNoOp,
-      hydrateActiveLibraryTexts: asyncNoOp
+      hydrateActiveLibraryTexts: asyncNoOp,
+      hydrateCurrentReaderText
     },
-    "./js/render.js": { render: noOp, ensureCurrentText: noOp },
+    "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
     "./js/i18n.js": { loadLocale: asyncNoOp, applyTranslations: noOp, t: (key) => key },
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
+      flushUiStateSync: noOp,
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
     },
@@ -134,7 +137,7 @@ async function loadAppHarness() {
     document,
     Element: class Element {},
     fetch: async () => ({ ok: true, json: async () => ({}) }),
-    setTimeout: () => 1,
+    setTimeout(callback) { timers.push(callback); return timers.length; },
     clearTimeout() {},
     console
   }, {
@@ -149,7 +152,11 @@ async function loadAppHarness() {
     flushAnimationFrames() {
       for (const callback of animationFrames.splice(0)) callback();
     },
+    flushTimers() {
+      for (const callback of timers.splice(0)) callback();
+    },
     setAndroid(value) { android = value; },
+    state,
     window
   };
 }
@@ -185,6 +192,35 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls, []);
     harness.flushAnimationFrames();
     assert.deepEqual(harness.calls, ["render-library"]);
+  });
+
+  it("rerenders a restored reader after built-in book text hydration", async () => {
+    const harness = await loadAppHarness();
+    harness.state.currentView = "reader";
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    harness.calls.length = 0;
+    harness.flushTimers();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    assert.deepEqual(harness.calls, ["render"]);
+  });
+
+  it("renders and removes the boot screen without waiting for Reader hydration", async () => {
+    let finishHydration;
+    const hydration = new Promise((resolve) => { finishHydration = resolve; });
+    const harness = await loadAppHarness({ hydrateCurrentReaderText: () => hydration });
+    harness.state.currentView = "reader";
+    harness.state.currentTextId = "slow-book";
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+
+    assert.equal(harness.classList.contains("app-booting"), false);
+    assert.deepEqual(harness.calls, ["render"]);
+    finishHydration(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(harness.calls, ["render", "render"]);
   });
 
   it("backs off bridge save retries and caps the delay", async () => {
@@ -317,6 +353,364 @@ describe("persistence lifecycle", () => {
     assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
+  it("writes an explicit bridge UI save to the local UI cache", async () => {
+    const saved = [];
+    const backendSaves = [];
+    const keepaliveUiSaves = [];
+    let durableSaves = 0;
+    const rawState = {
+      currentView: "reader",
+      currentTextId: "book",
+      readerPage: 4,
+      readerPages: { book: 4 },
+      vocab: {}
+    };
+    const autosave = {
+      wrap: (value) => value,
+      saveState() { durableSaves += 1; return Promise.resolve(); },
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: (value) => value,
+        saveUiStateCache: (value) => saved.push(value),
+        UI_STATE_KEYS: []
+      },
+      "./store-bridge.js": {
+        postStoreJson(path, payload) { backendSaves.push([path, payload]); return Promise.resolve({}); }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      fetch(path, options) {
+        keepaliveUiSaves.push([path, options]);
+        return Promise.resolve({ ok: true });
+      },
+      console
+    });
+
+    await stateModule.saveUiState();
+
+    assert.equal(durableSaves, 0);
+    assert.deepEqual(saved, [rawState]);
+    assert.equal(backendSaves[0][0], "/__store/ui_state");
+    assert.equal(backendSaves[0][1].schemaVersion, 2);
+    assert.equal(backendSaves[0][1].currentTextId, "book");
+    stateModule.flushUiStateSync();
+    assert.equal(keepaliveUiSaves[0][0], "/__store/ui_state");
+    assert.equal(keepaliveUiSaves[0][1].method, "POST");
+    assert.equal(keepaliveUiSaves[0][1].keepalive, true);
+    assert.equal(keepaliveUiSaves[0][1].headers["X-WH-Token"], "test-token");
+    assert.equal(JSON.parse(keepaliveUiSaves[0][1].body).currentTextId, "book");
+
+    await stateModule.requestWordHunterClose();
+    const closeRequest = keepaliveUiSaves.find(([path]) => path === "/__app/close");
+    assert.ok(closeRequest);
+    assert.equal(closeRequest[1].headers["X-WH-Token"], "test-token");
+    assert.equal(durableSaves, 1);
+  });
+
+  it("drains old UI saves and defers new UI saves around an exclusive import or wipe", async () => {
+    const postedPages = [];
+    const keepalivePages = [];
+    let releaseOldSave;
+    let releaseKeepalive;
+    const oldSaveBlocked = new Promise((resolve) => { releaseOldSave = resolve; });
+    const keepaliveBlocked = new Promise((resolve) => { releaseKeepalive = resolve; });
+    const rawState = { currentTextId: "old-book", readerPage: 7, preferences: {}, profiles: {}, vocab: {} };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: (value) => ({ currentTextId: value.currentTextId, readerPage: value.readerPage }),
+        saveUiStateCache: noOp,
+        UI_STATE_KEYS: []
+      },
+      "./store-bridge.js": {
+        async postStoreJson(_path, payload) {
+          postedPages.push(payload.readerPage);
+          if (postedPages.length === 1) await oldSaveBlocked;
+          return {};
+        }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      async fetch(_path, options) {
+        keepalivePages.push(JSON.parse(options.body).readerPage);
+        await keepaliveBlocked;
+        return { ok: true };
+      },
+      console
+    });
+
+    void stateModule.saveUiState();
+    stateModule.flushUiStateSync();
+    let exclusiveStarted = false;
+    const exclusive = stateModule.runExclusiveStateWrite(async () => {
+      exclusiveStarted = true;
+      rawState.currentTextId = null;
+      rawState.readerPage = 1;
+      void stateModule.saveUiState();
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(exclusiveStarted, false);
+
+    releaseOldSave();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(exclusiveStarted, false);
+    releaseKeepalive();
+    await exclusive;
+    await stateModule.saveUiState();
+
+    assert.deepEqual(postedPages, [7, 1, 1]);
+    assert.deepEqual(keepalivePages, [7]);
+  });
+
+  it("waits for an older keepalive UI save before the final close save", async () => {
+    const calls = [];
+    let releaseKeepalive;
+    const keepaliveBlocked = new Promise((resolve) => { releaseKeepalive = resolve; });
+    const rawState = { currentTextId: "book", readerPage: 7, preferences: {}, profiles: {}, vocab: {} };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: (value) => ({ currentTextId: value.currentTextId, readerPage: value.readerPage }),
+        saveUiStateCache: noOp,
+        UI_STATE_KEYS: []
+      },
+      "./store-bridge.js": {
+        async postStoreJson() { calls.push("final-ui"); return {}; }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      async fetch(path) {
+        if (path === "/__store/ui_state") {
+          calls.push("keepalive-start");
+          await keepaliveBlocked;
+          calls.push("keepalive-end");
+          return { ok: true };
+        }
+        calls.push("close");
+        return { ok: true };
+      },
+      console
+    });
+
+    stateModule.flushUiStateSync();
+    let flushed = false;
+    const flushing = stateModule.flushAllPendingFrontendState().then(() => { flushed = true; });
+    const closing = stateModule.requestWordHunterClose();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(calls, ["keepalive-start"]);
+    assert.equal(flushed, false);
+
+    releaseKeepalive();
+    await Promise.all([flushing, closing]);
+
+    assert.deepEqual(calls, ["keepalive-start", "keepalive-end", "final-ui", "close"]);
+  });
+
+  it("keeps the app open when the final durable save fails", async () => {
+    const closeRequests = [];
+    const toasts = [];
+    const rawState = { preferences: {}, profiles: {}, vocab: {} };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.reject(new Error("disk full")),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
+      "./store-bridge.js": { postStoreJson: async () => ({}) },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
+      console: { warn() {}, error() {} }
+    }, {
+      "./toast.js": { showToast: (message) => toasts.push(message) },
+      "./i18n.js": { t: (key) => key }
+    });
+
+    await stateModule.requestWordHunterClose();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(closeRequests.includes("/__app/close"), false);
+    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+  });
+
+  it("allows close after a transient UI-state save failure is retried successfully", async () => {
+    const closeRequests = [];
+    let uiSaveAttempts = 0;
+    const rawState = { preferences: {}, profiles: {}, vocab: {} };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
+      "./store-bridge.js": {
+        postStoreJson: async () => {
+          uiSaveAttempts += 1;
+          if (uiSaveAttempts === 1) throw new Error("temporary write failure");
+          return {};
+        }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
+      console: { warn() {}, error() {} }
+    });
+
+    await stateModule.saveUiState();
+    await stateModule.requestWordHunterClose();
+
+    assert.equal(uiSaveAttempts, 2);
+    assert.deepEqual(closeRequests, ["/__app/close"]);
+  });
+
+  it("keeps the app open when the final UI-state save fails", async () => {
+    const closeRequests = [];
+    const toasts = [];
+    const rawState = { preferences: {}, profiles: {}, vocab: {} };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => rawState,
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => rawState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
+      "./store-bridge.js": { postStoreJson: async () => { throw new Error("ui disk full"); } },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "test-token" },
+      fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
+      console: { warn() {}, error() {} }
+    }, {
+      "./toast.js": { showToast: (message) => toasts.push(message) },
+      "./i18n.js": { t: (key) => key }
+    });
+
+    await stateModule.requestWordHunterClose();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(closeRequests, []);
+    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+  });
+
   it("queues autosaves behind an exclusive state write", async () => {
     const savedThemes = [];
     let synchronousWrites = 0;
@@ -421,7 +815,8 @@ describe("persistence lifecycle", () => {
       "/__store/sync_now",
       "/__store/sync_health",
       "/__store/prepare_sync_dir",
-      "/__store/resolve_conflict"
+      "/__store/resolve_conflict",
+      "/__store/resolve_all_conflicts"
     ]) {
       assert.ok(settings.includes(`"${endpoint}"`), `missing frontend endpoint ${endpoint}`);
     }
@@ -439,6 +834,8 @@ describe("persistence lifecycle", () => {
     assert.ok(autosave.includes("wordhunter:sync-error"));
     assert.ok(api.includes("wordhunter:sync-error"));
     assert.match(settings, /scheduleBackgroundSync\(30000\)/);
+    assert.match(settings, /queueSyncOperation\(\(\) => syncNowOnce\(options\)\)/);
+    assert.match(settings, /await syncNowOnce\(\{ saveFirst: false \}\)/);
     assert.match(settings, /syncNow\(\{ background: true, saveFirst: true \}\)/);
     assert.match(settings, /wordhunter:sync-snapshot-skipped/);
   });
@@ -486,6 +883,7 @@ describe("persistence lifecycle", () => {
     const storageRemovals = [];
     const downstreamCalls = [];
     const toasts = [];
+    let applyShouldThrow = false;
     const window = fakeEventTarget({
       WH_TOKEN: "test-token",
       __qtBridge: false,
@@ -504,11 +902,22 @@ describe("persistence lifecycle", () => {
         currentTextId: "text-1",
         customTexts: [{ id: "text-1", title: "Text" }],
         hiddenBuiltInBooks: ["hidden-book"],
-        preferences: { learningLanguage: "de" },
-        profiles: { de: { vocab: {}, customTexts: [], userBooks: [] } },
+        preferences: {
+          learningLanguage: "de",
+          readerBookmarks: {
+            "text-1": [{ id: "text-marker" }],
+            "book-1": [{ id: "book-marker" }],
+            "kept-book": [{ id: "kept-marker" }]
+          }
+        },
+        profiles: {
+          de: { vocab: {}, customTexts: [], userBooks: [] },
+          en: { vocab: {}, customTexts: [{ id: "kept-book" }], userBooks: [], archivedBookIds: [] }
+        },
         readerPage: 2,
-        readerPages: { "text-1": 2 },
-        readerScrolls: { "text-1": { scrollTop: 80 } },
+        readerPages: { "text-1": 2, "book-1": 1, "kept-book": 3 },
+        readerScrolls: { "text-1": { scrollTop: 80 }, "book-1": { scrollTop: 10 }, "kept-book": { scrollTop: 33 } },
+        readerScrollsPerPage: { "text-1-p2": 80, "book-1-p1": 10, "kept-book-p3": 33, "text-1-publisher-p1": 44 },
         reviewIndex: 1,
         selectedWord: "haus",
         userBooks: [{ id: "book-1" }],
@@ -528,21 +937,43 @@ describe("persistence lifecycle", () => {
     const noOp = () => {};
     const actions = await evaluateWithMocks("../../dist/web/js/sync-actions.js", {
       "./state.js": {
-        applyBridgeSnapshotToState: noOp,
+        applyBridgeSnapshotToState: (_snapshot, options) => {
+          if (applyShouldThrow) throw new Error("invalid wiped snapshot");
+          downstreamCalls.push({ applyBridgeSnapshotToState: options, storageRemovals: [...storageRemovals] });
+          state.currentTextId = null;
+          state.readerPages = {};
+          state.readerScrolls = {};
+          return true;
+        },
         getDurableStateRevision: () => 0,
         state,
         saveState: async () => downstreamCalls.push("saveState"),
+        saveUiState: async () => downstreamCalls.push("saveUiState"),
         runExclusiveStateWrite: async (callback) => {
           downstreamCalls.push("runExclusiveStateWrite");
           return callback();
         },
-        createDefaultState: () => ({}),
+        createDefaultState: () => ({
+          currentTextId: null,
+          readerPages: {},
+          readerScrolls: {},
+          readerScrollsPerPage: {},
+          preferences: { learningLanguage: "de", readerBookmarks: {} },
+          profiles: { de: { vocab: {}, customTexts: [], userBooks: [] } },
+          customTexts: [],
+          userBooks: [],
+          vocab: {}
+        }),
         normalizeState: (value) => value,
-        replaceState: () => downstreamCalls.push("replaceState"),
+        replaceState: (value) => {
+          downstreamCalls.push("replaceState");
+          for (const key of Object.keys(state)) delete state[key];
+          Object.assign(state, value);
+        },
         resetInitialVocabKeys: () => downstreamCalls.push("resetInitialVocabKeys"),
         clearLastReadTextForLanguage: () => downstreamCalls.push("clearLastReadTextForLanguage")
       },
-      "./constants.js": { STORAGE_KEY: "wordhunter-state" },
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state", UI_STORAGE_KEY: "wordhunter-ui-state" },
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./i18n.js": { t: (key) => key },
@@ -564,14 +995,23 @@ describe("persistence lifecycle", () => {
         acknowledgeBackendSnapshot: async () => downstreamCalls.push("acknowledgeBackendSnapshot"),
         deleteStoredText: async () => downstreamCalls.push("deleteStoredText"),
         loadBackendSnapshot: async () => ({}),
-        postStoreCommand: async () => downstreamCalls.push("postStoreCommand")
+        postStoreCommand: async () => downstreamCalls.push("postStoreCommand"),
+        postStoreJson: async () => ({})
       },
       "./state/normalize.js": { assertSupportedStateSchemaVersion: noOp },
+      "./state/ui-cache.js": { captureUiState: () => ({}) },
       "./books.js": {
         clearAllBookTextCaches: () => downstreamCalls.push("clearAllBookTextCaches"),
         clearBookTextCache: () => downstreamCalls.push("clearBookTextCache"),
         loadAllBookTexts: async () => downstreamCalls.push("loadAllBookTexts"),
-        loadAllCustomTextContents: async () => downstreamCalls.push("loadAllCustomTextContents")
+        loadAllCustomTextContents: async () => downstreamCalls.push("loadAllCustomTextContents"),
+        loadCustomTextContent: async () => "portable backup text"
+      },
+      "./book-actions/profile-library.js": {
+        isCustomTextReferenced: (id) => state.customTexts.some((text) => text.id === id)
+          || Object.values(state.profiles || {}).some((profile) =>
+            profile?.customTexts?.some((text) => text.id === id)
+          )
       }
     }, {
       window,
@@ -610,6 +1050,55 @@ describe("persistence lifecycle", () => {
         assert.deepEqual(toasts, ["toast.backupRequired"]);
       }
     }
+
+    resetState();
+    window.WordHunterAndroid.saveExport = (_data, _filename, _mime, requestId) => {
+      window.dispatchEvent(new CustomEvent("wordhunter:android-export", {
+        detail: { requestId, success: true }
+      }));
+      return true;
+    };
+
+    await actions.clearLibrary();
+
+    assert.equal(state.preferences.readerBookmarks["text-1"], undefined);
+    assert.equal(state.preferences.readerBookmarks["book-1"], undefined);
+    assert.deepEqual(state.preferences.readerBookmarks["kept-book"], [{ id: "kept-marker" }]);
+    assert.equal(state.readerPages["text-1"], undefined);
+    assert.equal(state.readerPages["book-1"], undefined);
+    assert.equal(state.readerPages["kept-book"], 3);
+    assert.equal(state.readerScrolls["kept-book"].scrollTop, 33);
+    assert.equal(state.readerScrollsPerPage["kept-book-p3"], 33);
+    assert.equal(state.readerScrollsPerPage["text-1-publisher-p1"], 44);
+    assert.equal(state.selectedWord, null);
+
+    resetState();
+    downstreamCalls.length = 0;
+    storageRemovals.length = 0;
+    window.__qtBridge = true;
+    window.WordHunterAndroid = {};
+
+    await actions.clearLocalState();
+
+    const applyCall = downstreamCalls.find((call) => call?.applyBridgeSnapshotToState);
+    assert.ok(downstreamCalls.indexOf("runExclusiveStateWrite") < downstreamCalls.indexOf("postStoreCommand"));
+    assert.equal(applyCall.applyBridgeSnapshotToState.expectedRevision, undefined);
+    assert.equal(applyCall.applyBridgeSnapshotToState.preserveLocalUi, false);
+    assert.deepEqual(applyCall.storageRemovals, ["wordhunter-state", "wordhunter-ui-state"]);
+    assert.equal(state.currentTextId, null);
+    assert.deepEqual(state.readerScrolls, {});
+
+    resetState();
+    downstreamCalls.length = 0;
+    storageRemovals.length = 0;
+    applyShouldThrow = true;
+
+    await actions.clearLocalState();
+
+    assert.equal(downstreamCalls.includes("replaceState"), true);
+    assert.equal(state.currentTextId, null);
+    assert.deepEqual(state.readerScrolls, {});
+    assert.deepEqual(storageRemovals, ["wordhunter-state", "wordhunter-ui-state"]);
   });
 
   it("ships sync safety copy in every locale", () => {

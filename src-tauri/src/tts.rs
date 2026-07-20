@@ -1,8 +1,9 @@
 use edge_tts_rust::{Boundary, EdgeTtsClient, SpeakOptions};
 
-pub fn synthesize(text: &str, lang: &str) -> Result<Vec<u8>, String> {
+pub fn synthesize(text: &str, lang: &str, rate: &str) -> Result<Vec<u8>, String> {
     let text = text.to_string();
     let voice = voice_for(lang).to_string();
+    let rate = rate_for(rate).to_string();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -19,6 +20,7 @@ pub fn synthesize(text: &str, lang: &str) -> Result<Vec<u8>, String> {
                 text,
                 SpeakOptions {
                     voice,
+                    rate,
                     boundary: Boundary::Sentence,
                     ..SpeakOptions::default()
                 },
@@ -27,6 +29,14 @@ pub fn synthesize(text: &str, lang: &str) -> Result<Vec<u8>, String> {
             .map_err(|e| e.to_string())?;
         Ok(result.audio)
     })
+}
+
+fn rate_for(preset: &str) -> &'static str {
+    match preset {
+        "slow" => "-25%",
+        "fast" => "+25%",
+        _ => "+0%",
+    }
 }
 
 fn voice_for(lang: &str) -> &'static str {

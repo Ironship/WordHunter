@@ -1991,6 +1991,108 @@ button.icon-button {
   align-items: flex-end;
 }
 
+.reader-panel {
+  position: relative;
+}
+
+.reader-bookmarks-button {
+  position: relative;
+}
+
+.reader-bookmarks-count {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.35rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--ink);
+  font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 0.9rem;
+  text-align: center;
+}
+
+.reader-bookmark-tabs {
+  position: absolute;
+  z-index: 5;
+  top: 9.5rem;
+  right: -16px;
+  bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-width: min(240px, 70%);
+  overflow-y: auto;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+
+.reader-bookmark-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.reader-bookmark-tab,
+.reader-inline-bookmark,
+.reader-bookmark-row-marker,
+.reader-bookmark-color {
+  --bookmark-color: var(--amber);
+}
+
+[data-bookmark-color="red"] { --bookmark-color: var(--red); }
+[data-bookmark-color="green"] { --bookmark-color: var(--green); }
+[data-bookmark-color="blue"] { --bookmark-color: var(--blue); }
+[data-bookmark-color="purple"] { --bookmark-color: var(--purple); }
+
+button.reader-bookmark-tab {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+  width: 34px;
+  min-width: 34px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0.35rem 0.45rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--bookmark-color) 70%, var(--ink));
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  background: color-mix(in srgb, var(--bookmark-color) 86%, var(--panel));
+  box-shadow: -3px 3px 8px rgba(0, 0, 0, 0.16);
+  color: var(--ink);
+  pointer-events: auto;
+  transition: width 160ms ease, filter 160ms ease;
+}
+
+button.reader-bookmark-tab:hover,
+button.reader-bookmark-tab:focus-visible {
+  width: min(240px, 70vw);
+  filter: saturate(1.08);
+}
+
+.reader-bookmark-page {
+  flex: 0 0 18px;
+  width: 18px;
+  overflow: hidden;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.reader-bookmark-tab-label {
+  overflow: hidden;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .reader-toolbar label {
   flex: 1 1 260px;
 }
@@ -2087,6 +2189,37 @@ html[data-max-width="full"] .reader-text {
   font-size: inherit;
   line-height: inherit;
   vertical-align: baseline;
+}
+
+.word-token.reader-inline-bookmark {
+  display: inline-block;
+  position: relative;
+}
+
+.word-token.pdf-ocr-word.reader-inline-bookmark {
+  display: inline-flex;
+}
+
+.word-token.reader-inline-bookmark::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  top: -0.72em;
+  right: -0.16em;
+  width: 0.48em;
+  height: 0.76em;
+  border-radius: 0.12em 0.12em 0 0;
+  background: var(--bookmark-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 74%, 0 100%);
+  pointer-events: none;
+}
+
+.word-token.pdf-ocr-word.reader-inline-bookmark::before {
+  top: -9px;
+  right: -5px;
+  width: 8px;
+  height: 12px;
 }
 
 .word-token:hover,
@@ -2948,6 +3081,159 @@ html[data-max-width="full"] .reader-text {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.reader-bookmarks-dialog {
+  width: min(92vw, 620px);
+  max-height: min(88vh, 760px);
+  overflow: hidden;
+}
+
+.reader-bookmarks-dialog-body {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: calc(min(88vh, 760px) - 78px);
+}
+
+.reader-bookmark-form {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.reader-bookmark-form label {
+  font-weight: 700;
+}
+
+.reader-bookmark-form input {
+  width: 100%;
+}
+
+.reader-bookmark-color-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reader-bookmark-color-field legend {
+  margin-bottom: 0.35rem;
+  padding: 0;
+  font-weight: 700;
+}
+
+.reader-bookmark-colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.reader-bookmark-color {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  place-items: center;
+}
+
+.reader-bookmark-color input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.reader-bookmark-color span {
+  width: 28px;
+  height: 28px;
+  border: 2px solid color-mix(in srgb, var(--bookmark-color) 55%, var(--ink));
+  border-radius: 50%;
+  background: var(--bookmark-color);
+}
+
+.reader-bookmark-color input:checked + span {
+  outline: 3px solid var(--control-accent);
+  outline-offset: 2px;
+}
+
+.reader-bookmark-color input:focus-visible + span {
+  outline: 3px solid var(--focus-ring, var(--control-accent));
+  outline-offset: 3px;
+}
+
+.reader-bookmark-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.reader-bookmark-list {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+  min-height: 9rem;
+  padding: 1rem 1.25rem 1.25rem;
+  overflow: auto;
+}
+
+.reader-bookmark-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-strong);
+}
+
+button.reader-bookmark-location {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.reader-bookmark-location > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.reader-bookmark-location strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-bookmark-location small {
+  color: var(--muted);
+}
+
+.reader-bookmark-row-marker {
+  width: 8px;
+  height: 2.5rem;
+  border-radius: 4px;
+  background: var(--bookmark-color);
+}
+
+.reader-bookmark-row-actions {
+  display: flex;
+  gap: 0.35rem;
+  padding-right: 0.5rem;
+}
+
+.reader-bookmark-empty {
+  align-self: center;
+  justify-self: center;
+  margin: 0;
+  text-align: center;
 }
 
 .table-wrap {

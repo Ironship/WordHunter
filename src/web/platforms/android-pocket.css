@@ -623,7 +623,7 @@ html.pocket-mode {
   right: 0;
   bottom: 0;
   left: 0;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: center;
   gap: 0.25rem;
   width: auto;
@@ -697,6 +697,13 @@ html.pocket-mode {
 
 .pocket-mode #reader-next-word {
   order: 5;
+}
+
+.pocket-mode #reader-bookmarks-button {
+  order: 6;
+  width: 100%;
+  min-width: 0;
+  height: 56px;
 }
 
 .pocket-mode[data-view="reader"] .reader-toolbar {
@@ -884,8 +891,20 @@ html.pocket-mode {
 
 .pocket-mode .reader-text {
   padding: 1rem 1rem calc(6.2rem + var(--pocket-navbar-safe-bottom));
+  padding-right: 2.4rem;
   font-size: var(--reader-font-size);
   overscroll-behavior: contain;
+}
+
+.pocket-mode .reader-bookmark-tabs {
+  top: 3.75rem;
+  right: 0;
+  bottom: calc(6rem + var(--pocket-navbar-safe-bottom));
+}
+
+.pocket-mode .reader-bookmarks-dialog {
+  width: calc(100vw - 1rem);
+  max-height: calc(100dvh - 1rem);
 }
 
 .pocket-mode .reader-text.pdf-ocr-reader {

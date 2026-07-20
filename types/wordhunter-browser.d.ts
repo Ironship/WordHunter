@@ -52,6 +52,23 @@ declare global {
 
   type WhVocabulary = Record<string, WhVocabEntry>;
 
+  type WhReaderBookmarkColor = "amber" | "red" | "green" | "blue" | "purple";
+
+  interface WhReaderBookmark {
+    id: string;
+    label: string;
+    color?: WhReaderBookmarkColor;
+    page: number;
+    scrollTop: number;
+    wordIndex: number | null;
+    anchorWord?: string;
+    anchorBefore?: string;
+    anchorAfter?: string;
+    anchorOffset?: number;
+    wordAlgorithm?: "classic" | "modern";
+    createdAt: string;
+  }
+
   interface WhText extends WhRecord {
     id: string;
     title?: string;
@@ -125,6 +142,7 @@ declare global {
     colorIgnored: string;
     reviewGraphType: string;
     graphRange: string;
+    readerBookmarks: Record<string, WhReaderBookmark[]>;
   }
 
   interface WhProfilePreferences extends WhRecord {
@@ -249,6 +267,7 @@ declare global {
     vocab?: Record<string, WhProfile | WhRecord>;
     texts?: WhText[];
     hiddenBooks?: string[];
+    uiState?: WhRecord;
     [key: string]: unknown;
   }
 
@@ -370,6 +389,7 @@ declare global {
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;
     flushAllPendingFrontendState?: () => Promise<void>;
+    requestWordHunterClose?: () => void;
     flushWordFieldSave?: () => void;
     wordHunterBootRejectionHandler?: (event: PromiseRejectionEvent) => void;
     lastActiveToken?: HTMLElement | null;

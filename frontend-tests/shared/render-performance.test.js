@@ -59,6 +59,42 @@ async function evaluateWithMocks(file, importValues, globals = {}, dynamicImport
 }
 
 describe("render performance guards", () => {
+  it("keeps a Reader token above the open Pocket word sheet", async () => {
+    const scrolls = [];
+    const container = {
+      clientHeight: 500,
+      scrollHeight: 1500,
+      scrollTop: 100,
+      contains: (element) => element === token,
+      getBoundingClientRect: () => ({ top: 100, bottom: 600, height: 500 }),
+      scrollTo(options) {
+        scrolls.push(options);
+        this.scrollTop = options.top;
+      }
+    };
+    const token = {
+      closest: () => container,
+      getBoundingClientRect: () => ({ top: 450, bottom: 470, height: 20 })
+    };
+    const panel = { getBoundingClientRect: () => ({ top: 400, bottom: 700, height: 300 }) };
+    const classes = new Set(["pocket-mode", "pocket-word-panel-open"]);
+    const document = {
+      documentElement: { classList: { contains: (name) => classes.has(name) } },
+      getElementById: () => container,
+      querySelector: () => panel
+    };
+    const { keepReaderTokenVisible } = await evaluateWithMocks("../../dist/web/js/reader/visibility.js", {}, { document });
+
+    assert.equal(keepReaderTokenVisible(token), true);
+    assert.equal(scrolls.length, 1);
+    assert.equal(scrolls[0].top, 310);
+    assert.equal(scrolls[0].behavior, "auto");
+
+    token.getBoundingClientRect = () => ({ top: 220, bottom: 240, height: 20 });
+    assert.equal(keepReaderTokenVisible(token), false);
+    assert.equal(scrolls.length, 1);
+  });
+
   it("persists imprecise reader scrolls without hit-testing the document", async () => {
     let elementFromPointCalls = 0;
     let persistedWrites = 0;
@@ -111,7 +147,121 @@ describe("render performance guards", () => {
     assert.equal(flushes, 1);
   });
 
-  it("uses the imprecise path for routine reader scroll events", async () => {
+  it("falls back to a visible token when fixed viewport probes miss the text", async () => {
+    const state = { currentTextId: "text-1", readerPage: 3, readerScrolls: {}, readerScrollsPerPage: {} };
+    const visibleToken = {
+      dataset: { wordIndex: "269" },
+      getBoundingClientRect: () => ({ left: 120, right: 190, top: 140, bottom: 165, height: 25 })
+    };
+    const horizontallyHiddenToken = {
+      dataset: { wordIndex: "12" },
+      getBoundingClientRect: () => ({ left: -220, right: -120, top: 140, bottom: 165, height: 25 })
+    };
+    const readerText = {
+      scrollTop: 1200,
+      getBoundingClientRect: () => ({ left: 0, right: 800, top: 100, bottom: 500, width: 800, height: 400 }),
+      querySelectorAll: () => [horizontallyHiddenToken, visibleToken],
+      contains: () => true
+    };
+    class HTMLElement {
+      static [Symbol.hasInstance](value) { return value !== null && typeof value === "object"; }
+    }
+    const { rememberReaderScrollPosition } = await evaluateWithMocks("../../dist/web/js/reader/scroll.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } }
+    }, {
+      HTMLElement,
+      document: { elementFromPoint: () => null }
+    });
+
+    rememberReaderScrollPosition({ precise: true });
+
+    assert.equal(state.readerScrolls["text-1"].wordIndex, 269);
+    assert.equal(state.readerScrolls["text-1"].scrollTop, 1200);
+    assert.equal(state.readerScrolls["text-1"].readerPage, 3);
+  });
+
+  it("restores the exact saved word before stale per-page pixels", async () => {
+    const state = {
+      currentTextId: "text-1",
+      readerPage: 3,
+      readerScrollsPerPage: { "text-1-p3": 999, "text-1-p2": 333 }
+    };
+    const token = { getBoundingClientRect: () => ({ top: 800, height: 20 }) };
+    const readerText = {
+      scrollTop: 10,
+      scrollHeight: 2000,
+      clientHeight: 400,
+      dataset: {},
+      getBoundingClientRect: () => ({ top: 100 }),
+      querySelector: (selector) => selector.includes('data-word-index="42"') ? token : null
+    };
+    const { restoreReaderPagePosition } = await evaluateWithMocks("../../dist/web/js/reader/scroll.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } }
+    }, { setTimeout });
+
+    restoreReaderPagePosition("text-1", "text-1-p3", { readerPage: 3, wordIndex: 42, scrollTop: 120 });
+    assert.equal(readerText.scrollTop, 520);
+
+    token.getBoundingClientRect = () => ({ top: 290, height: 20 });
+    readerText.scrollTop = 0;
+    restoreReaderPagePosition("text-1", "text-1-p3", { readerPage: 3, wordIndex: 42, scrollTop: 120 });
+    assert.equal(readerText.scrollTop, 0);
+
+    state.readerPage = 2;
+    restoreReaderPagePosition("text-1", "text-1-p2", { readerPage: 3, wordIndex: 42, scrollTop: 120 });
+    assert.equal(readerText.scrollTop, 333);
+  });
+
+  it("does not apply a delayed scroll retry after the reader changes page", async () => {
+    const state = { currentTextId: "text-1", readerPage: 3, readerScrollsPerPage: {} };
+    const readerText = {
+      scrollTop: 0,
+      scrollHeight: 0,
+      clientHeight: 400,
+      dataset: {},
+      querySelector: () => null
+    };
+    let retry = null;
+    const { restoreReaderPagePosition } = await evaluateWithMocks("../../dist/web/js/reader/scroll.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } }
+    }, { setTimeout: (callback) => { retry = callback; return 1; } });
+
+    restoreReaderPagePosition("text-1", "text-1-p3", { readerPage: 3, wordIndex: 42, scrollTop: 120 });
+    assert.equal(typeof retry, "function");
+    state.readerPage = 4;
+    readerText.scrollHeight = 2000;
+    retry();
+    assert.equal(readerText.scrollTop, 0);
+  });
+
+  it("does not apply an old delayed retry after a new same-page restore", async () => {
+    const state = { currentTextId: "text-1", readerPage: 3, readerScrollsPerPage: {} };
+    const readerText = {
+      scrollTop: 0,
+      scrollHeight: 0,
+      clientHeight: 400,
+      dataset: {},
+      querySelector: () => null
+    };
+    let oldRetry = null;
+    const { restoreReaderPagePosition } = await evaluateWithMocks("../../dist/web/js/reader/scroll.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: { readerText } }
+    }, { setTimeout: (callback) => { oldRetry = callback; return 1; } });
+
+    restoreReaderPagePosition("text-1", "text-1-p3", { readerPage: 3, wordIndex: 42, scrollTop: 120 });
+    assert.equal(typeof oldRetry, "function");
+    readerText.scrollHeight = 2000;
+    restoreReaderPagePosition("text-1", "text-1-p3", { readerPage: 3, wordIndex: 87, scrollTop: 640 });
+    assert.equal(readerText.scrollTop, 640);
+    oldRetry();
+    assert.equal(readerText.scrollTop, 640);
+  });
+
+  it("captures an exact word position on routine reader scroll events", async () => {
     const pendingTimers = new Map();
     const rememberCalls = [];
     const articleUpdates = [];
@@ -170,6 +320,7 @@ describe("render performance guards", () => {
       "../reader/scroll.js": {
         rememberReaderScrollPosition(options) { rememberCalls.push(options); }
       },
+      "../reader/bookmarks.js": { bindReaderBookmarkEvents: noOp },
       "../platform.js": { refreshPocketWordPanelSheet: noOp },
       "../reader/word-navigation.js": { navigateReaderWord: noOp },
       "../reader/renderer.js": {
@@ -236,7 +387,8 @@ describe("render performance guards", () => {
     assert.equal(persistenceTimer.delay, 150);
     persistenceTimer.callback();
     assert.equal(rememberCalls.length, 1);
-    assert.equal(rememberCalls[0].precise, false);
+    assert.equal(rememberCalls[0].precise, true);
+    assert.equal(rememberCalls[0].flush, true);
 
     assert.equal(typeof frontendFlusher, "function");
     frontendFlusher();
