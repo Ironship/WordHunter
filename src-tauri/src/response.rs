@@ -83,6 +83,17 @@ pub fn respond(
     content_type: &str,
     cache: bool,
 ) -> Result<(), String> {
+    respond_with_headers(request, code, body, content_type, cache, &[])
+}
+
+pub fn respond_with_headers(
+    request: Request,
+    code: u16,
+    body: Vec<u8>,
+    content_type: &str,
+    cache: bool,
+    headers: &[(&str, &str)],
+) -> Result<(), String> {
     let mut response = Response::from_data(body).with_status_code(StatusCode(code));
     response.add_header(
         Header::from_bytes("Content-Type", content_type)
@@ -110,6 +121,11 @@ pub fn respond(
     ] {
         response.add_header(
             Header::from_bytes(name, value).map_err(|e| format!("bad {name} header: {e:?}"))?,
+        );
+    }
+    for (name, value) in headers {
+        response.add_header(
+            Header::from_bytes(*name, *value).map_err(|e| format!("bad {name} header: {e:?}"))?,
         );
     }
     request.respond(response).map_err(|e| e.to_string())
