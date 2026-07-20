@@ -143,7 +143,7 @@ export function selectReaderToken(
       state.selectedWord = rawWord;
       state.selectedWordIndex = selectedWordIndex;
       saveUiState();
-      updateReaderSelection({ renderPanel: options.keepPanelOpen === true });
+      updateReaderSelection({ renderPanel: options.keepPanelOpen === true || !root.classList.contains("pocket-mode") });
       speakWord(rawWord);
     }
     if (options.keepPanelOpen && pocketPanelWasOpen) root.classList.add("pocket-word-panel-open");
