@@ -767,6 +767,10 @@
     "focusHint4": "<kbd>I</kbd> 画像追加",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> 単語コピー",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> 複数単語を選択",
+    "focusHint7": "<kbd>Shift</kbd>+<kbd>Space</kbd> 連続TTSを開始/停止",
+    "focusHint8": "<kbd>B</kbd> ブックマークを追加/削除",
+    "focusHint9": "<kbd>F6</kbd> テキストと単語パネルのフォーカスを切替",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> 最初/最後の単語",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> - ライブラリ",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> - リーダー",
@@ -790,14 +794,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> - ページ移動; <kbd>Ctrl</kbd> + <kbd>G</kbd> - ページ番号入力へ移動",
       "imgSuggest": "<kbd>I</kbd> - 画像検索, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> - 候補を選択, <kbd>Ctrl</kbd> + <kbd>4</kbd> - 画像をアップロード",
       "inTextReview": "<kbd>Enter</kbd> - 読書画面の復習で答えを表示, <kbd>1</kbd>～<kbd>5</kbd> - 答えを評価",
-      "activate": "<kbd>Enter</kbd> / <kbd>Space</kbd> - フォーカスした単語を選択。選択済みなら Space で発音"
+      "activate": "<kbd>Enter</kbd> / <kbd>Space</kbd> - フォーカスした単語を選択。選択済みなら Space で発音",
+      "continuousTts": "<kbd>Shift</kbd> + <kbd>Space</kbd> - アクティブな単語から連続TTSを開始または停止",
+      "bookmark": "<kbd>B</kbd> - アクティブな単語にブックマークを追加または削除"
     },
     "focusTitle": "テキストナビゲーション",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> - 前/次の単語",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> - 行移動",
       "escape": "<kbd>Esc</kbd> - テキストから出る（選択解除）",
-      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - 複数単語を選択"
+      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - 複数単語を選択",
+      "panel": "<kbd>F6</kbd> - テキストと選択単語パネルの間でフォーカスを切り替え",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>End</kbd> - テキストの最初 / 最後の単語"
     },
     "actionTitle": "選択した単語へのアクション",
     "actionKeys": {

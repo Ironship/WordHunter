@@ -220,7 +220,8 @@ const {
   renderReaderBookmarks,
   remapReaderBookmarksForAlgorithm,
   removeReaderBookmark,
-  renameReaderBookmark
+  renameReaderBookmark,
+  toggleReaderBookmarkAtCurrentWord
 } = await import("../../dist/web/js/reader/bookmarks.js");
 const {
   getPdfOcrViewMode,
@@ -361,6 +362,33 @@ describe("desktop reader behavior", () => {
         anchorBefore: "sehr",
         anchorAfter: "hier"
       });
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
+  });
+
+  it("toggles a bookmark at the exact active word", () => {
+    resetBehaviorState({
+      currentTextId: "book",
+      selectedWord: null,
+      selectedWordIndex: null,
+      readerPage: 2,
+      readerScrolls: { book: { readerPage: 2, scrollTop: 275, wordIndex: 61 } },
+      preferences: { readerBookmarks: {} }
+    });
+    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const readerText = {
+      scrollTop: 275,
+      querySelector: (selector) => selector.includes('data-word-index="87"') ? selected : null,
+      querySelectorAll: () => [selected]
+    };
+    const originalGetElementById = document.getElementById;
+    document.getElementById = (id) => id === "reader-text" ? readerText : originalGetElementById.call(document, id);
+    try {
+      assert.equal(toggleReaderBookmarkAtCurrentWord(87), true);
+      assert.equal(getReaderBookmarks("book")[0].wordIndex, 87);
+      assert.equal(toggleReaderBookmarkAtCurrentWord(87), true);
+      assert.deepEqual(getReaderBookmarks("book"), []);
     } finally {
       document.getElementById = originalGetElementById;
     }
@@ -664,6 +692,8 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(cssDeclarations(css, ".reader-bookmark-color").width, "44px");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode #reader-bookmarks-button").order, "6");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .reader-bookmark-tabs").right, "0");
+    assert.equal(attribute(openingTag(elementById(html, "word-panel")), "tabindex"), "-1");
+    assert.ok(hasCssSelector(css, "#word-panel:focus-visible"));
   });
 
   it("declares desktop-only focus, panel, touch, and TTS controls", () => {

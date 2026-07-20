@@ -828,6 +828,10 @@
     "focusHint4": "<kbd>I</kbd> – dodaj obraz",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> – kopiuj słowo",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> – zaznacz wiele słów",
+    "focusHint7": "<kbd>Shift</kbd>+<kbd>Spacja</kbd> – uruchom lub zatrzymaj ciągłe TTS",
+    "focusHint8": "<kbd>B</kbd> – dodaj lub usuń zakładkę",
+    "focusHint9": "<kbd>F6</kbd> – przełącz fokus między tekstem i panelem słowa",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> – pierwsze lub ostatnie słowo",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> – Biblioteka",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> – Czytnik",
@@ -851,14 +855,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> – zmień stronę; <kbd>Ctrl</kbd> + <kbd>G</kbd> – przejdź do pola numeru strony",
       "imgSuggest": "<kbd>I</kbd> – Wyszukaj obraz, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> – wybierz propozycję, <kbd>Ctrl</kbd> + <kbd>4</kbd> – prześlij własny obraz",
       "inTextReview": "<kbd>Enter</kbd> – Pokaż odpowiedź podczas powtórki w Czytniku, <kbd>1</kbd>–<kbd>5</kbd> – oceń odpowiedź",
-      "activate": "<kbd>Enter</kbd> / <kbd>Spacja</kbd> – Wybierz aktywne słowo; Spacja odczytuje już wybrane słowo"
+      "activate": "<kbd>Enter</kbd> / <kbd>Spacja</kbd> – Wybierz aktywne słowo; Spacja odczytuje już wybrane słowo",
+      "continuousTts": "<kbd>Shift</kbd> + <kbd>Spacja</kbd> – Uruchom lub zatrzymaj ciągłe TTS od aktywnego słowa",
+      "bookmark": "<kbd>B</kbd> – Dodaj lub usuń zakładkę przy aktywnym słowie"
     },
     "focusTitle": "Nawigacja po słowach w tekście",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> – Poprzednie lub następne słowo",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> – Zmień wiersz",
       "escape": "<kbd>Esc</kbd> – Opuść tekst i anuluj wybór słowa",
-      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> – Zaznacz wiele słów"
+      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> – Zaznacz wiele słów",
+      "panel": "<kbd>F6</kbd> – Przełącz fokus między tekstem i panelem słowa",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>End</kbd> – Pierwsze lub ostatnie słowo w tekście"
     },
     "actionTitle": "Akcje na zaznaczonym słowie",
     "actionKeys": {

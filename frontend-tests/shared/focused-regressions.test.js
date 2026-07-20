@@ -818,6 +818,110 @@ describe("focused frontend regressions", () => {
     assert.match(settings, /\[items\[index\], items\[nextIndex\]\] = \[items\[nextIndex\], items\[index\]\];\s*saveSelectedWordPanelItems\(items\);\s*restoreSelectedWordPanelSettingFocus\(id, button\.dataset\.direction\)/);
   });
 
+  it("routes the new desktop Reader shortcuts and leaves Android untouched", async () => {
+    const calls = [];
+    const state = {
+      selectedWord: "middle",
+      selectedWordIndex: 1,
+      readerSelectionRange: null,
+      preferences: { readerWordPanelVisible: true }
+    };
+    let android = false;
+    class FakeElement {
+      static [Symbol.hasInstance](value) { return value !== null && typeof value === "object"; }
+    }
+    class FakeButton {
+      static [Symbol.hasInstance](value) { return value?.isButton === true; }
+    }
+    const document = {
+      activeElement: null,
+      body: { contains() { return true; } },
+      getElementById(id) { return elements[id] || null; },
+      querySelector() { return null; }
+    };
+    const token = (name, index) => ({
+      isButton: true,
+      dataset: { word: name, wordIndex: String(index) },
+      classList: classList(["word-token"]),
+      focus() { document.activeElement = this; calls.push(["focus", name]); }
+    });
+    const tokens = [token("first", 0), token("middle", 1), token("last", 2)];
+    const play = { hidden: false, disabled: false, click() { calls.push(["tts", "play"]); } };
+    const stop = { hidden: true, disabled: false, click() { calls.push(["tts", "stop"]); } };
+    const panel = {
+      contains(value) { return value?.insidePanel === true; },
+      focus() { document.activeElement = this; calls.push(["focus", "panel"]); }
+    };
+    const elements = { "tts-play-text": play, "tts-stop-text": stop, "word-panel": panel };
+    document.activeElement = tokens[1];
+
+    const module = await evaluateWithMocks("dist/web/js/events/keyboard/reader-keys.js", {
+      "../../state.js": { state },
+      "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
+      "../../tts.js": { speakWord() {} },
+      "../../vocab-actions.js": { setWordStatus() {} },
+      "../shared.js": {
+        openDictionary() {}, getSelectedReaderActionText() { return "middle"; },
+        copySelectedWordToClipboard() {}, hasNativeTextSelection() { return false; }
+      },
+      "../../youglish.js": { openYouGlish() {} },
+      "../../reader/word-navigation.js": {
+        findCurrentReaderToken() { return tokens[1]; },
+        navigateReaderWord() {},
+        readerTokens() { return tokens; },
+        selectReaderToken(selected) { calls.push(["select", selected]); return true; }
+      },
+      "../../reader/bookmarks.js": {
+        toggleReaderBookmarkAtCurrentWord(wordIndex) { calls.push(["bookmark", wordIndex]); return true; }
+      },
+      "../../platform.js": { isAndroidPlatform() { return android; } }
+    }, {
+      document,
+      window: {},
+      CSS: { escape: (value) => value },
+      HTMLElement: FakeElement,
+      HTMLButtonElement: FakeButton,
+      HTMLSelectElement: FakeElement
+    });
+    const keyboardEvent = (overrides = {}) => ({
+      ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, code: "",
+      prevented: false, preventDefault() { this.prevented = true; }, ...overrides
+    });
+
+    const startTts = keyboardEvent({ shiftKey: true, code: "Space" });
+    assert.equal(module.handleReaderKeys(startTts, " "), true);
+    assert.equal(startTts.prevented, true);
+    stop.hidden = false;
+    const stopTts = keyboardEvent({ shiftKey: true, code: "Space" });
+    assert.equal(module.handleReaderKeys(stopTts, " "), true);
+    assert.equal(module.handleReaderKeys(keyboardEvent(), "b"), true);
+
+    assert.equal(module.handleReaderKeys(keyboardEvent(), "f6"), true);
+    assert.equal(document.activeElement, panel);
+    assert.equal(module.handleReaderKeys(keyboardEvent(), "f6"), true);
+    assert.equal(document.activeElement, tokens[1]);
+
+    assert.equal(module.handleReaderKeys(keyboardEvent({ ctrlKey: true }), "home"), true);
+    assert.equal(module.handleReaderKeys(keyboardEvent({ ctrlKey: true }), "end"), true);
+    assert.deepEqual(calls.filter(([type]) => type === "tts"), [["tts", "play"], ["tts", "stop"]]);
+    assert.deepEqual(calls.find(([type]) => type === "bookmark"), ["bookmark", 1]);
+    assert.deepEqual(calls.filter(([type]) => type === "select").map(([, selected]) => selected), [tokens[0], tokens[2]]);
+
+    const callsBeforeAndroid = calls.length;
+    android = true;
+    for (const [key, event] of [
+      [" ", keyboardEvent({ shiftKey: true, code: "Space" })],
+      ["b", keyboardEvent()],
+      ["f6", keyboardEvent()],
+      ["home", keyboardEvent({ ctrlKey: true })],
+      ["end", keyboardEvent({ ctrlKey: true })]
+    ]) {
+      assert.equal(module.handleReaderKeys(event, key), false, key);
+      assert.equal(event.prevented, false, key);
+    }
+    assert.equal(calls.length, callsBeforeAndroid);
+  });
+
   it("ignores hidden E/N fields and never focuses matching controls outside the word panel", async () => {
     const state = { selectedWord: "wort", readerSelectionRange: null };
     const outside = { focusCount: 0, focus() { this.focusCount += 1; } };
@@ -855,7 +959,9 @@ describe("focused frontend regressions", () => {
       "../../youglish.js": { openYouGlish() {} },
       "../../reader/word-navigation.js": {
         findCurrentReaderToken() { return null; }, navigateReaderWord() {}, readerTokens() { return []; }, selectReaderToken() {}
-      }
+      },
+      "../../reader/bookmarks.js": { toggleReaderBookmarkAtCurrentWord() { return false; } },
+      "../../platform.js": { isAndroidPlatform() { return false; } }
     }, {
       document,
       window: {},

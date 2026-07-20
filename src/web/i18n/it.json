@@ -747,6 +747,10 @@
     "focusHint4": "<kbd>I</kbd> aggiungi immagine",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> copia parola",
     "focusHint6": "<kbd>Maiusc</kbd>+<kbd>←</kbd> <kbd>→</kbd> seleziona più parole",
+    "focusHint7": "<kbd>Maiusc</kbd>+<kbd>Spazio</kbd> avvia/arresta TTS continuo",
+    "focusHint8": "<kbd>B</kbd> aggiungi/rimuovi segnalibro",
+    "focusHint9": "<kbd>F6</kbd> sposta il focus tra testo e pannello parola",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>Fine</kbd> prima/ultima parola",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> - Biblioteca",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> - Lettore",
@@ -770,14 +774,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> - cambia pagina; <kbd>Ctrl</kbd> + <kbd>G</kbd> - focus sul campo numero pagina",
       "imgSuggest": "<kbd>I</kbd> - Cerca immagine, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> - Seleziona suggerimento, <kbd>Ctrl</kbd> + <kbd>4</kbd> - Carica immagine",
       "inTextReview": "<kbd>Invio</kbd> - Mostra la risposta durante il ripasso nel lettore, <kbd>1</kbd>–<kbd>5</kbd> - Valuta la risposta",
-      "activate": "<kbd>Invio</kbd> / <kbd>Spazio</kbd> - Seleziona la parola con focus; Spazio pronuncia una parola già selezionata"
+      "activate": "<kbd>Invio</kbd> / <kbd>Spazio</kbd> - Seleziona la parola con focus; Spazio pronuncia una parola già selezionata",
+      "continuousTts": "<kbd>Maiusc</kbd> + <kbd>Spazio</kbd> - Avvia o arresta il TTS continuo dalla parola attiva",
+      "bookmark": "<kbd>B</kbd> - Aggiungi o rimuovi un segnalibro sulla parola attiva"
     },
     "focusTitle": "Navigazione nel testo (focus sulla parola)",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> - Parola precedente / successiva",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> - Cambia riga",
       "escape": "<kbd>Esc</kbd> - Esci dal testo (deseleziona la parola)",
-      "selectMultiple": "<kbd>Maiusc</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Seleziona più parole"
+      "selectMultiple": "<kbd>Maiusc</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Seleziona più parole",
+      "panel": "<kbd>F6</kbd> - Sposta il focus tra il testo e il pannello della parola",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>Fine</kbd> - Prima / ultima parola del testo"
     },
     "actionTitle": "Azioni sulla parola selezionata",
     "actionKeys": {

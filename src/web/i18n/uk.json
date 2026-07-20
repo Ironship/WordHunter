@@ -776,6 +776,10 @@
     "focusHint4": "<kbd>I</kbd> додати зображення",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> копіювати слово",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> вибрати кілька слів",
+    "focusHint7": "<kbd>Shift</kbd>+<kbd>Пробіл</kbd> запустити/зупинити безперервне TTS",
+    "focusHint8": "<kbd>B</kbd> додати/видалити закладку",
+    "focusHint9": "<kbd>F6</kbd> перемкнути фокус між текстом і панеллю слова",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> перше/останнє слово",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> — Бібліотека",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> — Читалка",
@@ -799,14 +803,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> — змінити сторінку; <kbd>Ctrl</kbd> + <kbd>G</kbd> — перейти до поля номера сторінки",
       "imgSuggest": "<kbd>I</kbd> — шукати зображення, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> — вибрати результат, <kbd>Ctrl</kbd> + <kbd>4</kbd> — завантажити власне зображення",
       "inTextReview": "<kbd>Enter</kbd> — показати відповідь під час повторення в читалці, <kbd>1</kbd>–<kbd>5</kbd> — оцінити відповідь",
-      "activate": "<kbd>Enter</kbd> / <kbd>Пробіл</kbd> — вибрати слово у фокусі; пробіл озвучує вже вибране слово"
+      "activate": "<kbd>Enter</kbd> / <kbd>Пробіл</kbd> — вибрати слово у фокусі; пробіл озвучує вже вибране слово",
+      "continuousTts": "<kbd>Shift</kbd> + <kbd>Пробіл</kbd> — запустити або зупинити безперервне TTS від активного слова",
+      "bookmark": "<kbd>B</kbd> — додати або видалити закладку біля активного слова"
     },
     "focusTitle": "Навігація текстом (фокус на слові)",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> — попереднє / наступне слово",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> — змінити рядок",
       "escape": "<kbd>Esc</kbd> — вийти з тексту (зняти виділення)",
-      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> — вибрати кілька слів"
+      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> — вибрати кілька слів",
+      "panel": "<kbd>F6</kbd> — перемкнути фокус між текстом і панеллю вибраного слова",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>End</kbd> — перше / останнє слово в тексті"
     },
     "actionTitle": "Дії з вибраним словом",
     "actionKeys": {

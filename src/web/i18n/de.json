@@ -747,6 +747,10 @@
     "focusHint4": "<kbd>I</kbd> Bild hinzufügen",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> Wort kopieren",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> mehrere Wörter auswählen",
+    "focusHint7": "<kbd>Umschalt</kbd>+<kbd>Leertaste</kbd> fortlaufendes TTS starten/stoppen",
+    "focusHint8": "<kbd>B</kbd> Lesezeichen hinzufügen/entfernen",
+    "focusHint9": "<kbd>F6</kbd> Fokus zwischen Text und Wortbereich wechseln",
+    "focusHint10": "<kbd>Strg</kbd>+<kbd>Pos1</kbd>/<kbd>Ende</kbd> erstes/letztes Wort",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> - Bibliothek",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> - Leser",
@@ -770,14 +774,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> - Seite wechseln; <kbd>Strg</kbd> + <kbd>G</kbd> - Seitennummer-Feld fokussieren",
       "imgSuggest": "<kbd>I</kbd> - Bild suchen, <kbd>Strg</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> - Vorschlag auswählen, <kbd>Strg</kbd> + <kbd>4</kbd> - Eigenes Bild hochladen",
       "inTextReview": "<kbd>Eingabe</kbd> - Antwort während einer Wiederholung im Reader anzeigen, <kbd>1</kbd>–<kbd>5</kbd> - Antwort bewerten",
-      "activate": "<kbd>Eingabe</kbd> / <kbd>Leertaste</kbd> - Fokussiertes Wort auswählen; Leertaste liest ein bereits ausgewähltes Wort vor"
+      "activate": "<kbd>Eingabe</kbd> / <kbd>Leertaste</kbd> - Fokussiertes Wort auswählen; Leertaste liest ein bereits ausgewähltes Wort vor",
+      "continuousTts": "<kbd>Umschalt</kbd> + <kbd>Leertaste</kbd> - Fortlaufendes TTS ab dem aktiven Wort starten oder stoppen",
+      "bookmark": "<kbd>B</kbd> - Lesezeichen am aktiven Wort hinzufügen oder entfernen"
     },
     "focusTitle": "Textnavigation (Wortfokus)",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> - Vorheriges / nächstes Wort",
       "line": "<kbd>Strg</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> - Zeile wechseln",
       "escape": "<kbd>Esc</kbd> - Text verlassen (Wort abwählen)",
-      "selectMultiple": "<kbd>Umschalt</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Mehrere Wörter auswählen"
+      "selectMultiple": "<kbd>Umschalt</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Mehrere Wörter auswählen",
+      "panel": "<kbd>F6</kbd> - Fokus zwischen Text und Wortbereich wechseln",
+      "firstLast": "<kbd>Strg</kbd> + <kbd>Pos1</kbd> / <kbd>Ende</kbd> - Erstes / letztes Wort im Text"
     },
     "actionTitle": "Aktionen für das ausgewählte Wort",
     "actionKeys": {

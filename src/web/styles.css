@@ -1213,7 +1213,8 @@ textarea {
 input:focus,
 select:focus,
 textarea:focus,
-button:focus-visible {
+button:focus-visible,
+#word-panel:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
   border-color: var(--focus-ring);
