@@ -197,7 +197,9 @@ describe("keyboard shortcut dispatch", () => {
 
     const readerKeys = readFileSync(new URL("../../dist/web/js/events/keyboard/reader-keys.js", import.meta.url), "utf8");
     assert.match(readerKeys, /const token = findCurrentReaderToken\(tokens\);/);
-    assert.doesNotMatch(readerKeys, /findCurrentReaderToken\(tokens\) \|\| tokens\[0\]/);
+    const ctrlEnterStart = readerKeys.indexOf('if (key === "enter" && exactCtrl)');
+    const ctrlEnterEnd = readerKeys.indexOf("const activeToken = document.activeElement", ctrlEnterStart);
+    assert.doesNotMatch(readerKeys.slice(ctrlEnterStart, ctrlEnterEnd), /tokens\[0\]/);
   });
 
   it("focuses the first Reader token after a page change without selecting it", () => {
@@ -283,6 +285,13 @@ describe("keyboard shortcut documentation", () => {
         assert.ok(data.help.navKeys[key], `${locale}.help.navKeys.${key}`);
       }
       assert.ok(data.help.readerKeys.activate, `${locale}.help.readerKeys.activate`);
+      assert.match(data.help.readerKeys.continuousTts, /<kbd>/, `${locale}.help.readerKeys.continuousTts`);
+      assert.match(data.help.readerKeys.bookmark, /<kbd>B<\/kbd>/, `${locale}.help.readerKeys.bookmark`);
+      assert.match(data.help.focusKeys.panel, /<kbd>F6<\/kbd>/, `${locale}.help.focusKeys.panel`);
+      assert.match(data.help.focusKeys.firstLast, /<kbd>[^<]+<\/kbd>/, `${locale}.help.focusKeys.firstLast`);
+      for (let index = 7; index <= 10; index++) {
+        assert.match(data.help[`focusHint${index}`], /<kbd>/, `${locale}.help.focusHint${index}`);
+      }
       assert.ok(data.help.editorKeys.word, `${locale}.help.editorKeys.word`);
       assert.ok(data.help.editorKeys.book, `${locale}.help.editorKeys.book`);
       assert.match(data.help.actionKeys.removeStatus, /translation|tłumaczeniem|Übersetzung|traducción|traduction|traduzione|翻訳|перевод|переклад/i);
@@ -290,6 +299,7 @@ describe("keyboard shortcut documentation", () => {
   });
 
   it("keeps Reader bubbling and pagination tooltip fixes wired", () => {
+    const navigation = readFileSync(new URL("../../dist/web/js/events/navigation.js", import.meta.url), "utf8");
     const reader = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
     const pagination = readFileSync(new URL("../../dist/web/js/reader/pagination.js", import.meta.url), "utf8");
     assert.match(reader, /event\.key === "Enter" && state\.selectedWord && document\.querySelector\("\[data-in-text-answer\]"\)/);
@@ -297,5 +307,6 @@ describe("keyboard shortcut documentation", () => {
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.prevPageTitle"\)\)\}"/);
     assert.match(pagination, /title="\$\{escapeAttribute\(tFn\("reader\.nextPageTitle"\)\)\}"/);
     assert.match(pagination, /requestReaderPageFocus\(\)/);
+    assert.match(navigation, /\(\(key === "enter" && event\.ctrlKey\) \|\| key === "f6"\)/);
   });
 });

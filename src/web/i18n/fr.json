@@ -747,6 +747,10 @@
     "focusHint4": "<kbd>I</kbd> ajouter une image",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> copier le mot",
     "focusHint6": "<kbd>Maj</kbd>+<kbd>←</kbd> <kbd>→</kbd> sélectionner plusieurs mots",
+    "focusHint7": "<kbd>Maj</kbd>+<kbd>Espace</kbd> démarrer/arrêter la lecture TTS continue",
+    "focusHint8": "<kbd>B</kbd> ajouter/supprimer un signet",
+    "focusHint9": "<kbd>F6</kbd> basculer le focus entre texte et panneau du mot",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Début</kbd>/<kbd>Fin</kbd> premier/dernier mot",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> - Bibliothèque",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> - Lecteur",
@@ -770,14 +774,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> - changer de page ; <kbd>Ctrl</kbd> + <kbd>G</kbd> - focus sur le champ de numéro de page",
       "imgSuggest": "<kbd>I</kbd> - Rechercher image, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> - Choisir suggestion, <kbd>Ctrl</kbd> + <kbd>4</kbd> - Importer image",
       "inTextReview": "<kbd>Entrée</kbd> - Afficher la réponse pendant une révision dans le lecteur, <kbd>1</kbd>–<kbd>5</kbd> - Évaluer la réponse",
-      "activate": "<kbd>Entrée</kbd> / <kbd>Espace</kbd> - Sélectionner le mot focalisé ; Espace prononce un mot déjà sélectionné"
+      "activate": "<kbd>Entrée</kbd> / <kbd>Espace</kbd> - Sélectionner le mot focalisé ; Espace prononce un mot déjà sélectionné",
+      "continuousTts": "<kbd>Maj</kbd> + <kbd>Espace</kbd> - Démarrer ou arrêter la lecture TTS continue à partir du mot actif",
+      "bookmark": "<kbd>B</kbd> - Ajouter ou supprimer un signet au mot actif"
     },
     "focusTitle": "Navigation dans le texte (mot ciblé)",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> - Mot précédent / suivant",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> - Changer de ligne",
       "escape": "<kbd>Échap</kbd> - Quitter le texte (désélectionner le mot)",
-      "selectMultiple": "<kbd>Maj</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Sélectionner plusieurs mots"
+      "selectMultiple": "<kbd>Maj</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Sélectionner plusieurs mots",
+      "panel": "<kbd>F6</kbd> - Basculer le focus entre le texte et le panneau du mot",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Début</kbd> / <kbd>Fin</kbd> - Premier / dernier mot du texte"
     },
     "actionTitle": "Actions sur le mot sélectionné",
     "actionKeys": {

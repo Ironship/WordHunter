@@ -828,6 +828,10 @@
     "focusHint4": "<kbd>I</kbd> add image",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> copy word",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> select multiple words",
+    "focusHint7": "<kbd>Shift</kbd>+<kbd>Space</kbd> start or stop continuous TTS",
+    "focusHint8": "<kbd>B</kbd> add or remove bookmark",
+    "focusHint9": "<kbd>F6</kbd> switch focus between text and Word Panel",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> first or last word",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> - Library",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> - Reader",
@@ -851,14 +855,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> - change page; <kbd>Ctrl</kbd> + <kbd>G</kbd> - focus the page number field",
       "imgSuggest": "<kbd>I</kbd> - Search image, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> - Select suggestion, <kbd>Ctrl</kbd> + <kbd>4</kbd> - Upload own image",
       "inTextReview": "<kbd>Enter</kbd> - Show the answer during an in-text review, <kbd>1</kbd>–<kbd>5</kbd> - Rate the answer",
-      "activate": "<kbd>Enter</kbd> / <kbd>Space</kbd> - Select a focused word; Space reads it when already selected"
+      "activate": "<kbd>Enter</kbd> / <kbd>Space</kbd> - Select a focused word; Space reads it when already selected",
+      "continuousTts": "<kbd>Shift</kbd> + <kbd>Space</kbd> - Start or stop continuous TTS from the active word",
+      "bookmark": "<kbd>B</kbd> - Add or remove a bookmark at the active word"
     },
     "focusTitle": "Text navigation (word focus)",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> - Previous / next word",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> - Change line",
       "escape": "<kbd>Esc</kbd> - Exit text (unselect word)",
-      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Select multiple words"
+      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> - Select multiple words",
+      "panel": "<kbd>F6</kbd> - Switch focus between the text and Word Panel",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>End</kbd> - First / last word in the text"
     },
     "actionTitle": "Actions on selected word",
     "actionKeys": {

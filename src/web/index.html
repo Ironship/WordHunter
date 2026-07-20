@@ -349,7 +349,7 @@
             <button type="button" id="pocket-word-panel-sheet-handle" class="pocket-word-panel-sheet-handle" aria-controls="word-panel" aria-expanded="false" aria-label="Expand word panel" title="Expand word panel">
               <span aria-hidden="true"></span>
             </button>
-            <aside class="panel word-panel" id="word-panel" aria-live="polite" data-i18n-attr="aria-label=reader.wordPanelEyebrow">
+            <aside class="panel word-panel" id="word-panel" tabindex="-1" aria-live="polite" data-i18n-attr="aria-label=reader.wordPanelEyebrow">
               <div class="empty-state">
                 <p class="eyebrow" data-i18n="reader.wordPanelEyebrow">Słowo</p>
                 <h2 data-i18n="reader.wordPanelHeading">Kliknij słowo w czytniku</h2>
@@ -363,6 +363,10 @@
               <span data-i18n-html="help.focusHint4"><kbd>I</kbd> dodaj obrazek</span>
               <span data-i18n-html="help.focusHint5"><kbd>Ctrl</kbd>+<kbd>C</kbd> kopiuj słowo</span>
               <span data-i18n-html="help.focusHint6"><kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> zaznacz wiele słów</span>
+              <span data-i18n-html="help.focusHint7"><kbd>Shift</kbd>+<kbd>Spacja</kbd> ciągłe TTS</span>
+              <span data-i18n-html="help.focusHint8"><kbd>B</kbd> dodaj lub usuń zakładkę</span>
+              <span data-i18n-html="help.focusHint9"><kbd>F6</kbd> przełącz tekst i panel słowa</span>
+              <span data-i18n-html="help.focusHint10"><kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> pierwsze lub ostatnie słowo</span>
             </div>
           </div>
         </div>
@@ -1390,6 +1394,8 @@
                     <li data-i18n-html="help.readerKeys.imgSuggest"></li>
                     <li data-i18n-html="help.readerKeys.inTextReview"></li>
                     <li data-i18n-html="help.readerKeys.activate"></li>
+                    <li data-i18n-html="help.readerKeys.continuousTts"></li>
+                    <li data-i18n-html="help.readerKeys.bookmark"></li>
                   </ul>
                 </div>
                 
@@ -1400,6 +1406,8 @@
                     <li data-i18n-html="help.focusKeys.line"></li>
                     <li data-i18n-html="help.focusKeys.escape"></li>
                     <li data-i18n-html="help.focusKeys.selectMultiple"></li>
+                    <li data-i18n-html="help.focusKeys.panel"></li>
+                    <li data-i18n-html="help.focusKeys.firstLast"></li>
                   </ul>
                 </div>
                 

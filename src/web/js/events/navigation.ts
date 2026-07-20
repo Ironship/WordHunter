@@ -61,7 +61,9 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
   if ((inField || key === "escape") && handleGlobalKeys(event, key, inField)) return;
   if (document.querySelector("dialog[open]")) return;
   if (event.repeat && !["arrowleft", "arrowright", "arrowup", "arrowdown", "pageup", "pagedown"].includes(key)) return;
-  if (state.currentView === "reader" && key === "enter" && event.ctrlKey && handleReaderKeys(event, key)) return;
+  if (state.currentView === "reader"
+    && ((key === "enter" && event.ctrlKey) || key === "f6")
+    && handleReaderKeys(event, key)) return;
   if (inField) return;
   const imageShortcut = event.ctrlKey && (/^[1-4]$/.test(key) || /^(?:Digit|Numpad)[1-4]$/.test(event.code || ""));
   if (imageShortcut && handleGlobalKeys(event, key, false)) return;
