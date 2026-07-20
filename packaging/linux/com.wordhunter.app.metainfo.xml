@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.7.1" date="2026-07-20">
+      <description>
+        <ul>
+          <li>Fix flashcard word and sentence speech so it follows the visible card.</li>
+          <li>Keep the desktop Word Panel synchronized with keyboard navigation.</li>
+          <li>Restore spoken-word highlighting for Edge TTS on Windows.</li>
+          <li>Add and document desktop Reader keyboard shortcuts.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.7" date="2026-07-20">
       <description>
         <ul>
