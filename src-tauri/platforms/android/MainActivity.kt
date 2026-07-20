@@ -1,11 +1,18 @@
 package com.wordhunter.pocket
 
+import android.Manifest
 import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -24,6 +31,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
@@ -32,6 +40,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val ANDROID_SYNC_TIMEOUT_MS = 180000L
 private const val ANDROID_EXPORT_TIMEOUT_MS = 120000L
+private const val ANDROID_EXPORT_MAX_CHARS = 32 * 1024 * 1024
 private const val ANDROID_SYNC_MAX_ENTRIES = 100000
 private const val ANDROID_SYNC_MAX_DEPTH = 8
 private const val ANDROID_SYNC_MAX_FILE_BYTES = 256L * 1024L * 1024L
@@ -39,16 +48,20 @@ private const val ANDROID_SYNC_MAX_TOTAL_BYTES = 2L * 1024L * 1024L * 1024L
 private const val ANDROID_SYNC_MARKER_NAME = ".wordhunter-sync.json"
 private const val ANDROID_SYNC_MARKER_MAX_BYTES = 4096
 private const val ANDROID_PDF_MAX_BITMAP_PIXELS = 8_000_000
+private const val TTS_NOTIFICATION_CHANNEL_ID = "wordhunter-tts"
+private const val TTS_NOTIFICATION_ID = 1001
 
 class MainActivity : TauriActivity() {
   private var appWebView: WebView? = null
   private var textToSpeech: TextToSpeech? = null
   private val syncExecutor = Executors.newSingleThreadExecutor()
+  private val exportExecutor = Executors.newSingleThreadExecutor()
   private val mainHandler = Handler(Looper.getMainLooper())
   private val syncLock = Any()
   private val bridgeRequestCounter = AtomicLong()
   private val pdfRenderSessions = mutableMapOf<String, PdfRenderSession>()
   private val pdfRenderLock = Any()
+  private var ttsNotificationPermissionRequested = false
   @Volatile private var ttsReady = false
   @Volatile private var activeSyncRequest: SyncRequest? = null
   @Volatile private var pendingSyncRequestId: String? = null
@@ -59,7 +72,7 @@ class MainActivity : TauriActivity() {
   private val mediaDataNames = setOf("books")
   private val knownDataNames = recordDataNames + mediaDataNames
   private val syncRecordDirectoryNames = setOf(
-    "profiles", "vocab", "texts", "hidden", "books", "assets", "conflicts", "resolved-conflicts"
+    "profiles", "vocab", "texts", "prefs", "hidden", "books", "assets", "conflicts", "resolved-conflicts"
   )
   private val skippedBookRecordNames = setOf("book.json", "book.bak", "metadata.json", "text.txt")
   private val syncFolderLauncher = registerForActivityResult(
@@ -130,24 +143,53 @@ class MainActivity : TauriActivity() {
     ActivityResultContracts.StartActivityForResult()
   ) { result ->
     val export = pendingExport
-    pendingExport = null
     if (export == null) {
       Log.w("WordHunter", "Ignoring stale Android export result.")
       return@registerForActivityResult
     }
-    export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
     val uri = result.data?.data
     if (result.resultCode != Activity.RESULT_OK || uri == null) {
+      synchronized(syncLock) {
+        if (pendingExport?.requestId == export.requestId) pendingExport = null
+      }
+      export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
       dispatchAndroidExportResult(export.requestId, success = false, error = null, cancelled = true, status = "cancelled")
       return@registerForActivityResult
     }
-    runCatching {
-      writeExportDocument(uri, export.data)
-    }.onSuccess {
-      dispatchAndroidExportResult(export.requestId, success = true, error = null, cancelled = false, status = "completed")
-    }.onFailure { error ->
-      dispatchAndroidExportResult(export.requestId, success = false, error = error.message, cancelled = false, status = "error")
+    val readyToWrite = synchronized(syncLock) {
+      if (pendingExport?.requestId != export.requestId) {
+        false
+      } else {
+        export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        export.timeoutRunnable = null
+        true
+      }
     }
+    if (!readyToWrite) return@registerForActivityResult
+    dispatchAndroidExportProgress(export.requestId, "writing")
+    exportExecutor.execute {
+      val outcome = runCatching { writeExportDocument(uri, export.data) }
+      val stillActive = synchronized(syncLock) {
+        if (pendingExport?.requestId != export.requestId) false
+        else {
+          pendingExport = null
+          true
+        }
+      }
+      if (stillActive) {
+        export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        outcome.onSuccess {
+          dispatchAndroidExportResult(export.requestId, success = true, error = null, cancelled = false, status = "completed")
+        }.onFailure { error ->
+          dispatchAndroidExportResult(export.requestId, success = false, error = error.message, cancelled = false, status = "error")
+        }
+      }
+    }
+  }
+  private val ttsNotificationPermissionLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestPermission()
+  ) { granted ->
+    if (granted && textToSpeech?.isSpeaking == true) showTtsNotification()
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -157,18 +199,23 @@ class MainActivity : TauriActivity() {
       ttsReady = status == TextToSpeech.SUCCESS
     }
     textToSpeech?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-      override fun onStart(utteranceId: String?) {}
+      override fun onStart(utteranceId: String?) {
+        showTtsNotification()
+      }
 
       override fun onDone(utteranceId: String?) {
+        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "done")
       }
 
       @Deprecated("Deprecated in Android API")
       override fun onError(utteranceId: String?) {
+        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "error")
       }
 
       override fun onStop(utteranceId: String?, interrupted: Boolean) {
+        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "stopped")
       }
 
@@ -206,7 +253,9 @@ class MainActivity : TauriActivity() {
       pendingSyncRequestId = null
     }
     syncExecutor.shutdownNow()
+    exportExecutor.shutdownNow()
     closeAllPdfRenderSessions()
+    hideTtsNotification()
     textToSpeech?.stop()
     textToSpeech?.shutdown()
     textToSpeech = null
@@ -308,6 +357,10 @@ class MainActivity : TauriActivity() {
     fun saveExport(data: String?, filename: String?, mime: String?, requestId: String?): Boolean {
       val payload = data ?: return false
       val id = normalizeBridgeRequestId(requestId, "android-export")
+      if (payload.length > ANDROID_EXPORT_MAX_CHARS) {
+        dispatchAndroidExportResult(id, success = false, error = "Pocket export exceeds the 32 MB safety limit.", cancelled = false, status = "too-large")
+        return true
+      }
       synchronized(syncLock) {
         if (pendingExport != null) {
           dispatchAndroidExportResult(id, success = false, error = "Android export is already running.", cancelled = false, status = "busy")
@@ -365,6 +418,7 @@ class MainActivity : TauriActivity() {
     fun stopTts() {
       runOnUiThread {
         textToSpeech?.stop()
+        hideTtsNotification()
       }
     }
 
@@ -511,6 +565,7 @@ class MainActivity : TauriActivity() {
       private set
     var importedFileCount = 0
     var exportedFileCount = 0
+    var processedExportFileCount = 0
     var localRecordCount = 0
     var remoteRecordCount = 0
     var stagedRemoteRecordCount = 0
@@ -585,6 +640,7 @@ class MainActivity : TauriActivity() {
         .put("skippedRemote", skippedRemote)
         .put("importedFileCount", importedFileCount)
         .put("exportedFileCount", exportedFileCount)
+        .put("processedExportFileCount", processedExportFileCount)
         .put("localRecordCount", localRecordCount)
         .put("remoteRecordCount", remoteRecordCount)
         .put("stagedRemoteRecordCount", stagedRemoteRecordCount)
@@ -906,10 +962,18 @@ class MainActivity : TauriActivity() {
       return "verified"
     }
 
-    val allowedLegacyNames = knownDataNames + setOf(".stfolder", ".stversions", ".stignore")
-    val unexpected = entries.mapNotNull { it.name }.filter { it !in allowedLegacyNames }
+    val allowedLegacyNames = knownDataNames + setOf(
+      "argos-packages", ".stfolder", ".stversions", ".stignore", ".DS_Store", "desktop.ini", "Thumbs.db"
+    )
+    val entryNames = entries.mapNotNull { it.name }
+    val unexpected = entryNames.filter { it !in allowedLegacyNames && !it.startsWith(".stfolder.removed-") }
     if (unexpected.isNotEmpty()) {
-      error("Select an empty Word Hunter sync folder; this folder contains unrelated files.")
+      error("Select a dedicated or existing Word Hunter sync folder; this folder contains unrelated files.")
+    }
+    val hasWordHunterData = entryNames.any { it in knownDataNames || it == "argos-packages" }
+    val recordsV1 = folder.findFile("records")?.takeIf { it.isDirectory }?.findFile("v1")
+    if (hasWordHunterData && recordsV1?.isDirectory != true) {
+      error("Existing Word Hunter data is incomplete: records/v1 is missing.")
     }
     val created = folder.createFile("application/json", ANDROID_SYNC_MARKER_NAME)
       ?: error("Cannot create Word Hunter sync ownership marker.")
@@ -1134,6 +1198,9 @@ class MainActivity : TauriActivity() {
         copyDocumentTreeToFile(child, destination, request = request, stats = stats, relativePath = childRelativePath, recordsOnly = recordsOnly, depth = depth + 1)
       } else if (child.isFile) {
         copyDocumentFileToFile(child, destination, childRelativePath, request = request, stats = stats)
+        if (stats.importedFileCount % 100 == 0) {
+          dispatchAndroidSyncProgress(request, "staging-remote")
+        }
       }
     }
   }
@@ -1178,6 +1245,10 @@ class MainActivity : TauriActivity() {
       } else if (child.isFile) {
         if (isIncompleteLocalRecordFile(child, stats)) return@forEach
         copyFileToDocument(child, target, targetChildren[child.name], childRelativePath, request, stats)
+        stats.processedExportFileCount += 1
+        if (stats.processedExportFileCount % 100 == 0) {
+          dispatchAndroidSyncProgress(request, "exporting")
+        }
       }
     }
     targetChildren.forEach { (name, child) ->
@@ -1203,8 +1274,8 @@ class MainActivity : TauriActivity() {
     if (existing != null && !existing.isFile) {
       error("Cannot export file over folder ${source.name}.")
     }
-    ensureRemoteFileUnchanged(relativePath, existing, stats)
-    if (existing != null && shouldSkipDocumentExport(source, existing)) return
+    val existingDigest = ensureRemoteFileUnchanged(relativePath, existing, stats)
+    if (existing != null && shouldSkipDocumentExport(source, existing, existingDigest)) return
     val tempName = "${source.name}.tmp"
     val staleTemp = target.findFile(tempName)
     if (staleTemp != null && !staleTemp.delete()) {
@@ -1256,32 +1327,24 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  private fun shouldSkipDocumentExport(source: File, existing: DocumentFile): Boolean {
-    if (isSyncRecordFile(source)) {
-      return recordContentsEqual(source, existing)
-    }
+  private fun shouldSkipDocumentExport(source: File, existing: DocumentFile, existingDigest: ByteArray?): Boolean {
     val expectedLength = source.length()
     val existingLength = existing.length()
     if (expectedLength == 0L && existingLength == 0L) return true
     if (expectedLength > 0L && existingLength > 0L && expectedLength != existingLength) return false
-    return runCatching {
-      contentResolver.openInputStream(existing.uri)?.use { existingInput ->
-        source.inputStream().use { sourceInput ->
-          streamsEqual(sourceInput, existingInput)
-        }
-      } ?: false
-    }.getOrDefault(false)
+    if (existingDigest == null) return false
+    return source.inputStream().use { streamDigest(it).contentEquals(existingDigest) }
   }
 
   private fun ensureRemoteFileUnchanged(
     relativePath: String,
     existing: DocumentFile?,
     stats: AndroidSyncStats
-  ) {
+  ): ByteArray? {
     val expectedDigest = stats.remoteFileDigest(relativePath)
     if (existing == null) {
       if (expectedDigest != null) error("Sync folder entry was removed while syncing: $relativePath")
-      return
+      return null
     }
     if (expectedDigest == null) error("Sync folder changed while syncing: $relativePath")
     val actualDigest = contentResolver.openInputStream(existing.uri)?.use { input -> streamDigest(input) }
@@ -1289,6 +1352,7 @@ class MainActivity : TauriActivity() {
     if (!actualDigest.contentEquals(expectedDigest)) {
       error("Sync folder changed while syncing: $relativePath")
     }
+    return actualDigest
   }
 
   private fun deleteManagedDocumentEntry(
@@ -1322,22 +1386,6 @@ class MainActivity : TauriActivity() {
       if (!entry.delete()) error("Cannot remove synchronized tombstone $relativePath.")
       stats.deletedRemoteEntryCount += 1
     }
-  }
-
-  private fun recordContentsEqual(source: File, existing: DocumentFile): Boolean {
-    return runCatching {
-      contentResolver.openInputStream(existing.uri)?.use { existingInput ->
-        source.inputStream().use { sourceInput ->
-          streamsEqual(sourceInput, existingInput)
-        }
-      } ?: error("Cannot read existing sync record ${existing.name ?: source.name}.")
-    }.getOrElse { cause ->
-      error("Cannot compare sync record ${source.name}: ${cause.message ?: cause.javaClass.simpleName}")
-    }
-  }
-
-  private fun streamsEqual(left: java.io.InputStream, right: java.io.InputStream): Boolean {
-    return streamDigest(left).contentEquals(streamDigest(right))
   }
 
   private fun streamDigest(input: java.io.InputStream): ByteArray {
@@ -1426,7 +1474,6 @@ class MainActivity : TauriActivity() {
             output.write(buffer, 0, read)
             digest.update(buffer, 0, read)
           }
-          output.fd.sync()
           if (expectedLength > 0L && copied != expectedLength) {
             error("Incomplete import for ${destination.name}.")
           }
@@ -1680,6 +1727,10 @@ class MainActivity : TauriActivity() {
 
   private fun dispatchAndroidSyncProgress(request: SyncRequest, status: String, health: JSONObject? = null, path: String? = null) {
     if (!isSyncRequestActive(request)) return
+    request.timeoutRunnable?.let {
+      mainHandler.removeCallbacks(it)
+      mainHandler.postDelayed(it, ANDROID_SYNC_TIMEOUT_MS)
+    }
     val detail = JSONObject()
       .put("requestId", request.id)
       .put("success", false)
@@ -1734,10 +1785,11 @@ class MainActivity : TauriActivity() {
   }
 
   private fun writeExportDocument(uri: Uri, data: String) {
-    val bytes = data.toByteArray(Charsets.UTF_8)
     contentResolver.openFileDescriptor(uri, "wt")?.use { descriptor ->
       FileOutputStream(descriptor.fileDescriptor).use { output ->
-        output.write(bytes)
+        val writer = OutputStreamWriter(output, Charsets.UTF_8)
+        writer.write(data)
+        writer.flush()
         output.fd.sync()
       }
     } ?: error("Cannot open export document.")
@@ -1767,6 +1819,18 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  private fun dispatchAndroidExportProgress(requestId: String, status: String) {
+    val detail = JSONObject()
+      .put("requestId", requestId)
+      .put("success", false)
+      .put("error", JSONObject.NULL)
+      .put("cancelled", false)
+      .put("status", status)
+      .put("terminal", false)
+    val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-export',{detail:$detail}));"
+    appWebView?.post { appWebView?.evaluateJavascript(script, null) }
+  }
+
   private fun dispatchPendingAndroidExportResult() {
     val detail = pendingExportResult ?: return
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-export',{detail:$detail}));"
@@ -1791,6 +1855,61 @@ class MainActivity : TauriActivity() {
   private fun safeMimeType(value: String?): String {
     val mime = value?.trim()?.takeIf { it.contains("/") && !it.contains("\n") }
     return mime ?: "application/octet-stream"
+  }
+
+  private fun showTtsNotification() {
+    runOnUiThread {
+      if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+        if (!ttsNotificationPermissionRequested && !isFinishing && !isDestroyed) {
+          ttsNotificationPermissionRequested = true
+          runCatching { ttsNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+            .onFailure { Log.w("WordHunter", "Cannot request TTS notification permission.", it) }
+        }
+        return@runOnUiThread
+      }
+
+      val manager = getSystemService(NotificationManager::class.java)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        manager.createNotificationChannel(
+          NotificationChannel(TTS_NOTIFICATION_CHANNEL_ID, "TTS", NotificationManager.IMPORTANCE_LOW).apply {
+            setShowBadge(false)
+          }
+        )
+      }
+      val openApp = Intent(this, MainActivity::class.java).apply {
+        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+      }
+      val contentIntent = PendingIntent.getActivity(
+        this,
+        0,
+        openApp,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      )
+      val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Notification.Builder(this, TTS_NOTIFICATION_CHANNEL_ID)
+      } else {
+        Notification.Builder(this)
+      }
+      manager.notify(
+        TTS_NOTIFICATION_ID,
+        builder
+          .setSmallIcon(android.R.drawable.ic_media_play)
+          .setContentTitle(applicationInfo.loadLabel(packageManager))
+          .setContentText("TTS")
+          .setContentIntent(contentIntent)
+          .setAutoCancel(true)
+          .setOnlyAlertOnce(true)
+          .setCategory(Notification.CATEGORY_TRANSPORT)
+          .setVisibility(Notification.VISIBILITY_PRIVATE)
+          .build()
+      )
+    }
+  }
+
+  private fun hideTtsNotification() {
+    runOnUiThread {
+      getSystemService(NotificationManager::class.java).cancel(TTS_NOTIFICATION_ID)
+    }
   }
 
   private fun dispatchAndroidTtsResult(

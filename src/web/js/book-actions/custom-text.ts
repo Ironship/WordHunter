@@ -14,7 +14,9 @@ import { deleteStoredText, upsertStoredText } from "../store-bridge.js";
 import {
   clearCurrentBookSelectionIfMatches,
   findCustomText,
+  isCustomTextReferenced,
   removeCustomTextFromActiveProfile,
+  uniqueCustomTextId,
   upsertCustomText
 } from "./profile-library.js";
 import { buildPdfDocumentText, effectivePdfPageText, reconcilePdfPageWords } from "../reader/pdf-page-text.js";
@@ -70,7 +72,8 @@ export async function importCustomText(
 
   const now = new Date().toISOString();
   const slug = slugify(cleanTitle);
-  const id = meta.id || `${state.preferences.learningLanguage}-custom-${slug || Date.now()}`;
+  const id = meta.id
+    || uniqueCustomTextId(`${state.preferences.learningLanguage}-custom-${slug || Date.now()}`);
   const existingText = findCustomText(id, { coerce: true }) as PdfCustomText | undefined;
   const pdfOcrPages = Array.isArray(meta.pdfOcrPages) ? meta.pdfOcrPages : existingText?.pdfOcrPages;
   const hasPdfOcrPages = Array.isArray(pdfOcrPages) && pdfOcrPages.length > 0;
@@ -194,18 +197,9 @@ export async function updatePdfOcrPageText(
 export async function removeCustomText(id: string): Promise<void> {
   const existing = findCustomText(id);
   if (!existing) return;
-  if (window.__qtBridge) {
-    try {
-      await deleteStoredText(id);
-    } catch (error) {
-      console.warn("delete_text failed", error);
-      showToast(t("toast.syncUnavailable"), "error");
-      return;
-    }
-  }
-
   const textObj = removeCustomTextFromActiveProfile(id);
   if (!textObj) return;
+  const deleteBackendText = !isCustomTextReferenced(id);
   clearBookTextCache(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
@@ -221,6 +215,12 @@ export async function removeCustomText(id: string): Promise<void> {
     }
     showToast(t("toast.syncUnavailable"), "error");
     return;
+  }
+
+  if (window.__qtBridge && deleteBackendText) {
+    await deleteStoredText(id).catch((error) => {
+      console.warn("delete_text media cleanup failed", error);
+    });
   }
 
   render();

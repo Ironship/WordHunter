@@ -31,6 +31,41 @@ function stripBom(text: unknown): string {
   return stringValue(text).replace(/^\uFEFF/, "");
 }
 
+export function decodeImportedTextBytes(
+  value: ArrayBuffer | ArrayBufferView,
+  language = "pl"
+): string {
+  const bytes = value instanceof ArrayBuffer
+    ? new Uint8Array(value)
+    : new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  if (bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
+    return new TextDecoder("utf-8").decode(bytes.subarray(3));
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder("utf-16le").decode(bytes.subarray(2));
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder("utf-16be").decode(bytes.subarray(2));
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    const baseLanguage = String(language || "").toLowerCase().split("-")[0];
+    const legacyEncoding = baseLanguage === "pl"
+      ? "windows-1250"
+      : baseLanguage === "ru" || baseLanguage === "uk"
+        ? "windows-1251"
+        : baseLanguage === "el" || baseLanguage === "grc"
+          ? "windows-1253"
+          : baseLanguage === "ja"
+            ? "shift_jis"
+            : baseLanguage === "zh"
+              ? "gb18030"
+              : "windows-1252";
+    return new TextDecoder(legacyEncoding).decode(bytes);
+  }
+}
+
 function parseSrt(text: string): string {
   const lines = stripBom(text).replace(/\r\n?/g, "\n").split("\n");
   const output: string[] = [];

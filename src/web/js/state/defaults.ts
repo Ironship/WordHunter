@@ -145,7 +145,8 @@ export function createDefaultState(): WhAppState {
       colorKnown: "#8ce99a",
       colorIgnored: "#ced4da",
       reviewGraphType: "heatmap",
-      graphRange: "recent"
+      graphRange: "recent",
+      readerBookmarks: {}
     }
   };
 }

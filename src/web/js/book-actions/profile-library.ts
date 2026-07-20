@@ -55,7 +55,7 @@ function customTextIdsAcrossProfiles(): Set<string> {
   return ids;
 }
 
-function uniqueCustomTextId(candidate: string): string {
+export function uniqueCustomTextId(candidate: string): string {
   const ids = customTextIdsAcrossProfiles();
   let nextId = candidate;
   let suffix = 2;
@@ -109,18 +109,37 @@ export function hideBuiltInBookId(id: string): boolean {
   return true;
 }
 
+function isBookReferenced(id: string): boolean {
+  if (state.customTexts.some((text) => text.id === id) || state.userBooks.some((book) => book.id === id)) return true;
+  return Object.values(state.profiles || {}).some((profile) =>
+    profile?.customTexts?.some((text) => text.id === id)
+    || profile?.userBooks?.some((book) => book.id === id)
+  );
+}
+
+export function isCustomTextReferenced(id: string): boolean {
+  return state.customTexts.some((text) => text.id === id)
+    || Object.values(state.profiles || {}).some((profile) =>
+      profile?.customTexts?.some((text) => text.id === id)
+    );
+}
+
 export function removeCustomTextFromActiveProfile(id: string): WhText | null {
   const idx = state.customTexts.findIndex((text) => text.id === id);
   if (idx === -1) return null;
   forgetArchivedBook(id);
-  return state.customTexts.splice(idx, 1)[0];
+  const removed = state.customTexts.splice(idx, 1)[0];
+  if (!isBookReferenced(id) && state.preferences.readerBookmarks) delete state.preferences.readerBookmarks[id];
+  return removed;
 }
 
 export function removeUserBookFromActiveProfile(id: string): WhText | null {
   const idx = state.userBooks.findIndex((book) => book.id === id);
   if (idx === -1) return null;
   forgetArchivedBook(id);
-  return state.userBooks.splice(idx, 1)[0];
+  const removed = state.userBooks.splice(idx, 1)[0];
+  if (!isBookReferenced(id) && state.preferences.readerBookmarks) delete state.preferences.readerBookmarks[id];
+  return removed;
 }
 
 export function planCustomTextMove(id: string, targetLang: string) {
@@ -137,15 +156,41 @@ export function planCustomTextMove(id: string, targetLang: string) {
 export function moveCustomTextToProfile(id: string, targetLang: string) {
   const planned = planCustomTextMove(id, targetLang);
   if (!planned) return null;
+  const bookmarks = state.preferences.readerBookmarks?.[id];
+  const sourceLang = state.preferences.learningLanguage;
+  const wasLastRead = state.preferences.lastReadTextIds?.[sourceLang] === id;
   removeCustomTextFromActiveProfile(id);
+  const oldIdStillReferenced = isBookReferenced(id);
+  if (bookmarks?.length) state.preferences.readerBookmarks[planned.newId] = bookmarks;
+  if (state.readerPages && Object.hasOwn(state.readerPages, id)) {
+    state.readerPages[planned.newId] = state.readerPages[id];
+    if (!oldIdStillReferenced) delete state.readerPages[id];
+  }
+  if (state.readerScrolls && Object.hasOwn(state.readerScrolls, id)) {
+    state.readerScrolls[planned.newId] = state.readerScrolls[id];
+    if (!oldIdStillReferenced) delete state.readerScrolls[id];
+  }
+  if (state.readerScrollsPerPage) {
+    for (const [key, value] of Object.entries(state.readerScrollsPerPage)) {
+      if (!key.startsWith(`${id}-`)) continue;
+      state.readerScrollsPerPage[`${planned.newId}${key.slice(id.length)}`] = value;
+      if (!oldIdStillReferenced) delete state.readerScrollsPerPage[key];
+    }
+  }
+  if (wasLastRead) {
+    if (!state.preferences.lastReadTextIds) state.preferences.lastReadTextIds = {};
+    state.preferences.lastReadTextIds[targetLang] = planned.newId;
+  }
   const targetProfile = ensureProfile(targetLang);
   targetProfile.customTexts.push(planned.textObj);
   return planned;
 }
 
 export function moveUserBookToProfile(id: string, targetLang: string): WhText | null {
+  const bookmarks = state.preferences.readerBookmarks?.[id];
   const bookObj = removeUserBookFromActiveProfile(id);
   if (!bookObj) return null;
+  if (bookmarks?.length) state.preferences.readerBookmarks[id] = bookmarks;
   ensureProfile(targetLang).userBooks.push(bookObj);
   return bookObj;
 }

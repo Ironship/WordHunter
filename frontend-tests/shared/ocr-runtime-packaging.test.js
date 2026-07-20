@@ -183,6 +183,12 @@ describe("OCR runtime packaging", () => {
 
     const ocrCargo = read("../../src-tauri/ocr-runner/Cargo.toml");
     assert.match(ocrCargo, /cfg\(target_os = "linux"\)[\s\S]*features = \["webgpu"\]/);
+    const ocrBuild = read("../../src-tauri/ocr-runner/build.rs");
+    assert.match(
+      ocrBuild,
+      /rustc-link-arg-bin=wordhunter-paddleocr=-lwebgpu_dawn/,
+    );
+    assert.doesNotMatch(ocrBuild, /rustc-link-lib=dylib=webgpu_dawn/);
 
     const buildCommands = read("../../scripts/build-flatpak.sh")
       .split(/\r?\n/)

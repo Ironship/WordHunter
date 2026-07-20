@@ -36,7 +36,7 @@ globalThis.CustomEvent = class CustomEvent {
 
 const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { syncSettingsControls } = await import("../../dist/web/js/preferences.js");
+const { resetPreferences, syncSettingsControls } = await import("../../dist/web/js/preferences.js");
 const { renderWordPanel } = await import("../../dist/web/js/reader/word-panel.js");
 
 function control() {
@@ -135,23 +135,37 @@ describe("preferences settings summary", () => {
     assert.equal(normalizeState(raw).preferences.cardStatsMode, "percentages");
   });
 
+  it("keeps Reader bookmarks when visual preferences are reset", () => {
+    resetState();
+    const bookmarks = {
+      "de-custom-note": [{ id: "saved", label: "Saved", page: 2, scrollTop: 30, wordIndex: 12, createdAt: "2026-01-01" }]
+    };
+    state.preferences.readerBookmarks = bookmarks;
+    state.preferences.readerFont = "serif";
+
+    resetPreferences();
+
+    assert.deepEqual(state.preferences.readerBookmarks, bookmarks);
+    assert.equal(state.preferences.readerFont, createDefaultState().preferences.readerFont);
+  });
+
   it("uses the issue #57 selected-word panel order and clones it per default state", () => {
     const first = createDefaultState();
     const second = createDefaultState();
     assert.deepEqual(first.preferences.selectedWordPanelItems, [
       { id: "status", visible: true },
-      { id: "article", visible: true },
+      { id: "article", visible: false },
       { id: "dictionary", visible: true },
       { id: "speech", visible: true },
       { id: "youglish", visible: true },
       { id: "remove", visible: true },
       { id: "suggestion", visible: true },
       { id: "translation", visible: true },
-      { id: "note", visible: true },
-      { id: "image", visible: true },
+      { id: "note", visible: false },
+      { id: "image", visible: false },
       { id: "context", visible: true },
       { id: "copy", visible: false },
-      { id: "edit", visible: false }
+      { id: "edit", visible: true }
     ]);
     assert.notStrictEqual(first.preferences.selectedWordPanelItems, second.preferences.selectedWordPanelItems);
     assert.notStrictEqual(first.preferences.selectedWordPanelItems[0], second.preferences.selectedWordPanelItems[0]);
@@ -252,8 +266,8 @@ describe("preferences settings summary", () => {
       syncConflicts: [{
         id: "1234-conflict",
         key: "vocab:de:haus",
-        kept: { kind: "vocab", deviceId: "pc-device", deleted: false },
-        conflict: { kind: "vocab", deviceId: "phone-device", deleted: true }
+        kept: { kind: "vocab", deviceId: "pc-device", updatedAt: "1784563200000", deleted: false },
+        conflict: { kind: "vocab", deviceId: "phone-device", updatedAt: "1784476800000", deleted: true }
       }]
     });
 
@@ -263,6 +277,7 @@ describe("preferences settings summary", () => {
     assert.match(els.syncStatus.textContent, /settings\.syncConflictCount/);
     assert.match(els.syncConflictsList.innerHTML, /data-conflict-id="1234-conflict"/);
     assert.match(els.syncConflictsList.innerHTML, /vocab:de:haus/);
+    assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution-all="keep-current"/);
     assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="keep-current"/);
     assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="use-conflict"/);
   });

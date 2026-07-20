@@ -1,0 +1,5 @@
+Word Hunter 1.0.7 is now stable.
+
+- Adds exact-word bookmarks and restores your last reading position.
+- Hardens synchronization, backups, imports, and book persistence.
+- Improves large Android syncs, conflict resolution, and TTS controls.

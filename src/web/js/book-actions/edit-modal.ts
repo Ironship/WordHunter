@@ -4,7 +4,7 @@
 import { state } from "../state.js";
 import { els as domElements } from "../dom.js";
 import { showToast as displayToast } from "../toast.js";
-import { bookTexts, findBookById } from "../books.js";
+import { bookTexts, findBookById, loadCustomTextContent } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
 import { formatTagList, parseTagList } from "../utils.js";
 import { t as translate } from "../i18n.js";
@@ -81,18 +81,23 @@ export async function openEditBookModal(id: string): Promise<void> {
   if (els.editBookTags) els.editBookTags.value = formatTagList(book.tags);
   if (els.editBookLevel) els.editBookLevel.value = book.level || "";
 
-  if (customText && window.__qtBridge && !bookTexts.has(id)) {
+  let customBody = "";
+  if (customText) {
     try {
-      const res = await fetch(`/__book/text?id=${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: unknown = await res.json();
-      if (typeof data === "object" && data !== null && "text" in data && typeof data.text === "string" && data.text) {
-        bookTexts.set(id, data.text);
+      customBody = await loadCustomTextContent(customText);
+    } catch (error) {
+      console.warn("edit book body refresh failed", error);
+      if (generation === editBookGeneration && editingBookId === id) {
+        editingBookId = null;
+        editingBookKind = null;
+        editBookOriginalValues = null;
+        showToast(t("toast.syncUnavailable"), "error");
       }
-    } catch(e) { console.warn(e); }
+      return;
+    }
   }
   if (generation !== editBookGeneration || editingBookId !== id) return;
-  els.editBookText.value = bookTexts.get(id) || (customText && customText.text) || "";
+  els.editBookText.value = customText ? customBody : bookTexts.get(id) || "";
   els.editBookText.readOnly = editingBookKind !== "custom" || Array.isArray(customText?.pdfOcrPages);
 
   const coverUrl = typeof book.coverDataUrl === "string" ? book.coverDataUrl : "";
@@ -216,6 +221,10 @@ export async function saveEditedBook(): Promise<void> {
 
 export async function pasteImageToEditBook(file: File): Promise<void> {
   if (!editingBookId) return;
+  if (file.size > 16 * 1024 * 1024) {
+    showToast(t("toast.importFailed"), "error");
+    return;
+  }
   const targetBookId = editingBookId;
   const generation = editBookGeneration;
   const ext = file.type.split("/")[1] || "png";
@@ -229,20 +238,23 @@ export async function pasteImageToEditBook(file: File): Promise<void> {
     const startPos = textarea.selectionStart;
     const endPos = textarea.selectionEnd;
     const textToInsert = `\n[IMG:${imgName}]\n`;
-
-    textarea.value = textarea.value.substring(0, startPos) + textToInsert + textarea.value.substring(endPos, textarea.value.length);
-    textarea.selectionStart = startPos + textToInsert.length;
-    textarea.selectionEnd = startPos + textToInsert.length;
-
-    if (window.__qtBridge) {
-      try {
-        await fetch("/__book/image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-          body: JSON.stringify({ book_id: targetBookId, img_name: imgName, base64_data: base64Data })
-        });
-      } catch(e) { console.warn("Image upload failed", e); }
+    try {
+      if (!window.__qtBridge) throw new Error("book image storage is unavailable");
+      const response = await fetch("/__book/image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({ book_id: targetBookId, img_name: imgName, base64_data: base64Data })
+      });
+      if (!response.ok) throw new Error(`book image upload HTTP ${response.status}`);
+      if (generation !== editBookGeneration || editingBookId !== targetBookId) return;
+      textarea.value = textarea.value.substring(0, startPos) + textToInsert + textarea.value.substring(endPos, textarea.value.length);
+      textarea.selectionStart = startPos + textToInsert.length;
+      textarea.selectionEnd = startPos + textToInsert.length;
+    } catch (error) {
+      console.warn("Image upload failed", error);
+      showToast(t("toast.importFailed"), "error");
     }
   };
+  reader.onerror = () => showToast(t("toast.importFailed"), "error");
   reader.readAsDataURL(file);
 }

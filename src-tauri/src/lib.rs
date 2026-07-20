@@ -53,8 +53,30 @@ pub fn run() {
         std::process::exit(offline_translator::run_worker());
     }
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    {
+        use tauri::Manager as _;
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    let app = builder
         .setup(platform::setup)
-        .run(tauri::generate_context!())
-        .expect("failed to run Word Hunter");
+        .build(tauri::generate_context!())
+        .expect("failed to build Word Hunter");
+    app.run(|app_handle, event| {
+        #[cfg(not(target_os = "android"))]
+        if let tauri::RunEvent::ExitRequested { api, .. } = event
+            && !platform::exit_is_permitted(app_handle)
+        {
+            api.prevent_exit();
+            platform::request_graceful_exit(app_handle);
+        }
+    });
 }

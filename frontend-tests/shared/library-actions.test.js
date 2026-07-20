@@ -20,15 +20,17 @@ globalThis.CustomEvent = class CustomEvent {
   }
 };
 
-const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
+const { createDefaultState, replaceState, state, switchLearningLanguage } = await import("../../dist/web/js/state.js");
 const {
   archiveBookId,
   clearCurrentBookSelectionIfMatches,
   ensureActiveLibraryCollections,
   forgetArchivedBook,
+  isCustomTextReferenced,
   moveCustomTextToProfile,
   moveUserBookToProfile,
-  removeCustomTextFromActiveProfile
+  removeCustomTextFromActiveProfile,
+  removeUserBookFromActiveProfile
 } = await import("../../dist/web/js/book-actions/profile-library.js");
 
 function resetLibraryState() {
@@ -76,6 +78,10 @@ describe("profile library actions", () => {
   it("moves custom texts to the target profile and removes the old archive id", () => {
     state.customTexts.push({ id: "de-custom-home", title: "Home" });
     state.archivedBookIds.push("de-custom-home");
+    state.readerPages["de-custom-home"] = 3;
+    state.readerScrolls["de-custom-home"] = { scrollTop: 480, wordIndex: 96 };
+    state.readerScrollsPerPage["de-custom-home-p3"] = 480;
+    state.preferences.lastReadTextIds.de = "de-custom-home";
 
     const moved = moveCustomTextToProfile("de-custom-home", "fr");
 
@@ -87,6 +93,32 @@ describe("profile library actions", () => {
     assert.equal(state.profiles.fr.customTexts[0].lang, "fr");
     assert.equal(state.profiles.fr.customTexts[0].title, "Home");
     assert.match(state.profiles.fr.customTexts[0].updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal(state.readerPages["fr-custom-home"], 3);
+    assert.equal(state.readerPages["de-custom-home"], undefined);
+    assert.deepEqual(state.readerScrolls["fr-custom-home"], { scrollTop: 480, wordIndex: 96 });
+    assert.equal(state.readerScrolls["de-custom-home"], undefined);
+    assert.equal(state.readerScrollsPerPage["fr-custom-home-p3"], 480);
+    assert.equal(state.readerScrollsPerPage["de-custom-home-p3"], undefined);
+    assert.equal(state.preferences.lastReadTextIds.fr, "fr-custom-home");
+  });
+
+  it("keeps old positions when a moved legacy id is still shared", () => {
+    state.customTexts.push({ id: "legacy-home", title: "Home" });
+    state.profiles.fr.customTexts.push({ id: "legacy-home", title: "Shared Home" });
+    state.profiles.en = { vocab: {}, customTexts: [], userBooks: [] };
+    state.readerPages["legacy-home"] = 2;
+    state.readerScrolls["legacy-home"] = { scrollTop: 200 };
+    state.readerScrollsPerPage["legacy-home-p2"] = 200;
+
+    const moved = moveCustomTextToProfile("legacy-home", "en");
+
+    assert.equal(moved.newId, "en-legacy-home");
+    assert.equal(state.readerPages["legacy-home"], 2);
+    assert.equal(state.readerPages["en-legacy-home"], 2);
+    assert.deepEqual(state.readerScrolls["legacy-home"], { scrollTop: 200 });
+    assert.deepEqual(state.readerScrolls["en-legacy-home"], { scrollTop: 200 });
+    assert.equal(state.readerScrollsPerPage["legacy-home-p2"], 200);
+    assert.equal(state.readerScrollsPerPage["en-legacy-home-p2"], 200);
   });
 
   it("moves three-letter custom text ids without colliding in the target profile", () => {
@@ -135,5 +167,45 @@ describe("profile library actions", () => {
     assert.equal(clearCurrentBookSelectionIfMatches("de-custom-old"), true);
     assert.equal(state.currentTextId, null);
     assert.equal(state.selectedWord, null);
+  });
+
+  it("keeps shared-book bookmarks until the last profile reference is removed", () => {
+    const shared = { id: "shared-book", title: "Shared" };
+    state.userBooks.push(shared);
+    state.profiles.fr.userBooks.push({ ...shared });
+    state.preferences.readerBookmarks[shared.id] = [{ id: "mark-1", label: "Middle", page: 2 }];
+
+    removeUserBookFromActiveProfile(shared.id);
+    assert.equal(state.preferences.readerBookmarks[shared.id].length, 1);
+
+    state.userBooks = state.profiles.fr.userBooks;
+    state.profiles.fr.userBooks = state.userBooks;
+    removeUserBookFromActiveProfile(shared.id);
+    assert.equal(state.preferences.readerBookmarks[shared.id], undefined);
+  });
+
+  it("keeps a shared legacy custom-text body referenced by another profile", () => {
+    const shared = { id: "mw-123", title: "Legacy shared text" };
+    state.customTexts.push(shared);
+    state.profiles.fr.customTexts.push({ ...shared });
+
+    removeCustomTextFromActiveProfile(shared.id);
+
+    assert.equal(isCustomTextReferenced(shared.id), true);
+    assert.deepEqual(state.customTexts, []);
+    assert.equal(state.profiles.fr.customTexts[0].id, shared.id);
+  });
+
+  it("keeps saved reader positions when switching away from and back to a profile", () => {
+    state.readerPages = { "de-book": 7 };
+    state.readerScrolls = { "de-book": { readerPage: 7, scrollTop: 420, wordIndex: 269 } };
+    state.readerScrollsPerPage = { "de-book-p7": 420 };
+
+    switchLearningLanguage("fr");
+    switchLearningLanguage("de");
+
+    assert.equal(state.readerPages["de-book"], 7);
+    assert.deepEqual(state.readerScrolls["de-book"], { readerPage: 7, scrollTop: 420, wordIndex: 269 });
+    assert.equal(state.readerScrollsPerPage["de-book-p7"], 420);
   });
 });

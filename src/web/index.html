@@ -315,6 +315,10 @@
                 <button type="button" id="reader-highlight-toggle" class="icon-button" aria-pressed="true" data-i18n-attr="title=settings.highlight,aria-label=settings.highlight">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                 </button>
+                <button type="button" id="reader-bookmarks-button" class="icon-button reader-bookmarks-button" aria-haspopup="dialog" aria-controls="reader-bookmarks-dialog" data-i18n-attr="title=reader.bookmarks,aria-label=reader.bookmarks">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3z"></path></svg>
+                  <span id="reader-bookmarks-count" class="reader-bookmarks-count" hidden>0</span>
+                </button>
                 <button type="button" id="reader-word-panel-toggle" class="secondary-button desktop-only-control" data-i18n="settings.readerWordPanelHideControl" data-i18n-attr="title=settings.readerWordPanelVisibleHint,aria-label=settings.readerWordPanelVisible">
                   &gt;&gt;
                 </button>
@@ -337,6 +341,7 @@
               </div>
             </div>
             <article class="reader-text" id="reader-text" tabindex="0"></article>
+            <div id="reader-bookmark-tabs" class="reader-bookmark-tabs" data-i18n-attr="aria-label=reader.bookmarks" hidden></div>
           </section>
 
           <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
@@ -1159,7 +1164,7 @@
                 <ol class="sync-guide-list">
                   <li data-i18n="syncGuide.before1">Zrób ręczny eksport JSON w Ustawieniach, jeśli przenosisz ważne dane po raz pierwszy.</li>
                   <li data-i18n="syncGuide.before2">Na każdym urządzeniu zamknij inne aplikacje, które mogłyby edytować folder WordHunterSync.</li>
-                  <li data-i18n="syncGuide.before3">Użyj jednego, pustego folderu tylko dla Word Huntera. Nie wkładaj tam zdjęć, dokumentów ani innych kopii zapasowych.</li>
+                  <li data-i18n="syncGuide.before3">Użyj folderu przeznaczonego tylko dla Word Huntera. Po reinstalacji możesz ponownie wybrać istniejący folder z danymi.</li>
                   <li data-i18n="syncGuide.before4">Jeśli korzystasz z chmury lub Syncthing, poczekaj na status „up to date” przed otwarciem drugiego urządzenia.</li>
                   <li data-i18n="syncGuide.before5">Nie wybieraj lokalnego folderu danych aplikacji jako folderu synchronizacji. To mają być dwa różne miejsca.</li>
                 </ol>
@@ -1576,6 +1581,52 @@
     </div>
     <div id="youglish-modal-body" style="padding: 1rem; display: flex; justify-content: center;">
       <div id="youglish-widget"></div>
+    </div>
+  </dialog>
+
+  <dialog id="reader-bookmarks-dialog" class="panel reader-bookmarks-dialog" aria-labelledby="reader-bookmarks-title">
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow" data-i18n="reader.bookmarks">Zakładki</p>
+        <h2 id="reader-bookmarks-title" data-i18n="reader.bookmarksTitle">Zakładki w książce</h2>
+      </div>
+      <button type="button" id="reader-bookmarks-close" class="icon-button" data-i18n-attr="title=reader.close,aria-label=reader.close">×</button>
+    </div>
+    <div class="reader-bookmarks-dialog-body">
+      <form id="reader-bookmark-form" class="reader-bookmark-form">
+        <label for="reader-bookmark-label" data-i18n="reader.bookmarkLabel">Podpis lub komentarz</label>
+        <input id="reader-bookmark-label" type="text" maxlength="160" autocomplete="off" data-i18n-attr="placeholder=reader.bookmarkPlaceholder">
+        <fieldset class="reader-bookmark-color-field">
+          <legend data-i18n="reader.bookmarkColor">Kolor</legend>
+          <div class="reader-bookmark-colors">
+            <label class="reader-bookmark-color" data-bookmark-color="amber">
+              <input type="radio" name="reader-bookmark-color" value="amber" data-i18n-attr="title=reader.bookmarkColorAmber,aria-label=reader.bookmarkColorAmber" checked>
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="red">
+              <input type="radio" name="reader-bookmark-color" value="red" data-i18n-attr="title=reader.bookmarkColorRed,aria-label=reader.bookmarkColorRed">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="green">
+              <input type="radio" name="reader-bookmark-color" value="green" data-i18n-attr="title=reader.bookmarkColorGreen,aria-label=reader.bookmarkColorGreen">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="blue">
+              <input type="radio" name="reader-bookmark-color" value="blue" data-i18n-attr="title=reader.bookmarkColorBlue,aria-label=reader.bookmarkColorBlue">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="purple">
+              <input type="radio" name="reader-bookmark-color" value="purple" data-i18n-attr="title=reader.bookmarkColorPurple,aria-label=reader.bookmarkColorPurple">
+              <span aria-hidden="true"></span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="reader-bookmark-form-actions">
+          <button type="button" id="reader-bookmark-cancel-edit" class="secondary-button" data-i18n="reader.bookmarkCancelEdit" hidden>Anuluj edycję</button>
+          <button type="submit" id="reader-bookmark-submit" class="primary-button" data-i18n="reader.bookmarkAdd">Dodaj tutaj</button>
+        </div>
+      </form>
+      <div id="reader-bookmark-list" class="reader-bookmark-list" aria-live="polite"></div>
     </div>
   </dialog>
 
