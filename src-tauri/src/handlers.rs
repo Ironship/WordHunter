@@ -157,7 +157,28 @@ pub(crate) fn serve_edge_tts(request: Request, query: &str) -> Result<(), String
     }
 
     match tts::synthesize(&text, &lang, rate) {
-        Ok(audio) => response::respond(request, 200, audio, "audio/mpeg", false),
+        Ok(result) => {
+            #[cfg(not(target_os = "android"))]
+            let (audio, timings) = {
+                let timings = result
+                    .boundaries
+                    .iter()
+                    .map(|event| (event.offset_ticks / 10_000).to_string())
+                    .collect::<Vec<_>>()
+                    .join(",");
+                (result.audio, timings)
+            };
+            #[cfg(target_os = "android")]
+            let (audio, timings) = (result, String::new());
+            response::respond_with_headers(
+                request,
+                200,
+                audio,
+                "audio/mpeg",
+                false,
+                &[("X-WH-Word-Timings", &timings)],
+            )
+        }
         Err(err) => response::error_response(request, 502, &format!("Edge TTS failed: {err}")),
     }
 }

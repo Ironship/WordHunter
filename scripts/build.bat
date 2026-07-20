@@ -548,9 +548,9 @@ function Sync-AndroidLauncherIcons {
 function Get-AndroidVersionInfo {
     $config = Get-Content -Raw -LiteralPath (Join-Path $Root "src-tauri\tauri.conf.json") | ConvertFrom-Json
     $version = [string]$config.version
-    $match = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$')
+    $match = [regex]::Match($version, '^(\d+)\.(\d+)\.(\d+)(?:(?:-rc\.(\d+))|(?:\+(\d+)))?$')
     if (-not $match.Success) {
-        Fail "src-tauri\tauri.conf.json version must use MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-rc.N: $version"
+        Fail "src-tauri\tauri.conf.json version must use MAJOR.MINOR.PATCH, MAJOR.MINOR.PATCH-rc.N, or MAJOR.MINOR.PATCH+1: $version"
     }
 
     $major = [int64]$match.Groups[1].Value
@@ -567,6 +567,12 @@ function Get-AndroidVersionInfo {
         if ($releaseOrdinal -lt 1 -or $releaseOrdinal -gt 98) {
             Fail "Android release-candidate ordinal must be between 1 and 98: $version"
         }
+    } elseif ($match.Groups[5].Success) {
+        $hotfixOrdinal = [int64]$match.Groups[5].Value
+        if ($hotfixOrdinal -ne 1) {
+            Fail "Android four-part hotfix version must end in +1: $version"
+        }
+        $releaseOrdinal = 100
     }
     $code = ($baseCode * 100) + $releaseOrdinal
     if ($code -le 0 -or $code -gt 2100000000) {
@@ -575,7 +581,7 @@ function Get-AndroidVersionInfo {
 
     [pscustomobject]@{
         Source = $version
-        Name = $version
+        Name = $version.Replace('+', '.')
         Code = $code
     }
 }

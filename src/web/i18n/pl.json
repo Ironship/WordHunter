@@ -819,8 +819,8 @@
     "contactIssues": "<strong>Zgłoszenia błędów i propozycje funkcji:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencja:</strong> AGPL-3.0-or-later. Komercyjne wykorzystanie kodu pochodnego w oprogramowaniu o zamkniętym kodzie źródłowym wymaga odrębnej pisemnej licencji. Szczegóły: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.7: zakładki przypięte do dokładnego słowa i przywracanie miejsca czytania; bezpieczniejsza synchronizacja, kopie zapasowe i import; sprawniejsza synchronizacja dużych zbiorów i rozwiązywanie konfliktów na Androidzie; DMG dla Apple Silicon; oraz solidniejsze pakiety dla Linuksa.</strong>",
-    "version": "<strong>Wersja:</strong> Word Hunter 1.0.7",
+    "whatsNew": "<strong>Word Hunter 1.0.7.1 to hotfix: TTS słowa i zdania na fiszkach podąża za widoczną kartą; strzałki na pulpicie aktualizują Word Panel; Edge TTS ponownie podświetla czytane słowo; a nowe skróty Czytnika są opisane w Pomocy i podpowiedziach ekranowych.</strong>",
+    "version": "<strong>Wersja:</strong> Word Hunter 1.0.7.1",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Naciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby przejść do tekstu lub do niego wrócić",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> – poruszaj się między słowami",
@@ -828,6 +828,10 @@
     "focusHint4": "<kbd>I</kbd> – dodaj obraz",
     "focusHint5": "<kbd>Ctrl</kbd>+<kbd>C</kbd> – kopiuj słowo",
     "focusHint6": "<kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd> – zaznacz wiele słów",
+    "focusHint7": "<kbd>Shift</kbd>+<kbd>Spacja</kbd> – uruchom lub zatrzymaj ciągłe TTS",
+    "focusHint8": "<kbd>B</kbd> – dodaj lub usuń zakładkę",
+    "focusHint9": "<kbd>F6</kbd> – przełącz fokus między tekstem i panelem słowa",
+    "focusHint10": "<kbd>Ctrl</kbd>+<kbd>Home</kbd>/<kbd>End</kbd> – pierwsze lub ostatnie słowo",
     "navKeys": {
       "library": "<kbd>Alt</kbd> + <kbd>B</kbd> – Biblioteka",
       "reader": "<kbd>Alt</kbd> + <kbd>R</kbd> – Czytnik",
@@ -851,14 +855,18 @@
       "page": "<kbd>PgUp</kbd> / <kbd>PgDn</kbd> – zmień stronę; <kbd>Ctrl</kbd> + <kbd>G</kbd> – przejdź do pola numeru strony",
       "imgSuggest": "<kbd>I</kbd> – Wyszukaj obraz, <kbd>Ctrl</kbd> + <kbd>1</kbd>/<kbd>2</kbd>/<kbd>3</kbd> – wybierz propozycję, <kbd>Ctrl</kbd> + <kbd>4</kbd> – prześlij własny obraz",
       "inTextReview": "<kbd>Enter</kbd> – Pokaż odpowiedź podczas powtórki w Czytniku, <kbd>1</kbd>–<kbd>5</kbd> – oceń odpowiedź",
-      "activate": "<kbd>Enter</kbd> / <kbd>Spacja</kbd> – Wybierz aktywne słowo; Spacja odczytuje już wybrane słowo"
+      "activate": "<kbd>Enter</kbd> / <kbd>Spacja</kbd> – Wybierz aktywne słowo; Spacja odczytuje już wybrane słowo",
+      "continuousTts": "<kbd>Shift</kbd> + <kbd>Spacja</kbd> – Uruchom lub zatrzymaj ciągłe TTS od aktywnego słowa",
+      "bookmark": "<kbd>B</kbd> – Dodaj lub usuń zakładkę przy aktywnym słowie"
     },
     "focusTitle": "Nawigacja po słowach w tekście",
     "focusKeys": {
       "prevNext": "<kbd>←</kbd> / <kbd>→</kbd> – Poprzednie lub następne słowo",
       "line": "<kbd>Ctrl</kbd> + <kbd>↑</kbd> / <kbd>↓</kbd> – Zmień wiersz",
       "escape": "<kbd>Esc</kbd> – Opuść tekst i anuluj wybór słowa",
-      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> – Zaznacz wiele słów"
+      "selectMultiple": "<kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> – Zaznacz wiele słów",
+      "panel": "<kbd>F6</kbd> – Przełącz fokus między tekstem i panelem słowa",
+      "firstLast": "<kbd>Ctrl</kbd> + <kbd>Home</kbd> / <kbd>End</kbd> – Pierwsze lub ostatnie słowo w tekście"
     },
     "actionTitle": "Akcje na zaznaczonym słowie",
     "actionKeys": {

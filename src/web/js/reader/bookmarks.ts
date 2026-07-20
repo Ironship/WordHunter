@@ -79,15 +79,19 @@ export function getReaderBookmarks(textId = state.currentTextId): WhReaderBookma
   );
 }
 
-export function captureCurrentBookmarkPosition(): ReaderBookmarkPosition | null {
+export function captureCurrentBookmarkPosition(activeWordIndex?: number): ReaderBookmarkPosition | null {
   const textId = state.currentTextId;
   if (!textId) return null;
   rememberReaderScrollPosition({ precise: true });
   const saved = state.readerScrolls?.[textId];
-  const candidateWordIndex = state.selectedWord || state.readerSelectionRange ? state.selectedWordIndex : null;
+  const explicitWordIndex = Number.isInteger(activeWordIndex) && Number(activeWordIndex) >= 0
+    ? Number(activeWordIndex)
+    : null;
+  const candidateWordIndex = explicitWordIndex
+    ?? (state.selectedWord || state.readerSelectionRange ? state.selectedWordIndex : null);
   const readerText = document.getElementById("reader-text");
   const selectedToken = Number.isInteger(candidateWordIndex) && Number(candidateWordIndex) >= 0
-    ? readerText?.querySelector<HTMLElement>(`.word-token.selected[data-word-index="${candidateWordIndex}"]`)
+    ? readerText?.querySelector<HTMLElement>(`.word-token${explicitWordIndex === null ? ".selected" : ""}[data-word-index="${candidateWordIndex}"]`)
     : null;
   const selectedWordIndex = selectedToken ? Number(candidateWordIndex) : null;
   const savedWordIndex = saved && typeof saved === "object" && Number.isInteger(saved.wordIndex) && saved.wordIndex >= 0
@@ -151,6 +155,13 @@ export function addReaderBookmark(
   renderBookmarkDialogList();
   showBookmarkToast("reader.bookmarkAdded");
   return bookmark;
+}
+
+export function toggleReaderBookmarkAtCurrentWord(activeWordIndex?: number): boolean {
+  const position = captureCurrentBookmarkPosition(activeWordIndex);
+  if (!position || !Number.isInteger(position.wordIndex)) return false;
+  const existing = getReaderBookmarks().find((bookmark) => bookmark.wordIndex === position.wordIndex);
+  return existing ? removeReaderBookmark(existing.id) : addReaderBookmark("", position) !== null;
 }
 
 export async function remapReaderBookmarksForAlgorithm(

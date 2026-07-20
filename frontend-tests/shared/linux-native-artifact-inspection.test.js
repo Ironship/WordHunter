@@ -132,6 +132,9 @@ describe("Linux native artifact inspection", () => {
     assert.match(buildScript, /extract_tgz "\$ort_archive" "\$ort_dir" 1/);
     assert.match(buildScript, /gzip -9 -n -c .*debian-changelog/);
     assert.match(buildScript, /CARGO_PROFILE_RELEASE_STRIP=symbols/);
+    assert.match(buildScript, /release_version="\$\{package_version\/\+\/\.\}"/);
+    assert.match(buildScript, /WordHunter-\$release_version-x86_64\.AppImage/);
+    assert.match(buildScript, /word-hunter_\$\{release_version\}_amd64\.deb/);
   });
 
   it("accepts a complete x86_64 tree and rejects architecture drift", () => {

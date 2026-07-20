@@ -149,14 +149,15 @@ describe("Android Pocket packaging", () => {
   it("derives a bounded monotonic version code and patches the generated project", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const build = read("../../scripts/build.bat");
-    const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$/);
-    assert.ok(parts, "Tauri version must be stable or an RC SemVer");
-    const [, majorText, minorText, patchText, rcText] = parts;
+    const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)(?:(?:-rc\.(\d+))|(?:\+(\d+)))?$/);
+    assert.ok(parts, "Tauri version must be stable, an RC, or a +1 hotfix SemVer");
+    const [, majorText, minorText, patchText, rcText, hotfixText] = parts;
     const [major, minor, patch] = [majorText, minorText, patchText].map(Number);
     assert.ok(minor < 1_000 && patch < 1_000);
     const baseCode = (major * 1_000_000) + (minor * 1_000) + patch;
-    const releaseOrdinal = rcText ? Number(rcText) : 99;
-    assert.ok(releaseOrdinal >= 1 && releaseOrdinal <= 99);
+    const releaseOrdinal = rcText ? Number(rcText) : (hotfixText ? 100 : 99);
+    assert.ok(releaseOrdinal >= 1 && releaseOrdinal <= 100);
+    if (hotfixText) assert.equal(hotfixText, "1");
     const versionCode = (baseCode * 100) + releaseOrdinal;
     assert.ok(Number.isSafeInteger(versionCode));
     assert.ok(versionCode > 0 && versionCode <= 2_100_000_000);
@@ -167,6 +168,9 @@ describe("Android Pocket packaging", () => {
     assert.match(versionRecipe, /\(\$major \* 1000000\) \+ \(\$minor \* 1000\) \+ \$patch/);
     assert.match(versionRecipe, /\$code = \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
     assert.match(versionRecipe, /release-candidate ordinal must be between 1 and 98/);
+    assert.match(versionRecipe, /four-part hotfix version must end in \+1/);
+    assert.match(versionRecipe, /\$releaseOrdinal = 100/);
+    assert.match(versionRecipe, /Name = \$version\.Replace\('\+', '\.'\)/);
     assert.match(versionRecipe, /\$code -le 0 -or \$code -gt 2100000000/);
     const prepare = powershellFunction(build, "Prepare-AndroidProject");
     assert.match(prepare, /Copy-Item -LiteralPath \$activitySource -Destination \$activityTarget/);

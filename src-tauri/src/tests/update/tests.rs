@@ -12,6 +12,12 @@ fn normalizes_release_tags() {
 }
 
 #[test]
+fn presents_semver_hotfix_metadata_as_the_public_four_part_version() {
+    assert_eq!(display_version("1.0.7+1"), "1.0.7.1");
+    assert_eq!(display_version("1.0.8-rc.1"), "1.0.8-rc.1");
+}
+
+#[test]
 fn parses_version_into_components() {
     assert_eq!(parse_version("0.2.7.6"), vec![0u32, 2, 7, 6]);
     assert_eq!(parse_version("v1.2.3"), vec![1u32, 2, 3]);

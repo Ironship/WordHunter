@@ -225,7 +225,7 @@ jobs:
       - name: Read package version
         id: package-version
         run: |
-          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version)")"
+          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version.replace('+', '.'))")"
           test -n "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -324,7 +324,7 @@ jobs:
       - name: Read package version
         id: package-version
         run: |
-          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version)")"
+          version="$(node -e "process.stdout.write(JSON.parse(require('node:fs').readFileSync('src-tauri/tauri.conf.json', 'utf8')).version.replace('+', '.'))")"
           test -n "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 

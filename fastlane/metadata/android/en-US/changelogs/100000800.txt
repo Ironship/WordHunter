@@ -1,0 +1,6 @@
+Word Hunter 1.0.7.1 is a hotfix for Reader and text-to-speech regressions.
+
+- Flashcard word and sentence speech follows the visible card.
+- Desktop keyboard navigation updates the Word Panel.
+- Edge TTS spoken-word highlighting works again on Windows.
+- New Reader shortcuts are documented in Help and on-screen hints.
