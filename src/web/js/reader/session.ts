@@ -8,6 +8,7 @@ export interface ReaderSession {
   algorithm: string;
   tokens: TextToken[];
   globalWordIndexes: number[];
+  globalCharOffsets: number[];
   totalWords: number;
 }
 
@@ -25,9 +26,17 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
 
   const tokens = tokenizeText(text, language, algorithm);
   const globalWordIndexes = new Array(tokens.length).fill(-1);
+  const globalCharOffsets = new Array(tokens.length).fill(-1);
   let totalWords = 0;
+  let charOffset = 0;
   for (let index = 0; index < tokens.length; index += 1) {
-    if (tokens[index].type === "word") globalWordIndexes[index] = totalWords++;
+    if (tokens[index].type === "word") {
+      globalWordIndexes[index] = totalWords++;
+      globalCharOffsets[index] = charOffset;
+    }
+    charOffset += tokens[index].type === "image"
+      ? `[IMG:${tokens[index].value}]`.length
+      : tokens[index].value.length;
   }
   cachedSession = {
     id: current?.id,
@@ -36,6 +45,7 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
     algorithm,
     tokens,
     globalWordIndexes,
+    globalCharOffsets,
     totalWords
   };
   return cachedSession;

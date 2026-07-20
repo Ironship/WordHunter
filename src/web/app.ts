@@ -3,10 +3,10 @@ import { cacheElements, els } from "./js/dom.js";
 import { showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, setSyncStatus, syncSettingsControls } from "./js/preferences.js";
-import { hydrateActiveLibraryTexts, loadBooksCatalog } from "./js/books.js";
+import { hydrateActiveLibraryTexts, hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
-import { applyBridgeSnapshotToState, flushFrontendStateBuffers, saveState, state } from "./js/state.js";
+import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
@@ -36,6 +36,7 @@ window.addEventListener("unhandledrejection", function(event) {
 
 function flushPendingStateBeforeExit() {
   flushFrontendStateBuffers();
+  flushUiStateSync();
   if (isAndroidPlatform()) {
     saveState();
     return;
@@ -133,7 +134,7 @@ function scheduleLibraryStatsHydration() {
     els.bookList?.setAttribute("aria-busy", "true");
     hydrateActiveLibraryTexts()
       .then(() => {
-        if (state.currentView === "library") render();
+        if (state.currentView === "library" || state.currentView === "reader") render();
       })
       .catch((error) => console.warn("Nie wszystkie książki załadowane:", error))
       .finally(() => els.bookList?.setAttribute("aria-busy", "false"));
@@ -163,7 +164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
     await loadBridgeStateBeforeRender();
-    applyPreferences();
+    await applyPreferences();
     await loadLocale(state.preferences?.locale || "en");
     applyTranslations();
     applyPlatformUi();
@@ -172,10 +173,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     bindEvents();
     bindLibraryEvents();
     import("./js/views/reader.js").then(m => m.bindReaderEvents());
-    applyPreferences();
+    await applyPreferences();
     syncSettingsControls();
     applyPlatformUi();
     render();
+    const restoringReaderTextId = state.currentView === "reader" ? state.currentTextId : null;
+    void hydrateCurrentReaderText()
+      .then((ready) => {
+        if (ready && restoringReaderTextId && state.currentView === "reader" && state.currentTextId === restoringReaderTextId) render();
+      })
+      .catch((error) => console.warn("Could not restore the active Reader body after startup:", error));
     document.getElementById("app-font-stylesheet")?.setAttribute("rel", "stylesheet");
     showLanguageOnboardingIfNeeded();
     scheduleLibraryStatsHydration();

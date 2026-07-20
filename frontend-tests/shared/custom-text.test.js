@@ -49,7 +49,7 @@ const {
 } = await import("../../dist/web/js/reader/pdf-page-text.js");
 const { bindBookImportEvents } = await import("../../dist/web/js/events/book-import.js");
 const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
-const { mapPdfOverlayWordIndexes } = await import("../../dist/web/js/reader/pdf-ocr-renderer.js");
+const { mapPdfOverlayWordIndexes, mapPdfOverlayWordPositions } = await import("../../dist/web/js/reader/pdf-ocr-renderer.js");
 const { upsertStoredText } = await import("../../dist/web/js/store-bridge.js");
 
 function busyElement(extra = {}) {
@@ -68,6 +68,21 @@ describe("custom text import", () => {
     bookTexts.clear();
     const defaults = createDefaultState();
     replaceState(defaults, { save: false });
+  });
+
+  it("keeps both manual imports when their titles are identical", async () => {
+    state.preferences.learningLanguage = "de";
+
+    const firstId = await importCustomText("Same title", "FIRST BODY", {}, false);
+    const secondId = await importCustomText("Same title", "SECOND BODY", {}, false);
+
+    assert.equal(firstId, "de-custom-same-title");
+    assert.equal(secondId, "de-custom-same-title-2");
+    assert.equal(state.customTexts.length, 2);
+    assert.equal(state.customTexts.find((text) => text.id === firstId).text, "FIRST BODY");
+    assert.equal(state.customTexts.find((text) => text.id === secondId).text, "SECOND BODY");
+    assert.equal(bookTexts.get(firstId), "FIRST BODY");
+    assert.equal(bookTexts.get(secondId), "SECOND BODY");
   });
 
   it("keeps existing PDF OCR overlay metadata when an update has no pages", async () => {
@@ -241,6 +256,37 @@ describe("custom text import", () => {
     assert.deepEqual(
       mapPdfOverlayWordIndexes([{ text: "bank" }, { text: "x" }, { text: "bank" }], "x bank", "en", "modern"),
       [null, 0, 1]
+    );
+    assert.deepEqual(
+      mapPdfOverlayWordPositions(
+        [{ text: "zero" }, { text: "art" }, { text: "one" }],
+        "zero art one",
+        "en",
+        "modern",
+        10,
+        100
+      ),
+      [
+        { wordIndex: 10, charOffset: 100 },
+        { wordIndex: 11, charOffset: 105 },
+        { wordIndex: 12, charOffset: 109 }
+      ]
+    );
+    const compoundWords = reconcilePdfPageWords(
+      [{ text: "state-of-the-art", x: 0, y: 0, width: 160, height: 20 }],
+      "state-of-the-art",
+      "en",
+      "modern"
+    );
+    assert.deepEqual(compoundWords.map((word) => word.text), ["state-", "of-", "the-", "art"]);
+    assert.deepEqual(
+      mapPdfOverlayWordPositions(compoundWords, "state-of-the-art", "en", "modern"),
+      [
+        { wordIndex: 0, charOffset: 0 },
+        { wordIndex: 1, charOffset: 6 },
+        { wordIndex: 2, charOffset: 9 },
+        { wordIndex: 3, charOffset: 13 }
+      ]
     );
   });
 

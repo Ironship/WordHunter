@@ -3,7 +3,7 @@ import { state, saveState, createDefaultState, getDefaultDictionaryUrl } from ".
 import { APP_LOCALES, FONT_STACKS, LEARNING_LANGUAGES, LINE_HEIGHTS, OTHER_PROFILE_ID, UI_SCALE } from "./constants.js";
 import { els } from "./dom.js";
 import { clamp, escapeAttribute, escapeHtml } from "./utils.js";
-import { t } from "./i18n.js";
+import { getLocale, t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
 import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
@@ -11,6 +11,7 @@ import { applyTheme, nextTheme, normalizeTheme, type ThemeName } from "./theme.j
 import { isAndroidPlatform } from "./platform.js";
 import { themeIcon } from "./icons.js";
 import { normalizeSelectedWordPanelItems } from "./state/normalize.js";
+import { postStoreJson } from "./store-bridge.js";
 
 type SyncStatus = {
   status: string;
@@ -18,6 +19,36 @@ type SyncStatus = {
 };
 
 let syncStatus: SyncStatus | null = null;
+let queuedNativeUiScale: number | null = null;
+let nativeUiScaleQueue: Promise<void> = Promise.resolve();
+
+function applyUiScale(uiScale: number): Promise<void> {
+  const root = document.documentElement;
+  const scaleFactor = uiScale / 100;
+  if (isAndroidPlatform()) {
+    root.style.setProperty("--ui-scale", "1");
+    root.style.zoom = "1";
+    return Promise.resolve();
+  }
+  if (!window.__qtBridge) {
+    root.style.setProperty("--ui-scale", String(scaleFactor));
+    root.style.zoom = String(scaleFactor);
+    return Promise.resolve();
+  }
+
+  root.style.setProperty("--ui-scale", "1");
+  root.style.zoom = "1";
+  if (queuedNativeUiScale === uiScale) return nativeUiScaleQueue;
+
+  queuedNativeUiScale = uiScale;
+  nativeUiScaleQueue = nativeUiScaleQueue
+    .then(() => postStoreJson("/__window/zoom", { percent: uiScale }).then(() => {}))
+    .catch((error) => {
+      if (queuedNativeUiScale === uiScale) queuedNativeUiScale = null;
+      console.warn("Failed to apply native window zoom", error);
+    });
+  return nativeUiScaleQueue;
+}
 
 function getAndroidSyncFolderLabel() {
   const getter = window.WordHunterAndroid?.getSyncFolderLabel;
@@ -33,7 +64,11 @@ function getAndroidSyncFolderLabel() {
 function formatConflictRecord(record: WhRecord | null | undefined): string {
   const device = record?.deviceId ? t("settings.syncConflictDevice", { device: record.deviceId }) : "";
   const stateLabel = record?.deleted ? t("settings.syncConflictDeleted") : t("settings.syncConflictUpdated");
-  return [stateLabel, device].filter(Boolean).join(" ");
+  const updatedAt = Number(record?.updatedAt);
+  const changedAt = Number.isFinite(updatedAt) && updatedAt > 0
+    ? new Date(updatedAt).toLocaleString(getLocale())
+    : "";
+  return [stateLabel, changedAt, device].filter(Boolean).join(" · ");
 }
 
 function renderSyncConflicts() {
@@ -49,7 +84,7 @@ function renderSyncConflicts() {
       : "";
     return;
   }
-  els.syncConflictsList.innerHTML = conflicts.map((conflict) => {
+  const items = conflicts.map((conflict) => {
     const key = conflict.key || "";
     const kept = formatConflictRecord(conflict.kept);
     const other = formatConflictRecord(conflict.conflict);
@@ -66,6 +101,12 @@ function renderSyncConflicts() {
       </div>
     `;
   }).join("");
+  els.syncConflictsList.innerHTML = `
+    <div class="sync-conflict-actions">
+      <button type="button" class="primary-button" data-conflict-resolution-all="keep-current">${escapeHtml(t("settings.syncConflictUseNewestAll"))}</button>
+    </div>
+    ${items}
+  `;
 }
 
 function recoveryIssueCount(status: WhRecoveryStatus | null): number {
@@ -274,7 +315,7 @@ function renderSelectedWordPanelSettings(): void {
   }).join("");
 }
 
-export function applyPreferences() {
+export function applyPreferences(): Promise<void> {
   const prefs: Partial<WhPreferences> = state.preferences || {};
   const theme = normalizeTheme(prefs.theme);
   if (prefs.theme !== theme) prefs.theme = theme;
@@ -306,8 +347,7 @@ export function applyPreferences() {
   document.documentElement.classList.toggle("touch-controls-mode", prefs.touchControls === true && !isAndroidPlatform());
 
   const uiScale = isAndroidPlatform() ? UI_SCALE.DEFAULT : clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
-  document.documentElement.style.setProperty("--ui-scale", String(uiScale / 100));
-  document.documentElement.style.zoom = String(uiScale / 100);
+  const uiScalePromise = applyUiScale(uiScale);
 
   if (els.themeToggle) {
     const next = nextTheme(theme);
@@ -320,6 +360,7 @@ export function applyPreferences() {
     && typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
     window.dispatchEvent(new CustomEvent("wordhunter:theme-changed", { detail: resolvedTheme }));
   }
+  return uiScalePromise;
 }
 
 export function syncSettingsControls() {
@@ -543,6 +584,7 @@ export function updatePreferenceValue(key: string, value: unknown): void {
 export function resetPreferences() {
   const defaults = createDefaultState();
   const lastReadTextIds = state.preferences?.lastReadTextIds || {};
+  const readerBookmarks = state.preferences?.readerBookmarks || {};
   const learningLanguage = state.preferences?.learningLanguage || defaults.preferences.learningLanguage;
   const profilePreferences = state.profiles?.[learningLanguage]?.preferences || {};
   state.preferences = {
@@ -552,7 +594,8 @@ export function resetPreferences() {
     dictionaryMode: profilePreferences.dictionaryMode || "internal",
     translationSourceLanguage: profilePreferences.translationSourceLanguage || "",
     translationTargetLanguage: profilePreferences.translationTargetLanguage || (learningLanguage === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""),
-    lastReadTextIds
+    lastReadTextIds,
+    readerBookmarks
   };
   if (state.profiles?.[learningLanguage]) {
     state.profiles[learningLanguage].preferences = {

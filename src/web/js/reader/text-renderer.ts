@@ -7,19 +7,21 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
 import { classifyTokenOccurrences, normalizeWord } from "../tokenizer_v2.js";
-import { restoreReaderScrollPosition } from "./scroll.js";
+import { restoreReaderPagePosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { paginationHtml } from "./pagination.js";
 import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./focus.js";
 import { getLearningColor } from "../reader-colors.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { renderInlineBookmarkIndicators } from "./bookmarks.js";
 import type { TextToken } from "../tokenizer_v2.js";
 
 export interface RenderPlainTextOptions {
   current: WhText;
   tokens: TextToken[];
   globalWordIndexes: number[];
+  globalCharOffsets: number[];
   pageStartIndex: number;
   pageEndIndex: number;
   totalPages: number;
@@ -30,7 +32,7 @@ export interface RenderPlainTextOptions {
 const CHUNK_SIZE = 500;
 let textRenderGeneration = 0;
 
-export function renderPlainText({ current, tokens, globalWordIndexes, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }: RenderPlainTextOptions): void {
+export function renderPlainText({ current, tokens, globalWordIndexes, globalCharOffsets, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }: RenderPlainTextOptions): void {
   const pageTokens = tokens.slice(pageStartIndex, pageEndIndex);
   const classifications = classifyTokenOccurrences(tokens, state.vocab, effectiveLearningLanguage(state.preferences));
   let index = 0;
@@ -47,19 +49,9 @@ export function renderPlainText({ current, tokens, globalWordIndexes, pageStartI
         els.readerText.insertAdjacentHTML("beforeend", paginationHtml(current.id, state.readerPage, totalPages, t));
       }
       renderWordPanel(current);
-      // Restore per-page scroll if available, else fallback to text-level scroll
-      const perPageScroll = state.readerScrollsPerPage?.[scrollPerPageKey];
-      if (perPageScroll !== undefined) {
-        els.readerText.scrollTop = perPageScroll;
-      } else {
-        const savedScroll = state.readerScrolls?.[current.id];
-        if (savedScroll && typeof savedScroll === "object" && savedScroll.readerPage != null && savedScroll.readerPage !== state.readerPage) {
-          els.readerText.scrollTop = 0;
-        } else {
-          restoreReaderScrollPosition(current.id, savedPos);
-        }
-      }
-      updateReaderSelection();
+      restoreReaderPagePosition(current.id, scrollPerPageKey, savedPos);
+      updateReaderSelection({ keepVisible: false });
+      renderInlineBookmarkIndicators(current.id);
       if (!applyPendingReaderWordFocus(els.readerText)) applyPendingReaderPageFocus(els.readerText);
       els.readerText.dataset.rendering = "0";
       els.readerText.removeAttribute("aria-busy");
@@ -90,9 +82,10 @@ export function renderPlainText({ current, tokens, globalWordIndexes, pageStartI
       const entry = state.vocab[classification.key];
       const selected = state.selectedWord === classification.key || state.selectedWord === word ? "selected" : "";
       const globalIdx = globalWordIndexes[pageStartIndex + i];
+      const charOffset = globalCharOffsets[pageStartIndex + i];
       const color = classification.status === "learning" ? getLearningColor(entry, state.preferences) : "";
       const style = color ? ` style="--token-learning-bg:${color}"` : "";
-      htmlChunk += `<button class="word-token status-${classification.status} ${selected}" type="button" data-word="${escapeHtml(classification.key)}" data-word-index="${globalIdx}"${style}>${escapeHtml(part.value)}</button>`;
+      htmlChunk += `<button class="word-token status-${classification.status} ${selected}" type="button" data-word="${escapeHtml(classification.key)}" data-word-index="${globalIdx}" data-char-offset="${charOffset}"${style}>${escapeHtml(part.value)}</button>`;
       i += 1;
       tokensProcessed += 1;
     }

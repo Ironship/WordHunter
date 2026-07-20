@@ -1,0 +1,84 @@
+# Maintainer: Ironship <25068602+Ironship at users dot noreply dot github dot com>
+
+pkgname=wordhunter-bin
+pkgver=1.0.6
+pkgrel=1
+pkgdesc="Local-first reader and vocabulary trainer (binary AppImage release)"
+arch=('x86_64')
+url="https://ironship.github.io/WordHunter-site/"
+license=('AGPL-3.0-or-later')
+depends=(
+  'fontconfig'
+  'fribidi'
+  'glibc'
+  'harfbuzz'
+  'hicolor-icon-theme'
+  'libglvnd'
+  'mesa'
+  'xdg-utils'
+)
+provides=("wordhunter=${pkgver}")
+conflicts=('wordhunter')
+options=('!strip')
+
+_appimage="WordHunter-${pkgver}-x86_64.AppImage"
+source_x86_64=(
+  "${_appimage}::https://github.com/Ironship/WordHunter/releases/download/WordHunter${pkgver}/${_appimage}"
+)
+sha256sums_x86_64=('01194b3a0855cfd4c76e67977b4bd2eb4aa233c393cbdaf17b7a9a9bd009db3f')
+noextract=("${_appimage}")
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf squashfs-root
+
+  chmod 755 "${_appimage}"
+  "./${_appimage}" --appimage-extract >/dev/null
+
+  test -x squashfs-root/AppRun
+  test -x squashfs-root/usr/bin/word-hunter-rustified
+  test -f "squashfs-root/usr/share/applications/Word Hunter.desktop"
+  test -f squashfs-root/usr/share/metainfo/com.wordhunter.app.metainfo.xml
+
+  while IFS= read -r -d '' link; do
+    target="$(readlink "${link}")"
+    if [[ "${target}" = /* ]]; then
+      printf 'Refusing absolute AppImage symlink: %s -> %s\n' "${link}" "${target}" >&2
+      return 1
+    fi
+  done < <(find squashfs-root -type l -print0)
+}
+
+package() {
+  install -d "${pkgdir}/opt/wordhunter"
+  cp -a "${srcdir}/squashfs-root/." "${pkgdir}/opt/wordhunter/"
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/wordhunter" <<'EOF'
+#!/bin/sh
+exec /opt/wordhunter/AppRun "$@"
+EOF
+
+  install -Dm644 \
+    "${srcdir}/squashfs-root/usr/share/applications/Word Hunter.desktop" \
+    "${pkgdir}/usr/share/applications/com.wordhunter.app.desktop"
+  sed -i 's|^Exec=.*$|Exec=wordhunter|' \
+    "${pkgdir}/usr/share/applications/com.wordhunter.app.desktop"
+
+  install -Dm644 \
+    "${srcdir}/squashfs-root/usr/share/metainfo/com.wordhunter.app.metainfo.xml" \
+    "${pkgdir}/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+  sed -i \
+    -e 's|<launchable type="desktop-id">[^<]*</launchable>|<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>|' \
+    -e 's|<binary>word-hunter-rustified</binary>|<binary>wordhunter</binary>|' \
+    "${pkgdir}/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+
+  while IFS= read -r -d '' icon; do
+    relative="${icon#"${srcdir}/squashfs-root"}"
+    install -Dm644 "${icon}" "${pkgdir}${relative}"
+  done < <(
+    find "${srcdir}/squashfs-root/usr/share/icons/hicolor" \
+      -type f -name 'com.wordhunter.app.png' -print0
+  )
+
+  find "${pkgdir}/opt/wordhunter" -perm /6000 -exec chmod a-s {} +
+}

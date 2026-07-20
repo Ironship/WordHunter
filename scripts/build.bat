@@ -845,6 +845,7 @@ function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $Out
     }
 
     Copy-Item -LiteralPath $apk.FullName -Destination $OutputApk -Force
+    Sign-AndroidApk $OutputApk
     Write-Host ""
     Write-Host "Done: $OutputApk" -ForegroundColor Green
 }
@@ -884,6 +885,55 @@ function Get-AndroidSigningConfig {
         StorePass = $storePass
         KeyPass = $keyPass
     }
+}
+
+function Get-AndroidApkSigner {
+    $sdk = Ensure-AndroidSdk
+    $signer = Get-ChildItem -LiteralPath (Join-Path $sdk "build-tools") -Directory -ErrorAction SilentlyContinue |
+        Sort-Object { [version]$_.Name } -Descending |
+        ForEach-Object { Join-Path $_.FullName "apksigner.bat" } |
+        Where-Object { Test-Path -LiteralPath $_ } |
+        Select-Object -First 1
+    if (-not $signer) {
+        Fail "Android apksigner was not found below $sdk\build-tools."
+    }
+    return $signer
+}
+
+function Sign-AndroidApk([string]$OutputApk) {
+    $signing = Get-AndroidSigningConfig
+    if (-not $signing) {
+        if ($env:WH_ANDROID_REQUIRE_SIGNING -eq "1") {
+            Fail "Android APK signing is required, but WH_ANDROID_* signing variables are not configured."
+        }
+        Write-Note "APK uses the local Android debug key and cannot update official Pocket builds. Set WH_ANDROID_* to create an update-compatible APK."
+        return
+    }
+
+    $apksigner = Get-AndroidApkSigner
+    $signedApk = "$OutputApk.signed.tmp.apk"
+    Remove-Item -LiteralPath $signedApk -Force -ErrorAction SilentlyContinue
+    Write-Host "    $ apksigner sign --ks <WH_ANDROID_KEYSTORE> --ks-key-alias <WH_ANDROID_KEY_ALIAS> --ks-pass <hidden> --key-pass <hidden> --out $signedApk $OutputApk"
+    & $apksigner sign --ks $signing.Keystore --ks-key-alias $signing.Alias `
+        --ks-pass "pass:$($signing.StorePass)" --key-pass "pass:$($signing.KeyPass)" `
+        --out $signedApk $OutputApk
+    if ($LASTEXITCODE -ne 0) {
+        Remove-Item -LiteralPath $signedApk -Force -ErrorAction SilentlyContinue
+        throw "Android APK signing failed with exit code $LASTEXITCODE."
+    }
+    Move-Item -LiteralPath $signedApk -Destination $OutputApk -Force
+
+    $verification = & $apksigner verify --verbose --print-certs $OutputApk 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Android APK signature verification failed with exit code $LASTEXITCODE."
+    }
+    $verification | Write-Host
+    $actual = ([regex]::Match(($verification -join "`n"), '(?i)certificate SHA-256 digest:\s*([0-9a-f]{64})')).Groups[1].Value.ToLowerInvariant()
+    $expected = ([string]$env:WH_ANDROID_EXPECTED_CERT_SHA256).Replace(":", "").Trim().ToLowerInvariant()
+    if ($expected -and $actual -ne $expected) {
+        Fail "Android APK signer mismatch: expected $expected, got $actual."
+    }
+    Write-Host "Signed with Android update key alias: $($signing.Alias)" -ForegroundColor Green
 }
 
 function Copy-OrSignAndroidAab([string]$InputAab, [string]$OutputAab, [switch]$RequireSigning) {
@@ -981,7 +1031,7 @@ function Show-Usage {
     Write-Host "  .\scripts\build.bat all          build portable ZIP and Setup installer"
     Write-Host "  .\scripts\build.bat installer    build outputs\Word.Hunter.Setup.exe"
     Write-Host "  .\scripts\build.bat portable     build outputs\Word.Hunter.portable.zip"
-    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk"
+    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
     Write-Host "  .\scripts\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"

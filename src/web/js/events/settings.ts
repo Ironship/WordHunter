@@ -19,6 +19,7 @@ import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { hydrateActiveLibraryTexts } from "../books.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
+import { remapReaderBookmarksForAlgorithm } from "../reader/bookmarks.js";
 
 type AndroidSyncResult = {
   requestId?: string;
@@ -49,6 +50,18 @@ type ApplySyncSnapshotOptions = {
 let syncIntervalStarted = false;
 let backgroundSyncTimer: number | null = null;
 let backgroundSyncRunning = false;
+let syncOperationQueue: Promise<unknown> | null = null;
+let wordAlgorithmChangeGeneration = 0;
+
+function queueSyncOperation<T>(operation: () => Promise<T>): Promise<T> {
+  const result = syncOperationQueue ? syncOperationQueue.then(operation, operation) : operation();
+  const settled = result.then((): void => {}, (): void => {});
+  syncOperationQueue = settled;
+  void settled.finally(() => {
+    if (syncOperationQueue === settled) syncOperationQueue = null;
+  });
+  return result;
+}
 
 function resetReaderScrollForCurrentText() {
   if (!state.currentTextId) return;
@@ -130,9 +143,17 @@ function waitForAndroidSyncResult(
 
   return new Promise<AndroidSyncResult | null>((resolve, reject) => {
     const requestId = createAndroidSyncRequestId();
+    let timeout: number;
     const cleanup = () => {
       window.removeEventListener("wordhunter:android-sync-folder", onResult);
       clearTimeout(timeout);
+    };
+    const armTimeout = () => {
+      clearTimeout(timeout);
+      timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error(t("settings.syncFolderChangeFailed")));
+      }, 190000);
     };
     const onResult = (event: Event) => {
       const detail = (event as CustomEvent<AndroidSyncResult>).detail || {};
@@ -142,7 +163,10 @@ function waitForAndroidSyncResult(
       }
       if (detail.health && typeof detail.health === "object") state.syncHealth = detail.health;
       if (detail.path || detail.health) syncSettingsControls();
-      if (detail.terminal === false) return;
+      if (detail.terminal === false) {
+        armTimeout();
+        return;
+      }
       cleanup();
       if (detail.cancelled) {
         resolve(null);
@@ -152,12 +176,8 @@ function waitForAndroidSyncResult(
         reject(new Error(detail.error || detail.status || t("settings.syncFolderChangeFailed")));
       }
     };
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error(t("settings.syncFolderChangeFailed")));
-    }, 190000);
-
     window.addEventListener("wordhunter:android-sync-folder", onResult);
+    armTimeout();
     try {
       const started = startSync(requestId);
       if (started === false) {
@@ -263,7 +283,7 @@ async function refreshSyncthingStatus() {
   }
 }
 
-export async function syncNow({ background = false, saveFirst = true }: SyncNowOptions = {}): Promise<boolean> {
+async function syncNowOnce({ background = false, saveFirst = true }: SyncNowOptions = {}): Promise<boolean> {
   if (!window.__qtBridge && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return false;
   if (!state.syncDirectory && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") {
     if (!background) showToast(t("settings.syncFolderMissing"), "error");
@@ -318,19 +338,26 @@ export async function syncNow({ background = false, saveFirst = true }: SyncNowO
   return performSync();
 }
 
-async function resolveSyncConflict(id: string, resolution: string): Promise<boolean> {
+export function syncNow(options: SyncNowOptions = {}): Promise<boolean> {
+  return queueSyncOperation(() => syncNowOnce(options));
+}
+
+async function resolveSyncConflict(id: string | null, resolution: string): Promise<boolean> {
   if (!window.__qtBridge) return false;
-  await flushAllPendingFrontendState();
-  const startingRevision = getDurableStateRevision();
-  const response = await fetch("/__store/resolve_conflict", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-    body: JSON.stringify({ id, resolution })
+  return queueSyncOperation(async () => {
+    await flushAllPendingFrontendState();
+    const startingRevision = getDurableStateRevision();
+    const response = await fetch(id ? "/__store/resolve_conflict" : "/__store/resolve_all_conflicts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+      body: JSON.stringify(id ? { id, resolution } : { resolution })
+    });
+    if (!response.ok) throw new Error(t("toast.syncUnavailable"));
+    const snapshot = ((await response.json()) as { snapshot?: WhBridgeSnapshot }).snapshot || null;
+    if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
+    await syncNowOnce({ saveFirst: false });
+    return true;
   });
-  if (!response.ok) throw new Error(t("toast.syncUnavailable"));
-  const result = await response.json();
-  if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
-  return true;
 }
 
 function startBackgroundSyncJob() {
@@ -727,10 +754,27 @@ export function bindSettingsEvents() {
 
   if (els.syncConflictsList) {
     els.syncConflictsList.addEventListener("click", async (event: MouseEvent) => {
+      const bulkButton = event.target instanceof Element
+        ? event.target.closest<HTMLElement>("[data-conflict-resolution-all]")
+        : null;
       const button = event.target instanceof Element
         ? event.target.closest<HTMLElement>("[data-conflict-resolution]")
         : null;
-      if (!button) return;
+      if (!button && !bulkButton) return;
+      if (bulkButton) {
+        if (!state.syncConflictCount) return;
+        setElementBusy(bulkButton, true, { disable: true });
+        try {
+          await resolveSyncConflict(null, bulkButton.dataset.conflictResolutionAll || "keep-current");
+          showToast(t("settings.syncConflictResolved"));
+        } catch (error) {
+          console.warn("resolve conflicts failed", error);
+          showToast(t("toast.syncUnavailable"), "error");
+        } finally {
+          setElementBusy(bulkButton, false, { disable: true });
+        }
+        return;
+      }
       const item = button.closest<HTMLElement>("[data-conflict-id]");
       const id = item?.dataset.conflictId;
       const resolution = button.dataset.conflictResolution;
@@ -794,11 +838,15 @@ export function bindSettingsEvents() {
   if (els.clearState) els.clearState.addEventListener("click", clearLocalState);
 
   if (els.resetPrefs) {
-    els.resetPrefs.addEventListener("click", () => {
+    els.resetPrefs.addEventListener("click", async () => {
+      const generation = ++wordAlgorithmChangeGeneration;
       resetPreferences();
       renderLibrary();
-      renderReader();
       showToast(t("toast.prefsReset"));
+      const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
+      await remapReaderBookmarksForAlgorithm(algorithm);
+      if (generation !== wordAlgorithmChangeGeneration || state.preferences.wordDetectionAlgorithm !== algorithm) return;
+      renderReader();
     });
   }
 
@@ -838,9 +886,17 @@ export function bindSettingsEvents() {
     updatePreferenceValue("wordsPerPage", target.value);
     renderReader();
   });
-  if (els.prefWordAlgorithm) els.prefWordAlgorithm.addEventListener("change", (event: Event) => {
+  if (els.prefWordAlgorithm) els.prefWordAlgorithm.addEventListener("change", async (event: Event) => {
     const target = event.currentTarget as HTMLSelectElement;
-    state.preferences.wordDetectionAlgorithm = target.value === "classic" ? "classic" : "modern";
+    const algorithm = target.value === "classic" ? "classic" : "modern";
+    const generation = ++wordAlgorithmChangeGeneration;
+    await remapReaderBookmarksForAlgorithm(algorithm);
+    const selectedAlgorithm = target.value === "classic" ? "classic" : "modern";
+    if (generation !== wordAlgorithmChangeGeneration || selectedAlgorithm !== algorithm) return;
+    state.preferences.wordDetectionAlgorithm = algorithm;
+    for (const position of Object.values(state.readerScrolls || {})) {
+      if (position && typeof position === "object") position.wordIndex = null;
+    }
     state.readerPage = 1;
     resetReaderScrollForCurrentText();
     saveState();

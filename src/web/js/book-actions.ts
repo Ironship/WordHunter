@@ -1,9 +1,11 @@
 import { state, setLastReadTextId, getLastReadTextId } from "./state.js";
 import { getNavigationEpoch, setView } from "./render.js";
-import { setReaderLoading, clearReaderLoading } from "./reader/renderer.js";
+import { setReaderLoading, clearReaderLoading, renderReader } from "./reader/renderer.js";
 import { rememberReaderScrollPosition } from "./reader/scroll.js";
 import { bookTexts, findBookById, isBookTextCacheStale, loadBookText, loadCustomTextContent } from "./books.js";
 import { findCustomText, hasCustomText } from "./book-actions/profile-library.js";
+import { showToast } from "./toast.js";
+import { t } from "./i18n.js";
 
 let openBookGeneration = 0;
 
@@ -12,8 +14,6 @@ export async function openBook(id: string) {
   const startingNavigationEpoch = getNavigationEpoch();
   clearReaderLoading();
   rememberReaderScrollPosition();
-  state.currentTextId = id;
-  setLastReadTextId(id);
   const customText = findCustomText(id);
   const isCustom = Boolean(customText);
   if (!bookTexts.has(id) || isBookTextCacheStale(id)) {
@@ -39,8 +39,25 @@ export async function openBook(id: string) {
   }
 
   if (generation !== openBookGeneration || startingNavigationEpoch !== getNavigationEpoch()) return false;
+  const text = bookTexts.get(id);
+  if (typeof text !== "string" || !text.trim()) {
+    showToast(t("toast.noTextSource"), "error");
+    if (state.currentView === "reader") renderReader();
+    return false;
+  }
 
+  const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
+  await import("./reader/bookmarks.js")
+    .then(({ remapReaderBookmarksForAlgorithm }) => remapReaderBookmarksForAlgorithm(algorithm, id))
+    .catch((error) => console.warn("bookmark remap failed", error));
+  if (generation !== openBookGeneration || startingNavigationEpoch !== getNavigationEpoch()) return false;
+
+  state.currentTextId = id;
+  setLastReadTextId(id);
   state.selectedWord = null;
+  state.selectedWordIndex = null;
+  state.readerSelectionRange = null;
+  window.lastActiveToken = null;
   setView("reader");
   return true;
 }
