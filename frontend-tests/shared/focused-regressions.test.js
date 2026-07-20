@@ -221,6 +221,25 @@ describe("focused frontend regressions", () => {
     }
   });
 
+  it("uses the current flashcard payload instead of stale Reader text for TTS", async () => {
+    const { calls, listeners } = await globalActionsHarness({
+      state: { currentView: "flashcards", selectedWord: "stale-reader-word" }
+    });
+    const click = listeners.get("click");
+
+    for (const text of ["current-card-word", "Current card sentence."]) {
+      click({
+        target: closestTarget({ "[data-tts-word]": { dataset: { ttsWord: text } } }),
+        composedPath() { return []; }
+      });
+    }
+
+    assert.deepEqual(calls, [
+      ["speak", "current-card-word"],
+      ["speak", "Current card sentence."]
+    ]);
+  });
+
   it("starts Reader Play at the exact selected repeated word", async () => {
     const sliceCalls = [];
     const tokens = [3, 17, 22].map((wordIndex) => ({
@@ -321,12 +340,15 @@ describe("focused frontend regressions", () => {
       document: { documentElement: { classList: rootClasses }, getElementById: () => null }
     });
 
-    assert.equal(navigation.selectReaderToken(token, true, { keepPanelOpen: true }), true);
+    assert.equal(navigation.selectReaderToken(token), true);
     assert.equal(calls.some((call) => call[0] === "selectWord"), false);
     assert.equal(calls.some((call) => call[0] === "saveUiState"), true);
     assert.deepEqual(calls.find((call) => call[0] === "speakWord"), ["speakWord", "Beta"]);
+    const selectionUpdate = calls.find((call) => call[0] === "updateReaderSelection");
+    assert.equal(selectionUpdate[1].renderPanel, true);
 
     calls.length = 0;
+    rootClasses.add("pocket-mode", "pocket-word-panel-open");
     state.selectedWord = "alpha";
     state.selectedWordIndex = 3;
     assert.equal(navigation.selectReaderToken(token, true, { keepPanelOpen: true, persistWord: true }), true);

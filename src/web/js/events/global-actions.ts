@@ -130,13 +130,13 @@ function handleGlobalClick(event: MouseEvent): void {
   }
 
   const ttsWordBtn = target.closest<HTMLElement>("[data-tts-word]");
-  if (ttsWordBtn) speakWord(getSelectedReaderActionText(true) || ttsWordBtn.dataset.ttsWord);
+  if (ttsWordBtn) speakWord((state.currentView === "reader" && getSelectedReaderActionText(true)) || ttsWordBtn.dataset.ttsWord);
 
   const youglishBtn = target.closest<HTMLElement>("[data-youglish-word]");
-  if (youglishBtn) openYouGlish(getSelectedReaderActionText() || youglishBtn.dataset.youglishWord);
+  if (youglishBtn) openYouGlish((state.currentView === "reader" && getSelectedReaderActionText()) || youglishBtn.dataset.youglishWord);
 
   const dictBtn = target.closest<HTMLElement>("[data-dict-word]");
-  if (dictBtn) openDictionary(getSelectedReaderActionText() || dictBtn.dataset.dictWord);
+  if (dictBtn) openDictionary((state.currentView === "reader" && getSelectedReaderActionText()) || dictBtn.dataset.dictWord);
 
   const copyWordBtn = target.closest<HTMLElement>("[data-copy-word]");
   if (copyWordBtn) copySelectedWordToClipboard();
