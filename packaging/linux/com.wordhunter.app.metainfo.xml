@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.wordhunter.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>Word Hunter</name>
+  <summary>Local-first reader and vocabulary trainer</summary>
+  <developer id="com.wordhunter">
+    <name>Word Hunter</name>
+  </developer>
+  <icon type="stock">com.wordhunter.app</icon>
+  <description>
+    <p>
+      Word Hunter is a language-learning workspace for reading real texts,
+      saving vocabulary with context, and reviewing words later.
+    </p>
+    <p>
+      It supports imported text, PDFs, EPUB files, subtitles, local vocabulary
+      storage, spaced repetition, text to speech, and optional offline
+      translation models.
+    </p>
+  </description>
+  <launchable type="desktop-id">Word Hunter.desktop</launchable>
+  <url type="homepage">https://ironship.github.io/WordHunter-site/</url>
+  <url type="bugtracker">https://github.com/Ironship/WordHunter/issues</url>
+  <categories>
+    <category>Education</category>
+    <category>Languages</category>
+  </categories>
+  <provides>
+    <binary>word-hunter-rustified</binary>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/Ironship/WordHunter/main/docs/screenshots/pc-reader.png</image>
+      <caption>Reading view with vocabulary highlights and word details</caption>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="1.0.7" date="2026-07-20">
+      <description>
+        <ul>
+          <li>Add exact-word Reader bookmarks and restore the last reading position.</li>
+          <li>Harden synchronization, backups, imports, and custom-book persistence.</li>
+          <li>Improve Android synchronization, text-to-speech controls, and conflict resolution.</li>
+          <li>Add validated Apple Silicon, AppImage, DEB, Snap, AUR, and Nix packaging paths.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.6" date="2026-07-17">
+      <description>
+        <ul>
+          <li>Keep Reader playback anchored to the selected word.</li>
+          <li>Delay the first in-text review of newly learned words until the following day.</li>
+          <li>Correct Italian interface copy and built-in reader titles.</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

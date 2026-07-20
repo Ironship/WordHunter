@@ -1,8 +1,8 @@
 [package]
 name = "word-hunter"
-version = "1.0.6"
+version = "1.0.7"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
-authors = ["Word Hunter"]
+authors = ["Ironship <25068602+Ironship@users.noreply.github.com>"]
 edition = "2024"
 rust-version = "1.88"
 license = "AGPL-3.0-or-later"
@@ -57,6 +57,9 @@ rfd = "0.15"
 gdk = "0.18"
 gdkwayland-sys = { version = "0.18", features = ["v3_24_22"] }
 gtk = "0.18"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = "2.4.3"
 
 [patch.crates-io]
 ctranslate2 = { path = "vendor/ctranslate2" }

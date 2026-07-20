@@ -118,12 +118,12 @@ impl Store {
         let safe_id = crate::paths::sanitize_id(id)?;
         let inner = self.inner.lock().unwrap();
         let path = inner.books_dir.join(&safe_id);
+        record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         media_assets::tombstone_book_assets(&inner.dir, &safe_id, self.device_id())?;
         if path.exists() {
             std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
             durable::sync_parent(&inner.books_dir)?;
         }
-        record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         Ok(())
     }
 

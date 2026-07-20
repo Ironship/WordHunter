@@ -3,7 +3,9 @@
 import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
-import { OTHER_PROFILE_ID } from "./constants.js";
+import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
+import { OTHER_PROFILE_ID, STATE_SCHEMA_VERSION } from "./constants.js";
+import { postStoreJson } from "./store-bridge.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
 export { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./state/defaults.js";
@@ -15,23 +17,26 @@ export const state: WhAppState = stateRef = autosave.wrap(loadState());
 export const initialVocabKeys = new Set(Object.keys(state.vocab || {}));
 const frontendStateFlushers = new Set<() => unknown>();
 const bridgeSnapshotHandlers = new Set<(change: WhBridgeSnapshotChange) => unknown>();
+let uiSaveQueue: Promise<WhRecord | void> = Promise.resolve();
+const inFlightUiSaves = new Set<Promise<unknown>>();
+let uiWritesPaused = 0;
+let uiSaveRequestedWhilePaused = false;
 
-const UI_STATE_KEYS = [
-  "currentView",
-  "currentTextId",
-  "selectedWord",
-  "selectedWordIndex",
-  "readerSelectionRange",
-  "reviewIndex",
-  "readerFontSize",
-  "readerPdfZoom",
-  "readerPdfViewMode",
-  "readerPage",
-  "readerPages",
-  "readerScrolls",
-  "readerScrollsPerPage",
-  "filters"
-];
+function trackUiSave<T>(promise: Promise<T>): Promise<T> {
+  inFlightUiSaves.add(promise);
+  void promise.then(
+    () => inFlightUiSaves.delete(promise),
+    () => inFlightUiSaves.delete(promise)
+  );
+  return promise;
+}
+
+async function drainUiSaves(): Promise<void> {
+  await uiSaveQueue;
+  while (inFlightUiSaves.size) {
+    await Promise.allSettled([...inFlightUiSaves]);
+  }
+}
 
 function rawState(): WhAppState {
   return state._raw || state;
@@ -44,15 +49,20 @@ function clonePlain<T>(value: T): T {
 
 function captureLocalUiState(): WhRecord {
   const raw = rawState();
-  const captured: WhRecord = {};
-  for (const key of UI_STATE_KEYS) captured[key] = clonePlain(raw[key]);
+  const captured = captureUiState(raw);
   if (raw.discover) captured.discover = clonePlain(raw.discover);
   return captured;
 }
 
+function postCurrentUiState(): Promise<WhRecord> {
+  const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
+  saveUiStateCache(rawState());
+  return postStoreJson("/__store/ui_state", payload);
+}
+
 function restoreLocalUiState(nextState: WhAppState, captured: WhRecord): void {
   for (const key of UI_STATE_KEYS) {
-    if (captured[key] !== undefined) nextState[key] = captured[key];
+    if (captured[key] !== undefined) (nextState as WhRecord)[key] = captured[key];
   }
   if (captured.discover && !nextState.discover) nextState.discover = captured.discover;
 }
@@ -62,8 +72,42 @@ export function saveState(): Promise<WhBridgeSaveResult | void> {
 }
 
 export function saveUiState(): Promise<WhBridgeSaveResult | void> {
-  if (window.__qtBridge) return Promise.resolve();
+  if (window.__qtBridge) {
+    if (uiWritesPaused > 0) {
+      uiSaveRequestedWhilePaused = true;
+      return uiSaveQueue;
+    }
+    uiSaveQueue = uiSaveQueue
+      .catch(() => {})
+      .then(postCurrentUiState)
+      .catch((error) => console.warn("Failed to save Reader UI state", error));
+    return uiSaveQueue;
+  }
   return saveState();
+}
+
+export function flushUiStateSync(): void {
+  if (!window.__qtBridge) return;
+  if (uiWritesPaused > 0) {
+    uiSaveRequestedWhilePaused = true;
+    return;
+  }
+  const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
+  saveUiStateCache(rawState());
+  try {
+    const request = fetch("/__store/ui_state", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-WH-Token": window.WH_TOKEN || ""
+      },
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch((error) => console.warn("Failed to flush Reader UI state", error));
+    trackUiSave(request);
+  } catch (error) {
+    console.warn("Failed to flush Reader UI state", error);
+  }
 }
 
 export function getDurableStateRevision(): number {
@@ -94,25 +138,64 @@ export function registerBridgeSnapshotHandler(handler: (change: WhBridgeSnapshot
 
 export async function flushAllPendingFrontendState(): Promise<void> {
   flushFrontendStateBuffers();
-  await saveState();
+  await Promise.all([saveState(), drainUiSaves()]);
 }
 window.flushAllPendingFrontendState = flushAllPendingFrontendState;
 
+let nativeCloseRequested = false;
+export async function requestWordHunterClose(): Promise<void> {
+  if (nativeCloseRequested) return;
+  nativeCloseRequested = true;
+  flushFrontendStateBuffers();
+  const finalUiSave = window.__qtBridge ? drainUiSaves().then(postCurrentUiState) : Promise.resolve();
+  const results = await Promise.allSettled([saveState(), finalUiSave]);
+  const saveFailed = results.some((result) => result.status === "rejected");
+  if (saveFailed) {
+    nativeCloseRequested = false;
+    console.warn("Word Hunter remains open because final state saving failed");
+    void Promise.all([import("./toast.js"), import("./i18n.js")])
+      .then(([{ showToast }, { t }]) => showToast(t("toast.syncUnavailable"), "error"));
+    return;
+  }
+  try {
+    const response = await fetch("/__app/close", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+      body: "{}"
+    });
+    if (!response.ok) throw new Error(`close HTTP ${response.status}`);
+  } catch (error) {
+    nativeCloseRequested = false;
+    console.warn("Failed to close Word Hunter after saving state", error);
+  }
+}
+window.requestWordHunterClose = () => { void requestWordHunterClose(); };
+
 export function runExclusiveStateWrite<T>(callback: () => T | Promise<T>): Promise<T> {
   flushFrontendStateBuffers();
-  return autosave.runExclusiveWrite(callback);
+  uiWritesPaused += 1;
+  return drainUiSaves()
+    .then(() => autosave.runExclusiveWrite(callback))
+    .finally(() => {
+      uiWritesPaused = Math.max(0, uiWritesPaused - 1);
+      if (uiWritesPaused === 0 && uiSaveRequestedWhilePaused) {
+        uiSaveRequestedWhilePaused = false;
+        void saveUiState();
+      }
+    });
 }
 
 export function applyBridgeSnapshotToState(
   snapshot: unknown,
   {
     expectedRevision,
-    preserveActiveReader = false
-  }: { expectedRevision?: number; preserveActiveReader?: boolean } = {}
+    preserveActiveReader = false,
+    preserveLocalUi = true
+  }: { expectedRevision?: number; preserveActiveReader?: boolean; preserveLocalUi?: boolean } = {}
 ): boolean {
   assertSupportedStateSchemaVersion(snapshot, "bridge snapshot");
   if (expectedRevision !== undefined && autosave.getDurableStateRevision() !== expectedRevision) return false;
-  const localUi = captureLocalUiState();
+  const localUi = preserveLocalUi ? captureLocalUiState() : null;
   const previousTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter((id): id is string => Boolean(id)));
   const snapshotPreferences = snapshot.prefs !== null && typeof snapshot.prefs === "object" && !Array.isArray(snapshot.prefs)
     ? snapshot.prefs as WhRecord
@@ -125,7 +208,7 @@ export function applyBridgeSnapshotToState(
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();
-  restoreLocalUiState(nextState, localUi);
+  if (localUi) restoreLocalUiState(nextState, localUi);
   replaceState(nextState, { save: false });
   autosave.markDurableStateReplaced();
   const currentTextIds = new Set((state.customTexts || []).map((text) => text?.id).filter((id): id is string => Boolean(id)));
@@ -238,8 +321,6 @@ export function switchLearningLanguage(lang: string): void {
   state.readerSelectionRange = null;
   state.currentView = "library";
   state.readerPage = 1;
-  state.readerPages = {};
-  state.readerScrolls = {};
   resetInitialVocabKeys();
   saveState();
 }

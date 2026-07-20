@@ -1,0 +1,15 @@
+word-hunter (1.0.7) stable; urgency=medium
+
+  * Add exact-word bookmarks and restore the last Reader position.
+  * Harden synchronization, backups, imports, and library persistence.
+  * Improve Android sync, text-to-speech controls, and conflict resolution.
+  * Add validated Apple Silicon and Linux distribution packages.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Mon, 20 Jul 2026 07:47:00 +0000
+
+word-hunter (1.0.6) stable; urgency=medium
+
+  * Publish the stable Word Hunter 1.0.6 release.
+  * Add validated AppImage and Debian packages for x86_64 Linux.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Fri, 17 Jul 2026 08:50:20 +0000

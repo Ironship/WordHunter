@@ -71,11 +71,15 @@ describe("Android Pocket bridges", () => {
       }
     };
     const tokenClasses = [new Set(), new Set(), new Set()];
-    const tokens = [
-      { textContent: "Hallo", dataset: {}, classList: { add: (name) => tokenClasses[0].add(name), remove: (name) => tokenClasses[0].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[1].add(name), remove: (name) => tokenClasses[1].delete(name) } },
-      { textContent: "Welt", dataset: {}, classList: { add: (name) => tokenClasses[2].add(name), remove: (name) => tokenClasses[2].delete(name) } }
-    ];
+    const scrolls = [];
+    let container;
+    const tokens = ["Hallo", "Welt", "Welt"].map((textContent, index) => ({
+      textContent,
+      dataset: {},
+      classList: { add: (name) => tokenClasses[index].add(name), remove: (name) => tokenClasses[index].delete(name) },
+      closest: () => container,
+      getBoundingClientRect: () => ({ top: 20 + index * 120, bottom: 40 + index * 120, height: 20 })
+    }));
     globalThis.localStorage = { getItem: () => null, setItem: () => {} };
     globalThis.document = {
       querySelectorAll(selector) {
@@ -91,7 +95,16 @@ describe("Android Pocket bridges", () => {
 
     const { speakText } = await import("../../dist/web/js/tts.js");
     let finished = false;
-    const container = { classList: { add() {} }, querySelectorAll: () => tokens };
+    container = {
+      classList: { add() {} },
+      querySelectorAll: () => tokens,
+      contains: (token) => tokens.includes(token),
+      clientHeight: 100,
+      scrollHeight: 500,
+      scrollTop: 0,
+      getBoundingClientRect: () => ({ top: 0, bottom: 100, height: 100 }),
+      scrollTo(options) { scrolls.push(options); this.scrollTop = options.top; }
+    };
     speakText("Hallo. Welt.", container, () => { finished = true; });
 
     assert.equal(calls.length, 1);
@@ -109,6 +122,7 @@ describe("Android Pocket bridges", () => {
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "range", start: 0, end: 4 } });
     assert.equal(tokenClasses[0].has("tts-current-word"), false);
     assert.equal(tokenClasses[1].has("tts-current-word"), true);
+    assert.deepEqual(scrolls, [{ top: 100, behavior: "auto" }]);
 
     listeners["wordhunter:android-tts"]({ detail: { id: calls[1].id, status: "done" } });
     assert.equal(finished, true);
@@ -159,6 +173,21 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /dispatchAndroidTtsResult\(utteranceId, "range", start, end\)/);
   });
 
+  it("keeps the Android TTS return notification private and process-scoped", () => {
+    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
+
+    assert.match(activity, /ActivityResultContracts\.RequestPermission\(\)/);
+    assert.match(activity, /Manifest\.permission\.POST_NOTIFICATIONS/);
+    assert.match(activity, /NotificationManager\.IMPORTANCE_LOW/);
+    assert.match(activity, /Intent\(this, MainActivity::class\.java\)/);
+    assert.match(activity, /PendingIntent\.FLAG_UPDATE_CURRENT or PendingIntent\.FLAG_IMMUTABLE/);
+    assert.match(activity, /setVisibility\(Notification\.VISIBILITY_PRIVATE\)/);
+    assert.match(activity, /override fun onStart\(utteranceId: String\?\) \{\s*showTtsNotification\(\)/);
+    assert.match(activity, /override fun onDone\(utteranceId: String\?\) \{\s*hideTtsNotification\(\)/);
+    assert.match(activity, /fun stopTts\(\) \{[\s\S]*textToSpeech\?\.stop\(\)[\s\S]*hideTtsNotification\(\)/);
+    assert.doesNotMatch(activity, /\bMediaSession\b|startForeground\(|startForegroundService\(|class \w+ : Service/);
+  });
+
   it("defines Android PDF rendering and overlay integration ABIs", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
     const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
@@ -199,8 +228,11 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /probe\.delete\(\)/);
     assert.match(activity, /ANDROID_SYNC_MARKER_NAME = "\.wordhunter-sync\.json"/);
     assert.match(activity, /verifySyncFolderOwnership\(folder, entries\)/);
-    assert.match(activity, /setOf\("\.stfolder", "\.stversions", "\.stignore"\)/);
-    assert.match(activity, /Select an empty Word Hunter sync folder/);
+    assert.match(activity, /"\.stfolder", "\.stversions", "\.stignore"/);
+    assert.match(activity, /Select a dedicated or existing Word Hunter sync folder/);
+    assert.match(activity, /"argos-packages"/);
+    assert.match(activity, /startsWith\("\.stfolder\.removed-"\)/);
+    assert.match(activity, /recordsV1\?\.isDirectory != true/);
     assertSourceOrder(activity, "verifySafSyncFolder(uri, folder, permission)", "rememberSyncFolder(uri, folder, persistPermission)");
     assertSourceOrder(activity, "rememberSyncFolder(uri, folder, persistPermission)", "prepareSyncStagingRoot(request)");
     assert.match(activity, /if \(!prefs\.commit\(\)\)/);
@@ -275,13 +307,16 @@ describe("Android Pocket bridges", () => {
 
   it("synchronizes changed records instead of comparing filenames only", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
+    const stagingCopy = sourceBetween(activity, "private fun copyDocumentFileToFile(", "private fun inventoryObsoleteDocumentTree(");
 
-    assert.match(activity, /private fun recordContentsEqual\(source: File, existing: DocumentFile\): Boolean/);
-    assert.match(activity, /streamsEqual\(sourceInput, existingInput\)/);
+    assert.match(activity, /val existingDigest = ensureRemoteFileUnchanged\(relativePath, existing, stats\)/);
+    assert.match(activity, /streamDigest\(it\)\.contentEquals\(existingDigest\)/);
+    assert.doesNotMatch(stagingCopy, /output\.fd\.sync\(\)/);
     assert.doesNotMatch(activity, /kotlin\.math\.abs\(sourceModified - existingModified\)/);
     assert.doesNotMatch(activity, /expectedLength >= 262144L\) return true/);
     assert.match(activity, /syncRecordDirectoryNames = setOf\(/);
-    assert.doesNotMatch(activity, /syncRecordDirectoryNames = setOf\([^)]*"prefs"/s);
+    assert.match(activity, /syncRecordDirectoryNames = setOf\([^)]*"prefs"/s);
+    assert.match(activity, /isObsoleteLocalOnlySyncPath\(relativePath: String\)[\s\S]*records\/v1\/prefs/);
   });
 
   it("bounds Android staging and mirrors media tombstones back to SAF", () => {
@@ -299,6 +334,8 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /File\(stagingParent, request\.id\)/);
     assert.match(activity, /connection\.readTimeout = 0/);
     assert.match(activity, /request\.backendInProgress/);
+    assert.match(activity, /mainHandler\.postDelayed\(it, ANDROID_SYNC_TIMEOUT_MS\)/);
+    assert.match(activity, /processedExportFileCount % 100/);
     assert.match(activity, /Cannot list local sync staging path/);
     assert.match(activity, /validateLocalExportTree\(incomingDir, stats, root = true\)/);
     assert.match(activity, /isObsoleteLocalOnlySyncPath\(childRelativePath\)/);
@@ -315,11 +352,18 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /Intent\.CATEGORY_OPENABLE/);
     assert.match(activity, /Intent\.EXTRA_TITLE/);
     assert.match(activity, /openFileDescriptor\(uri, "wt"\)/);
+    assert.match(activity, /exportExecutor\.execute \{/);
+    assert.match(activity, /OutputStreamWriter\(output, Charsets\.UTF_8\)/);
+    assert.match(activity, /ANDROID_EXPORT_MAX_CHARS = 32 \* 1024 \* 1024/);
+    assert.match(activity, /dispatchAndroidExportProgress\(export\.requestId, "writing"\)/);
+    assert.doesNotMatch(activity, /data\.toByteArray\(Charsets\.UTF_8\)/);
     assert.match(activity, /output\.fd\.sync\(\)/);
     assert.match(syncActions, /const bridge = window\.WordHunterAndroid/);
     assert.match(syncActions, /typeof bridge\?\.saveExport !== "function"/);
     assert.match(syncActions, /wordhunter:android-export/);
     assert.match(syncActions, /detail\.requestId !== requestId/);
+    assert.match(syncActions, /detail\.status === "writing"/);
+    assert.match(syncActions, /timeout = null/);
     assert.match(syncActions, /bridge\.saveExport\(data, filename, mime, requestId\)/);
   });
 });

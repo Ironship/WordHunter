@@ -6,6 +6,7 @@ import { registerFrontendStateFlusher, state } from "../state.js";
 import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearReaderSelection } from "../reader/selection.js";
 
 import { rememberReaderScrollPosition } from "../reader/scroll.js";
+import { bindReaderBookmarkEvents } from "../reader/bookmarks.js";
 import { navigateReaderWord } from "../reader/word-navigation.js";
 import { refreshPocketWordPanelSheet } from "../platform.js";
 
@@ -50,6 +51,7 @@ export function bindReaderEvents(): void {
     if (!(readerText instanceof HTMLElement)
       || !(textSelect instanceof HTMLSelectElement)
       || !(wordPanel instanceof HTMLElement)) return;
+    bindReaderBookmarkEvents();
 
     let lastWordPanelInteractionAt = 0;
     let pdfWordClickTimer: number | null = null;
@@ -110,8 +112,10 @@ export function bindReaderEvents(): void {
         const last = state.readerScrolls?.[state.currentTextId];
         if (last && last.readerPage != null && last.readerPage !== state.readerPage) return;
         const scrollTop = Math.max(0, Math.round(readerText.scrollTop || 0));
-        if (last && last.readerPage === state.readerPage && Math.abs((last.scrollTop || 0) - scrollTop) < 2) return;
-        rememberReaderScrollPosition({ precise: false });
+        if (last && last.readerPage === state.readerPage && Math.abs((last.scrollTop || 0) - scrollTop) < 2) {
+          return;
+        }
+        rememberReaderScrollPosition({ precise: true, flush: true });
       }, 150);
     }, { passive: true });
     let swipeStart: SwipePoint | null = null;

@@ -18,9 +18,10 @@ globalThis.document = {
 };
 
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../dist/web/js/books.js");
+const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, hydrateCurrentReaderText, loadAllBookTexts, loadAllCustomTextContents, loadBooksCatalog } = await import("../../dist/web/js/books.js");
 const { els } = await import("../../dist/web/js/dom.js");
-const { openBook } = await import("../../dist/web/js/book-actions.js");
+const { loadFullGutenbergText, openBook } = await import("../../dist/web/js/book-actions.js");
+const { getReaderBookmarks } = await import("../../dist/web/js/reader/bookmarks.js");
 const { setView } = await import("../../dist/web/js/render.js");
 
 Object.assign(els, {
@@ -100,6 +101,47 @@ describe("built-in starter catalog", () => {
 });
 
 describe("full-text hydration", () => {
+  it("hydrates the active Reader body before its saved page can be clamped", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    replaceState({
+      ...createDefaultState(),
+      currentView: "reader",
+      currentTextId: "de-custom-resume",
+      readerPages: { "de-custom-resume": 5 },
+      preferences: {
+        ...createDefaultState().preferences,
+        wordDetectionAlgorithm: "classic",
+        readerBookmarks: {
+          "de-custom-resume": [{
+            id: "mark-1",
+            label: "Compound",
+            page: 1,
+            scrollTop: 0,
+            wordIndex: 4,
+            anchorOffset: 18,
+            anchorWord: "art",
+            wordAlgorithm: "modern",
+            createdAt: "2026-07-18T00:00:00Z"
+          }]
+        }
+      },
+      customTexts: [{ id: "de-custom-resume", title: "Resume", lang: "de", text: "" }]
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    globalThis.fetch = async (url) => String(url).startsWith("/__book/text")
+      ? { ok: true, json: async () => ({ text: `zero state-of-the-art one ${"Wort ".repeat(6000)}` }) }
+      : { ok: true, json: async () => ({}) };
+
+    assert.equal(await hydrateCurrentReaderText(), true);
+
+    assert.match(bookTexts.get("de-custom-resume"), /^zero state-of-the-art one/);
+    assert.equal(state.readerPages["de-custom-resume"], 5);
+    assert.equal(getReaderBookmarks("de-custom-resume")[0].wordIndex, 1);
+    assert.equal(state.preferences.readerBookmarks["de-custom-resume"][0].wordIndex, 4);
+    assert.equal(state.preferences.readerBookmarks["de-custom-resume"][0].wordAlgorithm, "modern");
+    clearAllBookTextCaches();
+  });
   it("loads every book while keeping at most two text fetches active", async () => {
     state.preferences.learningLanguage = "en";
     let active = 0;
@@ -214,5 +256,138 @@ describe("full-text hydration", () => {
 
     assert.equal(await opening, false);
     assert.equal(state.currentView, "help");
+  });
+
+  it("does not open an empty custom text returned by the backend", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    replaceState({
+      ...createDefaultState(),
+      customTexts: [{ id: "de-custom-empty", title: "Missing body", lang: "de" }],
+      currentView: "library",
+      currentTextId: null
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ text: "" }) });
+
+    assert.equal(await openBook("de-custom-empty"), false);
+    assert.equal(state.currentView, "library");
+    assert.equal(state.currentTextId, null);
+    assert.equal(bookTexts.has("de-custom-empty"), false);
+  });
+
+  it("keeps the last committed selection when a second concurrent open fails", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    replaceState({
+      ...createDefaultState(),
+      customTexts: [
+        { id: "de-custom-slow", title: "Slow", lang: "de" },
+        { id: "de-custom-empty", title: "Empty", lang: "de" }
+      ],
+      currentView: "library",
+      currentTextId: null
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    let resolveSlow;
+    globalThis.fetch = (url) => String(url).includes("de-custom-slow")
+      ? new Promise((resolve) => { resolveSlow = resolve; })
+      : Promise.resolve({ ok: true, json: async () => ({ text: "" }) });
+
+    const slowOpening = openBook("de-custom-slow");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(await openBook("de-custom-empty"), false);
+    resolveSlow({ ok: true, json: async () => ({ text: "slow body" }) });
+    assert.equal(await slowOpening, false);
+
+    assert.equal(state.currentView, "library");
+    assert.equal(state.currentTextId, null);
+  });
+
+  it("stores downloaded Gutenberg full text under the active profile namespace", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = false;
+    replaceState(createDefaultState(), { save: false });
+    state.preferences.learningLanguage = "de";
+    const body = "A sufficiently long Gutenberg body. ".repeat(40);
+    globalThis.fetch = async () => ({ ok: true, text: async () => body });
+
+    await loadFullGutenbergText({
+      id: "user-123",
+      gutenbergId: "123",
+      title: "Book",
+      author: "Author",
+      textUrl: "https://example.test/123.txt",
+      pageUrl: "https://example.test/123"
+    });
+
+    assert.ok(state.customTexts.some((text) => text.id === "gutenberg-full-de-123"));
+    assert.equal(state.customTexts.some((text) => text.id === "gutenberg-full-123"), false);
+  });
+
+  it("does not open a catalog book when all text sources fail", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = false;
+    replaceState({
+      ...createDefaultState(),
+      userBooks: [{ id: "user-offline", title: "Offline", textUrl: "https://example.invalid/book.txt" }],
+      currentView: "library",
+      currentTextId: null
+    }, { save: false });
+    state.profiles.de.userBooks = state.userBooks;
+    globalThis.fetch = async () => ({ ok: false, status: 503 });
+
+    assert.equal(await openBook("user-offline"), false);
+    assert.equal(state.currentView, "library");
+    assert.equal(state.currentTextId, null);
+    assert.equal(bookTexts.has("user-offline"), false);
+  });
+
+  it("clears the previous book selection before opening another book", async () => {
+    window.__qtBridge = false;
+    replaceState({
+      ...createDefaultState(),
+      customTexts: [{ id: "de-custom-next", title: "Next", lang: "de", text: "neuer Text" }],
+      currentView: "library",
+      selectedWord: "alt",
+      selectedWordIndex: 777,
+      readerSelectionRange: { anchor: 2, focus: 4 }
+    }, { save: false });
+    window.lastActiveToken = { dataset: { wordIndex: "777" } };
+
+    assert.equal(await openBook("de-custom-next"), true);
+    assert.equal(state.selectedWord, null);
+    assert.equal(state.selectedWordIndex, null);
+    assert.equal(state.readerSelectionRange, null);
+    assert.equal(window.lastActiveToken, null);
+  });
+
+  it("removes the Reader loading placeholder after a failed open", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    const attributes = new Set();
+    els.readerText = {
+      dataset: {},
+      style: {},
+      classList: { remove() {}, toggle() {} },
+      innerHTML: "",
+      setAttribute(name) { attributes.add(name); },
+      removeAttribute(name) { attributes.delete(name); }
+    };
+    els.textSelect = { innerHTML: "" };
+    els.readerHeading = { textContent: "" };
+    els.readerSource = { textContent: "" };
+    replaceState({
+      ...createDefaultState(),
+      customTexts: [{ id: "de-custom-empty-reader", title: "Missing", lang: "de" }],
+      currentView: "reader",
+      currentTextId: null
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ text: "" }) });
+
+    assert.equal(await openBook("de-custom-empty-reader"), false);
+    assert.equal(attributes.has("aria-busy"), false);
+    assert.doesNotMatch(els.readerText.innerHTML, /reader-loading/);
   });
 });

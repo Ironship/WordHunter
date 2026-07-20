@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.7" date="2026-07-20">
+      <description>
+        <ul>
+          <li>Add exact-word Reader bookmarks and restore the last reading position.</li>
+          <li>Harden synchronization, backups, imports, and custom-book persistence.</li>
+          <li>Improve Android synchronization, text-to-speech controls, and conflict resolution.</li>
+          <li>Add validated Apple Silicon, AppImage, DEB, Snap, AUR, and Nix packaging paths.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.6" date="2026-07-17">
       <description>
         <ul>

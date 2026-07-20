@@ -3,18 +3,44 @@ use serde_json::Value;
 use serde_json::json;
 use std::path::{Component, Path};
 use std::{fs, path::PathBuf};
-#[cfg(target_os = "android")]
 use tauri::Manager;
 use tiny_http::Request;
 
 use crate::{offline_translator, response, server::ServerState, tts};
+
+pub(crate) fn parse_window_zoom_percent(payload: &Value) -> Result<f64, String> {
+    let percent = payload
+        .get("percent")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "window zoom requires an integer percent".to_string())?;
+    if !(80..=150).contains(&percent) {
+        return Err("window zoom percent must be between 80 and 150".to_string());
+    }
+    Ok(percent as f64 / 100.0)
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn set_window_zoom(state: &ServerState, scale_factor: f64) -> Result<(), String> {
+    let window = state
+        .app_handle
+        .get_webview_window("main")
+        .ok_or_else(|| "main window is unavailable".to_string())?;
+    window
+        .set_zoom(scale_factor)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn set_window_zoom(_state: &ServerState, _scale_factor: f64) -> Result<(), String> {
+    Err("window zoom is unavailable on Android".to_string())
+}
 
 pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), String> {
     let index = crate::router::WEB_ASSETS
         .get_file("index.html")
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
-    let snapshot = state.store.snapshot();
+    let snapshot = state.store.snapshot_with_ui_state();
     let bootstrap = bootstrap_script(&state.token, Some(&snapshot));
     if let Some(pos) = html.find("<head>") {
         html.insert_str(
@@ -125,11 +151,12 @@ pub(crate) fn serve_edge_tts(request: Request, query: &str) -> Result<(), String
         .get("lang")
         .cloned()
         .unwrap_or_else(|| "pl".to_string());
+    let rate = params.get("rate").map(String::as_str).unwrap_or("normal");
     if text.trim().is_empty() {
         return response::error_response(request, 400, "TTS text is empty");
     }
 
-    match tts::synthesize(&text, &lang) {
+    match tts::synthesize(&text, &lang, rate) {
         Ok(audio) => response::respond(request, 200, audio, "audio/mpeg", false),
         Err(err) => response::error_response(request, 502, &format!("Edge TTS failed: {err}")),
     }
@@ -151,10 +178,64 @@ pub(crate) fn save_export(payload: Value) -> Result<bool, String> {
         .and_then(Value::as_str)
         .unwrap_or("export.txt");
     if let Some(path) = rfd::FileDialog::new().set_file_name(filename).save_file() {
-        fs::write(path, data).map_err(|e| e.to_string())?;
+        write_export_file(&path, data)?;
         return Ok(true);
     }
     Ok(false)
+}
+
+#[cfg(not(target_os = "android"))]
+fn write_export_file(path: &std::path::Path, data: &str) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("path has no parent: {}", path.display()))?;
+    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    let temp = export_sidecar_path(path, ".wordhunter-export.tmp")?;
+    let backup = export_sidecar_path(path, ".wordhunter-export.bak")?;
+    crate::store::durable::remove_file_if_exists(&temp)?;
+    {
+        use std::io::Write;
+        let mut file = std::fs::File::create(&temp)
+            .map_err(|e| format!("could not create export temp {}: {e}", temp.display()))?;
+        file.write_all(data.as_bytes())
+            .map_err(|e| format!("could not write export temp {}: {e}", temp.display()))?;
+        file.sync_all()
+            .map_err(|e| format!("could not sync export temp {}: {e}", temp.display()))?;
+    }
+    if !path.exists() {
+        std::fs::rename(&temp, path)
+            .map_err(|e| format!("could not install export {}: {e}", path.display()))?;
+        return crate::store::durable::sync_parent(path);
+    }
+
+    crate::store::durable::remove_file_if_exists(&backup)?;
+    std::fs::rename(path, &backup)
+        .map_err(|e| format!("could not stage previous export {}: {e}", path.display()))?;
+    if let Err(install_error) = std::fs::rename(&temp, path) {
+        let restore = std::fs::rename(&backup, path);
+        return match restore {
+            Ok(()) => Err(format!(
+                "could not replace export {}; previous file was restored: {install_error}",
+                path.display()
+            )),
+            Err(restore_error) => Err(format!(
+                "could not replace export {} ({install_error}) or restore its backup ({restore_error})",
+                path.display()
+            )),
+        };
+    }
+    crate::store::durable::remove_file_if_exists(&backup)?;
+    crate::store::durable::sync_parent(path)
+}
+
+#[cfg(not(target_os = "android"))]
+fn export_sidecar_path(path: &std::path::Path, suffix: &str) -> Result<std::path::PathBuf, String> {
+    let name = path
+        .file_name()
+        .ok_or_else(|| format!("export path has no filename: {}", path.display()))?;
+    let mut sidecar = name.to_os_string();
+    sidecar.push(suffix);
+    Ok(path.with_file_name(sidecar))
 }
 
 #[cfg(target_os = "android")]
@@ -308,4 +389,68 @@ pub(crate) fn sync_android_staging(
     _payload: &Value,
 ) -> Result<Value, String> {
     Err("Android staged sync is only available on Word Hunter Pocket".to_string())
+}
+
+#[cfg(test)]
+mod window_zoom_tests {
+    use serde_json::json;
+
+    use super::parse_window_zoom_percent;
+    #[cfg(not(target_os = "android"))]
+    use super::{export_sidecar_path, write_export_file};
+
+    #[test]
+    fn accepts_supported_window_zoom_and_rejects_invalid_values() {
+        assert_eq!(
+            parse_window_zoom_percent(&json!({ "percent": 80 })).unwrap(),
+            0.8
+        );
+        assert_eq!(
+            parse_window_zoom_percent(&json!({ "percent": 100 })).unwrap(),
+            1.0
+        );
+        assert_eq!(
+            parse_window_zoom_percent(&json!({ "percent": 150 })).unwrap(),
+            1.5
+        );
+        assert!(parse_window_zoom_percent(&json!({ "percent": 79 })).is_err());
+        assert!(parse_window_zoom_percent(&json!({ "percent": 151 })).is_err());
+        assert!(parse_window_zoom_percent(&json!({ "percent": 100.5 })).is_err());
+        assert!(parse_window_zoom_percent(&json!({})).is_err());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn failed_export_replace_keeps_the_previous_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("backup.json");
+        std::fs::write(&target, "previous backup").unwrap();
+        std::fs::create_dir(export_sidecar_path(&target, ".wordhunter-export.bak").unwrap())
+            .unwrap();
+
+        assert!(write_export_file(&target, "new backup").is_err());
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "previous backup");
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn export_sidecars_never_collide_with_tmp_or_bak_destinations() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["backup.tmp", "backup.bak"] {
+            let target = dir.path().join(name);
+            std::fs::write(&target, "previous backup").unwrap();
+            write_export_file(&target, "new backup").unwrap();
+            assert_eq!(std::fs::read_to_string(&target).unwrap(), "new backup");
+            assert!(
+                !export_sidecar_path(&target, ".wordhunter-export.tmp")
+                    .unwrap()
+                    .exists()
+            );
+            assert!(
+                !export_sidecar_path(&target, ".wordhunter-export.bak")
+                    .unwrap()
+                    .exists()
+            );
+        }
+    }
 }

@@ -51,6 +51,7 @@ const MAX_IMPORT_REQUEST_BODY: usize = 384 * 1024 * 1024;
 const MAX_RAW_PDF_BODY: usize = 256 * 1024 * 1024;
 const MAX_IMAGE_REQUEST_BODY: usize = 32 * 1024 * 1024;
 const MAX_COMMAND_REQUEST_BODY: usize = 8 * 1024;
+const MAX_UI_STATE_REQUEST_BODY: usize = 2 * 1024 * 1024;
 const MAX_JSON_REQUEST_BODY: usize = 128 * 1024 * 1024;
 const MAX_LOG_BODY: usize = 8 * 1024;
 
@@ -148,13 +149,19 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     match (method, path.as_str()) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => {
-            let snapshot =
+            let mut snapshot =
                 if response::parse_query(&query).get("ack").map(String::as_str) == Some("0") {
                     state.store.snapshot_unacknowledged()
                 } else {
                     state.store.snapshot()
                 };
+            if let Some(object) = snapshot.as_object_mut() {
+                object.insert("uiState".to_string(), state.store.load_ui_state());
+            }
             response::json_response(request, snapshot)
+        }
+        (Method::Get, "/__store/ui_state") => {
+            response::json_response(request, state.store.load_ui_state())
         }
         (Method::Get, "/__store/data_dir") => {
             response::json_response(request, json!({ "path": state.store.dir() }))
@@ -223,6 +230,24 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             response::no_content(request)
         }
         (Method::Post, _) => match path.as_str() {
+            "/__app/close" => {
+                let _payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+                response::no_content(request)?;
+                crate::platform::permit_exit(&state.app_handle);
+                state.app_handle.exit(0);
+                Ok(())
+            }
+            "/__window/zoom" => {
+                let payload = read_json_or_400!(request);
+                let scale_factor = match handlers::parse_window_zoom_percent(&payload) {
+                    Ok(scale_factor) => scale_factor,
+                    Err(error) => return response::error_response(request, 400, &error),
+                };
+                match handlers::set_window_zoom(&state, scale_factor) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 500, &error),
+                }
+            }
             "/__store/save" => {
                 let payload = read_json_or_400!(request);
                 match state.store.bulk_save(payload) {
@@ -241,6 +266,13 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                         }
                     }
                     Err(error) => response::error_response(request, 500, &error),
+                }
+            }
+            "/__store/ui_state" => {
+                let payload = read_json_limited_or_error!(request, MAX_UI_STATE_REQUEST_BODY);
+                match state.store.save_ui_state(&payload) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
                 }
             }
             "/__store/ack_snapshot" => {
@@ -320,6 +352,19 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     Err(err) => response::error_response(request, 400, &err),
                 }
             }
+            "/__store/resolve_all_conflicts" => {
+                let payload = read_json_or_400!(request);
+                let resolution = payload
+                    .get("resolution")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                match state.store.resolve_all_sync_conflicts(resolution) {
+                    Ok(snapshot) => {
+                        response::json_response(request, json!({ "snapshot": snapshot }))
+                    }
+                    Err(err) => response::error_response(request, 400, &err),
+                }
+            }
             "/__store/upsert_text" => {
                 let payload = read_json_or_400!(request);
                 state.store.upsert_text(&payload)?;
@@ -357,7 +402,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 }
             }
             "/__export/save" => {
-                let payload = read_json_or_400!(request);
+                let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
                 let saved = handlers::save_export(payload)?;
                 response::json_response(request, json!({ "saved": saved }))
             }

@@ -5,8 +5,40 @@ pub mod record_files;
 pub mod snapshot;
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
+
+const UI_STATE_FILE: &str = "ui-state.json";
+const MAX_UI_STATE_BYTES: usize = 2 * 1024 * 1024;
+
+fn valid_ui_state_candidate(path: &Path) -> Option<Vec<u8>> {
+    let bytes = std::fs::read(path).ok()?;
+    if bytes.len() > MAX_UI_STATE_BYTES {
+        return None;
+    }
+    let value = serde_json::from_slice::<serde_json::Value>(&bytes).ok()?;
+    value.is_object().then_some(bytes)
+}
+
+fn recover_ui_state_file(path: &Path) -> Result<(), String> {
+    let temp = path.with_extension("tmp");
+    let backup = path.with_extension("bak");
+    let target_bytes = valid_ui_state_candidate(path);
+    let temp_bytes = valid_ui_state_candidate(&temp);
+
+    if let Some(bytes) = temp_bytes {
+        return durable::write_file_atomic(path, &bytes, target_bytes.is_some());
+    }
+    durable::remove_file_if_exists(&temp)?;
+
+    if target_bytes.is_some() {
+        return Ok(());
+    }
+    if let Some(bytes) = valid_ui_state_candidate(&backup) {
+        durable::write_file_atomic(path, &bytes, false)?;
+    }
+    Ok(())
+}
 
 pub struct Store {
     inner: Mutex<StoreInner>,
@@ -56,6 +88,62 @@ impl Store {
             .map_err(|_| "save lock is unavailable".to_string())
     }
 
+    pub fn load_ui_state(&self) -> serde_json::Value {
+        let _write_guard = match self.lock_writes() {
+            Ok(guard) => guard,
+            Err(error) => {
+                eprintln!("could not lock Reader UI state for loading: {error}");
+                return serde_json::json!({});
+            }
+        };
+        let path = self.dir().join(UI_STATE_FILE);
+        if let Err(error) = recover_ui_state_file(&path) {
+            eprintln!("could not recover Reader UI state: {error}");
+            return serde_json::json!({});
+        }
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return serde_json::json!({});
+            }
+            Err(error) => {
+                eprintln!("could not read Reader UI state: {error}");
+                return serde_json::json!({});
+            }
+        };
+        match serde_json::from_slice::<serde_json::Value>(&bytes) {
+            Ok(value) if value.is_object() => value,
+            Ok(_) => {
+                eprintln!("Reader UI state is not a JSON object");
+                serde_json::json!({})
+            }
+            Err(error) => {
+                eprintln!("could not parse Reader UI state: {error}");
+                serde_json::json!({})
+            }
+        }
+    }
+
+    pub fn save_ui_state(&self, value: &serde_json::Value) -> Result<(), String> {
+        if !value.is_object() {
+            return Err("Reader UI state must be a JSON object".to_string());
+        }
+        let bytes = serde_json::to_vec(value).map_err(|error| error.to_string())?;
+        if bytes.len() > MAX_UI_STATE_BYTES {
+            return Err("Reader UI state is too large".to_string());
+        }
+        let _write_guard = self.lock_writes()?;
+        durable::write_file_atomic(&self.dir().join(UI_STATE_FILE), &bytes, true)
+    }
+
+    pub fn snapshot_with_ui_state(&self) -> serde_json::Value {
+        let mut snapshot = self.snapshot();
+        if let Some(object) = snapshot.as_object_mut() {
+            object.insert("uiState".to_string(), self.load_ui_state());
+        }
+        snapshot
+    }
+
     #[cfg(not(target_os = "android"))]
     pub fn relocate(&self, dir: PathBuf) -> Result<PathBuf, String> {
         let _write_guard = self.lock_writes()?;
@@ -103,6 +191,10 @@ fn copy_data_dir(from: &std::path::Path, to: &std::path::Path) -> Result<(), Str
             copy_tree(&source, &to.join(name))?;
         }
     }
+    let ui_state = from.join(UI_STATE_FILE);
+    if ui_state.is_file() {
+        durable::copy_file_atomic(&ui_state, &to.join(UI_STATE_FILE), true)?;
+    }
     Ok(())
 }
 
@@ -127,6 +219,10 @@ fn merge_data_dir(
     let source_packages = from.join("argos-packages");
     if source_packages.is_dir() {
         copy_tree(&source_packages, &to.join("argos-packages"))?;
+    }
+    let source_ui_state = from.join(UI_STATE_FILE);
+    if source_ui_state.is_file() {
+        durable::copy_file_atomic(&source_ui_state, &to.join(UI_STATE_FILE), true)?;
     }
     Ok(())
 }
@@ -178,7 +274,7 @@ fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<(), String>
 mod tests {
     use std::collections::BTreeMap;
     use std::ffi::OsString;
-    use std::sync::Mutex;
+    use std::sync::{Arc, Barrier, Mutex};
 
     use serde_json::{Map, Value, json};
 
@@ -245,6 +341,91 @@ mod tests {
     }
 
     #[test]
+    fn ui_state_roundtrips_outside_synchronized_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir, "local-device");
+        let ui_state = json!({
+            "schemaVersion": 2,
+            "currentView": "reader",
+            "currentTextId": "book",
+            "readerPage": 4,
+            "readerScrolls": { "book": { "readerPage": 4, "scrollTop": 320, "wordIndex": 91 } }
+        });
+
+        store.save_ui_state(&ui_state).unwrap();
+
+        assert_eq!(store.load_ui_state(), ui_state);
+        assert_eq!(store.snapshot_with_ui_state()["uiState"], ui_state);
+        assert!(!dir.path().join("records/v1/ui-state.json").exists());
+    }
+
+    #[test]
+    fn ui_state_rejects_non_object_payloads() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir, "local-device");
+
+        assert!(store.save_ui_state(&json!(["invalid"])).is_err());
+        assert_eq!(store.load_ui_state(), json!({}));
+    }
+
+    #[test]
+    fn ui_state_always_recovers_a_valid_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir, "local-device");
+        store.save_ui_state(&json!({ "readerPage": 2 })).unwrap();
+        std::fs::write(
+            dir.path().join("ui-state.tmp"),
+            serde_json::to_vec(&json!({ "readerPage": 7 })).unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(store.load_ui_state(), json!({ "readerPage": 7 }));
+        assert!(!dir.path().join("ui-state.tmp").exists());
+    }
+
+    #[test]
+    fn ui_state_ignores_an_invalid_temp_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir, "local-device");
+        store.save_ui_state(&json!({ "readerPage": 3 })).unwrap();
+        std::fs::write(dir.path().join("ui-state.tmp"), b"{").unwrap();
+
+        assert_eq!(store.load_ui_state(), json!({ "readerPage": 3 }));
+        assert!(!dir.path().join("ui-state.tmp").exists());
+    }
+
+    #[test]
+    fn ui_state_loads_remain_valid_during_concurrent_saves() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(store_at(&dir, "local-device"));
+        store.save_ui_state(&json!({ "readerPage": 1 })).unwrap();
+        let barrier = Arc::new(Barrier::new(3));
+
+        let saver_store = Arc::clone(&store);
+        let saver_barrier = Arc::clone(&barrier);
+        let saver = std::thread::spawn(move || {
+            saver_barrier.wait();
+            for page in 2..100 {
+                saver_store
+                    .save_ui_state(&json!({ "readerPage": page }))
+                    .unwrap();
+            }
+        });
+        let loader_store = Arc::clone(&store);
+        let loader_barrier = Arc::clone(&barrier);
+        let loader = std::thread::spawn(move || {
+            loader_barrier.wait();
+            for _ in 0..100 {
+                assert!(loader_store.load_ui_state()["readerPage"].is_number());
+            }
+        });
+
+        barrier.wait();
+        saver.join().unwrap();
+        loader.join().unwrap();
+    }
+
+    #[test]
     fn relocation_copies_state_and_book_files() {
         let source = tempfile::tempdir().unwrap();
         let target = tempfile::tempdir().unwrap();
@@ -254,6 +435,11 @@ mod tests {
         std::fs::write(source.path().join("argos-packages/model.bin"), "model").unwrap();
         std::fs::create_dir_all(source.path().join("records/v1/prefs")).unwrap();
         std::fs::write(source.path().join("records/v1/prefs/pref.json"), "{}").unwrap();
+        std::fs::write(
+            source.path().join("ui-state.json"),
+            r#"{"currentView":"reader"}"#,
+        )
+        .unwrap();
 
         copy_data_dir(source.path(), target.path()).unwrap();
 
@@ -263,6 +449,10 @@ mod tests {
             "model"
         );
         assert!(target.path().join("records/v1/prefs/pref.json").is_file());
+        assert_eq!(
+            std::fs::read_to_string(target.path().join("ui-state.json")).unwrap(),
+            r#"{"currentView":"reader"}"#
+        );
     }
 
     #[test]
