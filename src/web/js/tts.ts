@@ -5,6 +5,8 @@ import { keepReaderTokenVisible } from "./reader/visibility.js";
 
 let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
+let currentEdgeTtsRequest: AbortController | null = null;
+let currentAudioObjectUrl: string | null = null;
 let onFinishCallback: (() => void) | null = null;
 let androidUtteranceSeq = 0;
 let currentTtsWordToken: Element | null = null;
@@ -107,10 +109,7 @@ export function speakWord(word: string): void {
   if (speakSentenceAndroid(word)) return;
 
   if (state.preferences.useEdgeTts === true) {
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
-    }
+    clearCurrentEdgeAudio();
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -162,10 +161,7 @@ export function stopSpeaking(): void {
   if (androidBridge && typeof androidBridge.stopTts === "function") {
     androidBridge.stopTts();
   }
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
-  }
+  clearCurrentEdgeAudio();
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -275,31 +271,102 @@ function readNextSentenceEdge(
 
   const lang = activeTtsLanguage();
   const url = edgeTtsUrl(sentence, lang);
-  
-  currentAudio = new Audio(url);
-  
-  currentAudio.onplay = () => {
-    highlightContainer(containerElement);
-  };
-  
-  currentAudio.onended = () => {
-    if (speaking) {
-      readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
-    }
-  };
-  
-  currentAudio.play().catch((err: unknown) => {
-    console.warn("Edge TTS play failed", err);
-    if (!speaking) return; // Stopped or changed intentionally
-    
-    if (errorName(err) !== "AbortError") {
+  beginTtsSentenceHighlight(tracker, sentence);
+
+  if (!tracker) {
+    playEdgeTtsAudio(url, null, [], sentences, index, sentence, containerElement, tracker);
+    return;
+  }
+
+  const request = new AbortController();
+  currentEdgeTtsRequest = request;
+  void fetch(url, { signal: request.signal })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Edge TTS returned HTTP ${response.status}`);
+      const timings = parseEdgeWordTimings(response.headers.get("X-WH-Word-Timings"));
+      const audio = await response.blob();
+      if (!speaking || currentEdgeTtsRequest !== request) return;
+      currentEdgeTtsRequest = null;
+      const objectUrl = URL.createObjectURL(audio);
+      currentAudioObjectUrl = objectUrl;
+      playEdgeTtsAudio(objectUrl, objectUrl, timings, sentences, index, sentence, containerElement, tracker);
+    })
+    .catch((err: unknown) => {
+      if (currentEdgeTtsRequest === request) currentEdgeTtsRequest = null;
+      if (!speaking || errorName(err) === "AbortError") return;
+      console.warn("Edge TTS load failed", err);
       speakSentenceLocal(sentence, () => {
-        if (speaking) {
-          readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
-        }
+        if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
       }, tracker);
+    });
+}
+
+function playEdgeTtsAudio(
+  source: string,
+  objectUrl: string | null,
+  wordTimings: number[],
+  sentences: string[],
+  index: number,
+  sentence: string,
+  containerElement: HTMLElement | null | undefined,
+  tracker: TtsWordTracker | null
+): void {
+  const audio = new Audio(source);
+  currentAudio = audio;
+  let highlightedIndex = -1;
+  const updateWordHighlight = () => {
+    const elapsedMs = audio.currentTime * 1000;
+    while (highlightedIndex + 1 < wordTimings.length
+      && wordTimings[highlightedIndex + 1] <= elapsedMs) {
+      highlightedIndex++;
+      const run = tracker?.sentenceRuns[highlightedIndex];
+      if (run) highlightNextTtsWord(tracker, run.word);
     }
+  };
+
+  audio.onplay = () => {
+    highlightContainer(containerElement);
+    updateWordHighlight();
+  };
+  audio.ontimeupdate = updateWordHighlight;
+  audio.onended = () => {
+    if (currentAudio === audio) currentAudio = null;
+    releaseAudioObjectUrl(objectUrl);
+    if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+  };
+  audio.play().catch((err: unknown) => {
+    if (currentAudio === audio) currentAudio = null;
+    releaseAudioObjectUrl(objectUrl);
+    console.warn("Edge TTS play failed", err);
+    if (!speaking || errorName(err) === "AbortError") return;
+    speakSentenceLocal(sentence, () => {
+      if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+    }, tracker);
   });
+}
+
+function parseEdgeWordTimings(value: string | null): number[] {
+  if (!value?.trim()) return [];
+  return value
+    .split(",")
+    .map((timing) => Number(timing.trim()))
+    .filter((timing) => Number.isFinite(timing) && timing >= 0);
+}
+
+function clearCurrentEdgeAudio(): void {
+  currentEdgeTtsRequest?.abort();
+  currentEdgeTtsRequest = null;
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
+  releaseAudioObjectUrl(currentAudioObjectUrl);
+}
+
+function releaseAudioObjectUrl(objectUrl: string | null): void {
+  if (!objectUrl) return;
+  URL.revokeObjectURL(objectUrl);
+  if (currentAudioObjectUrl === objectUrl) currentAudioObjectUrl = null;
 }
 
 function readNextSentenceAndroid(
