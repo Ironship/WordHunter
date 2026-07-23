@@ -819,6 +819,7 @@ class MainActivity : TauriActivity() {
       } finally {
         request.backendInProgress = false
       }
+      appWebView?.post { appWebView?.clearCache(true) }
       stagingHealth = stagingHealth(stagingRoot, incomingDir, "merged", stats = stats, backend = backendHealth)
       dispatchAndroidSyncProgress(request, "exporting", syncHealthEnvelope("exporting", safHealth, stagingHealth, backendHealth))
       validateLocalExportTree(incomingDir, stats, root = true)
@@ -832,7 +833,6 @@ class MainActivity : TauriActivity() {
       )
 
       stagingHealth = stagingHealth(stagingRoot, incomingDir, "exported", stats = stats, backend = backendHealth)
-      appWebView?.post { appWebView?.clearCache(true) }
       return SyncFolderResult(
         label = label,
         health = syncHealthEnvelope("completed", safHealth, stagingHealth, backendHealth)

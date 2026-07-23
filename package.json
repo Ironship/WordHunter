@@ -16,6 +16,7 @@
     "test:android": "npm run build:frontend && node --experimental-vm-modules --test frontend-tests/android/*.test.js"
   },
   "devDependencies": {
+    "esbuild": "0.28.1",
     "postcss-html": "1.8.1",
     "stylelint": "16.26.1",
     "stylelint-config-recommended": "17.0.0",
