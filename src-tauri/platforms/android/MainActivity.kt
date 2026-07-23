@@ -233,7 +233,6 @@ class MainActivity : TauriActivity() {
 
   override fun onWebViewCreate(webView: WebView) {
     appWebView = webView
-    webView.clearCache(true)
     webView.isVerticalScrollBarEnabled = false
     webView.isHorizontalScrollBarEnabled = false
     webView.overScrollMode = android.view.View.OVER_SCROLL_NEVER
@@ -820,6 +819,7 @@ class MainActivity : TauriActivity() {
       } finally {
         request.backendInProgress = false
       }
+      appWebView?.post { appWebView?.clearCache(true) }
       stagingHealth = stagingHealth(stagingRoot, incomingDir, "merged", stats = stats, backend = backendHealth)
       dispatchAndroidSyncProgress(request, "exporting", syncHealthEnvelope("exporting", safHealth, stagingHealth, backendHealth))
       validateLocalExportTree(incomingDir, stats, root = true)

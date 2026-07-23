@@ -116,6 +116,8 @@ describe("Android Pocket packaging", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const androidConfig = JSON.parse(read("../../src-tauri/tauri.android.conf.json"));
     const manifest = parseXml(read("../../src-tauri/platforms/android/AndroidManifest.xml"));
+    const networkSecuritySource = read("../../src-tauri/platforms/android/network_security_config.xml");
+    const networkSecurity = parseXml(networkSecuritySource);
 
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
     assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
@@ -135,6 +137,19 @@ describe("Android Pocket packaging", () => {
 
     assert.equal(manifest.name, "manifest");
     const elements = descendants(manifest);
+    const application = elements.find((node) => node.name === "application");
+    assert.equal(application.attributes["android:networkSecurityConfig"], "@xml/network_security_config");
+    const securityElements = descendants(networkSecurity);
+    assert.equal(
+      securityElements.find((node) => node.name === "base-config").attributes.cleartextTrafficPermitted,
+      "false",
+    );
+    assert.equal(
+      securityElements.find((node) => node.name === "domain-config").attributes.cleartextTrafficPermitted,
+      "true",
+    );
+    assert.match(networkSecuritySource, />localhost<\/domain>/);
+    assert.match(networkSecuritySource, />127\.0\.0\.1<\/domain>/);
     assert.deepEqual(
       elements.filter((node) => node.name === "uses-permission").map((node) => node.attributes["android:name"]),
       ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"],
@@ -175,6 +190,7 @@ describe("Android Pocket packaging", () => {
     const prepare = powershellFunction(build, "Prepare-AndroidProject");
     assert.match(prepare, /Copy-Item -LiteralPath \$activitySource -Destination \$activityTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$manifestSource -Destination \$manifestTarget/);
+    assert.match(prepare, /Copy-Item -LiteralPath \$networkSecuritySource -Destination \$networkSecurityTarget/);
     assert.match(prepare, /Set-AndroidGradleVersion/);
     assert.match(prepare, /androidx\.documentfile:documentfile:1\.0\.1/);
     const release = powershellFunction(build, "Build-AndroidReleaseAab");

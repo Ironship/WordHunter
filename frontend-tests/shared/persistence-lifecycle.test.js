@@ -65,7 +65,10 @@ function cssDeclarations(source, selectorPattern) {
   return match[1];
 }
 
-async function loadAppHarness({ hydrateCurrentReaderText = async () => true } = {}) {
+async function loadAppHarness({
+  hydrateActiveLibraryTexts = async () => {},
+  hydrateCurrentReaderText = async () => true
+} = {}) {
   const calls = [];
   const animationFrames = [];
   const timers = [];
@@ -111,7 +114,7 @@ async function loadAppHarness({ hydrateCurrentReaderText = async () => true } = 
       loadBooksCatalog: asyncNoOp,
       loadAllBookTexts: asyncNoOp,
       loadAllCustomTextContents: asyncNoOp,
-      hydrateActiveLibraryTexts: asyncNoOp,
+      hydrateActiveLibraryTexts,
       hydrateCurrentReaderText
     },
     "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
@@ -136,6 +139,8 @@ async function loadAppHarness({ hydrateCurrentReaderText = async () => true } = 
     window,
     document,
     Element: class Element {},
+    HTMLButtonElement: class HTMLButtonElement {},
+    HTMLDialogElement: class HTMLDialogElement {},
     fetch: async () => ({ ok: true, json: async () => ({}) }),
     setTimeout(callback) { timers.push(callback); return timers.length; },
     clearTimeout() {},
@@ -221,6 +226,23 @@ describe("persistence lifecycle", () => {
     await Promise.resolve();
     await Promise.resolve();
     assert.deepEqual(harness.calls, ["render", "render"]);
+  });
+
+  it("lets Android paint before hydrating library texts", async () => {
+    let hydrated = false;
+    const harness = await loadAppHarness({
+      hydrateActiveLibraryTexts: async () => { hydrated = true; }
+    });
+    harness.setAndroid(true);
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    assert.equal(hydrated, false);
+    harness.flushAnimationFrames();
+    assert.equal(hydrated, false);
+    harness.flushAnimationFrames();
+    harness.flushTimers();
+    await Promise.resolve();
+    assert.equal(hydrated, true);
   });
 
   it("backs off bridge save retries and caps the delay", async () => {
@@ -845,9 +867,12 @@ describe("persistence lifecycle", () => {
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     const boot = readFileSync(new URL("../../dist/web/boot.js", import.meta.url), "utf8");
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
+    const bundledApp = readFileSync(new URL("../../dist/web/js/app.bundle.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
     assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
+    assert.match(html, /<script type="module" src="js\/app\.bundle\.js"><\/script>/);
+    assert.ok(bundledApp.length > app.length);
     const inlineBoot = cssDeclarations(html, String.raw`html\.app-booting,html\.app-booting body`);
     assert.match(inlineBoot, /overflow:\s*hidden/);
     assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
