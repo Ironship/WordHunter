@@ -1,3 +1,12 @@
+word-hunter (1.0.8) stable; urgency=medium
+
+  * Make later vocabulary status decisions win across synchronized devices.
+  * Merge notes and translations without restoring stale word statuses.
+  * Reduce Android startup work and bundle the initial JavaScript graph.
+  * Restrict Android cleartext networking to the local backend.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Thu, 23 Jul 2026 11:28:00 +0000
+
 word-hunter (1.0.7+1) stable; urgency=medium
 
   * Hotfix flashcard word and sentence text-to-speech on Android.
