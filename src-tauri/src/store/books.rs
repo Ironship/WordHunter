@@ -108,6 +108,12 @@ impl Store {
         Ok(record_files::text_content(&self.dir(), id)?.unwrap_or_default())
     }
 
+    pub fn get_pdf_ocr_pages(&self, id: &str) -> Result<Value, String> {
+        crate::paths::sanitize_id(id)?;
+        Ok(record_files::text_pdf_ocr_pages(&self.dir(), id)?
+            .unwrap_or_else(|| Value::Array(Vec::new())))
+    }
+
     pub fn delete_text(&self, id: &str) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         self.recover_pending_save()?;
@@ -411,13 +417,22 @@ mod tests {
         };
 
         store
-            .upsert_text(&json!({ "id": "book", "title": "First", "text": "content" }))
+            .upsert_text(&json!({
+                "id": "book",
+                "title": "First",
+                "text": "content",
+                "pdfOcrPages": [{ "text": "page" }]
+            }))
             .unwrap();
         store
             .upsert_text(&json!({ "id": "book", "title": "Renamed" }))
             .unwrap();
 
         assert_eq!(store.get_text_content("book").unwrap(), "content");
+        assert_eq!(
+            store.get_pdf_ocr_pages("book").unwrap(),
+            json!([{ "text": "page" }])
+        );
         let records = record_files::load_records(dir.path()).unwrap();
         assert_eq!(records["text:book"].data["title"], "Renamed");
         assert_eq!(records["text:book"].data["text"], "content");

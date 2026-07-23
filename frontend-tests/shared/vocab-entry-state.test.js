@@ -14,12 +14,14 @@ describe("vocabulary entry state helpers", () => {
     assert.deepEqual(entry, {
       status: "known",
       updatedAt: "2026-06-30T10:00:00.000Z",
+      statusUpdatedAt: "2026-06-30T10:00:00.000Z",
       knownAt: "2026-06-30T10:00:00.000Z"
     });
 
     setEntryStatus(entry, "known", "2026-07-01T10:00:00.000Z");
 
     assert.equal(entry.updatedAt, "2026-07-01T10:00:00.000Z");
+    assert.equal(entry.statusUpdatedAt, "2026-06-30T10:00:00.000Z");
     assert.equal(entry.knownAt, "2026-06-30T10:00:00.000Z");
   });
 
@@ -33,6 +35,7 @@ describe("vocabulary entry state helpers", () => {
     const previousStatus = setEntryStatus(entry, "learning", "2026-07-17T10:00:00.000Z");
 
     assert.equal(previousStatus, "new");
+    assert.equal(entry.statusUpdatedAt, "2026-07-17T10:00:00.000Z");
     assert.equal(entry.learningStartedAt, "2026-07-17T10:00:00.000Z");
     assert.equal(entry.nextDate, "2026-07-18");
     assert.equal(isInTextReviewDue(entry, "2026-07-17"), false);

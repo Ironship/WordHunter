@@ -3,6 +3,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 use super::durable;
 
@@ -464,7 +465,7 @@ pub(crate) fn records_to_mobile_snapshot_payload(
     dir: &Path,
     records: &BTreeMap<String, SyncRecord>,
 ) -> Value {
-    records_to_payload_inner(dir, records, false, false)
+    records_to_payload_inner(dir, records, false, true)
 }
 
 fn records_to_payload_inner(
@@ -530,12 +531,35 @@ fn records_to_payload_inner(
                 }
             }
             "text" => {
-                let mut text = record.data.clone();
-                if !include_text_body && let Some(obj) = text.as_object_mut() {
-                    obj.remove("text");
-                    if compact_media {
-                        obj.remove("pdfOcrPages");
+                let mut text = if !include_text_body && compact_media {
+                    match record.data.as_object() {
+                        Some(data) => {
+                            let mut compact: Map<String, Value> = data
+                                .iter()
+                                .filter(|(key, _)| !matches!(key.as_str(), "text" | "pdfOcrPages"))
+                                .map(|(key, value)| (key.clone(), value.clone()))
+                                .collect();
+                            let page_count = data
+                                .get("pdfOcrPages")
+                                .and_then(Value::as_array)
+                                .map(Vec::len)
+                                .unwrap_or(0);
+                            if page_count > 0 && !compact.contains_key("pdfOcrPageCount") {
+                                compact
+                                    .insert("pdfOcrPageCount".to_string(), Value::from(page_count));
+                            }
+                            Value::Object(compact)
+                        }
+                        None => record.data.clone(),
                     }
+                } else {
+                    record.data.clone()
+                };
+                if !include_text_body
+                    && !compact_media
+                    && let Some(obj) = text.as_object_mut()
+                {
+                    obj.remove("text");
                 }
                 texts.push(text);
             }
@@ -676,8 +700,16 @@ pub(crate) fn merge_records(
                 .cloned()
                 .unwrap_or_else(|| tombstone_with_base(&key, device_id, now, base_causal));
             match compare_causal(&incoming_candidate.causal, &current_candidate.causal) {
-                CausalOrder::IncomingDescends => Some(incoming_candidate),
-                CausalOrder::CurrentDescends => Some(current_candidate),
+                CausalOrder::IncomingDescends => {
+                    let mut keep = incoming_candidate;
+                    merge_vocab_status(&mut keep, &current_candidate);
+                    Some(keep)
+                }
+                CausalOrder::CurrentDescends => {
+                    let mut keep = current_candidate;
+                    merge_vocab_status(&mut keep, &incoming_candidate);
+                    Some(keep)
+                }
                 CausalOrder::Concurrent | CausalOrder::Equal => {
                     let (mut keep, lose) =
                         if should_keep_incoming(&incoming_candidate, &current_candidate) {
@@ -698,14 +730,20 @@ pub(crate) fn merge_records(
                             })
                             .unwrap_or(false),
                     };
-                    if bookmark_merge_handled {
+                    let vocab_status_merge_handled = merge_vocab_status(&mut keep, &lose);
+                    if vocab_status_merge_handled {
+                        let _ = merge_vocab_status(&mut conflict_choice, &original_keep);
+                    }
+                    if bookmark_merge_handled || vocab_status_merge_handled {
                         let base_data = base_entry.and_then(|base| base.data.as_ref());
-                        let _ = merge_reader_bookmark_data(
-                            &mut conflict_choice,
-                            &original_keep,
-                            base_data,
-                            true,
-                        );
+                        if bookmark_merge_handled {
+                            let _ = merge_reader_bookmark_data(
+                                &mut conflict_choice,
+                                &original_keep,
+                                base_data,
+                                true,
+                            );
+                        }
                         for (device, counter) in lose.causal.iter() {
                             keep.causal
                                 .entry(device.clone())
@@ -736,6 +774,91 @@ pub(crate) fn merge_records(
     MergeResult {
         records: output,
         conflicts,
+    }
+}
+
+fn merge_vocab_status(existing: &mut SyncRecord, source: &SyncRecord) -> bool {
+    if existing.kind != "vocab"
+        || source.kind != "vocab"
+        || existing.deleted_at.is_some()
+        || source.deleted_at.is_some()
+    {
+        return false;
+    }
+    let Some(existing_status) = existing.data.get("status").and_then(Value::as_str) else {
+        return false;
+    };
+    let Some(source_status) = source.data.get("status").and_then(Value::as_str) else {
+        return false;
+    };
+    let Some(existing_rank) = vocab_status_rank(existing_status) else {
+        return false;
+    };
+    let Some(source_rank) = vocab_status_rank(source_status) else {
+        return false;
+    };
+    let existing_time = vocab_status_changed_at(&existing.data, existing_status);
+    let source_time = vocab_status_changed_at(&source.data, source_status);
+    if existing_status == source_status && existing_time == source_time {
+        return false;
+    }
+
+    let source_wins = match (existing_time, source_time) {
+        (Some(existing_time), Some(source_time)) if existing_time != source_time => {
+            source_time > existing_time
+        }
+        (Some(_), None) => false,
+        (None, Some(_)) => true,
+        _ => source_rank > existing_rank,
+    };
+    if source_wins {
+        copy_vocab_status_bundle(&mut existing.data, &source.data);
+    }
+    true
+}
+
+fn vocab_status_rank(status: &str) -> Option<u8> {
+    match status {
+        "new" => Some(0),
+        "learning" => Some(1),
+        "ignored" => Some(2),
+        "known" => Some(3),
+        _ => None,
+    }
+}
+
+fn vocab_status_changed_at(data: &Value, status: &str) -> Option<OffsetDateTime> {
+    let status_specific = match status {
+        "known" => data.get("knownAt"),
+        "learning" => data.get("learningStartedAt"),
+        _ => None,
+    };
+    [data.get("statusUpdatedAt"), status_specific]
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .find_map(|value| OffsetDateTime::parse(value, &Rfc3339).ok())
+}
+
+fn copy_vocab_status_bundle(target: &mut Value, source: &Value) {
+    let (Some(target), Some(source)) = (target.as_object_mut(), source.as_object()) else {
+        return;
+    };
+    for key in [
+        "status",
+        "statusUpdatedAt",
+        "knownAt",
+        "learningStartedAt",
+        "nextDate",
+    ] {
+        match source.get(key) {
+            Some(value) => {
+                target.insert(key.to_string(), value.clone());
+            }
+            None => {
+                target.remove(key);
+            }
+        }
     }
 }
 
@@ -805,7 +928,7 @@ pub(crate) fn merge_missing_text_media_metadata(
     changed
 }
 
-pub(crate) fn text_content(dir: &Path, id: &str) -> Result<Option<String>, String> {
+fn text_record(dir: &Path, id: &str) -> Result<Option<SyncRecord>, String> {
     let key = format!("text:{id}");
     let path = records_root(dir)
         .join(kind_dir("text"))
@@ -822,13 +945,25 @@ pub(crate) fn text_content(dir: &Path, id: &str) -> Result<Option<String>, Strin
         }
     };
     if record.deleted_at.is_some() {
-        return Ok(Some(String::new()));
+        return Ok(None);
     }
-    Ok(record
-        .data
-        .get("text")
-        .and_then(Value::as_str)
-        .map(str::to_string))
+    Ok(Some(record))
+}
+
+pub(crate) fn text_content(dir: &Path, id: &str) -> Result<Option<String>, String> {
+    Ok(text_record(dir, id)?.as_ref().and_then(|record| {
+        record
+            .data
+            .get("text")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    }))
+}
+
+pub(crate) fn text_pdf_ocr_pages(dir: &Path, id: &str) -> Result<Option<Value>, String> {
+    Ok(text_record(dir, id)?
+        .as_ref()
+        .and_then(|record| record.data.get("pdfOcrPages").cloned()))
 }
 
 pub(crate) fn upsert_text_record(dir: &Path, text: &Value, device_id: &str) -> Result<(), String> {
@@ -2021,11 +2156,11 @@ mod tests {
     use super::{
         FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, conflict_count, conflict_summaries,
         fingerprints, ingest_syncthing_conflict_copies, live_record, load_records,
-        load_sync_records, merge_records, parse_record, parse_record_file, payload_to_records,
-        prepare_local_records, prune_sync_folder_private_records, read_record_file, record_path,
-        record_value, records_to_mobile_snapshot_payload, records_to_payload,
-        records_to_snapshot_payload, recovery_status, resolve_conflict, stable_hash, tombstone_all,
-        value_id, write_conflicts, write_record, write_records,
+        load_sync_records, merge_records, merge_vocab_status, parse_record, parse_record_file,
+        payload_to_records, prepare_local_records, prune_sync_folder_private_records,
+        read_record_file, record_path, record_value, records_to_mobile_snapshot_payload,
+        records_to_payload, records_to_snapshot_payload, recovery_status, resolve_conflict,
+        stable_hash, tombstone_all, value_id, write_conflicts, write_record, write_records,
     };
 
     fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
@@ -2617,7 +2752,7 @@ mod tests {
     }
 
     #[test]
-    fn mobile_snapshot_keeps_ocr_page_metadata_for_pocket_overlay() {
+    fn mobile_snapshot_defers_large_ocr_pages_but_keeps_page_count() {
         let dir = tempfile::tempdir().unwrap();
         let payload = json!({
             "texts": [{
@@ -2640,10 +2775,8 @@ mod tests {
             snapshot["texts"][0]["coverDataUrl"],
             "data:image/jpeg;base64,cover"
         );
-        assert_eq!(
-            snapshot["texts"][0]["pdfOcrPages"][0]["imageName"],
-            "page-1.png"
-        );
+        assert!(snapshot["texts"][0].get("pdfOcrPages").is_none());
+        assert_eq!(snapshot["texts"][0]["pdfOcrPageCount"], 1);
         assert_eq!(snapshot["texts"][0]["title"], "Buch");
     }
 
@@ -2967,6 +3100,148 @@ mod tests {
         );
         assert_eq!(merged.conflicts.len(), 1);
         assert_eq!(merged.conflicts[0]["reason"], "concurrent-record-changes");
+    }
+
+    #[test]
+    fn concurrent_vocab_merge_keeps_later_status_and_newer_metadata() {
+        let base_record = SyncRecord {
+            key: "vocab:de:haus".to_string(),
+            kind: "vocab".to_string(),
+            data: json!({ "status": "new", "translation": "base" }),
+            updated_at: 1_000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 1)]),
+        };
+        let known = SyncRecord {
+            data: json!({
+                "status": "known",
+                "statusUpdatedAt": "2026-07-23T12:00:00.000Z",
+                "knownAt": "2026-07-23T12:00:00.000Z",
+                "translation": "old translation"
+            }),
+            updated_at: 2_000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("phone-device", 2)]),
+            ..base_record.clone()
+        };
+        let edited_learning = SyncRecord {
+            data: json!({
+                "status": "learning",
+                "statusUpdatedAt": "2026-07-23T10:00:00.000Z",
+                "learningStartedAt": "2026-07-23T10:00:00.000Z",
+                "translation": "new translation"
+            }),
+            updated_at: 5_000,
+            device_id: "laptop-device".to_string(),
+            causal: causal(&[("pc-device", 1), ("laptop-device", 2)]),
+            ..base_record.clone()
+        };
+        let base = [(base_record.key.clone(), base_record)]
+            .into_iter()
+            .collect();
+
+        let merge = |incoming: SyncRecord, current: SyncRecord, device: &str| {
+            merge_records(
+                &fingerprints(&base),
+                [(incoming.key.clone(), incoming)].into_iter().collect(),
+                [(current.key.clone(), current)].into_iter().collect(),
+                device,
+                6_000,
+            )
+        };
+        let first = merge(known.clone(), edited_learning.clone(), "phone-device");
+        let second = merge(edited_learning, known, "laptop-device");
+
+        for merged in [&first, &second] {
+            let record = &merged.records["vocab:de:haus"];
+            assert_eq!(record.data["status"], "known");
+            assert_eq!(record.data["translation"], "new translation");
+            assert_eq!(record.data["statusUpdatedAt"], "2026-07-23T12:00:00.000Z");
+            assert!(record.data.get("learningStartedAt").is_none());
+            assert_eq!(merged.conflicts.len(), 1);
+            assert_eq!(merged.conflicts[0]["kept"]["data"]["status"], "known");
+            assert_eq!(merged.conflicts[0]["conflict"]["data"]["status"], "known");
+        }
+    }
+
+    #[test]
+    fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
+        let known = SyncRecord {
+            key: "vocab:de:haus".to_string(),
+            kind: "vocab".to_string(),
+            data: json!({
+                "status": "known",
+                "statusUpdatedAt": "2026-07-23T10:00:00.000Z",
+                "knownAt": "2026-07-23T10:00:00.000Z",
+                "translation": "new translation"
+            }),
+            updated_at: 5_000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 2)]),
+        };
+        let learning = SyncRecord {
+            data: json!({
+                "status": "learning",
+                "statusUpdatedAt": "2026-07-23T12:00:00.000Z",
+                "learningStartedAt": "2026-07-23T12:00:00.000Z",
+                "nextDate": "2026-07-24",
+                "translation": "old translation"
+            }),
+            updated_at: 2_000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("phone-device", 2)]),
+            ..known.clone()
+        };
+
+        let merged = merge_records(
+            &BTreeMap::new(),
+            [(learning.key.clone(), learning)].into_iter().collect(),
+            [(known.key.clone(), known)].into_iter().collect(),
+            "phone-device",
+            6_000,
+        );
+
+        let record = &merged.records["vocab:de:haus"];
+        assert_eq!(record.data["status"], "learning");
+        assert_eq!(record.data["translation"], "new translation");
+        assert_eq!(record.data["statusUpdatedAt"], "2026-07-23T12:00:00.000Z");
+        assert_eq!(record.data["nextDate"], "2026-07-24");
+    }
+
+    #[test]
+    fn concurrent_same_vocab_status_keeps_the_latest_status_clock() {
+        let mut older = SyncRecord {
+            key: "vocab:de:haus".to_string(),
+            kind: "vocab".to_string(),
+            data: json!({
+                "status": "learning",
+                "statusUpdatedAt": "2026-07-23T10:00:00.000Z",
+                "learningStartedAt": "2026-07-23T10:00:00.000Z",
+                "nextDate": "2026-07-24"
+            }),
+            updated_at: 5_000,
+            deleted_at: None,
+            device_id: "pc-device".to_string(),
+            causal: causal(&[("pc-device", 2)]),
+        };
+        let newer = SyncRecord {
+            data: json!({
+                "status": "learning",
+                "statusUpdatedAt": "2026-07-23T12:00:00.000Z",
+                "learningStartedAt": "2026-07-23T12:00:00.000Z",
+                "nextDate": "2026-07-25"
+            }),
+            updated_at: 2_000,
+            device_id: "phone-device".to_string(),
+            causal: causal(&[("phone-device", 2)]),
+            ..older.clone()
+        };
+
+        assert!(merge_vocab_status(&mut older, &newer));
+        assert_eq!(older.data["statusUpdatedAt"], "2026-07-23T12:00:00.000Z");
+        assert_eq!(older.data["nextDate"], "2026-07-25");
     }
 
     #[test]

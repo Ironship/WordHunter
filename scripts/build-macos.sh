@@ -20,7 +20,7 @@ package_version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.re
   || die "src-tauri/tauri.conf.json does not contain a valid package version"
 release_version="${package_version/+/.}"
 
-if [[ ! -d node_modules ]]; then
+if [[ ! -f node_modules/typescript/bin/tsc || ! -f node_modules/esbuild/lib/main.js ]]; then
   npm ci --ignore-scripts --no-audit --no-fund
 fi
 npm run build:frontend

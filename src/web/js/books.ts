@@ -26,6 +26,7 @@ export const bookTexts = new Map<string, string>();
 let bookTextsLoadingPromise: Promise<void[]> | null = null;
 let allTextCacheGeneration = 0;
 const textLoadingById = new Map<string, Promise<string>>();
+const pdfPagesLoadingById = new Map<string, Promise<WhRecord[]>>();
 const textCacheGenerationById = new Map<string, number>();
 const staleBookTextIds = new Set<string>();
 const TEXT_LOAD_CONCURRENCY = 2;
@@ -169,6 +170,34 @@ function fetchCustomTextContent(text: WhText): Promise<string> {
   return promise;
 }
 
+export async function loadCustomTextPdfPages(text: WhText): Promise<WhRecord[]> {
+  if (!text?.id || text.pdfOcrPages?.length || !(Number(text.pdfOcrPageCount) > 0) || !window.__qtBridge) {
+    return text?.pdfOcrPages || [];
+  }
+  if (pdfPagesLoadingById.has(text.id)) return pdfPagesLoadingById.get(text.id);
+  const promise = fetch(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then((data: unknown) => {
+      const pages = typeof data === "object"
+        && data !== null
+        && "pages" in data
+        && Array.isArray(data.pages)
+        ? data.pages as WhRecord[]
+        : [];
+      const rawText = (text as WhRecord)._raw || text;
+      rawText.pdfOcrPages = pages;
+      return pages;
+    })
+    .finally(() => {
+      if (pdfPagesLoadingById.get(text.id) === promise) pdfPagesLoadingById.delete(text.id);
+    });
+  pdfPagesLoadingById.set(text.id, promise);
+  return promise;
+}
+
 export function loadAllCustomTextContents() {
   const texts = state.customTexts || [];
   const batchGeneration = allTextCacheGeneration;
@@ -201,8 +230,13 @@ export async function hydrateCurrentReaderText(): Promise<boolean> {
   const customText = (state.customTexts || []).find((text) => text.id === state.currentTextId);
   let ready = false;
   if (customText) {
-    if (customText.pdfOcrPages?.length || (typeof customText.text === "string" && Boolean(customText.text.trim()))) ready = true;
-    else {
+    if (Number(customText.pdfOcrPageCount) > 0 && !customText.pdfOcrPages?.length) {
+      await loadCustomTextPdfPages(customText)
+        .catch((error) => console.warn("Could not load PDF page metadata:", error));
+    }
+    if (customText.pdfOcrPages?.length || (typeof customText.text === "string" && Boolean(customText.text.trim()))) {
+      ready = true;
+    } else {
       await loadCustomTextContent(customText);
       ready = bookTexts.has(customText.id);
     }
@@ -223,6 +257,7 @@ export function clearBookTextCache(id: string): void {
   textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   bookTexts.delete(id);
   textLoadingById.delete(id);
+  pdfPagesLoadingById.delete(id);
   staleBookTextIds.delete(id);
   invalidateBookId(id);
 }
@@ -230,6 +265,7 @@ export function clearBookTextCache(id: string): void {
 function markBookTextCacheStale(id: string): void {
   textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   textLoadingById.delete(id);
+  pdfPagesLoadingById.delete(id);
   staleBookTextIds.add(id);
 }
 
@@ -240,6 +276,7 @@ export function clearAllBookTextCaches() {
   for (const id of ids) textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   bookTexts.clear();
   textLoadingById.clear();
+  pdfPagesLoadingById.clear();
   staleBookTextIds.clear();
   clearVocabIndexCache();
 }
@@ -274,6 +311,11 @@ registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds, preserveActive
         || (state.customTexts || []).some((text) => text.id === activeId)
       );
       if (state.currentView !== "reader" || !activeId || !activeReadable) return;
+      const activeCustomText = (state.customTexts || []).find((text) => text.id === activeId);
+      if (activeCustomText) {
+        await loadCustomTextPdfPages(activeCustomText)
+          .catch((error) => console.warn("Could not refresh PDF page metadata:", error));
+      }
       const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
       const { remapReaderBookmarksForAlgorithm, renderInlineBookmarkIndicators, renderReaderBookmarks } = await import("./reader/bookmarks.js");
       await remapReaderBookmarksForAlgorithm(algorithm, activeId);

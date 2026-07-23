@@ -251,6 +251,11 @@ describe("repository validation wiring", () => {
     const stylelint = read("../../stylelint.config.mjs");
     const gitignore = read("../../.gitignore");
     const flatpak = parseSimpleYaml(read("../../com.wordhunter.app.yml"));
+    const unixBuilds = [
+      read("../../scripts/build-macos.sh"),
+      read("../../scripts/build-flatpak.sh"),
+      read("../../scripts/build-linux-native.sh"),
+    ];
 
     assert.equal(packageJson.private, true);
     assert.equal(packageJson.type, "module");
@@ -275,23 +280,31 @@ describe("repository validation wiring", () => {
     assert.match(packageJson.scripts["test:frontend"], /frontend-tests\/android\/\*\.test\.js/);
     assert.doesNotMatch(packageJson.scripts["check:frontend"], /--fix|postcss|sass/);
     assert.doesNotMatch(packageJson.scripts["lint:css"], /--fix|--cache|--output-file/);
+    for (const build of unixBuilds) {
+      assert.match(
+        build,
+        /if \[\[ ! -f node_modules\/typescript\/bin\/tsc \|\| ! -f node_modules\/esbuild\/lib\/main\.js \]\]; then/,
+      );
+    }
     assert.match(stylelint, /postcss-html/);
     assert.match(gitignore, /^node_modules\/$/m);
     const source = flatpak.modules[0].sources.find((item) => item.type === "dir");
     assert.ok(source.skip.includes("node_modules"));
   });
 
-  it("ships only compiled JavaScript and rejects stale native frontend builds", () => {
+  it("ships compiled JavaScript plus the runtime bundle and rejects stale native frontend builds", () => {
     const sourceFiles = filesBelow(new URL("../../src/web/", import.meta.url));
     const outputFiles = filesBelow(new URL("../../dist/web/", import.meta.url));
     const buildScript = read("../../scripts/build-frontend.mjs");
     const rustBuild = read("../../src-tauri/build.rs");
     const sourceModules = sourceFiles.filter((file) => file.pathname.endsWith(".ts"));
     const outputModules = outputFiles.filter((file) => file.pathname.endsWith(".js"));
+    const runtimeBundles = outputModules.filter((file) => file.pathname.endsWith("/js/app.bundle.js"));
 
     assert.ok(sourceModules.length > 0);
     assert.equal(sourceFiles.filter((file) => file.pathname.endsWith(".js")).length, 0);
-    assert.equal(outputModules.length, sourceModules.length);
+    assert.equal(runtimeBundles.length, 1);
+    assert.equal(outputModules.length, sourceModules.length + runtimeBundles.length);
     assert.equal(outputFiles.filter((file) => file.pathname.endsWith(".ts")).length, 0);
     for (const html of [read("../../src/web/index.html"), read("../../src/web/templates/translator-popup.html")]) {
       assert.doesNotMatch(html, /<script>[^]*?<\/script>/i);

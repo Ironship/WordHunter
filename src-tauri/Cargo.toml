@@ -1,6 +1,6 @@
 [package]
 name = "word-hunter"
-version = "1.0.7+1"
+version = "1.0.8"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
 authors = ["Ironship <25068602+Ironship@users.noreply.github.com>"]
 edition = "2024"

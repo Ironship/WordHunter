@@ -62,7 +62,7 @@ else
   exit 1
 fi
 
-if [[ ! -f node_modules/typescript/bin/tsc ]]; then
+if [[ ! -f node_modules/typescript/bin/tsc || ! -f node_modules/esbuild/lib/main.js ]]; then
   npm ci --ignore-scripts --no-audit --no-fund
 fi
 npm run build:frontend

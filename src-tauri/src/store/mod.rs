@@ -4,6 +4,10 @@ pub(crate) mod media_assets;
 pub mod record_files;
 pub mod snapshot;
 
+#[cfg(test)]
+#[path = "../tests/store_sync/tests.rs"]
+mod sync_tests;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -137,7 +141,7 @@ impl Store {
     }
 
     pub fn snapshot_with_ui_state(&self) -> serde_json::Value {
-        let mut snapshot = self.snapshot();
+        let mut snapshot = self.startup_snapshot();
         if let Some(object) = snapshot.as_object_mut() {
             object.insert("uiState".to_string(), self.load_ui_state());
         }
@@ -355,7 +359,9 @@ mod tests {
         store.save_ui_state(&ui_state).unwrap();
 
         assert_eq!(store.load_ui_state(), ui_state);
-        assert_eq!(store.snapshot_with_ui_state()["uiState"], ui_state);
+        let snapshot = store.snapshot_with_ui_state();
+        assert_eq!(snapshot["uiState"], ui_state);
+        assert!(snapshot.get("recoveryStatus").is_none());
         assert!(!dir.path().join("records/v1/ui-state.json").exists());
     }
 
