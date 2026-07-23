@@ -271,6 +271,18 @@ async function refreshSyncHealth() {
   }
 }
 
+async function refreshRecoveryStatus() {
+  if (!window.__qtBridge) return;
+  try {
+    const response = await fetch("/__store/recovery_status", { cache: "no-store" });
+    if (!response.ok) return;
+    state.recoveryStatus = await response.json();
+    syncSettingsControls();
+  } catch (error) {
+    console.warn("Recovery status check failed", error);
+  }
+}
+
 async function refreshSyncthingStatus() {
   if (!window.__qtBridge) return;
   try {
@@ -796,10 +808,14 @@ export function bindSettingsEvents() {
   window.addEventListener("wordhunter:view-changed", (event) => {
     if ((event as CustomEvent<{ view?: string }>).detail?.view !== "sync") return;
     refreshSyncHealth();
+    refreshRecoveryStatus();
     refreshSyncthingStatus();
   });
-  refreshSyncHealth();
-  refreshSyncthingStatus();
+  if (state.currentView === "sync") {
+    refreshSyncHealth();
+    refreshRecoveryStatus();
+    refreshSyncthingStatus();
+  }
 
   const checkUpdatesBtn = document.getElementById("check-updates");
   if (checkUpdatesBtn) checkUpdatesBtn.addEventListener("click", async () => {

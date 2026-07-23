@@ -47,6 +47,7 @@ declare global {
     knownAt?: string;
     lastReviewedAt?: string;
     updatedAt?: string;
+    statusUpdatedAt?: string;
     lastUsed?: number;
   }
 

@@ -198,6 +198,14 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 json!({ "text": state.store.get_text_content(&id)? }),
             )
         }
+        (Method::Get, "/__book/pdf_pages") => {
+            let params = response::parse_query(&query);
+            let id = params.get("id").cloned().unwrap_or_default();
+            response::json_response(
+                request,
+                json!({ "pages": state.store.get_pdf_ocr_pages(&id)? }),
+            )
+        }
         (Method::Get, "/__media") => handlers::serve_media(request, &state, &query),
         (Method::Get, "/__open_dict") => {
             popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)

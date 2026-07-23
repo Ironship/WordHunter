@@ -2,7 +2,7 @@ import { state, setLastReadTextId, getLastReadTextId } from "./state.js";
 import { getNavigationEpoch, setView } from "./render.js";
 import { setReaderLoading, clearReaderLoading, renderReader } from "./reader/renderer.js";
 import { rememberReaderScrollPosition } from "./reader/scroll.js";
-import { bookTexts, findBookById, isBookTextCacheStale, loadBookText, loadCustomTextContent } from "./books.js";
+import { bookTexts, findBookById, isBookTextCacheStale, loadBookText, loadCustomTextContent, loadCustomTextPdfPages } from "./books.js";
 import { findCustomText, hasCustomText } from "./book-actions/profile-library.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -16,14 +16,23 @@ export async function openBook(id: string) {
   rememberReaderScrollPosition();
   const customText = findCustomText(id);
   const isCustom = Boolean(customText);
-  if (!bookTexts.has(id) || isBookTextCacheStale(id)) {
+  const needsPdfPages = Boolean(
+    customText
+    && Number(customText.pdfOcrPageCount) > 0
+    && !customText.pdfOcrPages?.length
+  );
+  if (!bookTexts.has(id) || isBookTextCacheStale(id) || needsPdfPages) {
     const catalogBook = findBookById(id);
     const book = customText || catalogBook;
     if (book) {
       try {
         setReaderLoading({ title: book.title || "..." });
         if (isCustom && window.__qtBridge) {
-          await loadCustomTextContent(customText);
+          if (customText.pdfOcrPages?.length || Number(customText.pdfOcrPageCount) > 0) {
+            await loadCustomTextPdfPages(customText);
+          } else {
+            await loadCustomTextContent(customText);
+          }
           if (generation !== openBookGeneration) return false;
         } else if (isCustom && customText?.text) {
           bookTexts.set(id, customText.text);
@@ -40,7 +49,7 @@ export async function openBook(id: string) {
 
   if (generation !== openBookGeneration || startingNavigationEpoch !== getNavigationEpoch()) return false;
   const text = bookTexts.get(id);
-  if (typeof text !== "string" || !text.trim()) {
+  if (!customText?.pdfOcrPages?.length && (typeof text !== "string" || !text.trim())) {
     showToast(t("toast.noTextSource"), "error");
     if (state.currentView === "reader") renderReader();
     return false;

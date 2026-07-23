@@ -142,6 +142,72 @@ describe("full-text hydration", () => {
     assert.equal(state.preferences.readerBookmarks["de-custom-resume"][0].wordAlgorithm, "modern");
     clearAllBookTextCaches();
   });
+
+  it("hydrates deferred PDF page metadata only for the active Reader", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    replaceState({
+      ...createDefaultState(),
+      currentView: "reader",
+      currentTextId: "de-pdf-resume",
+      customTexts: [{
+        id: "de-pdf-resume",
+        title: "PDF",
+        lang: "de",
+        pdfOcrPageCount: 1
+      }]
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    const requests = [];
+    globalThis.fetch = async (url) => {
+      requests.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ pages: [{ imageName: "page-1.png", text: "Seite" }] })
+      };
+    };
+
+    assert.equal(await hydrateCurrentReaderText(), true);
+    assert.deepEqual(state.customTexts[0].pdfOcrPages, [{
+      imageName: "page-1.png",
+      text: "Seite"
+    }]);
+    assert.deepEqual(requests, ["/__book/pdf_pages?id=de-pdf-resume"]);
+    assert.equal(bookTexts.has("de-pdf-resume"), false);
+    clearAllBookTextCaches();
+  });
+
+  it("opens a deferred PDF without fetching its duplicate text body", async () => {
+    clearAllBookTextCaches();
+    window.__qtBridge = true;
+    replaceState({
+      ...createDefaultState(),
+      currentView: "library",
+      customTexts: [{
+        id: "de-pdf-open",
+        title: "PDF",
+        lang: "de",
+        pdfOcrPageCount: 1
+      }]
+    }, { save: false });
+    state.profiles.de.customTexts = state.customTexts;
+    bookTexts.set("de-pdf-open", "duplicate OCR body");
+    const requests = [];
+    globalThis.fetch = async (url) => {
+      requests.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ pages: [{ imageName: "page-1.png", text: "Seite" }] })
+      };
+    };
+
+    assert.equal(await openBook("de-pdf-open"), true);
+    assert.equal(state.currentView, "reader");
+    assert.deepEqual(requests, ["/__book/pdf_pages?id=de-pdf-open"]);
+    assert.equal(bookTexts.get("de-pdf-open"), "duplicate OCR body");
+    clearAllBookTextCaches();
+  });
+
   it("loads every book while keeping at most two text fetches active", async () => {
     state.preferences.learningLanguage = "en";
     let active = 0;
