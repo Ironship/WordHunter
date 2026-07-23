@@ -1,0 +1,6 @@
+Word Hunter 1.0.8 makes synchronization reliable and Android startup faster.
+
+- A later vocabulary status choice now wins across devices.
+- Known words no longer return because another device had stale status data.
+- Notes and translations still merge independently.
+- Startup loads one JavaScript bundle and defers non-critical work.

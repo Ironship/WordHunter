@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.8" date="2026-07-23">
+      <description>
+        <ul>
+          <li>Make later vocabulary status decisions win reliably across synchronized devices.</li>
+          <li>Merge notes and translations without restoring stale word statuses.</li>
+          <li>Reduce Android startup work and bundle the initial JavaScript graph.</li>
+          <li>Restrict Android cleartext networking to the local Word Hunter backend.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.7.1" date="2026-07-20">
       <description>
         <ul>
