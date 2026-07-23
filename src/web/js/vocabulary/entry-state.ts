@@ -7,6 +7,7 @@ export function setEntryStatus(
 ): WhVocabStatus {
   const previousStatus = entry.status;
   entry.status = status;
+  if (previousStatus !== status) entry.statusUpdatedAt = updatedAt;
   if (status === "learning" && previousStatus !== "learning") {
     entry.learningStartedAt = updatedAt;
     const learningStartedAt = new Date(updatedAt);

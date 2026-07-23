@@ -18,13 +18,14 @@ export function hideReviewAnswer(): void {
 
 export function getOrCreateEntry(word: string, text = "", wordIndex: number | null = null): WhVocabEntry {
   if (!Object.hasOwn(state.vocab, word)) {
+    const createdAt = new Date().toISOString();
     state.vocab[word] = {
       status: "new",
       translation: "",
       note: "",
       examples: [],
-      addedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      addedAt: createdAt,
+      updatedAt: createdAt,
       interval: SM2_DEFAULTS.interval,
       repetition: SM2_DEFAULTS.repetition,
       efactor: SM2_DEFAULTS.efactor,

@@ -233,7 +233,6 @@ class MainActivity : TauriActivity() {
 
   override fun onWebViewCreate(webView: WebView) {
     appWebView = webView
-    webView.clearCache(true)
     webView.isVerticalScrollBarEnabled = false
     webView.isHorizontalScrollBarEnabled = false
     webView.overScrollMode = android.view.View.OVER_SCROLL_NEVER
@@ -833,6 +832,7 @@ class MainActivity : TauriActivity() {
       )
 
       stagingHealth = stagingHealth(stagingRoot, incomingDir, "exported", stats = stats, backend = backendHealth)
+      appWebView?.post { appWebView?.clearCache(true) }
       return SyncFolderResult(
         label = label,
         health = syncHealthEnvelope("completed", safHealth, stagingHealth, backendHealth)

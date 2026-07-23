@@ -101,6 +101,14 @@ impl Store {
     }
 
     pub fn snapshot(&self) -> Value {
+        self.snapshot_with_recovery_status(true)
+    }
+
+    pub(crate) fn startup_snapshot(&self) -> Value {
+        self.snapshot_with_recovery_status(false)
+    }
+
+    fn snapshot_with_recovery_status(&self, include_recovery_status: bool) -> Value {
         let _guard = match self.lock_writes() {
             Ok(guard) => guard,
             Err(error) => return add_snapshot_error(empty_snapshot(self.dir()), error),
@@ -108,7 +116,7 @@ impl Store {
         if let Err(error) = self.recover_pending_save() {
             return add_snapshot_error(empty_snapshot(self.dir()), format!("recovery: {error}"));
         }
-        self.snapshot_unlocked()
+        self.snapshot_unlocked(include_recovery_status)
     }
 
     pub fn snapshot_unacknowledged(&self) -> Value {
@@ -147,7 +155,7 @@ impl Store {
         Ok(())
     }
 
-    pub(crate) fn snapshot_unlocked(&self) -> Value {
+    fn snapshot_unlocked(&self, include_recovery_status: bool) -> Value {
         let mut snapshot = match self.records_snapshot() {
             Ok(snapshot) => snapshot,
             Err(error) => {
@@ -156,7 +164,9 @@ impl Store {
         };
         add_sync_dir_to_snapshot(&mut snapshot);
         add_sync_status_to_snapshot(&mut snapshot, &self.dir());
-        add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
+        if include_recovery_status {
+            add_recovery_status_to_snapshot(&mut snapshot, self.recovery_status());
+        }
         snapshot
     }
 
