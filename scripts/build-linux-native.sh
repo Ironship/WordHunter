@@ -267,7 +267,7 @@ prepare_ctranslate2_sources
 prepare_tauri_appimage_tools
 ort_dir="$(prepare_native_runtime)"
 
-if [[ ! -f node_modules/typescript/bin/tsc ]]; then
+if [[ ! -f node_modules/typescript/bin/tsc || ! -f node_modules/esbuild/lib/main.js ]]; then
   note "Restoring frontend dependencies"
   npm ci --ignore-scripts --no-audit --no-fund
 fi

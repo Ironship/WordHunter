@@ -158,9 +158,10 @@ function Ensure-FrontendBuild {
     }
 
     $typescriptCompiler = Join-Path $Root "node_modules\typescript\bin\tsc"
+    $esbuildModule = Join-Path $Root "node_modules\esbuild\lib\main.js"
     Push-Location -LiteralPath $Root
     try {
-        if (-not (Test-Path -LiteralPath $typescriptCompiler)) {
+        if (-not (Test-Path -LiteralPath $typescriptCompiler) -or -not (Test-Path -LiteralPath $esbuildModule)) {
             Invoke-External "npm.cmd" @("ci", "--ignore-scripts", "--no-audit", "--no-fund")
         }
         Invoke-External "npm.cmd" @("run", "build:frontend")
@@ -612,14 +613,21 @@ function Prepare-AndroidProject {
     $activityTarget = Join-Path $androidApp "src\main\java\com\wordhunter\pocket\MainActivity.kt"
     $manifestSource = Join-Path $Root "src-tauri\platforms\android\AndroidManifest.xml"
     $manifestTarget = Join-Path $androidApp "src\main\AndroidManifest.xml"
+    $networkSecuritySource = Join-Path $Root "src-tauri\platforms\android\network_security_config.xml"
+    $networkSecurityTarget = Join-Path $androidApp "src\main\res\xml\network_security_config.xml"
     if (-not (Test-Path -LiteralPath $activitySource)) {
         Fail "Android MainActivity source was not found: $activitySource"
     }
     if (-not (Test-Path -LiteralPath $manifestSource)) {
         Fail "Android manifest source was not found: $manifestSource"
     }
+    if (-not (Test-Path -LiteralPath $networkSecuritySource)) {
+        Fail "Android network security config was not found: $networkSecuritySource"
+    }
     Copy-Item -LiteralPath $activitySource -Destination $activityTarget -Force
     Copy-Item -LiteralPath $manifestSource -Destination $manifestTarget -Force
+    Ensure-Directory (Split-Path -Parent $networkSecurityTarget)
+    Copy-Item -LiteralPath $networkSecuritySource -Destination $networkSecurityTarget -Force
     Remove-Item -LiteralPath (Join-Path $androidApp "src\main\assets\ocr-runtime") -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath (Join-Path $androidApp "src\main\res\xml\file_paths.xml") -Force -ErrorAction SilentlyContinue
     $valuesDir = Join-Path $androidApp "src\main\res\values"

@@ -19,6 +19,6 @@ export function bindEvents() {
   bindFlashcardEvents();
   bindSettingsEvents();
   bindTranslatorEvents();
-  refreshTranslatorAvailability();
+  window.requestAnimationFrame(() => setTimeout(refreshTranslatorAvailability, 0));
   bindDiscoverEvents();
 }

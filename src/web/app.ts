@@ -139,11 +139,15 @@ function scheduleLibraryStatsHydration() {
       .catch((error) => console.warn("Nie wszystkie książki załadowane:", error))
       .finally(() => els.bookList?.setAttribute("aria-busy", "false"));
   };
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(hydrate, { timeout: 3000 });
-  } else {
-    setTimeout(hydrate, 500);
+  const schedule = () => {
+    if ("requestIdleCallback" in window) window.requestIdleCallback(hydrate, { timeout: 3000 });
+    else setTimeout(hydrate, 500);
+  };
+  if (isAndroidPlatform()) {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(schedule));
+    return;
   }
+  schedule();
 }
 
 function showLanguageOnboardingIfNeeded() {
@@ -191,6 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   } finally {
     document.documentElement.classList.remove("app-booting");
   }
-    
-  import("./js/update-checker.js").then(m => m.checkForUpdates());
+  window.requestAnimationFrame(() => {
+    setTimeout(() => import("./js/update-checker.js").then(m => m.checkForUpdates()), 0);
+  });
 });

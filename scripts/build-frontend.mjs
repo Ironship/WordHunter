@@ -3,6 +3,7 @@ import { dirname, extname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const sourceDir = join(root, "src", "web");
@@ -56,6 +57,27 @@ async function copyAssets(directory) {
 }
 
 await copyAssets(sourceDir);
+
+const bundledApp = join(temporaryDir, "js", "app.bundle.js");
+await build({
+  entryPoints: [join(temporaryDir, "app.js")],
+  outfile: bundledApp,
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  legalComments: "none",
+  logLevel: "warning"
+});
+
+const indexOutput = join(temporaryDir, "index.html");
+const indexSource = await readFile(indexOutput, "utf8");
+const bundledIndex = indexSource.replace(
+  '<script type="module" src="app.js"></script>',
+  '<script type="module" src="js/app.bundle.js"></script>'
+);
+if (bundledIndex === indexSource) throw new Error("Could not select the bundled app entrypoint");
+await writeFile(indexOutput, bundledIndex);
 
 async function collectFiles(directory) {
   const files = [];
