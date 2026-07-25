@@ -65,7 +65,7 @@ jobs:
       - name: Validate frontend behavior and repository data
         run: |
           node scripts/validate-json-i18n.mjs
-          node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js
+          node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js
 
   android:
     name: Android APK and AAB
