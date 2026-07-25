@@ -9,22 +9,16 @@ const {
   : "../../dist/web/js/ocr-image-format.js");
 
 describe("OCR image file classification", () => {
-  it("accepts JPEG MIME aliases and generic MIME when a supported extension is present", () => {
+  it("accepts supported formats and rejects conflicts or unsupported files", () => {
     for (const type of ["image/jpeg", "image/jpg", "image/pjpeg", "application/octet-stream", ""]) {
       assert.equal(validatedOcrImageFormat({ name: "scan.JPEG", type })?.contentType, "image/jpeg");
     }
     assert.equal(validatedOcrImageFormat({ name: "scan", type: "image/pjpeg" })?.extension, "jpg");
-  });
-
-  it("accepts PNG and WebP while rejecting recognized conflicts and ambiguous generic input", () => {
     assert.equal(validatedOcrImageFormat({ name: "scan.png", type: "image/png" })?.extension, "png");
     assert.equal(validatedOcrImageFormat({ name: "scan.webp", type: "image/webp" })?.extension, "webp");
     assert.equal(validatedOcrImageFormat({ name: "scan.jpg", type: "image/png" }), null);
     assert.equal(validatedOcrImageFormat({ name: "scan", type: "application/octet-stream" }), null);
     assert.equal(validatedOcrImageFormat({ name: "scan.gif", type: "image/gif" }), null);
-  });
-
-  it("routes unsupported image MIME values to the image validator instead of text parsing", () => {
     assert.equal(isOcrImageFile({ name: "scan.gif", type: "image/gif" }), true);
     assert.equal(isOcrImageFile({ name: "notes.txt", type: "text/plain" }), false);
   });

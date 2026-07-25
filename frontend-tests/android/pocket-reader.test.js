@@ -28,16 +28,7 @@ function assertDeclarations(css, selector, expected) {
   }
 }
 
-function browserEnvAvailable(): boolean {
-  try {
-    new Intl.Segmenter("en");
-    return typeof window !== "undefined" && typeof document !== "undefined";
-  } catch {
-    return false;
-  }
-}
-
-(browserEnvAvailable() ? describe : describe.skip)("Android Pocket reader", () => {
+describe("Android Pocket reader", () => {
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };
