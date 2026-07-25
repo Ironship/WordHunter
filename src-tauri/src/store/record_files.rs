@@ -1319,7 +1319,7 @@ fn canonicalize_vocab_records(
                     updated_at: deleted_at,
                     deleted_at: Some(deleted_at),
                     device_id: canonical_record.device_id.clone(),
-                    causal: causal.clone(),
+                    causal: live_only_causal.clone(),
                 },
             );
         }
