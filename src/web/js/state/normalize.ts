@@ -233,10 +233,10 @@ function mergeVocabEntries(first: WhVocabEntry, second: WhVocabEntry): WhVocabEn
     : fallback;
   copyBundle(merged, translationSource, ["translation", "translationSource", "translationAutoRejected"]);
   const addedAt = [first.addedAt, second.addedAt]
-    .filter((v): v is string => typeof v === "string" && v)
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
     .sort((a, b) => timestamp(a) - timestamp(b))[0];
   const updatedAt = [first.updatedAt, second.updatedAt]
-    .filter((v): v is string => typeof v === "string" && v)
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
     .sort((a, b) => timestamp(a) - timestamp(b))[0];
   merged.addedAt = addedAt;
   merged.updatedAt = updatedAt;
