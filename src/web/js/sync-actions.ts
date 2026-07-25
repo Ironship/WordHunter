@@ -13,6 +13,7 @@ import { assertSupportedStateSchemaVersion } from "./state/normalize.js";
 import { captureUiState } from "./state/ui-cache.js";
 import { clearAllBookTextCaches, clearBookTextCache, loadAllBookTexts, loadAllCustomTextContents, loadCustomTextContent } from "./books.js";
 import { isCustomTextReferenced } from "./book-actions/profile-library.js";
+import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
 const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
@@ -505,7 +506,7 @@ function exportRequestBase(filename: string, format: VocabularyExportFormat): Vo
     format,
     filename,
     headerRow: format === "anki" ? t("settings.ankiTsvHeader") : undefined,
-    lang: state.preferences?.learningLanguage || "en",
+    lang: effectiveLearningLanguage(state.preferences),
     algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
   };
 }
@@ -791,7 +792,7 @@ export async function exportAnkiTsv(): Promise<void> {
     format: "anki",
     filename,
     headerRow: t("settings.ankiTsvHeader"),
-    lang: state.preferences?.learningLanguage || "en",
+    lang: effectiveLearningLanguage(state.preferences),
     algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
   };
   try {

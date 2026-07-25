@@ -2,6 +2,7 @@
 
 import {
   DEFAULT_SELECTED_WORD_PANEL_ITEMS,
+  IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT,
   LEARNING_LANGUAGES,
   SELECTED_WORD_PANEL_ITEM_IDS,
   STATE_SCHEMA_VERSION,
@@ -15,6 +16,7 @@ import { normalizeLearningColors } from "../reader-colors.js";
 import { normalizeTheme } from "../theme.js";
 import { normalizeTranslationLanguageCode } from "../translator-preferences.js";
 import { captureUiState, loadUiStateCache } from "./ui-cache.js";
+import { normalizeVocabularyWord } from "../tokenizer_v2.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -152,10 +154,113 @@ function normalizeRecoveryStatus(value: unknown): WhRecoveryStatus | null {
   };
 }
 
-function normalizeVocabEntries(rawVocab: unknown): WhVocabulary {
+const VOCAB_STATUS_FIELDS = ["status", "statusUpdatedAt", "knownAt", "learningStartedAt"] as const;
+const VOCAB_SCHEDULE_FIELDS = [
+  "repetition", "interval", "efactor", "stability", "difficulty", "nextDate", "lastReviewedAt", "srsAlgorithm"
+] as const;
+
+function timestamp(value: unknown): number {
+  if (typeof value !== "string" || !value) return Number.NEGATIVE_INFINITY;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
+}
+
+function stableValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableValue).join(",")}]`;
+  if (!isRecord(value)) return JSON.stringify(value) || "";
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableValue(value[key])}`).join(",")}}`;
+}
+
+function entryUpdatedTime(entry: WhVocabEntry): number {
+  const updatedAt = timestamp(entry.updatedAt);
+  return Number.isFinite(updatedAt) ? updatedAt : timestamp(entry.addedAt);
+}
+
+function preferByUpdatedAt(first: WhVocabEntry, second: WhVocabEntry): [WhVocabEntry, WhVocabEntry] {
+  const firstTime = entryUpdatedTime(first);
+  const secondTime = entryUpdatedTime(second);
+  if (firstTime !== secondTime) return secondTime > firstTime ? [second, first] : [first, second];
+  return stableValue(second) > stableValue(first) ? [second, first] : [first, second];
+}
+
+function statusTime(entry: WhVocabEntry): number {
+  const changedAt = timestamp(entry.statusUpdatedAt);
+  if (Number.isFinite(changedAt)) return changedAt;
+  return timestamp(entry.status === "known" ? entry.knownAt : entry.status === "learning" ? entry.learningStartedAt : "");
+}
+
+function preferStatus(first: WhVocabEntry, second: WhVocabEntry): WhVocabEntry {
+  const firstValid = isVocabStatus(first.status);
+  const secondValid = isVocabStatus(second.status);
+  if (firstValid !== secondValid) return secondValid ? second : first;
+  const firstTime = statusTime(first);
+  const secondTime = statusTime(second);
+  if (firstTime !== secondTime) return secondTime > firstTime ? second : first;
+  const rank = (status: unknown) => ({ new: 0, learning: 1, ignored: 2, known: 3 })[status as WhVocabStatus] ?? -1;
+  if (rank(first.status) !== rank(second.status)) return rank(second.status) > rank(first.status) ? second : first;
+  return preferByUpdatedAt(first, second)[0];
+}
+
+function hasSchedule(entry: WhVocabEntry): boolean {
+  return VOCAB_SCHEDULE_FIELDS.some((field) => entry[field] !== undefined);
+}
+
+function preferSchedule(first: WhVocabEntry, second: WhVocabEntry): WhVocabEntry {
+  const firstTime = timestamp(first.lastReviewedAt);
+  const secondTime = timestamp(second.lastReviewedAt);
+  if (firstTime !== secondTime) return secondTime > firstTime ? second : first;
+  if (hasSchedule(first) !== hasSchedule(second)) return hasSchedule(second) ? second : first;
+  return preferByUpdatedAt(first, second)[0];
+}
+
+function copyBundle(target: WhVocabEntry, source: WhVocabEntry, fields: readonly string[]): void {
+  for (const field of fields) {
+    if (source[field] === undefined) delete target[field];
+    else target[field] = source[field];
+  }
+}
+
+function mergeVocabEntries(first: WhVocabEntry, second: WhVocabEntry): WhVocabEntry {
+  const [preferred, fallback] = preferByUpdatedAt(first, second);
+  const merged = { ...fallback, ...preferred } as WhVocabEntry;
+  copyBundle(merged, preferStatus(first, second), VOCAB_STATUS_FIELDS);
+  copyBundle(merged, preferSchedule(first, second), VOCAB_SCHEDULE_FIELDS);
+  for (const field of ["word", "article", "note", "imageUrl"] as const) {
+    if (!String(merged[field] || "").trim() && String(fallback[field] || "").trim()) merged[field] = fallback[field];
+  }
+  const translationSource = String(preferred.translation || "").trim() || preferred.translationAutoRejected === true
+    ? preferred
+    : fallback;
+  copyBundle(merged, translationSource, ["translation", "translationSource", "translationAutoRejected"]);
+  const addedAt = [first.addedAt, second.addedAt]
+    .filter((v): v is string => typeof v === "string" && v)
+    .sort((a, b) => timestamp(a) - timestamp(b))[0];
+  const updatedAt = [first.updatedAt, second.updatedAt]
+    .filter((v): v is string => typeof v === "string" && v)
+    .sort((a, b) => timestamp(a) - timestamp(b))[0];
+  merged.addedAt = addedAt;
+  merged.updatedAt = updatedAt;
+  merged.examples = Array.from(new Set([
+    ...(Array.isArray(preferred.examples) ? preferred.examples : []),
+    ...(Array.isArray(fallback.examples) ? fallback.examples : [])
+  ])).slice(0, 3);
+  return merged;
+}
+
+function normalizeVocabEntries(rawVocab: unknown, language = "en"): WhVocabulary {
   const vocab: WhVocabulary = {};
   for (const [word, entry] of objectEntries(rawVocab)) {
     if (!isRecord(entry)) continue;
+    const normalizedEntry = { ...entry } as WhVocabEntry;
+    const displayWord = typeof normalizedEntry.word === "string" && normalizedEntry.word.trim()
+      ? normalizedEntry.word.trim().normalize("NFC")
+      : word.trim().normalize("NFC");
+    const key = normalizeVocabularyWord(displayWord, language);
+    if (!key) continue;
+    normalizedEntry.word = displayWord;
+    vocab[key] = vocab[key] ? mergeVocabEntries(vocab[key], normalizedEntry) : normalizedEntry;
+  }
+  for (const entry of Object.values(vocab)) {
     if (!isVocabStatus(entry.status)) entry.status = "new";
     if (typeof entry.article === "string") {
       entry.article = entry.article.trim();
@@ -170,7 +275,6 @@ function normalizeVocabEntries(rawVocab: unknown): WhVocabulary {
     if (typeof entry.difficulty !== "number" || !Number.isFinite(entry.difficulty)) entry.difficulty = 5;
     if (entry.srsAlgorithm !== "fsrs") entry.srsAlgorithm = "sm2";
     if (!entry.nextDate) entry.nextDate = new Date().toISOString().slice(0, 10);
-    vocab[word] = entry as WhVocabEntry;
   }
   return vocab;
 }
@@ -188,14 +292,18 @@ function createEmptyProfile(lang: string): WhProfile {
 
 function normalizeProfile(rawProfile: unknown, lang: string): WhProfile {
   const profile: UnknownRecord = isRecord(rawProfile) ? rawProfile : createEmptyProfile(lang);
-  profile.vocab = normalizeVocabEntries(profile.vocab);
+  const profilePreferences = isRecord(profile.preferences) ? profile.preferences : {};
+  const vocabularyLanguage = lang === "other"
+    ? normalizeTranslationLanguageCode(profilePreferences.translationSourceLanguage) || "en"
+    : lang;
+  profile.vocab = normalizeVocabEntries(profile.vocab, vocabularyLanguage);
   profile.customTexts = objectArray(profile.customTexts)
     .filter((text) => text.id !== "gutenberg-full-undefined") as WhText[];
   profile.userBooks = objectArray(profile.userBooks) as WhText[];
   cleanSavedCatalogTitles(profile.userBooks);
   profile.hiddenBuiltInBooks = stringArray(profile.hiddenBuiltInBooks);
   profile.archivedBookIds = stringArray(profile.archivedBookIds);
-  const preferences = isRecord(profile.preferences) ? profile.preferences : {};
+  const preferences = profilePreferences;
   profile.preferences = preferences;
   delete preferences.theme;
   delete preferences.darkMode;
@@ -212,6 +320,42 @@ function normalizeProfiles(rawProfiles: unknown): Record<string, WhProfile> {
   );
 }
 
+export function rekeyActiveVocabForLocale(lang: string, activeState?: WhAppState, options?: { onSessionKeyRemap?: (oldKey: string, newKey: string) => void }): void {
+  if (!activeState) return;
+  const profile = activeState.profiles?.[lang];
+  if (!profile) return;
+  const oldVocab: Record<string, unknown> = activeState.vocab || profile.vocab || {};
+  const merged: Record<string, unknown> = {};
+  for (const [oldKey, entry] of Object.entries(oldVocab)) {
+    const entryObj = entry as WhVocabEntry;
+    const displayWord = typeof entryObj.word === "string" && entryObj.word.trim()
+      ? entryObj.word.trim().normalize("NFC")
+      : oldKey.trim().normalize("NFC");
+    const newKey = normalizeVocabularyWord(displayWord, lang);
+    if (!newKey) continue;
+    if (merged[newKey]) {
+      merged[newKey] = mergeVocabEntries(merged[newKey] as WhVocabEntry, entryObj);
+    } else {
+      merged[newKey] = { ...entryObj, word: displayWord };
+    }
+    if (oldKey !== newKey && options?.onSessionKeyRemap) {
+      options.onSessionKeyRemap(oldKey, newKey);
+    }
+  }
+  profile.vocab = merged as WhVocabulary;
+  activeState.vocab = merged as WhVocabulary;
+  if (typeof activeState.selectedWord === "string" && activeState.selectedWord) {
+    const canonicalWord = normalizeVocabularyWord(activeState.selectedWord, lang);
+    if (!canonicalWord || !merged[canonicalWord]) {
+      const resolved = Object.keys(merged).find((k) => normalizeVocabularyWord(k, lang) === canonicalWord);
+      activeState.selectedWord = resolved || null;
+      if (!resolved) activeState.selectedWordIndex = null;
+    } else {
+      activeState.selectedWord = canonicalWord;
+    }
+  }
+}
+
 export function normalizeState(nextState: WhRecord): WhAppState {
   const defaults = createDefaultState();
   nextState.schemaVersion = STATE_SCHEMA_VERSION;
@@ -220,7 +364,10 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   cleanSavedCatalogTitles(nextState.userBooks);
   nextState.hiddenBuiltInBooks = stringArray(nextState.hiddenBuiltInBooks);
   nextState.archivedBookIds = stringArray(nextState.archivedBookIds);
-  nextState.vocab = normalizeVocabEntries(nextState.vocab);
+  const legacyVocabularyLanguage = isRecord(nextState.preferences)
+    ? normalizeTranslationLanguageCode(nextState.preferences.learningLanguage) || "en"
+    : "en";
+  nextState.vocab = normalizeVocabEntries(nextState.vocab, legacyVocabularyLanguage);
   nextState.dataDirectory = typeof nextState.dataDirectory === "string" ? nextState.dataDirectory : "";
   nextState.syncDirectory = typeof nextState.syncDirectory === "string" ? nextState.syncDirectory : "";
   nextState.syncHealth = isRecord(nextState.syncHealth) ? nextState.syncHealth : null;
@@ -253,6 +400,10 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.preferences.selectedWordPanelItems = normalizeSelectedWordPanelItems(rawPreferences.selectedWordPanelItems);
   nextState.preferences.touchControls = nextState.preferences.touchControls === true;
   nextState.preferences.inTextReview = nextState.preferences.inTextReview === true;
+  const completedInTextGuesses = Number(rawPreferences.inTextReviewCompletedGuesses);
+  nextState.preferences.inTextReviewCompletedGuesses = Number.isFinite(completedInTextGuesses)
+    ? clamp(Math.trunc(completedInTextGuesses), 0, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT)
+    : 0;
   nextState.preferences.ttsWordHighlight = rawPreferences.ttsWordHighlightDefaultVersion === 1
     && typeof rawPreferences.ttsWordHighlight === "boolean"
     ? rawPreferences.ttsWordHighlight
@@ -315,6 +466,24 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   }
   if (nonDikiLanguages.includes(lang) && nextState.preferences.dictionaryUrl.includes("diki.pl")) {
     nextState.preferences.dictionaryUrl = getDefaultDictionaryUrl(lang);
+  }
+
+  if (typeof nextState.selectedWord === "string" && nextState.selectedWord) {
+    const canonicalWord = normalizeVocabularyWord(nextState.selectedWord, lang);
+    if (!canonicalWord) {
+      nextState.selectedWord = null;
+      nextState.selectedWordIndex = null;
+    } else if (Object.hasOwn(nextState.vocab, canonicalWord)) {
+      nextState.selectedWord = canonicalWord;
+    } else {
+      const resolved = Object.keys(nextState.vocab).find((k) => normalizeVocabularyWord(k, lang) === canonicalWord);
+      if (resolved) {
+        nextState.selectedWord = resolved;
+      } else {
+        nextState.selectedWord = null;
+        nextState.selectedWordIndex = null;
+      }
+    }
   }
 
   return nextState as WhAppState;

@@ -96,6 +96,7 @@ export function createDefaultState(): WhAppState {
       highlightTokens: true,
       hideKnownIgnored: true,
       inTextReview: true,
+      inTextReviewCompletedGuesses: 0,
       dynamicLearningColors: true,
       learningColors: [...DEFAULT_LEARNING_COLORS],
       autoLearnOnClick: false,

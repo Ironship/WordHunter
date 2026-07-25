@@ -1011,8 +1011,8 @@ html.pocket-mode {
   z-index: 60;
   --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
   top: var(--pocket-word-sheet-current-top);
-  left: 0.75rem;
-  right: 0.75rem;
+  left: max(0.75rem, env(safe-area-inset-left, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
   bottom: auto;
   box-sizing: border-box;
   height: max(
@@ -1044,6 +1044,16 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"],
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
   --pocket-word-sheet-current-top: var(--pocket-word-sheet-top);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-content-measuring {
+  top: auto;
+  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
+  height: auto;
+  max-height: max(
+    4rem,
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-expanded-top))
+  );
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before,
@@ -1279,6 +1289,22 @@ html.pocket-mode {
   font-size: 1.12rem;
 }
 
+.pocket-mode .in-text-review .sm2-grades {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.pocket-mode .in-text-review .sm2-grades .sm2-grade {
+  min-width: 0;
+  padding-inline: 0.25rem;
+}
+
+.pocket-mode .in-text-review .sm2-grade .shortcut-badge {
+  display: none;
+}
+
 .pocket-mode dialog {
   width: calc(100vw - 1.5rem);
   max-width: calc(100vw - 1.5rem);
@@ -1287,5 +1313,15 @@ html.pocket-mode {
 @media (max-width: 380px) {
   .pocket-mode .metric-pill#overall-count {
     display: none;
+  }
+}
+
+@media (max-width: 300px) {
+  .pocket-mode .word-panel {
+    padding-inline: 0.25rem;
+  }
+
+  .pocket-mode .word-panel .in-text-review .sm2-grades {
+    gap: 0.125rem;
   }
 }

@@ -44,8 +44,60 @@ pub struct ServerState {
     pub token: String,
     pub app_handle: AppHandle,
     pub syncthing: SyncthingManager,
-    pub ocr_cancellations: Mutex<HashSet<String>>,
+    pub(crate) ocr_jobs: Mutex<OcrJobState>,
     pub ocr_slot: Mutex<()>,
+}
+
+#[derive(Default)]
+pub(crate) struct OcrJobState {
+    active: HashSet<String>,
+    cancelled: HashSet<String>,
+}
+
+impl OcrJobState {
+    pub(crate) fn is_cancelled(&self, job_id: &str) -> bool {
+        self.cancelled.contains(job_id)
+    }
+
+    pub(crate) fn request_cancel(&mut self, job_id: &str) -> bool {
+        if !self.active.contains(job_id) {
+            return false;
+        }
+        self.cancelled.insert(job_id.to_string());
+        true
+    }
+}
+
+pub(crate) struct ActiveOcrJob<'a> {
+    jobs: &'a Mutex<OcrJobState>,
+    job_id: String,
+}
+
+impl<'a> ActiveOcrJob<'a> {
+    pub(crate) fn begin(jobs: &'a Mutex<OcrJobState>, job_id: &str) -> Result<Self, String> {
+        if job_id.trim().is_empty() {
+            return Err("job_id required".to_string());
+        }
+        let mut state = jobs
+            .lock()
+            .map_err(|_| "OCR job state is unavailable".to_string())?;
+        if !state.active.insert(job_id.to_string()) {
+            return Err("OCR job is already active".to_string());
+        }
+        state.cancelled.remove(job_id);
+        Ok(Self {
+            jobs,
+            job_id: job_id.to_string(),
+        })
+    }
+}
+
+impl Drop for ActiveOcrJob<'_> {
+    fn drop(&mut self) {
+        let mut state = self.jobs.lock().unwrap_or_else(|error| error.into_inner());
+        state.active.remove(&self.job_id);
+        state.cancelled.remove(&self.job_id);
+    }
 }
 
 /// Generate a random 32-character alphanumeric token for API authentication.
@@ -95,7 +147,7 @@ fn start_server_from_listener(
         token,
         app_handle,
         syncthing: SyncthingManager::new(),
-        ocr_cancellations: Mutex::new(HashSet::new()),
+        ocr_jobs: Mutex::new(OcrJobState::default()),
         ocr_slot: Mutex::new(()),
     });
 

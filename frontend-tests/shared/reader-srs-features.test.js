@@ -10,7 +10,7 @@ const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING
 const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../dist/web/js/sm2.js");
 const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
 const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
-const { state } = await import("../../dist/web/js/state.js");
+const { applyBridgeSnapshotToState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
 const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
@@ -24,6 +24,7 @@ describe("learning colors", () => {
     const defaults = createDefaultState().preferences;
     assert.equal(defaults.dynamicLearningColors, true);
     assert.equal(defaults.inTextReview, true);
+    assert.equal(defaults.inTextReviewCompletedGuesses, 0);
     assert.equal(defaults.autoAddLearningOnly, true);
   });
 
@@ -47,6 +48,51 @@ describe("learning colors", () => {
     ]);
     assert.equal(restored.preferences.inTextReview, false);
     assert.equal(restored.preferences.dynamicLearningColors, false);
+  });
+
+  it("normalizes persisted in-text prompt progress to the onboarding threshold", () => {
+    for (const [value, expected] of [[undefined, 0], ["2.9", 2], [99, 3], [-4, 0], ["invalid", 0]]) {
+      const raw = createDefaultState();
+      raw.preferences.inTextReviewCompletedGuesses = value;
+      assert.equal(normalizeState(raw).preferences.inTextReviewCompletedGuesses, expected);
+    }
+  });
+
+  it("does not regress in-text onboarding progress when applying older sync snapshots", () => {
+    const original = structuredClone(state._raw || state);
+    window.__qtBridge = true;
+    try {
+      state.preferences.inTextReviewCompletedGuesses = 1;
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs: { ...original.preferences, inTextReviewCompletedGuesses: 3 },
+        vocab: structuredClone(original.profiles),
+        texts: [],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      assert.equal(state.preferences.inTextReviewCompletedGuesses, 3);
+
+      for (const remoteValue of [1, undefined]) {
+        const prefs = { ...original.preferences, theme: "classic-dark" };
+        if (remoteValue !== undefined) prefs.inTextReviewCompletedGuesses = remoteValue;
+        else delete prefs.inTextReviewCompletedGuesses;
+        const snapshot = {
+          schemaVersion: 2,
+          prefs,
+          vocab: structuredClone(original.profiles),
+          texts: [],
+          hiddenBooks: []
+        };
+
+        assert.equal(applyBridgeSnapshotToState(snapshot, { preserveLocalUi: false }), true);
+        assert.equal(state.preferences.inTextReviewCompletedGuesses, 3);
+        assert.equal(state.preferences.theme, "classic-dark");
+      }
+    } finally {
+      replaceState(original, { save: false });
+      delete window.__bridgeState;
+      window.__qtBridge = false;
+    }
   });
 });
 

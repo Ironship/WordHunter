@@ -4,7 +4,7 @@ import { createAutosave } from "./state/autosave.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
-import { OTHER_PROFILE_ID, STATE_SCHEMA_VERSION } from "./constants.js";
+import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, OTHER_PROFILE_ID, STATE_SCHEMA_VERSION } from "./constants.js";
 import { postStoreJson } from "./store-bridge.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
@@ -208,6 +208,10 @@ export function applyBridgeSnapshotToState(
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();
+  nextState.preferences.inTextReviewCompletedGuesses = Math.max(
+    Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(state.preferences.inTextReviewCompletedGuesses) || 0))),
+    nextState.preferences.inTextReviewCompletedGuesses
+  );
   if (localUi) restoreLocalUiState(nextState, localUi);
   replaceState(nextState, { save: false });
   autosave.markDurableStateReplaced();

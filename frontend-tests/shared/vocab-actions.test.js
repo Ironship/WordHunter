@@ -46,7 +46,8 @@ globalThis.CustomEvent = class CustomEvent {
 
 const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
+const { selectWord, setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
+const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
 
 function vocabEntry(overrides = {}) {
   return {
@@ -105,6 +106,49 @@ describe("vocabulary actions", () => {
     assert.equal(state.vocab.haus.updatedAt, "2026-06-10T00:00:00.000Z");
     assert.equal(state.vocab.haus.knownAt, "2026-06-09T00:00:00.000Z");
     assert.equal(saveWrites, 0);
+  });
+
+  it("creates and updates one entry across differently cased spellings", () => {
+    const entry = getOrCreateEntry("Am");
+    const sameEntry = getOrCreateEntry("AM");
+    updateWordField("am", "translation", "at the");
+    setWordStatus("AM", "known");
+
+    assert.equal(entry, sameEntry);
+    assert.deepEqual(Object.keys(state.vocab), ["am"]);
+    assert.equal(state.vocab.am.word, "Am");
+    assert.equal(state.vocab.am.translation, "at the");
+    assert.equal(state.vocab.am.status, "known");
+  });
+
+  it("canonicalizes the original token before a generic normalizer for Turkish", () => {
+    const defaults = createDefaultState();
+    const profile = {
+      vocab: {}, customTexts: [], userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [],
+      preferences: { translationSourceLanguage: "tr_TR", translationTargetLanguage: "en" }
+    };
+    replaceState({
+      ...defaults,
+      currentView: "help",
+      preferences: {
+        ...defaults.preferences,
+        learningLanguage: "other",
+        translationSourceLanguage: "tr_TR",
+        translationTargetLanguage: "en",
+        autoTranslateWords: false
+      },
+      profiles: { other: profile },
+      vocab: profile.vocab,
+      customTexts: profile.customTexts,
+      userBooks: profile.userBooks,
+      hiddenBuiltInBooks: profile.hiddenBuiltInBooks,
+      archivedBookIds: profile.archivedBookIds
+    }, { save: false });
+
+    selectWord("I", (word) => word.toLowerCase());
+
+    assert.deepEqual(Object.keys(state.vocab), ["ı"]);
+    assert.equal(state.vocab["ı"].word, "I");
   });
 
   it("does not bump updatedAt when setting the same vocabulary field value", () => {

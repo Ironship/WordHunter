@@ -2,7 +2,7 @@ import { state } from "../state.js";
 import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
-import { isAndroidPlatform } from "../platform.js";
+import { isAndroidPlatform, isImageOcrAvailable } from "../platform.js";
 import { decodeImportedTextBytes, parseImportedTextFile, titleFromImportedFileName } from "../subtitles.js";
 import {
   cancelEditBook,
@@ -15,6 +15,7 @@ import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { beginElementBusy, setElementBusy } from "../loading.js";
 import { deleteStoredText } from "../store-bridge.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { isOcrImageFile, validatedOcrImageFormat } from "../ocr-image-format.js";
 
 type ImportMeta = {
   author?: string;
@@ -83,11 +84,12 @@ let youtubeTracks: YoutubeTrack[] = [];
 let youtubeTracksUrl = "";
 const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
 const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+const MAX_DESKTOP_OCR_IMAGE_BYTES = 32 * 1024 * 1024;
 const MAX_DESKTOP_IMPORT_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_POCKET_IMPORT_FILE_BYTES = 24 * 1024 * 1024;
 const MAX_SERIALIZED_IMPORT_TEXT_BYTES = 96 * 1024 * 1024;
 const POCKET_PDF_SCAN_ERROR = "PDF_TEXT_LAYER_EMPTY";
-let pdfImportRunning = false;
+let ocrImportRunning = false;
 
 function resetCoverPreview() {
   pendingCoverDataUrl = "";
@@ -120,12 +122,22 @@ function isPdfFile(file: File | null | undefined): boolean {
 
 function safeImportErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message.trim() : "";
+  if (/PaddleOCR did not find readable text in this image/i.test(message)) return t("toast.imageOcrNoText");
+  if (/Image is too large/i.test(message)) {
+    return t("toast.imageTooLarge", { mb: Math.floor(MAX_DESKTOP_OCR_IMAGE_BYTES / (1024 * 1024)) });
+  }
+  if (/unsupported.*image|image.*does not match/i.test(message)) return t("toast.imageOcrUnsupported");
+  if (/Image OCR requires the bundled PaddleOCR component/i.test(message)) return t("toast.imageOcrRequiresApp");
   const localizedMessages = new Set([
     t("toast.pdfImportBusy"),
     t("toast.pdfOcrRequiresApp"),
     t("toast.pdfTooLarge", { mb: Math.floor(MAX_POCKET_PDF_BYTES / (1024 * 1024)) }),
     t("toast.pdfTooLarge", { mb: Math.floor(MAX_DESKTOP_PDF_BYTES / (1024 * 1024)) }),
     t("toast.pdfOcrNoText"),
+    t("toast.imageOcrRequiresApp"),
+    t("toast.imageOcrNoText"),
+    t("toast.imageOcrUnsupported"),
+    t("toast.imageTooLarge", { mb: Math.floor(MAX_DESKTOP_OCR_IMAGE_BYTES / (1024 * 1024)) }),
     t("toast.importFailed"),
     t("toast.ebookRequiresApp"),
     t("toast.importedEbookEmpty"),
@@ -145,7 +157,7 @@ async function readFileAsBase64(file: Blob): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.addEventListener("load", () => resolve(String(reader.result || "")), { once: true });
-    reader.addEventListener("error", () => reject(reader.error || new Error("Could not read PDF")), { once: true });
+    reader.addEventListener("error", () => reject(reader.error || new Error("Could not read file")), { once: true });
     reader.readAsDataURL(file);
   });
 }
@@ -239,7 +251,7 @@ function waitForUiPaint(): Promise<void> {
   return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
-function startOcrProgress(onCancel: () => void): void {
+function startOcrProgress(messageKey: string, statusKey: string, onCancel: () => void): void {
   stopOcrProgress();
   const overlay = document.getElementById("import-loading");
   if (!overlay) return;
@@ -267,8 +279,8 @@ function startOcrProgress(onCancel: () => void): void {
   };
   const tick = () => {
     const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-    if (textEl()) textEl().textContent = t("import.parsingPdfOcr");
-    if (etaEl()) etaEl().textContent = t("import.ocrWholeBookStatus", { elapsed: fmt(elapsed) });
+    if (textEl()) textEl().textContent = t(messageKey);
+    if (etaEl()) etaEl().textContent = t(statusKey, { elapsed: fmt(elapsed) });
   };
   overlay.querySelector<HTMLButtonElement>("#ocr-cancel")?.addEventListener("click", (event) => {
     (event.currentTarget as HTMLButtonElement).disabled = true;
@@ -475,8 +487,8 @@ function showPocketPdfScanDialog(): Promise<void> {
 }
 
 async function importPdfFile(file: File): Promise<boolean> {
-  if (pdfImportRunning) throw new Error(t("toast.pdfImportBusy"));
-  pdfImportRunning = true;
+  if (ocrImportRunning) throw new Error(t("toast.pdfImportBusy"));
+  ocrImportRunning = true;
   try {
     return await runPdfImport(file);
   } catch (error) {
@@ -486,7 +498,7 @@ async function importPdfFile(file: File): Promise<boolean> {
     }
     throw error;
   } finally {
-    pdfImportRunning = false;
+    ocrImportRunning = false;
   }
 }
 
@@ -509,11 +521,11 @@ async function runPdfImport(file: File): Promise<boolean> {
   let requestStarted = false;
   setImportLoading(true, androidPdfOverlay ? "import.parsingPdfTextLayer" : "import.parsingPdfOcr");
   if (!androidPdfOverlay) {
-    startOcrProgress(() => {
+    startOcrProgress("import.parsingPdfOcr", "import.ocrWholeBookStatus", () => {
       cancelled = true;
       controller.abort();
       if (requestStarted) {
-        void fetch("/__import/pdf_ocr/cancel", {
+        void fetch("/__import/ocr/cancel", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
           body: JSON.stringify({ job_id: jobId })
@@ -589,6 +601,92 @@ async function runPdfImport(file: File): Promise<boolean> {
   }
 }
 
+async function importOcrImageFile(file: File): Promise<boolean> {
+  if (!isImageOcrAvailable() || !window.__qtBridge) {
+    throw new Error(t("toast.imageOcrRequiresApp"));
+  }
+  if (ocrImportRunning) throw new Error(t("toast.pdfImportBusy"));
+  const format = validatedOcrImageFormat(file);
+  if (!format) throw new Error(t("toast.imageOcrUnsupported"));
+  if (file.size > MAX_DESKTOP_OCR_IMAGE_BYTES) {
+    throw new Error(t("toast.imageTooLarge", { mb: Math.floor(MAX_DESKTOP_OCR_IMAGE_BYTES / (1024 * 1024)) }));
+  }
+  ocrImportRunning = true;
+  const profile = state.preferences.learningLanguage || "en";
+  const id = `${profile}-image-ocr-${slugFromFileName(file.name)}-${Date.now()}`;
+  const jobId = crypto.randomUUID();
+  const controller = new AbortController();
+  let cancelled = false;
+  let requestStarted = false;
+  setImportLoading(true, "import.parsingImageOcr");
+  startOcrProgress("import.parsingImageOcr", "import.ocrImageStatus", () => {
+    cancelled = true;
+    controller.abort();
+    if (requestStarted) {
+      void fetch("/__import/ocr/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({ job_id: jobId })
+      }).catch((error) => console.warn("Image OCR cancellation request failed", error));
+    }
+  });
+  try {
+    await waitForUiPaint();
+    const params = new URLSearchParams({
+      book_id: id,
+      job_id: jobId,
+      filename: file.name || t("import.importedImageTitle"),
+      lang: effectiveLearningLanguage(state.preferences)
+    });
+    requestStarted = true;
+    const response = await fetch(`/__import/image_ocr/raw?${params}`, {
+      method: "POST",
+      headers: { "Content-Type": format.contentType, "X-WH-Token": window.WH_TOKEN || "" },
+      signal: controller.signal,
+      body: file
+    });
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      throw new Error(message || `HTTP ${response.status}`);
+    }
+    const imported = await response.json() as PdfImportResponse;
+    const pages = Array.isArray(imported.pages) ? imported.pages : [];
+    const text = imported.text || pages.map((page) => page.text || "").join("\n\n").trim();
+    if (!text || pages.length !== 1 || !pages[0]?.imageName) {
+      throw new Error(t("toast.imageOcrNoText"));
+    }
+    const ocrEngine = imported.ocrEngine || "PaddleOCR";
+    const importedId = await importCustomText(
+      imported.title || titleFromImportedFileName(file.name || t("import.importedImageTitle")),
+      text,
+      {
+        id,
+        blurb: t("import.imageOcrBlurb", { engine: ocrEngine }),
+        coverDataUrl: `/__media?book=${encodeURIComponent(id)}&img=${encodeURIComponent(pages[0].imageName)}`,
+        pdfOcrPages: pages,
+        pdfOcrEngine: ocrEngine,
+        pdfOcrPageCount: 1,
+        experimental: true
+      }
+    );
+    if (!importedId) throw new Error(t("toast.importFailed"));
+    return true;
+  } catch (error) {
+    await deleteStoredText(id).catch((cleanupError) => {
+      console.warn("Failed to clean incomplete image OCR import", cleanupError);
+    });
+    if (cancelled) {
+      showToast(t("import.ocrCancelled"));
+      return false;
+    }
+    throw error;
+  } finally {
+    ocrImportRunning = false;
+    stopOcrProgress();
+    setImportLoading(false);
+  }
+}
+
 async function importEbookFile(file: File): Promise<EbookImportResponse> {
   if (!window.__qtBridge) {
     throw new Error(t("toast.ebookRequiresApp"));
@@ -616,6 +714,10 @@ async function loadImportFile(file: File): Promise<boolean | void> {
 
   if (isPdfFile(file)) {
     return importPdfFile(file);
+  }
+
+  if (isOcrImageFile(file)) {
+    return importOcrImageFile(file);
   }
 
   const maxImportBytes = isAndroidPlatform()

@@ -2,6 +2,8 @@
 
 import { t } from "./i18n.js";
 
+const DESKTOP_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf";
+const OCR_IMAGE_IMPORT_ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
 const MOBILE_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/pdf";
 type PocketWordSheetState = "collapsed" | "expanded" | "custom";
 
@@ -34,6 +36,10 @@ export function isAndroidPlatform(): boolean {
   return document.documentElement.dataset.platform === "android";
 }
 
+export function isImageOcrAvailable(): boolean {
+  return !isAndroidPlatform() && window.WH_IMAGE_OCR_AVAILABLE === true;
+}
+
 export function openAndroidUrl(url: string): boolean {
   const opener = window.WordHunterAndroid?.openUrl;
   if (typeof opener !== "function") return false;
@@ -47,7 +53,20 @@ export function openAndroidUrl(url: string): boolean {
 
 export function applyPlatformUi(): void {
   if (!isAndroidPlatform()) detectPlatform();
-  if (!isAndroidPlatform()) return;
+
+  const importFile = document.getElementById("import-file");
+  const importHint = document.getElementById("import-file-hint");
+  if (!isAndroidPlatform()) {
+    const imageOcrAvailable = isImageOcrAvailable();
+    importFile?.setAttribute(
+      "accept",
+      imageOcrAvailable ? `${DESKTOP_IMPORT_ACCEPT},${OCR_IMAGE_IMPORT_ACCEPT}` : DESKTOP_IMPORT_ACCEPT
+    );
+    if (importHint) {
+      importHint.innerHTML = t(imageOcrAvailable ? "import.fileHint" : "import.desktopOcrUnavailableFileHint");
+    }
+    return;
+  }
 
   document.documentElement.style.setProperty("--ui-scale", "1");
   document.documentElement.style.zoom = "1";
@@ -55,10 +74,8 @@ export function applyPlatformUi(): void {
   bindPocketImportDrawer();
   refreshPocketWordPanelSheet();
 
-  const importFile = document.getElementById("import-file");
   if (importFile) importFile.setAttribute("accept", MOBILE_IMPORT_ACCEPT);
 
-  const importHint = document.getElementById("import-file-hint");
   if (importHint) importHint.innerHTML = t("import.mobileFileHint");
 
   const provider = document.getElementById("pref-translation-provider");
@@ -125,6 +142,7 @@ function bindPocketWordPanelSheet(): void {
   }
 
   let drag: SheetDrag | null = null;
+  let contentBoundsDirty = false;
   let suppressClickUntil = 0;
   const measureTop = (state: PocketWordSheetState): number => {
     const original = currentState();
@@ -133,13 +151,31 @@ function bindPocketWordPanelSheet(): void {
     wrapper.dataset.pocketSheetState = original;
     return top;
   };
+  const panelIsOpen = (): boolean => root.classList.contains("pocket-word-panel-open")
+    && root.classList.contains("has-selected-word");
+  const measureBounds = (): { expandedTop: number; collapsedTop: number } => {
+    wrapper.classList.add("pocket-word-sheet-measuring");
+    wrapper.style.removeProperty("--pocket-word-sheet-expanded-top");
+    wrapper.classList.add("pocket-word-sheet-content-measuring");
+    const contentExpandedTop = wrapper.getBoundingClientRect().top;
+    wrapper.classList.remove("pocket-word-sheet-content-measuring");
+    const collapsedTop = measureTop("collapsed");
+    wrapper.style.setProperty(
+      "--pocket-word-sheet-expanded-top",
+      `${Math.min(contentExpandedTop, collapsedTop)}px`
+    );
+    const expandedTop = measureTop("expanded");
+    wrapper.classList.remove("pocket-word-sheet-measuring");
+    return { expandedTop, collapsedTop };
+  };
   const restoreState = (reprojectCustom = false): void => {
+    const bounds = panelIsOpen() ? measureBounds() : null;
     const remembered = root.dataset.pocketWordSheetState;
     if (remembered !== "custom") {
       setState(remembered === "expanded" ? "expanded" : currentState());
       return;
     }
-    if (!root.classList.contains("pocket-word-panel-open") || !root.classList.contains("has-selected-word")) {
+    if (!panelIsOpen()) {
       if (reprojectCustom) root.dataset.pocketWordSheetNeedsReproject = "true";
       setState("custom");
       return;
@@ -148,15 +184,20 @@ function bindPocketWordPanelSheet(): void {
     delete root.dataset.pocketWordSheetNeedsReproject;
     const customTop = Number.parseFloat(wrapper.style.getPropertyValue("--pocket-word-sheet-top"));
     if (!shouldReproject && Number.isFinite(customTop)) {
-      setState("custom", customTop);
+      setState(
+        "custom",
+        bounds ? Math.max(bounds.expandedTop, Math.min(bounds.collapsedTop, customTop)) : customTop
+      );
       return;
     }
-    wrapper.classList.add("pocket-word-sheet-measuring");
-    const expandedTop = measureTop("expanded");
-    const collapsedTop = measureTop("collapsed");
-    wrapper.classList.remove("pocket-word-sheet-measuring");
+    if (!bounds) return;
     const progress = Math.max(0, Math.min(1, Number(root.dataset.pocketWordSheetProgress) || 0));
-    setState("custom", expandedTop + (collapsedTop - expandedTop) * progress, expandedTop, collapsedTop);
+    setState(
+      "custom",
+      bounds.expandedTop + (bounds.collapsedTop - bounds.expandedTop) * progress,
+      bounds.expandedTop,
+      bounds.collapsedTop
+    );
   };
   const finishDrag = (
     state: PocketWordSheetState,
@@ -167,11 +208,34 @@ function bindPocketWordPanelSheet(): void {
     setState(state, top, expandedTop, collapsedTop);
     wrapper.classList.remove("pocket-word-sheet-dragging", "pocket-word-sheet-measuring");
     drag = null;
+    if (contentBoundsDirty) {
+      contentBoundsDirty = false;
+      restoreState();
+    }
   };
 
   restoreState();
   if (root.dataset.pocketWordSheetBound === "true") return;
   root.dataset.pocketWordSheetBound = "true";
+
+  const wordPanel = document.getElementById("word-panel");
+  const restoreAfterContentChange = (): void => {
+    if (drag) {
+      contentBoundsDirty = true;
+      return;
+    }
+    restoreState();
+  };
+  if (wordPanel && window.MutationObserver) {
+    const observer = new window.MutationObserver(restoreAfterContentChange);
+    observer.observe(wordPanel, {
+      attributes: true,
+      attributeFilter: ["hidden"],
+      childList: true,
+      subtree: true
+    });
+    wordPanel.addEventListener("load", restoreAfterContentChange, true);
+  }
 
   handle.addEventListener("click", (event) => {
     if (performance.now() < suppressClickUntil) {
@@ -188,9 +252,11 @@ function bindPocketWordPanelSheet(): void {
   handle.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0) return;
     const startState = currentState();
+    const bounds = panelIsOpen() ? measureBounds() : {
+      expandedTop: measureTop("expanded"),
+      collapsedTop: measureTop("collapsed")
+    };
     wrapper.classList.add("pocket-word-sheet-measuring");
-    const expandedTop = measureTop("expanded");
-    const collapsedTop = measureTop("collapsed");
     const startTop = wrapper.getBoundingClientRect().top;
     wrapper.classList.remove("pocket-word-sheet-measuring");
     const startedAt = performance.now();
@@ -200,8 +266,8 @@ function bindPocketWordPanelSheet(): void {
       startY: event.clientY,
       startTop,
       currentTop: startTop,
-      expandedTop,
-      collapsedTop,
+      expandedTop: bounds.expandedTop,
+      collapsedTop: bounds.collapsedTop,
       lastY: event.clientY,
       lastAt: startedAt,
       velocityY: 0,
@@ -269,11 +335,15 @@ function bindPocketWordPanelSheet(): void {
     if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
   });
   const restoreAfterViewportChange = (): void => {
-    if (drag) finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
-    else restoreState(true);
+    if (drag) {
+      finishDrag(drag.startState, drag.startTop, drag.expandedTop, drag.collapsedTop);
+      contentBoundsDirty = false;
+    }
+    restoreState(true);
   };
   window.addEventListener("resize", restoreAfterViewportChange);
   window.addEventListener("orientationchange", restoreAfterViewportChange);
+  window.visualViewport?.addEventListener("resize", restoreAfterViewportChange);
 }
 
 function bindPocketNavigationDrawer(): void {

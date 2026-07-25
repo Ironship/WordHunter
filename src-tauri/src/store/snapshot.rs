@@ -1492,17 +1492,19 @@ mod tests {
     }
 
     #[test]
-    fn sync_directory_keeps_private_preferences_local_but_syncs_reader_bookmarks() {
+    fn sync_directory_keeps_private_preferences_local_but_syncs_whitelisted_keys() {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
         let store = store_at(&local);
         let mut local_payload = profile_payload("lokal", "local");
         local_payload["prefs"]["locale"] = json!("pl");
         local_payload["prefs"]["theme"] = json!("dark");
+        local_payload["prefs"]["inTextReviewCompletedGuesses"] = json!(3);
         store.bulk_save(local_payload).unwrap();
 
         let mut remote_payload = profile_payload("fern", "remote");
         remote_payload["prefs"]["locale"] = json!("en");
+        remote_payload["prefs"]["inTextReviewCompletedGuesses"] = json!(1);
         remote_payload["prefs"]["readerBookmarks"] = json!({
             "remote-book": [{ "id": "remote-mark", "wordIndex": 17 }]
         });
@@ -1517,6 +1519,7 @@ mod tests {
 
         assert_eq!(snapshot["prefs"]["locale"], "pl");
         assert_eq!(snapshot["prefs"]["theme"], "dark");
+        assert_eq!(snapshot["prefs"]["inTextReviewCompletedGuesses"], 3);
         assert_eq!(
             snapshot["prefs"]["readerBookmarks"]["remote-book"][0]["id"],
             "remote-mark"
@@ -1527,6 +1530,10 @@ mod tests {
         assert!(!remote_records.contains_key("pref:learningLanguage"));
         assert!(!remote_records.contains_key("pref:theme"));
         assert!(remote_records.contains_key("pref:readerBookmarks"));
+        assert_eq!(
+            remote_records["pref:inTextReviewCompletedGuesses"].data,
+            json!(3)
+        );
         assert!(remote.path().join("records/v1/prefs").is_dir());
     }
 

@@ -214,7 +214,8 @@ fn proxy_rejects_lookalike_host_without_network_access() {
 #[test]
 fn bootstrap_escapes_javascript_and_proxy_url_values() {
     let snapshot = serde_json::json!({ "prefs": { "theme": "</script>\u{2028}" } });
-    let script = handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", Some(&snapshot));
+    let script =
+        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", Some(&snapshot), false);
     let token_line = script
         .lines()
         .find(|line| line.contains("window.WH_TOKEN"))
@@ -226,6 +227,7 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
         r#"window.WH_TOKEN = "\";\n<\/script>\\\u2028\u2029";"#
     );
     assert!(!script.contains("</script>"));
+    assert!(script.contains("window.WH_IMAGE_OCR_AVAILABLE = false"));
     assert!(script.contains(r#""theme":"<\/script>\u2028""#));
     assert!(script.contains("'/__proxy?url=' + encodeURIComponent(url)"));
 }

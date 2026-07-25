@@ -1045,7 +1045,7 @@ describe("desktop PDF reader contracts", () => {
     assert.doesNotMatch(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
     assert.match(backend, /merge_words_using_plain_text\(/);
     assert.match(backend, /const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2"/);
-    assert.match(backend, /render_text_layer_page_images\([\s\S]*context\.store,[\s\S]*context\.asset_book_id,[\s\S]*&pages,[\s\S]*context\.job_id,[\s\S]*context\.cancellations/);
+    assert.match(backend, /render_text_layer_page_images\([\s\S]*context\.store,[\s\S]*context\.asset_book_id,[\s\S]*&pages,[\s\S]*context\.job_id,[\s\S]*context\.jobs/);
     assert.match(backend, /PathBuf::from\("\/run\/host\/usr\/bin\/pdftoppm"\)/);
     assert.match(backend, /save_book_import_image_bytes\(book_id, image_name, &image_bytes\)/);
     assert.match(backend, /\(Vec::new\(\), "pdf-text-layer", false\)/);
@@ -1057,7 +1057,7 @@ describe("desktop PDF reader contracts", () => {
     assert.match(router, /"\/__store\/wipe"[\s\S]*state\.ocr_slot\.try_lock\(\)/);
     assert.match(response, /pub fn read_json_limited\(/);
     assert.match(server, /pub ocr_slot: Mutex<\(\)>/);
-    assert.match(handlers, /Cannot move the data folder while a PDF import is running/);
+    assert.match(handlers, /Cannot move the data folder while an OCR import is running/);
     assert.match(importer, /catch \(error\) \{\s*await deleteStoredText\(id\)/);
     assert.match(importer, /body: file/);
     assert.match(importer, /`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);

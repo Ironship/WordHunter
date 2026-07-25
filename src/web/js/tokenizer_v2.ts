@@ -103,23 +103,40 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
 
 export function normalizeWord(value: unknown): string {
   return String(value || "")
+    .normalize("NFC")
     .toLowerCase()
-    .replaceAll("’", "'")
+    .replace(/[‘’]/g, "'")
     .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
-    .trim();
+    .trim()
+    .normalize("NFC");
 }
 
 export function normalizeVocabularyWord(value: unknown, language = "en"): string {
-  const normalized = normalizeWord(value);
-  return normalizeWord(vocabularyWordKey(normalized, language));
+  const baseLanguage = String(language || "").toLowerCase().split(/[-_]/)[0];
+  const compatible = String(value || "").normalize("NFKC");
+  const localeAdjusted = baseLanguage === "tr" || baseLanguage === "az"
+    ? compatible.replaceAll("I", "ı").replaceAll("İ", "i")
+    : compatible;
+  const normalized = normalizeWord(localeAdjusted);
+  return normalizeWord(vocabularyWordKey(normalized, language))
+    .replaceAll("ß", "ss")
+    .replaceAll("ς", "σ");
+}
+
+export function resolveVocabularyKey(value: unknown, vocab: Vocabulary, language = "en"): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  if (!canonical || Object.hasOwn(vocab || {}, canonical)) return canonical;
+  return Object.keys(vocab || {}).find((key) => normalizeVocabularyWord(key, language) === canonical) || canonical;
 }
 
 function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string): string {
-  const raw = normalizeWord(value);
-  const canonical = normalizeVocabularyWord(raw, language);
+  const canonical = resolveVocabularyKey(value, vocab, language);
   if (canonical && vocab?.[canonical]) return canonical;
+  const raw = normalizeWord(value);
   if (raw && vocab?.[raw]) return raw;
-  const alternateApostrophe = raw.includes("’") ? raw.replaceAll("’", "'") : raw.replaceAll("'", "’");
+  const canonicalRaw = normalizeVocabularyWord(raw, language);
+  if (canonicalRaw && canonicalRaw !== canonical && vocab?.[canonicalRaw]) return canonicalRaw;
+  const alternateApostrophe = raw.includes("\u2019") ? raw.replaceAll("\u2019", "'") : raw.replaceAll("'", "\u2019");
   if (alternateApostrophe !== raw && vocab?.[alternateApostrophe]) return alternateApostrophe;
   return canonical || raw;
 }

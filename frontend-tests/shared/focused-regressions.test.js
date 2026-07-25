@@ -1072,6 +1072,142 @@ describe("focused frontend regressions", () => {
     assert.notStrictEqual(panels.at(-1), detached);
   });
 
+  it("retires the in-text review explanation after three completed guesses", async () => {
+    let html = "";
+    let answerButton = null;
+    let gradeButtons = [];
+    let saves = 0;
+    const review = {};
+    const rebuildControls = () => {
+      answerButton = html.includes("data-in-text-answer") ? eventTarget() : null;
+      gradeButtons = [...html.matchAll(/data-in-text-grade="(\d)"/g)].map((match) => eventTarget({ dataset: { inTextGrade: match[1] } }));
+    };
+    Object.defineProperty(review, "outerHTML", {
+      set(value) { html = value; rebuildControls(); }
+    });
+    const wordPanel = {
+      dataset: {},
+      classList: classList(),
+      parentElement: { classList: classList() },
+      set innerHTML(value) { html = value; rebuildControls(); },
+      get innerHTML() { return html; },
+      querySelector(selector) {
+        if (selector === ".in-text-review") return html.includes("in-text-review") ? review : null;
+        if (selector === "[data-in-text-answer]") return answerButton;
+        return null;
+      },
+      querySelectorAll(selector) { return selector === "[data-in-text-grade]" ? gradeButtons : []; }
+    };
+    const state = {
+      selectedWord: "wort",
+      selectedWordIndex: 0,
+      readerSelectionRange: null,
+      vocab: {
+        wort: { status: "learning", translation: "word", examples: [] },
+        neu: { status: "learning", translation: "new", examples: [] }
+      },
+      preferences: {
+        inTextReview: true,
+        inTextReviewCompletedGuesses: 2,
+        selectedWordPanelItems: [{ id: "translation", visible: true }]
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getReaderSelectionText() { return ""; },
+      getSentenceForWord() { return ""; },
+      isInTextReviewDue() { return true; },
+      async applyReviewGrade(word) { return state.vocab[word]; },
+      saveState() { saves += 1; }
+    });
+
+    module.renderWordPanel({ id: "text-1", text: "" });
+    assert.match(html, /sm2\.inTextPrompt/);
+    answerButton.dispatch("click", { stopPropagation() {} });
+    await gradeButtons[0].dispatch("click", { stopPropagation() {} });
+    assert.equal(state.preferences.inTextReviewCompletedGuesses, 3);
+    assert.equal(saves, 1);
+
+    state.selectedWord = "neu";
+    module.renderWordPanel({ id: "text-1", text: "" });
+    assert.doesNotMatch(html, /sm2\.inTextPrompt/);
+    assert.match(html, /data-in-text-answer/);
+    assert.match(html, /sm2\.showAnswer/);
+  });
+
+  it("keeps a deferred grade result for word A from replacing the panel of word B", async () => {
+    let html = "";
+    let answerButton = null;
+    let gradeButtons = [];
+    let saves = 0;
+    const review = {};
+    const rebuildControls = () => {
+      answerButton = html.includes("data-in-text-answer") ? eventTarget() : null;
+      gradeButtons = [...html.matchAll(/data-in-text-grade="(\d)"/g)].map((match) => eventTarget({ dataset: { inTextGrade: match[1] } }));
+    };
+    Object.defineProperty(review, "outerHTML", {
+      set(value) { html = value; rebuildControls(); }
+    });
+    const wordPanel = {
+      dataset: {},
+      classList: classList(),
+      parentElement: { classList: classList() },
+      set innerHTML(value) { html = value; rebuildControls(); },
+      get innerHTML() { return html; },
+      querySelector(selector) {
+        if (selector === ".in-text-review") return html.includes("in-text-review") ? review : null;
+        if (selector === "[data-in-text-answer]") return answerButton;
+        return null;
+      },
+      querySelectorAll(selector) { return selector === "[data-in-text-grade]" ? gradeButtons : []; }
+    };
+    const gradeA = deferred();
+    const gradedWords = [];
+    const state = {
+      selectedWord: "wort",
+      selectedWordIndex: 0,
+      readerSelectionRange: null,
+      vocab: {
+        wort: { status: "learning", translation: "word", examples: [] },
+        neu: { status: "learning", translation: "new", examples: [] }
+      },
+      preferences: {
+        inTextReview: true,
+        inTextReviewCompletedGuesses: 0,
+        selectedWordPanelItems: [{ id: "translation", visible: true }]
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getReaderSelectionText() { return ""; },
+      getSentenceForWord() { return ""; },
+      isInTextReviewDue() { return true; },
+      applyReviewGrade(word) { gradedWords.push(word); return gradeA.promise; },
+      saveState() { saves += 1; }
+    });
+
+    const currentText = { id: "text-1", text: "" };
+    module.renderWordPanel(currentText);
+    answerButton.dispatch("click", { stopPropagation() {} });
+    const pendingGrade = gradeButtons[0].dispatch("click", { stopPropagation() {} });
+
+    state.selectedWord = "neu";
+    module.renderWordPanel(currentText);
+    const panelForSecondWord = html;
+
+    gradeA.resolve(state.vocab.wort);
+    await pendingGrade;
+
+    assert.deepEqual(gradedWords, ["wort"]);
+    assert.equal(state.preferences.inTextReviewCompletedGuesses, 1);
+    assert.equal(saves, 1);
+    assert.equal(html, panelForSecondWord);
+    assert.match(html, /data-in-text-answer/);
+    assert.doesNotMatch(html, /sm2\.inTextRecorded/);
+  });
+
   it("keeps popup language metadata localized through template placeholders", () => {
     const popup = read("dist/web/templates/translator-popup.html");
     const popupRuntime = read("dist/web/translator-popup.js");
@@ -1101,10 +1237,13 @@ async function evaluateWordPanel({
   getReaderSelectionText,
   getSentenceForWord,
   translateText = async () => ({ translated: "" }),
-  beginElementBusy = () => () => {}
+  beginElementBusy = () => () => {},
+  applyReviewGrade = () => null,
+  isInTextReviewDue = () => false,
+  saveState = () => {}
 }) {
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
-    "../state.js": { state, saveState() {} },
+    "../state.js": { state, saveState },
     "../dom.js": { els: { wordPanel, readerText: null, uniqueSummary: null } },
     "../utils.js": {
       escapeHtml: (value) => String(value ?? ""),
@@ -1113,7 +1252,10 @@ async function evaluateWordPanel({
     },
     "../icons.js": { icon: () => "", statusIcon: () => "" },
     "../tokenizer_v2.js": { getSentenceForWord, getTextStats() { return { unique: 0 }; } },
-    "../constants.js": { STATUS_ORDER: ["new", "learning", "known", "ignored"] },
+    "../constants.js": {
+      IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3,
+      STATUS_ORDER: ["new", "learning", "known", "ignored"]
+    },
     "../i18n.js": { t: (key) => key },
     "../views/vocabulary.js": {
       getOrCreateEntry(word) {
@@ -1132,9 +1274,9 @@ async function evaluateWordPanel({
     "../vocabulary/article.js": {
       formatHeadword(word, article) { return article ? (article.endsWith("'") || article.endsWith("’") ? `${article}${word}` : `${article} ${word}`) : word; }
     },
-    "../vocabulary/review-card.js": { applyReviewGrade() {} },
+    "../vocabulary/review-card.js": { applyReviewGrade },
     "../reader-colors.js": { getLearningColor() { return ""; } },
-    "../sm2.js": { isInTextReviewDue() { return false; } },
+    "../sm2.js": { isInTextReviewDue },
     "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText },
     "../loading.js": { beginElementBusy },
     "../translator-preferences.js": {
