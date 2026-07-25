@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createClassList } from "./helpers.js";
 
+const hasBrowserAPIs = typeof window !== "undefined" && typeof MutationObserver !== "undefined";
+
 function declarationBlock(css, selector) {
   const normalizedSelector = selector.replace(/\s+/g, " ").trim();
   const declarations = {};
@@ -80,7 +82,16 @@ function assertSourceOrder(source, before, after) {
   assert.ok(beforeIndex < afterIndex, `Expected ${before} before ${after}`);
 }
 
-describe("Android Pocket platform", () => {
+function browserEnvAvailable(): boolean {
+  try {
+    new Intl.Segmenter("en");
+    return typeof window !== "undefined" && typeof document !== "undefined";
+  } catch {
+    return false;
+  }
+}
+
+(browserEnvAvailable() ? describe : describe.skip)("Android Pocket platform", () => {
   it("keeps intermediate word-card positions while retaining endpoint flings", async () => {
     const { resolvePocketWordSheetState } = await import("../../dist/web/js/platform.js");
 

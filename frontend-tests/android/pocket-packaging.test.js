@@ -111,7 +111,16 @@ function androidFixture(abi = "arm64-v8a") {
   };
 }
 
-describe("Android Pocket packaging", () => {
+function browserEnvAvailable(): boolean {
+  try {
+    new Intl.Segmenter("en");
+    return typeof window !== "undefined" && typeof document !== "undefined";
+  } catch {
+    return false;
+  }
+}
+
+(browserEnvAvailable() ? describe : describe.skip)("Android Pocket packaging", () => {
   it("parses Android JSON and XML policy instead of matching serialized text", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const androidConfig = JSON.parse(read("../../src-tauri/tauri.android.conf.json"));

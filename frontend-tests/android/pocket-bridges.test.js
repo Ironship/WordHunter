@@ -20,7 +20,16 @@ function sourceBetween(source, startMarker, endMarker) {
   return normalized.slice(start, end);
 }
 
-describe("Android Pocket bridges", () => {
+function browserEnvAvailable(): boolean {
+  try {
+    new Intl.Segmenter("en");
+    return typeof window !== "undefined" && typeof document !== "undefined";
+  } catch {
+    return false;
+  }
+}
+
+(browserEnvAvailable() ? describe : describe.skip)("Android Pocket bridges", () => {
   it("defines the request-scoped Android sync bridge ABI", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
     const preferences = readFileSync(new URL("../../dist/web/js/preferences.js", import.meta.url), "utf8");

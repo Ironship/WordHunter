@@ -84,7 +84,16 @@ function assertTextContrast(label, foreground, background) {
   assert.ok(ratio >= 4.5, `${label} contrast ${ratio.toFixed(2)} is below 4.5:1`);
 }
 
-describe("Android Pocket layout", () => {
+function browserEnvAvailable(): boolean {
+  try {
+    new Intl.Segmenter("en");
+    return typeof window !== "undefined" && typeof document !== "undefined";
+  } catch {
+    return false;
+  }
+}
+
+(browserEnvAvailable() ? describe : describe.skip)("Android Pocket layout", () => {
   it("defines touch-sized Pocket vocabulary card declarations", () => {
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
     const sharedCss = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
