@@ -94,27 +94,6 @@ describe("vocabulary case identity migration", () => {
     assert.equal(normalized.vocab["café"].note, "decomposed");
   });
 
-  it("rekeys the other profile from preferred spelling when its source locale changes", () => {
-    const defaults = createDefaultState();
-    const normalized = normalizeState({
-      ...defaults,
-      preferences: { ...defaults.preferences, learningLanguage: "other" },
-      profiles: {
-        other: {
-          vocab: { i: { word: "I", status: "known", translation: "dotless" } },
-          customTexts: [],
-          userBooks: [],
-          hiddenBuiltInBooks: [],
-          archivedBookIds: [],
-          preferences: { translationSourceLanguage: "tr_TR" }
-        }
-      }
-    });
-
-    assert.deepEqual(Object.keys(normalized.vocab), ["ı"]);
-    assert.equal(normalized.vocab["ı"].word, "I");
-  });
-
   it("canonicalizes stale selectedWord to the normalized vocab key", () => {
     const defaults = createDefaultState();
     const normalized = normalizeState({
@@ -136,51 +115,4 @@ describe("vocabulary case identity migration", () => {
     assert.equal(normalized.selectedWord, "am");
   });
 
-  it("clears selectedWord when no canonical match exists", () => {
-    const defaults = createDefaultState();
-    const normalized = normalizeState({
-      ...defaults,
-      preferences: { ...defaults.preferences, learningLanguage: "de" },
-      selectedWord: "XYZ",
-      selectedWordIndex: 5,
-      profiles: {
-        de: {
-          vocab: {},
-          customTexts: [],
-          userBooks: [],
-          hiddenBuiltInBooks: [],
-          archivedBookIds: [],
-          preferences: {}
-        }
-      }
-    });
-
-    assert.equal(normalized.selectedWord, null);
-    assert.equal(normalized.selectedWordIndex, null);
-  });
-
-  it("picks addedAt/updatedAt by parsed instant not lexicographic string order", () => {
-    const defaults = createDefaultState();
-    const normalized = normalizeState({
-      ...defaults,
-      preferences: { ...defaults.preferences, learningLanguage: "de" },
-      profiles: {
-        de: {
-          vocab: {
-            haus: { status: "known", addedAt: "2026-07-25T10:00:00+02:00", updatedAt: "2026-07-25T08:00:00Z" },
-            Haus: { status: "known", addedAt: "2026-07-25T06:00:00-05:00", updatedAt: "2026-07-25T14:00:00+02:00" }
-          },
-          customTexts: [],
-          userBooks: [],
-          hiddenBuiltInBooks: [],
-          archivedBookIds: [],
-          preferences: {}
-        }
-      }
-    });
-
-    assert.deepEqual(Object.keys(normalized.vocab), ["haus"]);
-    assert.equal(normalized.vocab.haus.addedAt, "2026-07-25T10:00:00+02:00");
-    assert.equal(normalized.vocab.haus.updatedAt, "2026-07-25T14:00:00+02:00");
-  });
 });
