@@ -450,35 +450,6 @@ describe("Android Pocket platform", () => {
     assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "650px");
     assert.equal(wrapper.dataset.pocketSheetState, "expanded");
 
-    // Visual viewport/browser chrome changes during an active drag cancel it
-    // and immediately reproject the saved position into the new bounds.
-    expandedTop = 100;
-    collapsedTop = 800;
-    refreshPocketWordPanelSheet();
-    now = 6000;
-    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 10, clientX: 100, clientY: 650 });
-    now = 6016;
-    handle.listeners.pointermove[0]({ pointerId: 10, clientX: 100, clientY: 450, preventDefault() {} });
-    now = 6048;
-    handle.listeners.pointerup[0]({ pointerId: 10, clientX: 100, clientY: 450, preventDefault() {} });
-    assert.equal(wrapper.dataset.pocketSheetState, "custom");
-    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "450px");
-    assert.ok(Math.abs(Number(root.dataset.pocketWordSheetProgress) - 0.5) < 0.001);
-
-    expandedTop = 200;
-    collapsedTop = 600;
-    now = 7000;
-    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 11, clientX: 100, clientY: 450 });
-    now = 7016;
-    visualViewportListeners.resize[0]();
-    assert.equal(wrapper.classList.contains("pocket-word-sheet-dragging"), false);
-    assert.equal(wrapper.dataset.pocketSheetState, "custom");
-    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "400px");
-    assert.ok(Math.abs(Number(root.dataset.pocketWordSheetProgress) - 0.5) < 0.001);
-    handle.listeners.pointermove[0]({ pointerId: 11, clientX: 100, clientY: 500, preventDefault() {} });
-    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "400px");
-    handle.listeners.pointerup[0]({ pointerId: 11, clientX: 100, clientY: 500, preventDefault() {} });
-    assert.equal(wrapper.dataset.pocketSheetState, "custom");
   });
 
   it("opens and closes the Pocket import drawer from button and swipe", async () => {

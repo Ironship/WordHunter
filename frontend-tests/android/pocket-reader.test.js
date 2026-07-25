@@ -92,7 +92,7 @@ describe("Android Pocket reader", () => {
     assert.match(navigation, /pocketPanelWasOpen/);
     assert.match(navigation, /word-panel-enter-/);
     assert.match(navigation, /word-panel-exit-/);
-    assert.match(navigation, /selectWord\(rawWord, normalizeWord/);
+    assert.match(navigation, /selectWord\(token\.dataset\.displayWord \|\| rawWord, normalizeWord/);
     assert.match(navigation, /forceSpeak: true/);
     assert.match(globalActions, /classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /navigateReaderWord\(-1\)/);
