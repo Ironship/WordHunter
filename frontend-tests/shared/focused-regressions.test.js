@@ -700,6 +700,7 @@ describe("focused frontend regressions", () => {
       "../dom.js": { els },
       "../i18n.js": { t: (key) => key },
       "../state.js": { state, saveState() {} },
+      "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
       "../toast.js": { showToast() {} },
       "../loading.js": { setElementBusy() {} },
       "../utils.js": { escapeHtml: (value) => String(value) },
