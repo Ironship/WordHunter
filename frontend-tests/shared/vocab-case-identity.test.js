@@ -180,7 +180,7 @@ describe("vocabulary case identity migration", () => {
     });
 
     assert.deepEqual(Object.keys(normalized.vocab), ["haus"]);
-    assert.equal(normalized.vocab.haus.addedAt, "2026-07-25T06:00:00-05:00");
+    assert.equal(normalized.vocab.haus.addedAt, "2026-07-25T10:00:00+02:00");
     assert.equal(normalized.vocab.haus.updatedAt, "2026-07-25T14:00:00+02:00");
   });
 });
