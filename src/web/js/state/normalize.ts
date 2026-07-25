@@ -237,7 +237,7 @@ function mergeVocabEntries(first: WhVocabEntry, second: WhVocabEntry): WhVocabEn
     .sort((a, b) => timestamp(a) - timestamp(b))[0];
   const updatedAt = [first.updatedAt, second.updatedAt]
     .filter((v): v is string => typeof v === "string" && v.length > 0)
-    .sort((a, b) => timestamp(a) - timestamp(b))[0];
+    .sort((a, b) => timestamp(b) - timestamp(a))[0];
   merged.addedAt = addedAt;
   merged.updatedAt = updatedAt;
   merged.examples = Array.from(new Set([
