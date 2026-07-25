@@ -138,13 +138,13 @@ export function selectReaderToken(
     if (anchor) setReaderSelectionAnchorFromToken(token);
     const selectedWordIndex = Number.isInteger(wordIndex) && wordIndex >= 0 ? wordIndex : null;
     if (options.persistWord) {
-      selectWord(rawWord, normalizeWord, false, selectedWordIndex, { forceSpeak: true });
+      selectWord(token.dataset.displayWord || rawWord, normalizeWord, false, selectedWordIndex, { forceSpeak: true });
     } else {
       state.selectedWord = rawWord;
       state.selectedWordIndex = selectedWordIndex;
       saveUiState();
       updateReaderSelection({ renderPanel: options.keepPanelOpen === true || !root.classList.contains("pocket-mode") });
-      speakWord(rawWord);
+      speakWord(token.dataset.displayWord || rawWord);
     }
     if (options.keepPanelOpen && pocketPanelWasOpen) root.classList.add("pocket-word-panel-open");
   };

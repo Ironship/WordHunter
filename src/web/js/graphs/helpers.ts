@@ -42,6 +42,30 @@ export interface ChartBin {
   key?: string;
 }
 
+const EASE_FACTOR_THRESHOLDS = [1.3, 1.6, 2.0, 2.5, 3.0, Infinity];
+
+export function buildEaseFactorBins(
+  entries: readonly VocabEntry[],
+  rangeLabels: readonly string[],
+  leechLabel: string,
+  colors: readonly string[] = []
+): ChartBin[] {
+  const bins = [leechLabel, ...rangeLabels].map((label, index) => ({
+    label,
+    val: 0,
+    color: colors[index]
+  }));
+  for (const entry of entries) {
+    if (entry.status === "ignored" || entry.status === "known" || entry.srsAlgorithm === "fsrs") continue;
+    const easeFactor = typeof entry.efactor === "number" && Number.isFinite(entry.efactor)
+      ? entry.efactor
+      : 2.5;
+    const index = EASE_FACTOR_THRESHOLDS.findIndex((threshold) => easeFactor <= threshold);
+    if (index >= 0 && bins[index]) bins[index].val++;
+  }
+  return bins;
+}
+
 export type ChartContext = CanvasRenderingContext2D & { w: number; h: number };
 
 const t = rawT as (key: string, vars?: TranslationVars) => string;

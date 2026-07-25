@@ -10,7 +10,7 @@ import { normalizeLearningColors } from "./reader-colors.js";
 import { applyTheme, nextTheme, normalizeTheme, type ThemeName } from "./theme.js";
 import { isAndroidPlatform } from "./platform.js";
 import { themeIcon } from "./icons.js";
-import { normalizeSelectedWordPanelItems } from "./state/normalize.js";
+import { normalizeSelectedWordPanelItems, rekeyActiveVocabForLocale } from "./state/normalize.js";
 import { postStoreJson } from "./store-bridge.js";
 
 type SyncStatus = {
@@ -575,6 +575,9 @@ export function updatePreferenceValue(key: string, value: unknown): void {
     if (profile) {
       profile.preferences = profile.preferences || {};
       profile.preferences[key] = value;
+    }
+    if (key === "translationSourceLanguage" && state.preferences.learningLanguage === OTHER_PROFILE_ID) {
+      rekeyActiveVocabForLocale(OTHER_PROFILE_ID, state);
     }
   }
   saveState();

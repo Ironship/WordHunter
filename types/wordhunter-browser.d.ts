@@ -93,6 +93,7 @@ declare global {
     highlightTokens: boolean;
     hideKnownIgnored: boolean;
     inTextReview: boolean;
+    inTextReviewCompletedGuesses: number;
     dynamicLearningColors: boolean;
     learningColors: string[];
     autoLearnOnClick: boolean;
@@ -386,6 +387,7 @@ declare global {
   interface Window {
     __qtBridge?: boolean;
     WH_TOKEN?: string;
+    WH_IMAGE_OCR_AVAILABLE?: boolean;
     __bridgeState?: unknown;
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;

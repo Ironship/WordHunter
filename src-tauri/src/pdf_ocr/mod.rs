@@ -3,7 +3,6 @@ use pdf_extract::{MediaBox, OutputDev, OutputError, Transform};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
-    collections::HashSet,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -13,18 +12,32 @@ use std::{
 };
 use tauri::AppHandle;
 
+use crate::server::OcrJobState;
 use crate::store::Store;
 
 mod runner;
 
 const MAX_PDF_BYTES: usize = 1024 * 1024 * 1024;
+const MAX_OCR_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 const MAX_PAGES: u64 = 2_000;
 const TEXT_LAYER_RENDER_WIDTH: u32 = 1400;
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
 
-struct CancellationCleanup<'a> {
-    cancellations: &'a Mutex<HashSet<String>>,
-    job_id: &'a str,
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum OcrImageFormat {
+    Jpeg,
+    Png,
+    WebP,
+}
+
+impl OcrImageFormat {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Jpeg => "jpg",
+            Self::Png => "png",
+            Self::WebP => "webp",
+        }
+    }
 }
 
 struct ImportContext<'a> {
@@ -32,21 +45,13 @@ struct ImportContext<'a> {
     store: &'a Store,
     asset_book_id: &'a str,
     job_id: &'a str,
-    cancellations: &'a Mutex<HashSet<String>>,
+    jobs: &'a Mutex<OcrJobState>,
 }
 
 struct FailedImportAssetCleanup<'a> {
     store: &'a Store,
     book_id: &'a str,
     completed: bool,
-}
-
-impl Drop for CancellationCleanup<'_> {
-    fn drop(&mut self) {
-        if let Ok(mut cancellations) = self.cancellations.lock() {
-            cancellations.remove(self.job_id);
-        }
-    }
 }
 
 impl Drop for FailedImportAssetCleanup<'_> {
@@ -66,11 +71,11 @@ pub fn import(
     payload: Value,
     store: &Store,
     app_handle: &AppHandle,
-    cancellations: &Mutex<HashSet<String>>,
+    jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
     let data = decode_payload(data_url)?;
-    import_decoded(payload, data, store, app_handle, cancellations)
+    import_decoded(payload, data, store, app_handle, jobs)
 }
 
 pub fn import_bytes(
@@ -78,12 +83,197 @@ pub fn import_bytes(
     data: Vec<u8>,
     store: &Store,
     app_handle: &AppHandle,
-    cancellations: &Mutex<HashSet<String>>,
+    jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     if data.len() > MAX_PDF_BYTES {
         return Err("PDF is too large (max 1 GB)".to_string());
     }
-    import_decoded(payload, data, store, app_handle, cancellations)
+    import_decoded(payload, data, store, app_handle, jobs)
+}
+
+pub fn import_image_bytes(
+    payload: Value,
+    data: Vec<u8>,
+    store: &Store,
+    app_handle: &AppHandle,
+    jobs: &Mutex<OcrJobState>,
+) -> Result<Value, String> {
+    if !cfg!(any(windows, target_os = "linux")) {
+        return Err("Image OCR is only packaged for Windows and Linux".to_string());
+    }
+    if data.len() > MAX_OCR_IMAGE_BYTES {
+        return Err("Image is too large (max 32 MB)".to_string());
+    }
+    let format = validate_ocr_image(&payload, &data)?;
+    let book_id = required_payload_string(&payload, "book_id")?;
+    let job_id = required_payload_string(&payload, "job_id")?;
+    ensure_not_cancelled(job_id, jobs)?;
+    let filename = payload
+        .get("filename")
+        .and_then(Value::as_str)
+        .unwrap_or("OCR image");
+    store.ensure_new_book_import_id(book_id)?;
+    let asset_book_id = format!("ocr-import-{:016x}", rand::random::<u64>());
+    store.ensure_new_book_import_id(&asset_book_id)?;
+    let mut asset_cleanup = FailedImportAssetCleanup {
+        store,
+        book_id: &asset_book_id,
+        completed: false,
+    };
+    let runner_path = runner::find_runner(app_handle).map_err(|error| {
+        format!(
+            "Image OCR requires the bundled PaddleOCR component. Reinstall Word Hunter if the problem persists.\n{error}"
+        )
+    })?;
+    let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let input_path = temp.path().join(format!("input.{}", format.extension()));
+    let pages_dir = temp.path().join("pages");
+    let json_path = temp.path().join("ocr.json");
+    fs::create_dir_all(&pages_dir).map_err(|e| e.to_string())?;
+    fs::write(&input_path, &data).map_err(|e| e.to_string())?;
+    let lang = requested_lang(&payload);
+
+    runner::run_runner(
+        &runner_path,
+        runner::RunnerJob {
+            input_path: &input_path,
+            pages_dir: &pages_dir,
+            json_path: &json_path,
+            lang: &lang,
+            max_pages: 1,
+            work_dir: temp.path(),
+            job_id,
+            jobs,
+        },
+    )
+    .map_err(|error| {
+        if error.to_ascii_lowercase().contains("cancel") {
+            error
+        } else {
+            format!(
+                "The bundled OCR component failed while processing this image. Reinstall Word Hunter if the problem persists.\n{error}"
+            )
+        }
+    })?;
+
+    let output = read_runner_output(&json_path)?;
+    let mut pages = runner_pages(&output)?;
+    if pages.len() != 1 {
+        return Err("PaddleOCR returned an invalid image page count".to_string());
+    }
+    let page = &mut pages[0];
+    ensure_not_cancelled(job_id, jobs)?;
+    let image_name = crate::paths::sanitize_id(runner_image_name(page)?)?;
+    let image_bytes = fs::read(pages_dir.join(&image_name))
+        .map_err(|e| format!("could not read OCR image {image_name}: {e}"))?;
+    store.save_book_import_image_bytes(&asset_book_id, &image_name, &image_bytes)?;
+    if let Some(object) = page.as_object_mut() {
+        object.insert("imageName".to_string(), json!(image_name));
+    }
+    let text = extract_page_text(page).trim().to_string();
+    if text.is_empty() {
+        return Err("PaddleOCR did not find readable text in this image".to_string());
+    }
+    let ocr_engine = output
+        .get("ocrEngine")
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("paddleocr-rs-onnx");
+    ensure_not_cancelled(job_id, jobs)?;
+    store.finalize_book_import_assets(&asset_book_id, book_id)?;
+    asset_cleanup.completed = true;
+    Ok(json!({
+        "title": title_from_filename(filename),
+        "text": text,
+        "coverDataUrl": "",
+        "pages": pages,
+        "pageCount": 1,
+        "truncated": false,
+        "ocrEngine": ocr_engine,
+        "experimental": true,
+        "blurb": ""
+    }))
+}
+
+fn required_payload_string<'a>(payload: &'a Value, key: &str) -> Result<&'a str, String> {
+    payload
+        .get(key)
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| format!("{key} required"))
+}
+
+fn validate_ocr_image(payload: &Value, data: &[u8]) -> Result<OcrImageFormat, String> {
+    let detected = detect_ocr_image_format(data).ok_or_else(|| {
+        "Unsupported or invalid OCR image; use JPG, JPEG, PNG, or WebP".to_string()
+    })?;
+    let filename = payload
+        .get("filename")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let extension_format = if let Some(extension) = Path::new(filename)
+        .extension()
+        .and_then(|value| value.to_str())
+    {
+        let from_extension = image_format_from_extension(extension).ok_or_else(|| {
+            "Unsupported OCR image filename; use JPG, JPEG, PNG, or WebP".to_string()
+        })?;
+        if from_extension != detected {
+            return Err("OCR image contents do not match the filename extension".to_string());
+        }
+        Some(from_extension)
+    } else {
+        None
+    };
+    let content_type = payload
+        .get("content_type")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .split(';')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    if !content_type.is_empty() {
+        if let Some(from_content_type) = image_format_from_content_type(&content_type) {
+            if from_content_type != detected {
+                return Err("OCR image contents do not match the request content type".to_string());
+            }
+        } else if content_type != "application/octet-stream" || extension_format.is_none() {
+            return Err("Unsupported OCR image request content type".to_string());
+        }
+    }
+    Ok(detected)
+}
+
+fn image_format_from_content_type(content_type: &str) -> Option<OcrImageFormat> {
+    match content_type {
+        "image/jpeg" | "image/jpg" | "image/pjpeg" => Some(OcrImageFormat::Jpeg),
+        "image/png" => Some(OcrImageFormat::Png),
+        "image/webp" => Some(OcrImageFormat::WebP),
+        _ => None,
+    }
+}
+
+fn image_format_from_extension(extension: &str) -> Option<OcrImageFormat> {
+    match extension.to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" => Some(OcrImageFormat::Jpeg),
+        "png" => Some(OcrImageFormat::Png),
+        "webp" => Some(OcrImageFormat::WebP),
+        _ => None,
+    }
+}
+
+fn detect_ocr_image_format(data: &[u8]) -> Option<OcrImageFormat> {
+    if data.starts_with(&[0xff, 0xd8, 0xff]) {
+        Some(OcrImageFormat::Jpeg)
+    } else if data.starts_with(b"\x89PNG\r\n\x1a\n") {
+        Some(OcrImageFormat::Png)
+    } else if data.len() >= 12 && data.starts_with(b"RIFF") && &data[8..12] == b"WEBP" {
+        Some(OcrImageFormat::WebP)
+    } else {
+        None
+    }
 }
 
 fn import_decoded(
@@ -91,7 +281,7 @@ fn import_decoded(
     data: Vec<u8>,
     store: &Store,
     app_handle: &AppHandle,
-    cancellations: &Mutex<HashSet<String>>,
+    jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     let book_id = payload
         .get("book_id")
@@ -103,14 +293,10 @@ fn import_decoded(
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| "job_id required".to_string())?;
-    let _cancellation_cleanup = CancellationCleanup {
-        cancellations,
-        job_id,
-    };
-    if cancellations
+    if jobs
         .lock()
-        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-        .contains(job_id)
+        .map_err(|_| "OCR job state is unavailable".to_string())?
+        .is_cancelled(job_id)
     {
         return Err("PaddleOCR import cancelled".to_string());
     }
@@ -128,7 +314,7 @@ fn import_decoded(
         store,
         asset_book_id: &asset_book_id,
         job_id,
-        cancellations,
+        jobs,
     };
     let mut asset_cleanup = FailedImportAssetCleanup {
         store,
@@ -165,7 +351,7 @@ fn import_decoded(
             max_pages,
             work_dir: temp.path(),
             job_id,
-            cancellations,
+            jobs,
         },
     );
     if let Err(runner_error) = result {
@@ -182,7 +368,7 @@ fn import_decoded(
 
     let mut text_parts = Vec::new();
     for page in &mut pages {
-        ensure_not_cancelled(job_id, cancellations)?;
+        ensure_not_cancelled(job_id, jobs)?;
         let image_name = runner_image_name(page)?;
         let safe_image_name = crate::paths::sanitize_id(image_name)?;
         let image_path = pages_dir.join(&safe_image_name);
@@ -219,7 +405,7 @@ fn import_decoded(
         .unwrap_or("paddleocr-cpp");
     let title = title_from_filename(filename);
 
-    ensure_not_cancelled(job_id, cancellations)?;
+    ensure_not_cancelled(job_id, jobs)?;
     store.finalize_book_import_assets(&asset_book_id, book_id)?;
     asset_cleanup.completed = true;
     Ok(json!({
@@ -241,7 +427,7 @@ fn import_text_layer_pdf(
     runner_error: &str,
     context: &ImportContext<'_>,
 ) -> Result<Value, String> {
-    ensure_not_cancelled(context.job_id, context.cancellations)?;
+    ensure_not_cancelled(context.job_id, context.jobs)?;
     let (pages, page_count, truncated) = extract_text_layer_overlay_pages(data, max_pages as usize)
         .map_err(|text_error| {
             format!("{runner_error}\nCould not read the PDF text layer either: {text_error}")
@@ -264,11 +450,11 @@ fn import_text_layer_pdf(
         context.asset_book_id,
         &pages,
         context.job_id,
-        context.cancellations,
+        context.jobs,
     ) {
         Ok(()) => (pages, "pdf-text-layer+pdftoppm", true),
         Err(render_error) => {
-            ensure_not_cancelled(context.job_id, context.cancellations)?;
+            ensure_not_cancelled(context.job_id, context.jobs)?;
             if render_error.starts_with("Could not save PDF page background:") {
                 return Err(render_error);
             }
@@ -319,7 +505,7 @@ fn render_text_layer_page_images(
     book_id: &str,
     pages: &[OverlayPage],
     job_id: &str,
-    cancellations: &Mutex<HashSet<String>>,
+    jobs: &Mutex<OcrJobState>,
 ) -> Result<(), String> {
     let renderer = find_pdftoppm()?;
     let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
@@ -328,7 +514,7 @@ fn render_text_layer_page_images(
     let mut rendered_pages = Vec::with_capacity(pages.len());
 
     for page in pages {
-        ensure_not_cancelled(job_id, cancellations)?;
+        ensure_not_cancelled(job_id, jobs)?;
         let image_stem = page
             .image_name
             .strip_suffix(".png")
@@ -361,7 +547,7 @@ fn render_text_layer_page_images(
             )
         })?;
         let status = loop {
-            if let Err(error) = ensure_not_cancelled(job_id, cancellations) {
+            if let Err(error) = ensure_not_cancelled(job_id, jobs) {
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err(error);
@@ -391,28 +577,25 @@ fn render_text_layer_page_images(
         rendered_pages.push((&page.image_name, image_path));
     }
 
-    ensure_not_cancelled(job_id, cancellations)?;
+    ensure_not_cancelled(job_id, jobs)?;
     for (image_name, image_path) in rendered_pages {
-        ensure_not_cancelled(job_id, cancellations)?;
+        ensure_not_cancelled(job_id, jobs)?;
         let image_bytes = fs::read(&image_path)
             .map_err(|e| format!("Could not read rendered PDF page {image_name}: {e}"))?;
         store
             .save_book_import_image_bytes(book_id, image_name, &image_bytes)
             .map_err(|e| format!("Could not save PDF page background: {e}"))?;
     }
-    ensure_not_cancelled(job_id, cancellations)?;
+    ensure_not_cancelled(job_id, jobs)?;
 
     Ok(())
 }
 
-fn ensure_not_cancelled(
-    job_id: &str,
-    cancellations: &Mutex<HashSet<String>>,
-) -> Result<(), String> {
-    if cancellations
+fn ensure_not_cancelled(job_id: &str, jobs: &Mutex<OcrJobState>) -> Result<(), String> {
+    if jobs
         .lock()
-        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-        .contains(job_id)
+        .map_err(|_| "OCR job state is unavailable".to_string())?
+        .is_cancelled(job_id)
     {
         return Err("PaddleOCR import cancelled".to_string());
     }
@@ -1170,16 +1353,19 @@ fn chars_can_merge_across_pdf_space(current: &str, next_text: &str) -> bool {
     previous_char.is_alphabetic() && next_char.is_alphabetic()
 }
 
-pub fn cancel(payload: Value, cancellations: &Mutex<HashSet<String>>) -> Result<(), String> {
+pub fn cancel(payload: Value, jobs: &Mutex<OcrJobState>) -> Result<(), String> {
     let job_id = payload
         .get("job_id")
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| "job_id required".to_string())?;
-    cancellations
+    let cancelled = jobs
         .lock()
-        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-        .insert(job_id.to_string());
+        .map_err(|_| "OCR job state is unavailable".to_string())?
+        .request_cancel(job_id);
+    if !cancelled {
+        return Err("OCR job is not active".to_string());
+    }
     Ok(())
 }
 
@@ -1189,19 +1375,26 @@ pub fn gpu_status(app_handle: &AppHandle) -> Value {
         .clone()
 }
 
+pub fn image_ocr_available(app_handle: &AppHandle) -> bool {
+    cfg!(any(windows, target_os = "linux")) && runner::image_ocr_runtime_available(app_handle)
+}
+
 #[cfg(test)]
 #[allow(clippy::items_after_test_module)]
 mod tests {
-    use std::{collections::HashSet, sync::Mutex};
+    use std::sync::Mutex;
 
     use base64::Engine;
     use serde_json::json;
 
+    use crate::server::{ActiveOcrJob, OcrJobState};
+
     use super::{
-        Bounds, OverlayWord, cancel, decode_payload, decode_payload_with_limit,
-        extract_text_layer_overlay_pages, merge_words_using_plain_text, requested_max_pages,
-        runner, runner_image_name, runner_pages, split_words_using_plain_text,
-        text_gap_is_word_break,
+        Bounds, MAX_OCR_IMAGE_BYTES, OcrImageFormat, OverlayWord, cancel, decode_payload,
+        decode_payload_with_limit, detect_ocr_image_format, extract_text_layer_overlay_pages,
+        image_format_from_content_type, merge_words_using_plain_text, requested_max_pages, runner,
+        runner_image_name, runner_pages, split_words_using_plain_text, text_gap_is_word_break,
+        validate_ocr_image,
     };
 
     #[test]
@@ -1226,19 +1419,96 @@ mod tests {
     }
 
     #[test]
-    fn cancel_requires_a_nonempty_job_id() {
-        let cancellations = Mutex::new(HashSet::new());
+    fn image_ocr_accepts_supported_signatures_and_rejects_spoofed_metadata() {
+        let jpeg = [0xff, 0xd8, 0xff, 0xe0];
+        let png = b"\x89PNG\r\n\x1a\nfixture";
+        let webp = b"RIFF\x04\x00\x00\x00WEBPfixture";
+        assert_eq!(detect_ocr_image_format(&jpeg), Some(OcrImageFormat::Jpeg));
+        assert_eq!(detect_ocr_image_format(png), Some(OcrImageFormat::Png));
+        assert_eq!(detect_ocr_image_format(webp), Some(OcrImageFormat::WebP));
+        assert_eq!(detect_ocr_image_format(b"GIF89a"), None);
+        assert_eq!(MAX_OCR_IMAGE_BYTES, 32 * 1024 * 1024);
+        assert_eq!(
+            image_format_from_content_type("image/pjpeg"),
+            Some(OcrImageFormat::Jpeg)
+        );
 
         assert_eq!(
-            cancel(json!({}), &cancellations).unwrap_err(),
+            validate_ocr_image(
+                &json!({ "filename": "scan.JPEG", "content_type": "image/jpeg" }),
+                &jpeg,
+            )
+            .unwrap(),
+            OcrImageFormat::Jpeg
+        );
+        assert!(
+            validate_ocr_image(
+                &json!({ "filename": "scan.png", "content_type": "image/png" }),
+                &jpeg,
+            )
+            .unwrap_err()
+            .contains("filename extension")
+        );
+        assert!(
+            validate_ocr_image(
+                &json!({ "filename": "scan.jpg", "content_type": "image/webp" }),
+                &jpeg,
+            )
+            .unwrap_err()
+            .contains("content type")
+        );
+        for content_type in ["image/jpg", "image/pjpeg", "application/octet-stream"] {
+            assert_eq!(
+                validate_ocr_image(
+                    &json!({ "filename": "scan.jpg", "content_type": content_type }),
+                    &jpeg,
+                )
+                .unwrap(),
+                OcrImageFormat::Jpeg
+            );
+        }
+        assert!(
+            validate_ocr_image(
+                &json!({ "filename": "scan", "content_type": "application/octet-stream" }),
+                &jpeg,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn cancellation_only_marks_active_jobs_and_cleanup_prevents_late_leaks() {
+        let jobs = Mutex::new(OcrJobState::default());
+
+        assert_eq!(cancel(json!({}), &jobs).unwrap_err(), "job_id required");
+        assert_eq!(
+            cancel(json!({ "job_id": "  " }), &jobs).unwrap_err(),
             "job_id required"
         );
         assert_eq!(
-            cancel(json!({ "job_id": "  " }), &cancellations).unwrap_err(),
-            "job_id required"
+            cancel(json!({ "job_id": "late-job" }), &jobs).unwrap_err(),
+            "OCR job is not active"
         );
-        cancel(json!({ "job_id": "fixture-job" }), &cancellations).unwrap();
-        assert!(cancellations.lock().unwrap().contains("fixture-job"));
+
+        {
+            let _active = ActiveOcrJob::begin(&jobs, "fixture-job").unwrap();
+            std::thread::scope(|scope| {
+                scope
+                    .spawn(|| cancel(json!({ "job_id": "fixture-job" }), &jobs))
+                    .join()
+                    .unwrap()
+                    .unwrap();
+            });
+            assert!(jobs.lock().unwrap().is_cancelled("fixture-job"));
+            assert!(ActiveOcrJob::begin(&jobs, "fixture-job").is_err());
+        }
+
+        assert!(!jobs.lock().unwrap().is_cancelled("fixture-job"));
+        assert_eq!(
+            cancel(json!({ "job_id": "fixture-job" }), &jobs).unwrap_err(),
+            "OCR job is not active"
+        );
+        ActiveOcrJob::begin(&jobs, "fixture-job").unwrap();
     }
 
     #[test]

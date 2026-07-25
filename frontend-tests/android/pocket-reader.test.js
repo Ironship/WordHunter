@@ -164,6 +164,8 @@ describe("Android Pocket reader", () => {
     const openPanel = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper");
     assert.equal(openPanel.top, "var(--pocket-word-sheet-current-top)");
     assert.equal(openPanel.bottom, "auto");
+    assert.equal(openPanel.left, "max(0.75rem, env(safe-area-inset-left, 0px))");
+    assert.equal(openPanel.right, "max(0.75rem, env(safe-area-inset-right, 0px))");
     assert.equal(openPanel["min-height"], "0");
     assert.equal(openPanel["max-height"], "none");
     assert.match(openPanel.height, /^max\(/);
@@ -176,6 +178,11 @@ describe("Android Pocket reader", () => {
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-collapsed-top)" });
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-expanded-top)" });
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-top)" });
+    const contentMeasurement = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-content-measuring");
+    assert.equal(contentMeasurement.top, "auto");
+    assert.equal(contentMeasurement.bottom, "calc(4.6rem + var(--pocket-navbar-safe-bottom))");
+    assert.equal(contentMeasurement.height, "auto");
+    assert.match(contentMeasurement["max-height"], /100dvh.*var\(--pocket-word-sheet-expanded-top\)/s);
     assertDeclarations(css, ".pocket-mode .pocket-word-panel-sheet-handle", { display: "flex", "min-height": "56px", "touch-action": "none" });
     assertDeclarations(css, ".pocket-mode .word-panel.word-panel-card-ghost", { top: "56px" });
     assert.match(

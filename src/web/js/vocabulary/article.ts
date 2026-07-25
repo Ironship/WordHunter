@@ -1,5 +1,5 @@
 function baseLanguage(language: string): string {
-  return String(language || "").toLowerCase().split("-")[0];
+  return String(language || "").toLowerCase().split(/[-_]/)[0];
 }
 
 export function normalizeArticle(value: unknown): string {

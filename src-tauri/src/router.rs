@@ -5,8 +5,8 @@ use tiny_http::{Method, Request};
 
 use crate::{
     ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy, response,
-    server::ServerState, srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish,
-    youtube_captions,
+    server::{ActiveOcrJob, ServerState},
+    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish, youtube_captions,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
@@ -49,6 +49,7 @@ macro_rules! read_json_limited_or_error {
 
 const MAX_IMPORT_REQUEST_BODY: usize = 384 * 1024 * 1024;
 const MAX_RAW_PDF_BODY: usize = 256 * 1024 * 1024;
+const MAX_RAW_OCR_IMAGE_BODY: usize = 32 * 1024 * 1024;
 const MAX_IMAGE_REQUEST_BODY: usize = 32 * 1024 * 1024;
 const MAX_COMMAND_REQUEST_BODY: usize = 8 * 1024;
 const MAX_UI_STATE_REQUEST_BODY: usize = 2 * 1024 * 1024;
@@ -394,7 +395,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                         return response::error_response(
                             request,
                             409,
-                            "Cannot wipe data while a PDF import is running",
+                            "Cannot wipe data while an OCR import is running",
                         );
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
@@ -421,29 +422,6 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     Err(error) => response::error_response(request, 422, &error),
                 }
             }
-            "/__import/pdf_ocr" => {
-                let _ocr_guard = match state.ocr_slot.try_lock() {
-                    Ok(guard) => guard,
-                    Err(std::sync::TryLockError::WouldBlock) => {
-                        return response::error_response(
-                            request,
-                            409,
-                            "Another PDF import is already running",
-                        );
-                    }
-                    Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
-                };
-                let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                match pdf_ocr::import(
-                    payload,
-                    &state.store,
-                    &state.app_handle,
-                    &state.ocr_cancellations,
-                ) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(error) => response::error_response(request, 422, &error),
-                }
-            }
             "/__import/pdf_ocr/raw" => {
                 let _ocr_guard = match state.ocr_slot.try_lock() {
                     Ok(guard) => guard,
@@ -451,16 +429,21 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                         return response::error_response(
                             request,
                             409,
-                            "Another PDF import is already running",
+                            "Another OCR import is already running",
                         );
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+                };
+                let params = response::parse_query(&query);
+                let job_id = params.get("job_id").cloned().unwrap_or_default();
+                let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
+                    Ok(guard) => guard,
+                    Err(error) => return response::error_response(request, 400, &error),
                 };
                 let data = match response::read_body_limited(&mut request, MAX_RAW_PDF_BODY) {
                     Ok(data) => data,
                     Err(error) => return response::error_response(request, 413, &error),
                 };
-                let params = response::parse_query(&query);
                 let max_pages = params
                     .get("max_pages")
                     .and_then(|value| value.parse::<u64>().ok())
@@ -477,15 +460,58 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     data,
                     &state.store,
                     &state.app_handle,
-                    &state.ocr_cancellations,
+                    &state.ocr_jobs,
                 ) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(error) => response::error_response(request, 422, &error),
                 }
             }
-            "/__import/pdf_ocr/cancel" => {
+            "/__import/image_ocr/raw" => {
+                let _ocr_guard = match state.ocr_slot.try_lock() {
+                    Ok(guard) => guard,
+                    Err(std::sync::TryLockError::WouldBlock) => {
+                        return response::error_response(
+                            request,
+                            409,
+                            "Another OCR import is already running",
+                        );
+                    }
+                    Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+                };
+                let params = response::parse_query(&query);
+                let job_id = params.get("job_id").cloned().unwrap_or_default();
+                let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
+                    Ok(guard) => guard,
+                    Err(error) => return response::error_response(request, 400, &error),
+                };
+                let content_type = request_header(&request, "Content-Type")
+                    .unwrap_or("")
+                    .to_string();
+                let data = match response::read_body_limited(&mut request, MAX_RAW_OCR_IMAGE_BODY) {
+                    Ok(data) => data,
+                    Err(error) => return response::error_response(request, 413, &error),
+                };
+                let payload = json!({
+                    "book_id": params.get("book_id").cloned().unwrap_or_default(),
+                    "job_id": params.get("job_id").cloned().unwrap_or_default(),
+                    "filename": params.get("filename").cloned().unwrap_or_default(),
+                    "lang": params.get("lang").cloned().unwrap_or_else(|| "en".to_string()),
+                    "content_type": content_type,
+                });
+                match pdf_ocr::import_image_bytes(
+                    payload,
+                    data,
+                    &state.store,
+                    &state.app_handle,
+                    &state.ocr_jobs,
+                ) {
+                    Ok(payload) => response::json_response(request, payload),
+                    Err(error) => response::error_response(request, 422, &error),
+                }
+            }
+            "/__import/ocr/cancel" | "/__import/pdf_ocr/cancel" => {
                 let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                match pdf_ocr::cancel(payload, &state.ocr_cancellations) {
+                match pdf_ocr::cancel(payload, &state.ocr_jobs) {
                     Ok(()) => response::no_content(request),
                     Err(error) => response::error_response(request, 400, &error),
                 }

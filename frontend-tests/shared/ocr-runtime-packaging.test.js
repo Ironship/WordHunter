@@ -119,6 +119,7 @@ describe("OCR runtime packaging", () => {
     assert.match(powershellString(ocrScript, "PaddleModelsSha256"), /^[0-9A-F]{64}$/);
     assert.match(powershellString(ocrScript, "PdfiumSha256"), /^[0-9A-F]{64}$/);
     assert.doesNotMatch(ocrScript, /releases\/latest\/download/);
+    assert.match(ocrScript, /cargo\.exe build --locked --release --target \$WindowsRustTarget --manifest-path \$RunnerManifest/);
 
     const downloadSyncthing = powershellFunction(buildScript, "Download-Syncthing");
     assert.match(downloadSyncthing, /Download-File \$url \$zip \$SyncthingSha256/);

@@ -127,6 +127,43 @@ const copiedEnglishRegressionKeys = [
   "settings.wordPanelItems.remove",
   ...copiedEnglishAllowlist
 ];
+const correctedGradeSemantics = {
+  "de.json": [
+    "1 — falsch, aber das Wort kommt mir bekannt vor",
+    "2 — falsch, nach einem Hinweis erinnert",
+    "3 — richtig, aber nur mit Mühe",
+    "4 — richtig, mit kurzem Zögern",
+    "5 — perfekt erinnert"
+  ],
+  "es.json": [
+    "1 — incorrecto, pero parece familiar",
+    "2 — incorrecto, recordado tras una pista",
+    "3 — correcto, pero con dificultad",
+    "4 — correcto, con una ligera vacilación",
+    "5 — recuerdo perfecto"
+  ],
+  "fr.json": [
+    "1 — incorrect, mais le mot semble familier",
+    "2 — incorrect, rappel après un indice",
+    "3 — correct, mais difficile",
+    "4 — correct, avec une légère hésitation",
+    "5 — rappel parfait"
+  ],
+  "it.json": [
+    "1 — errato, ma la parola sembra familiare",
+    "2 — errato, ricordato dopo un suggerimento",
+    "3 — corretto, ma con difficoltà",
+    "4 — corretto, con una leggera esitazione",
+    "5 — ricordo perfetto"
+  ],
+  "ru.json": [
+    "1 — неправильно, но слово кажется знакомым",
+    "2 — неправильно, удалось вспомнить после подсказки",
+    "3 — правильно, но с трудом",
+    "4 — правильно, с небольшой задержкой",
+    "5 — вспомнено идеально"
+  ]
+};
 
 function flatten(value, prefix = "", out = {}) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -232,6 +269,20 @@ describe("i18n coverage", () => {
         assert.equal(typeof data.settings?.wordPanelItems?.[key], "string", `${file} missing settings.wordPanelItems.${key}`);
         assert.ok(data.settings.wordPanelItems[key].trim(), `${file} has empty settings.wordPanelItems.${key}`);
       }
+    }
+  });
+
+  it("keeps numbered in-text grades aligned with the five recall qualities", () => {
+    for (const file of localeFiles) {
+      const data = JSON.parse(fs.readFileSync(path.join(localeDir, file), "utf8"));
+      for (let grade = 1; grade <= 5; grade += 1) {
+        assert.match(data.sm2[`grade${grade}`], new RegExp(`^${grade} [—–-] `), `${file} sm2.grade${grade}`);
+      }
+    }
+
+    for (const [file, expected] of Object.entries(correctedGradeSemantics)) {
+      const data = JSON.parse(fs.readFileSync(path.join(localeDir, file), "utf8"));
+      assert.deepEqual(expected.map((_, index) => data.sm2[`grade${index + 1}`]), expected, file);
     }
   });
 });

@@ -140,6 +140,46 @@ fn query_matches_word_field_directly() {
 }
 
 #[test]
+fn query_preserves_preferred_word_spelling() {
+    let result = run_op(json!({
+        "op": "query",
+        "vocab": {
+            "am": {
+                "word": "Am",
+                "status": "learning",
+                "translation": "at the",
+                "note": "",
+                "examples": []
+            }
+        },
+        "query": "AM",
+        "lang": "de"
+    }));
+
+    assert_eq!(result["entries"][0]["word"], "Am");
+}
+
+#[test]
+fn query_uses_the_same_canonical_identity_as_vocabulary_lookup() {
+    let result = run_op(json!({
+        "op": "query",
+        "vocab": {
+            "οσ": {
+                "word": "ος",
+                "status": "learning",
+                "translation": "",
+                "note": "",
+                "examples": []
+            }
+        },
+        "query": "ΟΣ",
+        "lang": "grc_GR"
+    }));
+
+    assert_eq!(result["entries"][0]["word"], "ος");
+}
+
+#[test]
 fn query_filters_by_text_index() {
     let vocab = json!({
         "alpha": vocab_entry("alpha", "learning", ""),

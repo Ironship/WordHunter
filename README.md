@@ -118,6 +118,7 @@ data between devices, create a JSON backup from the app.
 ## Release status
 
 - **Stable:** [1.0.8](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.8)
+- **Prerelease:** [1.0.9-rc.1](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9-rc.1) — six fixes for case-insensitive vocab, flashcard hint auto-hide, content-sized reader sheet, responsive recall buttons, correct Ease Factor graph, and desktop image OCR (JPG/PNG/WebP). See [release notes](docs/releases/1.0.9-rc.1.md). **Prerelease artifacts are for testing only and do not update stable installs.**
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>

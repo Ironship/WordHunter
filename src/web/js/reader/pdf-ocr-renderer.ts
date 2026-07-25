@@ -296,7 +296,7 @@ function renderPdfOcrTextTokens(
     const selected = state.selectedWord === dataWord ? "selected" : "";
     const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
     const style = color ? ` style="--token-learning-bg:${color}"` : "";
-    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
+    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-display-word="${escapeAttribute(raw)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
     wordCount += 1;
     charOffset += raw.length;
   }
@@ -628,5 +628,5 @@ function renderPdfOcrWord(
   const indexAttribute = Number.isInteger(globalIndex) ? ` data-word-index="${globalIndex}"` : "";
   const pageIndexAttribute = Number.isInteger(pageWordIndex) ? ` data-pdf-page-word-index="${pageWordIndex}"` : "";
   const charOffsetAttribute = Number.isInteger(charOffset) ? ` data-char-offset="${charOffset}"` : "";
-  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
+  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-display-word="${escapeAttribute(raw)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
 }
