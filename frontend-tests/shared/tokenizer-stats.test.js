@@ -36,11 +36,12 @@ describe("token stats", () => {
     let trLocaleAvailable = true;
     try {
       new Intl.Segmenter("tr");
+      new Intl.Segmenter("tr_TR");
     } catch {
       trLocaleAvailable = false;
     }
     if (!trLocaleAvailable) {
-      console.log("Skipping Turkish locale test - 'tr' locale not available in this environment");
+      console.log("Skipping Turkish locale test - 'tr'/'tr_TR' locale not available in this environment");
       return;
     }
     assert.equal(normalizeVocabularyWord("I", "tr"), normalizeVocabularyWord("ı", "tr"));
