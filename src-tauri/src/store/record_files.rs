@@ -1212,7 +1212,7 @@ fn canonicalize_vocab_records(
     }
 
     for (canonical_key, group) in groups {
-        let live_only_causal = CausalClock::new();
+        let mut live_only_causal = CausalClock::new();
         for record in group
             .iter()
             .filter(|r| r.deleted_at.is_none() && !is_vocab_alias_retirement(&r.data))
