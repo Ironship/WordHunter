@@ -163,7 +163,7 @@ describe("focused frontend regressions", () => {
       "./reader/renderer.js": { renderReader() {}, getTextById() { return null; } },
       "./reader/selection.js": { updateReaderSelection() {} },
       "./reader/scroll.js": { rememberReaderScrollPosition() {} },
-      "./views/vocabulary.js": { renderVocabulary() {}, renderReview() {} },
+      "./views/vocabulary.js": { renderVocabulary() {}, renderReview() {}, resetReviewPresentation() {} },
       "./views/discover.js": { renderDiscover() {} },
       "./views/graphs.js": { renderGraphs() {} },
       "./views/translator.js": { renderTranslator() {} },
@@ -739,7 +739,7 @@ describe("focused frontend regressions", () => {
       "../dom.js": { els: navigationEls },
       "../render.js": { setView() { viewChanges += 1; } },
       "../preferences.js": { updatePreferenceValue() {}, applyPreferences() {}, themeLabel: (value) => value },
-      "../views/vocabulary.js": { renderReview() {} },
+      "../views/vocabulary.js": { renderReview() {}, resetReviewPresentation() {} },
       "../toast.js": { showToast() {} },
       "../i18n.js": { t: (key) => key },
       "./keyboard/global-keys.js": { handleGlobalKeys() { return false; }, openReaderView() { viewChanges += 1; } },
@@ -1215,6 +1215,7 @@ async function evaluateWordPanel({
       effectiveLearningLanguage() { return "de"; },
       resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en" }; }
     },
-    "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items }
+    "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+    "../status-sounds.js": { playReviewGradeSound() {} }
   });
 }

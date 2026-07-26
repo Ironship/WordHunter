@@ -206,9 +206,12 @@ export async function applyReviewNative<T extends SrsEntry>(
     return applyReview(entry, quality, now, algorithm);
   }
   const mode = algorithm === "fsrs" ? "fsrs" : "sm2";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
   try {
     const response = await fetch("/__srs/review", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         "X-WH-Token": window.WH_TOKEN || ""
@@ -228,6 +231,8 @@ export async function applyReviewNative<T extends SrsEntry>(
   } catch (err) {
     console.warn("native SRS review failed, falling back to JS", err);
     return applyReview(entry, quality, now, mode);
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

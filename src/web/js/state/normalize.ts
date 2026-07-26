@@ -409,6 +409,7 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     ? rawPreferences.ttsWordHighlight
     : true;
   nextState.preferences.ttsWordHighlightDefaultVersion = 1;
+  nextState.preferences.autoTtsOnFlashcardOpen = nextState.preferences.autoTtsOnFlashcardOpen !== false;
   nextState.preferences.statusSoundsEnabled = nextState.preferences.statusSoundsEnabled !== false;
   nextState.preferences.statusSoundVolume = clamp(Number(nextState.preferences.statusSoundVolume) || 0, 0, 1);
   nextState.preferences.dynamicLearningColors = nextState.preferences.dynamicLearningColors === true;

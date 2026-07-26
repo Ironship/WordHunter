@@ -5,7 +5,7 @@ import { renderLibrary } from "./views/library.js";
 import { renderReader, getTextById } from "./reader/renderer.js";
 import { updateReaderSelection } from "./reader/selection.js";
 import { rememberReaderScrollPosition } from "./reader/scroll.js";
-import { renderVocabulary, renderReview } from "./views/vocabulary.js";
+import { renderVocabulary, renderReview, resetReviewPresentation } from "./views/vocabulary.js";
 import { renderDiscover } from "./views/discover.js";
 import { renderGraphs } from "./views/graphs.js";
 import { renderTranslator } from "./views/translator.js";
@@ -87,6 +87,7 @@ export function render(): void {
 }
 
 export function setView(viewName: string): void {
+  if (viewName === "flashcards" && state.currentView !== "flashcards") resetReviewPresentation();
   navigationEpoch += 1;
   document.documentElement.classList.remove("pocket-navigation-open", "pocket-import-open", "pocket-word-panel-open");
   for (const id of ["pocket-navigation-toggle", "reader-pocket-navigation-toggle", "library-import-toggle"]) {

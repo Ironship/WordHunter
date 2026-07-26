@@ -1,7 +1,7 @@
 /**
  * Review card: flashcard rendering, grading, SRS meta.
  */
-import { state, saveState } from "../state.js";
+import { state, saveState, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { icon } from "../icons.js";
@@ -10,10 +10,11 @@ import { applyReviewNative, isDue, todayISO } from "../sm2.js";
 import { renderVocabulary } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
-import { playStatusSound } from "../status-sounds.js";
+import { playReviewGradeSound, playStatusSound } from "../status-sounds.js";
 import { formatHeadword } from "./article.js";
 import { resolveVocabularyKey } from "../tokenizer_v2.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { speakWord } from "../tts.js";
 
 import { reviewAnswerVisible } from "../views/vocabulary.js";
 
@@ -30,10 +31,85 @@ interface ReviewTranslationCard {
 
 export type ReviewTransitionDirection = "next" | "previous";
 
+interface ReviewQueueEntry extends WhVocabEntry {
+  key: string;
+  word: string;
+  nextDate: string;
+}
+
+interface ReviewSession {
+  date: string;
+  profile: string;
+  keys: string[];
+}
+
+let reviewSession: ReviewSession | null = null;
+let lastAutoSpokenPresentation = "";
+let reviewGradePending = false;
+let pendingSummary: { entries: ReviewQueueEntry[]; today: string } | null = null;
+let summaryScheduled = false;
+
+function shuffle<T>(values: readonly T[]): T[] {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function buildReviewQueue(entries: readonly ReviewQueueEntry[], today: string): ReviewQueueEntry[] {
+  const profile = effectiveLearningLanguage(state.preferences);
+  const byKey = new Map(entries.filter((entry) => isDue(entry.nextDate, today)).map((entry) => [entry.key, entry]));
+  if (!reviewSession || reviewSession.date !== today || reviewSession.profile !== profile) {
+    reviewSession = { date: today, profile, keys: shuffle([...byKey.keys()]) };
+    state.reviewIndex = 0;
+  } else {
+    const previousQueueLength = reviewSession.keys.length;
+    reviewSession.keys = reviewSession.keys.filter((key) => byKey.has(key));
+    if (previousQueueLength > 0 && reviewSession.keys.length === 0) state.reviewIndex = 0;
+    const queued = new Set(reviewSession.keys);
+    reviewSession.keys.push(...shuffle([...byKey.keys()].filter((key) => !queued.has(key))));
+  }
+  return reviewSession.keys.map((key) => byKey.get(key)).filter((entry): entry is ReviewQueueEntry => Boolean(entry));
+}
+
+function scheduleReviewSummary(entries: ReviewQueueEntry[], today: string): void {
+  pendingSummary = { entries, today };
+  if (summaryScheduled) return;
+  summaryScheduled = true;
+  const renderSummary = () => {
+    summaryScheduled = false;
+    const summary = pendingSummary;
+    pendingSummary = null;
+    if (!summary) return;
+    renderReviewChart(summary.entries, summary.today);
+    renderReviewUpcoming(summary.entries, summary.today);
+  };
+  if ("requestIdleCallback" in window) window.requestIdleCallback(renderSummary, { timeout: 500 });
+  else setTimeout(renderSummary, 0);
+}
+
+function maybeAutoSpeakCard(card: ReviewQueueEntry, today: string, isReverse: boolean): void {
+  if (state.currentView !== "flashcards" || state.preferences.autoTtsOnFlashcardOpen === false) return;
+  if (isReverse && !reviewAnswerVisible) return;
+  const side = isReverse ? "answer" : "front";
+  const presentation = `${effectiveLearningLanguage(state.preferences)}|${today}|${card.key}|${side}`;
+  if (presentation === lastAutoSpokenPresentation) return;
+  lastAutoSpokenPresentation = presentation;
+  queueMicrotask(() => {
+    if (state.currentView === "flashcards") speakWord(formatHeadword(card.word, card.article));
+  });
+}
+
+export function resetReviewPresentation(): void {
+  lastAutoSpokenPresentation = "";
+}
+
 export function renderReview(transition?: ReviewTransitionDirection): void {
   if (!els.reviewCard) return;
   const today = todayISO();
-  const srsEntries = Object.entries(state.vocab)
+  const srsEntries: ReviewQueueEntry[] = Object.entries(state.vocab)
     .filter(([, entry]) => {
       if (entry.status === "ignored" || entry.status === "known") return false;
       if (state.preferences?.autoAddLearningOnly && entry.status === "new") return false;
@@ -41,10 +117,9 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     })
     .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
-  const reviewWords = srsEntries.filter((entry) => isDue(entry.nextDate, today));
+  const reviewWords = buildReviewQueue(srsEntries, today);
 
-  renderReviewChart(srsEntries, today);
-  renderReviewUpcoming(srsEntries, today);
+  scheduleReviewSummary(srsEntries, today);
 
   const labelEl = document.getElementById("review-reverse-label");
   if (labelEl) {
@@ -61,12 +136,12 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   const reviewIndex = clamp(state.reviewIndex || 0, 0, reviewWords.length - 1);
   if (reviewIndex !== state.reviewIndex) {
     state.reviewIndex = reviewIndex;
-    saveState();
+    void saveUiState();
   }
   const card = reviewWords[state.reviewIndex];
-  const grades = [0, 1, 2, 3, 4, 5];
+  const grades = [1, 2, 3, 4, 5];
   const ratingButtons = grades.map((q) => `
-    <button class="status-button sm2-grade sm2-grade-${q}" type="button" data-sm2-grade="${q}" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t(`sm2.grade${q}`))}">${q}</button>
+    <button class="status-button sm2-grade sm2-grade-${q}" type="button" data-sm2-grade="${q}" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t(`sm2.grade${q}`))}" aria-label="${escapeAttribute(t(`sm2.grade${q}`))}">${q}</button>
   `).join("");
 
   const context = card.examples?.[0] || "";
@@ -110,8 +185,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   if (card.imageUrl) {
     imageHtml = `
       <div class="review-image" style="margin-top: 0.5rem; text-align: center; position: relative; display: inline-block;">
-        <img src="${escapeAttribute(card.imageUrl)}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
-        <button type="button" data-action="remove-image" data-word="${escapeAttribute(card.key)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: var(--panel); cursor: pointer;">×</button>
+        <img src="${escapeAttribute(card.imageUrl)}" alt="${escapeAttribute(formatHeadword(card.word, card.article))}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
+        <button class="word-image-remove review-image-remove" type="button" data-action="remove-image" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.removeImage"))}" aria-label="${escapeAttribute(t("reader.removeImage"))}">×</button>
       </div>
     `;
   } else {
@@ -188,16 +263,18 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         ${escapeHtml(reviewAnswerVisible ? t("vocab.reviewHide") : t("vocab.reviewShow"))}
         <span class="shortcut-badge">${escapeHtml(t("reader.keyEnter"))}</span>
       </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.key)}" ${reviewIndex === 0 ? "disabled" : ""}>
-        ${icon("chevronLeft", 16)}
-        ${escapeHtml(t("vocab.reviewPrev"))}
-        <span class="shortcut-badge">←</span>
-      </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.key)}" ${reviewIndex === reviewWords.length - 1 ? "disabled" : ""}>
-        ${escapeHtml(t("vocab.reviewNext"))}
-        <span class="shortcut-badge">→</span>
-        ${icon("chevronRight", 16)}
-      </button>
+      <div class="flashcard-navigation" role="group">
+        <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.key)}" ${reviewIndex === 0 ? "disabled" : ""}>
+          ${icon("chevronLeft", 16)}
+          ${escapeHtml(t("vocab.reviewPrev"))}
+          <span class="shortcut-badge">←</span>
+        </button>
+        <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.key)}" ${reviewIndex === reviewWords.length - 1 ? "disabled" : ""}>
+          ${escapeHtml(t("vocab.reviewNext"))}
+          <span class="shortcut-badge">→</span>
+          ${icon("chevronRight", 16)}
+        </button>
+      </div>
     </div>
     ${reviewAnswerVisible ? `
       <p class="muted-copy sm2-prompt">${escapeHtml(t("sm2.prompt"))}</p>
@@ -205,6 +282,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     ` : ""}
     <p class="muted-copy">${reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
+  maybeAutoSpeakCard(card, today, isReverse);
 }
 export async function applyReviewGrade(word: string, quality: number): Promise<WhVocabEntry | null> {
   word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
@@ -232,19 +310,31 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
   if (quality >= 4 && currentEntry.repetition >= 2) status = "known";
   else if (quality < 3) status = "learning";
   else if (currentEntry.status === "new") status = "learning";
-  const previousStatus = setEntryStatus(currentEntry, status, updatedAt);
-  if (previousStatus !== status) playStatusSound(status);
-  saveState();
+  setEntryStatus(currentEntry, status, updatedAt);
   return currentEntry;
 }
 
 export async function gradeReview(word: string, quality: number): Promise<void> {
-  const entry = await applyReviewGrade(word, quality);
-  if (!entry) return;
-  const { hideReviewAnswer } = await import("../views/vocabulary.js");
-  hideReviewAnswer();
-  state.reviewIndex = 0;
-  renderReview();
+  if (reviewGradePending || quality < 1 || quality > 5) return;
+  reviewGradePending = true;
+  els.reviewCard?.setAttribute("aria-busy", "true");
+  els.reviewCard?.querySelectorAll("[data-sm2-grade]").forEach((button: Element) => {
+    if (button instanceof HTMLButtonElement) button.disabled = true;
+  });
+  playReviewGradeSound(quality);
+  try {
+    const entry = await applyReviewGrade(word, quality);
+    if (!entry) return;
+    const { hideReviewAnswer } = await import("../views/vocabulary.js");
+    hideReviewAnswer();
+    renderReview();
+  } finally {
+    reviewGradePending = false;
+    els.reviewCard?.removeAttribute("aria-busy");
+    els.reviewCard?.querySelectorAll("[data-sm2-grade]").forEach((button: Element) => {
+      if (button instanceof HTMLButtonElement) button.disabled = false;
+    });
+  }
 }
 
 export function removeFromSrs(word: string): void {

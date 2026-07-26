@@ -63,5 +63,6 @@ export {
 export {
   renderReview,
   gradeReview,
-  removeFromSrs
+  removeFromSrs,
+  resetReviewPresentation
 } from "../vocabulary/review-card.js";

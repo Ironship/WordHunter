@@ -415,6 +415,7 @@ export function syncSettingsControls() {
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
   if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
+  if (els.prefAutoTtsOnFlashcardOpen) els.prefAutoTtsOnFlashcardOpen.checked = prefs.autoTtsOnFlashcardOpen !== false;
   if (els.prefTtsWordHighlight) els.prefTtsWordHighlight.checked = prefs.ttsWordHighlight === true;
   if (els.prefStatusSoundsEnabled) els.prefStatusSoundsEnabled.checked = prefs.statusSoundsEnabled !== false;
   const statusSoundPercent = Math.round(clamp(Number(prefs.statusSoundVolume) || 0, 0, 1) * 100);

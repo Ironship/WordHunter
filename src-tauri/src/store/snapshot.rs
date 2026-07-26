@@ -104,10 +104,6 @@ impl Store {
         self.snapshot_with_recovery_status(true)
     }
 
-    pub(crate) fn startup_snapshot(&self) -> Value {
-        self.snapshot_with_recovery_status(false)
-    }
-
     fn snapshot_with_recovery_status(&self, include_recovery_status: bool) -> Value {
         let _guard = match self.lock_writes() {
             Ok(guard) => guard,
