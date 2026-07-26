@@ -1,0 +1,7 @@
+Word Hunter 1.0.9-rc.2 (prerelease)
+
+• Faster Android startup through concurrent state loading.
+• Flashcard grading no longer duplicates input or waits forever.
+• Reliable feedback sounds for grades 1-5.
+• Optional automatic pronunciation for each new flashcard.
+• Stable shuffled review sessions and improved mobile controls.

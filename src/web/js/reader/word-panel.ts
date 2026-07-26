@@ -26,6 +26,7 @@ import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../tra
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import type { VocabStatus } from "../constants.js";
 import { formatHeadword } from "../vocabulary/article.js";
+import { playReviewGradeSound } from "../status-sounds.js";
 
 export interface UpdateWordStatusOptions {
   renderPanel?: boolean;
@@ -196,7 +197,9 @@ function bindInTextReviewControls(currentText: WhText, word: string, entry: Word
   });
   panel.querySelectorAll<HTMLButtonElement>("[data-in-text-grade]").forEach((button) => button.addEventListener("click", async (event: MouseEvent) => {
     event.stopPropagation();
-    const updated = await applyReviewGrade(word, Number(button.dataset.inTextGrade));
+    const grade = Number(button.dataset.inTextGrade);
+    playReviewGradeSound(grade);
+    const updated = await applyReviewGrade(word, grade);
     if (!updated) return;
     const completedGuesses = Number(state.preferences.inTextReviewCompletedGuesses);
     state.preferences.inTextReviewCompletedGuesses = Math.min(

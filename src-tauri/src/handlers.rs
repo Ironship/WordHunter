@@ -40,10 +40,9 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
         .get_file("index.html")
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
-    let snapshot = state.store.snapshot_with_ui_state();
     let bootstrap = bootstrap_script(
         &state.token,
-        Some(&snapshot),
+        None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
     );
     if let Some(pos) = html.find("<head>") {
@@ -86,9 +85,16 @@ pub(crate) fn bootstrap_script(
   window.__qtBridge = true;
   window.WH_TOKEN = {escaped};
   window.WH_IMAGE_OCR_AVAILABLE = {image_ocr_available};
-  const bridgeSnapshot = {snapshot};
-  if (bridgeSnapshot !== null) window.__bridgeState = bridgeSnapshot;
   const origFetch = window.fetch.bind(window);
+  const bridgeSnapshot = {snapshot};
+  if (bridgeSnapshot !== null) {{
+    window.__bridgeState = bridgeSnapshot;
+  }} else {{
+    window.__bridgeStatePromise = origFetch('/__store/load', {{ cache: 'no-store' }}).then(function(response) {{
+      if (!response.ok) throw new Error('Store load failed: HTTP ' + response.status);
+      return response.json();
+    }});
+  }}
   window.fetch = function(input, init) {{
     try {{
       const url = (typeof input === 'string') ? input : (input && input.url) || '';

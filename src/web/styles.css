@@ -757,6 +757,11 @@ kbd {
   font-size: 16px;
   line-height: 1;
 }
+.flashcard-navigation {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+}
 .review-image-search .image-action-button { margin: 0 auto; }
 .image-action-button svg { width: 14px; height: 14px; }
 
@@ -2709,7 +2714,7 @@ html[data-max-width="full"] .reader-text {
 }
 .sm2-grades {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.4rem;
   margin-top: 0.4rem;
 }

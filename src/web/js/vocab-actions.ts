@@ -1,4 +1,4 @@
-import { state, saveState, initialVocabKeys } from "./state.js";
+import { state, saveState, saveUiState, initialVocabKeys } from "./state.js";
 import { STATUS_ORDER } from "./constants.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -229,14 +229,14 @@ export function handleReviewAction(action: string): void {
   if (action === "next") {
     state.reviewIndex = (state.reviewIndex || 0) + 1;
     hideReviewAnswer();
-    saveState();
+    void saveUiState();
     renderReview("next");
     return;
   }
   if (action === "prev") {
     state.reviewIndex = Math.max(0, (state.reviewIndex || 0) - 1);
     hideReviewAnswer();
-    saveState();
+    void saveUiState();
     renderReview("previous");
     return;
   }

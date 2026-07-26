@@ -31,7 +31,7 @@ describe("reader token session", () => {
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
     const books = readFileSync(new URL("../../dist/web/js/books.js", import.meta.url), "utf8");
     const renderer = readFileSync(new URL("../../dist/web/js/reader/renderer.js", import.meta.url), "utf8");
-    assert.match(app, /await loadBooksCatalog\(\);\s*ensureCurrentText\(\);[\s\S]*?render\(\);\s*const restoringReaderTextId[\s\S]*?void hydrateCurrentReaderText\(\)/);
+    assert.match(app, /Promise\.all\(\[[\s\S]*?loadBooksCatalog\(\)[\s\S]*?\]\);[\s\S]*?ensureCurrentText\(\);[\s\S]*?render\(\);\s*const restoringReaderTextId[\s\S]*?void hydrateCurrentReaderText\(\)/);
     assert.ok(renderer.indexOf("if (!readerBodyReady(current))") < renderer.indexOf("const savedPos = state.readerScrolls"));
     assert.match(books, /await remapReaderBookmarksForAlgorithm\(algorithm, activeId\);/);
     assert.match(books, /renderReaderBookmarks\(activeId\);\s*renderInlineBookmarkIndicators\(activeId\);/);

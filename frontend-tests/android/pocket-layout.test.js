@@ -178,10 +178,21 @@ describe("Android Pocket layout", () => {
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions", { "grid-template-columns": "repeat(2, minmax(0, 1fr))" });
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions .secondary-button", { "min-height": "44px" });
     assertDeclarations(css, ".pocket-mode #flashcards-view [data-tts-word].secondary-button", { width: "44px !important", flex: "0 0 44px !important" });
-    assertDeclarations(sharedCss, ".sm2-grades", { "grid-template-columns": "repeat(6, minmax(0, 1fr))" });
+    assertDeclarations(sharedCss, ".sm2-grades", { "grid-template-columns": "repeat(5, minmax(0, 1fr))" });
     assertDeclarations(sharedCss, ".in-text-review .sm2-grades", { "grid-template-columns": "repeat(5, minmax(0, 1fr))" });
-    assertDeclarations(css, ".pocket-mode .sm2-grades", { "grid-template-columns": "repeat(3, minmax(0, 1fr))" });
-    assertDeclarations(css, ".pocket-mode .sm2-grades .sm2-grade", { "min-height": "52px" });
+    assertDeclarations(css, ".pocket-mode #flashcards-view .sm2-grades", { "grid-template-columns": "repeat(5, minmax(0, 1fr))", gap: "0.25rem" });
+    assertDeclarations(css, ".pocket-mode #flashcards-view .sm2-grades .sm2-grade", { "min-height": "52px", "min-width": "0" });
+    assertDeclarations(css, ".pocket-mode #flashcards-view .flashcard-navigation", {
+      "grid-column": "1 / -1",
+      "grid-template-columns": "repeat(2, minmax(0, 1fr))",
+      width: "100%"
+    });
+    assertDeclarations(css, ".pocket-mode .word-image-remove", {
+      width: "44px",
+      "min-width": "44px",
+      height: "44px",
+      "min-height": "44px"
+    });
     assertDeclarations(css, ".pocket-mode .in-text-review .sm2-grades", {
       "grid-template-columns": "repeat(5, minmax(0, 1fr))",
       gap: "0.25rem",
