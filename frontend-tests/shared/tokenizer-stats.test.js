@@ -113,6 +113,23 @@ describe("token stats", () => {
     assert.equal(classifications.filter((entry) => entry.status === "learning").length, 2);
   });
 
+  it("classifies large books without rescanning the vocabulary for every token", () => {
+    const vocab = Object.fromEntries(Array.from({ length: 1000 }, (_, index) => [
+      `Saved${index}`,
+      { status: index % 2 ? "known" : "learning" }
+    ]));
+    const tokens = Array.from({ length: 5000 }, (_, index) => ({
+      type: "word",
+      value: `unknown${index % 500}`
+    }));
+    const started = performance.now();
+
+    const stats = getTokenStats(tokens, vocab, "en");
+
+    assert.deepEqual(stats, { unique: 500, known: 0, learning: 0, ignored: 0, new: 5000 });
+    assert.ok(performance.now() - started < 2500);
+  });
+
   it("returns context for the selected repeated word occurrence", () => {
     const text = "The first bank is closed. We sat by the river bank at noon.";
 

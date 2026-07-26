@@ -129,9 +129,19 @@ export function resolveVocabularyKey(value: unknown, vocab: Vocabulary, language
   return Object.keys(vocab || {}).find((key) => normalizeVocabularyWord(key, language) === canonical) || canonical;
 }
 
-function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string): string {
-  const canonical = resolveVocabularyKey(value, vocab, language);
-  if (canonical && vocab?.[canonical]) return canonical;
+function vocabularyKeyIndex(vocab: Vocabulary, language: string): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const key of Object.keys(vocab || {})) {
+    const canonical = normalizeVocabularyWord(key, language);
+    if (canonical && (!index.has(canonical) || key === canonical)) index.set(canonical, key);
+  }
+  return index;
+}
+
+function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string, keyIndex: Map<string, string>): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  const indexed = keyIndex.get(canonical);
+  if (indexed) return indexed;
   const raw = normalizeWord(value);
   if (raw && vocab?.[raw]) return raw;
   const canonicalRaw = normalizeVocabularyWord(raw, language);
@@ -406,9 +416,15 @@ export function getSentenceForWord(text: string, word: string, lang = "en", algo
 
 export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): Map<number, TokenClassification> {
   const classifications = new Map<number, TokenClassification>();
+  const keyIndex = vocabularyKeyIndex(vocab, lang);
+  const resolvedWords = new Map<string, string>();
   tokens.forEach((token, tokenIndex) => {
     if (token.type !== "word") return;
-    const key = resolveTokenVocabularyKey(token.value, vocab, lang);
+    let key = resolvedWords.get(token.value);
+    if (key === undefined) {
+      key = resolveTokenVocabularyKey(token.value, vocab, lang, keyIndex);
+      resolvedWords.set(token.value, key);
+    }
     if (!key) return;
     classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   });
