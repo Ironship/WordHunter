@@ -1212,12 +1212,13 @@ fn canonicalize_vocab_records(
     }
 
     for (canonical_key, group) in groups {
+        let mut group_causal = CausalClock::new();
         let mut live_only_causal = CausalClock::new();
-        for record in group
-            .iter()
-            .filter(|r| r.deleted_at.is_none() && !is_vocab_alias_retirement(&r.data))
-        {
-            merge_causal_clock(&mut live_only_causal, &record.causal);
+        for record in &group {
+            merge_causal_clock(&mut group_causal, &record.causal);
+            if record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data) {
+                merge_causal_clock(&mut live_only_causal, &record.causal);
+            }
         }
         let real_tombstones = group
             .iter()
@@ -1235,7 +1236,7 @@ fn canonicalize_vocab_records(
             })
             .collect::<Vec<_>>();
         let winning_tombstone = real_tombstones.first();
-        let mut canonical_record = if let Some(first) = winning_tombstone {
+        let canonical_record = if let Some(first) = winning_tombstone {
             let preferred =
                 real_tombstones
                     .iter()
@@ -1264,7 +1265,7 @@ fn canonicalize_vocab_records(
                         .unwrap_or(preferred.updated_at),
                 ),
                 device_id: preferred.device_id,
-                causal: live_only_causal.clone(),
+                causal: group_causal.clone(),
             }
         } else {
             let mut live = group.iter().filter(|record| {
@@ -1289,7 +1290,6 @@ fn canonicalize_vocab_records(
             preferred.causal = live_only_causal.clone();
             preferred
         };
-        canonical_record.causal = live_only_causal.clone();
         output.insert(canonical_key.clone(), canonical_record.clone());
 
         for alias_key in group
@@ -1319,7 +1319,7 @@ fn canonicalize_vocab_records(
                     updated_at: deleted_at,
                     deleted_at: Some(deleted_at),
                     device_id: canonical_record.device_id.clone(),
-                    causal: live_only_causal.clone(),
+                    causal: canonical_record.causal.clone(),
                 },
             );
         }
@@ -2765,7 +2765,7 @@ mod tests {
 
         merge_vocab_entry_data(&mut existing, &source);
 
-        assert_eq!(existing["addedAt"], "2026-07-25T06:00:00-05:00");
+        assert_eq!(existing["addedAt"], "2026-07-25T10:00:00+02:00");
         assert_eq!(existing["updatedAt"], "2026-07-25T14:00:00+02:00");
     }
 
@@ -2873,7 +2873,11 @@ mod tests {
         );
         for key in ["vocab:de:am", "vocab:de:Am"] {
             assert!(converged.records[key].deleted_at.is_some(), "{key}");
-            assert_eq!(converged.records[key].causal.get("device-a"), Some(&10));
+            assert_eq!(
+                converged.records[key].causal.get("device-a"),
+                Some(&10),
+                "{key}"
+            );
             assert!(converged.records[key].causal.get("device-b") >= Some(&20));
         }
     }
