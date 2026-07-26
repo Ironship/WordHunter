@@ -18,6 +18,41 @@ describe("token stats", () => {
     });
   });
 
+  it("uses one Unicode-normalized, case-insensitive vocabulary identity", () => {
+    const tokens = tokenizeText("Am AM am Straße STRASSE Café Cafe\u0301 ΟΣ ος", "de");
+    const vocab = {
+      am: { status: "known" },
+      strasse: { status: "learning" },
+      "café": { status: "ignored" },
+      "οσ": { status: "known" }
+    };
+
+    assert.deepEqual(getTokenStats(tokens, vocab, "de"), {
+      unique: 4, known: 5, learning: 2, ignored: 2, new: 0
+    });
+  });
+
+  it("resolves Turkish/Azeri I→ı from the original token value", () => {
+    let trLocaleAvailable = true;
+    try {
+      new Intl.Segmenter("tr");
+      new Intl.Segmenter("tr_TR");
+    } catch {
+      trLocaleAvailable = false;
+    }
+    if (!trLocaleAvailable) {
+      console.log("Skipping Turkish locale test - 'tr'/'tr_TR' locale not available in this environment");
+      return;
+    }
+    assert.equal(normalizeVocabularyWord("I", "tr"), normalizeVocabularyWord("ı", "tr"));
+    assert.equal(normalizeVocabularyWord("İ", "tr"), normalizeVocabularyWord("i", "tr"));
+    const vocab = { "ı": { status: "known" }, i: { status: "learning" } };
+    const trTokens = tokenizeText("I ı İ i", "tr_TR");
+    assert.deepEqual(getTokenStats(trTokens, vocab, "tr_TR"), {
+      unique: 2, known: 2, learning: 2, ignored: 0, new: 0
+    });
+  });
+
   it("uses longest non-overlapping phrases just like the Reader", () => {
     const tokens = tokenizeText("one two three", "en");
     const vocab = {
@@ -62,7 +97,9 @@ describe("token stats", () => {
       }, algorithm);
     }
     assert.equal(getSentenceForWord("L’homme est ici.", "homme", "fr", "classic", 0), "L’homme est ici.");
+    assert.equal(normalizeVocabularyWord("L‘homme", "fr_FR"), "homme");
     assert.equal(normalizeVocabularyWord("un’amica", "it"), "amica");
+    assert.equal(normalizeVocabularyWord("Un‘amica", "it_IT"), "amica");
     assert.equal(normalizeVocabularyWord("d’homme", "fr"), "d'homme");
   });
 
@@ -74,6 +111,23 @@ describe("token stats", () => {
 
     assert.deepEqual(classifications.map((entry) => entry.key), ["l’homme", "et", "l’homme"]);
     assert.equal(classifications.filter((entry) => entry.status === "learning").length, 2);
+  });
+
+  it("classifies large books without rescanning the vocabulary for every token", () => {
+    const vocab = Object.fromEntries(Array.from({ length: 1000 }, (_, index) => [
+      `Saved${index}`,
+      { status: index % 2 ? "known" : "learning" }
+    ]));
+    const tokens = Array.from({ length: 5000 }, (_, index) => ({
+      type: "word",
+      value: `unknown${index % 500}`
+    }));
+    const started = performance.now();
+
+    const stats = getTokenStats(tokens, vocab, "en");
+
+    assert.deepEqual(stats, { unique: 500, known: 0, learning: 0, ignored: 0, new: 5000 });
+    assert.ok(performance.now() - started < 2500);
   });
 
   it("returns context for the selected repeated word occurrence", () => {

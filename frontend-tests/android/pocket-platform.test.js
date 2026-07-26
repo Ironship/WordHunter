@@ -251,12 +251,15 @@ describe("Android Pocket platform", () => {
     assert.equal(providerOptions.find((option) => option.value === "google").hidden, false);
   });
 
-  it("keeps a custom Pocket word-sheet top across content refreshes and reprojects it only for viewport changes", async (context) => {
+  it("bounds the Pocket word sheet to its content while preserving custom positions across viewport changes", async (context) => {
     let now = 0;
     let expandedTop = 80;
     let collapsedTop = 560;
+    let contentMutationCallback = null;
+    let observedContent = null;
     context.mock.method(globalThis.performance, "now", () => now);
     const listeners = {};
+    const visualViewportListeners = {};
     const addListener = (target, type, handler) => {
       (target[type] ||= []).push(handler);
     };
@@ -268,6 +271,10 @@ describe("Android Pocket platform", () => {
       setPointerCapture() {},
       releasePointerCapture() {}
     };
+    const wordPanel = {
+      listeners: {},
+      addEventListener(type, handler) { addListener(this.listeners, type, handler); }
+    };
     const wrapper = {
       dataset: { pocketSheetState: "collapsed" },
       classList: createClassList(),
@@ -278,6 +285,9 @@ describe("Android Pocket platform", () => {
         getPropertyValue(name) { return this.values[name] || ""; }
       },
       getBoundingClientRect() {
+        if (this.classList.contains("pocket-word-sheet-content-measuring")) {
+          return { top: expandedTop };
+        }
         if (this.dataset.pocketSheetState === "custom") {
           return { top: Number.parseFloat(this.style.values["--pocket-word-sheet-top"]) || 320 };
         }
@@ -294,7 +304,14 @@ describe("Android Pocket platform", () => {
 
     globalThis.window = {
       location: { search: "?platform=android" },
-      addEventListener(type, handler) { addListener(listeners, type, handler); }
+      addEventListener(type, handler) { addListener(listeners, type, handler); },
+      visualViewport: {
+        addEventListener(type, handler) { addListener(visualViewportListeners, type, handler); }
+      },
+      MutationObserver: class {
+        constructor(callback) { contentMutationCallback = callback; }
+        observe(target, options) { observedContent = { target, options }; }
+      }
     };
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
@@ -302,7 +319,11 @@ describe("Android Pocket platform", () => {
     });
     globalThis.document = {
       documentElement: root,
-      getElementById(id) { return id === "pocket-word-panel-sheet-handle" ? handle : null; },
+      getElementById(id) {
+        if (id === "pocket-word-panel-sheet-handle") return handle;
+        if (id === "word-panel") return wordPanel;
+        return null;
+      },
       querySelector(selector) { return selector === "#reader-view .reader-sidebar-wrapper" ? wrapper : null; },
       querySelectorAll() { return []; }
     };
@@ -316,6 +337,11 @@ describe("Android Pocket platform", () => {
     assert.equal(handle.listeners.pointerdown.length, 1);
     assert.equal(listeners.resize.length, 1);
     assert.equal(listeners.orientationchange.length, 1);
+    assert.equal(visualViewportListeners.resize.length, 1);
+    assert.equal(observedContent.target, wordPanel);
+    assert.deepEqual(observedContent.options.attributeFilter, ["hidden"]);
+    assert.equal(wordPanel.listeners.load.length, 1);
+    assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "80px");
     assert.equal(handle.attrs["aria-expanded"], "false");
 
     handle.listeners.click[0]({ preventDefault() {} });
@@ -401,6 +427,29 @@ describe("Android Pocket platform", () => {
     handle.listeners.click[0]({ preventDefault() {} });
     assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
     assert.equal(wrapper.style.values["--pocket-word-sheet-top"], undefined);
+
+    // A short card can only travel to its intrinsic, bottom-anchored top.
+    expandedTop = 620;
+    contentMutationCallback();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "620px");
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 8, clientX: 100, clientY: 800 });
+    now = 5016;
+    handle.listeners.pointermove[0]({ pointerId: 8, clientX: 100, clientY: 100, preventDefault() {} });
+    assert.equal(wrapper.style.values["--pocket-word-sheet-top"], "620px");
+    now = 5032;
+    handle.listeners.pointerup[0]({ pointerId: 8, clientX: 100, clientY: 100, preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
+    assert.equal(handle.attrs["aria-expanded"], "true");
+
+    // Async panel changes during a drag are measured as soon as it finishes.
+    handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 9, clientX: 100, clientY: 620 });
+    expandedTop = 650;
+    contentMutationCallback();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "620px");
+    handle.listeners.pointercancel[0]();
+    assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "650px");
+    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
+
   });
 
   it("opens and closes the Pocket import drawer from button and swipe", async () => {

@@ -67,10 +67,10 @@ export function bindReaderEvents(): void {
       window.lastActiveToken = token;
       const { selectWord } = await import("../vocab-actions.js");
       const { normalizeWord } = await import("../tokenizer_v2.js");
-      let wordToSelect = token.dataset.word;
+      let wordToSelect = token.dataset.displayWord || token.dataset.word;
       if (!wordToSelect) return;
-      if (options.ctrlKey && state.selectedWord && state.selectedWord !== wordToSelect) {
-        wordToSelect = state.selectedWord + " " + wordToSelect;
+      if (options.ctrlKey && state.selectedWord && state.selectedWord !== token.dataset.word) {
+        wordToSelect = state.selectedWord + " " + (token.dataset.word || wordToSelect);
       } else {
         setReaderSelectionAnchorFromToken(token);
       }

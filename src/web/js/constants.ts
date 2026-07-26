@@ -2,6 +2,7 @@
 export const STORAGE_KEY = "wordHunterStateV2";
 export const UI_STORAGE_KEY = `${STORAGE_KEY}:ui`;
 export const STATE_SCHEMA_VERSION = 2;
+export const IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT = 3;
 
 export type VocabStatus = "new" | "learning" | "known" | "ignored";
 

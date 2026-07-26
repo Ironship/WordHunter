@@ -7,6 +7,7 @@ import { escapeHtml } from "../utils.js";
 import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
 import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
+import { rekeyActiveVocabForLocale } from "../state/normalize.js";
 
 // All languages supported by online/local translator providers.
 const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
@@ -223,6 +224,7 @@ function saveOtherProfilePair(fromCode: string, toCode: string): void {
     profile.preferences.translationSourceLanguage = source;
     profile.preferences.translationTargetLanguage = target;
   }
+  rekeyActiveVocabForLocale(OTHER_PROFILE_ID, state as unknown as WhAppState);
   saveState();
 }
 

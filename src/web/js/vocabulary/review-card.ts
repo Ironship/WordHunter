@@ -12,6 +12,8 @@ import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playStatusSound } from "../status-sounds.js";
 import { formatHeadword } from "./article.js";
+import { resolveVocabularyKey } from "../tokenizer_v2.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 import { reviewAnswerVisible } from "../views/vocabulary.js";
 
@@ -37,7 +39,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
       if (state.preferences?.autoAddLearningOnly && entry.status === "new") return false;
       return true;
     })
-    .map(([word, entry]) => ({ word, ...entry, nextDate: entry.nextDate || today }))
+    .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
     .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
   const reviewWords = srsEntries.filter((entry) => isDue(entry.nextDate, today));
 
@@ -64,7 +66,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   const card = reviewWords[state.reviewIndex];
   const grades = [0, 1, 2, 3, 4, 5];
   const ratingButtons = grades.map((q) => `
-    <button class="status-button sm2-grade sm2-grade-${q}" type="button" data-sm2-grade="${q}" data-word="${escapeAttribute(card.word)}" title="${escapeAttribute(t(`sm2.grade${q}`))}">${q}</button>
+    <button class="status-button sm2-grade sm2-grade-${q}" type="button" data-sm2-grade="${q}" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t(`sm2.grade${q}`))}">${q}</button>
   `).join("");
 
   const context = card.examples?.[0] || "";
@@ -109,18 +111,18 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     imageHtml = `
       <div class="review-image" style="margin-top: 0.5rem; text-align: center; position: relative; display: inline-block;">
         <img src="${escapeAttribute(card.imageUrl)}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
-        <button type="button" data-action="remove-image" data-word="${escapeAttribute(card.word)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: var(--panel); cursor: pointer;">×</button>
+        <button type="button" data-action="remove-image" data-word="${escapeAttribute(card.key)}" style="position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; line-height: 1; border: none; background: var(--red); color: var(--panel); cursor: pointer;">×</button>
       </div>
     `;
   } else {
     imageHtml = `
       <div class="review-image-search" style="margin-top: 0.5rem; text-align: center;">
-        <button class="secondary-button button-xs image-action-button" type="button" data-review-action="search-image" data-word="${escapeAttribute(card.word)}" title="${escapeAttribute(t("vocab.addImage"))}">
+        <button class="secondary-button button-xs image-action-button" type="button" data-review-action="search-image" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("vocab.addImage"))}">
           ${icon("image", 14)}
           ${escapeHtml(t("vocab.addImage"))}
           <span class="shortcut-badge">I</span>
         </button>
-        <div id="review-image-search-results-${escapeAttribute(card.word)}" style="margin-top: 0.25rem;"></div>
+        <div id="review-image-search-results-${escapeAttribute(card.key)}" style="margin-top: 0.25rem;"></div>
       </div>
     `;
   }
@@ -181,17 +183,17 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         ${icon("video", 16)}
         <span class="shortcut-badge">Y</span>
       </button>
-      <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.word)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">
+      <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.key)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">
         ${icon("eye", 16)}
         ${escapeHtml(reviewAnswerVisible ? t("vocab.reviewHide") : t("vocab.reviewShow"))}
         <span class="shortcut-badge">${escapeHtml(t("reader.keyEnter"))}</span>
       </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.word)}" ${reviewIndex === 0 ? "disabled" : ""}>
+      <button class="secondary-button" type="button" id="btn-flashcard-prev" data-review-action="prev" data-word="${escapeAttribute(card.key)}" ${reviewIndex === 0 ? "disabled" : ""}>
         ${icon("chevronLeft", 16)}
         ${escapeHtml(t("vocab.reviewPrev"))}
         <span class="shortcut-badge">←</span>
       </button>
-      <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.word)}" ${reviewIndex === reviewWords.length - 1 ? "disabled" : ""}>
+      <button class="secondary-button" type="button" id="btn-flashcard-next" data-review-action="next" data-word="${escapeAttribute(card.key)}" ${reviewIndex === reviewWords.length - 1 ? "disabled" : ""}>
         ${escapeHtml(t("vocab.reviewNext"))}
         <span class="shortcut-badge">→</span>
         ${icon("chevronRight", 16)}
@@ -205,6 +207,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   `;
 }
 export async function applyReviewGrade(word: string, quality: number): Promise<WhVocabEntry | null> {
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const entry = state.vocab[word];
   if (!entry) return null;
   const learningLanguage = state.preferences.learningLanguage;
@@ -245,6 +248,7 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
 }
 
 export function removeFromSrs(word: string): void {
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const entry = state.vocab[word];
   if (!entry) return;
   const previousStatus = setEntryStatus(entry, "ignored");

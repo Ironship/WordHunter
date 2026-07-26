@@ -2713,6 +2713,11 @@ html[data-max-width="full"] .reader-text {
   gap: 0.4rem;
   margin-top: 0.4rem;
 }
+
+.in-text-review .sm2-grades {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .sm2-grades .sm2-grade {
   font-weight: 700;
   font-size: 1.05rem;

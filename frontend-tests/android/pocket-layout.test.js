@@ -172,11 +172,49 @@ describe("Android Pocket layout", () => {
 
   it("defines finger-sized Pocket flashcard and toggle controls", () => {
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const sharedCss = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const wordPanel = readFileSync(new URL("../../dist/web/js/reader/word-panel.js", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions", { "grid-template-columns": "repeat(2, minmax(0, 1fr))" });
     assertDeclarations(css, ".pocket-mode #flashcards-view .word-actions .secondary-button", { "min-height": "44px" });
     assertDeclarations(css, ".pocket-mode #flashcards-view [data-tts-word].secondary-button", { width: "44px !important", flex: "0 0 44px !important" });
+    assertDeclarations(sharedCss, ".sm2-grades", { "grid-template-columns": "repeat(6, minmax(0, 1fr))" });
+    assertDeclarations(sharedCss, ".in-text-review .sm2-grades", { "grid-template-columns": "repeat(5, minmax(0, 1fr))" });
+    assertDeclarations(css, ".pocket-mode .sm2-grades", { "grid-template-columns": "repeat(3, minmax(0, 1fr))" });
+    assertDeclarations(css, ".pocket-mode .sm2-grades .sm2-grade", { "min-height": "52px" });
+    assertDeclarations(css, ".pocket-mode .in-text-review .sm2-grades", {
+      "grid-template-columns": "repeat(5, minmax(0, 1fr))",
+      gap: "0.25rem",
+      width: "100%",
+      "min-width": "0"
+    });
+    assertDeclarations(css, ".pocket-mode .in-text-review .sm2-grades .sm2-grade", { "min-width": "0", "padding-inline": "0.25rem" });
+    assertDeclarations(css, ".pocket-mode .in-text-review .sm2-grade .shortcut-badge", { display: "none" });
+    assert.match(wordPanel, /const grades = \[1, 2, 3, 4, 5\]/);
+    assert.match(wordPanel, /data-in-text-grade="\$\{grade\}" aria-label="\$\{escapeAttribute\(t\(`sm2\.grade\$\{grade\}`\)\)\}"/);
     assertDeclarations(css, '.pocket-mode .setting-row input[type="checkbox"]', { width: "68px", height: "40px" });
+  });
+
+  it("keeps all five Pocket recall targets at least 44px wide at 280px", () => {
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const sheet = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper");
+    const panel = declarationBlock(css, ".pocket-mode .word-panel");
+    const grades = declarationBlock(css, ".pocket-mode .word-panel .in-text-review .sm2-grades");
+
+    assert.equal(sheet.left, "max(0.75rem, env(safe-area-inset-left, 0px))");
+    assert.equal(sheet.right, "max(0.75rem, env(safe-area-inset-right, 0px))");
+    assert.equal(panel["padding-inline"], "0.25rem");
+    assert.equal(grades.gap, "0.125rem");
+    assert.match(css, /@media \(max-width: 300px\)[\s\S]*\.pocket-mode \.word-panel[\s\S]*padding-inline: 0\.25rem/);
+
+    const rootPixelSize = 16;
+    const viewportWidth = 280;
+    const safeInset = 20;
+    const sheetInset = Math.max(0.75 * rootPixelSize, safeInset);
+    const panelPadding = Number.parseFloat(panel["padding-inline"]) * rootPixelSize;
+    const gap = Number.parseFloat(grades.gap) * rootPixelSize;
+    const targetWidth = (viewportWidth - 2 * sheetInset - 2 * panelPadding - 4 * gap) / 5;
+    assert.ok(targetWidth >= 44, `Expected 44px targets, calculated ${targetWidth}px`);
   });
 
   it("meets WCAG AA contrast for common Pocket theme text pairs", () => {

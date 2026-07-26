@@ -103,23 +103,50 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
 
 export function normalizeWord(value: unknown): string {
   return String(value || "")
+    .normalize("NFC")
     .toLowerCase()
-    .replaceAll("’", "'")
+    .replace(/[‘’]/g, "'")
     .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
-    .trim();
+    .trim()
+    .normalize("NFC");
 }
 
 export function normalizeVocabularyWord(value: unknown, language = "en"): string {
-  const normalized = normalizeWord(value);
-  return normalizeWord(vocabularyWordKey(normalized, language));
+  const baseLanguage = String(language || "").toLowerCase().split(/[-_]/)[0];
+  const compatible = String(value || "").normalize("NFKC");
+  const localeAdjusted = baseLanguage === "tr" || baseLanguage === "az"
+    ? compatible.replaceAll("I", "ı").replaceAll("İ", "i")
+    : compatible;
+  const normalized = normalizeWord(localeAdjusted);
+  return normalizeWord(vocabularyWordKey(normalized, language))
+    .replaceAll("ß", "ss")
+    .replaceAll("ς", "σ");
 }
 
-function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string): string {
+export function resolveVocabularyKey(value: unknown, vocab: Vocabulary, language = "en"): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  if (!canonical || Object.hasOwn(vocab || {}, canonical)) return canonical;
+  return Object.keys(vocab || {}).find((key) => normalizeVocabularyWord(key, language) === canonical) || canonical;
+}
+
+function vocabularyKeyIndex(vocab: Vocabulary, language: string): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const key of Object.keys(vocab || {})) {
+    const canonical = normalizeVocabularyWord(key, language);
+    if (canonical && (!index.has(canonical) || key === canonical)) index.set(canonical, key);
+  }
+  return index;
+}
+
+function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string, keyIndex: Map<string, string>): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  const indexed = keyIndex.get(canonical);
+  if (indexed) return indexed;
   const raw = normalizeWord(value);
-  const canonical = normalizeVocabularyWord(raw, language);
-  if (canonical && vocab?.[canonical]) return canonical;
   if (raw && vocab?.[raw]) return raw;
-  const alternateApostrophe = raw.includes("’") ? raw.replaceAll("’", "'") : raw.replaceAll("'", "’");
+  const canonicalRaw = normalizeVocabularyWord(raw, language);
+  if (canonicalRaw && canonicalRaw !== canonical && vocab?.[canonicalRaw]) return canonicalRaw;
+  const alternateApostrophe = raw.includes("\u2019") ? raw.replaceAll("\u2019", "'") : raw.replaceAll("'", "\u2019");
   if (alternateApostrophe !== raw && vocab?.[alternateApostrophe]) return alternateApostrophe;
   return canonical || raw;
 }
@@ -389,9 +416,15 @@ export function getSentenceForWord(text: string, word: string, lang = "en", algo
 
 export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): Map<number, TokenClassification> {
   const classifications = new Map<number, TokenClassification>();
+  const keyIndex = vocabularyKeyIndex(vocab, lang);
+  const resolvedWords = new Map<string, string>();
   tokens.forEach((token, tokenIndex) => {
     if (token.type !== "word") return;
-    const key = resolveTokenVocabularyKey(token.value, vocab, lang);
+    let key = resolvedWords.get(token.value);
+    if (key === undefined) {
+      key = resolveTokenVocabularyKey(token.value, vocab, lang, keyIndex);
+      resolvedWords.set(token.value, key);
+    }
     if (!key) return;
     classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   });

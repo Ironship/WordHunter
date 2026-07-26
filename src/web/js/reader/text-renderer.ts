@@ -85,7 +85,7 @@ export function renderPlainText({ current, tokens, globalWordIndexes, globalChar
       const charOffset = globalCharOffsets[pageStartIndex + i];
       const color = classification.status === "learning" ? getLearningColor(entry, state.preferences) : "";
       const style = color ? ` style="--token-learning-bg:${color}"` : "";
-      htmlChunk += `<button class="word-token status-${classification.status} ${selected}" type="button" data-word="${escapeHtml(classification.key)}" data-word-index="${globalIdx}" data-char-offset="${charOffset}"${style}>${escapeHtml(part.value)}</button>`;
+      htmlChunk += `<button class="word-token status-${classification.status} ${selected}" type="button" data-word="${escapeHtml(classification.key)}" data-display-word="${escapeHtml(part.value)}" data-word-index="${globalIdx}" data-char-offset="${charOffset}"${style}>${escapeHtml(part.value)}</button>`;
       i += 1;
       tokensProcessed += 1;
     }

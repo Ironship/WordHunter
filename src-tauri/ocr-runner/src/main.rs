@@ -1,5 +1,8 @@
 use anyhow::{bail, Context, Result};
-use image::{DynamicImage, ImageFormat, RgbImage};
+use image::{
+    imageops::FilterType, metadata::Orientation, DynamicImage, ImageDecoder, ImageFormat,
+    ImageReader, Limits, Rgb, RgbImage,
+};
 use paddle_ocr_rs::ocr_lite::OcrLite;
 use paddle_ocr_rs::ocr_result::Point;
 use pdfium_render::prelude::{PdfPage, PdfRect, PdfRenderConfig, Pdfium};
@@ -13,8 +16,12 @@ use ort::execution_providers::DirectMLExecutionProvider;
 #[cfg(target_os = "linux")]
 use ort::execution_providers::{webgpu::WebGPUDawnBackendType, WebGPUExecutionProvider};
 
-const ENGINE_NAME: &str = "pdfium-text-layer+paddleocr-rs-onnx";
+const PDF_ENGINE_NAME: &str = "pdfium-text-layer+paddleocr-rs-onnx";
+const IMAGE_ENGINE_NAME: &str = "paddleocr-rs-onnx";
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
+const MAX_IMAGE_DIMENSION: u32 = 16_384;
+const MAX_IMAGE_PIXELS: u64 = 40_000_000;
+const MAX_IMAGE_DECODE_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Debug)]
 struct Args {
@@ -118,17 +125,48 @@ fn main() -> Result<()> {
         .models_dir
         .clone()
         .unwrap_or(runtime_root()?.join("models"));
-    let mut ocr = None;
+    let (page_count, truncated, ocr_engine, pages) = if is_pdf_input(input) {
+        process_pdf(input, output_dir, &models_dir, &args)?
+    } else {
+        process_image(input, output_dir, &models_dir, &args)?
+    };
+
+    let output = OcrDocument {
+        page_count,
+        truncated,
+        ocr_engine,
+        lang: args.lang,
+        pages,
+    };
+    let json = serde_json::to_vec_pretty(&output).context("failed to serialize OCR JSON")?;
+    fs::write(json_path, json)
+        .with_context(|| format!("failed to write OCR JSON {}", json_path.display()))?;
+
+    Ok(())
+}
+
+fn is_pdf_input(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("pdf"))
+}
+
+fn process_pdf(
+    input: &Path,
+    output_dir: &Path,
+    models_dir: &Path,
+    args: &Args,
+) -> Result<(usize, bool, String, Vec<OcrPage>)> {
     let pdfium = load_pdfium()?;
     let document = pdfium
         .load_pdf_from_file(input, None)
         .with_context(|| format!("failed to load PDF {}", input.display()))?;
-
     let page_count = document.pages().len() as usize;
     let limit = page_limit(args.max_pages, page_count);
     let truncated = limit < page_count;
     let render_config = PdfRenderConfig::new().set_target_width(args.render_width);
     let mut pages = Vec::with_capacity(limit);
+    let mut ocr = None;
 
     for (index, page) in document.pages().iter().enumerate().take(limit) {
         let page_number = index + 1;
@@ -148,8 +186,8 @@ fn main() -> Result<()> {
             match extract_pdf_text_layer(&page, page_image.width(), page_image.height())? {
                 Some((lines, words, text)) => (lines, words, text, Some(TEXT_LAYER_BOUNDS_VERSION)),
                 None => {
-                    let ocr = ensure_ocr(&mut ocr, &models_dir, args.threads)?;
-                    let (lines, words, text) = run_page_ocr(ocr, &page_image, &args)
+                    let ocr = ensure_ocr(&mut ocr, models_dir, args.threads)?;
+                    let (lines, words, text) = run_page_ocr(ocr, &page_image, args)
                         .with_context(|| format!("PaddleOCR failed on PDF page {page_number}"))?;
                     (lines, words, text, None)
                 }
@@ -166,18 +204,85 @@ fn main() -> Result<()> {
         });
     }
 
-    let output = OcrDocument {
-        page_count,
-        truncated,
-        ocr_engine: ENGINE_NAME.to_string(),
-        lang: args.lang,
-        pages,
-    };
-    let json = serde_json::to_vec_pretty(&output).context("failed to serialize OCR JSON")?;
-    fs::write(json_path, json)
-        .with_context(|| format!("failed to write OCR JSON {}", json_path.display()))?;
+    Ok((page_count, truncated, PDF_ENGINE_NAME.to_string(), pages))
+}
 
+fn process_image(
+    input: &Path,
+    output_dir: &Path,
+    models_dir: &Path,
+    args: &Args,
+) -> Result<(usize, bool, String, Vec<OcrPage>)> {
+    let page_image = load_normalized_image(input, args.render_width as u32)?;
+    let image_name = "ocr-page-0001.png".to_string();
+    let image_path = output_dir.join(&image_name);
+    page_image
+        .save_with_format(&image_path, ImageFormat::Png)
+        .with_context(|| format!("failed to save OCR image {}", image_path.display()))?;
+    let mut ocr = load_ocr(models_dir, args.threads)?;
+    let (lines, words, text) = run_page_ocr(&mut ocr, &page_image, args)
+        .with_context(|| format!("PaddleOCR failed on image {}", input.display()))?;
+    let page = OcrPage {
+        page: 1,
+        image_name,
+        width: page_image.width(),
+        height: page_image.height(),
+        text,
+        bounds_version: None,
+        lines,
+        words,
+    };
+    Ok((1, false, IMAGE_ENGINE_NAME.to_string(), vec![page]))
+}
+
+fn load_normalized_image(path: &Path, max_output_side: u32) -> Result<RgbImage> {
+    let mut reader = ImageReader::open(path)
+        .with_context(|| format!("failed to open image {}", path.display()))?
+        .with_guessed_format()
+        .with_context(|| format!("failed to identify image {}", path.display()))?;
+    let format = reader.format().context("unsupported image format")?;
+    if !matches!(
+        format,
+        ImageFormat::Jpeg | ImageFormat::Png | ImageFormat::WebP
+    ) {
+        bail!("unsupported image format: {format:?}");
+    }
+    let mut limits = Limits::default();
+    limits.max_image_width = Some(MAX_IMAGE_DIMENSION);
+    limits.max_image_height = Some(MAX_IMAGE_DIMENSION);
+    limits.max_alloc = Some(MAX_IMAGE_DECODE_BYTES);
+    reader.limits(limits);
+    let mut decoder = reader
+        .into_decoder()
+        .with_context(|| format!("failed to decode image header {}", path.display()))?;
+    let (width, height) = decoder.dimensions();
+    validate_image_dimensions(width, height)?;
+    let orientation = decoder.orientation().unwrap_or(Orientation::NoTransforms);
+    let image = DynamicImage::from_decoder(decoder)
+        .with_context(|| format!("failed to decode image {}", path.display()))?;
+    Ok(normalize_decoded_image(image, orientation, max_output_side))
+}
+
+fn validate_image_dimensions(width: u32, height: u32) -> Result<()> {
+    if width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION {
+        bail!("image dimensions exceed the {MAX_IMAGE_DIMENSION}-pixel side limit");
+    }
+    if u64::from(width).saturating_mul(u64::from(height)) > MAX_IMAGE_PIXELS {
+        bail!("image dimensions exceed the {MAX_IMAGE_PIXELS}-pixel safety limit");
+    }
     Ok(())
+}
+
+fn normalize_decoded_image(
+    mut image: DynamicImage,
+    orientation: Orientation,
+    max_output_side: u32,
+) -> RgbImage {
+    image.apply_orientation(orientation);
+    if image.width().max(image.height()) > max_output_side {
+        image = image.resize(max_output_side, max_output_side, FilterType::Lanczos3);
+    }
+    to_rgb_image(image)
 }
 
 fn parse_args() -> Result<Args> {
@@ -250,7 +355,7 @@ fn parse_args() -> Result<Args> {
 
 fn print_usage() {
     println!(
-        "wordhunter-paddleocr --input input.pdf --output-dir pages --json ocr.json [--lang pl] [--max-pages 0] [--device auto|cpu|directml|webgpu] (0 = all pages)\nwordhunter-paddleocr --gpu-status"
+        "wordhunter-paddleocr --input input.pdf|image.jpg --output-dir pages --json ocr.json [--lang pl] [--max-pages 0] [--device auto|cpu|directml|webgpu] (0 = all PDF pages)\nwordhunter-paddleocr --gpu-status"
     );
 }
 
@@ -265,17 +370,69 @@ fn page_limit(max_pages: usize, page_count: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::{
-        expand_native_word_bounds, merge_native_words_using_plain_text,
-        native_gap_without_space_is_word_break, native_space_is_word_break,
-        native_text_layer_is_useful, page_limit, split_native_words_using_plain_text, DeviceMode,
-        GpuStatus, OcrWord, PixelBounds,
+        expand_native_word_bounds, is_pdf_input, load_normalized_image,
+        merge_native_words_using_plain_text, native_gap_without_space_is_word_break,
+        native_space_is_word_break, native_text_layer_is_useful, normalize_decoded_image,
+        page_limit, split_native_words_using_plain_text, validate_image_dimensions, DeviceMode,
+        GpuStatus, OcrWord, PixelBounds, MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS,
     };
+    use image::{metadata::Orientation, DynamicImage, ImageBuffer, ImageFormat, Rgb};
     use serde_json::json;
 
     #[test]
     fn zero_max_pages_means_all_pages() {
         assert_eq!(page_limit(0, 260), 260);
         assert_eq!(page_limit(30, 260), 30);
+    }
+
+    #[test]
+    fn distinguishes_pdf_from_image_inputs_case_insensitively() {
+        assert!(is_pdf_input(std::path::Path::new("scan.PDF")));
+        assert!(!is_pdf_input(std::path::Path::new("scan.jpg")));
+        assert!(!is_pdf_input(std::path::Path::new("scan")));
+    }
+
+    #[test]
+    fn normalizes_orientation_and_transparency_before_ocr() {
+        let image = DynamicImage::ImageRgba8(
+            ImageBuffer::from_vec(2, 1, vec![255, 0, 0, 0, 0, 0, 0, 255]).unwrap(),
+        );
+
+        let normalized = normalize_decoded_image(image, Orientation::Rotate90, 1800);
+
+        assert_eq!(normalized.dimensions(), (1, 2));
+        assert_eq!(normalized.get_pixel(0, 0).0, [255, 255, 255]);
+        assert_eq!(normalized.get_pixel(0, 1).0, [0, 0, 0]);
+    }
+
+    #[test]
+    fn rejects_oversized_image_dimensions_without_allocating_the_image() {
+        assert!(validate_image_dimensions(MAX_IMAGE_DIMENSION + 1, 1).is_err());
+        assert!(validate_image_dimensions(10_000, 5_000).is_err());
+        assert!(validate_image_dimensions(2_000, 2_000).is_ok());
+        assert_eq!(MAX_IMAGE_PIXELS, 40_000_000);
+    }
+
+    #[test]
+    fn decodes_generated_jpeg_png_and_webp_and_rejects_corrupt_input() {
+        let temp = tempfile::tempdir().unwrap();
+        let image = DynamicImage::ImageRgb8(ImageBuffer::from_pixel(3, 2, Rgb([20, 40, 60])));
+        for (name, format) in [
+            ("fixture.jpg", ImageFormat::Jpeg),
+            ("fixture.png", ImageFormat::Png),
+            ("fixture.webp", ImageFormat::WebP),
+        ] {
+            let path = temp.path().join(name);
+            image.save_with_format(&path, format).unwrap();
+            assert_eq!(
+                load_normalized_image(&path, 1800).unwrap().dimensions(),
+                (3, 2)
+            );
+        }
+
+        let corrupt = temp.path().join("corrupt.jpg");
+        std::fs::write(&corrupt, b"not an image").unwrap();
+        assert!(load_normalized_image(&corrupt, 1800).is_err());
     }
 
     #[test]
@@ -784,7 +941,14 @@ fn load_pdfium() -> Result<Pdfium> {
 }
 
 fn to_rgb_image(image: DynamicImage) -> RgbImage {
-    DynamicImage::ImageRgba8(image.to_rgba8()).into_rgb8()
+    let rgba = image.to_rgba8();
+    RgbImage::from_fn(rgba.width(), rgba.height(), |x, y| {
+        let pixel = rgba.get_pixel(x, y).0;
+        let alpha = u16::from(pixel[3]);
+        let blend =
+            |channel: u8| ((u16::from(channel) * alpha + 255 * (255 - alpha) + 127) / 255) as u8;
+        Rgb([blend(pixel[0]), blend(pixel[1]), blend(pixel[2])])
+    })
 }
 
 type ExtractedTextLayer = (Vec<OcrLine>, Vec<OcrWord>, String);

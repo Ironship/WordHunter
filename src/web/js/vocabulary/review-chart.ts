@@ -14,7 +14,7 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t as rawT } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
-import { buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
+import { buildEaseFactorBins, buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
 import type { ChartContext, VocabEntry } from "../graphs/helpers.js";
 import { formatSrsMeta } from "./review-card.js";
 
@@ -121,17 +121,12 @@ export function renderReviewChart(srsEntries: readonly ReviewEntry[], today: str
         }
         drawBarChart(ctx, bins, Math.max(1, ...bins.map((bin) => bin.val)), blue, pad, { minimal: true });
       } else if (graphType === "easeDistribution") {
-        const easeLabels = [t("graphs.leeches"), ...t("graphs.binEaseLabels").split("|")];
-        const bins = easeLabels.map((label, index) => ({ val: 0, color: index === 0 ? red : index === 5 ? green : blue, label }));
-        for (const e of srsEntries) {
-          const ef = e.efactor||2.5;
-          if (ef<=1.3) bins[0].val++;
-          else if (ef<=1.6) bins[1].val++;
-          else if (ef<=2.0) bins[2].val++;
-          else if (ef<=2.5) bins[3].val++;
-          else if (ef<=3.0) bins[4].val++;
-          else bins[5].val++;
-        }
+        const bins = buildEaseFactorBins(
+          srsEntries,
+          t("graphs.binEaseLabels").split("|"),
+          t("graphs.leeches"),
+          [red, blue, blue, blue, blue, green]
+        );
         drawBarChart(ctx, bins, Math.max(1, ...bins.map((bin) => bin.val)), blue, pad, { minimal: true });
       } else if (graphType === "repetitions") {
         const bins = t("graphs.binRepsLabels").split("|").map((label) => ({ val: 0, label }));

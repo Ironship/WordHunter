@@ -158,7 +158,7 @@ function Build-Runner {
     Ensure-Cargo
     Push-Location -LiteralPath $RepoRoot
     try {
-        & cargo.exe build --release --target $WindowsRustTarget --manifest-path $RunnerManifest
+        & cargo.exe build --locked --release --target $WindowsRustTarget --manifest-path $RunnerManifest
         if ($LASTEXITCODE -ne 0) {
             throw "cargo build failed with exit code $LASTEXITCODE"
         }

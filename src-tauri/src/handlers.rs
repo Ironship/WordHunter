@@ -41,7 +41,11 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
     let snapshot = state.store.snapshot_with_ui_state();
-    let bootstrap = bootstrap_script(&state.token, Some(&snapshot));
+    let bootstrap = bootstrap_script(
+        &state.token,
+        Some(&snapshot),
+        crate::pdf_ocr::image_ocr_available(&state.app_handle),
+    );
     if let Some(pos) = html.find("<head>") {
         html.insert_str(
             pos + "<head>".len(),
@@ -67,7 +71,11 @@ fn escape_inline_json(value: &Value) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
-pub(crate) fn bootstrap_script(token: &str, snapshot: Option<&Value>) -> String {
+pub(crate) fn bootstrap_script(
+    token: &str,
+    snapshot: Option<&Value>,
+    image_ocr_available: bool,
+) -> String {
     let escaped = escape_inline_json(&Value::String(token.to_string()));
     let snapshot = snapshot
         .map(escape_inline_json)
@@ -77,6 +85,7 @@ pub(crate) fn bootstrap_script(token: &str, snapshot: Option<&Value>) -> String 
 (function() {{
   window.__qtBridge = true;
   window.WH_TOKEN = {escaped};
+  window.WH_IMAGE_OCR_AVAILABLE = {image_ocr_available};
   const bridgeSnapshot = {snapshot};
   if (bridgeSnapshot !== null) window.__bridgeState = bridgeSnapshot;
   const origFetch = window.fetch.bind(window);
@@ -276,7 +285,7 @@ pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, Str
     let _ocr_guard = state
         .ocr_slot
         .try_lock()
-        .map_err(|_| "Cannot move the data folder while a PDF import is running".to_string())?;
+        .map_err(|_| "Cannot move the data folder while an OCR import is running".to_string())?;
     let path = state.store.relocate(path)?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }

@@ -176,23 +176,41 @@ fn merge_adjacent_text(parts: &mut Vec<Token>) {
 }
 
 pub fn normalize_word(value: &str) -> String {
-    let stripped: String = value
-        .to_lowercase()
+    let compatible: String = value.nfc().collect();
+    let mut folded = String::new();
+    for c in compatible.to_lowercase().chars() {
+        match c {
+            '‘' | '’' => folded.push('\''),
+            _ => folded.push(c),
+        }
+    }
+    let stripped: String = folded
         .chars()
-        .map(|c| if c == '’' { '\'' } else { c })
         .filter(|c| !STRIP_PUNCTUATION.contains(*c))
         .collect();
-    stripped.trim().to_string()
+    stripped.trim().nfc().collect()
+}
+
+fn case_fold_vocabulary_word(value: String) -> String {
+    value.replace('ß', "ss").replace('ς', "σ")
 }
 
 pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
     let language = lang.split(['-', '_']).next().unwrap_or("").to_lowercase();
+    let compatible: String = value.nfkc().collect();
+    let locale_adjusted = if matches!(language.as_str(), "tr" | "az") {
+        compatible.replace('I', "ı").replace('İ', "i")
+    } else {
+        compatible
+    }
+    .replace('‘', "'")
+    .replace('’', "'");
     let prefixes: &[(&str, &str)] = match language.as_str() {
         "fr" => &[("l'", "l’")],
         "it" => &[("un'", "un’"), ("l'", "l’")],
         _ => &[],
     };
-    let lowered = value.to_lowercase();
+    let lowered = locale_adjusted.to_lowercase();
     for &(straight, curly) in prefixes {
         let remainder = lowered
             .strip_prefix(straight)
@@ -200,11 +218,11 @@ pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
         if let Some(remainder) = remainder {
             let word = normalize_word(remainder);
             if !word.is_empty() {
-                return word;
+                return case_fold_vocabulary_word(word);
             }
         }
     }
-    normalize_word(value)
+    case_fold_vocabulary_word(normalize_word(&locale_adjusted))
 }
 
 pub fn normalize_search_variants(value: &str) -> Vec<String> {
