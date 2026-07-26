@@ -42,6 +42,7 @@ const { bookTexts } = await import("../../dist/web/js/books.js");
 const { els } = await import("../../dist/web/js/dom.js");
 const { importCustomText, updatePdfOcrPageText } = await import("../../dist/web/js/book-actions/custom-text.js");
 const {
+  buildPdfDocumentText,
   countEffectivePdfPageWords,
   findPdfSentenceRange,
   reconcilePdfPageWords,
@@ -310,6 +311,7 @@ describe("custom text import", () => {
     };
 
     assert.equal(countEffectivePdfPageWords(page, "de", "modern"), 4);
+    assert.equal(buildPdfDocumentText([page, { text: "Noch eine Seite" }]), "Das sehr große Haus\n\nNoch eine Seite");
   });
 
   it("rejects an OCR correction based on stale metadata", async () => {
