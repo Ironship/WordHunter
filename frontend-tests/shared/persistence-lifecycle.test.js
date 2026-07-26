@@ -418,7 +418,7 @@ describe("persistence lifecycle", () => {
       "./store-bridge.js": {
         postStoreJson(path, payload) { backendSaves.push([path, payload]); return Promise.resolve({}); }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path, options) {
@@ -492,7 +492,7 @@ describe("persistence lifecycle", () => {
           return {};
         }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       async fetch(_path, options) {
@@ -562,7 +562,7 @@ describe("persistence lifecycle", () => {
       "./store-bridge.js": {
         async postStoreJson() { calls.push("final-ui"); return {}; }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       async fetch(path) {
@@ -621,7 +621,7 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": { postStoreJson: async () => ({}) },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -673,7 +673,7 @@ describe("persistence lifecycle", () => {
           return {};
         }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -716,7 +716,7 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": { postStoreJson: async () => { throw new Error("ui disk full"); } },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -1002,6 +1002,7 @@ describe("persistence lifecycle", () => {
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./i18n.js": { t: (key) => key },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
       "./render.js": {
         render: () => downstreamCalls.push("render"),
         ensureCurrentText: () => downstreamCalls.push("ensureCurrentText")
