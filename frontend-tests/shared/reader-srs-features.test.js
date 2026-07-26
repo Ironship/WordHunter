@@ -2,16 +2,16 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-globalThis.window = { dispatchEvent: () => {}, __qtBridge: false };
+globalThis.window = { addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => {}, __qtBridge: false };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.document = { addEventListener: () => {}, getElementById: () => null };
 
 const { getLearningColor, getSrsLevel, normalizeLearningColors, DEFAULT_LEARNING_COLORS } = await import("../../dist/web/js/reader-colors.js");
-const { isInTextReviewDue, scheduleFirstLearningReview } = await import("../../dist/web/js/sm2.js");
+const { applyReviewNative, isInTextReviewDue, scheduleFirstLearningReview } = await import("../../dist/web/js/sm2.js");
 const { createDefaultState } = await import("../../dist/web/js/state/defaults.js");
 const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
 const { applyBridgeSnapshotToState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { applyReviewGrade, renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { applyReviewGrade, gradeReview, renderReview, resetReviewPresentation } = await import("../../dist/web/js/vocabulary/review-card.js");
 const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
 const { els } = await import("../../dist/web/js/dom.js");
@@ -26,6 +26,7 @@ describe("learning colors", () => {
     assert.equal(defaults.inTextReview, true);
     assert.equal(defaults.inTextReviewCompletedGuesses, 0);
     assert.equal(defaults.autoAddLearningOnly, true);
+    assert.equal(defaults.autoTtsOnFlashcardOpen, true);
   });
 
   it("uses the five-level palette only when enabled", () => {
@@ -225,6 +226,12 @@ describe("in-text SRS grading", () => {
       assert.match(els.reviewCard.innerHTML, /id="btn-flashcard-prev"[^>]*disabled/);
       assert.doesNotMatch(els.reviewCard.innerHTML, /id="btn-flashcard-next"[^>]*disabled/);
       assert.match(els.reviewCard.innerHTML, /aria-expanded="false" aria-controls="review-card-answer"/);
+      assert.match(els.reviewCard.innerHTML, /class="flashcard-navigation"/);
+      toggleReviewAnswer();
+      renderReview();
+      assert.equal((els.reviewCard.innerHTML.match(/data-sm2-grade="[1-5]"/g) || []).length, 5);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /data-sm2-grade="0"/);
+      hideReviewAnswer();
 
       state.reviewIndex = 1;
       renderReview("previous");
@@ -235,6 +242,95 @@ describe("in-text SRS grading", () => {
       els.reviewCard = previousCard;
       state.vocab = previousVocab;
       state.reviewIndex = previousIndex;
+    }
+  });
+
+  it("keeps a shuffled review session stable across rerenders", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousIndex = state.reviewIndex;
+    els.reviewCard = { innerHTML: "" };
+    state.preferences.autoAddLearningOnly = true;
+    state.vocab = Object.fromEntries(["shuffle-a", "shuffle-b", "shuffle-c", "shuffle-d"].map((word) => [
+      word,
+      { status: "learning", nextDate: "2000-01-01", repetition: 1, interval: 2 }
+    ]));
+
+    try {
+      const order = [];
+      for (let index = 0; index < 4; index += 1) {
+        state.reviewIndex = index;
+        renderReview();
+        order.push(els.reviewCard.innerHTML.match(/data-dict-word="([^"]+)"/)?.[1]);
+      }
+      assert.deepEqual(new Set(order), new Set(Object.keys(state.vocab)));
+      state.reviewIndex = 2;
+      renderReview();
+      const first = els.reviewCard.innerHTML.match(/data-dict-word="([^"]+)"/)?.[1];
+      renderReview();
+      const second = els.reviewCard.innerHTML.match(/data-dict-word="([^"]+)"/)?.[1];
+      assert.equal(second, first);
+    } finally {
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.reviewIndex = previousIndex;
+    }
+  });
+
+  it("renders an accessible square image-removal control", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    els.reviewCard = { innerHTML: "" };
+    state.preferences.autoAddLearningOnly = true;
+    state.vocab = {
+      pictured: { word: "Pictured", status: "learning", nextDate: "2000-01-01", imageUrl: "data:image/png;base64,AA==" }
+    };
+
+    try {
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /class="word-image-remove review-image-remove"/);
+      assert.match(els.reviewCard.innerHTML, /data-action="remove-image"[^>]*aria-label="[^"]+"/);
+      assert.match(els.reviewCard.innerHTML, /alt="Pictured"/);
+    } finally {
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+    }
+  });
+
+  it("reads each newly presented flashcard once when automatic TTS is enabled", async () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousView = state.currentView;
+    const previousAutoTts = state.preferences.autoTtsOnFlashcardOpen;
+    const spoken = [];
+    els.reviewCard = { innerHTML: "" };
+    state.currentView = "flashcards";
+    state.preferences.autoAddLearningOnly = true;
+    state.preferences.autoTtsOnFlashcardOpen = true;
+    state.vocab = { "spoken-card": { word: "Spoken card", status: "learning", nextDate: "2000-01-01" } };
+    window.WordHunterAndroid = {
+      speak(text) { spoken.push(text); return true; }
+    };
+
+    try {
+      resetReviewPresentation();
+      renderReview();
+      await Promise.resolve();
+      renderReview();
+      await Promise.resolve();
+      assert.deepEqual(spoken, ["Spoken card"]);
+
+      state.preferences.autoTtsOnFlashcardOpen = false;
+      state.vocab = { "silent-card": { status: "learning", nextDate: "2000-01-01" } };
+      renderReview();
+      await Promise.resolve();
+      assert.deepEqual(spoken, ["Spoken card"]);
+    } finally {
+      delete window.WordHunterAndroid;
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.currentView = previousView;
+      state.preferences.autoTtsOnFlashcardOpen = previousAutoTts;
     }
   });
 
@@ -322,6 +418,37 @@ describe("in-text SRS grading", () => {
     assert.equal(getSrsLevel(entry), 2);
   });
 
+  it("falls back to local scheduling when the native review request times out", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    window.__qtBridge = true;
+    globalThis.setTimeout = (callback) => {
+      queueMicrotask(callback);
+      return 1;
+    };
+    globalThis.clearTimeout = () => {};
+    globalThis.fetch = (_url, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+    });
+
+    try {
+      const reviewed = await applyReviewNative(
+        { status: "learning", repetition: 0, interval: 0, efactor: 2.5 },
+        4,
+        new Date("2026-07-15T12:00:00Z"),
+        "sm2"
+      );
+      assert.equal(reviewed.repetition, 1);
+      assert.equal(reviewed.interval, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+      delete window.__qtBridge;
+    }
+  });
+
   it("applies a delayed native grade to the current vocabulary entry", async () => {
     const originalFetch = globalThis.fetch;
     window.__qtBridge = true;
@@ -351,6 +478,47 @@ describe("in-text SRS grading", () => {
       assert.equal(entry.repetition, 1);
       assert.equal(entry.note, "synced");
     } finally {
+      globalThis.fetch = originalFetch;
+      delete window.__qtBridge;
+      delete window.WH_TOKEN;
+    }
+  });
+
+  it("accepts only one flashcard grade while native scheduling is pending", async () => {
+    const originalFetch = globalThis.fetch;
+    const previousCard = els.reviewCard;
+    window.__qtBridge = true;
+    window.WH_TOKEN = "test-token";
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
+    let resolveReview;
+    let reviewRequests = 0;
+    els.reviewCard = {
+      innerHTML: "",
+      setAttribute() {},
+      removeAttribute() {},
+      querySelectorAll() { return []; }
+    };
+    globalThis.fetch = (url) => {
+      if (url === "/__srs/review") {
+        reviewRequests += 1;
+        return new Promise((resolve) => { resolveReview = resolve; });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    };
+
+    try {
+      const first = gradeReview("wort", 3);
+      await gradeReview("wort", 5);
+      assert.equal(reviewRequests, 1);
+      resolveReview({
+        ok: true,
+        json: async () => ({ repetition: 1, interval: 1, efactor: 2.36, nextDate: "2026-07-15", srsAlgorithm: "sm2" })
+      });
+      await first;
+      assert.equal(state.vocab.wort.repetition, 1);
+    } finally {
+      els.reviewCard = previousCard;
       globalThis.fetch = originalFetch;
       delete window.__qtBridge;
       delete window.WH_TOKEN;

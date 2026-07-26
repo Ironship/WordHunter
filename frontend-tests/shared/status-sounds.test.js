@@ -50,7 +50,7 @@ globalThis.CustomEvent = class CustomEvent {
 };
 
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { playStatusSound } = await import("../../dist/web/js/status-sounds.js");
+const { playReviewGradeSound, playStatusSound } = await import("../../dist/web/js/status-sounds.js");
 
 describe("status sounds", () => {
   beforeEach(() => {
@@ -66,6 +66,17 @@ describe("status sounds", () => {
       signatures.push(playedFrequencies.slice(start).join(","));
     }
     assert.equal(new Set(signatures).size, 4);
+  });
+
+  it("plays a distinct feedback tone for every flashcard grade", () => {
+    const signatures = [];
+    for (const grade of [1, 2, 3, 4, 5]) {
+      const start = playedFrequencies.length;
+      assert.equal(playReviewGradeSound(grade), true);
+      signatures.push(playedFrequencies.slice(start).join(","));
+    }
+    assert.equal(new Set(signatures).size, 5);
+    assert.equal(playReviewGradeSound(0), false);
   });
 
   it("respects mute settings", () => {

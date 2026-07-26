@@ -161,6 +161,7 @@ export function cacheElements() {
   els.prefSelectedWordPanelItems = document.getElementById("pref-selected-word-panel-items");
   els.prefTtsRate = document.getElementById("pref-tts-rate");
   els.prefAutoTtsOnWordFocus = document.getElementById("pref-auto-tts-on-word-focus");
+  els.prefAutoTtsOnFlashcardOpen = document.getElementById("pref-auto-tts-on-flashcard-open");
   els.prefTtsWordHighlight = document.getElementById("pref-tts-word-highlight");
   els.prefStatusSoundsEnabled = document.getElementById("pref-status-sounds-enabled");
   els.prefStatusSoundVolume = document.getElementById("pref-status-sound-volume");

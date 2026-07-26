@@ -37,6 +37,18 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.2" date="2026-07-26" type="development">
+      <description>
+        <ul>
+          <li>Android starts state loading concurrently with frontend resources.</li>
+          <li>Flashcard grading rejects duplicate input and falls back after a timeout.</li>
+          <li>Every grade has feedback sound and new cards can be read automatically.</li>
+          <li>Due cards are shuffled once per stable review session.</li>
+          <li>Five recall buttons and Previous/Next stay in single rows on Android.</li>
+          <li>Flashcard image removal uses a square accessible touch target.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.1" date="2026-07-25">
       <description>
         <ul>

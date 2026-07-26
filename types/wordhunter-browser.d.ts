@@ -114,6 +114,7 @@ declare global {
     librarySidebarWidth: number;
     ttsRate: string;
     autoTtsOnWordFocus: boolean;
+    autoTtsOnFlashcardOpen: boolean;
     ttsWordHighlight: boolean;
     ttsWordHighlightDefaultVersion: number;
     statusSoundsEnabled: boolean;
@@ -389,6 +390,7 @@ declare global {
     WH_TOKEN?: string;
     WH_IMAGE_OCR_AVAILABLE?: boolean;
     __bridgeState?: unknown;
+    __bridgeStatePromise?: Promise<WhBridgeSnapshot>;
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;
     flushAllPendingFrontendState?: () => Promise<void>;

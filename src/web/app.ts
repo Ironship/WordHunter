@@ -124,6 +124,11 @@ window.addEventListener("wordhunter:theme-changed", () => {
 
 async function loadBridgeStateBeforeRender() {
   if (!window.__qtBridge || window.__bridgeState) return;
+  if (window.__bridgeStatePromise) {
+    applyBridgeSnapshotToState(await window.__bridgeStatePromise);
+    delete window.__bridgeStatePromise;
+    return;
+  }
   const response = await fetch("/__store/load", { cache: "no-store" });
   if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
   applyBridgeSnapshotToState(await response.json());
@@ -168,16 +173,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
     await loadBridgeStateBeforeRender();
-    await applyPreferences();
-    await loadLocale(state.preferences?.locale || "en");
+    await Promise.all([
+      applyPreferences(),
+      loadLocale(state.preferences?.locale || "en"),
+      loadBooksCatalog()
+    ]);
     applyTranslations();
     applyPlatformUi();
-    await loadBooksCatalog();
     ensureCurrentText();
     bindEvents();
     bindLibraryEvents();
     import("./js/views/reader.js").then(m => m.bindReaderEvents());
-    await applyPreferences();
     syncSettingsControls();
     applyPlatformUi();
     render();

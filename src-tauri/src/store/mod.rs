@@ -140,14 +140,6 @@ impl Store {
         durable::write_file_atomic(&self.dir().join(UI_STATE_FILE), &bytes, true)
     }
 
-    pub fn snapshot_with_ui_state(&self) -> serde_json::Value {
-        let mut snapshot = self.startup_snapshot();
-        if let Some(object) = snapshot.as_object_mut() {
-            object.insert("uiState".to_string(), self.load_ui_state());
-        }
-        snapshot
-    }
-
     #[cfg(not(target_os = "android"))]
     pub fn relocate(&self, dir: PathBuf) -> Result<PathBuf, String> {
         let _write_guard = self.lock_writes()?;
@@ -359,9 +351,6 @@ mod tests {
         store.save_ui_state(&ui_state).unwrap();
 
         assert_eq!(store.load_ui_state(), ui_state);
-        let snapshot = store.snapshot_with_ui_state();
-        assert_eq!(snapshot["uiState"], ui_state);
-        assert!(snapshot.get("recoveryStatus").is_none());
         assert!(!dir.path().join("records/v1/ui-state.json").exists());
     }
 

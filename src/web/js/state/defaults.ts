@@ -117,6 +117,7 @@ export function createDefaultState(): WhAppState {
       librarySidebarWidth: 360,
       ttsRate: "normal",
       autoTtsOnWordFocus: true,
+      autoTtsOnFlashcardOpen: true,
       ttsWordHighlight: true,
       ttsWordHighlightDefaultVersion: 1,
       statusSoundsEnabled: true,

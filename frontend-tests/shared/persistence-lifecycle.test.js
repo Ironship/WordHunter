@@ -66,8 +66,11 @@ function cssDeclarations(source, selectorPattern) {
 }
 
 async function loadAppHarness({
+  applyPreferences = () => {},
   hydrateActiveLibraryTexts = async () => {},
-  hydrateCurrentReaderText = async () => true
+  hydrateCurrentReaderText = async () => true,
+  loadBooksCatalog = async () => {},
+  loadLocale = async () => {}
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -109,16 +112,16 @@ async function loadAppHarness({
     "./js/dom.js": { cacheElements: noOp, els: {} },
     "./js/toast.js": { showToast: noOp },
     "./js/events.js": { bindEvents: noOp },
-    "./js/preferences.js": { applyPreferences: noOp, setSyncStatus: noOp, syncSettingsControls: noOp },
+    "./js/preferences.js": { applyPreferences, setSyncStatus: noOp, syncSettingsControls: noOp },
     "./js/books.js": {
-      loadBooksCatalog: asyncNoOp,
+      loadBooksCatalog,
       loadAllBookTexts: asyncNoOp,
       loadAllCustomTextContents: asyncNoOp,
       hydrateActiveLibraryTexts,
       hydrateCurrentReaderText
     },
     "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
-    "./js/i18n.js": { loadLocale: asyncNoOp, applyTranslations: noOp, t: (key) => key },
+    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key },
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
@@ -167,6 +170,27 @@ async function loadAppHarness({
 }
 
 describe("persistence lifecycle", () => {
+  it("starts preferences, locale, and book catalog loading in parallel", async () => {
+    const started = [];
+    const resolvers = [];
+    const pending = (name) => () => {
+      started.push(name);
+      return new Promise((resolve) => resolvers.push(resolve));
+    };
+    const harness = await loadAppHarness({
+      applyPreferences: pending("preferences"),
+      loadLocale: pending("locale"),
+      loadBooksCatalog: pending("catalog")
+    });
+
+    const startup = Promise.all(harness.document.emit("DOMContentLoaded"));
+    await Promise.resolve();
+    assert.deepEqual(started, ["preferences", "locale", "catalog"]);
+    for (const resolve of resolvers) resolve();
+    await startup;
+    assert.deepEqual(harness.calls, ["render"]);
+  });
+
   it("dispatches lifecycle events to the platform-appropriate save path", async () => {
     const harness = await loadAppHarness();
 

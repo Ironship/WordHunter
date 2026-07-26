@@ -1180,7 +1180,7 @@ html.pocket-mode {
   min-width: 44px;
 }
 
-.pocket-mode #word-panel .word-image-remove {
+.pocket-mode .word-image-remove {
   width: 44px;
   min-width: 44px;
   height: 44px;
@@ -1271,6 +1271,14 @@ html.pocket-mode {
   min-height: 44px;
 }
 
+.pocket-mode #flashcards-view .flashcard-navigation {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .pocket-mode #flashcards-view [data-tts-word].secondary-button {
   flex: 0 0 44px !important;
   width: 44px !important;
@@ -1280,12 +1288,15 @@ html.pocket-mode {
   padding: 0 !important;
 }
 
-.pocket-mode .sm2-grades {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.pocket-mode #flashcards-view .sm2-grades {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
 }
 
-.pocket-mode .sm2-grades .sm2-grade {
+.pocket-mode #flashcards-view .sm2-grades .sm2-grade {
+  min-width: 0;
   min-height: 52px;
+  padding-inline: 0.25rem;
   font-size: 1.12rem;
 }
 

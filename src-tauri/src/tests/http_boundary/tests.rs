@@ -231,3 +231,11 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
     assert!(script.contains(r#""theme":"<\/script>\u2028""#));
     assert!(script.contains("'/__proxy?url=' + encodeURIComponent(url)"));
 }
+
+#[test]
+fn bootstrap_starts_snapshot_loading_when_state_is_not_inlined() {
+    let script = handlers::bootstrap_script("token", None, false);
+
+    assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
+    assert!(!script.contains("window.__bridgeState = null"));
+}
