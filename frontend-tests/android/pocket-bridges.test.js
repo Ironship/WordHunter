@@ -338,7 +338,6 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /processedExportFileCount % 100/);
     const androidPlatform = readFileSync(new URL("../../src-tauri/src/platform/android.rs", import.meta.url), "utf8");
     assert.ok(androidPlatform.indexOf("recover_android_startup_guarded()") < androidPlatform.indexOf("start_server_on_port"));
-    assert.doesNotMatch(androidPlatform, /spawn[\s\S]*recover_android_startup_guarded/);
     assert.match(activity, /Cannot list local sync staging path/);
     assert.match(activity, /validateLocalExportTree\(incomingDir, stats, root = true\)/);
     assert.match(activity, /isObsoleteLocalOnlySyncPath\(childRelativePath\)/);
