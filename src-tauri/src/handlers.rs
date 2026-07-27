@@ -42,7 +42,10 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
     let bootstrap = bootstrap_script(
         &state.token,
+        #[cfg(not(target_os = "android"))]
         Some(&state.store.snapshot()),
+        #[cfg(target_os = "android")]
+        None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
     );
     if let Some(pos) = html.find("<head>") {
