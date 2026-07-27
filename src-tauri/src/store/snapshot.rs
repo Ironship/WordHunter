@@ -102,8 +102,10 @@ impl Store {
 
     #[cfg(target_os = "android")]
     pub(crate) fn recover_android_startup_guarded(&self) -> Result<(), String> {
-        let _guard = self.lock_writes()?;
-        self.recover_pending_save()?;
+        {
+            let _guard = self.lock_writes()?;
+            self.recover_pending_save()?;
+        }
         self.discard_abandoned_book_imports()
     }
 
