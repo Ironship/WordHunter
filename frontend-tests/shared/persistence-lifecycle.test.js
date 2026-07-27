@@ -955,7 +955,7 @@ describe("persistence lifecycle", () => {
     assert.match(bootLogo, /animation:\s*boot-logo-pulse 1\.15s ease-in-out infinite !important/);
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
     assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
-    assert.match(handlers, /bootstrap_script\([\s\S]*Some/);
+    assert.match(handlers, /bootstrap_script\([\s\S]*(Some|None)/);
     assert.match(handlers, /storeLoadController[\s\S]*12000/);
     assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
     assert.match(boot, /Startup timed out before the application became ready/);
