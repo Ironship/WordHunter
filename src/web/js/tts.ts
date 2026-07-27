@@ -2,6 +2,7 @@ import { state } from "./state.js";
 import { normalizeWord } from "./tokenizer_v2.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
 import { keepReaderTokenVisible } from "./reader/visibility.js";
+import { fetchWithTimeout } from "./request.js";
 
 let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
@@ -10,6 +11,8 @@ let currentAudioObjectUrl: string | null = null;
 let onFinishCallback: (() => void) | null = null;
 let androidUtteranceSeq = 0;
 let currentTtsWordToken: Element | null = null;
+let ttsSessionId = 0;
+let clearAndroidTtsListener: (() => void) | null = null;
 const MAX_TTS_SEGMENT_LENGTH = 500;
 const TTS_WORD_CLASS = "tts-current-word";
 
@@ -79,53 +82,89 @@ function speakSentenceAndroid(
 ): boolean {
   const bridge = getAndroidTtsBridge();
   if (!bridge) return false;
+  const sessionId = ttsSessionId;
   const id = `wh-tts-${Date.now()}-${++androidUtteranceSeq}`;
   beginTtsSentenceHighlight(tracker, sentence);
+  clearAndroidTtsListener?.();
+  let timeout = 0;
+  const cleanup = () => {
+    window.removeEventListener("wordhunter:android-tts", finish);
+    clearTimeout(timeout);
+    if (clearAndroidTtsListener === cleanup) clearAndroidTtsListener = null;
+  };
   const finish = (event: Event) => {
     const detail = isRecord((event as CustomEvent<unknown>).detail)
       ? (event as CustomEvent<Record<string, unknown>>).detail
       : null;
     if (!detail) return;
     if (detail.id !== id) return;
+    if (sessionId !== ttsSessionId) {
+      cleanup();
+      return;
+    }
     if (detail.status === "range") {
       highlightTtsBoundary(tracker, Number(detail.start) || 0);
       return;
     }
-    window.removeEventListener("wordhunter:android-tts", finish);
+    cleanup();
     if (onEnd) onEnd(typeof detail.status === "string" ? detail.status : "done");
   };
   window.addEventListener("wordhunter:android-tts", finish);
+  clearAndroidTtsListener = cleanup;
+  timeout = setTimeout(() => {
+    cleanup();
+    if (sessionId === ttsSessionId && onEnd) onEnd("timeout");
+  }, 30_000);
   const ok = bridge.speak(
     sentence,
     getTtsLang(activeTtsLanguage()),
     getTtsRate(state.preferences.ttsRate || "normal"),
     id
   );
-  if (!ok) window.removeEventListener("wordhunter:android-tts", finish);
+  if (!ok) cleanup();
   return ok;
 }
 
 export function speakWord(word: string): void {
+  stopSpeaking();
+  const sessionId = ttsSessionId;
   if (speakSentenceAndroid(word)) return;
 
   if (state.preferences.useEdgeTts === true) {
-    clearCurrentEdgeAudio();
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-    
     const lang = activeTtsLanguage();
     const url = edgeTtsUrl(word, lang);
-    
-    currentAudio = new Audio(url);
-    
-    currentAudio.play().catch((err: unknown) => {
-      console.warn("Edge TTS audio play failed", err);
-      // Only fall back to local if it was a real load failure and not an intentional abort/pause
-      if (errorName(err) !== "AbortError") {
-        speakWordLocal(word);
-      }
-    });
+    const request = new AbortController();
+    currentEdgeTtsRequest = request;
+    void fetchWithTimeout(url, { signal: request.signal }, 15_000)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Edge TTS returned HTTP ${response.status}`);
+        const audioBlob = await response.blob();
+        if (sessionId !== ttsSessionId || currentEdgeTtsRequest !== request) return;
+        currentEdgeTtsRequest = null;
+        const objectUrl = URL.createObjectURL(audioBlob);
+        currentAudioObjectUrl = objectUrl;
+        const audio = new Audio(objectUrl);
+        currentAudio = audio;
+        let settled = false;
+        const cleanup = () => {
+          if (settled) return false;
+          settled = true;
+          if (currentAudio === audio) currentAudio = null;
+          releaseAudioObjectUrl(objectUrl);
+          return true;
+        };
+        audio.onended = cleanup;
+        audio.onerror = () => {
+          if (cleanup() && sessionId === ttsSessionId) speakWordLocal(word);
+        };
+        return audio.play().catch((error: unknown) => {
+          if (cleanup() && sessionId === ttsSessionId && errorName(error) !== "AbortError") speakWordLocal(word);
+        });
+      })
+      .catch((error: unknown) => {
+        if (currentEdgeTtsRequest === request) currentEdgeTtsRequest = null;
+        if (sessionId === ttsSessionId && errorName(error) !== "AbortError") speakWordLocal(word);
+      });
   } else {
     speakWordLocal(word);
   }
@@ -156,7 +195,9 @@ function speakWordLocal(word: string): void {
 }
 
 export function stopSpeaking(): void {
+  ttsSessionId += 1;
   speaking = false;
+  clearAndroidTtsListener?.();
   const androidBridge = getAndroidTtsBridge();
   if (androidBridge && typeof androidBridge.stopTts === "function") {
     androidBridge.stopTts();
@@ -258,6 +299,7 @@ function readNextSentenceEdge(
   containerElement: HTMLElement | null | undefined,
   tracker: TtsWordTracker | null
 ): void {
+  const sessionId = ttsSessionId;
   if (!speaking || index >= sentences.length) {
     stopSpeaking();
     return;
@@ -273,19 +315,14 @@ function readNextSentenceEdge(
   const url = edgeTtsUrl(sentence, lang);
   beginTtsSentenceHighlight(tracker, sentence);
 
-  if (!tracker) {
-    playEdgeTtsAudio(url, null, [], sentences, index, sentence, containerElement, tracker);
-    return;
-  }
-
   const request = new AbortController();
   currentEdgeTtsRequest = request;
-  void fetch(url, { signal: request.signal })
+  void fetchWithTimeout(url, { signal: request.signal }, 15_000)
     .then(async (response) => {
       if (!response.ok) throw new Error(`Edge TTS returned HTTP ${response.status}`);
       const timings = parseEdgeWordTimings(response.headers.get("X-WH-Word-Timings"));
       const audio = await response.blob();
-      if (!speaking || currentEdgeTtsRequest !== request) return;
+      if (!speaking || sessionId !== ttsSessionId || currentEdgeTtsRequest !== request) return;
       currentEdgeTtsRequest = null;
       const objectUrl = URL.createObjectURL(audio);
       currentAudioObjectUrl = objectUrl;
@@ -293,10 +330,10 @@ function readNextSentenceEdge(
     })
     .catch((err: unknown) => {
       if (currentEdgeTtsRequest === request) currentEdgeTtsRequest = null;
-      if (!speaking || errorName(err) === "AbortError") return;
+      if (!speaking || sessionId !== ttsSessionId || errorName(err) === "AbortError") return;
       console.warn("Edge TTS load failed", err);
       speakSentenceLocal(sentence, () => {
-        if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+        if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
       }, tracker);
     });
 }
@@ -311,10 +348,13 @@ function playEdgeTtsAudio(
   containerElement: HTMLElement | null | undefined,
   tracker: TtsWordTracker | null
 ): void {
+  const sessionId = ttsSessionId;
   const audio = new Audio(source);
   currentAudio = audio;
+  let settled = false;
   let highlightedIndex = -1;
   const updateWordHighlight = () => {
+    if (!speaking || sessionId !== ttsSessionId || currentAudio !== audio) return;
     const elapsedMs = audio.currentTime * 1000;
     while (highlightedIndex + 1 < wordTimings.length
       && wordTimings[highlightedIndex + 1] <= elapsedMs) {
@@ -325,24 +365,31 @@ function playEdgeTtsAudio(
   };
 
   audio.onplay = () => {
+    if (!speaking || sessionId !== ttsSessionId || currentAudio !== audio) return;
     highlightContainer(containerElement);
     updateWordHighlight();
   };
   audio.ontimeupdate = updateWordHighlight;
   audio.onended = () => {
+    if (settled) return;
+    settled = true;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
-    if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+    if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
   };
-  audio.play().catch((err: unknown) => {
+  const fallback = (err: unknown) => {
+    if (settled) return;
+    settled = true;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
     console.warn("Edge TTS play failed", err);
-    if (!speaking || errorName(err) === "AbortError") return;
+    if (!speaking || sessionId !== ttsSessionId || errorName(err) === "AbortError") return;
     speakSentenceLocal(sentence, () => {
-      if (speaking) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+      if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
     }, tracker);
-  });
+  };
+  audio.onerror = () => fallback(new Error("Edge TTS audio playback failed"));
+  audio.play().catch(fallback);
 }
 
 function parseEdgeWordTimings(value: string | null): number[] {
@@ -375,6 +422,7 @@ function readNextSentenceAndroid(
   containerElement: HTMLElement | null | undefined,
   tracker: TtsWordTracker | null
 ): void {
+  const sessionId = ttsSessionId;
   if (!speaking || index >= sentences.length) {
     stopSpeaking();
     return;
@@ -388,11 +436,11 @@ function readNextSentenceAndroid(
 
   highlightContainer(containerElement);
   const started = speakSentenceAndroid(sentence, () => {
-    if (speaking) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
+    if (speaking && sessionId === ttsSessionId) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
   }, tracker);
   if (!started) {
     speakSentenceLocal(sentence, () => {
-      if (speaking) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
+      if (speaking && sessionId === ttsSessionId) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
     }, tracker);
   }
 }
@@ -403,6 +451,7 @@ function readNextSentenceLocal(
   containerElement: HTMLElement | null | undefined,
   tracker: TtsWordTracker | null
 ): void {
+  const sessionId = ttsSessionId;
   if (!speaking || index >= sentences.length) {
     stopSpeaking();
     return;
@@ -434,21 +483,24 @@ function readNextSentenceLocal(
   beginTtsSentenceHighlight(tracker, sentence);
   
   utterance.onstart = () => {
+    if (!speaking || sessionId !== ttsSessionId) return;
     highlightContainer(containerElement);
   };
 
   utterance.onboundary = (event) => {
+    if (!speaking || sessionId !== ttsSessionId) return;
     if (event.name && event.name !== "word") return;
     highlightTtsBoundary(tracker, Number(event.charIndex) || 0);
   };
   
   utterance.onend = () => {
-    if (speaking) {
+    if (speaking && sessionId === ttsSessionId) {
       readNextSentenceLocal(sentences, index + 1, containerElement, tracker);
     }
   };
   
   utterance.onerror = (e) => {
+    if (!speaking || sessionId !== ttsSessionId) return;
     console.warn("TTS Error", e);
     stopSpeaking();
   };
@@ -488,6 +540,10 @@ function highlightContainer(containerElement: HTMLElement | null | undefined): v
 }
 
 function clearHighlights(): void {
+  if (typeof document.querySelectorAll !== "function") {
+    currentTtsWordToken = null;
+    return;
+  }
   document.querySelectorAll('.reading-active').forEach(el => el.classList.remove('reading-active'));
   document.querySelectorAll(`.${TTS_WORD_CLASS}`).forEach(el => el.classList.remove(TTS_WORD_CLASS));
   currentTtsWordToken = null;

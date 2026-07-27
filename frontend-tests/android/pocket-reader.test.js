@@ -32,25 +32,29 @@ describe("Android Pocket reader", () => {
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };
-    const { countWordTokens, computePageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
+    const { countWordTokens, computeIndexedPageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
     const tokens = [
-      { type: "word", text: "One" },
-      { type: "space", text: " " },
-      { type: "word", text: "Two" },
-      { type: "punct", text: ". " },
-      { type: "word", text: "Three" },
-      { type: "space", text: " " },
-      { type: "word", text: "Four" },
-      { type: "space", text: " " },
-      { type: "word", text: "Five" }
+      { type: "word", value: "One" },
+      { type: "text", value: " " },
+      { type: "word", value: "Two" },
+      { type: "text", value: ". " },
+      { type: "word", value: "Three" },
+      { type: "text", value: " " },
+      { type: "word", value: "Four" },
+      { type: "text", value: " " },
+      { type: "word", value: "Five" }
     ];
+    const wordTokenIndexes = tokens.flatMap((token, index) => token.type === "word" ? [index] : []);
 
     assert.equal(countWordTokens(tokens), 5);
     assert.equal(computeTotalPages(5, 2), 3);
     assert.equal(computeTotalPages(5, 999999), 1);
-    assert.deepEqual(computePageSlice(tokens, 1, 2), { pageStartIndex: 0, pageEndIndex: 4 });
-    assert.deepEqual(computePageSlice(tokens, 2, 2), { pageStartIndex: 3, pageEndIndex: 8 });
-    assert.deepEqual(computePageSlice(tokens, 1, 999999), { pageStartIndex: 0, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 1, 2), { pageStartIndex: 0, pageEndIndex: 4 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 2, 2), { pageStartIndex: 4, pageEndIndex: 8 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 3, 2), { pageStartIndex: 8, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 99, 2), { pageStartIndex: tokens.length, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 0, 2), { pageStartIndex: 0, pageEndIndex: 4 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 1, 999999), { pageStartIndex: 0, pageEndIndex: tokens.length });
   });
 
   it("declares Pocket reader touch and word-panel integration hooks", () => {

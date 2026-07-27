@@ -1,4 +1,4 @@
-import { state, saveState, saveUiState, initialVocabKeys } from "./state.js";
+import { getDurableStateRevision, state, saveState, saveUiState, initialVocabKeys } from "./state.js";
 import { STATUS_ORDER } from "./constants.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -15,6 +15,7 @@ import { playStatusSound } from "./status-sounds.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { formatHeadword } from "./vocabulary/article.js";
 import { resolveVocabularyKey } from "./tokenizer_v2.js";
+import { getCachedReaderWord } from "./reader/session.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
@@ -84,9 +85,20 @@ export function selectWord(
   if (!word) return;
   const current = getTextById(state.currentTextId);
   const isFresh = !Object.hasOwn(state.vocab, word);
+  const durableRevision = getDurableStateRevision();
   state.selectedWord = word;
   state.selectedWordIndex = Number.isInteger(wordIndex) && wordIndex >= 0 ? wordIndex : null;
-  const entry = getOrCreateEntry(displayWord || word, current?.text || "", state.selectedWordIndex);
+  const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+  const cachedWord = current
+    ? getCachedReaderWord(current, language, algorithm, state.selectedWordIndex)
+    : null;
+  const entry = getOrCreateEntry(
+    displayWord || word,
+    current?.text || "",
+    state.selectedWordIndex,
+    cachedWord?.characterIndex ?? null,
+    cachedWord?.word || ""
+  );
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   let statusChanged = false;
   if (isFresh && state.preferences?.autoLearnOnClick) {
@@ -94,7 +106,8 @@ export function selectWord(
     playStatusSound("learning");
     statusChanged = true;
   }
-  saveState();
+  if (getDurableStateRevision() !== durableRevision) saveState();
+  else saveUiState();
   renderShell();
   updateReaderSelection();
   const spokenHeadword = formatHeadword(entry.word || displayWord || word, entry.article);

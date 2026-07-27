@@ -115,7 +115,8 @@ describe("profile save payload", () => {
       removeItem: (key) => stored.delete(key)
     };
 
-    saveUiStateCache({
+    saveUiStateCache(JSON.stringify({
+      schemaVersion: STATE_SCHEMA_VERSION,
       currentView: "reader",
       currentTextId: "de-book-1",
       readerPage: 7,
@@ -123,7 +124,7 @@ describe("profile save payload", () => {
       readerScrolls: { "de-book-1": { readerPage: 7, scrollTop: 240 } },
       preferences: { learningLanguage: "de", theme: "classic-dark" },
       vocab: { geheim: { status: "known" } }
-    });
+    }));
 
     const serialized = JSON.parse(stored.get(UI_STORAGE_KEY));
     const restored = loadUiStateCache();
@@ -135,7 +136,7 @@ describe("profile save payload", () => {
     assert.equal(restored.vocab, undefined);
   });
 
-  it("does not throw when localStorage quota rejects a cache write", () => {
+  it("reports localStorage quota failures to the save pipeline", () => {
     globalThis.localStorage = {
       getItem() { return null; },
       setItem() { throw new DOMException("quota", "QuotaExceededError"); },
@@ -145,9 +146,9 @@ describe("profile save payload", () => {
     console.error = () => {};
 
     try {
-      assert.doesNotThrow(() => {
+      assert.throws(() => {
         saveToLocalStorage({ preferences: { learningLanguage: "de" }, vocab: { haus: { status: "known" } } });
-      });
+      }, /quota/);
     } finally {
       console.error = originalError;
     }

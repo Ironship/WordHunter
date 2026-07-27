@@ -21,10 +21,20 @@ export interface UpdateReaderSelectionOptions {
   keepVisible?: boolean;
 }
 
-function getReaderWordTokens(): HTMLButtonElement[] {
+let tokenCacheRoot: HTMLElement | null = null;
+let tokenCacheRenderId = "";
+let tokenCache: HTMLButtonElement[] = [];
+
+export function getReaderWordTokens(): HTMLButtonElement[] {
   const readerText = els.readerText as HTMLElement | null;
   if (!readerText) return [];
-  return Array.from(readerText.querySelectorAll<HTMLButtonElement>(".word-token"));
+  const renderId = readerText.dataset?.renderId || "";
+  if (readerText !== tokenCacheRoot || renderId !== tokenCacheRenderId) {
+    tokenCacheRoot = readerText;
+    tokenCacheRenderId = renderId;
+    tokenCache = Array.from(readerText.querySelectorAll<HTMLButtonElement>(".word-token"));
+  }
+  return tokenCache;
 }
 
 function getRangeBounds(range: WhRecord | null): ReaderRangeBounds | null {

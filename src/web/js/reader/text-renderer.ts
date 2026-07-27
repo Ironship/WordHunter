@@ -13,15 +13,15 @@ import { updateReaderSelection } from "./selection.js";
 import { paginationHtml } from "./pagination.js";
 import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./focus.js";
 import { getLearningColor } from "../reader-colors.js";
-import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { renderInlineBookmarkIndicators } from "./bookmarks.js";
-import type { TextToken } from "../tokenizer_v2.js";
+import type { TextToken, TokenClassification } from "../tokenizer_v2.js";
 
 export interface RenderPlainTextOptions {
   current: WhText;
   tokens: TextToken[];
   globalWordIndexes: number[];
   globalCharOffsets: number[];
+  classifications: ReadonlyMap<number, TokenClassification>;
   pageStartIndex: number;
   pageEndIndex: number;
   totalPages: number;
@@ -32,9 +32,8 @@ export interface RenderPlainTextOptions {
 const CHUNK_SIZE = 500;
 let textRenderGeneration = 0;
 
-export function renderPlainText({ current, tokens, globalWordIndexes, globalCharOffsets, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }: RenderPlainTextOptions): void {
+export function renderPlainText({ current, tokens, globalWordIndexes, globalCharOffsets, classifications, pageStartIndex, pageEndIndex, totalPages, scrollPerPageKey, savedPos }: RenderPlainTextOptions): void {
   const pageTokens = tokens.slice(pageStartIndex, pageEndIndex);
-  const classifications = classifyTokenOccurrences(tokens, state.vocab, effectiveLearningLanguage(state.preferences));
   let index = 0;
   els.readerText.innerHTML = "";
 

@@ -1,5 +1,6 @@
 // Simple translation system. Locale in `i18n/<code>.json`. Dot-separated keys → path.
 import { APP_LOCALES } from "./constants.js";
+import { fetchWithTimeout } from "./request.js";
 
 const SUPPORTED = APP_LOCALES;
 const FALLBACK = "en";
@@ -17,7 +18,7 @@ export function getLocale() {
 export async function loadLocale(locale: string) {
   const code = SUPPORTED.includes(locale) ? locale : FALLBACK;
   try {
-    const response = await fetch(`i18n/${code}.json`, { cache: "no-cache" });
+    const response = await fetchWithTimeout(`i18n/${code}.json`, { cache: "no-cache" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     dict = await response.json();
     currentLocale = code;

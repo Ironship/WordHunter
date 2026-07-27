@@ -127,6 +127,16 @@ fn modern_tokenize_returns_words() {
 }
 
 #[test]
+fn modern_tokenize_preserves_phrase_boundaries_in_text_tokens() {
+    let parts = tokenize("one\ntwo", "en", Some("modern"));
+    assert!(
+        parts
+            .iter()
+            .any(|part| part.kind == "text" && part.value.contains('\n'))
+    );
+}
+
+#[test]
 fn modern_tokenize_splits_hyphenated_words() {
     let parts = tokenize("well-known fact", "en", Some("modern"));
     let words: Vec<String> = parts

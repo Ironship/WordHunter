@@ -42,29 +42,18 @@ function readerTotalPages(): number | null {
   return getCachedTotalPages(state.currentTextId);
 }
 
-export function computePageSlice(tokens: readonly TextToken[], readerPage: number, wordsPerPage: number): PageSlice {
-  let pageStartIndex = 0;
-  let pageEndIndex = tokens.length;
-  if (wordsPerPage < 999999) {
-    let wordCount = 0;
-    let i = 0;
-    for (; i < tokens.length; i++) {
-      if (wordCount >= (readerPage - 1) * wordsPerPage) {
-        pageStartIndex = i;
-        break;
-      }
-      if (tokens[i].type === "word") wordCount++;
-    }
-    wordCount = 0;
-    for (; i < tokens.length; i++) {
-      if (tokens[i].type === "word") wordCount++;
-      if (wordCount > wordsPerPage) {
-        pageEndIndex = i;
-        break;
-      }
-    }
-  }
-  return { pageStartIndex, pageEndIndex };
+export function computeIndexedPageSlice(
+  tokenCount: number,
+  wordTokenIndexes: readonly number[],
+  readerPage: number,
+  wordsPerPage: number
+): PageSlice {
+  if (wordsPerPage >= 999999) return { pageStartIndex: 0, pageEndIndex: tokenCount };
+  const startWord = Math.max(0, readerPage - 1) * wordsPerPage;
+  return {
+    pageStartIndex: startWord === 0 ? 0 : wordTokenIndexes[startWord] ?? tokenCount,
+    pageEndIndex: wordTokenIndexes[startWord + wordsPerPage] ?? tokenCount
+  };
 }
 
 function applyReaderPage(next: number): void {

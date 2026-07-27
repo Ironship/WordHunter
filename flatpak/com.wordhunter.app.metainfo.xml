@@ -37,6 +37,24 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.3" date="2026-07-27" type="development">
+      <description>
+        <ul>
+          <li>Reader word selection no longer re-tokenizes the entire book.</li>
+          <li>PDF page navigation uses cumulative offsets (O(1) instead of per-page scan).</li>
+          <li>Rust phrase indexing uses a streaming tokenizer with trie matching.</li>
+          <li>Index cache fingerprints content instead of sampling for safety.</li>
+          <li>UI state saves are coalesced into one serialization.</li>
+          <li>Book body cache pins the active Reader page to avoid eviction.</li>
+          <li>Library statistics hydration loads and computes stats concurrently.</li>
+          <li>Edge TTS timeout safety and session isolation fixes.</li>
+          <li>Request deadlines cover response body reads.</li>
+          <li>Static assets and media streamed from disk, not fully buffered.</li>
+          <li>HTTP agent reused globally, not created per request.</li>
+          <li>Minified frontend bundle with syntax and whitespace compression.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.2" date="2026-07-26" type="development">
       <description>
         <ul>

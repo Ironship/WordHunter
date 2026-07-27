@@ -397,6 +397,7 @@ declare global {
     requestWordHunterClose?: () => void;
     flushWordFieldSave?: () => void;
     wordHunterBootRejectionHandler?: (event: PromiseRejectionEvent) => void;
+    wordHunterBootTimeout?: number;
     lastActiveToken?: HTMLElement | null;
   }
 }

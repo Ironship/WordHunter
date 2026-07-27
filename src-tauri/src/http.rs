@@ -1,10 +1,14 @@
+use std::sync::LazyLock;
 use std::time::Duration;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
 
-pub(crate) fn agent() -> ureq::Agent {
-    agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT)
+static AGENT: LazyLock<ureq::Agent> =
+    LazyLock::new(|| agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT));
+
+pub(crate) fn agent() -> &'static ureq::Agent {
+    &AGENT
 }
 
 fn agent_with_timeouts(connect_timeout: Duration, read_timeout: Duration) -> ureq::Agent {

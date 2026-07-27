@@ -1,0 +1,5 @@
+Performance: reader word selection no longer re-tokenizes the entire book, PDF page navigation uses cumulative offsets, Rust phrase indexing uses streaming tokenizer with trie matching, index cache fingerprints content, UI saves are coalesced, and the book body cache pins active Reader pages.
+
+Library statistics hydrate concurrently, Edge TTS has timeout safety and session isolation fixes, request deadlines cover response body reads, static assets are streamed from disk, and the HTTP agent is reused globally.
+
+Frontend bundle is minified. 298 Rust tests and 458 frontend tests pass.

@@ -547,7 +547,7 @@ fn records_to_payload_inner(
                                 .and_then(Value::as_array)
                                 .map(Vec::len)
                                 .unwrap_or(0);
-                            if page_count > 0 && !compact.contains_key("pdfOcrPageCount") {
+                            if page_count > 0 {
                                 compact
                                     .insert("pdfOcrPageCount".to_string(), Value::from(page_count));
                             }
@@ -1854,7 +1854,7 @@ fn syncthing_conflict_canonical_stem(path: &Path) -> Option<String> {
 }
 
 fn atomic_json(path: &Path, value: &Value, keep_backup: bool) -> Result<(), String> {
-    durable::write_json_atomic(path, value, true, keep_backup)
+    durable::write_json_atomic(path, value, false, keep_backup)
 }
 
 fn remove_backup_files(dir: &Path) -> Result<(), String> {
@@ -3482,6 +3482,7 @@ mod tests {
                 "title": "Buch",
                 "text": "Sehr langer Text",
                 "coverDataUrl": "data:image/jpeg;base64,cover",
+                "pdfOcrPageCount": 0,
                 "pdfOcrPages": [{ "imageName": "page-1.png", "tokens": ["big"] }]
             }],
             "prefs": {},

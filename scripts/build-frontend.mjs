@@ -66,6 +66,9 @@ await build({
   format: "esm",
   platform: "browser",
   target: "es2022",
+  minifyIdentifiers: false,
+  minifySyntax: true,
+  minifyWhitespace: true,
   legalComments: "none",
   logLevel: "warning"
 });

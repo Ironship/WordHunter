@@ -17,7 +17,6 @@ import { setElementBusy } from "../loading.js";
 import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
-import { hydrateActiveLibraryTexts } from "../books.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import { remapReaderBookmarksForAlgorithm } from "../reader/bookmarks.js";
 
@@ -887,12 +886,6 @@ export function bindSettingsEvents() {
       syncSettingsControls();
       render();
       showToast(t("toast.learningLanguageChanged"));
-      const language = control.value;
-      hydrateActiveLibraryTexts()
-        .then((current) => {
-          if (current && state.preferences.learningLanguage === language && state.currentView === "library") renderLibrary();
-        })
-        .catch((error) => console.warn("Failed to load books for the selected profile", error));
     });
   });
   if (els.prefWordsPerPage) els.prefWordsPerPage.addEventListener("change", (event: Event) => {

@@ -1,11 +1,11 @@
 // Library view: book card list (built-in + user-added).
-import { state, saveState } from "../state.js";
+import { state, saveUiState } from "../state.js";
 import { els as domElements } from "../dom.js";
 import { escapeHtml, escapeAttribute, parseTagList, calcRoundedStatsPcts, calcStatsPcts } from "../utils.js";
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
 import { normalizeSearchVariants } from "../tokenizer_v2.js";
-import { getAllBooks, bookTexts } from "../books.js";
-import { getCachedTextStats, prepareTextStats } from "../stats-cache.js";
+import { findBookById, getAllBooks, bookTexts, getLibraryContentGeneration, hydrateActiveLibraryTexts, isBookTextCacheStale, loadBookText, loadCustomTextContent } from "../books.js";
+import { getCachedBookTextStats, getCachedTextStats, prepareTextStats } from "../stats-cache.js";
 import { t as translate, getLocale } from "../i18n.js";
 import { bindSidebarResizer } from "../panel-resizer.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
@@ -61,6 +61,46 @@ const els = domElements as LibraryElements;
 const t = translate as (key: string, vars?: Record<string, string | number | boolean | null | undefined>) => string;
 
 const EMPTY_STATS: Readonly<LibraryStats> = { unique: 0, known: 0, learning: 0, ignored: 0, new: 0 };
+const STAT_SORT_KEYS = new Set(["length", "known", "new", "learning", "progress"]);
+let visibleBookObserver: IntersectionObserver | null = null;
+let hydrationRenderPending = false;
+let completeStatsHydration: Promise<unknown> | null = null;
+let completeStatsHydrationKey = "";
+let customTextById = new Map<string, WhText>();
+
+function queueHydrationRender(): void {
+  if (hydrationRenderPending) return;
+  hydrationRenderPending = true;
+  requestAnimationFrame(() => {
+    hydrationRenderPending = false;
+    if (state.currentView === "library") renderLibrary();
+  });
+}
+
+function hydrateBookStats(id: string): void {
+  if (!id || (bookTexts.has(id) && !isBookTextCacheStale(id))) return;
+  const custom = customTextById.get(id);
+  const book = custom ? null : findBookById(id);
+  const source = custom ? loadCustomTextContent(custom) : book ? loadBookText(book) : null;
+  if (!source) return;
+  void source.then(queueHydrationRender).catch((error) => console.warn(`Could not load book statistics for ${id}:`, error));
+}
+
+function observeVisibleBookStats(): void {
+  const cards = [...els.bookList.querySelectorAll<HTMLElement>("[data-book-id]")];
+  if (!("IntersectionObserver" in window)) {
+    cards.forEach((card) => hydrateBookStats(card.dataset.bookId || ""));
+    return;
+  }
+  visibleBookObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      visibleBookObserver?.unobserve(entry.target);
+      hydrateBookStats((entry.target as HTMLElement).dataset.bookId || "");
+    }
+  }, { rootMargin: "300px 0px" });
+  cards.forEach((card) => visibleBookObserver?.observe(card));
+}
 
 function sourceTagForBook(book: LibraryBook): string {
   const source = `${book.source || ""} ${book.pageUrl || ""}`.toLowerCase();
@@ -96,6 +136,8 @@ function getSortValue(book: LibraryBook, stats: LibraryStats | Readonly<LibraryS
 
 export function renderLibrary(): void {
   if (!els.bookList) return;
+  visibleBookObserver?.disconnect();
+  visibleBookObserver = null;
   els.librarySearch.value = state.filters.libraryQuery || "";
   els.levelFilter.value = state.filters.libraryLevel || "all";
   if (els.librarySort) els.librarySort.value = state.filters.librarySort || "title";
@@ -110,15 +152,30 @@ export function renderLibrary(): void {
   const sortReverse = state.filters.librarySortReverse || false;
   const archiveFilter = state.filters.libraryArchive || "active";
   const archivedBookIds = new Set(state.archivedBookIds || []);
+  const userBookIds = new Set((state.userBooks || []).map((book) => book.id));
   const showStats = state.preferences?.showCardStats !== false;
-  const statSortKeys = new Set(["length", "known", "new", "learning", "progress"]);
-  const needsStats = showStats || statSortKeys.has(sortKey);
+  customTextById = new Map((state.customTexts || []).map((text) => [text.id, text]));
+  const needsStats = showStats || STAT_SORT_KEYS.has(sortKey);
   const preparedVocabStatuses = needsStats ? prepareTextStats(state.vocab) : "";
+  const statsHydrationKey = `${effectiveLearningLanguage(state.preferences)}|${state.preferences.wordDetectionAlgorithm || "modern"}|${getLibraryContentGeneration()}|${preparedVocabStatuses}`;
+  if (STAT_SORT_KEYS.has(sortKey) && completeStatsHydrationKey !== statsHydrationKey && !completeStatsHydration) {
+    completeStatsHydrationKey = statsHydrationKey;
+    completeStatsHydration = hydrateActiveLibraryTexts()
+      .then(() => {
+        if (state.currentView === "library") queueHydrationRender();
+      })
+      .catch((error) => {
+        completeStatsHydrationKey = "";
+        console.warn("Could not prepare complete library sorting:", error);
+      })
+      .finally(() => { completeStatsHydration = null; });
+  }
 
   const allBooks: LibraryBook[] = [
     ...getAllBooks() as LibraryBook[],
     ...(state.customTexts || []).map((ct) => {
-      const hasCachedText = bookTexts.has(ct.id);
+      const cachedText = bookTexts.peek(ct.id);
+      const hasCachedText = cachedText !== undefined;
       const hasInlineText = typeof ct.text === "string";
       return {
         id: ct.id,
@@ -134,33 +191,44 @@ export function renderLibrary(): void {
         pdfOcrPages: ct.pdfOcrPages,
         pdfOcrEngine: ct.pdfOcrEngine || "",
         isCustom: true,
-        _customText: hasCachedText ? bookTexts.get(ct.id) : hasInlineText ? ct.text : "",
+        _customText: hasCachedText ? cachedText : hasInlineText ? ct.text : "",
         _textLoaded: hasCachedText || hasInlineText
       };
     })
   ];
 
+  const tagsById = new Map<string, string[]>();
   const books = allBooks
     .filter((book) => {
       const isArchived = archivedBookIds.has(book.id);
       if (archiveFilter === "active" && isArchived) return false;
       if (archiveFilter === "archived" && !isArchived) return false;
       const matchesLevel = level === "all" || !book.level || book.level === level;
-      const haystackText = `${book.title} ${book.author} ${book.level} ${book.blurb} ${parseTagList(book.tags).join(" ")}`;
+      const tags = parseTagList(book.tags);
+      tagsById.set(book.id, tags);
+      const haystackText = `${book.title} ${book.author} ${book.level} ${book.blurb} ${tags.join(" ")}`;
       const haystacks = normalizeSearchVariants(haystackText);
       const matchesQuery = !state.filters.libraryQuery || queryVariants.some(q => haystacks.some(h => h.includes(q)));
       return matchesLevel && matchesQuery;
     })
     .map((book) => {
       const hasCompleteText = book._textLoaded === true || bookTexts.has(book.id);
-      const loadedText = book._textLoaded === true ? book._customText : bookTexts.get(book.id);
+       const loadedText = book._textLoaded === true ? book._customText : bookTexts.peek(book.id);
       const fullText = hasCompleteText ? String(loadedText || "") : book.sample || "";
       const lang = effectiveLearningLanguage(state.preferences);
       const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
-      const stats = !hasCompleteText
-        ? null
+       const stats = !hasCompleteText
+        ? getCachedBookTextStats(book.id)
         : needsStats
-        ? getCachedTextStats(book, fullText, state.vocab, lang, algorithm, preparedVocabStatuses)
+        ? getCachedTextStats(
+          book,
+          fullText,
+          state.vocab,
+          lang,
+          algorithm,
+          preparedVocabStatuses,
+          bookTexts.fingerprint(book.id)
+        )
         : { unique: 0, known: 0, ignored: 0, learning: 0, new: 0 };
     return { book, stats, statsReady: stats !== null, ...calcStatsPcts(stats || EMPTY_STATS) };
     })
@@ -232,7 +300,7 @@ export function renderLibrary(): void {
         </div>`
       : "";
     const lengthHint = !showStats && !statsReady ? `<span class="tag tag-soft">${escapeHtml(t("library.fragment"))}</span>` : "";
-    const isUserBook = (state.userBooks || []).some((entry) => entry.id === book.id);
+    const isUserBook = userBookIds.has(book.id);
     let removeButton = "";
     let moveButton = "";
     if (book.isCustom) {
@@ -254,7 +322,7 @@ export function renderLibrary(): void {
     const sourceLabel = sourceTagForBook(book);
     const sourceTag = sourceLabel ? `<span class="tag">${escapeHtml(sourceLabel)}</span>` : "";
     const archiveTag = isArchived ? `<span class="tag tag-soft">${escapeHtml(t("library.archivedTag"))}</span>` : "";
-    const userTags = parseTagList(book.tags)
+    const userTags = (tagsById.get(book.id) || parseTagList(book.tags))
       .map((tag) => `<span class="tag tag-user">${escapeHtml(tag)}</span>`)
       .join("");
     const metaParts = [book.author, book.year || "", book.pages || ""].map((part) => String(part || "").trim()).filter(Boolean);
@@ -264,7 +332,7 @@ export function renderLibrary(): void {
       ? `<a class="icon-button" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 16)}</a>`
       : "";
     return `
-      <article class="book-card ${cover ? "has-cover" : ""} ${isArchived ? "archived" : ""}" data-level="${escapeHtml(book.level)}">
+      <article class="book-card ${cover ? "has-cover" : ""} ${isArchived ? "archived" : ""}" data-book-id="${escapeAttribute(book.id)}" data-level="${escapeHtml(book.level)}">
         ${cover}
         <div class="book-card-body">
           <div class="book-meta">
@@ -294,6 +362,7 @@ export function renderLibrary(): void {
       </article>
     `;
   }).join("");
+  if (needsStats) observeVisibleBookStats();
 }
 
 function renderBookCover(book: LibraryBook): string {
@@ -363,32 +432,37 @@ export function bindLibraryEvents(): void {
   deleteDialog?.addEventListener("cancel", (event) => { event.preventDefault(); closeDeleteDialog(); });
   deleteDialog?.addEventListener("click", (event) => { if (event.target === deleteDialog) closeDeleteDialog(); });
 
+  let librarySearchTimer: number | null = null;
   els.librarySearch.addEventListener("input", () => {
     state.filters.libraryQuery = els.librarySearch.value;
-    saveState();
-    renderLibrary();
+    if (librarySearchTimer !== null) clearTimeout(librarySearchTimer);
+    librarySearchTimer = window.setTimeout(() => {
+      librarySearchTimer = null;
+      void saveUiState();
+      renderLibrary();
+    }, 120);
   });
   els.levelFilter.addEventListener("change", () => {
     state.filters.libraryLevel = els.levelFilter.value;
-    saveState();
+    void saveUiState();
     renderLibrary();
   });
   els.librarySort.addEventListener("change", () => {
     state.filters.librarySort = els.librarySort.value;
-    saveState();
+    void saveUiState();
     renderLibrary();
   });
   if (els.librarySortReverse) {
     els.librarySortReverse.addEventListener("click", () => {
       state.filters.librarySortReverse = !state.filters.librarySortReverse;
-      saveState();
+      void saveUiState();
       renderLibrary();
     });
   }
   if (els.libraryArchiveFilter) {
     els.libraryArchiveFilter.addEventListener("change", () => {
       state.filters.libraryArchive = els.libraryArchiveFilter.value;
-      saveState();
+      void saveUiState();
       renderLibrary();
     });
   }
