@@ -100,12 +100,17 @@ impl Store {
         self.recover_pending_save()
     }
 
-    pub fn snapshot(&self) -> Value {
-        self.snapshot_with_recovery_status(true)
+    #[cfg(target_os = "android")]
+    pub(crate) fn recover_android_startup_guarded(&self) -> Result<(), String> {
+        {
+            let _guard = self.lock_writes()?;
+            self.recover_pending_save()?;
+        }
+        self.discard_abandoned_book_imports()
     }
 
-    pub(crate) fn startup_snapshot(&self) -> Value {
-        self.snapshot_with_recovery_status(false)
+    pub fn snapshot(&self) -> Value {
+        self.snapshot_with_recovery_status(true)
     }
 
     fn snapshot_with_recovery_status(&self, include_recovery_status: bool) -> Value {
@@ -693,6 +698,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: device_id.to_string(),
+            startup_instant: std::time::Instant::now(),
         }
     }
 
@@ -1389,6 +1395,104 @@ mod tests {
     }
 
     #[test]
+    fn compact_mobile_snapshot_save_preserves_text_and_pdf_pages() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let full = json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "texts": [{
+                "id": "de-pdf",
+                "title": "PDF",
+                "text": "durable body",
+                "pdfOcrPageCount": 0,
+                "pdfOcrPages": [{ "imageName": "page-1.png", "words": [{ "text": "body" }] }]
+            }],
+            "prefs": {},
+            "hiddenBooks": [],
+            "vocab": {}
+        });
+        store.bulk_save(full).unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        let compact = record_files::records_to_mobile_snapshot_payload(dir.path(), &records);
+        store.acknowledge_frontend_snapshot(&compact).unwrap();
+
+        store.bulk_save(compact).unwrap();
+
+        let saved = record_files::load_records(dir.path()).unwrap();
+        let text = &saved["text:de-pdf"].data;
+        assert_eq!(text["text"], "durable body");
+        assert_eq!(text["pdfOcrPages"][0]["imageName"], "page-1.png");
+    }
+
+    #[test]
+    fn projected_text_save_fails_closed_when_durable_body_is_unreadable() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let full = json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "texts": [{ "id": "de-book", "title": "Book", "text": "durable body" }],
+            "prefs": {},
+            "hiddenBooks": [],
+            "vocab": {}
+        });
+        store.bulk_save(full).unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        let projected = record_files::records_to_snapshot_payload(dir.path(), &records);
+        store.acknowledge_frontend_snapshot(&projected).unwrap();
+        let path = std::fs::read_dir(dir.path().join("records/v1/texts"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+            .unwrap();
+        std::fs::write(&path, []).unwrap();
+
+        let error = store.bulk_save(projected).unwrap_err();
+
+        assert!(error.contains("cannot hydrate projected text record"));
+        assert_eq!(std::fs::metadata(path).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn projected_pdf_acknowledgement_fails_closed_when_durable_pages_are_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let full = json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "texts": [{
+                "id": "de-pdf",
+                "title": "PDF",
+                "text": "durable body",
+                "pdfOcrPageCount": 1,
+                "pdfOcrPages": [{ "imageName": "missing-later.png" }]
+            }],
+            "prefs": {},
+            "hiddenBooks": [],
+            "vocab": {}
+        });
+        store.bulk_save(full).unwrap();
+        let path = std::fs::read_dir(dir.path().join("records/v1/texts"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+            .unwrap();
+        let mut persisted: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        persisted["data"]
+            .as_object_mut()
+            .unwrap()
+            .remove("pdfOcrPages");
+        std::fs::write(&path, serde_json::to_vec(&persisted).unwrap()).unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        let projected = record_files::records_to_mobile_snapshot_payload(dir.path(), &records);
+        let error = store.acknowledge_frontend_snapshot(&projected).unwrap_err();
+
+        assert!(error.contains("has no durable PDF pages"));
+        let saved = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(saved["text:de-pdf"].data["text"], "durable body");
+    }
+
+    #[test]
     fn recovered_pending_wipe_blocks_stale_first_save() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);
@@ -1492,17 +1596,19 @@ mod tests {
     }
 
     #[test]
-    fn sync_directory_keeps_private_preferences_local_but_syncs_reader_bookmarks() {
+    fn sync_directory_keeps_private_preferences_local_but_syncs_whitelisted_keys() {
         let local = tempfile::tempdir().unwrap();
         let remote = tempfile::tempdir().unwrap();
         let store = store_at(&local);
         let mut local_payload = profile_payload("lokal", "local");
         local_payload["prefs"]["locale"] = json!("pl");
         local_payload["prefs"]["theme"] = json!("dark");
+        local_payload["prefs"]["inTextReviewCompletedGuesses"] = json!(3);
         store.bulk_save(local_payload).unwrap();
 
         let mut remote_payload = profile_payload("fern", "remote");
         remote_payload["prefs"]["locale"] = json!("en");
+        remote_payload["prefs"]["inTextReviewCompletedGuesses"] = json!(1);
         remote_payload["prefs"]["readerBookmarks"] = json!({
             "remote-book": [{ "id": "remote-mark", "wordIndex": 17 }]
         });
@@ -1517,6 +1623,7 @@ mod tests {
 
         assert_eq!(snapshot["prefs"]["locale"], "pl");
         assert_eq!(snapshot["prefs"]["theme"], "dark");
+        assert_eq!(snapshot["prefs"]["inTextReviewCompletedGuesses"], 3);
         assert_eq!(
             snapshot["prefs"]["readerBookmarks"]["remote-book"][0]["id"],
             "remote-mark"
@@ -1527,6 +1634,10 @@ mod tests {
         assert!(!remote_records.contains_key("pref:learningLanguage"));
         assert!(!remote_records.contains_key("pref:theme"));
         assert!(remote_records.contains_key("pref:readerBookmarks"));
+        assert_eq!(
+            remote_records["pref:inTextReviewCompletedGuesses"].data,
+            json!(3)
+        );
         assert!(remote.path().join("records/v1/prefs").is_dir());
     }
 
@@ -1785,22 +1896,54 @@ impl Store {
         &self,
         records: &mut BTreeMap<String, record_files::SyncRecord>,
     ) -> Result<(), String> {
+        let needs_hydration = records.values().any(|record| {
+            record.kind == "text"
+                && (record.data.get("text").and_then(Value::as_str).is_none()
+                    || (record.data.get("pdfOcrPageCount").and_then(Value::as_u64) > Some(0)
+                        && record.data.get("pdfOcrPages").is_none()))
+        });
+        if !needs_hydration {
+            return Ok(());
+        }
         let current = record_files::load_records(&self.dir())?;
         for record in records.values_mut().filter(|record| record.kind == "text") {
             let has_text = record.data.get("text").and_then(Value::as_str).is_some();
-            if has_text {
+            let pages_are_deferred = record.data.get("pdfOcrPageCount").and_then(Value::as_u64)
+                > Some(0)
+                && record.data.get("pdfOcrPages").is_none();
+            if has_text && !pages_are_deferred {
                 continue;
             }
-            let Some(text) = current
+            let current_record = current
                 .get(&record.key)
                 .filter(|current| current.deleted_at.is_none())
-                .and_then(|current| current.data.get("text"))
-                .and_then(Value::as_str)
-            else {
-                continue;
-            };
-            if let Some(obj) = record.data.as_object_mut() {
+                .ok_or_else(|| {
+                    format!(
+                        "cannot hydrate projected text record {}; retry after the record is readable",
+                        record.key
+                    )
+                })?;
+            let obj = record
+                .data
+                .as_object_mut()
+                .ok_or_else(|| format!("text record {} data is not an object", record.key))?;
+            if !has_text {
+                let text = current_record
+                    .data
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| format!("text record {} has no durable body", record.key))?;
                 obj.insert("text".to_string(), Value::String(text.to_string()));
+            }
+            if pages_are_deferred {
+                let pages = current_record
+                    .data
+                    .get("pdfOcrPages")
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| {
+                        format!("text record {} has no durable PDF pages", record.key)
+                    })?;
+                obj.insert("pdfOcrPages".to_string(), Value::Array(pages.clone()));
             }
         }
         Ok(())

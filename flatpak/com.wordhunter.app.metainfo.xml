@@ -37,6 +37,48 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.3" date="2026-07-27" type="development">
+      <description>
+        <ul>
+          <li>Reader word selection no longer re-tokenizes the entire book.</li>
+          <li>PDF page navigation uses cumulative offsets (O(1) instead of per-page scan).</li>
+          <li>Rust phrase indexing uses a streaming tokenizer with trie matching.</li>
+          <li>Index cache fingerprints content instead of sampling for safety.</li>
+          <li>UI state saves are coalesced into one serialization.</li>
+          <li>Book body cache pins the active Reader page to avoid eviction.</li>
+          <li>Library statistics hydration loads and computes stats concurrently.</li>
+          <li>Edge TTS timeout safety and session isolation fixes.</li>
+          <li>Request deadlines cover response body reads.</li>
+          <li>Static assets and media streamed from disk, not fully buffered.</li>
+          <li>HTTP agent reused globally, not created per request.</li>
+          <li>Minified frontend bundle with syntax and whitespace compression.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.9~rc.2" date="2026-07-26" type="development">
+      <description>
+        <ul>
+          <li>Android starts state loading concurrently with frontend resources.</li>
+          <li>Flashcard grading rejects duplicate input and falls back after a timeout.</li>
+          <li>Every grade has feedback sound and new cards can be read automatically.</li>
+          <li>Due cards are shuffled once per stable review session.</li>
+          <li>Five recall buttons and Previous/Next stay in single rows on Android.</li>
+          <li>Flashcard image removal uses a square accessible touch target.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.9~rc.1" date="2026-07-25">
+      <description>
+        <ul>
+          <li>Vocabulary treats case variants (Am/AM/am) as one word across all languages.</li>
+          <li>Mobile flashcard guidance retires after a few reviews.</li>
+          <li>Android reader bottom sheet expands only to content height.</li>
+          <li>Five recall buttons fit on narrow screens.</li>
+          <li>Ease Factor Distribution graph uses correct bins and includes all EF values.</li>
+          <li>Desktop image OCR imports JPG, PNG, and WebP via local PaddleOCR.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.8" date="2026-07-23">
       <description>
         <ul>

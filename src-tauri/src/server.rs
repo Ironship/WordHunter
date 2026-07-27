@@ -1,7 +1,8 @@
 use rand::{Rng, distributions::Alphanumeric};
 use std::collections::HashSet;
 use std::net::TcpListener;
-use std::sync::{Arc, Condvar, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use tauri::AppHandle;
 use tiny_http::Server;
@@ -9,32 +10,49 @@ use tiny_http::Server;
 use crate::store::Store;
 use crate::syncthing_manager::SyncthingManager;
 
-const MAX_REQUEST_WORKERS: usize = 16;
+const MAX_REGULAR_REQUEST_WORKERS: usize = 10;
+const MAX_STORE_REQUEST_WORKERS: usize = 4;
+const MAX_CONTROL_REQUEST_WORKERS: usize = 2;
 
 struct RequestPermit {
-    active: Arc<(Mutex<usize>, Condvar)>,
+    active: Arc<AtomicUsize>,
 }
 
 impl Drop for RequestPermit {
     fn drop(&mut self) {
-        let (lock, available) = &*self.active;
-        let mut count = lock.lock().unwrap_or_else(|error| error.into_inner());
-        *count = count.saturating_sub(1);
-        available.notify_one();
+        self.active.fetch_sub(1, Ordering::Relaxed);
     }
 }
 
-fn acquire_request_permit(active: &Arc<(Mutex<usize>, Condvar)>) -> RequestPermit {
-    let (lock, available) = &**active;
-    let mut count = lock.lock().unwrap_or_else(|error| error.into_inner());
-    while *count >= MAX_REQUEST_WORKERS {
-        count = available
-            .wait(count)
-            .unwrap_or_else(|error| error.into_inner());
-    }
-    *count += 1;
-    RequestPermit {
-        active: Arc::clone(active),
+fn try_acquire_request_permit(active: &Arc<AtomicUsize>, limit: usize) -> Option<RequestPermit> {
+    active
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
+            (count < limit).then_some(count + 1)
+        })
+        .ok()
+        .map(|_| RequestPermit {
+            active: Arc::clone(active),
+        })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum RequestLane {
+    Regular,
+    Store,
+    Control,
+}
+
+fn request_lane(url: &str) -> RequestLane {
+    let path = url.split('?').next().unwrap_or(url);
+    if matches!(
+        path,
+        "/__app/close" | "/__import/ocr/cancel" | "/__import/pdf_ocr/cancel" | "/__log_error"
+    ) {
+        RequestLane::Control
+    } else if path.starts_with("/__store/") {
+        RequestLane::Store
+    } else {
+        RequestLane::Regular
     }
 }
 
@@ -44,8 +62,60 @@ pub struct ServerState {
     pub token: String,
     pub app_handle: AppHandle,
     pub syncthing: SyncthingManager,
-    pub ocr_cancellations: Mutex<HashSet<String>>,
+    pub(crate) ocr_jobs: Mutex<OcrJobState>,
     pub ocr_slot: Mutex<()>,
+}
+
+#[derive(Default)]
+pub(crate) struct OcrJobState {
+    active: HashSet<String>,
+    cancelled: HashSet<String>,
+}
+
+impl OcrJobState {
+    pub(crate) fn is_cancelled(&self, job_id: &str) -> bool {
+        self.cancelled.contains(job_id)
+    }
+
+    pub(crate) fn request_cancel(&mut self, job_id: &str) -> bool {
+        if !self.active.contains(job_id) {
+            return false;
+        }
+        self.cancelled.insert(job_id.to_string());
+        true
+    }
+}
+
+pub(crate) struct ActiveOcrJob<'a> {
+    jobs: &'a Mutex<OcrJobState>,
+    job_id: String,
+}
+
+impl<'a> ActiveOcrJob<'a> {
+    pub(crate) fn begin(jobs: &'a Mutex<OcrJobState>, job_id: &str) -> Result<Self, String> {
+        if job_id.trim().is_empty() {
+            return Err("job_id required".to_string());
+        }
+        let mut state = jobs
+            .lock()
+            .map_err(|_| "OCR job state is unavailable".to_string())?;
+        if !state.active.insert(job_id.to_string()) {
+            return Err("OCR job is already active".to_string());
+        }
+        state.cancelled.remove(job_id);
+        Ok(Self {
+            jobs,
+            job_id: job_id.to_string(),
+        })
+    }
+}
+
+impl Drop for ActiveOcrJob<'_> {
+    fn drop(&mut self) {
+        let mut state = self.jobs.lock().unwrap_or_else(|error| error.into_inner());
+        state.active.remove(&self.job_id);
+        state.cancelled.remove(&self.job_id);
+    }
 }
 
 /// Generate a random 32-character alphanumeric token for API authentication.
@@ -95,14 +165,24 @@ fn start_server_from_listener(
         token,
         app_handle,
         syncthing: SyncthingManager::new(),
-        ocr_cancellations: Mutex::new(HashSet::new()),
+        ocr_jobs: Mutex::new(OcrJobState::default()),
         ocr_slot: Mutex::new(()),
     });
 
     thread::spawn(move || {
-        let active = Arc::new((Mutex::new(0_usize), Condvar::new()));
+        let regular = Arc::new(AtomicUsize::new(0));
+        let store_requests = Arc::new(AtomicUsize::new(0));
+        let control = Arc::new(AtomicUsize::new(0));
         for request in server.incoming_requests() {
-            let permit = acquire_request_permit(&active);
+            let (active, limit) = match request_lane(request.url()) {
+                RequestLane::Regular => (&regular, MAX_REGULAR_REQUEST_WORKERS),
+                RequestLane::Store => (&store_requests, MAX_STORE_REQUEST_WORKERS),
+                RequestLane::Control => (&control, MAX_CONTROL_REQUEST_WORKERS),
+            };
+            let Some(permit) = try_acquire_request_permit(active, limit) else {
+                let _ = crate::response::error_response(request, 503, "server is busy; retry");
+                continue;
+            };
             let state = Arc::clone(&state);
             thread::spawn(move || {
                 let _permit = permit;
@@ -114,4 +194,32 @@ fn start_server_from_listener(
     });
 
     Ok(port)
+}
+
+#[cfg(test)]
+mod request_lane_tests {
+    use super::*;
+
+    #[test]
+    fn keeps_control_and_store_capacity_separate_from_long_jobs() {
+        assert_eq!(request_lane("/__tts?text=test"), RequestLane::Regular);
+        assert_eq!(request_lane("/__store/save"), RequestLane::Store);
+        assert_eq!(request_lane("/__store/load?ack=0"), RequestLane::Store);
+        assert_eq!(request_lane("/__app/close"), RequestLane::Control);
+        assert_eq!(request_lane("/__import/ocr/cancel"), RequestLane::Control);
+        assert_eq!(
+            request_lane("/__import/pdf_ocr/cancel"),
+            RequestLane::Control
+        );
+        assert_eq!(request_lane("/__log_error"), RequestLane::Control);
+    }
+
+    #[test]
+    fn permit_rejects_at_capacity_and_recovers_after_release() {
+        let active = Arc::new(AtomicUsize::new(0));
+        let permit = try_acquire_request_permit(&active, 1).expect("first permit");
+        assert!(try_acquire_request_permit(&active, 1).is_none());
+        drop(permit);
+        assert!(try_acquire_request_permit(&active, 1).is_some());
+    }
 }

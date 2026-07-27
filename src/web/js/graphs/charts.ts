@@ -6,7 +6,8 @@ import { t as rawT } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
-  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha
+  DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
+  buildEaseFactorBins
 } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
 
@@ -402,19 +403,12 @@ export function renderIntervalHistogram(_chartEntries?: readonly VocabEntry[], _
 export function renderEaseFactors(_chartEntries?: readonly VocabEntry[], _options?: ChartOptions): void {
   const ctx = canvas("graph-ease");
   if (!ctx) return;
-  const easeLabels = t("graphs.binEaseLabels").split("|");
-  const _easeColors = [red, blue, blue, blue, blue, green];
-  // Contiguous upper-bound thresholds (gap-free). Bin 0 = leeches (minimum EF).
-  const easeThresholds = [1.3, 1.6, 2.0, 2.5, 3.0, Infinity];
-  const bins = easeLabels.map((label, i) => ({
-    label: i === 0 ? t("graphs.leeches") : label, val: 0, color: _easeColors[i],
-    max: easeThresholds[i]
-  }));
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known") continue;
-    const ef = e.efactor || 2.5;
-    for (const b of bins) { if (ef <= b.max) { b.val++; break; } }
-  }
+  const bins = buildEaseFactorBins(
+    _chartEntries || stateVocabEntries(),
+    t("graphs.binEaseLabels").split("|"),
+    t("graphs.leeches"),
+    [red, blue, blue, blue, blue, green]
+  );
   const maxVal = Math.max(1, ...bins.map(b => b.val));
   const pad = { top: 48, right: 14, left: 44, bottom: 38 };
   drawBarChart(ctx, bins, maxVal, blue, pad);

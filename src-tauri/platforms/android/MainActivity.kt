@@ -1056,7 +1056,7 @@ class MainActivity : TauriActivity() {
     try {
       connection.requestMethod = "POST"
       connection.connectTimeout = 15000
-      connection.readTimeout = 0
+      connection.readTimeout = 10 * 60 * 1000
       connection.doOutput = true
       val body = JSONObject().put("requestId", request.id).toString().toByteArray(Charsets.UTF_8)
       connection.setFixedLengthStreamingMode(body.size)

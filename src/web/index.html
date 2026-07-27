@@ -222,7 +222,7 @@
                 <span data-i18n="import.fileLabel">Importuj książki / teksty</span>
                 <input id="import-file" type="file" accept=".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
               </label>
-              <p class="muted-copy" id="import-file-hint" data-i18n-html="import.fileHint"></p>
+              <p class="muted-copy" id="import-file-hint" data-i18n-html="import.desktopOcrUnavailableFileHint"></p>
               <label>
                 <span data-i18n="import.title">Tytuł</span>
                 <input id="import-title" type="text" data-i18n-attr="placeholder=import.titlePlaceholder" required>
@@ -869,13 +869,13 @@
               <p class="settings-subheading" data-i18n="settings.groupFeedbackSounds">Dźwięki informacji zwrotnej</p>
               <label class="setting-row toggle-row">
                 <span>
-                  <span data-i18n="settings.statusSounds">Dźwięki zmiany statusu</span>
-                  <small data-i18n="settings.statusSoundsHint">Odtwarza inny krótki dźwięk dla statusów Nowe, Uczę się, Znane i Ignorowane.</small>
+                  <span data-i18n="settings.statusSounds">Dźwięki informacji zwrotnej</span>
+                  <small data-i18n="settings.statusSoundsHint">Odtwarza krótki dźwięk po ocenie fiszki lub zmianie statusu słowa.</small>
                 </span>
                 <input id="pref-status-sounds-enabled" type="checkbox" data-pref="statusSoundsEnabled">
               </label>
               <label class="setting-row">
-                <span id="pref-status-sound-volume-label" data-i18n="settings.statusSoundVolume">Głośność dźwięków statusu: 55%</span>
+                <span id="pref-status-sound-volume-label" data-i18n="settings.statusSoundVolume">Głośność dźwięków informacji zwrotnej: 55%</span>
                 <input id="pref-status-sound-volume" type="range" min="0" max="100" step="5" data-pref="statusSoundVolume" aria-labelledby="pref-status-sound-volume-label">
               </label>
               <p class="settings-subheading" data-i18n="settings.groupTts">Czytanie głosem</p>
@@ -923,6 +923,13 @@
                   <small data-i18n="settings.autoAddLearningOnlyHint">Do powtórek trafiają tylko słowa „Uczę się”. Słowa „Nowe” poczekają, aż ręcznie zmienisz im status.</small>
                 </span>
                 <input id="pref-auto-add-learning" type="checkbox" data-pref="autoAddLearningOnly">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.autoTtsOnFlashcardOpen">Czytaj automatycznie nowe fiszki</span>
+                  <small data-i18n="settings.autoTtsOnFlashcardOpenHint">Odtwarza wymowę po przejściu do kolejnego słowa w fiszkach.</small>
+                </span>
+                <input id="pref-auto-tts-on-flashcard-open" type="checkbox" data-pref="autoTtsOnFlashcardOpen">
               </label>
               <label class="setting-row toggle-row">
                 <span>

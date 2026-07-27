@@ -1,15 +1,12 @@
 use serde_json::{Value, json};
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Read;
 use tiny_http::{Header, Request, Response, StatusCode};
 
 /// Split a URL into path and query string components.
-pub fn split_url(url: &str) -> (String, String) {
-    let mut parts = url.splitn(2, '?');
-    (
-        parts.next().unwrap_or("/").to_string(),
-        parts.next().unwrap_or("").to_string(),
-    )
+pub fn split_url(url: &str) -> (&str, &str) {
+    url.split_once('?').unwrap_or((url, ""))
 }
 
 /// Parse a query string into a key-value map.
@@ -17,6 +14,11 @@ pub fn parse_query(query: &str) -> HashMap<String, String> {
     url::form_urlencoded::parse(query.as_bytes())
         .into_owned()
         .collect()
+}
+
+pub fn query_value<'a>(query: &'a str, key: &str) -> Option<Cow<'a, str>> {
+    url::form_urlencoded::parse(query.as_bytes())
+        .find_map(|(name, value)| (name == key).then_some(value))
 }
 
 /// Validate the X-WH-Token header against the expected server token.
@@ -86,6 +88,50 @@ pub fn respond(
     respond_with_headers(request, code, body, content_type, cache, &[])
 }
 
+pub fn respond_reader<R: Read>(
+    request: Request,
+    code: u16,
+    reader: R,
+    length: usize,
+    content_type: &str,
+    cache: bool,
+) -> Result<(), String> {
+    let response = Response::new(
+        StatusCode(code),
+        standard_headers(content_type, cache)?,
+        reader,
+        Some(length),
+        None,
+    );
+    request.respond(response).map_err(|error| error.to_string())
+}
+
+fn standard_headers(content_type: &str, cache: bool) -> Result<Vec<Header>, String> {
+    [
+        ("Content-Type", content_type),
+        (
+            "Cache-Control",
+            if cache {
+                "max-age=31536000"
+            } else {
+                "no-store"
+            },
+        ),
+        ("X-Content-Type-Options", "nosniff"),
+        ("Referrer-Policy", "no-referrer"),
+        ("X-Frame-Options", "DENY"),
+        (
+            "Content-Security-Policy",
+            "base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
+        ),
+    ]
+    .into_iter()
+    .map(|(name, value)| {
+        Header::from_bytes(name, value).map_err(|error| format!("bad {name} header: {error:?}"))
+    })
+    .collect()
+}
+
 pub fn respond_with_headers(
     request: Request,
     code: u16,
@@ -95,33 +141,8 @@ pub fn respond_with_headers(
     headers: &[(&str, &str)],
 ) -> Result<(), String> {
     let mut response = Response::from_data(body).with_status_code(StatusCode(code));
-    response.add_header(
-        Header::from_bytes("Content-Type", content_type)
-            .map_err(|e| format!("bad Content-Type header: {e:?}"))?,
-    );
-    response.add_header(
-        Header::from_bytes(
-            "Cache-Control",
-            if cache {
-                "max-age=31536000"
-            } else {
-                "no-store"
-            },
-        )
-        .map_err(|e| format!("bad Cache-Control header: {e:?}"))?,
-    );
-    for (name, value) in [
-        ("X-Content-Type-Options", "nosniff"),
-        ("Referrer-Policy", "no-referrer"),
-        ("X-Frame-Options", "DENY"),
-        (
-            "Content-Security-Policy",
-            "base-uri 'none'; object-src 'none'; frame-ancestors 'none'",
-        ),
-    ] {
-        response.add_header(
-            Header::from_bytes(name, value).map_err(|e| format!("bad {name} header: {e:?}"))?,
-        );
+    for header in standard_headers(content_type, cache)? {
+        response.add_header(header);
     }
     for (name, value) in headers {
         response.add_header(

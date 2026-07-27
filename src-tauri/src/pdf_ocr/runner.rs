@@ -1,7 +1,6 @@
 use serde_json::{Value, json};
 use std::fs::File;
 use std::{
-    collections::HashSet,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -10,6 +9,8 @@ use std::{
     time::{Duration, Instant},
 };
 use tauri::{AppHandle, Manager};
+
+use crate::server::OcrJobState;
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -116,6 +117,47 @@ pub(crate) fn find_runner(app_handle: &AppHandle) -> Result<PathBuf, String> {
     ))
 }
 
+pub(crate) fn image_ocr_runtime_available(app_handle: &AppHandle) -> bool {
+    let Ok(runner) = find_runner(app_handle) else {
+        return false;
+    };
+    let Some(bin_dir) = runner.parent() else {
+        return false;
+    };
+    let runtime_dir = if bin_dir.file_name().and_then(|name| name.to_str()) == Some("bin") {
+        bin_dir.parent().unwrap_or(bin_dir)
+    } else {
+        bin_dir
+    };
+    let models = runtime_dir.join("models");
+    has_any_model(
+        &models,
+        &[
+            "ch_PP-OCRv5_mobile_det.onnx",
+            "ch_PP-OCRv4_det_infer.onnx",
+            "det.onnx",
+        ],
+    ) && has_any_model(
+        &models,
+        &[
+            "ch_ppocr_mobile_v2.0_cls_infer.onnx",
+            "ch_ppocr_mobile_v2.0_cls.onnx",
+            "cls.onnx",
+        ],
+    ) && has_any_model(
+        &models,
+        &[
+            "ch_PP-OCRv5_rec_mobile_infer.onnx",
+            "ch_PP-OCRv4_rec_infer.onnx",
+            "rec.onnx",
+        ],
+    )
+}
+
+fn has_any_model(models: &Path, names: &[&str]) -> bool {
+    names.iter().any(|name| models.join(name).is_file())
+}
+
 fn runner_candidates(app_handle: &AppHandle) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(path) = std::env::var("WORDHUNTER_PADDLEOCR_RUNNER")
@@ -164,7 +206,7 @@ pub(crate) struct RunnerJob<'a> {
     pub max_pages: u64,
     pub work_dir: &'a Path,
     pub job_id: &'a str,
-    pub cancellations: &'a Mutex<HashSet<String>>,
+    pub jobs: &'a Mutex<OcrJobState>,
 }
 
 pub(crate) fn run_runner(runner: &Path, job: RunnerJob<'_>) -> Result<(), String> {
@@ -273,10 +315,10 @@ fn run_runner_attempt(
 
 fn is_cancelled(job: &RunnerJob<'_>) -> Result<bool, String> {
     Ok(job
-        .cancellations
+        .jobs
         .lock()
-        .map_err(|_| "OCR cancellation state is unavailable".to_string())?
-        .contains(job.job_id))
+        .map_err(|_| "OCR job state is unavailable".to_string())?
+        .is_cancelled(job.job_id))
 }
 
 fn ensure_not_cancelled(job: &RunnerJob<'_>) -> Result<(), String> {
@@ -335,7 +377,7 @@ fn read_tail(path: &Path) -> String {
 #[cfg(all(test, unix))]
 mod tests {
     use super::{RunnerJob, run_runner};
-    use std::collections::HashSet;
+    use crate::server::OcrJobState;
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use std::path::{Path, PathBuf};
@@ -388,7 +430,7 @@ printf '{{}}' > "$json_path"
         let json_path = temp.path().join("ocr.json");
         fs::write(&input_path, b"pdf").unwrap();
         fs::create_dir_all(&pages_dir).unwrap();
-        let cancellations = Mutex::new(HashSet::new());
+        let jobs = Mutex::new(OcrJobState::default());
 
         run_runner(
             &runner,
@@ -400,7 +442,7 @@ printf '{{}}' > "$json_path"
                 max_pages: 1,
                 work_dir: temp.path(),
                 job_id: "job",
-                cancellations: &cancellations,
+                jobs: &jobs,
             },
         )
         .unwrap();
@@ -435,7 +477,7 @@ exit 2
         let json_path = temp.path().join("ocr.json");
         fs::write(&input_path, b"pdf").unwrap();
         fs::create_dir_all(&pages_dir).unwrap();
-        let cancellations = Mutex::new(HashSet::new());
+        let jobs = Mutex::new(OcrJobState::default());
 
         run_runner(
             &runner,
@@ -447,7 +489,7 @@ exit 2
                 max_pages: 1,
                 work_dir: temp.path(),
                 job_id: "job",
-                cancellations: &cancellations,
+                jobs: &jobs,
             },
         )
         .unwrap();

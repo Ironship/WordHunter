@@ -134,7 +134,7 @@ export function bindWordEditorEvents() {
     const entry = state.vocab[word];
     if (!entry) return;
     addWordEditing.value = word;
-    if (addWordInput) { addWordInput.value = word; addWordInput.disabled = true; }
+    if (addWordInput) { addWordInput.value = entry.word || word; addWordInput.disabled = true; }
     if (addArticleInput) addArticleInput.value = entry.article || "";
     if (addTranslationInput) addTranslationInput.value = entry.translation || "";
     if (addExampleInput) addExampleInput.value = entry.examples?.[0] || "";

@@ -59,6 +59,10 @@ function reportBootError(text: string): void {
   fetch("/__log_error", { method: "POST", body: text }).catch(() => {});
 }
 
+window.wordHunterBootTimeout = window.setTimeout(() => {
+  reportBootError("Startup timed out before the application became ready.");
+}, 15000);
+
 try {
   applyBootTheme();
 } catch {

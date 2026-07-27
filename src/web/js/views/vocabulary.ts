@@ -1,6 +1,6 @@
 // Vocabulary + review view: orchestrator, re-exports from sub-modules.
 import { state, saveState } from "../state.js";
-import { getSentenceForWord } from "../tokenizer_v2.js";
+import { getSentenceForWord, resolveVocabularyKey } from "../tokenizer_v2.js";
 import { ensureSM2Fields, SM2_DEFAULTS, FSRS_DEFAULTS, todayISO } from "../sm2.js";
 import { sessionAddedWords } from "../vocabulary/vocab-list.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
@@ -16,10 +16,19 @@ export function hideReviewAnswer(): void {
   reviewAnswerVisible = false;
 }
 
-export function getOrCreateEntry(word: string, text = "", wordIndex: number | null = null): WhVocabEntry {
-  if (!Object.hasOwn(state.vocab, word)) {
+export function getOrCreateEntry(
+  word: string,
+  text = "",
+  wordIndex: number | null = null,
+  characterIndex: number | null = null,
+  indexedWord = ""
+): WhVocabEntry {
+  const displayWord = String(word || "").trim().normalize("NFC");
+  const key = resolveVocabularyKey(displayWord, state.vocab, effectiveLearningLanguage(state.preferences));
+  if (!Object.hasOwn(state.vocab, key)) {
     const createdAt = new Date().toISOString();
-    state.vocab[word] = {
+    state.vocab[key] = {
+      word: displayWord,
       status: "new",
       translation: "",
       note: "",
@@ -34,21 +43,23 @@ export function getOrCreateEntry(word: string, text = "", wordIndex: number | nu
       srsAlgorithm: state.preferences?.srsAlgorithm || "fsrs",
       nextDate: todayISO()
     };
-    sessionAddedWords.add(word);
+    sessionAddedWords.add(key);
   } else {
-    ensureSM2Fields(state.vocab[word]);
+    ensureSM2Fields(state.vocab[key]);
   }
   const context = getSentenceForWord(
     text,
-    word,
+    displayWord,
     effectiveLearningLanguage(state.preferences),
     state.preferences.wordDetectionAlgorithm || "modern",
-    wordIndex
+    wordIndex,
+    characterIndex,
+    indexedWord
   );
-  if (context && !state.vocab[word].examples?.includes(context)) {
-    state.vocab[word].examples = [context, ...(state.vocab[word].examples || [])].slice(0, 3);
+  if (context && !state.vocab[key].examples?.includes(context)) {
+    state.vocab[key].examples = [context, ...(state.vocab[key].examples || [])].slice(0, 3);
   }
-  return state.vocab[word];
+  return state.vocab[key];
 }
 
 // Re-export the public vocabulary API used by the rest of the app.
@@ -60,5 +71,6 @@ export {
 export {
   renderReview,
   gradeReview,
-  removeFromSrs
+  removeFromSrs,
+  resetReviewPresentation
 } from "../vocabulary/review-card.js";

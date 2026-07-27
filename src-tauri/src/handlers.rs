@@ -40,8 +40,11 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
         .get_file("index.html")
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
-    let snapshot = state.store.snapshot_with_ui_state();
-    let bootstrap = bootstrap_script(&state.token, Some(&snapshot));
+    let bootstrap = bootstrap_script(
+        &state.token,
+        Some(&state.store.snapshot()),
+        crate::pdf_ocr::image_ocr_available(&state.app_handle),
+    );
     if let Some(pos) = html.find("<head>") {
         html.insert_str(
             pos + "<head>".len(),
@@ -67,7 +70,11 @@ fn escape_inline_json(value: &Value) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
-pub(crate) fn bootstrap_script(token: &str, snapshot: Option<&Value>) -> String {
+pub(crate) fn bootstrap_script(
+    token: &str,
+    snapshot: Option<&Value>,
+    image_ocr_available: bool,
+) -> String {
     let escaped = escape_inline_json(&Value::String(token.to_string()));
     let snapshot = snapshot
         .map(escape_inline_json)
@@ -77,9 +84,25 @@ pub(crate) fn bootstrap_script(token: &str, snapshot: Option<&Value>) -> String 
 (function() {{
   window.__qtBridge = true;
   window.WH_TOKEN = {escaped};
-  const bridgeSnapshot = {snapshot};
-  if (bridgeSnapshot !== null) window.__bridgeState = bridgeSnapshot;
+  window.WH_IMAGE_OCR_AVAILABLE = {image_ocr_available};
   const origFetch = window.fetch.bind(window);
+  const bridgeSnapshot = {snapshot};
+  if (bridgeSnapshot !== null) {{
+    window.__bridgeState = bridgeSnapshot;
+  }} else {{
+    const storeLoadController = new AbortController();
+    const storeLoadTimeout = setTimeout(function() {{ storeLoadController.abort(); }}, 12000);
+    window.__bridgeStatePromise = origFetch('/__store/load', {{
+      cache: 'no-store',
+      signal: storeLoadController.signal
+    }}).then(function(response) {{
+      if (!response.ok) throw new Error('Store load failed: HTTP ' + response.status);
+      return response.json();
+    }}).catch(function(error) {{
+      if (storeLoadController.signal.aborted) throw new Error('Store load timed out after 12 seconds');
+      throw error;
+    }}).finally(function() {{ clearTimeout(storeLoadTimeout); }});
+  }}
   window.fetch = function(input, init) {{
     try {{
       const url = (typeof input === 'string') ? input : (input && input.url) || '';
@@ -109,7 +132,7 @@ pub(crate) fn serve_static(request: Request, path: &str) -> Result<(), String> {
         .first_or_octet_stream()
         .essence_str()
         .to_string();
-    response::respond(request, 200, file.contents().to_vec(), &mime, false)
+    response::respond(request, 200, file.contents().to_vec(), &mime, true)
 }
 
 pub(crate) fn sanitize_relative_path(path: &str) -> Result<PathBuf, String> {
@@ -129,43 +152,44 @@ pub(crate) fn serve_media(
     state: &ServerState,
     query: &str,
 ) -> Result<(), String> {
-    let params = response::parse_query(query);
-    let book = params.get("book").cloned().unwrap_or_default();
-    let img = params.get("img").cloned().unwrap_or_default();
+    let book = response::query_value(query, "book").unwrap_or_default();
+    let img = response::query_value(query, "img").unwrap_or_default();
     let file_path = state.store.book_image_path(&book, &img)?;
-    if !file_path.is_file() {
-        return response::error_response(request, 404, "not found");
-    }
-    let data = fs::read(&file_path).map_err(|e| e.to_string())?;
+    let file = match fs::File::open(&file_path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return response::error_response(request, 404, "not found");
+        }
+        Err(error) => return Err(error.to_string()),
+    };
+    let length = file.metadata().map_err(|error| error.to_string())?.len() as usize;
     let mime = mime_guess::from_path(&file_path)
         .first_or_octet_stream()
         .essence_str()
         .to_string();
-    response::respond(request, 200, data, &mime, true)
+    response::respond_reader(request, 200, file, length, &mime, true)
 }
 
 pub(crate) fn serve_edge_tts(request: Request, query: &str) -> Result<(), String> {
-    let params = response::parse_query(query);
-    let text = params.get("text").cloned().unwrap_or_default();
-    let lang = params
-        .get("lang")
-        .cloned()
-        .unwrap_or_else(|| "pl".to_string());
-    let rate = params.get("rate").map(String::as_str).unwrap_or("normal");
+    let text = response::query_value(query, "text").unwrap_or_default();
+    let lang = response::query_value(query, "lang").unwrap_or_else(|| "pl".into());
+    let rate = response::query_value(query, "rate").unwrap_or_else(|| "normal".into());
     if text.trim().is_empty() {
         return response::error_response(request, 400, "TTS text is empty");
     }
 
-    match tts::synthesize(&text, &lang, rate) {
+    match tts::synthesize(&text, &lang, &rate) {
         Ok(result) => {
             #[cfg(not(target_os = "android"))]
             let (audio, timings) = {
-                let timings = result
-                    .boundaries
-                    .iter()
-                    .map(|event| (event.offset_ticks / 10_000).to_string())
-                    .collect::<Vec<_>>()
-                    .join(",");
+                use std::fmt::Write;
+                let mut timings = String::with_capacity(result.boundaries.len() * 8);
+                for (index, event) in result.boundaries.iter().enumerate() {
+                    if index > 0 {
+                        timings.push(',');
+                    }
+                    let _ = write!(timings, "{}", event.offset_ticks / 10_000);
+                }
                 (result.audio, timings)
             };
             #[cfg(target_os = "android")]
@@ -276,7 +300,7 @@ pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, Str
     let _ocr_guard = state
         .ocr_slot
         .try_lock()
-        .map_err(|_| "Cannot move the data folder while a PDF import is running".to_string())?;
+        .map_err(|_| "Cannot move the data folder while an OCR import is running".to_string())?;
     let path = state.store.relocate(path)?;
     Ok(Some(path.to_string_lossy().into_owned()))
 }

@@ -32,25 +32,29 @@ describe("Android Pocket reader", () => {
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };
-    const { countWordTokens, computePageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
+    const { countWordTokens, computeIndexedPageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
     const tokens = [
-      { type: "word", text: "One" },
-      { type: "space", text: " " },
-      { type: "word", text: "Two" },
-      { type: "punct", text: ". " },
-      { type: "word", text: "Three" },
-      { type: "space", text: " " },
-      { type: "word", text: "Four" },
-      { type: "space", text: " " },
-      { type: "word", text: "Five" }
+      { type: "word", value: "One" },
+      { type: "text", value: " " },
+      { type: "word", value: "Two" },
+      { type: "text", value: ". " },
+      { type: "word", value: "Three" },
+      { type: "text", value: " " },
+      { type: "word", value: "Four" },
+      { type: "text", value: " " },
+      { type: "word", value: "Five" }
     ];
+    const wordTokenIndexes = tokens.flatMap((token, index) => token.type === "word" ? [index] : []);
 
     assert.equal(countWordTokens(tokens), 5);
     assert.equal(computeTotalPages(5, 2), 3);
     assert.equal(computeTotalPages(5, 999999), 1);
-    assert.deepEqual(computePageSlice(tokens, 1, 2), { pageStartIndex: 0, pageEndIndex: 4 });
-    assert.deepEqual(computePageSlice(tokens, 2, 2), { pageStartIndex: 3, pageEndIndex: 8 });
-    assert.deepEqual(computePageSlice(tokens, 1, 999999), { pageStartIndex: 0, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 1, 2), { pageStartIndex: 0, pageEndIndex: 4 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 2, 2), { pageStartIndex: 4, pageEndIndex: 8 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 3, 2), { pageStartIndex: 8, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 99, 2), { pageStartIndex: tokens.length, pageEndIndex: tokens.length });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 0, 2), { pageStartIndex: 0, pageEndIndex: 4 });
+    assert.deepEqual(computeIndexedPageSlice(tokens.length, wordTokenIndexes, 1, 999999), { pageStartIndex: 0, pageEndIndex: tokens.length });
   });
 
   it("declares Pocket reader touch and word-panel integration hooks", () => {
@@ -92,7 +96,7 @@ describe("Android Pocket reader", () => {
     assert.match(navigation, /pocketPanelWasOpen/);
     assert.match(navigation, /word-panel-enter-/);
     assert.match(navigation, /word-panel-exit-/);
-    assert.match(navigation, /selectWord\(rawWord, normalizeWord/);
+    assert.match(navigation, /selectWord\(token\.dataset\.displayWord \|\| rawWord, normalizeWord/);
     assert.match(navigation, /forceSpeak: true/);
     assert.match(globalActions, /classList\.contains\("pocket-mode"\)/);
     assert.match(readerEvents, /navigateReaderWord\(-1\)/);
@@ -164,6 +168,8 @@ describe("Android Pocket reader", () => {
     const openPanel = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper");
     assert.equal(openPanel.top, "var(--pocket-word-sheet-current-top)");
     assert.equal(openPanel.bottom, "auto");
+    assert.equal(openPanel.left, "max(0.75rem, env(safe-area-inset-left, 0px))");
+    assert.equal(openPanel.right, "max(0.75rem, env(safe-area-inset-right, 0px))");
     assert.equal(openPanel["min-height"], "0");
     assert.equal(openPanel["max-height"], "none");
     assert.match(openPanel.height, /^max\(/);
@@ -176,6 +182,11 @@ describe("Android Pocket reader", () => {
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="collapsed"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-collapsed-top)" });
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="expanded"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-expanded-top)" });
     assertDeclarations(css, '.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"]', { "--pocket-word-sheet-current-top": "var(--pocket-word-sheet-top)" });
+    const contentMeasurement = declarationBlock(css, ".pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-content-measuring");
+    assert.equal(contentMeasurement.top, "auto");
+    assert.equal(contentMeasurement.bottom, "calc(4.6rem + var(--pocket-navbar-safe-bottom))");
+    assert.equal(contentMeasurement.height, "auto");
+    assert.match(contentMeasurement["max-height"], /100dvh.*var\(--pocket-word-sheet-expanded-top\)/s);
     assertDeclarations(css, ".pocket-mode .pocket-word-panel-sheet-handle", { display: "flex", "min-height": "56px", "touch-action": "none" });
     assertDeclarations(css, ".pocket-mode .word-panel.word-panel-card-ghost", { top: "56px" });
     assert.match(

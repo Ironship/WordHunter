@@ -1,12 +1,11 @@
 /**
  * Word panel: render the side panel and update word status in the reader.
  */
-import { state, saveState } from "../state.js";
+import { getVocabularyRevision, state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, statusLabel } from "../utils.js";
 import { icon, statusIcon } from "../icons.js";
-import { getSentenceForWord, getTextStats } from "../tokenizer_v2.js";
-import { STATUS_ORDER } from "../constants.js";
+import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constants.js";
 import { t } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
@@ -26,12 +25,15 @@ import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../tra
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import type { VocabStatus } from "../constants.js";
 import { formatHeadword } from "../vocabulary/article.js";
+import { playReviewGradeSound } from "../status-sounds.js";
+import { analyzeReaderSession, getReaderSession } from "./session.js";
 
 export interface UpdateWordStatusOptions {
   renderPanel?: boolean;
 }
 
 interface WordPanelEntry {
+  word?: string;
   status: VocabStatus;
   article?: string;
   translation?: string;
@@ -52,6 +54,7 @@ let inTextReviewWord = "";
 let inTextAnswerVisible = false;
 let inTextReviewCompleted = false;
 let contextTranslationGeneration = 0;
+let wordPanelRenderGeneration = 0;
 const ACTION_ITEM_IDS = new Set<WhSelectedWordPanelItemId>(["dictionary", "speech", "youglish", "copy", "edit", "remove"]);
 const WORD_PANEL_STATUS_CLASSES = STATUS_ORDER.map((status) => `word-panel-status-${status}`);
 
@@ -147,9 +150,12 @@ function renderInTextReview(entry: WordPanelEntry, word: string, hasSmartSuggest
     return renderTranslationEditor(entry, word, hasSmartSuggestion ? "0.75rem" : "0");
   }
   if (!inTextAnswerVisible) {
+    const completedGuesses = Number(state.preferences?.inTextReviewCompletedGuesses);
+    const showPrompt = !Number.isFinite(completedGuesses)
+      || completedGuesses < IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT;
     return `
       <div class="in-text-review">
-        <p class="muted-copy">${escapeHtml(t("sm2.inTextPrompt"))}</p>
+        ${showPrompt ? `<p class="muted-copy">${escapeHtml(t("sm2.inTextPrompt"))}</p>` : ""}
         <button class="secondary-button" type="button" data-in-text-answer>
           ${escapeHtml(t("sm2.showAnswer"))}
           <span class="shortcut-badge">${escapeHtml(t("reader.keyEnter"))}</span>
@@ -158,7 +164,7 @@ function renderInTextReview(entry: WordPanelEntry, word: string, hasSmartSuggest
     `;
   }
   const grades = [1, 2, 3, 4, 5].map((grade) => `
-    <button class="status-button sm2-grade sm2-grade-${grade}" type="button" data-in-text-grade="${grade}" title="${escapeAttribute(t(`sm2.grade${grade}`))}">${grade}<span class="shortcut-badge">${grade}</span></button>
+    <button class="status-button sm2-grade sm2-grade-${grade}" type="button" data-in-text-grade="${grade}" aria-label="${escapeAttribute(t(`sm2.grade${grade}`))}" title="${escapeAttribute(t(`sm2.grade${grade}`))}">${grade}<span class="shortcut-badge">${grade}</span></button>
   `).join("");
   return `
     <div class="in-text-review">
@@ -173,6 +179,7 @@ function renderInTextReview(entry: WordPanelEntry, word: string, hasSmartSuggest
 
 function bindInTextReviewControls(currentText: WhText, word: string, entry: WordPanelEntry, hasSmartSuggestion: boolean): void {
   const panel = wordPanelElement();
+  const panelGeneration = wordPanelRenderGeneration;
   const refreshInTextReview = (nextEntry: WordPanelEntry = entry): void => {
     const review = panel.querySelector<HTMLElement>(".in-text-review");
     if (!review) {
@@ -190,8 +197,17 @@ function bindInTextReviewControls(currentText: WhText, word: string, entry: Word
   });
   panel.querySelectorAll<HTMLButtonElement>("[data-in-text-grade]").forEach((button) => button.addEventListener("click", async (event: MouseEvent) => {
     event.stopPropagation();
-    const updated = await applyReviewGrade(word, Number(button.dataset.inTextGrade));
+    const grade = Number(button.dataset.inTextGrade);
+    playReviewGradeSound(grade);
+    const updated = await applyReviewGrade(word, grade);
     if (!updated) return;
+    const completedGuesses = Number(state.preferences.inTextReviewCompletedGuesses);
+    state.preferences.inTextReviewCompletedGuesses = Math.min(
+      IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT,
+      (Number.isFinite(completedGuesses) ? Math.max(0, Math.trunc(completedGuesses)) : 0) + 1
+    );
+    saveState();
+    if (panelGeneration !== wordPanelRenderGeneration || state.selectedWord !== word) return;
     inTextReviewCompleted = true;
     updateWordStatusInReader(word, updated.status, { renderPanel: false });
     refreshInTextReview(updated);
@@ -260,21 +276,23 @@ function renderActionItem(
   isTransientRange: boolean
 ): string {
   const escapedWord = escapeAttribute(word);
+  const displayWord = entry.word || word;
+  const escapedDisplayWord = escapeAttribute(displayWord);
   const label = escapeAttribute(wordPanelItemLabel(id));
   if (id === "dictionary") {
-    return `<button class="secondary-button" type="button" data-word-panel-item="dictionary" data-dict-word="${escapedWord}" title="${label}" aria-label="${label}">${icon("book", 18)}<span class="shortcut-badge">M</span></button>`;
+    return `<button class="secondary-button" type="button" data-word-panel-item="dictionary" data-dict-word="${escapedDisplayWord}" title="${label}" aria-label="${label}">${icon("book", 18)}<span class="shortcut-badge">M</span></button>`;
   }
   if (id === "speech") {
     const title = escapeAttribute(t("reader.ttsWordTitle"));
-    const spokenHeadword = escapeAttribute(formatHeadword(word, entry.article));
+    const spokenHeadword = escapeAttribute(formatHeadword(displayWord, entry.article));
     return `<button class="secondary-button" type="button" data-word-panel-item="speech" data-tts-word="${spokenHeadword}" title="${title}" aria-label="${title}">${icon("speaker", 18)}<span class="shortcut-badge">${escapeHtml(t("reader.keySpace"))}</span></button>`;
   }
   if (id === "youglish") {
     const title = escapeAttribute(t("reader.youglishWordTitle"));
-    return `<button class="secondary-button" type="button" data-word-panel-item="youglish" data-youglish-word="${escapedWord}" title="${title}" aria-label="${title}">${icon("video", 18)}<span class="shortcut-badge">Y</span></button>`;
+    return `<button class="secondary-button" type="button" data-word-panel-item="youglish" data-youglish-word="${escapedDisplayWord}" title="${title}" aria-label="${title}">${icon("video", 18)}<span class="shortcut-badge">Y</span></button>`;
   }
   if (id === "copy") {
-    return `<button class="secondary-button" type="button" data-word-panel-item="copy" data-copy-word="${escapedWord}" title="${label}" aria-label="${label}">${icon("copy", 18)}</button>`;
+    return `<button class="secondary-button" type="button" data-word-panel-item="copy" data-copy-word="${escapedDisplayWord}" title="${label}" aria-label="${label}">${icon("copy", 18)}</button>`;
   }
   if (id === "edit") {
     if (isTransientRange) return "";
@@ -391,6 +409,7 @@ function renderConfiguredItems(
 
 export function renderWordPanel(currentText: WhText): void {
   contextTranslationGeneration += 1;
+  wordPanelRenderGeneration += 1;
   const word = state.selectedWord;
   if (!word) {
     applyWordPanelStatus(null);
@@ -407,16 +426,11 @@ export function renderWordPanel(currentText: WhText): void {
   const isTransientRange = isTransientReaderRangeSelection();
   const entry: WordPanelEntry = isTransientRange
     ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
-    : getOrCreateEntry(word, currentText.text, state.selectedWordIndex);
+    : state.vocab[word] || getOrCreateEntry(word);
+  const displayWord = entry.word || word;
   applyWordPanelStatus(entry.status);
   resetInTextReview(word);
-  const context = getSentenceForWord(
-    currentText.text,
-    word,
-    effectiveLearningLanguage(state.preferences),
-    state.preferences.wordDetectionAlgorithm || "modern",
-    state.selectedWordIndex
-  ) || entry.examples?.[0] || "";
+  const context = entry.examples?.[0] || "";
 
   const smartSuggestion = getSmartSuggestion(context, word);
   const articleSuggestion = smartSuggestion?.kind === "article" ? smartSuggestion : null;
@@ -430,7 +444,7 @@ export function renderWordPanel(currentText: WhText): void {
     <div class="word-panel-header">
       <div>
         <p class="eyebrow">${escapeHtml(statusLabel(entry.status))}</p>
-        <h2 class="word-title" data-headword-word="${escapeAttribute(word)}">${escapeHtml(formatHeadword(word, entry.article))}</h2>
+        <h2 class="word-title" data-headword-word="${escapeAttribute(word)}">${escapeHtml(formatHeadword(displayWord, entry.article))}</h2>
       </div>
       <button class="icon-button word-panel-close" type="button" data-close-word-panel aria-label="${escapeAttribute(t("reader.close"))}" title="${escapeAttribute(t("reader.close"))}">×</button>
     </div>
@@ -460,12 +474,15 @@ export function updateWordStatusInReader(word: string, status: VocabStatus, opti
   }
 
   if (current) {
-    const stats = getTextStats(
-      current.text,
+    const language = effectiveLearningLanguage(state.preferences);
+    const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+    const session = analyzeReaderSession(
+      getReaderSession(current, language, algorithm),
       state.vocab,
-      effectiveLearningLanguage(state.preferences),
-      state.preferences.wordDetectionAlgorithm || "modern"
+      language,
+      getVocabularyRevision()
     );
+    const stats = session.stats!;
     renderTrackingSummary(stats);
     if (els.uniqueSummary) {
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });

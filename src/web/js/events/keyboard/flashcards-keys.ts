@@ -47,9 +47,9 @@ export function handleFlashcardKeys(event: KeyboardEvent, key: string): boolean 
     return true;
   }
 
-  const grade = plainKey && (/^[0-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([0-5])/)?.[1]);
+  const grade = plainKey && (/^[1-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([1-5])/)?.[1]);
   const button = grade && document.querySelector<HTMLButtonElement>(`[data-sm2-grade="${grade}"]`);
-  if (button) {
+  if (button && !button.disabled) {
     event.preventDefault();
     button.click();
     return true;

@@ -232,7 +232,7 @@ describe("settings bridge snapshots", () => {
     assert.equal(state.discover.query, "kept");
   });
 
-  it("keeps cached book bodies visible while refreshing a sync snapshot", async () => {
+  it("keeps cached book bodies visible until lazy refresh after a sync snapshot", async () => {
     resetState({
       customTexts: [{ id: "de-custom-sync", title: "Old metadata" }]
     });
@@ -253,6 +253,8 @@ describe("settings bridge snapshots", () => {
       assert.equal(isBookTextCacheStale("de-custom-sync"), true);
       assert.equal(state.customTexts[0].title, "Synced metadata");
       await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.equal(bookTexts.get("de-custom-sync"), "stale body");
+      await loadCustomTextContent(state.customTexts[0]);
       assert.equal(bookTexts.get("de-custom-sync"), "fresh synchronized body");
     } finally {
       globalThis.fetch = previousFetch;

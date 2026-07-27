@@ -82,6 +82,89 @@ async function evaluateWithMocks(file, importValues, globals = {}, dynamicImport
   return module.namespace;
 }
 
+describe("lazy library statistics", () => {
+  it("sorts from retained statistics after full book bodies are evicted", async () => {
+    const bookList = { innerHTML: "", querySelectorAll: () => [] };
+    let fullHydrations = 0;
+    const state = {
+      currentView: "library",
+      filters: {
+        libraryQuery: "",
+        libraryLevel: "all",
+        librarySort: "length",
+        librarySortReverse: false,
+        libraryArchive: "active"
+      },
+      preferences: {
+        learningLanguage: "en",
+        wordDetectionAlgorithm: "modern",
+        showCardStats: false,
+        showCovers: false,
+        cardStatsMode: "percentages"
+      },
+      vocab: {},
+      customTexts: [],
+      userBooks: [],
+      archivedBookIds: []
+    };
+    const { renderLibrary } = await evaluateWithMocks("dist/web/js/views/library.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: {
+        bookList,
+        librarySearch: {},
+        levelFilter: {},
+        librarySort: {},
+        librarySortReverse: { dataset: {} },
+        libraryArchiveFilter: {},
+        libraryPanel: null,
+        libraryFiltersToggle: null,
+        librarySidebarResizer: null
+      } },
+      "../utils.js": {
+        escapeHtml: String,
+        escapeAttribute: String,
+        parseTagList: () => [],
+        calcRoundedStatsPcts: () => ({ knownPct: 0, learningPct: 0, newPct: 0 }),
+        calcStatsPcts: () => ({ knownPct: 0, learningPct: 0, newPct: 0 })
+      },
+      "../icons.js": { icon: () => "", renderCardStat: () => "", renderCardCount: () => "" },
+      "../tokenizer_v2.js": { normalizeSearchVariants: (value) => [String(value).toLowerCase()] },
+      "../books.js": {
+        findBookById: () => null,
+        getAllBooks: () => [
+          { id: "short", title: "Short", lang: "en" },
+          { id: "long", title: "Long", lang: "en" }
+        ],
+        bookTexts: { has: () => false, get: () => undefined, peek: () => undefined },
+        hydrateActiveLibraryTexts: async () => { fullHydrations += 1; },
+        getLibraryContentGeneration: () => 0,
+        isBookTextCacheStale: () => false,
+        loadBookText: async () => "",
+        loadCustomTextContent: async () => ""
+      },
+      "../stats-cache.js": {
+        getCachedBookTextStats: (id) => id === "long"
+          ? { unique: 8, known: 2, learning: 2, ignored: 1, new: 5 }
+          : { unique: 2, known: 1, learning: 0, ignored: 0, new: 1 },
+        getCachedTextStats: () => null,
+        prepareTextStats: () => "empty-vocab"
+      },
+      "../i18n.js": { t: (key) => key, getLocale: () => "en" },
+      "../panel-resizer.js": { bindSidebarResizer() {} },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
+    }, {
+      window: {},
+      requestAnimationFrame: () => 1,
+      Intl
+    });
+
+    renderLibrary();
+
+    assert.ok(bookList.innerHTML.indexOf("Long") < bookList.innerHTML.indexOf("Short"));
+    assert.equal(fullHydrations, 1);
+  });
+});
+
 async function globalActionsHarness(options = {}) {
   const listeners = new Map();
   const calls = [];
@@ -163,7 +246,7 @@ describe("focused frontend regressions", () => {
       "./reader/renderer.js": { renderReader() {}, getTextById() { return null; } },
       "./reader/selection.js": { updateReaderSelection() {} },
       "./reader/scroll.js": { rememberReaderScrollPosition() {} },
-      "./views/vocabulary.js": { renderVocabulary() {}, renderReview() {} },
+      "./views/vocabulary.js": { renderVocabulary() {}, renderReview() {}, resetReviewPresentation() {} },
       "./views/discover.js": { renderDiscover() {} },
       "./views/graphs.js": { renderGraphs() {} },
       "./views/translator.js": { renderTranslator() {} },
@@ -331,6 +414,7 @@ describe("focused frontend regressions", () => {
         }
       },
       "./selection.js": {
+        getReaderWordTokens: () => [],
         setReaderSelectionAnchorFromToken: (value) => calls.push(["anchor", value]),
         updateReaderSelection: (options) => calls.push(["updateReaderSelection", options])
       }
@@ -481,7 +565,7 @@ describe("focused frontend regressions", () => {
           state.selectedWordIndex = args[3];
         }
       },
-      "./selection.js": { setReaderSelectionAnchorFromToken() {}, updateReaderSelection() {} }
+      "./selection.js": { getReaderWordTokens: () => [], setReaderSelectionAnchorFromToken() {}, updateReaderSelection() {} }
     }, {
       HTMLElement: FakeElement,
       window: {
@@ -700,6 +784,10 @@ describe("focused frontend regressions", () => {
       "../dom.js": { els },
       "../i18n.js": { t: (key) => key },
       "../state.js": { state, saveState() {} },
+      "../state/normalize.js": {
+        normalizeSelectedWordPanelItems: (items) => items,
+        rekeyActiveVocabForLocale() {}
+      },
       "../toast.js": { showToast() {} },
       "../loading.js": { setElementBusy() {} },
       "../utils.js": { escapeHtml: (value) => String(value) },
@@ -735,7 +823,7 @@ describe("focused frontend regressions", () => {
       "../dom.js": { els: navigationEls },
       "../render.js": { setView() { viewChanges += 1; } },
       "../preferences.js": { updatePreferenceValue() {}, applyPreferences() {}, themeLabel: (value) => value },
-      "../views/vocabulary.js": { renderReview() {} },
+      "../views/vocabulary.js": { renderReview() {}, resetReviewPresentation() {} },
       "../toast.js": { showToast() {} },
       "../i18n.js": { t: (key) => key },
       "./keyboard/global-keys.js": { handleGlobalKeys() { return false; }, openReaderView() { viewChanges += 1; } },
@@ -1046,7 +1134,7 @@ describe("focused frontend regressions", () => {
     const state = {
       selectedWord: "wort",
       selectedWordIndex: 0,
-      vocab: { wort: { status: "new", translation: "", note: "", examples: [] } },
+      vocab: { wort: { status: "new", translation: "", note: "", examples: ["Context sentence."] } },
       preferences: { selectedWordPanelItems: [{ id: "context", visible: true }] }
     };
     const module = await evaluateWordPanel({
@@ -1070,6 +1158,70 @@ describe("focused frontend regressions", () => {
     assert.equal(detached.output.innerHTML, "");
     assert.equal(releaseCount, 1);
     assert.notStrictEqual(panels.at(-1), detached);
+  });
+
+  it("retires the in-text review explanation after three completed guesses", async () => {
+    let html = "";
+    let answerButton = null;
+    let gradeButtons = [];
+    let saves = 0;
+    const review = {};
+    const rebuildControls = () => {
+      answerButton = html.includes("data-in-text-answer") ? eventTarget() : null;
+      gradeButtons = [...html.matchAll(/data-in-text-grade="(\d)"/g)].map((match) => eventTarget({ dataset: { inTextGrade: match[1] } }));
+    };
+    Object.defineProperty(review, "outerHTML", {
+      set(value) { html = value; rebuildControls(); }
+    });
+    const wordPanel = {
+      dataset: {},
+      classList: classList(),
+      parentElement: { classList: classList() },
+      set innerHTML(value) { html = value; rebuildControls(); },
+      get innerHTML() { return html; },
+      querySelector(selector) {
+        if (selector === ".in-text-review") return html.includes("in-text-review") ? review : null;
+        if (selector === "[data-in-text-answer]") return answerButton;
+        return null;
+      },
+      querySelectorAll(selector) { return selector === "[data-in-text-grade]" ? gradeButtons : []; }
+    };
+    const state = {
+      selectedWord: "wort",
+      selectedWordIndex: 0,
+      readerSelectionRange: null,
+      vocab: {
+        wort: { status: "learning", translation: "word", examples: [] },
+        neu: { status: "learning", translation: "new", examples: [] }
+      },
+      preferences: {
+        inTextReview: true,
+        inTextReviewCompletedGuesses: 2,
+        selectedWordPanelItems: [{ id: "translation", visible: true }]
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getReaderSelectionText() { return ""; },
+      getSentenceForWord() { return ""; },
+      isInTextReviewDue() { return true; },
+      async applyReviewGrade(word) { return state.vocab[word]; },
+      saveState() { saves += 1; }
+    });
+
+    module.renderWordPanel({ id: "text-1", text: "" });
+    assert.match(html, /sm2\.inTextPrompt/);
+    answerButton.dispatch("click", { stopPropagation() {} });
+    await gradeButtons[0].dispatch("click", { stopPropagation() {} });
+    assert.equal(state.preferences.inTextReviewCompletedGuesses, 3);
+    assert.equal(saves, 1);
+
+    state.selectedWord = "neu";
+    module.renderWordPanel({ id: "text-1", text: "" });
+    assert.doesNotMatch(html, /sm2\.inTextPrompt/);
+    assert.match(html, /data-in-text-answer/);
+    assert.match(html, /sm2\.showAnswer/);
   });
 
   it("keeps popup language metadata localized through template placeholders", () => {
@@ -1101,10 +1253,17 @@ async function evaluateWordPanel({
   getReaderSelectionText,
   getSentenceForWord,
   translateText = async () => ({ translated: "" }),
-  beginElementBusy = () => () => {}
+  beginElementBusy = () => () => {},
+  applyReviewGrade = () => null,
+  isInTextReviewDue = () => false,
+  saveState = () => {}
 }) {
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
-    "../state.js": { state, saveState() {} },
+    "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
+    "./session.js": {
+      getReaderSession: () => ({ id: null, text: "", tokens: [], stats: { unique: 0 }, classifications: {} }),
+      analyzeReaderSession: (session) => { session.stats = { unique: 0 }; return session; }
+    },
     "../dom.js": { els: { wordPanel, readerText: null, uniqueSummary: null } },
     "../utils.js": {
       escapeHtml: (value) => String(value ?? ""),
@@ -1113,7 +1272,10 @@ async function evaluateWordPanel({
     },
     "../icons.js": { icon: () => "", statusIcon: () => "" },
     "../tokenizer_v2.js": { getSentenceForWord, getTextStats() { return { unique: 0 }; } },
-    "../constants.js": { STATUS_ORDER: ["new", "learning", "known", "ignored"] },
+    "../constants.js": {
+      IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3,
+      STATUS_ORDER: ["new", "learning", "known", "ignored"]
+    },
     "../i18n.js": { t: (key) => key },
     "../views/vocabulary.js": {
       getOrCreateEntry(word) {
@@ -1132,15 +1294,16 @@ async function evaluateWordPanel({
     "../vocabulary/article.js": {
       formatHeadword(word, article) { return article ? (article.endsWith("'") || article.endsWith("’") ? `${article}${word}` : `${article} ${word}`) : word; }
     },
-    "../vocabulary/review-card.js": { applyReviewGrade() {} },
+    "../vocabulary/review-card.js": { applyReviewGrade },
     "../reader-colors.js": { getLearningColor() { return ""; } },
-    "../sm2.js": { isInTextReviewDue() { return false; } },
+    "../sm2.js": { isInTextReviewDue },
     "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText },
     "../loading.js": { beginElementBusy },
     "../translator-preferences.js": {
       effectiveLearningLanguage() { return "de"; },
       resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en" }; }
     },
-    "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items }
+    "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+    "../status-sounds.js": { playReviewGradeSound() {} }
   });
 }

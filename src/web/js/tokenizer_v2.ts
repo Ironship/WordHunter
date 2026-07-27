@@ -24,7 +24,7 @@ export interface TextStats {
 }
 
 type TokenizerAlgorithm = "classic" | "modern";
-type TokenClassification = { key: string; status: string };
+export type TokenClassification = { key: string; status: string };
 
 function resolveTokenizerAlgorithm(value: string): TokenizerAlgorithm {
   return value === "classic" ? "classic" : "modern";
@@ -103,23 +103,50 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
 
 export function normalizeWord(value: unknown): string {
   return String(value || "")
+    .normalize("NFC")
     .toLowerCase()
-    .replaceAll("’", "'")
+    .replace(/[‘’]/g, "'")
     .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
-    .trim();
+    .trim()
+    .normalize("NFC");
 }
 
 export function normalizeVocabularyWord(value: unknown, language = "en"): string {
-  const normalized = normalizeWord(value);
-  return normalizeWord(vocabularyWordKey(normalized, language));
+  const baseLanguage = String(language || "").toLowerCase().split(/[-_]/)[0];
+  const compatible = String(value || "").normalize("NFKC");
+  const localeAdjusted = baseLanguage === "tr" || baseLanguage === "az"
+    ? compatible.replaceAll("I", "ı").replaceAll("İ", "i")
+    : compatible;
+  const normalized = normalizeWord(localeAdjusted);
+  return normalizeWord(vocabularyWordKey(normalized, language))
+    .replaceAll("ß", "ss")
+    .replaceAll("ς", "σ");
 }
 
-function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string): string {
+export function resolveVocabularyKey(value: unknown, vocab: Vocabulary, language = "en"): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  if (!canonical || Object.hasOwn(vocab || {}, canonical)) return canonical;
+  return Object.keys(vocab || {}).find((key) => normalizeVocabularyWord(key, language) === canonical) || canonical;
+}
+
+function vocabularyKeyIndex(vocab: Vocabulary, language: string): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const key of Object.keys(vocab || {})) {
+    const canonical = normalizeVocabularyWord(key, language);
+    if (canonical && (!index.has(canonical) || key === canonical)) index.set(canonical, key);
+  }
+  return index;
+}
+
+function resolveTokenVocabularyKey(value: unknown, vocab: Vocabulary, language: string, keyIndex: Map<string, string>): string {
+  const canonical = normalizeVocabularyWord(value, language);
+  const indexed = keyIndex.get(canonical);
+  if (indexed) return indexed;
   const raw = normalizeWord(value);
-  const canonical = normalizeVocabularyWord(raw, language);
-  if (canonical && vocab?.[canonical]) return canonical;
   if (raw && vocab?.[raw]) return raw;
-  const alternateApostrophe = raw.includes("’") ? raw.replaceAll("’", "'") : raw.replaceAll("'", "’");
+  const canonicalRaw = normalizeVocabularyWord(raw, language);
+  if (canonicalRaw && canonicalRaw !== canonical && vocab?.[canonicalRaw]) return canonicalRaw;
+  const alternateApostrophe = raw.includes("\u2019") ? raw.replaceAll("\u2019", "'") : raw.replaceAll("'", "\u2019");
   if (alternateApostrophe !== raw && vocab?.[alternateApostrophe]) return alternateApostrophe;
   return canonical || raw;
 }
@@ -275,8 +302,18 @@ function getClassicSentenceForWord(text: string, word: string, lang: string, pre
   return "";
 }
 
-export function getSentenceForWord(text: string, word: string, lang = "en", algorithm = "modern", wordIndex: number | null = null): string {
-  const indexedMatch = getWordCharacterIndex(text, word, lang, algorithm, wordIndex);
+export function getSentenceForWord(
+  text: string,
+  word: string,
+  lang = "en",
+  algorithm = "modern",
+  wordIndex: number | null = null,
+  characterIndex: number | null = null,
+  indexedWord = ""
+): string {
+  const indexedMatch = Number.isInteger(characterIndex) && characterIndex! >= 0
+    ? { characterIndex: characterIndex!, word: indexedWord || word }
+    : getWordCharacterIndex(text, word, lang, algorithm, wordIndex);
   const preferredIndex = indexedMatch?.characterIndex ?? -1;
   const contextWord = indexedMatch?.word || word;
   if (resolveTokenizerAlgorithm(algorithm) === "classic") {
@@ -389,9 +426,15 @@ export function getSentenceForWord(text: string, word: string, lang = "en", algo
 
 export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): Map<number, TokenClassification> {
   const classifications = new Map<number, TokenClassification>();
+  const keyIndex = vocabularyKeyIndex(vocab, lang);
+  const resolvedWords = new Map<string, string>();
   tokens.forEach((token, tokenIndex) => {
     if (token.type !== "word") return;
-    const key = resolveTokenVocabularyKey(token.value, vocab, lang);
+    let key = resolvedWords.get(token.value);
+    if (key === undefined) {
+      key = resolveTokenVocabularyKey(token.value, vocab, lang, keyIndex);
+      resolvedWords.set(token.value, key);
+    }
     if (!key) return;
     classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   });
@@ -454,11 +497,18 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
 }
 
 export function getTokenStats(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): TextStats {
+  return getTokenStatsFromClassifications(tokens, classifyTokenOccurrences(tokens, vocab, lang), lang);
+}
+
+export function getTokenStatsFromClassifications(
+  tokens: readonly TextToken[],
+  classifications: ReadonlyMap<number, TokenClassification>,
+  lang = "en"
+): TextStats {
   const words = tokens
     .filter((part) => part.type === "word")
     .map((part) => normalizeVocabularyWord(part.value, lang))
     .filter(Boolean);
-  const classifications = classifyTokenOccurrences(tokens, vocab, lang);
   const stats: TextStats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
   classifications.forEach(({ status }) => {
     const bucket: keyof Omit<TextStats, "unique"> = status === "known" || status === "learning" || status === "ignored"

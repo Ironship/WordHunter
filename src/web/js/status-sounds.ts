@@ -26,6 +26,14 @@ const STATUS_TONES: Readonly<Partial<Record<string, readonly StatusTone[]>>> = O
   ]
 });
 
+const REVIEW_GRADE_TONES: Readonly<Partial<Record<number, readonly StatusTone[]>>> = Object.freeze({
+  1: [{ frequency: 329.63, offset: 0, duration: 0.08, type: "sine" }],
+  2: [{ frequency: 392, offset: 0, duration: 0.08, type: "sine" }],
+  3: [{ frequency: 440, offset: 0, duration: 0.08, type: "sine" }],
+  4: [{ frequency: 523.25, offset: 0, duration: 0.08, type: "sine" }],
+  5: [{ frequency: 659.25, offset: 0, duration: 0.09, type: "sine" }]
+});
+
 let audioContext: AudioContext | null = null;
 
 function statusSoundContext() {
@@ -38,8 +46,7 @@ function statusSoundContext() {
   return audioContext;
 }
 
-export function playStatusSound(status: string, options: { volume?: number } = {}) {
-  const tones = STATUS_TONES[status];
+function playTones(tones: readonly StatusTone[] | undefined, options: { volume?: number } = {}): boolean {
   if (!tones || state.preferences?.statusSoundsEnabled === false) return false;
   const volume = Math.max(0, Math.min(1, Number(options.volume ?? state.preferences?.statusSoundVolume ?? 0.55)));
   if (!volume) return false;
@@ -47,30 +54,51 @@ export function playStatusSound(status: string, options: { volume?: number } = {
   try {
     const context = statusSoundContext();
     if (!context) return false;
-    if (context.state === "suspended") void context.resume();
-    const start = context.currentTime + 0.008;
-    const master = context.createGain();
-    master.gain.setValueAtTime(volume * 0.18, start);
-    master.connect(context.destination);
+    const schedule = () => {
+      const start = context.currentTime + 0.008;
+      const master = context.createGain();
+      master.gain.setValueAtTime(volume * 0.18, start);
+      master.connect(context.destination);
+      let activeTones = tones.length;
 
-    for (const tone of tones) {
-      const toneStart = start + tone.offset;
-      const toneEnd = toneStart + tone.duration;
-      const oscillator = context.createOscillator();
-      const envelope = context.createGain();
-      oscillator.type = tone.type;
-      oscillator.frequency.setValueAtTime(tone.frequency, toneStart);
-      envelope.gain.setValueAtTime(0.0001, toneStart);
-      envelope.gain.exponentialRampToValueAtTime(1, toneStart + 0.018);
-      envelope.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
-      oscillator.connect(envelope);
-      envelope.connect(master);
-      oscillator.start(toneStart);
-      oscillator.stop(toneEnd + 0.01);
+      for (const tone of tones) {
+        const toneStart = start + tone.offset;
+        const toneEnd = toneStart + tone.duration;
+        const oscillator = context.createOscillator();
+        const envelope = context.createGain();
+        oscillator.type = tone.type;
+        oscillator.frequency.setValueAtTime(tone.frequency, toneStart);
+        envelope.gain.setValueAtTime(0.0001, toneStart);
+        envelope.gain.exponentialRampToValueAtTime(1, toneStart + 0.018);
+        envelope.gain.exponentialRampToValueAtTime(0.0001, toneEnd);
+        oscillator.connect(envelope);
+        envelope.connect(master);
+        oscillator.onended = () => {
+          oscillator.disconnect?.();
+          envelope.disconnect?.();
+          activeTones -= 1;
+          if (activeTones === 0) master.disconnect?.();
+        };
+        oscillator.start(toneStart);
+        oscillator.stop(toneEnd + 0.01);
+      }
+    };
+    if (context.state === "suspended") {
+      void context.resume().then(schedule).catch((error) => console.warn("Status sound resume failed", error));
+    } else {
+      schedule();
     }
     return true;
   } catch (error) {
     console.warn("Status sound playback failed", error);
     return false;
   }
+}
+
+export function playStatusSound(status: string, options: { volume?: number } = {}): boolean {
+  return playTones(STATUS_TONES[status], options);
+}
+
+export function playReviewGradeSound(quality: number, options: { volume?: number } = {}): boolean {
+  return playTones(REVIEW_GRADE_TONES[quality], options);
 }

@@ -1,4 +1,4 @@
-import { registerFrontendStateFlusher, state, saveState } from "../state.js";
+import { registerFrontendStateFlusher, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { renderVocabulary } from "../views/vocabulary.js";
 import { VOCAB_STATUS_FILTERS } from "./vocab-status.js";
@@ -14,7 +14,7 @@ export function bindVocabularyFilterEvents() {
     vocabSearchDebounceTimer = null;
     if (els.vocabSearch && state.filters.vocabQuery !== els.vocabSearch.value) {
       state.filters.vocabQuery = els.vocabSearch.value;
-      saveState();
+      void saveUiState();
       renderVocabulary();
     }
   };
@@ -31,7 +31,7 @@ export function bindVocabularyFilterEvents() {
         .map((cb) => cb.value)
         .filter(isVocabStatus);
       state.filters.vocabStatuses = selected;
-      saveState();
+      void saveUiState();
       renderVocabulary();
     }));
   } else if (els.vocabStatusFilter instanceof HTMLSelectElement) {
@@ -42,7 +42,7 @@ export function bindVocabularyFilterEvents() {
         : legacyFilter.value === "not_ignored"
           ? ["new", "learning", "known"]
           : [legacyFilter.value].filter(isVocabStatus);
-      saveState();
+      void saveUiState();
       renderVocabulary();
     });
   }
@@ -50,7 +50,7 @@ export function bindVocabularyFilterEvents() {
   if (els.vocabTextFilter) {
     els.vocabTextFilter.addEventListener("change", () => {
       state.filters.vocabTextId = els.vocabTextFilter.value || "all";
-      saveState();
+      void saveUiState();
       renderVocabulary();
     });
   }

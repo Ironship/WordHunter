@@ -5,14 +5,14 @@ import { state } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, statusLabel } from "../utils.js";
 import { icon } from "../icons.js";
-import { normalizeSearchVariants } from "../tokenizer_v2.js";
+import { normalizeSearchVariants, normalizeVocabularyWord } from "../tokenizer_v2.js";
 import { t } from "../i18n.js";
 import { getTextVocabularyIndex, getVocabularyTextOptions, entryAppearsInText } from "../text-vocab.js";
 import { isVocabStatus, VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { formatHeadword } from "./article.js";
 
-type VocabListEntry = WhVocabEntry & { word: string };
+type VocabListEntry = WhVocabEntry & { key: string; word: string };
 
 export let vocabRenderCount = 50;
 export let filteredVocabEntries: VocabListEntry[] = [];
@@ -65,18 +65,21 @@ export function renderVocabulary(resetLimit = true): void {
   if (resetLimit) vocabRenderCount = 50;
 
   const queryVariants = normalizeSearchVariants(state.filters.vocabQuery || "");
+  const vocabularyLanguage = effectiveLearningLanguage(state.preferences);
+  const canonicalQuery = normalizeVocabularyWord(state.filters.vocabQuery || "", vocabularyLanguage);
+  if (canonicalQuery && !queryVariants.includes(canonicalQuery)) queryVariants.push(canonicalQuery);
   const statusFilters = new Set(getSelectedVocabStatuses());
   filteredVocabEntries = Object.entries(state.vocab)
-    .map(([word, entry]): VocabListEntry => ({ word, ...entry }))
+    .map(([key, entry]): VocabListEntry => ({ ...entry, key, word: entry.word || key }))
     .filter((entry) => {
       const matchesStatus = statusFilters.has(entry.status);
-      const haystackText = `${formatHeadword(entry.word, entry.article)} ${entry.word} ${entry.translation || ""} ${entry.note || ""}`;
+      const haystackText = `${formatHeadword(entry.word, entry.article)} ${entry.word} ${normalizeVocabularyWord(entry.word, vocabularyLanguage)} ${entry.translation || ""} ${entry.note || ""}`;
       const haystacks = normalizeSearchVariants(haystackText);
       const matchesQuery = !state.filters.vocabQuery || queryVariants.some(q => haystacks.some(h => h.includes(q)));
       const matchesText = !textIndex || entryAppearsInText(
         entry.word,
         textIndex,
-        effectiveLearningLanguage(state.preferences)
+        vocabularyLanguage
       );
       return matchesStatus && matchesQuery && matchesText;
     })
@@ -90,12 +93,12 @@ export function renderVocabulary(resetLimit = true): void {
   const entriesToRender = filteredVocabEntries.slice(0, vocabRenderCount);
 
   els.vocabTableBody.innerHTML = entriesToRender.map((entry) => {
-    const addedInSession = sessionAddedWords.has(entry.word);
+    const addedInSession = sessionAddedWords.has(entry.key);
     const translationField = pocketMode ? `
         <textarea
           class="vocab-translation-input${entry.translation ? "" : " empty"}"
           rows="2"
-          data-word="${escapeAttribute(entry.word)}"
+          data-word="${escapeAttribute(entry.key)}"
           data-word-field="translation"
           placeholder="${escapeAttribute(t("vocab.addTranslationPlaceholder"))}"
           aria-label="${escapeAttribute(t("vocab.addTranslationAria", { word: entry.word }))}">${escapeHtml(entry.translation || "")}</textarea>
@@ -104,7 +107,7 @@ export function renderVocabulary(resetLimit = true): void {
           class="vocab-translation-input${entry.translation ? "" : " empty"}"
           type="text"
           value="${escapeAttribute(entry.translation || "")}"
-          data-word="${escapeAttribute(entry.word)}"
+          data-word="${escapeAttribute(entry.key)}"
           data-word-field="translation"
           placeholder="${escapeAttribute(t("vocab.addTranslationPlaceholder"))}"
           aria-label="${escapeAttribute(t("vocab.addTranslationAria", { word: entry.word }))}">
@@ -119,13 +122,13 @@ export function renderVocabulary(resetLimit = true): void {
       <td>${escapeHtml((entry.examples && entry.examples[0]) || entry.note || "")}</td>
       <td>
         <div class="row-actions">
-          <button class="icon-button" type="button" data-edit-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>
+          <button class="icon-button" type="button" data-edit-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>
           <button class="icon-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(entry.word, entry.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}">${icon("speaker", 16)}</button>
           <button class="icon-button" type="button" data-youglish-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("reader.youglishWordTitle"))}">${icon("video", 16)}</button>
-          <button class="icon-button" style="color: var(--blue); border-color: color-mix(in srgb, var(--blue) 42%, var(--line)); background: var(--blue-soft);" type="button" data-word="${escapeHtml(entry.word)}" data-set-status="learning" title="${escapeAttribute(t("vocab.btnLearning"))}">${icon("pencil", 14)}</button>
-          <button class="icon-button" style="color: var(--green); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); background: var(--green-soft);" type="button" data-word="${escapeHtml(entry.word)}" data-set-status="known" title="${escapeAttribute(t("vocab.btnKnown"))}">${icon("check", 14)}</button>
-          <button class="icon-button" style="color: var(--muted); border-color: var(--line);" type="button" data-ignore-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("vocab.btnIgnore"))}">${icon("eyeOff", 14)}</button>
-          <button class="icon-button danger-button" type="button" data-delete-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("vocab.btnDelete"))}">${icon("trash", 14)}</button>
+          <button class="icon-button" style="color: var(--blue); border-color: color-mix(in srgb, var(--blue) 42%, var(--line)); background: var(--blue-soft);" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="learning" title="${escapeAttribute(t("vocab.btnLearning"))}">${icon("pencil", 14)}</button>
+          <button class="icon-button" style="color: var(--green); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); background: var(--green-soft);" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="known" title="${escapeAttribute(t("vocab.btnKnown"))}">${icon("check", 14)}</button>
+          <button class="icon-button" style="color: var(--muted); border-color: var(--line);" type="button" data-ignore-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("vocab.btnIgnore"))}">${icon("eyeOff", 14)}</button>
+          <button class="icon-button danger-button" type="button" data-delete-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("vocab.btnDelete"))}">${icon("trash", 14)}</button>
         </div>
       </td>
     </tr>

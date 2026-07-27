@@ -32,6 +32,7 @@ fn handle_returns_words_stats() {
         "book": book_payload(),
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
+    assert_eq!(result["indexVersion"], 4);
     assert_eq!(result["unique"], 3);
     assert_eq!(result["known"], 2);
     assert_eq!(result["learning"], 1);
@@ -43,7 +44,7 @@ fn handle_returns_words_stats() {
         .map(|v| v.as_str().unwrap().to_string())
         .collect();
     assert_eq!(words, vec!["hello", "world", "rust"]);
-    assert_eq!(result["tokenLine"].as_str().unwrap(), " hello world rust ");
+    assert_eq!(result["tokenLine"].as_str().unwrap(), "  ");
     assert!(result.get("signature").is_none());
 }
 
@@ -184,11 +185,59 @@ fn handle_handles_empty_text() {
 fn handle_token_line_supports_phrase_lookup() {
     let payload = json!({
         "text": "The quick brown fox jumps.",
-        "vocab": {},
+        "vocab": { "quick brown fox": { "status": "learning" } },
         "lang": "en",
         "algorithm": "modern",
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
     let token_line = result["tokenLine"].as_str().unwrap();
     assert!(token_line.contains(" quick brown fox "));
+}
+
+#[test]
+fn handle_phrase_index_preserves_order_and_repeated_words() {
+    let result = vocab_index::handle(json!({
+        "text": "the cat the dog",
+        "vocab": {
+            "cat dog": { "status": "learning" },
+            "the dog": { "status": "learning" },
+            "cat the": { "status": "learning" }
+        },
+        "lang": "en",
+        "algorithm": "modern"
+    }))
+    .expect("phrase index");
+    let token_line = result["tokenLine"].as_str().unwrap();
+    assert!(!token_line.contains(" cat dog "));
+    assert!(token_line.contains(" the dog "));
+    assert!(token_line.contains(" cat the "));
+}
+
+#[test]
+fn handle_phrase_index_respects_reader_boundaries() {
+    for text in [
+        "one. two",
+        "one, two",
+        "one; two",
+        "one\ntwo",
+        "one [IMG:page.png] two",
+    ] {
+        let result = vocab_index::handle(json!({
+            "text": text,
+            "vocab": { "one two": { "status": "learning" } },
+            "lang": "en",
+            "algorithm": "modern"
+        }))
+        .expect("phrase index");
+        assert_eq!(result["tokenLine"], "  ", "unexpected phrase in {text:?}");
+    }
+
+    let whitespace = vocab_index::handle(json!({
+        "text": "one \t two",
+        "vocab": { "one two": { "status": "learning" } },
+        "lang": "en",
+        "algorithm": "modern"
+    }))
+    .expect("phrase index");
+    assert_eq!(whitespace["tokenLine"], " one two ");
 }

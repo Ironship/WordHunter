@@ -13,7 +13,11 @@ pub struct FilterOptions<'a> {
 }
 
 pub fn filter_entries(opts: FilterOptions<'_>) -> Vec<Value> {
-    let query_variants = tokenizer::normalize_search_variants(opts.query);
+    let mut query_variants = tokenizer::normalize_search_variants(opts.query);
+    let canonical_query = tokenizer::vocabulary_word_key(opts.query, opts.lang);
+    if !canonical_query.is_empty() && !query_variants.contains(&canonical_query) {
+        query_variants.push(canonical_query);
+    }
     let status_set: HashSet<&str> = opts.statuses.iter().map(String::as_str).collect();
 
     let text_words: Option<HashSet<String>> = opts
@@ -33,12 +37,13 @@ pub fn filter_entries(opts: FilterOptions<'_>) -> Vec<Value> {
     let mut entries: Vec<Value> = Vec::new();
     if let Some(obj) = opts.vocab.as_object() {
         for (word, entry) in obj {
+            let display_word = entry.get("word").and_then(Value::as_str).unwrap_or(word);
             let status = entry.get("status").and_then(Value::as_str).unwrap_or("new");
             if !status_set.contains(status) {
                 continue;
             }
 
-            if !entry_matches_query(word, entry, &query_variants) {
+            if !entry_matches_query(display_word, entry, &query_variants, opts.lang) {
                 continue;
             }
 
@@ -47,7 +52,7 @@ pub fn filter_entries(opts: FilterOptions<'_>) -> Vec<Value> {
             }
 
             let mut merged = entry.as_object().cloned().unwrap_or_default();
-            merged.insert("word".to_string(), Value::String(word.clone()));
+            merged.insert("word".to_string(), Value::String(display_word.to_string()));
             entries.push(Value::Object(merged));
         }
     }
@@ -69,7 +74,7 @@ pub fn filter_entries(opts: FilterOptions<'_>) -> Vec<Value> {
     entries
 }
 
-fn entry_matches_query(word: &str, entry: &Value, query_variants: &[String]) -> bool {
+fn entry_matches_query(word: &str, entry: &Value, query_variants: &[String], lang: &str) -> bool {
     if query_variants.is_empty() {
         return true;
     }
@@ -86,7 +91,8 @@ fn entry_matches_query(word: &str, entry: &Value, query_variants: &[String]) -> 
     } else {
         format!("{article} {word}")
     };
-    let haystack = format!("{headword} {word} {translation} {note}");
+    let canonical = tokenizer::vocabulary_word_key(word, lang);
+    let haystack = format!("{headword} {word} {canonical} {translation} {note}");
     let haystack_variants = tokenizer::normalize_search_variants(&haystack);
     query_variants
         .iter()

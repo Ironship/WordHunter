@@ -192,6 +192,7 @@ describe("keyboard shortcut dispatch", () => {
     state.selectedWordIndex = 18;
     document.activeElement = null;
     window.lastActiveToken = { dataset: { word: "wort", wordIndex: "18" } };
+    els.readerText = { dataset: { renderId: "1" }, querySelectorAll: () => [] };
 
     assert.equal(findCurrentReaderToken([first, selected]), selected);
 

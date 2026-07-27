@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 
 describe("Edge TTS desktop contract", () => {
   it("sends the rate preset to synthesis without changing audio playbackRate", async () => {
+    const requestedUrls = [];
     const audioUrls = [];
+    let playCalls = 0;
     const playbackRateWrites = [];
 
     globalThis.Audio = class {
@@ -16,10 +18,16 @@ describe("Edge TTS desktop contract", () => {
       }
 
       pause() {}
-      play() { return Promise.resolve(); }
+      play() { playCalls += 1; return Promise.resolve(); }
     };
     globalThis.localStorage = { getItem: () => null, setItem: () => {} };
     globalThis.document = { querySelectorAll: () => [] };
+    globalThis.fetch = async (url) => {
+      requestedUrls.push(url);
+      return { ok: true, blob: async () => new Blob(["audio"], { type: "audio/mpeg" }) };
+    };
+    globalThis.URL.createObjectURL = (_blob) => `blob:edge-${audioUrls.length + 1}`;
+    globalThis.URL.revokeObjectURL = () => {};
     globalThis.window = {
       speechSynthesis: { cancel() {} }
     };
@@ -31,14 +39,19 @@ describe("Edge TTS desktop contract", () => {
 
     state.preferences.ttsRate = "slow";
     speakWord("slow word");
+    await new Promise((resolve) => setImmediate(resolve));
+    stopSpeaking();
     state.preferences.ttsRate = "fast";
     speakWord("fast word");
+    await new Promise((resolve) => setImmediate(resolve));
     stopSpeaking();
 
-    assert.deepEqual(audioUrls, [
+    assert.deepEqual(requestedUrls, [
       "/__tts?text=slow%20word&lang=en&rate=slow",
       "/__tts?text=fast%20word&lang=en&rate=fast"
     ]);
+    assert.deepEqual(audioUrls, ["blob:edge-1", "blob:edge-2"]);
+    assert.equal(playCalls, 2);
     assert.deepEqual(playbackRateWrites, []);
   });
 
@@ -119,5 +132,69 @@ describe("Edge TTS desktop contract", () => {
     stopSpeaking();
     assert.equal(tokens[1].classList.contains("tts-current-word"), false);
     assert.deepEqual(revokedUrls, ["blob:edge-tts"]);
+  });
+
+  it("fetches continuous Edge audio even when word highlighting is disabled", async () => {
+    const requests = [];
+    const audioInstances = [];
+    globalThis.fetch = async (url) => {
+      requests.push(String(url));
+      return {
+        ok: true,
+        headers: { get: () => null },
+        blob: async () => new Blob(["audio"])
+      };
+    };
+    globalThis.URL.createObjectURL = () => "blob:no-highlights";
+    globalThis.URL.revokeObjectURL = () => {};
+    globalThis.Audio = class {
+      constructor() { audioInstances.push(this); }
+      pause() {}
+      play() { return Promise.resolve(); }
+    };
+    globalThis.document = { querySelectorAll: () => [] };
+    globalThis.window = { getSelection: () => null, speechSynthesis: { cancel() {} } };
+    const { state } = await import("../../dist/web/js/state.js");
+    const { speakText, stopSpeaking } = await import("../../dist/web/js/tts.js");
+    state.preferences.learningLanguage = "en";
+    state.preferences.useEdgeTts = true;
+    state.preferences.ttsWordHighlight = false;
+    state.preferences.ttsRate = "normal";
+
+    speakText("bounded sentence");
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.deepEqual(requests, ["/__tts?text=bounded%20sentence&lang=en&rate=normal"]);
+    assert.equal(audioInstances.length, 1);
+    stopSpeaking();
+  });
+
+  it("ignores errors from a superseded local speech session", async () => {
+    const utterances = [];
+    let cancelCalls = 0;
+    globalThis.SpeechSynthesisUtterance = class {
+      constructor(text) { this.text = text; utterances.push(this); }
+    };
+    globalThis.document = { querySelectorAll: () => [] };
+    globalThis.window = {
+      getSelection: () => null,
+      speechSynthesis: {
+        cancel() { cancelCalls += 1; },
+        getVoices: () => [],
+        speak() {}
+      }
+    };
+    const { state } = await import("../../dist/web/js/state.js");
+    const { speakText, stopSpeaking } = await import("../../dist/web/js/tts.js");
+    state.preferences.useEdgeTts = false;
+
+    speakText("first sentence.");
+    const stale = utterances.at(-1);
+    speakText("second sentence.");
+    const afterReplacement = cancelCalls;
+    stale.onerror(new Error("canceled"));
+
+    assert.equal(cancelCalls, afterReplacement);
+    stopSpeaking();
   });
 });

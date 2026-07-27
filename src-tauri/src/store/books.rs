@@ -21,6 +21,26 @@ impl Store {
                 if !marker.is_file() {
                     continue;
                 }
+                // A marker created after startup belongs to a concurrent import.
+                if marker
+                    .metadata()
+                    .ok()
+                    .and_then(|meta| meta.modified().ok())
+                    .is_some_and(|modified| {
+                        modified
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .is_ok_and(|since_epoch| {
+                                since_epoch.as_secs()
+                                    > self.startup_instant.elapsed().as_secs()
+                                        + std::time::UNIX_EPOCH
+                                            .elapsed()
+                                            .map(|d| d.as_secs())
+                                            .unwrap_or(0)
+                            })
+                    })
+                {
+                    continue;
+                }
                 let Some(book_id) = entry.file_name().to_str().map(str::to_owned) else {
                     return Err("pending PDF import id is not UTF-8".to_string());
                 };
@@ -414,6 +434,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
 
         store
@@ -452,6 +473,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
 
         store
@@ -478,6 +500,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
         store
             .upsert_text(&json!({ "id": "direct-read", "text": "authoritative text" }))
@@ -507,6 +530,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
         store
             .save_book_import_image_bytes("de-pdf-ocr-failed", "page.png", b"partial")
@@ -560,6 +584,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
 
         store.discard_abandoned_book_imports().unwrap();
@@ -587,6 +612,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
 
         store.discard_abandoned_book_imports().unwrap();
@@ -605,6 +631,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
         };
         store
             .upsert_text(&json!({ "id": "de-existing", "text": "keep" }))

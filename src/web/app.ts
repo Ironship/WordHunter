@@ -3,7 +3,7 @@ import { cacheElements, els } from "./js/dom.js";
 import { showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, setSyncStatus, syncSettingsControls } from "./js/preferences.js";
-import { hydrateActiveLibraryTexts, hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
+import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
@@ -11,6 +11,7 @@ import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
 import { refreshYouGlishTheme } from "./js/youglish.js";
+import { fetchWithTimeout } from "./js/request.js";
 
 detectPlatform();
 
@@ -20,6 +21,25 @@ function reportClientError(text: string, error?: unknown): void {
   try {
     fetch("/__log_error", { method: "POST", body: text });
   } catch {}
+}
+
+function showStartupFailure(error: unknown): void {
+  const panel = document.querySelector<HTMLElement>(".main-panel");
+  if (!panel) return;
+  panel.replaceChildren();
+  const message = document.createElement("section");
+  message.className = "empty-row";
+  const title = document.createElement("h1");
+  title.textContent = "Word Hunter could not finish startup";
+  const detail = document.createElement("p");
+  detail.textContent = error instanceof Error ? error.message : String(error);
+  const retry = document.createElement("button");
+  retry.className = "primary-button";
+  retry.type = "button";
+  retry.textContent = "Retry";
+  retry.addEventListener("click", () => window.location.reload());
+  message.append(title, detail, retry);
+  panel.append(message);
 }
 
 window.onerror = function(msg, url, line, col, error) {
@@ -34,7 +54,10 @@ window.addEventListener("unhandledrejection", function(event) {
   reportClientError(t("app.unhandledPromise", { reason: event.reason }), event.reason);
 });
 
+let lifecycleFlushStarted = false;
 function flushPendingStateBeforeExit() {
+  if (lifecycleFlushStarted) return;
+  lifecycleFlushStarted = true;
   flushFrontendStateBuffers();
   flushUiStateSync();
   if (isAndroidPlatform()) {
@@ -48,7 +71,9 @@ window.addEventListener("beforeunload", flushPendingStateBeforeExit);
 window.addEventListener("pagehide", flushPendingStateBeforeExit);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") flushPendingStateBeforeExit();
+  else lifecycleFlushStarted = false;
 });
+window.addEventListener("pageshow", () => { lifecycleFlushStarted = false; });
 
 document.addEventListener("contextmenu", event => event.preventDefault());
 document.addEventListener("click", (event) => {
@@ -74,16 +99,14 @@ window.addEventListener("vocab-index:loaded", () => {
   if (state.currentView === "vocabulary") { renderVocabulary(); renderReview(); }
 });
 
-let libraryStatsRenderPending = false;
+let libraryStatsRenderTimer: ReturnType<typeof setTimeout> | null = null;
 window.addEventListener("text-stats:loaded", () => {
-  if (state.currentView !== "library" || libraryStatsRenderPending) return;
-  libraryStatsRenderPending = true;
-  const renderStats = () => {
-    libraryStatsRenderPending = false;
+  if (state.currentView !== "library") return;
+  clearTimeout(libraryStatsRenderTimer);
+  libraryStatsRenderTimer = setTimeout(() => {
+    libraryStatsRenderTimer = null;
     if (state.currentView === "library") renderLibrary();
-  };
-  if (window.requestAnimationFrame) window.requestAnimationFrame(renderStats);
-  else setTimeout(renderStats, 0);
+  }, 50);
 });
 
 let graphResizeTimer: number | null = null;
@@ -124,30 +147,14 @@ window.addEventListener("wordhunter:theme-changed", () => {
 
 async function loadBridgeStateBeforeRender() {
   if (!window.__qtBridge || window.__bridgeState) return;
-  const response = await fetch("/__store/load", { cache: "no-store" });
-  if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
-  applyBridgeSnapshotToState(await response.json());
-}
-
-function scheduleLibraryStatsHydration() {
-  const hydrate = () => {
-    els.bookList?.setAttribute("aria-busy", "true");
-    hydrateActiveLibraryTexts()
-      .then(() => {
-        if (state.currentView === "library" || state.currentView === "reader") render();
-      })
-      .catch((error) => console.warn("Nie wszystkie książki załadowane:", error))
-      .finally(() => els.bookList?.setAttribute("aria-busy", "false"));
-  };
-  const schedule = () => {
-    if ("requestIdleCallback" in window) window.requestIdleCallback(hydrate, { timeout: 3000 });
-    else setTimeout(hydrate, 500);
-  };
-  if (isAndroidPlatform()) {
-    window.requestAnimationFrame(() => window.requestAnimationFrame(schedule));
+  if (window.__bridgeStatePromise) {
+    applyBridgeSnapshotToState(await window.__bridgeStatePromise);
+    delete window.__bridgeStatePromise;
     return;
   }
-  schedule();
+  const response = await fetchWithTimeout("/__store/load", { cache: "no-store" }, 12_000);
+  if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
+  applyBridgeSnapshotToState(await response.json());
 }
 
 function showLanguageOnboardingIfNeeded() {
@@ -168,16 +175,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
     await loadBridgeStateBeforeRender();
-    await applyPreferences();
-    await loadLocale(state.preferences?.locale || "en");
+    await Promise.all([
+      applyPreferences(),
+      loadLocale(state.preferences?.locale || "en"),
+      loadBooksCatalog()
+    ]);
     applyTranslations();
-    applyPlatformUi();
-    await loadBooksCatalog();
     ensureCurrentText();
     bindEvents();
     bindLibraryEvents();
     import("./js/views/reader.js").then(m => m.bindReaderEvents());
-    await applyPreferences();
     syncSettingsControls();
     applyPlatformUi();
     render();
@@ -189,10 +196,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       .catch((error) => console.warn("Could not restore the active Reader body after startup:", error));
     document.getElementById("app-font-stylesheet")?.setAttribute("rel", "stylesheet");
     showLanguageOnboardingIfNeeded();
-    scheduleLibraryStatsHydration();
   } catch (error) {
     reportClientError(`Startup failed: ${error?.stack || error}`, error);
+    showStartupFailure(error);
   } finally {
+    if (window.wordHunterBootTimeout !== undefined) {
+      clearTimeout(window.wordHunterBootTimeout);
+      delete window.wordHunterBootTimeout;
+    }
     document.documentElement.classList.remove("app-booting");
   }
   window.requestAnimationFrame(() => {

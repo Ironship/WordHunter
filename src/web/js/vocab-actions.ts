@@ -1,4 +1,4 @@
-import { state, saveState, initialVocabKeys } from "./state.js";
+import { getDurableStateRevision, state, saveState, saveUiState, initialVocabKeys } from "./state.js";
 import { STATUS_ORDER } from "./constants.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -12,8 +12,10 @@ import { speakWord } from "./tts.js";
 import { canUseTranslationProvider, translateText } from "./translation-provider.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
-import { resolveProfileTranslationPair } from "./translator-preferences.js";
+import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { formatHeadword } from "./vocabulary/article.js";
+import { resolveVocabularyKey } from "./tokenizer_v2.js";
+import { getCachedReaderWord } from "./reader/session.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
@@ -36,12 +38,13 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
   
   try {
     const pair = resolveProfileTranslationPair(state.preferences);
-    const data = await translateText(word, pair.fromCode, pair.toCode);
+    const displayWord = entry.word || word;
+    const data = await translateText(displayWord, pair.fromCode, pair.toCode);
     if (state.vocab[word] !== entry
       || String(entry.translation || "").trim()
       || isAutoTranslationRejected(entry)) return false;
     const translated = String(data.translated || "").trim();
-    if (translated && translated !== word) {
+    if (translated && translated !== displayWord) {
       entry.translation = translated;
       entry.translationSource = data.engine || "translator";
       entry.updatedAt = new Date().toISOString();
@@ -76,13 +79,26 @@ export function selectWord(
   wordIndex: number | null = null,
   options: SelectWordOptions = {}
 ): void {
-  const word = normalizeFn(rawWord);
+  const language = effectiveLearningLanguage(state.preferences);
+  const displayWord = String(rawWord || "").trim().normalize("NFC");
+  const word = resolveVocabularyKey(displayWord || normalizeFn(rawWord), state.vocab, language);
   if (!word) return;
   const current = getTextById(state.currentTextId);
   const isFresh = !Object.hasOwn(state.vocab, word);
+  const durableRevision = getDurableStateRevision();
   state.selectedWord = word;
   state.selectedWordIndex = Number.isInteger(wordIndex) && wordIndex >= 0 ? wordIndex : null;
-  const entry = getOrCreateEntry(word, current?.text || "", state.selectedWordIndex);
+  const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+  const cachedWord = current
+    ? getCachedReaderWord(current, language, algorithm, state.selectedWordIndex)
+    : null;
+  const entry = getOrCreateEntry(
+    displayWord || word,
+    current?.text || "",
+    state.selectedWordIndex,
+    cachedWord?.characterIndex ?? null,
+    cachedWord?.word || ""
+  );
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   let statusChanged = false;
   if (isFresh && state.preferences?.autoLearnOnClick) {
@@ -90,10 +106,11 @@ export function selectWord(
     playStatusSound("learning");
     statusChanged = true;
   }
-  saveState();
+  if (getDurableStateRevision() !== durableRevision) saveState();
+  else saveUiState();
   renderShell();
   updateReaderSelection();
-  const spokenHeadword = formatHeadword(word, entry.article);
+  const spokenHeadword = formatHeadword(entry.word || displayWord || word, entry.article);
   if (options.forceSpeak) speakWord(spokenHeadword);
   else maybeAutoSpeakFocusedWord(word, spokenHeadword);
   
@@ -148,6 +165,7 @@ function isVocabStatus(status: string): status is WhVocabStatus {
 
 export function setWordStatus(word: string, status: string): void {
   if (!isVocabStatus(status)) return;
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word, getTextById(state.currentTextId)?.text || "");
   const previousStatus = entry.status;
@@ -169,6 +187,7 @@ export function setWordStatus(word: string, status: string): void {
 }
 
 export function updateWordField(word: string, field: string, value: unknown): void {
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
   if (field === "article") {
@@ -195,6 +214,7 @@ export function updateWordField(word: string, field: string, value: unknown): vo
   }
 }
 export function deleteWord(word: string): void {
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   delete state.vocab[word];
   initialVocabKeys.delete(word);
   if (state.selectedWord === word) state.selectedWord = null;
@@ -222,14 +242,14 @@ export function handleReviewAction(action: string): void {
   if (action === "next") {
     state.reviewIndex = (state.reviewIndex || 0) + 1;
     hideReviewAnswer();
-    saveState();
+    void saveUiState();
     renderReview("next");
     return;
   }
   if (action === "prev") {
     state.reviewIndex = Math.max(0, (state.reviewIndex || 0) - 1);
     hideReviewAnswer();
-    saveState();
+    void saveUiState();
     renderReview("previous");
     return;
   }
@@ -238,6 +258,7 @@ export function handleReviewAction(action: string): void {
 
 export function setWordImage(word: string, imageUrl: unknown): void {
   if (typeof imageUrl !== "string") return;
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
   if (hadEntry && Object.is(entry.imageUrl, imageUrl)) return;
@@ -252,6 +273,7 @@ export function setWordImage(word: string, imageUrl: unknown): void {
 }
 
 export function removeWordImage(word: string): void {
+  word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
   const entry = getOrCreateEntry(word);
   if (hadEntry && !Object.hasOwn(entry, "imageUrl")) return;

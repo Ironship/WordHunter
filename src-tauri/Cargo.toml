@@ -1,6 +1,6 @@
 [package]
 name = "word-hunter"
-version = "1.0.8"
+version = "1.0.9-rc.3"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
 authors = ["Ironship <25068602+Ironship@users.noreply.github.com>"]
 edition = "2024"
@@ -38,7 +38,7 @@ tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
 tiny_http = "0.12"
-tokio = { version = "1", features = ["rt", "time"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
 qrcode = "0.14"

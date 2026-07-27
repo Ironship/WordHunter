@@ -66,8 +66,11 @@ function cssDeclarations(source, selectorPattern) {
 }
 
 async function loadAppHarness({
+  applyPreferences = () => {},
   hydrateActiveLibraryTexts = async () => {},
-  hydrateCurrentReaderText = async () => true
+  hydrateCurrentReaderText = async () => true,
+  loadBooksCatalog = async () => {},
+  loadLocale = async () => {}
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -93,7 +96,9 @@ async function loadAppHarness({
       assert.equal(this, window);
       animationFrames.push(callback);
       return animationFrames.length;
-    }
+    },
+    setTimeout(callback) { const id = timers.length + 1; timers.push({ id, callback }); return id; },
+    clearTimeout(id) { const idx = timers.findIndex((t) => t.id === id); if (idx !== -1) timers.splice(idx, 1); }
   });
   const document = fakeEventTarget({
     visibilityState: "visible",
@@ -109,16 +114,16 @@ async function loadAppHarness({
     "./js/dom.js": { cacheElements: noOp, els: {} },
     "./js/toast.js": { showToast: noOp },
     "./js/events.js": { bindEvents: noOp },
-    "./js/preferences.js": { applyPreferences: noOp, setSyncStatus: noOp, syncSettingsControls: noOp },
+    "./js/preferences.js": { applyPreferences, setSyncStatus: noOp, syncSettingsControls: noOp },
     "./js/books.js": {
-      loadBooksCatalog: asyncNoOp,
+      loadBooksCatalog,
       loadAllBookTexts: asyncNoOp,
       loadAllCustomTextContents: asyncNoOp,
       hydrateActiveLibraryTexts,
       hydrateCurrentReaderText
     },
     "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
-    "./js/i18n.js": { loadLocale: asyncNoOp, applyTranslations: noOp, t: (key) => key },
+    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key },
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
@@ -129,6 +134,7 @@ async function loadAppHarness({
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
     "./js/youglish.js": { refreshYouGlishTheme: noOp },
+    "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,
@@ -142,8 +148,8 @@ async function loadAppHarness({
     HTMLButtonElement: class HTMLButtonElement {},
     HTMLDialogElement: class HTMLDialogElement {},
     fetch: async () => ({ ok: true, json: async () => ({}) }),
-    setTimeout(callback) { timers.push(callback); return timers.length; },
-    clearTimeout() {},
+    setTimeout(callback) { const id = timers.length + 1; timers.push({ id, callback }); return id; },
+    clearTimeout(id) { const idx = timers.findIndex((t) => t.id === id); if (idx !== -1) timers.splice(idx, 1); },
     console
   }, {
     "./js/views/reader.js": { bindReaderEvents: noOp },
@@ -158,7 +164,7 @@ async function loadAppHarness({
       for (const callback of animationFrames.splice(0)) callback();
     },
     flushTimers() {
-      for (const callback of timers.splice(0)) callback();
+      for (const { callback } of timers.splice(0)) callback();
     },
     setAndroid(value) { android = value; },
     state,
@@ -167,6 +173,27 @@ async function loadAppHarness({
 }
 
 describe("persistence lifecycle", () => {
+  it("starts preferences, locale, and book catalog loading in parallel", async () => {
+    const started = [];
+    const resolvers = [];
+    const pending = (name) => () => {
+      started.push(name);
+      return new Promise((resolve) => resolvers.push(resolve));
+    };
+    const harness = await loadAppHarness({
+      applyPreferences: pending("preferences"),
+      loadLocale: pending("locale"),
+      loadBooksCatalog: pending("catalog")
+    });
+
+    const startup = Promise.all(harness.document.emit("DOMContentLoaded"));
+    await Promise.resolve();
+    assert.deepEqual(started, ["preferences", "locale", "catalog"]);
+    for (const resolve of resolvers) resolve();
+    await startup;
+    assert.deepEqual(harness.calls, ["render"]);
+  });
+
   it("dispatches lifecycle events to the platform-appropriate save path", async () => {
     const harness = await loadAppHarness();
 
@@ -174,7 +201,7 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save"]);
 
     harness.window.emit("pagehide");
-    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save"]);
+    assert.deepEqual(harness.calls.splice(0), []);
 
     harness.document.emit("visibilitychange");
     assert.deepEqual(harness.calls.splice(0), []);
@@ -184,9 +211,9 @@ describe("persistence lifecycle", () => {
 
     harness.setAndroid(true);
     harness.window.emit("pagehide");
-    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "save-state"]);
+    assert.deepEqual(harness.calls.splice(0), []);
     harness.document.emit("visibilitychange");
-    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "save-state"]);
+    assert.deepEqual(harness.calls.splice(0), []);
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {
@@ -195,20 +222,8 @@ describe("persistence lifecycle", () => {
     harness.window.emit("text-stats:loaded");
     harness.window.emit("text-stats:loaded");
     assert.deepEqual(harness.calls, []);
-    harness.flushAnimationFrames();
-    assert.deepEqual(harness.calls, ["render-library"]);
-  });
-
-  it("rerenders a restored reader after built-in book text hydration", async () => {
-    const harness = await loadAppHarness();
-    harness.state.currentView = "reader";
-    await Promise.all(harness.document.emit("DOMContentLoaded"));
-    harness.calls.length = 0;
     harness.flushTimers();
-    await Promise.resolve();
-    await Promise.resolve();
-
-    assert.deepEqual(harness.calls, ["render"]);
+    assert.deepEqual(harness.calls, ["render-library"]);
   });
 
   it("renders and removes the boot screen without waiting for Reader hydration", async () => {
@@ -228,7 +243,7 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls, ["render", "render"]);
   });
 
-  it("lets Android paint before hydrating library texts", async () => {
+  it("does not eagerly hydrate the whole Android library", async () => {
     let hydrated = false;
     const harness = await loadAppHarness({
       hydrateActiveLibraryTexts: async () => { hydrated = true; }
@@ -242,7 +257,7 @@ describe("persistence lifecycle", () => {
     harness.flushAnimationFrames();
     harness.flushTimers();
     await Promise.resolve();
-    assert.equal(hydrated, true);
+    assert.equal(hydrated, false);
   });
 
   it("backs off bridge save retries and caps the delay", async () => {
@@ -337,6 +352,28 @@ describe("persistence lifecycle", () => {
     assert.equal(autosave.getDurableStateRevision(), 1);
   });
 
+  it("returns a rejected promise when local storage saving fails", async () => {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        saveToLocalStorage() { throw new DOMException("quota", "QuotaExceededError"); },
+        async saveWithRetry() { return {}; },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: false },
+      DOMException,
+      setTimeout,
+      clearTimeout,
+      console
+    });
+    const autosave = createAutosave(() => ({ preferences: {}, profiles: {} }));
+    let saving;
+
+    assert.doesNotThrow(() => { saving = autosave.saveState(); });
+    await assert.rejects(saving, /quota/);
+  });
+
   it("does not autosave bridge-only navigation and reader UI state", async () => {
     let scheduled = 0;
     const rawState = {
@@ -416,9 +453,12 @@ describe("persistence lifecycle", () => {
         UI_STATE_KEYS: []
       },
       "./store-bridge.js": {
-        postStoreJson(path, payload) { backendSaves.push([path, payload]); return Promise.resolve({}); }
+        postStoreJson(path, payload, _options) { backendSaves.push([path, payload]); return Promise.resolve({}); }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./request.js": {
+        fetchWithTimeout(path, options) { keepaliveUiSaves.push([path, options]); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path, options) {
@@ -431,7 +471,7 @@ describe("persistence lifecycle", () => {
     await stateModule.saveUiState();
 
     assert.equal(durableSaves, 0);
-    assert.deepEqual(saved, [rawState]);
+    assert.deepEqual(saved.map((s) => JSON.parse(s)), [{ schemaVersion: 2, ...rawState }]);
     assert.equal(backendSaves[0][0], "/__store/ui_state");
     assert.equal(backendSaves[0][1].schemaVersion, 2);
     assert.equal(backendSaves[0][1].currentTextId, "book");
@@ -492,7 +532,8 @@ describe("persistence lifecycle", () => {
           return {};
         }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       async fetch(_path, options) {
@@ -560,9 +601,15 @@ describe("persistence lifecycle", () => {
         UI_STATE_KEYS: []
       },
       "./store-bridge.js": {
-        async postStoreJson() { calls.push("final-ui"); return {}; }
+        async postStoreJson(_path, _payload, _options) { calls.push("final-ui"); return {}; }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./request.js": {
+        async fetchWithTimeout(path) {
+          if (path === "/__app/close") calls.push("close");
+          return { ok: true, json: async () => ({}) };
+        }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       async fetch(path) {
@@ -621,7 +668,10 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": { postStoreJson: async () => ({}) },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./request.js": {
+        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -667,13 +717,16 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": {
-        postStoreJson: async () => {
+        postStoreJson: async (_path, _payload, _options) => {
           uiSaveAttempts += 1;
           if (uiSaveAttempts === 1) throw new Error("temporary write failure");
           return {};
         }
       },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./request.js": {
+        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -715,8 +768,11 @@ describe("persistence lifecycle", () => {
         normalizeState: (value) => value
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
-      "./store-bridge.js": { postStoreJson: async () => { throw new Error("ui disk full"); } },
-      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2 }
+      "./store-bridge.js": { postStoreJson: async (_path, _payload, _options) => { throw new Error("ui disk full"); } },
+      "./request.js": {
+        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      },
+      "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
       fetch(path) { closeRequests.push(path); return Promise.resolve({ ok: true }); },
@@ -868,6 +924,7 @@ describe("persistence lifecycle", () => {
     const boot = readFileSync(new URL("../../dist/web/boot.js", import.meta.url), "utf8");
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
     const bundledApp = readFileSync(new URL("../../dist/web/js/app.bundle.js", import.meta.url), "utf8");
+    const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
     assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
@@ -897,7 +954,12 @@ describe("persistence lifecycle", () => {
     assert.match(bootLogo, /background:\s*url\("favicon\.svg"\)/);
     assert.match(bootLogo, /animation:\s*boot-logo-pulse 1\.15s ease-in-out infinite !important/);
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
-    assert.ok(app.includes('fetch("/__store/load"'));
+    assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
+    assert.match(handlers, /bootstrap_script\([\s\S]*Some/);
+    assert.match(handlers, /storeLoadController[\s\S]*12000/);
+    assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
+    assert.match(boot, /Startup timed out before the application became ready/);
+    assert.match(app, /clearTimeout\(window\.wordHunterBootTimeout\)/);
 
     const harness = await loadAppHarness();
     await Promise.all(harness.document.emit("DOMContentLoaded"));
@@ -1002,6 +1064,7 @@ describe("persistence lifecycle", () => {
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./i18n.js": { t: (key) => key },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
       "./render.js": {
         render: () => downstreamCalls.push("render"),
         ensureCurrentText: () => downstreamCalls.push("ensureCurrentText")

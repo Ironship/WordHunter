@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Mutex};
+use std::sync::Mutex;
 
 use base64::Engine;
 use pdf_extract::{MediaBox, OutputDev, OutputError, Transform};
@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde_json::{Value, json};
 use tauri::AppHandle;
 
-use crate::store::Store;
+use crate::{server::OcrJobState, store::Store};
 
 const MAX_PDF_BYTES: usize = 128 * 1024 * 1024;
 const MAX_PAGES: usize = 2_000;
@@ -18,7 +18,7 @@ pub fn import(
     payload: Value,
     store: &Store,
     _app_handle: &AppHandle,
-    _cancellations: &Mutex<HashSet<String>>,
+    _jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
     let data = decode_payload(data_url)?;
@@ -30,12 +30,22 @@ pub fn import_bytes(
     data: Vec<u8>,
     store: &Store,
     _app_handle: &AppHandle,
-    _cancellations: &Mutex<HashSet<String>>,
+    _jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     if data.len() > MAX_PDF_BYTES {
         return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
     }
     import_decoded(payload, &data, store)
+}
+
+pub fn import_image_bytes(
+    _payload: Value,
+    _data: Vec<u8>,
+    _store: &Store,
+    _app_handle: &AppHandle,
+    _jobs: &Mutex<OcrJobState>,
+) -> Result<Value, String> {
+    Err("Image OCR is only packaged for Windows and Linux".to_string())
 }
 
 fn import_decoded(payload: Value, data: &[u8], store: &Store) -> Result<Value, String> {
@@ -82,12 +92,28 @@ fn import_decoded(payload: Value, data: &[u8], store: &Store) -> Result<Value, S
     }))
 }
 
-pub fn cancel(_payload: Value, _cancellations: &Mutex<HashSet<String>>) -> Result<(), String> {
+pub fn cancel(payload: Value, jobs: &Mutex<OcrJobState>) -> Result<(), String> {
+    let job_id = payload
+        .get("job_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "job_id required".to_string())?;
+    let cancelled = jobs
+        .lock()
+        .map_err(|_| "OCR job state is unavailable".to_string())?
+        .request_cancel(job_id);
+    if !cancelled {
+        return Err("OCR job is not active".to_string());
+    }
     Ok(())
 }
 
 pub fn gpu_status(_app_handle: &AppHandle) -> Value {
     json!({ "status": "unavailable", "reason": "desktop-only" })
+}
+
+pub fn image_ocr_available(_app_handle: &AppHandle) -> bool {
+    false
 }
 
 fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {

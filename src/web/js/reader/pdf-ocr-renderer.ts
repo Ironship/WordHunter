@@ -2,11 +2,11 @@
  * PDF-OCR reader rendering: page image + word overlay, layout estimation,
  * per-page text extraction, word-token emission.
  */
-import { state, saveUiState } from "../state.js";
+import { getVocabularyRevision, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { t as rawT } from "../i18n.js";
-import { classifyTokenOccurrences, normalizeWord, getTokenStats, tokenizeText } from "../tokenizer_v2.js";
+import { classifyTokenOccurrences, normalizeWord, tokenizeText } from "../tokenizer_v2.js";
 import type { TextToken } from "../tokenizer_v2.js";
 import { restoreReaderPagePosition } from "./scroll.js";
 import { renderWordPanel } from "./word-panel.js";
@@ -16,9 +16,10 @@ import { cacheTotalPages, paginationHtml } from "./pagination.js";
 import { renderTrackingSummary } from "./renderer.js";
 import { getLearningColor } from "../reader-colors.js";
 import { icon } from "../icons.js";
-import { countEffectivePdfPageWords, effectivePdfPageText, reconcilePdfPageWords } from "./pdf-page-text.js";
+import { buildPdfDocumentText, effectivePdfPageText, reconcilePdfPageWords } from "./pdf-page-text.js";
 import type { PdfOcrLine, PdfOcrPage, PdfOcrWord } from "./pdf-page-text.js";
-import { getReaderSession } from "./session.js";
+import { analyzeReaderSession, getReaderSession } from "./session.js";
+import type { ReaderSession } from "./session.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { renderInlineBookmarkIndicators } from "./bookmarks.js";
 
@@ -64,10 +65,6 @@ interface ReaderElements {
   uniqueSummary: HTMLElement;
 }
 
-interface ReaderSession {
-  tokens: TextToken[];
-}
-
 const readerEls = els as ReaderElements;
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
@@ -77,6 +74,37 @@ const PDF_OCR_ZOOM_MIN = 0.75;
 const PDF_OCR_ZOOM_MAX = 3;
 const PDF_OCR_ZOOM_STEP = 0.15;
 let pdfOcrMeasureContext: CanvasRenderingContext2D | null = null;
+const pdfPageOffsets = new WeakMap<PdfOcrPage[], { chars: number[]; words: number[] }>();
+
+function pageOffsets(pages: PdfOcrPage[], session: ReaderSession) {
+  const cached = pdfPageOffsets.get(pages);
+  if (cached) return cached;
+  const chars = new Array<number>(pages.length);
+  const words = new Array<number>(pages.length);
+  let charOffset = 0;
+  let hasText = false;
+  for (let index = 0; index < pages.length; index += 1) {
+    chars[index] = hasText ? charOffset + 2 : 0;
+    const text = effectivePdfPageText(pages[index]);
+    if (text) {
+      if (hasText) charOffset += 2;
+      charOffset += text.length;
+      hasText = true;
+    }
+    let low = 0;
+    let high = session.wordTokenIndexes.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      const tokenIndex = session.wordTokenIndexes[middle];
+      if (session.globalCharOffsets[tokenIndex] < chars[index]) low = middle + 1;
+      else high = middle;
+    }
+    words[index] = low;
+  }
+  const offsets = { chars, words };
+  pdfPageOffsets.set(pages, offsets);
+  return offsets;
+}
 
 export function isPdfOcrText(text: unknown): text is PdfOcrDocument {
   if (!text || typeof text !== "object") return false;
@@ -126,12 +154,20 @@ export function pdfOcrZoomStep() {
 export function renderPdfOcrReader(current: PdfOcrDocument, savedPos: unknown): void {
   const wordAlgorithm = state.preferences.wordDetectionAlgorithm || "modern";
   const language = effectiveLearningLanguage(state.preferences);
-  const session = getReaderSession(current, language, wordAlgorithm) as ReaderSession;
-  const stats = getTokenStats(session.tokens, state.vocab, language);
+  const pages = current.pdfOcrPages;
+  const documentText = current.text?.trim()
+    ? current.text
+    : buildPdfDocumentText(pages);
+  const session = analyzeReaderSession(
+    getReaderSession({ id: current.id, text: documentText }, language, wordAlgorithm),
+    state.vocab,
+    language,
+    getVocabularyRevision()
+  ) as ReaderSession;
+  const stats = session.stats!;
   renderTrackingSummary(stats);
   readerEls.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
-  const pages = current.pdfOcrPages;
   const totalPages = Math.max(1, pages.length);
   cacheTotalPages(current.id, totalPages);
   if (state.readerPages && state.readerPages[current.id]) {
@@ -146,18 +182,9 @@ export function renderPdfOcrReader(current: PdfOcrDocument, savedPos: unknown): 
   const pageIndex = state.readerPage - 1;
   const page: PdfOcrPage = pages[pageIndex] || pages[0] || {};
   readerEls.readerText.dataset.ttsText = effectivePdfPageText(page);
-  const previousPageTexts = pages.slice(0, pageIndex).map(effectivePdfPageText).filter(Boolean);
-  const pageCharOffset = previousPageTexts.length
-    ? previousPageTexts.join("\n\n").length + 2
-    : 0;
-  const globalOffset = pages.slice(0, pageIndex).reduce(
-    (sum, item) => sum + countEffectivePdfPageWords(
-      item,
-      language,
-      wordAlgorithm
-    ),
-    0
-  );
+  const offsets = pageOffsets(pages, session);
+  const pageCharOffset = offsets.chars[pageIndex] || 0;
+  const globalOffset = offsets.words[pageIndex] || 0;
   const viewMode = getPdfOcrViewMode();
   const overlayMode = viewMode === "overlay";
   readerEls.readerText.classList.toggle("pdf-ocr-reader", overlayMode);
@@ -296,7 +323,7 @@ function renderPdfOcrTextTokens(
     const selected = state.selectedWord === dataWord ? "selected" : "";
     const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
     const style = color ? ` style="--token-learning-bg:${color}"` : "";
-    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
+    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-display-word="${escapeAttribute(raw)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
     wordCount += 1;
     charOffset += raw.length;
   }
@@ -628,5 +655,5 @@ function renderPdfOcrWord(
   const indexAttribute = Number.isInteger(globalIndex) ? ` data-word-index="${globalIndex}"` : "";
   const pageIndexAttribute = Number.isInteger(pageWordIndex) ? ` data-pdf-page-word-index="${pageWordIndex}"` : "";
   const charOffsetAttribute = Number.isInteger(charOffset) ? ` data-char-offset="${charOffset}"` : "";
-  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
+  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-display-word="${escapeAttribute(raw)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
 }

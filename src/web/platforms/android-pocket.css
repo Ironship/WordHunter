@@ -1011,8 +1011,8 @@ html.pocket-mode {
   z-index: 60;
   --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
   top: var(--pocket-word-sheet-current-top);
-  left: 0.75rem;
-  right: 0.75rem;
+  left: max(0.75rem, env(safe-area-inset-left, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
   bottom: auto;
   box-sizing: border-box;
   height: max(
@@ -1044,6 +1044,16 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper[data-pocket-sheet-state="custom"],
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-dragging {
   --pocket-word-sheet-current-top: var(--pocket-word-sheet-top);
+}
+
+.pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper.pocket-word-sheet-content-measuring {
+  top: auto;
+  bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
+  height: auto;
+  max-height: max(
+    4rem,
+    calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-expanded-top))
+  );
 }
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::before,
@@ -1170,7 +1180,7 @@ html.pocket-mode {
   min-width: 44px;
 }
 
-.pocket-mode #word-panel .word-image-remove {
+.pocket-mode .word-image-remove {
   width: 44px;
   min-width: 44px;
   height: 44px;
@@ -1261,6 +1271,14 @@ html.pocket-mode {
   min-height: 44px;
 }
 
+.pocket-mode #flashcards-view .flashcard-navigation {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .pocket-mode #flashcards-view [data-tts-word].secondary-button {
   flex: 0 0 44px !important;
   width: 44px !important;
@@ -1270,13 +1288,32 @@ html.pocket-mode {
   padding: 0 !important;
 }
 
-.pocket-mode .sm2-grades {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.pocket-mode #flashcards-view .sm2-grades {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
 }
 
-.pocket-mode .sm2-grades .sm2-grade {
+.pocket-mode #flashcards-view .sm2-grades .sm2-grade {
+  min-width: 0;
   min-height: 52px;
+  padding-inline: 0.25rem;
   font-size: 1.12rem;
+}
+
+.pocket-mode .in-text-review .sm2-grades {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.pocket-mode .in-text-review .sm2-grades .sm2-grade {
+  min-width: 0;
+  padding-inline: 0.25rem;
+}
+
+.pocket-mode .in-text-review .sm2-grade .shortcut-badge {
+  display: none;
 }
 
 .pocket-mode dialog {
@@ -1287,5 +1324,15 @@ html.pocket-mode {
 @media (max-width: 380px) {
   .pocket-mode .metric-pill#overall-count {
     display: none;
+  }
+}
+
+@media (max-width: 300px) {
+  .pocket-mode .word-panel {
+    padding-inline: 0.25rem;
+  }
+
+  .pocket-mode .word-panel .in-text-review .sm2-grades {
+    gap: 0.125rem;
   }
 }

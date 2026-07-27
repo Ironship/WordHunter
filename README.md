@@ -118,6 +118,7 @@ data between devices, create a JSON backup from the app.
 ## Release status
 
 - **Stable:** [1.0.8](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.8)
+- **Prerelease:** [1.0.9-rc.3](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9-rc.3) — performance improvements, cache optimizations, and TTS fixes. See [release notes](docs/releases/1.0.9-rc.3.md). **Prerelease artifacts are for testing only and do not update stable installs.**
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
@@ -200,7 +201,7 @@ optimized for reading and review on Android, with a compact card list, large
 touch targets, collapsible search filters, and a side import drawer for lighter
 mobile imports.
 
-<img src="docs/screenshots/pocket-library.png" width="300" alt="Word Hunter Pocket library">
+"<img width="2537" height="1380" alt="{953014A0-B7A5-4189-9D98-CF6A9BB5C940}" src="https://github.com/user-attachments/assets/765efecf-21ad-4c52-acbe-302689664cad" />
 
 ### Reader, Highlighting, and Word Panel
 

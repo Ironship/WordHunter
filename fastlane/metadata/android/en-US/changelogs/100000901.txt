@@ -1,0 +1,8 @@
+Word Hunter 1.0.9-rc.1 (prerelease)
+
+• Vocabulary treats case-only variants (Am/AM/am) as one word in all languages.
+• Mobile flashcard hint auto-hides after a few reviews.
+• Android reader sheet expands only to its content height.
+• Five recall buttons fit on narrow screens.
+• Ease Factor Distribution graph uses correct SM-2 bins.
+• Desktop image OCR supports JPG, PNG, WebP; Android image OCR unavailable.
