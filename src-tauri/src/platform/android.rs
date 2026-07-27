@@ -11,10 +11,12 @@ pub(crate) fn setup(app: &mut tauri::App) -> SetupResult {
     // SAFETY: Android setup runs before WordHunter starts backend worker threads.
     unsafe { std::env::set_var("APPDATA", app.path().app_data_dir()?) };
     let store = std::sync::Arc::new(Store::new(APP_NAME).map_err(boxed_string)?);
-    // Import routes must not become reachable before abandoned imports are classified.
-    store
-        .recover_android_startup_guarded()
-        .map_err(boxed_string)?;
+    let recovery_store = std::sync::Arc::clone(&store);
+    std::thread::spawn(move || {
+        if let Err(error) = recovery_store.recover_android_startup_guarded() {
+            eprintln!("WordHunter Android startup recovery failed: {error}");
+        }
+    });
     let token = server::make_token();
     let app_handle = app.handle().clone();
     server::start_server_on_port(store, token, app_handle, ANDROID_SERVER_PORT)

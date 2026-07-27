@@ -16,6 +16,7 @@ fn store_at(dir: &tempfile::TempDir, device_id: &str) -> Store {
         write_lock: Mutex::new(()),
         base_records: Mutex::new(BTreeMap::new()),
         device_id: device_id.to_string(),
+        startup_instant: std::time::Instant::now(),
     }
 }
 
