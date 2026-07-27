@@ -4,22 +4,21 @@
  * Tokenization happens once per plain-text render pass; the resulting page total
  * is cached so that page navigation does not re-tokenize.
  */
-import { state, saveUiState } from "../state.js";
+import { getVocabularyRevision, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, calcStatsPcts } from "../utils.js";
 import { t } from "../i18n.js";
-import { getTokenStats } from "../tokenizer_v2.js";
-import { getAllBooks, bookTexts } from "../books.js";
+import { findBookById, getAllBooks, bookTexts } from "../books.js";
 import { renderPlainText } from "./text-renderer.js";
 import { isPdfOcrText, renderPdfOcrReader } from "./pdf-ocr-renderer.js";
 import {
   computeTotalPages,
-  computePageSlice,
+  computeIndexedPageSlice,
   cacheTotalPages,
   changeReaderPage,
   goToReaderPage
 } from "./pagination.js";
-import { getReaderSession } from "./session.js";
+import { analyzeReaderSession, getReaderSession } from "./session.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { renderReaderBookmarks } from "./bookmarks.js";
 import type { TextStats } from "../tokenizer_v2.js";
@@ -32,22 +31,11 @@ interface ReaderLoadingBook {
 
 export { changeReaderPage, goToReaderPage };
 
-function getAllTexts(): WhText[] {
-  const fromBooks = getAllBooks().map((book) => ({
-    id: book.id,
-    title: book.title,
-    author: book.author,
-    level: book.level,
-    source: t("reader.sourceGutenberg"),
-    sourceUrl: book.pageUrl,
-    textUrl: book.textUrl,
-    text: bookTexts.get(book.id) || book.sample || ""
-  }));
-  const fromCustom = (state.customTexts || []).map((ct) => ({
-    ...ct,
-    text: bookTexts.get(ct.id) || ct.text || ""
-  }));
-  return [...fromBooks, ...fromCustom];
+function readerTextOptions(): Array<{ id: string; title: string }> {
+  return [
+    ...getAllBooks().map(({ id, title }) => ({ id, title })),
+    ...(state.customTexts || []).map(({ id, title }) => ({ id, title }))
+  ];
 }
 
 function readerBodyReady(current: WhText): boolean {
@@ -57,7 +45,21 @@ function readerBodyReady(current: WhText): boolean {
 }
 
 export function getTextById(id: string | null): WhText | undefined {
-  return getAllTexts().find((text) => text.id === id);
+  if (!id) return undefined;
+  const custom = (state.customTexts || []).find((text) => text.id === id);
+  if (custom) return { ...custom, text: bookTexts.peek(id) || custom.text || "" };
+  const book = findBookById(id);
+  if (!book) return undefined;
+  return {
+    id: book.id,
+    title: book.title,
+    author: book.author,
+    level: book.level,
+    source: t("reader.sourceGutenberg"),
+    sourceUrl: book.pageUrl,
+    textUrl: book.textUrl,
+    text: bookTexts.peek(book.id) || book.sample || ""
+  };
 }
 
 export function renderTrackingSummary(stats: TextStats): void {
@@ -88,6 +90,8 @@ export function renderTrackingSummary(stats: TextStats): void {
 
 let loadingBook: ReaderLoadingBook | null = null;
 let readerRenderGeneration = 0;
+let textSelectElement: HTMLSelectElement | null = null;
+let textSelectKey = "";
 const WORD_PANEL_STATUS_CLASSES = ["word-panel-status-new", "word-panel-status-learning", "word-panel-status-known", "word-panel-status-ignored"];
 
 function clearWordPanelStatus(): void {
@@ -106,17 +110,33 @@ export function clearReaderLoading(): void {
   loadingBook = null;
 }
 
+function syncTextSelect(options: Array<{ id: string; title: string }>, selectedId: string | null): void {
+  if (!els.textSelect) return;
+  const key = options.map(({ id, title }) => `${id}\0${title}`).join("\x01");
+  if (textSelectElement !== els.textSelect || textSelectKey !== key) {
+    textSelectElement = els.textSelect;
+    textSelectKey = key;
+    els.textSelect.innerHTML = options
+      .map(({ id, title }) => `<option value="${escapeHtml(id)}">${escapeHtml(title)}</option>`)
+      .join("");
+  }
+  els.textSelect.value = selectedId || "";
+}
+
 export function renderReader(): void {
   if (!els.readerText) return;
   const generation = ++readerRenderGeneration;
-  delete els.readerText.dataset.renderId;
+  els.readerText.dataset.renderId = String(generation);
   els.readerText.classList.remove("pdf-ocr-reader", "pdf-text-layer-reader");
   if (loadingBook) {
     renderReaderBookmarks(null);
     els.readerText.setAttribute("aria-busy", "true");
     els.readerText.dataset.rendering = "1";
     delete els.readerText.dataset.ttsText;
-    if (els.textSelect) els.textSelect.innerHTML = `<option>${escapeHtml(loadingBook.title)}</option>`;
+    if (els.textSelect) {
+      textSelectKey = "";
+      els.textSelect.innerHTML = `<option>${escapeHtml(loadingBook.title)}</option>`;
+    }
     if (els.readerHeading) els.readerHeading.textContent = loadingBook.title;
     if (els.readerSource) els.readerSource.textContent = loadingBook.author || loadingBook.source || t("reader.sourceGutenberg");
     if (els.trackingSummary) els.trackingSummary.textContent = "—";
@@ -138,15 +158,15 @@ export function renderReader(): void {
     els.readerText.dataset.rendering = "0";
     return;
   }
-  const texts = getAllTexts();
-  const current = texts.find((text) => text.id === state.currentTextId);
+  const textOptions = readerTextOptions();
+  const current = getTextById(state.currentTextId);
 
   if (!current) {
     renderReaderBookmarks(null);
     els.readerText.removeAttribute("aria-busy");
     delete els.readerText.dataset.ttsText;
     if (els.textSelect) {
-      els.textSelect.innerHTML = texts.map((text) => `<option value="${escapeHtml(text.id)}">${escapeHtml(text.title)}</option>`).join("");
+      syncTextSelect(textOptions, null);
     }
     if (els.readerHeading) els.readerHeading.textContent = t("reader.title");
     if (els.readerSource) els.readerSource.textContent = t("reader.source");
@@ -163,10 +183,7 @@ export function renderReader(): void {
     return;
   }
 
-  els.textSelect.innerHTML = texts.map((text) => {
-    const selected = text.id === current.id ? "selected" : "";
-    return `<option value="${escapeHtml(text.id)}" ${selected}>${escapeHtml(text.title)}</option>`;
-  }).join("");
+  syncTextSelect(textOptions, current.id);
 
   els.readerHeading.textContent = current.title;
   els.readerSource.textContent = current.author || current.source || t("reader.localSource");
@@ -204,8 +221,9 @@ export function renderReader(): void {
       const language = effectiveLearningLanguage(state.preferences);
       const session = getReaderSession(current, language, wordAlgorithm);
       const { tokens } = session;
-       const stats = getTokenStats(tokens, state.vocab, language);
-       renderTrackingSummary(stats);
+      analyzeReaderSession(session, state.vocab, language, getVocabularyRevision());
+      const stats = session.stats;
+      renderTrackingSummary(stats);
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
       const wordsPerPage = Number(state.preferences.wordsPerPage) || 1000;
@@ -226,12 +244,18 @@ export function renderReader(): void {
       saveUiState();
       const scrollPerPageKey = `${current.id}-p${state.readerPage}`;
 
-      const { pageStartIndex, pageEndIndex } = computePageSlice(tokens, state.readerPage, wordsPerPage);
+      const { pageStartIndex, pageEndIndex } = computeIndexedPageSlice(
+        tokens.length,
+        session.wordTokenIndexes,
+        state.readerPage,
+        wordsPerPage
+      );
       renderPlainText({
         current,
         tokens,
         globalWordIndexes: session.globalWordIndexes,
         globalCharOffsets: session.globalCharOffsets,
+        classifications: session.classifications,
         pageStartIndex,
         pageEndIndex,
         totalPages,

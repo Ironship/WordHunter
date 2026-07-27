@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+import { getVocabularyRevision, state } from "./state.js";
 import { getAllBooks, bookTexts } from "./books.js";
 import { normalizeVocabularyWord, normalizeWord } from "./tokenizer_v2.js";
 import {
@@ -56,7 +56,9 @@ export function getTextVocabularyIndex(textId: string): TextVocabularyIndex | nu
   const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
   const text = textRecord.text || "";
   const book = { id: textRecord.id };
-  const signature = computeSignature(book, text, lang, algorithm);
+  const contentFingerprint = bookTexts.fingerprint(textRecord.id);
+  const vocabRevision = getVocabularyRevision();
+  const signature = computeSignature(book, text, lang, algorithm, state.vocab, contentFingerprint, vocabRevision);
   const cached = getCachedEntry(signature);
   if (cached) {
     return {
@@ -66,7 +68,7 @@ export function getTextVocabularyIndex(textId: string): TextVocabularyIndex | nu
     };
   }
 
-  requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
+  requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book, contentFingerprint, vocabRevision });
   return null;
 }
 
@@ -78,7 +80,15 @@ export async function loadTextVocabularyIndex(textId: string): Promise<TextVocab
     const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
     const text = textRecord.text || "";
     const book = { id: textRecord.id };
-    const entry = await requestVocabIndex({ text, vocab: state.vocab, lang, algorithm, book });
+    const entry = await requestVocabIndex({
+      text,
+      vocab: state.vocab,
+      lang,
+      algorithm,
+      book,
+      contentFingerprint: bookTexts.fingerprint(textRecord.id),
+      vocabRevision: getVocabularyRevision()
+    });
     if (!entry) continue;
     return {
       text: textRecord,

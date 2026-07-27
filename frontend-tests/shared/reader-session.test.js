@@ -15,6 +15,10 @@ describe("reader token session", () => {
     assert.equal(first.totalWords, 3);
     assert.deepEqual(first.globalWordIndexes.filter((value) => value >= 0), [0, 1, 2]);
     assert.deepEqual(first.globalCharOffsets.filter((value) => value >= 0), [0, 4, 8]);
+    assert.deepEqual(first.wordTokenIndexes, [0, 2, 4]);
+    assert.equal(first.analysisRevision, -1);
+    assert.equal(first.classifications, null);
+    assert.equal(first.stats, null);
     assert.notEqual(getReaderSession({ ...book, text: "Changed text." }, "en", "modern"), first);
     assert.notEqual(getReaderSession(book, "de", "modern"), first);
     assert.notEqual(getReaderSession(book, "en", "classic"), first);

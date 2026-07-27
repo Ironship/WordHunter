@@ -140,22 +140,21 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     if !valid_request_source(&request, &state.base_url) {
         return response::error_response(request, 403, "forbidden request source");
     }
-    let Some(request) = authenticate_request(request, &path, &state.token)? else {
+    let Some(request) = authenticate_request(request, path, &state.token)? else {
         return Ok(());
     };
-    let Some(mut request) = dispatch_state_independent_request(request, &path, &query)? else {
+    let Some(mut request) = dispatch_state_independent_request(request, path, query)? else {
         return Ok(());
     };
 
-    match (method, path.as_str()) {
+    match (method, path) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => {
-            let mut snapshot =
-                if response::parse_query(&query).get("ack").map(String::as_str) == Some("0") {
-                    state.store.snapshot_unacknowledged()
-                } else {
-                    state.store.snapshot()
-                };
+            let mut snapshot = if response::query_value(query, "ack").as_deref() == Some("0") {
+                state.store.snapshot_unacknowledged()
+            } else {
+                state.store.snapshot()
+            };
             if let Some(object) = snapshot.as_object_mut() {
                 object.insert("uiState".to_string(), state.store.load_ui_state());
             }
@@ -238,7 +237,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             eprintln!("{text}");
             response::no_content(request)
         }
-        (Method::Post, _) => match path.as_str() {
+        (Method::Post, _) => match path {
             "/__app/close" => {
                 let _payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
                 response::no_content(request)?;

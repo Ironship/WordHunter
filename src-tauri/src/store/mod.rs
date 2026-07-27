@@ -50,6 +50,7 @@ pub struct Store {
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
     device_id: String,
+    startup_instant: std::time::Instant,
 }
 
 #[derive(Clone)]
@@ -68,6 +69,7 @@ impl Store {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: crate::paths::device_id(app_name)?,
+            startup_instant: std::time::Instant::now(),
         };
         #[cfg(not(target_os = "android"))]
         {
@@ -310,6 +312,7 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             device_id: device_id.to_string(),
+            startup_instant: std::time::Instant::now(),
         }
     }
 

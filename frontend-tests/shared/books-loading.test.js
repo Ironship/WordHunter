@@ -22,6 +22,7 @@ const { bookTexts, clearAllBookTextCaches, hydrateActiveLibraryTexts, hydrateCur
 const { els } = await import("../../dist/web/js/dom.js");
 const { loadFullGutenbergText, openBook } = await import("../../dist/web/js/book-actions.js");
 const { getReaderBookmarks } = await import("../../dist/web/js/reader/bookmarks.js");
+const { getReaderSession } = await import("../../dist/web/js/reader/session.js");
 const { setView } = await import("../../dist/web/js/render.js");
 
 Object.assign(els, {
@@ -101,6 +102,26 @@ describe("built-in starter catalog", () => {
 });
 
 describe("full-text hydration", () => {
+  it("bounds the cache without evicting the active Reader body", () => {
+    clearAllBookTextCaches();
+    const body = "x".repeat(9 * 1024 * 1024);
+    state.currentTextId = "active-reader";
+    bookTexts.set("active-reader", body);
+    bookTexts.set("older-library", body);
+    bookTexts.set("newer-library", body);
+
+    assert.equal(bookTexts.has("active-reader"), true);
+    assert.equal(bookTexts.has("older-library"), false);
+    assert.equal(bookTexts.has("newer-library"), true);
+    clearAllBookTextCaches();
+  });
+
+  it("clears retained Reader analysis with the text caches", () => {
+    const first = getReaderSession({ id: "cached-session", text: "one two" }, "en", "modern");
+    clearAllBookTextCaches();
+    const second = getReaderSession({ id: "cached-session", text: "one two" }, "en", "modern");
+    assert.notEqual(second, first);
+  });
   it("hydrates the active Reader body before its saved page can be clamped", async () => {
     clearAllBookTextCaches();
     window.__qtBridge = true;

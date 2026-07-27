@@ -82,6 +82,89 @@ async function evaluateWithMocks(file, importValues, globals = {}, dynamicImport
   return module.namespace;
 }
 
+describe("lazy library statistics", () => {
+  it("sorts from retained statistics after full book bodies are evicted", async () => {
+    const bookList = { innerHTML: "", querySelectorAll: () => [] };
+    let fullHydrations = 0;
+    const state = {
+      currentView: "library",
+      filters: {
+        libraryQuery: "",
+        libraryLevel: "all",
+        librarySort: "length",
+        librarySortReverse: false,
+        libraryArchive: "active"
+      },
+      preferences: {
+        learningLanguage: "en",
+        wordDetectionAlgorithm: "modern",
+        showCardStats: false,
+        showCovers: false,
+        cardStatsMode: "percentages"
+      },
+      vocab: {},
+      customTexts: [],
+      userBooks: [],
+      archivedBookIds: []
+    };
+    const { renderLibrary } = await evaluateWithMocks("dist/web/js/views/library.js", {
+      "../state.js": { state, saveUiState() {} },
+      "../dom.js": { els: {
+        bookList,
+        librarySearch: {},
+        levelFilter: {},
+        librarySort: {},
+        librarySortReverse: { dataset: {} },
+        libraryArchiveFilter: {},
+        libraryPanel: null,
+        libraryFiltersToggle: null,
+        librarySidebarResizer: null
+      } },
+      "../utils.js": {
+        escapeHtml: String,
+        escapeAttribute: String,
+        parseTagList: () => [],
+        calcRoundedStatsPcts: () => ({ knownPct: 0, learningPct: 0, newPct: 0 }),
+        calcStatsPcts: () => ({ knownPct: 0, learningPct: 0, newPct: 0 })
+      },
+      "../icons.js": { icon: () => "", renderCardStat: () => "", renderCardCount: () => "" },
+      "../tokenizer_v2.js": { normalizeSearchVariants: (value) => [String(value).toLowerCase()] },
+      "../books.js": {
+        findBookById: () => null,
+        getAllBooks: () => [
+          { id: "short", title: "Short", lang: "en" },
+          { id: "long", title: "Long", lang: "en" }
+        ],
+        bookTexts: { has: () => false, get: () => undefined, peek: () => undefined },
+        hydrateActiveLibraryTexts: async () => { fullHydrations += 1; },
+        getLibraryContentGeneration: () => 0,
+        isBookTextCacheStale: () => false,
+        loadBookText: async () => "",
+        loadCustomTextContent: async () => ""
+      },
+      "../stats-cache.js": {
+        getCachedBookTextStats: (id) => id === "long"
+          ? { unique: 8, known: 2, learning: 2, ignored: 1, new: 5 }
+          : { unique: 2, known: 1, learning: 0, ignored: 0, new: 1 },
+        getCachedTextStats: () => null,
+        prepareTextStats: () => "empty-vocab"
+      },
+      "../i18n.js": { t: (key) => key, getLocale: () => "en" },
+      "../panel-resizer.js": { bindSidebarResizer() {} },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
+    }, {
+      window: {},
+      requestAnimationFrame: () => 1,
+      Intl
+    });
+
+    renderLibrary();
+
+    assert.ok(bookList.innerHTML.indexOf("Long") < bookList.innerHTML.indexOf("Short"));
+    assert.equal(fullHydrations, 1);
+  });
+});
+
 async function globalActionsHarness(options = {}) {
   const listeners = new Map();
   const calls = [];
@@ -331,6 +414,7 @@ describe("focused frontend regressions", () => {
         }
       },
       "./selection.js": {
+        getReaderWordTokens: () => [],
         setReaderSelectionAnchorFromToken: (value) => calls.push(["anchor", value]),
         updateReaderSelection: (options) => calls.push(["updateReaderSelection", options])
       }
@@ -481,7 +565,7 @@ describe("focused frontend regressions", () => {
           state.selectedWordIndex = args[3];
         }
       },
-      "./selection.js": { setReaderSelectionAnchorFromToken() {}, updateReaderSelection() {} }
+      "./selection.js": { getReaderWordTokens: () => [], setReaderSelectionAnchorFromToken() {}, updateReaderSelection() {} }
     }, {
       HTMLElement: FakeElement,
       window: {
@@ -1050,7 +1134,7 @@ describe("focused frontend regressions", () => {
     const state = {
       selectedWord: "wort",
       selectedWordIndex: 0,
-      vocab: { wort: { status: "new", translation: "", note: "", examples: [] } },
+      vocab: { wort: { status: "new", translation: "", note: "", examples: ["Context sentence."] } },
       preferences: { selectedWordPanelItems: [{ id: "context", visible: true }] }
     };
     const module = await evaluateWordPanel({
@@ -1175,7 +1259,11 @@ async function evaluateWordPanel({
   saveState = () => {}
 }) {
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
-    "../state.js": { state, saveState },
+    "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
+    "./session.js": {
+      getReaderSession: () => ({ id: null, text: "", tokens: [], stats: { unique: 0 }, classifications: {} }),
+      analyzeReaderSession: (session) => { session.stats = { unique: 0 }; return session; }
+    },
     "../dom.js": { els: { wordPanel, readerText: null, uniqueSummary: null } },
     "../utils.js": {
       escapeHtml: (value) => String(value ?? ""),

@@ -1,9 +1,13 @@
 // Book catalog: fetches the built-in database from books/index.json and texts (local or remote).
 import { BOOKS_INDEX_URL } from "./constants.js";
-import { registerBridgeSnapshotHandler, state } from "./state.js";
+import { getDurableStateRevision, registerBridgeSnapshotHandler, state } from "./state.js";
 import { clearVocabIndexCache, invalidateBookId } from "./vocab-index-client.js";
 import { cleanGutenbergText } from "./tokenizer_v2.js";
 import { t as translate } from "./i18n.js";
+import { fetchWithTimeout } from "./request.js";
+import { clearReaderSession } from "./reader/session.js";
+import { invalidateTextStats, prepareBookTextStats, prepareTextStats } from "./stats-cache.js";
+import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 const t = translate as (key: string, vars?: WhRecord) => string;
 
@@ -22,22 +26,98 @@ export interface LibraryBook extends WhText {
 }
 
 let catalog: LibraryBook[] = [];
-export const bookTexts = new Map<string, string>();
+const MAX_CACHED_BOOK_TEXT_BYTES = 48 * 1024 * 1024;
+
+function textFingerprint(text: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${text.length}:${(hash >>> 0).toString(36)}`;
+}
+
+class BookTextCache extends Map<string, string> {
+  private byteSize = 0;
+  private fingerprints = new Map<string, string>();
+
+  override get(id: string): string | undefined {
+    const value = super.get(id);
+    if (value !== undefined) {
+      super.delete(id);
+      super.set(id, value);
+    }
+    return value;
+  }
+
+  peek(id: string): string | undefined {
+    return super.get(id);
+  }
+
+  fingerprint(id: string): string {
+    return this.fingerprints.get(id) || "";
+  }
+
+  override set(id: string, text: string): this {
+    const previous = super.get(id);
+    if (previous !== undefined) this.byteSize -= previous.length * 2;
+    super.delete(id);
+    super.set(id, text);
+    this.fingerprints.set(id, textFingerprint(text));
+    this.byteSize += text.length * 2;
+    while (this.byteSize > MAX_CACHED_BOOK_TEXT_BYTES && this.size > 1) {
+      let oldest: string | undefined;
+      for (const key of this.keys()) {
+        if (key !== state.currentTextId) {
+          oldest = key;
+          break;
+        }
+      }
+      if (oldest === undefined) break;
+      this.delete(oldest);
+    }
+    return this;
+  }
+
+  override delete(id: string): boolean {
+    const value = super.get(id);
+    const deleted = super.delete(id);
+    if (deleted && value !== undefined) {
+      this.byteSize -= value.length * 2;
+      this.fingerprints.delete(id);
+    }
+    return deleted;
+  }
+
+  override clear(): void {
+    super.clear();
+    this.byteSize = 0;
+    this.fingerprints.clear();
+  }
+}
+
+export const bookTexts = new BookTextCache();
 let bookTextsLoadingPromise: Promise<void[]> | null = null;
 let allTextCacheGeneration = 0;
+let libraryContentGeneration = 0;
 const textLoadingById = new Map<string, Promise<string>>();
 const pdfPagesLoadingById = new Map<string, Promise<WhRecord[]>>();
 const textCacheGenerationById = new Map<string, number>();
 const staleBookTextIds = new Set<string>();
 const TEXT_LOAD_CONCURRENCY = 2;
 const CUSTOM_TEXT_LOAD_CONCURRENCY = 2;
+let booksCacheRevision = -1;
+let booksCacheLanguage = "";
+let booksCache: LibraryBook[] = [];
 
 export async function loadBooksCatalog() {
   try {
-    const response = await fetch(BOOKS_INDEX_URL, { cache: "no-cache" });
+    const response = await fetchWithTimeout(BOOKS_INDEX_URL, { cache: "no-cache" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data: unknown = await response.json();
     catalog = Array.isArray(data) ? data as LibraryBook[] : [];
+    booksCacheRevision = -1;
+    libraryContentGeneration += 1;
   } catch (error) {
     console.warn("Failed to load book catalog:", error);
     catalog = [];
@@ -46,16 +126,22 @@ export async function loadBooksCatalog() {
 }
 
 export function getAllBooks(): LibraryBook[] {
-  const hidden = new Set(state.hiddenBuiltInBooks || []);
   const currentLang = state.preferences?.learningLanguage || "en";
-  return [
+  const revision = getDurableStateRevision();
+  if (booksCacheRevision === revision && booksCacheLanguage === currentLang) return booksCache;
+  const hidden = new Set(state.hiddenBuiltInBooks || []);
+  booksCache = [
     ...catalog.filter((book) => !hidden.has(book.id) && book.lang === currentLang),
     ...(state.userBooks || [])
   ];
+  booksCacheRevision = revision;
+  booksCacheLanguage = currentLang;
+  return booksCache;
 }
 
 export function findBookById(id: string): LibraryBook | undefined {
-  return getAllBooks().find((book) => book.id === id);
+  for (const book of getAllBooks()) if (book.id === id) return book;
+  return undefined;
 }
 
 export function loadAllBookTexts() {
@@ -108,7 +194,7 @@ async function loadBookTextUncached(book: LibraryBook, generation: number): Prom
   let lastError: unknown = null;
   for (const url of sources) {
     try {
-      const response = await fetch(url, { cache: "force-cache" });
+      const response = await fetchWithTimeout(url, { cache: "force-cache" }, 20_000);
       if (!response.ok) throw new Error(`HTTP ${response.status} ${url}`);
       let text = (await response.text()).trim();
       if (/\*\*\* (START|END) OF (THE|THIS) PROJECT GUTENBERG/i.test(text)) {
@@ -123,9 +209,9 @@ async function loadBookTextUncached(book: LibraryBook, generation: number): Prom
     } catch (err: unknown) {
       lastError = err;
     }
-    }
-    throw lastError || new Error(t("toast.noTextSource"));
-    }
+  }
+  throw lastError || new Error(t("toast.noTextSource"));
+}
 
 export async function loadCustomTextContent(text: WhText): Promise<string> {
   if (!text?.id) return "";
@@ -144,7 +230,7 @@ function fetchCustomTextContent(text: WhText): Promise<string> {
   const generation = (textCacheGenerationById.get(text.id) || 0) + 1;
   textCacheGenerationById.set(text.id, generation);
   staleBookTextIds.add(text.id);
-  const promise = fetch(`/__book/text?id=${encodeURIComponent(text.id)}`, { cache: "no-store" })
+  const promise = fetchWithTimeout(`/__book/text?id=${encodeURIComponent(text.id)}`, { cache: "no-store" }, 20_000)
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
@@ -175,7 +261,7 @@ export async function loadCustomTextPdfPages(text: WhText): Promise<WhRecord[]> 
     return text?.pdfOcrPages || [];
   }
   if (pdfPagesLoadingById.has(text.id)) return pdfPagesLoadingById.get(text.id);
-  const promise = fetch(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, { cache: "no-store" })
+  const promise = fetchWithTimeout(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, { cache: "no-store" }, 20_000)
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
@@ -217,11 +303,38 @@ export function loadAllCustomTextContents() {
 
 export async function hydrateActiveLibraryTexts() {
   const language = state.preferences?.learningLanguage;
-  await Promise.all([loadAllBookTexts(), loadAllCustomTextContents()]);
-  if (state.preferences?.learningLanguage !== language) return false;
-  // A previous profile can still own the shared built-in batch promise.
-  await Promise.all([loadAllBookTexts(), loadAllCustomTextContents()]);
-  return state.preferences?.learningLanguage === language;
+  const generation = allTextCacheGeneration;
+  const lang = effectiveLearningLanguage(state.preferences);
+  const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+  const preparedVocab = prepareTextStats(state.vocab);
+  const items = [
+    ...getAllBooks().map((book) => ({ book, custom: null as WhText | null })),
+    ...(state.customTexts || []).map((custom) => ({ book: custom as LibraryBook, custom }))
+  ];
+  let next = 0;
+  const loadNext = async () => {
+    while (generation === allTextCacheGeneration
+      && state.preferences?.learningLanguage === language
+      && next < items.length) {
+      const { book, custom } = items[next++];
+      try {
+        const text = custom ? await loadCustomTextContent(custom) : await loadBookText(book);
+        await prepareBookTextStats(
+          book,
+          text,
+          state.vocab,
+          lang,
+          algorithm,
+          preparedVocab,
+          bookTexts.fingerprint(book.id)
+        );
+      } catch (error) {
+        console.warn(`Failed to prepare statistics for ${book.id}:`, error);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(TEXT_LOAD_CONCURRENCY, items.length) }, loadNext));
+  return generation === allTextCacheGeneration && state.preferences?.learningLanguage === language;
 }
 
 export async function hydrateCurrentReaderText(): Promise<boolean> {
@@ -254,15 +367,19 @@ export async function hydrateCurrentReaderText(): Promise<boolean> {
 }
 
 export function clearBookTextCache(id: string): void {
+  libraryContentGeneration += 1;
   textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   bookTexts.delete(id);
   textLoadingById.delete(id);
   pdfPagesLoadingById.delete(id);
   staleBookTextIds.delete(id);
   invalidateBookId(id);
+  invalidateTextStats(id);
+  if (state.currentTextId === id) clearReaderSession();
 }
 
 function markBookTextCacheStale(id: string): void {
+  libraryContentGeneration += 1;
   textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
   textLoadingById.delete(id);
   pdfPagesLoadingById.delete(id);
@@ -271,6 +388,7 @@ function markBookTextCacheStale(id: string): void {
 
 export function clearAllBookTextCaches() {
   allTextCacheGeneration += 1;
+  libraryContentGeneration += 1;
   bookTextsLoadingPromise = null;
   const ids = new Set([...bookTexts.keys(), ...textLoadingById.keys(), ...textCacheGenerationById.keys()]);
   for (const id of ids) textCacheGenerationById.set(id, (textCacheGenerationById.get(id) || 0) + 1);
@@ -279,15 +397,21 @@ export function clearAllBookTextCaches() {
   pdfPagesLoadingById.clear();
   staleBookTextIds.clear();
   clearVocabIndexCache();
+  invalidateTextStats();
+  clearReaderSession();
 }
 
 export function isBookTextCacheStale(id: string): boolean {
   return staleBookTextIds.has(id);
 }
 
+export function getLibraryContentGeneration(): number {
+  return libraryContentGeneration;
+}
+
 registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds, preserveActiveReader }) => {
   const activeReaderTextId = state.currentView === "reader" ? state.currentTextId : null;
-  const activeReaderBody = activeReaderTextId ? bookTexts.get(activeReaderTextId) : undefined;
+  const activeReaderBody = activeReaderTextId ? bookTexts.peek(activeReaderTextId) : undefined;
   for (const id of previousTextIds || []) {
     if (!currentTextIds?.has(id)) clearBookTextCache(id);
   }
@@ -298,39 +422,37 @@ registerBridgeSnapshotHandler(({ previousTextIds, currentTextIds, preserveActive
     if (text?.id) markBookTextCacheStale(text.id);
   }
 
-  loadAllCustomTextContents()
-    .then(async () => {
-      if (state.currentView === "library") {
-        const { renderLibrary } = await import("./views/library.js");
-        renderLibrary();
-        return;
-      }
-      const activeId = state.currentTextId;
-      const activeReadable = activeId && (
-        Boolean(findBookById(activeId))
-        || (state.customTexts || []).some((text) => text.id === activeId)
-      );
-      if (state.currentView !== "reader" || !activeId || !activeReadable) return;
-      const activeCustomText = (state.customTexts || []).find((text) => text.id === activeId);
-      if (activeCustomText) {
-        await loadCustomTextPdfPages(activeCustomText)
-          .catch((error) => console.warn("Could not refresh PDF page metadata:", error));
-      }
-      const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
-      const { remapReaderBookmarksForAlgorithm, renderInlineBookmarkIndicators, renderReaderBookmarks } = await import("./reader/bookmarks.js");
-      await remapReaderBookmarksForAlgorithm(algorithm, activeId);
-      if (state.currentView !== "reader" || state.currentTextId !== activeId) return;
-      if (
-        preserveActiveReader
-        && activeId === activeReaderTextId
-        && bookTexts.get(activeId) === activeReaderBody
-      ) {
-        renderReaderBookmarks(activeId);
-        renderInlineBookmarkIndicators(activeId);
-        return;
-      }
-      const { renderReader } = await import("./reader/renderer.js");
-      renderReader();
-    })
+  void (async () => {
+    if (state.currentView === "library") {
+      const { renderLibrary } = await import("./views/library.js");
+      renderLibrary();
+      return;
+    }
+    const activeId = state.currentTextId;
+    const activeCustomText = (state.customTexts || []).find((text) => text.id === activeId);
+    const activeReadable = activeId && (Boolean(findBookById(activeId)) || Boolean(activeCustomText));
+    if (state.currentView !== "reader" || !activeId || !activeReadable) return;
+    if (activeCustomText) {
+      await Promise.all([
+        loadCustomTextContent(activeCustomText),
+        loadCustomTextPdfPages(activeCustomText)
+      ]).catch((error) => console.warn("Could not refresh active book content:", error));
+    }
+    const algorithm = state.preferences.wordDetectionAlgorithm === "classic" ? "classic" : "modern";
+    const { remapReaderBookmarksForAlgorithm, renderInlineBookmarkIndicators, renderReaderBookmarks } = await import("./reader/bookmarks.js");
+    await remapReaderBookmarksForAlgorithm(algorithm, activeId);
+    if (state.currentView !== "reader" || state.currentTextId !== activeId) return;
+    if (
+      preserveActiveReader
+      && activeId === activeReaderTextId
+      && bookTexts.peek(activeId) === activeReaderBody
+    ) {
+      renderReaderBookmarks(activeId);
+      renderInlineBookmarkIndicators(activeId);
+      return;
+    }
+    const { renderReader } = await import("./reader/renderer.js");
+    renderReader();
+  })()
     .catch((error) => console.warn("Failed to refresh synchronized custom texts:", error));
 });

@@ -9,6 +9,18 @@ const { getCachedTextStats, getCachedUniqueWordCount } = await import("../../dis
 const { computeSignature, invalidateBookId, requestVocabIndex, VOCAB_INDEX_CACHE_VERSION } = await import("../../dist/web/js/vocab-index-client.js");
 const { getTextStats } = await import("../../dist/web/js/tokenizer_v2.js");
 
+const indexPayload = (values) => ({
+  indexVersion: VOCAB_INDEX_CACHE_VERSION,
+  unique: 0,
+  known: 0,
+  learning: 0,
+  ignored: 0,
+  new: 0,
+  words: [],
+  tokenLine: "  ",
+  ...values
+});
+
 describe("cached unique word count", () => {
   it("reads the count without starting another vocabulary lookup", async () => {
     let requests = 0;
@@ -16,7 +28,7 @@ describe("cached unique word count", () => {
     globalThis.fetch = async (_url, init) => {
       requests += 1;
       requestBody = JSON.parse(init.body);
-      return { ok: true, json: async () => ({ unique: 2, known: 1, learning: 0, ignored: 0, new: 1 }) };
+      return { ok: true, json: async () => indexPayload({ unique: 2, known: 1, new: 1, words: ["one", "two"] }) };
     };
     const book = { id: "cached-book" };
     await requestVocabIndex({ book, text: "one two", vocab: {}, lang: "en", algorithm: "modern" });
@@ -40,7 +52,7 @@ describe("cached unique word count", () => {
       requests += 1;
       return {
         ok: true,
-        json: async () => ({ unique: 1, known: 0, learning: 1, ignored: 0, new: 0, words: ["quota"] })
+        json: async () => indexPayload({ unique: 1, learning: 1, words: ["quota"] })
       };
     };
 
@@ -80,11 +92,50 @@ describe("cached unique word count", () => {
     invalidateBookId(request.book.id);
     const fresh = requestVocabIndex(request);
     assert.equal(requests, 2);
-    responses[0]({ ok: true, json: async () => ({ unique: 1, known: 1, learning: 0, ignored: 0, new: 0 }) });
-    responses[1]({ ok: true, json: async () => ({ unique: 2, known: 0, learning: 0, ignored: 0, new: 2 }) });
+    responses[0]({ ok: true, json: async () => indexPayload({ unique: 1, known: 1, words: ["same"] }) });
+    responses[1]({ ok: true, json: async () => indexPayload({ unique: 2, new: 2, words: ["same", "signature"] }) });
 
     assert.equal(await stale, null);
     assert.equal((await fresh).stats.unique, 2);
+  });
+
+  it("invalidates phrase occurrences when vocabulary keys change", async () => {
+    let requests = 0;
+    globalThis.fetch = async (_url, init) => {
+      requests += 1;
+      const body = JSON.parse(init.body);
+      const hasPhrase = Object.hasOwn(body.vocab, "quick brown");
+      return {
+        ok: true,
+        json: async () => indexPayload({
+          unique: 2,
+          new: 2,
+          words: ["quick", "brown"],
+          tokenLine: hasPhrase ? " quick brown " : "  "
+        })
+      };
+    };
+    const base = { book: { id: "phrase-key-change" }, text: "quick brown", lang: "en", algorithm: "modern" };
+
+    const before = await requestVocabIndex({ ...base, vocab: {} });
+    const after = await requestVocabIndex({ ...base, vocab: { "quick brown": { status: "learning" } } });
+
+    assert.equal(before.tokenLine, "  ");
+    assert.equal(after.tokenLine, " quick brown ");
+    assert.equal(requests, 2);
+  });
+
+  it("does not cache malformed Rust responses", async () => {
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return { ok: true, json: async () => ({ unique: 2, words: ["partial"] }) };
+    };
+    const request = { book: { id: "malformed-index" }, text: "partial data", vocab: {}, lang: "en", algorithm: "modern" };
+
+    assert.equal(await requestVocabIndex(request), null);
+    assert.equal(await requestVocabIndex(request), null);
+    assert.equal(requests, 2);
   });
 });
 

@@ -16,7 +16,13 @@ export function hideReviewAnswer(): void {
   reviewAnswerVisible = false;
 }
 
-export function getOrCreateEntry(word: string, text = "", wordIndex: number | null = null): WhVocabEntry {
+export function getOrCreateEntry(
+  word: string,
+  text = "",
+  wordIndex: number | null = null,
+  characterIndex: number | null = null,
+  indexedWord = ""
+): WhVocabEntry {
   const displayWord = String(word || "").trim().normalize("NFC");
   const key = resolveVocabularyKey(displayWord, state.vocab, effectiveLearningLanguage(state.preferences));
   if (!Object.hasOwn(state.vocab, key)) {
@@ -46,7 +52,9 @@ export function getOrCreateEntry(word: string, text = "", wordIndex: number | nu
     displayWord,
     effectiveLearningLanguage(state.preferences),
     state.preferences.wordDetectionAlgorithm || "modern",
-    wordIndex
+    wordIndex,
+    characterIndex,
+    indexedWord
   );
   if (context && !state.vocab[key].examples?.includes(context)) {
     state.vocab[key].examples = [context, ...(state.vocab[key].examples || [])].slice(0, 3);

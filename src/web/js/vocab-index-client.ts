@@ -1,14 +1,10 @@
 import { STATE_SCHEMA_VERSION } from "./constants.js";
+import { fetchWithTimeout } from "./request.js";
 
-export const VOCAB_INDEX_CACHE_VERSION = 2;
+export const VOCAB_INDEX_CACHE_VERSION = 4;
 const CACHE_KEY = `wordhunter:vocab-index:cache-v${VOCAB_INDEX_CACHE_VERSION}`;
 const MAX_CACHE_ENTRIES = 80;
 const SIGNATURE_VERSION = `vocab-index-v${VOCAB_INDEX_CACHE_VERSION}`;
-const SAMPLE_PREFIX = 1536;
-const SAMPLE_MIDDLE = 2048;
-const SAMPLE_SUFFIX = 1536;
-const SAMPLE_MIDDLE_OFFSET = 1024;
-const MAX_FULL_SAMPLE = 4096;
 
 interface VocabIndexCacheEntry {
   signature: string;
@@ -34,6 +30,7 @@ interface VocabIndexBook {
 }
 
 interface VocabIndexPayload {
+  indexVersion: number;
   unique: number;
   known: number;
   learning: number;
@@ -49,6 +46,8 @@ interface VocabIndexRequest {
   lang: string;
   algorithm: string;
   book: VocabIndexBook;
+  contentFingerprint?: string;
+  vocabRevision?: number;
 }
 
 interface PendingVocabIndexRequest {
@@ -62,6 +61,7 @@ const pending = new Map<string, PendingVocabIndexRequest>();
 const bookGenerations = new Map<string, number>();
 let globalGeneration = 0;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+const phraseFingerprints = new WeakMap<object, { revision: number; fingerprint: string }>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -71,14 +71,24 @@ function finiteNumber(value: unknown, fallback = 0): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function requiredFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function parseStats(value: unknown): VocabIndexCacheEntry["stats"] | null {
   if (!isRecord(value)) return null;
+  const unique = requiredFiniteNumber(value.unique);
+  const known = requiredFiniteNumber(value.known);
+  const learning = requiredFiniteNumber(value.learning);
+  const ignored = requiredFiniteNumber(value.ignored);
+  const next = requiredFiniteNumber(value.new);
+  if (unique === null || known === null || learning === null || ignored === null || next === null) return null;
   return {
-    unique: finiteNumber(value.unique),
-    known: finiteNumber(value.known),
-    learning: finiteNumber(value.learning),
-    ignored: finiteNumber(value.ignored),
-    new: finiteNumber(value.new)
+    unique,
+    known,
+    learning,
+    ignored,
+    new: next
   };
 }
 
@@ -86,26 +96,32 @@ function parseCacheEntry(value: unknown): VocabIndexCacheEntry | null {
   if (!isRecord(value) || typeof value.signature !== "string" || typeof value.bookId !== "string") return null;
   const stats = parseStats(value.stats);
   if (!stats) return null;
+  if (!Array.isArray(value.words) || !value.words.every((word) => typeof word === "string") || typeof value.tokenLine !== "string") return null;
   return {
     signature: value.signature,
     bookId: value.bookId,
     stats,
-    words: Array.isArray(value.words) ? value.words.filter((word): word is string => typeof word === "string") : [],
-    tokenLine: typeof value.tokenLine === "string" ? value.tokenLine : "  ",
+    words: value.words,
+    tokenLine: value.tokenLine,
     lastUsed: finiteNumber(value.lastUsed)
   };
 }
 
 function parseVocabIndexPayload(value: unknown): VocabIndexPayload {
   if (!isRecord(value)) throw new Error("Invalid vocab_index response");
+  const stats = parseStats(value);
+  if (value.indexVersion !== VOCAB_INDEX_CACHE_VERSION
+    || !stats
+    || !Array.isArray(value.words)
+    || !value.words.every((word) => typeof word === "string")
+    || typeof value.tokenLine !== "string") {
+    throw new Error("Incompatible vocab_index response");
+  }
   return {
-    unique: finiteNumber(value.unique),
-    known: finiteNumber(value.known),
-    learning: finiteNumber(value.learning),
-    ignored: finiteNumber(value.ignored),
-    new: finiteNumber(value.new),
-    words: Array.isArray(value.words) ? value.words.filter((word): word is string => typeof word === "string") : [],
-    tokenLine: typeof value.tokenLine === "string" ? value.tokenLine : "  "
+    indexVersion: VOCAB_INDEX_CACHE_VERSION,
+    ...stats,
+    words: value.words,
+    tokenLine: value.tokenLine
   };
 }
 
@@ -156,13 +172,6 @@ function pruneCache(): void {
   );
 }
 
-function sampleText(value: unknown): string {
-  const text = String(value || "");
-  if (text.length <= MAX_FULL_SAMPLE) return text;
-  const middle = Math.max(0, Math.floor(text.length / 2) - SAMPLE_MIDDLE_OFFSET);
-  return `${text.slice(0, SAMPLE_PREFIX)}|${text.slice(middle, middle + SAMPLE_MIDDLE)}|${text.slice(-SAMPLE_SUFFIX)}`;
-}
-
 function fnv1a(value: string): string {
   let hash = 2166136261;
   for (let i = 0; i < value.length; i += 1) {
@@ -176,9 +185,25 @@ export function computeSignature(
   book: VocabIndexBook | null | undefined,
   text: string,
   lang: string,
-  algorithm: string
+  algorithm: string,
+  vocab?: unknown,
+  contentFingerprint = "",
+  vocabRevision = -1
 ): string {
   const mode = algorithm === "classic" ? "classic" : "modern";
+  const cachedPhrases = isRecord(vocab) && vocabRevision >= 0 ? phraseFingerprints.get(vocab) : null;
+  const phraseFingerprint = cachedPhrases?.revision === vocabRevision
+    ? cachedPhrases.fingerprint
+    : fnv1a(isRecord(vocab)
+      ? Object.entries(vocab).flatMap(([key, entry]) => {
+      const values = [key];
+      if (isRecord(entry) && typeof entry.word === "string") values.push(entry.word);
+      return values.map((value) => value.trim().replace(/\s+/g, " ")).filter((value) => value.includes(" "));
+      }).sort().join("\n")
+      : "");
+  if (isRecord(vocab) && vocabRevision >= 0 && cachedPhrases?.revision !== vocabRevision) {
+    phraseFingerprints.set(vocab, { revision: vocabRevision, fingerprint: phraseFingerprint });
+  }
   return [
     SIGNATURE_VERSION,
     book?.id || "",
@@ -189,7 +214,8 @@ export function computeSignature(
     book?.textUrl || "",
     book?.localPath || "",
     String(text?.length || 0),
-    fnv1a(sampleText(text))
+    contentFingerprint || fnv1a(text),
+    phraseFingerprint
   ].join("|");
 }
 
@@ -242,21 +268,27 @@ export function clearVocabIndexCache(): void {
 }
 
 async function fetchVocabIndex({ text, vocab, lang, algorithm, book }: VocabIndexRequest): Promise<VocabIndexPayload> {
-  const response = await fetch("/__text/vocab_index", {
+  const compactVocab = isRecord(vocab)
+    ? Object.fromEntries(Object.entries(vocab).map(([key, entry]) => [key, isRecord(entry)
+      ? { status: typeof entry.status === "string" ? entry.status : "new", ...(typeof entry.word === "string" ? { word: entry.word } : {}) }
+      : { status: "new" }]))
+    : {};
+  const response = await fetchWithTimeout("/__text/vocab_index", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-WH-Token": window.WH_TOKEN || ""
     },
-    body: JSON.stringify({ schemaVersion: STATE_SCHEMA_VERSION, text, vocab, lang, algorithm, book })
-  });
+    body: JSON.stringify({ schemaVersion: STATE_SCHEMA_VERSION, text, vocab: compactVocab, lang, algorithm, book })
+  }, 30_000);
   if (!response.ok) throw new Error(`vocab_index HTTP ${response.status}`);
   const data: unknown = await response.json();
   return parseVocabIndexPayload(data);
 }
 
-export function requestVocabIndex({ text, vocab, lang, algorithm, book }: VocabIndexRequest): Promise<VocabIndexCacheEntry | null> {
-  const signature = computeSignature(book, text, lang, algorithm);
+export function requestVocabIndex(request: VocabIndexRequest): Promise<VocabIndexCacheEntry | null> {
+  const { text, vocab, lang, algorithm, book, contentFingerprint = "", vocabRevision = -1 } = request;
+  const signature = computeSignature(book, text, lang, algorithm, vocab, contentFingerprint, vocabRevision);
   const bookId = book?.id || "";
   const generation = currentGeneration(bookId);
   const cached = getCachedEntry(signature);
@@ -265,7 +297,7 @@ export function requestVocabIndex({ text, vocab, lang, algorithm, book }: VocabI
   if (existing?.generation === generation) return existing.promise;
 
   let promise: Promise<VocabIndexCacheEntry | null>;
-  promise = fetchVocabIndex({ text, vocab, lang, algorithm, book })
+  promise = fetchVocabIndex(request)
     .then((data) => {
       if (currentGeneration(bookId) !== generation) return null;
       storeEntry(signature, bookId, data);

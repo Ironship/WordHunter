@@ -1,4 +1,4 @@
-use super::{rate_for, voice_for};
+use super::{SynthesisPermit, rate_for, voice_for};
 
 #[test]
 fn maps_only_supported_rate_presets() {
@@ -21,4 +21,17 @@ fn maps_known_languages_to_native_voices() {
 fn falls_back_to_english_for_unknown() {
     assert_eq!(voice_for("xx"), "en-US-AriaNeural");
     assert_eq!(voice_for(""), "en-US-AriaNeural");
+}
+
+#[test]
+fn synthesis_permits_reject_at_capacity_and_release_on_drop() {
+    let first = SynthesisPermit::acquire().expect("first permit");
+    let second = SynthesisPermit::acquire().expect("second permit");
+    assert_eq!(
+        SynthesisPermit::acquire().err().as_deref(),
+        Some("TTS is busy; retry")
+    );
+    drop(first);
+    let replacement = SynthesisPermit::acquire().expect("released permit");
+    drop((second, replacement));
 }
