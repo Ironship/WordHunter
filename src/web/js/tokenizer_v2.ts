@@ -24,7 +24,7 @@ export interface TextStats {
 }
 
 type TokenizerAlgorithm = "classic" | "modern";
-type TokenClassification = { key: string; status: string };
+export type TokenClassification = { key: string; status: string };
 
 function resolveTokenizerAlgorithm(value: string): TokenizerAlgorithm {
   return value === "classic" ? "classic" : "modern";
@@ -302,8 +302,18 @@ function getClassicSentenceForWord(text: string, word: string, lang: string, pre
   return "";
 }
 
-export function getSentenceForWord(text: string, word: string, lang = "en", algorithm = "modern", wordIndex: number | null = null): string {
-  const indexedMatch = getWordCharacterIndex(text, word, lang, algorithm, wordIndex);
+export function getSentenceForWord(
+  text: string,
+  word: string,
+  lang = "en",
+  algorithm = "modern",
+  wordIndex: number | null = null,
+  characterIndex: number | null = null,
+  indexedWord = ""
+): string {
+  const indexedMatch = Number.isInteger(characterIndex) && characterIndex! >= 0
+    ? { characterIndex: characterIndex!, word: indexedWord || word }
+    : getWordCharacterIndex(text, word, lang, algorithm, wordIndex);
   const preferredIndex = indexedMatch?.characterIndex ?? -1;
   const contextWord = indexedMatch?.word || word;
   if (resolveTokenizerAlgorithm(algorithm) === "classic") {
@@ -487,11 +497,18 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
 }
 
 export function getTokenStats(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): TextStats {
+  return getTokenStatsFromClassifications(tokens, classifyTokenOccurrences(tokens, vocab, lang), lang);
+}
+
+export function getTokenStatsFromClassifications(
+  tokens: readonly TextToken[],
+  classifications: ReadonlyMap<number, TokenClassification>,
+  lang = "en"
+): TextStats {
   const words = tokens
     .filter((part) => part.type === "word")
     .map((part) => normalizeVocabularyWord(part.value, lang))
     .filter(Boolean);
-  const classifications = classifyTokenOccurrences(tokens, vocab, lang);
   const stats: TextStats = { unique: new Set(words).size, known: 0, learning: 0, ignored: 0, new: 0 };
   classifications.forEach(({ status }) => {
     const bucket: keyof Omit<TextStats, "unique"> = status === "known" || status === "learning" || status === "ignored"

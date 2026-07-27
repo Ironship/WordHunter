@@ -1,6 +1,7 @@
 // @ts-check
 
 import { STATE_SCHEMA_VERSION, STORAGE_KEY } from "./constants.js";
+import { fetchWithTimeout } from "./request.js";
 
 /** Build a save payload from the raw state for bridge (Tauri) communication. */
 export function buildSavePayload(rawState: WhSaveStateInput): WhSavePayload {
@@ -38,6 +39,7 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(withSchemaVersion(rawState)));
   } catch (e) {
     console.error("localStorage save failed", e);
+    throw e;
   }
 }
 
@@ -45,14 +47,14 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
 export async function saveWithRetry(body: string, maxRetries: number): Promise<WhBridgeSaveResult> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch("/__store/save", {
+      const response = await fetchWithTimeout("/__store/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-WH-Token": window.WH_TOKEN || ""
         },
         body
-      });
+      }, 30_000);
       if (response.ok) return await response.json().catch(() => ({ ok: true }));
       const detail = (await response.text()).trim();
       throw new Error(detail || `HTTP ${response.status}`);

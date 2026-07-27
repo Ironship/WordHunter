@@ -5,10 +5,21 @@ globalThis.window = { WH_TOKEN: "", dispatchEvent() {} };
 globalThis.localStorage = { getItem: () => null, setItem() {} };
 
 const { state } = await import("../../dist/web/js/state.js");
-const { invalidateBookId } = await import("../../dist/web/js/vocab-index-client.js");
+const { invalidateBookId, VOCAB_INDEX_CACHE_VERSION } = await import("../../dist/web/js/vocab-index-client.js");
 const { entryAppearsInText, loadTextVocabularyIndex } = await import("../../dist/web/js/text-vocab.js");
 
 describe("text vocabulary cache", () => {
+  const payload = (values) => ({
+    indexVersion: VOCAB_INDEX_CACHE_VERSION,
+    unique: 0,
+    known: 0,
+    learning: 0,
+    ignored: 0,
+    new: 0,
+    words: [],
+    tokenLine: "  ",
+    ...values
+  });
   it("matches legacy attached-article keys against canonical text indexes", () => {
     const textIndex = {
       text: { id: "fr", title: "French", text: "L’homme." },
@@ -37,12 +48,12 @@ describe("text vocabulary cache", () => {
     invalidateBookId("retry-text-index");
     responses[0]({
       ok: true,
-      json: async () => ({ unique: 1, known: 1, learning: 0, ignored: 0, new: 0, words: ["stale"] })
+      json: async () => payload({ unique: 1, known: 1, words: ["stale"] })
     });
     while (requests < 2) await new Promise((resolve) => setImmediate(resolve));
     responses[1]({
       ok: true,
-      json: async () => ({ unique: 2, known: 0, learning: 0, ignored: 0, new: 2, words: ["fresh", "words"] })
+      json: async () => payload({ unique: 2, new: 2, words: ["fresh", "words"] })
     });
 
     const index = await loading;

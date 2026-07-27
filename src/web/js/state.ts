@@ -5,6 +5,7 @@ import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, OTHER_PROFILE_ID, STATE_SCHEMA_VERSION } from "./constants.js";
+import { fetchWithTimeout } from "./request.js";
 import { postStoreJson } from "./store-bridge.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
@@ -21,6 +22,8 @@ let uiSaveQueue: Promise<WhRecord | void> = Promise.resolve();
 const inFlightUiSaves = new Set<Promise<unknown>>();
 let uiWritesPaused = 0;
 let uiSaveRequestedWhilePaused = false;
+let uiSaveDirty = false;
+let uiSaveLoopActive = false;
 
 function trackUiSave<T>(promise: Promise<T>): Promise<T> {
   inFlightUiSaves.add(promise);
@@ -56,8 +59,9 @@ function captureLocalUiState(): WhRecord {
 
 function postCurrentUiState(): Promise<WhRecord> {
   const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
-  saveUiStateCache(rawState());
-  return postStoreJson("/__store/ui_state", payload);
+  const body = JSON.stringify(payload);
+  saveUiStateCache(body);
+  return postStoreJson("/__store/ui_state", payload, { serializedBody: body });
 }
 
 function restoreLocalUiState(nextState: WhAppState, captured: WhRecord): void {
@@ -77,10 +81,25 @@ export function saveUiState(): Promise<WhBridgeSaveResult | void> {
       uiSaveRequestedWhilePaused = true;
       return uiSaveQueue;
     }
-    uiSaveQueue = uiSaveQueue
-      .catch(() => {})
-      .then(postCurrentUiState)
-      .catch((error) => console.warn("Failed to save Reader UI state", error));
+    uiSaveDirty = true;
+    if (uiSaveLoopActive) return uiSaveQueue;
+    uiSaveLoopActive = true;
+    uiSaveQueue = uiSaveQueue.catch(() => {}).then(async () => {
+      let result: WhRecord | void;
+      try {
+        while (uiSaveDirty) {
+          uiSaveDirty = false;
+          try {
+            result = await postCurrentUiState();
+          } catch (error) {
+            console.warn("Failed to save Reader UI state", error);
+          }
+        }
+        return result;
+      } finally {
+        uiSaveLoopActive = false;
+      }
+    });
     return uiSaveQueue;
   }
   return saveState();
@@ -93,7 +112,8 @@ export function flushUiStateSync(): void {
     return;
   }
   const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
-  saveUiStateCache(rawState());
+  const body = JSON.stringify(payload);
+  saveUiStateCache(body);
   try {
     const request = fetch("/__store/ui_state", {
       method: "POST",
@@ -101,7 +121,7 @@ export function flushUiStateSync(): void {
         "Content-Type": "application/json",
         "X-WH-Token": window.WH_TOKEN || ""
       },
-      body: JSON.stringify(payload),
+      body,
       keepalive: true
     }).catch((error) => console.warn("Failed to flush Reader UI state", error));
     trackUiSave(request);
@@ -112,6 +132,10 @@ export function flushUiStateSync(): void {
 
 export function getDurableStateRevision(): number {
   return autosave.getDurableStateRevision();
+}
+
+export function getVocabularyRevision(): number {
+  return autosave.getVocabularyRevision();
 }
 
 export function registerFrontendStateFlusher(flusher: () => unknown): () => boolean | void {
@@ -158,11 +182,11 @@ export async function requestWordHunterClose(): Promise<void> {
     return;
   }
   try {
-    const response = await fetch("/__app/close", {
+    const response = await fetchWithTimeout("/__app/close", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
       body: "{}"
-    });
+    }, 10_000);
     if (!response.ok) throw new Error(`close HTTP ${response.status}`);
   } catch (error) {
     nativeCloseRequested = false;

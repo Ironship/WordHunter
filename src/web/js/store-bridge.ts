@@ -1,5 +1,7 @@
 // @ts-check
 
+import { fetchWithTimeout } from "./request.js";
+
 const JSON_HEADERS = (): Record<string, string> => ({
   "Content-Type": "application/json",
   "X-WH-Token": window.WH_TOKEN || ""
@@ -16,16 +18,16 @@ async function readOptionalJson(response: Response): Promise<WhRecord> {
 export async function postStoreJson(
   path: string,
   payload?: WhRecord,
-  { requireBody = true }: { requireBody?: boolean } = {}
+  { requireBody = true, serializedBody }: { requireBody?: boolean; serializedBody?: string } = {}
 ): Promise<WhRecord> {
   if (!window.__qtBridge) return {};
   if (requireBody && (!payload || typeof payload !== "object")) {
     throw new Error(`${path} requires a JSON payload`);
   }
-  const response = await fetch(path, {
+  const response = await fetchWithTimeout(path, {
     method: "POST",
     headers: JSON_HEADERS(),
-    body: JSON.stringify(payload || {})
+    body: serializedBody ?? JSON.stringify(payload || {})
   });
   if (!response.ok) throw new Error(`${path} HTTP ${response.status}`);
   return readOptionalJson(response);
@@ -33,7 +35,7 @@ export async function postStoreJson(
 
 export async function postStoreCommand(path: string): Promise<WhRecord> {
   if (!window.__qtBridge) return {};
-  const response = await fetch(path, {
+  const response = await fetchWithTimeout(path, {
     method: "POST",
     headers: TOKEN_HEADERS()
   });
@@ -43,7 +45,7 @@ export async function postStoreCommand(path: string): Promise<WhRecord> {
 
 export async function loadBackendSnapshot(): Promise<WhBridgeSnapshot | null> {
   if (!window.__qtBridge) return null;
-  const response = await fetch("/__store/load?ack=0", { cache: "no-store" });
+  const response = await fetchWithTimeout("/__store/load?ack=0", { cache: "no-store" }, 20_000);
   if (!response.ok) throw new Error(`/__store/load HTTP ${response.status}`);
   return response.json();
 }

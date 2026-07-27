@@ -33,6 +33,8 @@ const BRIDGE_UI_ROOT_KEYS = new Set<PropertyKey>([
 export function createAutosave(getState: () => WhAppState) {
   const proxyCache = new WeakMap<object, object>();
   const bridgeUiTargets = new WeakSet<object>();
+  const vocabularyMaps = new WeakSet<object>();
+  const vocabularyEntries = new WeakSet<object>();
   let rootTarget: object | undefined;
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let suspendAutoSave = 0;
@@ -46,6 +48,7 @@ export function createAutosave(getState: () => WhAppState) {
   let resolveQueuedSave: ((value: SaveResult | PromiseLike<SaveResult>) => void) | null;
   let rejectQueuedSave: ((reason?: any) => void) | null;
   let durableStateRevision = 0;
+  let vocabularyRevision = 0;
 
   function rawState(): WhAppState {
     const state = getState();
@@ -98,8 +101,12 @@ export function createAutosave(getState: () => WhAppState) {
     const current = rawState();
     syncProfilePreferences();
     if (!window.__qtBridge) {
-      saveToLocalStorage(current);
-      return Promise.resolve();
+      try {
+        saveToLocalStorage(current);
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
     }
     saveInFlight = true;
     savePromise = saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then((result) => {
@@ -172,11 +179,17 @@ export function createAutosave(getState: () => WhAppState) {
     return operation;
   }
 
-  function isBridgeUiMutation(object: object, prop: PropertyKey): boolean {
-    return Boolean(window.__qtBridge && (
-      bridgeUiTargets.has(object)
-      || (object === rootTarget && BRIDGE_UI_ROOT_KEYS.has(prop))
-    ));
+  function isUiMutation(object: object, prop: PropertyKey): boolean {
+    return bridgeUiTargets.has(object)
+      || (object === rootTarget && BRIDGE_UI_ROOT_KEYS.has(prop));
+  }
+
+  function recordVocabularyMutation(object: object, prop: PropertyKey): void {
+    if ((object === rootTarget && prop === "vocab")
+      || vocabularyMaps.has(object)
+      || (vocabularyEntries.has(object) && prop === "status")) {
+      vocabularyRevision += 1;
+    }
   }
 
   function wrap<T extends object>(target: T, bridgeUiOnly = false): T {
@@ -190,6 +203,8 @@ export function createAutosave(getState: () => WhAppState) {
         if (value !== null && typeof value === "object" && !(value instanceof Date)) {
           const childIsBridgeUi = bridgeUiTargets.has(object)
             || (object === rootTarget && BRIDGE_UI_ROOT_KEYS.has(prop));
+          if (prop === "vocab") vocabularyMaps.add(value);
+          else if (vocabularyMaps.has(object)) vocabularyEntries.add(value);
           return proxyCache.get(value) || wrap(value, childIsBridgeUi);
         }
         return value;
@@ -198,9 +213,10 @@ export function createAutosave(getState: () => WhAppState) {
         const oldValue = Reflect.get(object, prop, receiver);
         const rawValue = unwrapProxy(value);
         const result = Reflect.set(object, prop, rawValue, receiver);
+        if (oldValue !== rawValue) recordVocabularyMutation(object, prop);
         if (oldValue !== rawValue
           && !(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
-          && !isBridgeUiMutation(object, prop)) {
+          && !isUiMutation(object, prop)) {
           if (suspendAutoSave === 0) durableStateRevision += 1;
           scheduleSave();
         }
@@ -209,8 +225,9 @@ export function createAutosave(getState: () => WhAppState) {
       deleteProperty(object, prop) {
         if (prop in object) {
           Reflect.deleteProperty(object, prop);
+          recordVocabularyMutation(object, prop);
           if (!(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
-            && !isBridgeUiMutation(object, prop)) {
+            && !isUiMutation(object, prop)) {
             if (suspendAutoSave === 0) durableStateRevision += 1;
             scheduleSave();
           }
@@ -229,8 +246,12 @@ export function createAutosave(getState: () => WhAppState) {
     getDurableStateRevision() {
       return durableStateRevision;
     },
+    getVocabularyRevision() {
+      return vocabularyRevision;
+    },
     markDurableStateReplaced() {
       durableStateRevision += 1;
+      vocabularyRevision += 1;
     },
     flushPendingSave() {
       clearTimeout(saveTimer);

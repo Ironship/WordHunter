@@ -311,6 +311,8 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
   else if (quality < 3) status = "learning";
   else if (currentEntry.status === "new") status = "learning";
   setEntryStatus(currentEntry, status, updatedAt);
+  // A first transition to Learning must not replace the schedule just computed by FSRS/SM-2.
+  currentEntry.nextDate = reviewedEntry.nextDate;
   return currentEntry;
 }
 
@@ -321,10 +323,10 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
   els.reviewCard?.querySelectorAll("[data-sm2-grade]").forEach((button: Element) => {
     if (button instanceof HTMLButtonElement) button.disabled = true;
   });
-  playReviewGradeSound(quality);
   try {
     const entry = await applyReviewGrade(word, quality);
     if (!entry) return;
+    playReviewGradeSound(quality);
     const { hideReviewAnswer } = await import("../views/vocabulary.js");
     hideReviewAnswer();
     renderReview();

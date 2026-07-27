@@ -16,7 +16,8 @@ struct TestResponse {
 }
 
 fn handle_boundary_request(request: Request, base_url: &str) -> Result<(), String> {
-    let (path, query) = response::split_url(request.url());
+    let url = request.url().to_string();
+    let (path, query) = response::split_url(&url);
     if !valid_request_source(&request, base_url) {
         return response::error_response(request, 403, "forbidden request source");
     }

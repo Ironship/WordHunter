@@ -1,6 +1,7 @@
 use regex::Regex;
 use serde::Serialize;
 use serde_json::{Value, json};
+use std::borrow::Cow;
 use std::sync::LazyLock;
 use unicode_normalization::UnicodeNormalization;
 use unicode_segmentation::UnicodeSegmentation;
@@ -10,6 +11,13 @@ pub struct Token {
     #[serde(rename = "type")]
     pub kind: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenKind {
+    Word,
+    Text,
+    Image,
 }
 
 const STRIP_PUNCTUATION: &str =
@@ -43,40 +51,28 @@ pub fn resolve_algorithm(value: Option<&str>) -> &'static str {
 }
 
 pub fn tokenize(text: &str, lang: &str, algorithm: Option<&str>) -> Vec<Token> {
-    if text.is_empty() {
-        return Vec::new();
-    }
-    let mode = resolve_algorithm(algorithm);
     let mut parts: Vec<Token> = Vec::new();
-    let mut last = 0usize;
-
-    for image_match in IMAGE_PATTERN.find_iter(text) {
-        let start = image_match.start();
-        let end = image_match.end();
-        if start > last {
-            push_text_block(&text[last..start], lang, mode, &mut parts);
-        }
-        let raw = &text[start..end];
-        let inner = raw
-            .strip_prefix("[IMG:")
-            .and_then(|s| s.strip_suffix("]"))
-            .unwrap_or(raw);
+    for_each_token(text, lang, algorithm, |kind, value| {
         parts.push(Token {
-            kind: "image".to_string(),
-            value: inner.to_string(),
+            kind: match kind {
+                TokenKind::Word => "word",
+                TokenKind::Text => "text",
+                TokenKind::Image => "image",
+            }
+            .to_string(),
+            value: value.to_string(),
         });
-        last = end;
-    }
-    if last < text.len() {
-        push_text_block(&text[last..], lang, mode, &mut parts);
-    }
-
+    });
     merge_adjacent_text(&mut parts);
     parts
 }
 
-/// Visits the same word tokens as `tokenize` without allocating text/image tokens.
-pub fn for_each_word(text: &str, lang: &str, algorithm: Option<&str>, mut visit: impl FnMut(&str)) {
+pub fn for_each_token(
+    text: &str,
+    _lang: &str,
+    algorithm: Option<&str>,
+    mut visit: impl FnMut(TokenKind, &str),
+) {
     if text.is_empty() {
         return;
     }
@@ -84,79 +80,55 @@ pub fn for_each_word(text: &str, lang: &str, algorithm: Option<&str>, mut visit:
     let mut last = 0usize;
     for image_match in IMAGE_PATTERN.find_iter(text) {
         if image_match.start() > last {
-            visit_words_in_block(&text[last..image_match.start()], lang, mode, &mut visit);
+            visit_tokens_in_block(&text[last..image_match.start()], mode, &mut visit);
         }
+        let raw = image_match.as_str();
+        visit(
+            TokenKind::Image,
+            raw.strip_prefix("[IMG:")
+                .and_then(|value| value.strip_suffix(']'))
+                .unwrap_or(raw),
+        );
         last = image_match.end();
     }
     if last < text.len() {
-        visit_words_in_block(&text[last..], lang, mode, &mut visit);
+        visit_tokens_in_block(&text[last..], mode, &mut visit);
     }
 }
 
-fn visit_words_in_block(block: &str, _lang: &str, mode: &str, visit: &mut impl FnMut(&str)) {
+/// Visits the same word tokens as `tokenize` without allocating text/image tokens.
+pub fn for_each_word(text: &str, lang: &str, algorithm: Option<&str>, mut visit: impl FnMut(&str)) {
+    for_each_token(text, lang, algorithm, |kind, value| {
+        if kind == TokenKind::Word {
+            visit(value);
+        }
+    });
+}
+
+fn visit_tokens_in_block(block: &str, mode: &str, visit: &mut impl FnMut(TokenKind, &str)) {
     if mode == "classic" {
+        let mut last = 0;
         for word in CLASSIC_PATTERN.find_iter(block) {
-            visit(word.as_str());
+            if word.start() > last {
+                visit(TokenKind::Text, &block[last..word.start()]);
+            }
+            visit(TokenKind::Word, word.as_str());
+            last = word.end();
+        }
+        if last < block.len() {
+            visit(TokenKind::Text, &block[last..]);
         }
         return;
     }
     for segment in block.split_word_bounds() {
-        if !segment.trim().is_empty()
-            && segment
-                .chars()
-                .any(|c| c.is_alphabetic() || c.is_alphanumeric())
-        {
-            visit(segment);
-        }
-    }
-}
-
-fn push_text_block(block: &str, lang: &str, mode: &str, parts: &mut Vec<Token>) {
-    if block.is_empty() {
-        return;
-    }
-    if mode == "classic" {
-        push_classic(block, parts);
-    } else {
-        push_modern(block, lang, parts);
-    }
-}
-
-fn push_classic(block: &str, parts: &mut Vec<Token>) {
-    let mut last = 0usize;
-    for mat in CLASSIC_PATTERN.find_iter(block) {
-        if mat.start() > last {
-            parts.push(Token {
-                kind: "text".to_string(),
-                value: block[last..mat.start()].to_string(),
-            });
-        }
-        parts.push(Token {
-            kind: "word".to_string(),
-            value: mat.as_str().to_string(),
-        });
-        last = mat.end();
-    }
-    if last < block.len() {
-        parts.push(Token {
-            kind: "text".to_string(),
-            value: block[last..].to_string(),
-        });
-    }
-}
-
-fn push_modern(block: &str, _lang: &str, parts: &mut Vec<Token>) {
-    for segment in block.split_word_bounds() {
-        if segment.trim().is_empty() {
-            continue;
-        }
-        let is_word = segment
-            .chars()
-            .any(|c| c.is_alphabetic() || c.is_alphanumeric());
-        parts.push(Token {
-            kind: if is_word { "word" } else { "text" }.to_string(),
-            value: segment.to_string(),
-        });
+        visit(
+            if segment.chars().any(char::is_alphanumeric) {
+                TokenKind::Word
+            } else {
+                TokenKind::Text
+            },
+            segment,
+        );
     }
 }
 
@@ -196,16 +168,21 @@ fn case_fold_vocabulary_word(value: String) -> String {
 }
 
 pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
-    let language = lang.split(['-', '_']).next().unwrap_or("").to_lowercase();
+    let primary = lang.split(['-', '_']).next().unwrap_or("");
+    let language = if primary.bytes().all(|value| !value.is_ascii_uppercase()) {
+        Cow::Borrowed(primary)
+    } else {
+        Cow::Owned(primary.to_lowercase())
+    };
     let compatible: String = value.nfkc().collect();
-    let locale_adjusted = if matches!(language.as_str(), "tr" | "az") {
+    let locale_adjusted = if matches!(language.as_ref(), "tr" | "az") {
         compatible.replace('I', "ı").replace('İ', "i")
     } else {
         compatible
     }
     .replace('‘', "'")
     .replace('’', "'");
-    let prefixes: &[(&str, &str)] = match language.as_str() {
+    let prefixes: &[(&str, &str)] = match language.as_ref() {
         "fr" => &[("l'", "l’")],
         "it" => &[("un'", "un’"), ("l'", "l’")],
         _ => &[],

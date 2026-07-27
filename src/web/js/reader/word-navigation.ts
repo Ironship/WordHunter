@@ -2,7 +2,7 @@ import { state, saveUiState } from "../state.js";
 import { normalizeWord } from "../tokenizer_v2.js";
 import { speakWord } from "../tts.js";
 import { selectWord } from "../vocab-actions.js";
-import { setReaderSelectionAnchorFromToken, updateReaderSelection } from "./selection.js";
+import { getReaderWordTokens, setReaderSelectionAnchorFromToken, updateReaderSelection } from "./selection.js";
 
 export type ReaderToken = HTMLButtonElement;
 
@@ -15,21 +15,22 @@ export interface ReaderNavigationOptions {
 let wordPanelTransitionId = 0;
 
 export function readerTokens(): ReaderToken[] {
-  return Array.from(document.getElementById("reader-text")?.querySelectorAll<ReaderToken>(".word-token") || []);
+  return getReaderWordTokens();
 }
 
 export function findCurrentReaderToken(tokens: ReaderToken[] = readerTokens()): ReaderToken | null {
+  const tokenSet = new Set(tokens);
   let active = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
-  if (!active || !tokens.includes(active)) {
+  if (!active || !tokenSet.has(active)) {
     active = window.lastActiveToken instanceof HTMLButtonElement ? window.lastActiveToken : null;
   }
-  if ((!active || !tokens.includes(active)) && Number.isInteger(state.selectedWordIndex)) {
+  if ((!active || !tokenSet.has(active)) && Number.isInteger(state.selectedWordIndex)) {
     active = tokens.find((token) => Number(token.dataset.wordIndex) === state.selectedWordIndex);
   }
-  if ((!active || !tokens.includes(active)) && state.selectedWord) {
+  if ((!active || !tokenSet.has(active)) && state.selectedWord) {
     active = tokens.find((token) => token.dataset.word === state.selectedWord);
   }
-  return active && tokens.includes(active) ? active : null;
+  return active && tokenSet.has(active) ? active : null;
 }
 
 function clearWordCardDrag(panel: HTMLElement): void {

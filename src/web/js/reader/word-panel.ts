@@ -1,11 +1,10 @@
 /**
  * Word panel: render the side panel and update word status in the reader.
  */
-import { state, saveState } from "../state.js";
+import { getVocabularyRevision, state, saveState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, statusLabel } from "../utils.js";
 import { icon, statusIcon } from "../icons.js";
-import { getSentenceForWord, getTextStats } from "../tokenizer_v2.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constants.js";
 import { t } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
@@ -27,6 +26,7 @@ import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import type { VocabStatus } from "../constants.js";
 import { formatHeadword } from "../vocabulary/article.js";
 import { playReviewGradeSound } from "../status-sounds.js";
+import { analyzeReaderSession, getReaderSession } from "./session.js";
 
 export interface UpdateWordStatusOptions {
   renderPanel?: boolean;
@@ -426,17 +426,11 @@ export function renderWordPanel(currentText: WhText): void {
   const isTransientRange = isTransientReaderRangeSelection();
   const entry: WordPanelEntry = isTransientRange
     ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
-    : getOrCreateEntry(word, currentText.text, state.selectedWordIndex);
+    : state.vocab[word] || getOrCreateEntry(word);
   const displayWord = entry.word || word;
   applyWordPanelStatus(entry.status);
   resetInTextReview(word);
-  const context = getSentenceForWord(
-    currentText.text,
-    word,
-    effectiveLearningLanguage(state.preferences),
-    state.preferences.wordDetectionAlgorithm || "modern",
-    state.selectedWordIndex
-  ) || entry.examples?.[0] || "";
+  const context = entry.examples?.[0] || "";
 
   const smartSuggestion = getSmartSuggestion(context, word);
   const articleSuggestion = smartSuggestion?.kind === "article" ? smartSuggestion : null;
@@ -480,12 +474,15 @@ export function updateWordStatusInReader(word: string, status: VocabStatus, opti
   }
 
   if (current) {
-    const stats = getTextStats(
-      current.text,
+    const language = effectiveLearningLanguage(state.preferences);
+    const algorithm = state.preferences.wordDetectionAlgorithm || "modern";
+    const session = analyzeReaderSession(
+      getReaderSession(current, language, algorithm),
       state.vocab,
-      effectiveLearningLanguage(state.preferences),
-      state.preferences.wordDetectionAlgorithm || "modern"
+      language,
+      getVocabularyRevision()
     );
+    const stats = session.stats!;
     renderTrackingSummary(stats);
     if (els.uniqueSummary) {
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });

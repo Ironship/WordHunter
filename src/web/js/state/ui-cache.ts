@@ -17,26 +17,20 @@ export const UI_STATE_KEYS = [
   "filters"
 ] as const;
 
-function clonePlain<T>(value: T): T {
-  if (value === undefined) return undefined;
-  return JSON.parse(JSON.stringify(value));
-}
-
 export function captureUiState(rawState: WhRecord): WhRecord {
   const captured: WhRecord = {};
   for (const key of UI_STATE_KEYS) {
-    if (rawState[key] !== undefined) captured[key] = clonePlain(rawState[key]);
+    if (rawState[key] !== undefined) captured[key] = rawState[key];
   }
   return captured;
 }
 
-export function saveUiStateCache(rawState: WhRecord): void {
+export function saveUiStateCache(serializedUiState: string | WhRecord): void {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.setItem(UI_STORAGE_KEY, JSON.stringify({
-      schemaVersion: STATE_SCHEMA_VERSION,
-      ...captureUiState(rawState)
-    }));
+    localStorage.setItem(UI_STORAGE_KEY, typeof serializedUiState === "string"
+      ? serializedUiState
+      : JSON.stringify({ schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(serializedUiState) }));
   } catch (error) {
     console.warn("Failed to save local UI state", error);
   }

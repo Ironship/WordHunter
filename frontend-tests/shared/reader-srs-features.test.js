@@ -14,6 +14,7 @@ const { applyBridgeSnapshotToState, replaceState, state } = await import("../../
 const { applyReviewGrade, gradeReview, renderReview, resetReviewPresentation } = await import("../../dist/web/js/vocabulary/review-card.js");
 const { hideReviewAnswer, toggleReviewAnswer } = await import("../../dist/web/js/views/vocabulary.js");
 const { handleReaderKeys } = await import("../../dist/web/js/events/keyboard/reader-keys.js");
+const { stopSpeaking } = await import("../../dist/web/js/tts.js");
 const { els } = await import("../../dist/web/js/dom.js");
 const appVersion = JSON.parse(
   readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
@@ -326,6 +327,7 @@ describe("in-text SRS grading", () => {
       await Promise.resolve();
       assert.deepEqual(spoken, ["Spoken card"]);
     } finally {
+      stopSpeaking();
       delete window.WordHunterAndroid;
       els.reviewCard = previousCard;
       state.vocab = previousVocab;
@@ -416,6 +418,20 @@ describe("in-text SRS grading", () => {
     assert.equal(entry.repetition, 1);
     assert.ok(entry.stability > 0);
     assert.equal(getSrsLevel(entry), 2);
+  });
+
+  it("keeps the first FSRS interval when a new card enters Learning", async () => {
+    state.preferences.srsAlgorithm = "fsrs";
+    setActiveVocab({ wort: { status: "new", repetition: 0, interval: 0, stability: 0, difficulty: 5 } });
+
+    const entry = await applyReviewGrade("wort", 5);
+
+    assert.equal(entry.interval, 7);
+    const expected = new Date(entry.lastReviewedAt);
+    expected.setDate(expected.getDate() + entry.interval);
+    const expectedDate = `${expected.getFullYear()}-${String(expected.getMonth() + 1).padStart(2, "0")}-${String(expected.getDate()).padStart(2, "0")}`;
+    assert.equal(entry.status, "learning");
+    assert.equal(entry.nextDate, expectedDate);
   });
 
   it("falls back to local scheduling when the native review request times out", async () => {
