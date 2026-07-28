@@ -151,9 +151,25 @@ export function createAutosave(getState: () => WhAppState) {
     return doSave();
   }
 
-  function runExclusiveWrite<T>(callback: () => T | Promise<T>): Promise<T> {
+  function runExclusiveWrite<T>(
+    callback: () => T | Promise<T>,
+    { saveFirst = true }: { saveFirst?: boolean } = {}
+  ): Promise<T> {
     const operation = exclusiveWriteTail.then(async () => {
-      await saveState();
+      if (saveFirst) {
+        await saveState();
+      } else {
+        if (saveInFlight) {
+          try {
+            await savePromise;
+          } catch {
+            // A confirmed backup restore may repair the state that autosave could not persist.
+          }
+        }
+        clearTimeout(saveTimer);
+        saveTimer = null;
+        savePending = false;
+      }
       exclusiveWriteActive = true;
       try {
         return await callback();

@@ -1,3 +1,11 @@
+word-hunter (1.0.9~rc.6) unstable; urgency=medium
+
+  * Allow complete JSON backups to repair unreadable local text records.
+  * Prevent failed projected-text saves from leaving a blocking journal.
+  * Keep ordinary projected saves fail-closed to protect book content.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Tue, 28 Jul 2026 20:00:00 +0000
+
 word-hunter (1.0.9~rc.5) unstable; urgency=medium
 
   * Remove Android JSON backup export and portable JSON import limits.

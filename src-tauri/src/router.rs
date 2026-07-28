@@ -258,13 +258,15 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__store/save" => {
                 let payload = read_json_or_400!(request);
-                match state.store.bulk_save(payload) {
+                let query = response::parse_query(query);
+                let result = if query.get("restore").map(String::as_str) == Some("1") {
+                    state.store.restore_backup(payload)
+                } else {
+                    state.store.bulk_save(payload)
+                };
+                match result {
                     Ok(()) => {
-                        if response::parse_query(&query)
-                            .get("snapshot")
-                            .map(String::as_str)
-                            == Some("1")
-                        {
+                        if query.get("snapshot").map(String::as_str) == Some("1") {
                             response::json_response(
                                 request,
                                 json!({ "snapshot": state.store.snapshot_unacknowledged() }),

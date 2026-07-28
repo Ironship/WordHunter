@@ -195,11 +195,14 @@ export async function requestWordHunterClose(): Promise<void> {
 }
 window.requestWordHunterClose = () => { void requestWordHunterClose(); };
 
-export function runExclusiveStateWrite<T>(callback: () => T | Promise<T>): Promise<T> {
+export function runExclusiveStateWrite<T>(
+  callback: () => T | Promise<T>,
+  options: { saveFirst?: boolean } = {}
+): Promise<T> {
   flushFrontendStateBuffers();
   uiWritesPaused += 1;
   return drainUiSaves()
-    .then(() => autosave.runExclusiveWrite(callback))
+    .then(() => autosave.runExclusiveWrite(callback, options))
     .finally(() => {
       uiWritesPaused = Math.max(0, uiWritesPaused - 1);
       if (uiWritesPaused === 0 && uiSaveRequestedWhilePaused) {
