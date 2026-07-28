@@ -37,6 +37,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.5" date="2026-07-28" type="development">
+      <description>
+        <ul>
+          <li>Remove the Android JSON backup export limit and the portable JSON import limit.</li>
+          <li>Increase Android PDF import and rendering limits to 400 MB.</li>
+          <li>Replace native Syncthing pairing prompts with an application-styled dialog.</li>
+          <li>Show busy feedback during JSON and Anki exports and report import progress.</li>
+          <li>Report exported Anki word counts and skipped Discover duplicates.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.3" date="2026-07-27" type="development">
       <description>
         <ul>

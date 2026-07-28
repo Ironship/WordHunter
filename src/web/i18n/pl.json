@@ -703,7 +703,11 @@
     "ankiTsvHeader": "Słowo\tTłumaczenie\tKontekst\tRodzajnik\n",
     "ankiExportStatuses": "Eksportowane statusy",
     "ankiExportStatusesHint": "Wybierz statusy słów uwzględniane w TSV. Anki otrzyma kolumny: słowo, tłumaczenie, kontekst i opcjonalny rodzajnik.",
-    "groupLocalData": "Dane na tym urządzeniu"
+    "groupLocalData": "Dane na tym urządzeniu",
+    "syncthingPairTitle": "Dodaj urządzenie",
+    "syncthingPairDeviceIdLabel": "Device ID",
+    "syncthingPairDeviceNameLabel": "Nazwa urządzenia",
+    "syncthingPairDeviceNameHint": "Opcjonalna nazwa do rozpoznania urządzenia"
   },
   "translator": {
     "swap": "Zamień języki miejscami",
@@ -826,8 +830,8 @@
     "contactIssues": "<strong>Zgłoszenia błędów i propozycje funkcji:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencja:</strong> AGPL-3.0-or-later. Komercyjne wykorzystanie kodu pochodnego w oprogramowaniu o zamkniętym kodzie źródłowym wymaga odrębnej pisemnej licencji. Szczegóły: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 — ulepszenia wydajności, optymalizacje pamięci podręcznej i poprawki TTS.</strong>",
-    "version": "<strong>Wersja:</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 obsługuje większe kopie zapasowe i pliki PDF na Androidzie, wyraźniej pokazuje postęp eksportu i importu oraz zastępuje okna Syncthing dialogiem dopasowanym do aplikacji.</strong>",
+    "version": "<strong>Wersja:</strong> Word Hunter 1.0.9-rc.5",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Naciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby przejść do tekstu lub do niego wrócić",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> – poruszaj się między słowami",
@@ -1003,7 +1007,10 @@
     "importedEbookEmpty": "Zaimportowany e-book jest pusty.",
     "importedFileEmpty": "Zaimportowany plik jest pusty po przetworzeniu.",
     "ankiExportEmpty": "Brak słów do eksportu dla wybranych statusów.",
-    "vocabExportEmpty": "Brak słów do eksportu dla bieżących filtrów."
+    "vocabExportEmpty": "Brak słów do eksportu dla bieżących filtrów.",
+    "importing": "Importowanie...",
+    "exportReadyCount": "Wyeksportowano {n} słów.",
+    "addedManyWithSkipped": "Dodano {added} książek. Pominięto {skipped} (już w bibliotece)."
   },
   "languages": {
     "pl": "Polski",

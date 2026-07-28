@@ -17,9 +17,7 @@ import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
 const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
-const MAX_STATE_IMPORT_BYTES = 128 * 1024 * 1024;
 const MAX_ANKI_IMPORT_BYTES = 32 * 1024 * 1024;
-const MAX_POCKET_EXPORT_BYTES = 32 * 1024 * 1024;
 const PORTABLE_BACKUP_TEXT_CONCURRENCY = 2;
 
 type UnknownRecord = Record<string, unknown>;
@@ -47,6 +45,7 @@ interface VocabularyExportFile {
   content: string;
   filename: string;
   mime: string;
+  count: number;
 }
 
 interface AnkiImportRow {
@@ -119,7 +118,7 @@ function vocabularyExportFile(value: unknown): VocabularyExportFile | null {
   if (typeof value.content !== "string" || typeof value.filename !== "string" || typeof value.mime !== "string") {
     throw new Error("vocab export response is missing file data");
   }
-  return { content: value.content, filename: value.filename, mime: value.mime };
+  return { content: value.content, filename: value.filename, mime: value.mime, count: Number(value.count) || 0 };
 }
 
 function normalizeAnkiRows(value: unknown): AnkiImportRow[] {
@@ -141,32 +140,9 @@ function createAndroidExportRequestId(): string {
   return `android-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function exceedsPocketExportLimit(
-  data: string,
-  maxBytes = MAX_POCKET_EXPORT_BYTES
-): boolean {
-  if (data.length > maxBytes) return true;
-  let bytes = 0;
-  for (let index = 0; index < data.length; index += 1) {
-    const code = data.charCodeAt(index);
-    if (code <= 0x7f) bytes += 1;
-    else if (code <= 0x7ff) bytes += 2;
-    else if (code >= 0xd800 && code <= 0xdbff && index + 1 < data.length
-      && data.charCodeAt(index + 1) >= 0xdc00 && data.charCodeAt(index + 1) <= 0xdfff) {
-      bytes += 4;
-      index += 1;
-    } else bytes += 3;
-    if (bytes > maxBytes) return true;
-  }
-  return false;
-}
-
 export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
   const bridge = window.WordHunterAndroid;
   if (typeof bridge?.saveExport !== "function") return null;
-  if (exceedsPocketExportLimit(data)) {
-    return Promise.reject(new Error("Pocket export exceeds the 32 MB safety limit."));
-  }
   return new Promise<boolean>((resolve, reject) => {
     const requestId = createAndroidExportRequestId();
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -319,10 +295,6 @@ async function portableBackupPayload(): Promise<PortableBackupResult> {
   portable.backupMissingTextIds = missingTextIds.sort();
   portable.backupIncludesMediaFiles = false;
   const payload = JSON.stringify(portable, null, 2);
-  const payloadBytes = new Blob([payload], { type: "application/json" }).size;
-  if (Number.isFinite(payloadBytes) && payloadBytes > MAX_STATE_IMPORT_BYTES) {
-    throw new Error(`Portable backup exceeds ${MAX_STATE_IMPORT_BYTES} bytes`);
-  }
   return { payload, textCount: sources.size, missingTextCount: missingTextIds.length };
 }
 
@@ -569,12 +541,6 @@ export function importStateFile(event: unknown): void {
   const file = target?.files?.[0];
   if (!file) return;
 
-  if (file.size > MAX_STATE_IMPORT_BYTES) {
-    showToast(t("toast.backupTooLarge", { mb: MAX_STATE_IMPORT_BYTES / (1024 * 1024) }));
-    target.value = "";
-    return;
-  }
-
   const reader = new FileReader();
   reader.addEventListener("load", async () => {
     try {
@@ -660,6 +626,7 @@ export function importStateFile(event: unknown): void {
   const readFailed = () => showToast(t("toast.importFailed"));
   reader.addEventListener("error", readFailed);
   reader.addEventListener("abort", readFailed);
+  showToast(t("toast.importing"));
   reader.readAsText(file);
   target.value = "";
 }
@@ -801,7 +768,11 @@ export async function exportAnkiTsv(): Promise<void> {
       showToast(t("toast.ankiExportEmpty"));
       return;
     }
-    showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
+    if (await nativeSave(result.content, result.filename, result.mime)) {
+      showToast(t("toast.exportReadyCount", { n: result.count || 0 }));
+    } else {
+      showToast(t("toast.exportCancelled"));
+    }
   } catch (error) {
     console.warn("anki export failed", error);
   }

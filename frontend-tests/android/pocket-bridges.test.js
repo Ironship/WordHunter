@@ -356,7 +356,6 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /openFileDescriptor\(uri, "wt"\)/);
     assert.match(activity, /exportExecutor\.execute \{/);
     assert.match(activity, /OutputStreamWriter\(output, Charsets\.UTF_8\)/);
-    assert.match(activity, /ANDROID_EXPORT_MAX_CHARS = 32 \* 1024 \* 1024/);
     assert.match(activity, /dispatchAndroidExportProgress\(export\.requestId, "writing"\)/);
     assert.doesNotMatch(activity, /data\.toByteArray\(Charsets\.UTF_8\)/);
     assert.match(activity, /output\.fd\.sync\(\)/);

@@ -235,7 +235,7 @@
     "loadingHint": "Potrebbe richiedere alcuni secondi.",
     "translationLabel": "Traduzione",
     "articleLabel": "Articolo",
-    "articlePlaceholder": "es. il / la / l\u0027",
+    "articlePlaceholder": "es. il / la / l'",
     "articleAria": "Articolo per {word}",
     "translateContext": "Traduci frase",
     "contextTranslationLabel": "Frase:",
@@ -703,7 +703,11 @@
     "flashcardHeading": "Ripassi e algoritmo",
     "translatorEyebrow": "Traduttore e Dizionario",
     "translatorHeading": "Traduzioni e collegamenti",
-    "groupLocalData": "Dati su questo dispositivo"
+    "groupLocalData": "Dati su questo dispositivo",
+    "syncthingPairTitle": "Aggiungi dispositivo",
+    "syncthingPairDeviceIdLabel": "ID dispositivo",
+    "syncthingPairDeviceNameLabel": "Nome dispositivo",
+    "syncthingPairDeviceNameHint": "Nome opzionale per identificare il dispositivo"
   },
   "help": {
     "eyebrow": "Aiuto",
@@ -746,8 +750,8 @@
     "contactIssues": "<strong>Bug e idee:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contatto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licenza:</strong> AGPL-3.0-or-later. L'uso commerciale chiuso di codice derivato richiede una licenza scritta separata. Dettagli: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 — miglioramenti delle prestazioni, ottimizzazioni della cache e correzioni TTS.</strong>",
-    "version": "<strong>Versione:</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 supporta backup e PDF Android più grandi, mostra meglio l'avanzamento di esportazione e importazione e sostituisce i prompt Syncthing con una finestra integrata.</strong>",
+    "version": "<strong>Versione:</strong> Word Hunter 1.0.9-rc.5",
     "focusHint1": "Premi <kbd>Ctrl</kbd>+<kbd>Invio</kbd> per entrare o tornare nel testo",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> per navigare le parole",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Spazio</kbd> leggi frase",
@@ -922,7 +926,10 @@
     "ankiExportEmpty": "Nessuna parola da esportare per gli stati selezionati.",
     "vocabExportEmpty": "Nessuna parola da esportare con i filtri attuali.",
     "importDoneCount": "Importazione completata ({count}).",
-    "emptyFields": "Compila titolo e testo."
+    "emptyFields": "Compila titolo e testo.",
+    "importing": "Importazione...",
+    "exportReadyCount": "{n} parole esportate.",
+    "addedManyWithSkipped": "{added} libri aggiunti. {skipped} saltati (già nella libreria)."
   },
   "languages": {
     "pl": "Polacco",

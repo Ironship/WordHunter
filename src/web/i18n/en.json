@@ -703,7 +703,11 @@
     "ankiTsvHeader": "Word\tTranslation\tContext\tArticle\n",
     "ankiExportStatuses": "Exported statuses",
     "ankiExportStatusesHint": "Choose which word statuses are included in the TSV. Anki receives word, translation, context, and optional article columns.",
-    "groupLocalData": "Data on this device"
+    "groupLocalData": "Data on this device",
+    "syncthingPairTitle": "Add device",
+    "syncthingPairDeviceIdLabel": "Device ID",
+    "syncthingPairDeviceNameLabel": "Device name",
+    "syncthingPairDeviceNameHint": "Optional name to identify this device"
   },
   "translator": {
     "swap": "Swap languages",
@@ -826,8 +830,8 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 brings performance improvements, cache optimizations, and TTS fixes: reader word selection no longer re-tokenizes the entire book; PDF page navigation uses cumulative offsets; Rust phrase indexing uses a streaming tokenizer with trie matching; index cache fingerprints content instead of sampling; UI state saves are coalesced into one serialization; book body cache pins active Reader pages; library statistics hydration loads and computes stats concurrently; Edge TTS includes timeout safety and session isolation fixes; request deadlines cover response body reads; static assets and media are streamed from disk instead of being fully buffered; HTTP agent is reused globally; and the frontend bundle is minified.</strong>",
-    "version": "<strong>Version:</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 supports larger Android backups and PDFs, adds clearer export and import progress, and replaces Syncthing prompts with an application-styled pairing dialog.</strong>",
+    "version": "<strong>Version:</strong> Word Hunter 1.0.9-rc.5",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -1003,7 +1007,10 @@
     "importedEbookEmpty": "Imported ebook is empty.",
     "importedFileEmpty": "Imported file is empty after parsing.",
     "ankiExportEmpty": "No words match the selected export statuses.",
-    "vocabExportEmpty": "No words match the current export filters."
+    "vocabExportEmpty": "No words match the current export filters.",
+    "importing": "Importing...",
+    "exportReadyCount": "Exported {n} words.",
+    "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library)."
   },
   "languages": {
     "pl": "Polish",

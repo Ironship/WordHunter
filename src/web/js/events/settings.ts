@@ -536,7 +536,14 @@ export function bindSettingsEvents() {
   bindSelectedWordPanelSettings();
 
   const exportBtn = document.getElementById("export-state");
-  if (exportBtn) exportBtn.addEventListener("click", exportState);
+  if (exportBtn) exportBtn.addEventListener("click", async () => {
+    setElementBusy(exportBtn, true, { disable: true });
+    try {
+      await exportState();
+    } finally {
+      setElementBusy(exportBtn, false, { disable: true });
+    }
+  });
 
   if (els.chooseDataDirectory) els.chooseDataDirectory.addEventListener("click", async () => {
     if (isAndroidPlatform()) {
@@ -651,10 +658,70 @@ export function bindSettingsEvents() {
     }
   });
 
+  function showSyncthingPairDialog(): Promise<{ deviceId: string; deviceName: string } | null> {
+    const dialog = document.querySelector<HTMLDialogElement>("#syncthing-pair-dialog");
+    if (!dialog || typeof HTMLDialogElement === "undefined") {
+      const deviceId = prompt(t("settings.syncthingPairPrompt"));
+      if (!deviceId) return Promise.resolve(null);
+      const deviceName = prompt(t("settings.syncthingPairNamePrompt")) || deviceId;
+      return Promise.resolve({ deviceId, deviceName });
+    }
+
+    const idInput = dialog.querySelector<HTMLInputElement>("#syncthing-pair-id");
+    const nameInput = dialog.querySelector<HTMLInputElement>("#syncthing-pair-name");
+    const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
+    const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
+
+    if (idInput) idInput.value = "";
+    if (nameInput) nameInput.value = "";
+
+    return new Promise<{ deviceId: string; deviceName: string } | null>((resolve) => {
+      const cleanup = (value: { deviceId: string; deviceName: string } | null) => {
+        cancelButton.removeEventListener("click", onCancel);
+        confirmButton.removeEventListener("click", onConfirm);
+        dialog.removeEventListener("cancel", onCancel);
+        dialog.removeEventListener("click", onBackdrop);
+        dialog.removeEventListener("keydown", onKeydown);
+        dialog.close();
+        resolve(value);
+      };
+      const onCancel = (event: Event) => {
+        event.preventDefault();
+        cleanup(null);
+      };
+      const onConfirm = () => {
+        const deviceId = idInput?.value.trim() || "";
+        if (!deviceId) {
+          idInput?.focus();
+          return;
+        }
+        const deviceName = nameInput?.value.trim() || deviceId;
+        cleanup({ deviceId, deviceName });
+      };
+      const onBackdrop = (event: MouseEvent) => {
+        if (event.target === dialog) cleanup(null);
+      };
+      const onKeydown = (event: KeyboardEvent) => {
+        if (event.key === "Enter" && document.activeElement !== nameInput) {
+          event.preventDefault();
+          onConfirm();
+        }
+      };
+
+      cancelButton.addEventListener("click", onCancel);
+      confirmButton.addEventListener("click", onConfirm);
+      dialog.addEventListener("cancel", onCancel);
+      dialog.addEventListener("click", onBackdrop);
+      dialog.addEventListener("keydown", onKeydown);
+      dialog.showModal();
+      idInput?.focus();
+    });
+  }
+
   if (els.syncthingPair) els.syncthingPair.addEventListener("click", async () => {
-    const deviceId = prompt(t("settings.syncthingPairPrompt"));
-    if (!deviceId) return;
-    const deviceName = prompt(t("settings.syncthingPairNamePrompt")) || deviceId;
+    const pair = await showSyncthingPairDialog();
+    if (!pair) return;
+    const { deviceId, deviceName } = pair;
     setElementBusy(els.syncthingPair, true, { disable: true });
     try {
       const response = await fetch("/__syncthing/pair", {
@@ -828,7 +895,14 @@ export function bindSettingsEvents() {
   });
 
   const exportAnkiBtn = document.getElementById("export-anki-tsv");
-  if (exportAnkiBtn) exportAnkiBtn.addEventListener("click", exportAnkiTsv);
+  if (exportAnkiBtn) exportAnkiBtn.addEventListener("click", async () => {
+    setElementBusy(exportAnkiBtn, true, { disable: true });
+    try {
+      await exportAnkiTsv();
+    } finally {
+      setElementBusy(exportAnkiBtn, false, { disable: true });
+    }
+  });
 
   if (els.ankiExportStatusFilters?.length) {
     els.ankiExportStatusFilters.forEach((input) => {

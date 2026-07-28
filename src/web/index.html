@@ -1670,6 +1670,27 @@
     </div>
   </dialog>
 
+  <dialog id="syncthing-pair-dialog" class="panel confirmation-dialog" aria-labelledby="syncthing-pair-title">
+    <div class="panel-header"><h2 id="syncthing-pair-title" data-i18n="settings.syncthingPairTitle">Dodaj urządzenie</h2></div>
+    <div class="confirmation-dialog-body">
+      <div class="settings-body" style="gap: 0.75rem;">
+        <label class="setting-row" style="flex-direction: column; align-items: stretch;">
+          <span data-i18n="settings.syncthingPairDeviceIdLabel">Device ID</span>
+          <input id="syncthing-pair-id" type="text" class="input" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="setting-row" style="flex-direction: column; align-items: stretch;">
+          <span data-i18n="settings.syncthingPairDeviceNameLabel">Nazwa urządzenia</span>
+          <input id="syncthing-pair-name" type="text" class="input" autocomplete="off">
+        </label>
+        <p class="muted-copy" data-i18n="settings.syncthingPairDeviceNameHint">Opcjonalna nazwa do rozpoznania urządzenia</p>
+      </div>
+      <div class="confirmation-dialog-actions">
+        <button type="button" class="secondary-button" data-action="cancel" data-i18n="moveBook.cancel">Anuluj</button>
+        <button type="button" class="primary-button" data-action="confirm" data-i18n="settings.syncthingPair">Dodaj urządzenie</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="edit-book-dialog" class="panel edit-book-dialog">
     <div class="panel-header">
       <h2 data-i18n="editBook.title">Edytuj książkę</h2>
