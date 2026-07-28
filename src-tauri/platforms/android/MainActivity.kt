@@ -40,7 +40,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 private const val ANDROID_SYNC_TIMEOUT_MS = 180000L
 private const val ANDROID_EXPORT_TIMEOUT_MS = 120000L
-private const val ANDROID_EXPORT_MAX_CHARS = 32 * 1024 * 1024
 private const val ANDROID_SYNC_MAX_ENTRIES = 100000
 private const val ANDROID_SYNC_MAX_DEPTH = 8
 private const val ANDROID_SYNC_MAX_FILE_BYTES = 256L * 1024L * 1024L
@@ -356,10 +355,6 @@ class MainActivity : TauriActivity() {
     fun saveExport(data: String?, filename: String?, mime: String?, requestId: String?): Boolean {
       val payload = data ?: return false
       val id = normalizeBridgeRequestId(requestId, "android-export")
-      if (payload.length > ANDROID_EXPORT_MAX_CHARS) {
-        dispatchAndroidExportResult(id, success = false, error = "Pocket export exceeds the 32 MB safety limit.", cancelled = false, status = "too-large")
-        return true
-      }
       synchronized(syncLock) {
         if (pendingExport != null) {
           dispatchAndroidExportResult(id, success = false, error = "Android export is already running.", cancelled = false, status = "busy")
@@ -672,13 +667,13 @@ class MainActivity : TauriActivity() {
   private fun decodeDataUrl(dataUrl: String?): ByteArray {
     val raw = dataUrl?.substringAfter(',', dataUrl)?.trim()?.takeIf { it.isNotEmpty() }
       ?: error("PDF data is empty.")
-    val maxEncodedLength = 128 * 1024 * 1024 * 4 / 3 + 4
+    val maxEncodedLength = 400 * 1024 * 1024 * 4 / 3 + 4
     if (raw.length > maxEncodedLength) {
-      error("PDF is too large for Pocket render (max 128 MB).")
+      error("PDF is too large for Pocket render (max 400 MB).")
     }
     val data = Base64.decode(raw, Base64.DEFAULT)
-    if (data.size > 128 * 1024 * 1024) {
-      error("PDF is too large for Pocket render (max 128 MB).")
+    if (data.size > 400 * 1024 * 1024) {
+      error("PDF is too large for Pocket render (max 400 MB).")
     }
     return data
   }

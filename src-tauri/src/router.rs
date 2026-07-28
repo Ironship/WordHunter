@@ -48,7 +48,7 @@ macro_rules! read_json_limited_or_error {
 }
 
 const MAX_IMPORT_REQUEST_BODY: usize = 384 * 1024 * 1024;
-const MAX_RAW_PDF_BODY: usize = 256 * 1024 * 1024;
+const MAX_RAW_PDF_BODY: usize = 400 * 1024 * 1024;
 const MAX_RAW_OCR_IMAGE_BODY: usize = 32 * 1024 * 1024;
 const MAX_IMAGE_REQUEST_BODY: usize = 32 * 1024 * 1024;
 const MAX_COMMAND_REQUEST_BODY: usize = 8 * 1024;

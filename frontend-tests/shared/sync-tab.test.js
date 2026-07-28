@@ -242,25 +242,6 @@ describe("Anki TSV compatibility", () => {
   });
 });
 
-describe("Pocket export memory guard", () => {
-  it("rejects oversized UTF-8 data before calling the Kotlin bridge", async () => {
-    let bridgeCalls = 0;
-    window.WordHunterAndroid = {
-      saveExport() {
-        bridgeCalls += 1;
-        return true;
-      }
-    };
-    const oversized = "€".repeat(11 * 1024 * 1024);
-
-    await assert.rejects(
-      saveWithAndroidBridge(oversized, "backup.json", "application/json"),
-      /32 MB safety limit/
-    );
-    assert.equal(bridgeCalls, 0);
-    delete window.WordHunterAndroid;
-  });
-});
 describe("Sync navigation behavior", () => {
   it("navigates to and renders Sync from its nav item and Y shortcut", () => {
     resetState();

@@ -235,7 +235,7 @@
     "loadingHint": "Cela peut prendre quelques secondes.",
     "translationLabel": "Traduction",
     "articleLabel": "Article",
-    "articlePlaceholder": "ex. le / la / l\u0027",
+    "articlePlaceholder": "ex. le / la / l'",
     "articleAria": "Article pour {word}",
     "translateContext": "Traduire la phrase",
     "contextTranslationLabel": "Phrase :",
@@ -703,7 +703,11 @@
     "flashcardHeading": "Révisions et algorithme",
     "translatorEyebrow": "Traducteur et Dictionnaire",
     "translatorHeading": "Traductions et liens",
-    "groupLocalData": "Données sur cet appareil"
+    "groupLocalData": "Données sur cet appareil",
+    "syncthingPairTitle": "Ajouter un appareil",
+    "syncthingPairDeviceIdLabel": "ID de l'appareil",
+    "syncthingPairDeviceNameLabel": "Nom de l'appareil",
+    "syncthingPairDeviceNameHint": "Nom facultatif pour identifier cet appareil"
   },
   "help": {
     "eyebrow": "Aide",
@@ -746,8 +750,8 @@
     "contactIssues": "<strong>Bugs et idées :</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact :</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licence :</strong> AGPL-3.0-or-later. L'utilisation commerciale fermée de code dérivé nécessite une licence écrite séparée. Détails : https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 — améliorations des performances, optimisations du cache et corrections TTS.</strong>",
-    "version": "<strong>Version :</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 prend en charge des sauvegardes et PDF Android plus volumineux, affiche mieux la progression des exports et imports et remplace les invites Syncthing par une boîte de dialogue intégrée.</strong>",
+    "version": "<strong>Version :</strong> Word Hunter 1.0.9-rc.5",
     "focusHint1": "Appuyez sur <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour entrer ou revenir dans le texte",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> pour naviguer les mots",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espace</kbd> lire la phrase",
@@ -922,7 +926,10 @@
     "ankiExportEmpty": "Aucun mot à exporter pour les statuts sélectionnés.",
     "vocabExportEmpty": "Aucun mot à exporter avec les filtres actuels.",
     "importDoneCount": "Import terminé ({count}).",
-    "emptyFields": "Remplis le titre et le texte."
+    "emptyFields": "Remplis le titre et le texte.",
+    "importing": "Importation...",
+    "exportReadyCount": "{n} mots exportés.",
+    "addedManyWithSkipped": "{added} livres ajoutés. {skipped} ignorés (déjà dans la bibliothèque)."
   },
   "languages": {
     "pl": "Polonais",

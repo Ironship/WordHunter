@@ -1,3 +1,13 @@
+word-hunter (1.0.9~rc.5) unstable; urgency=medium
+
+  * Remove Android JSON backup export and portable JSON import limits.
+  * Increase Android PDF import and rendering limits to 400 MB.
+  * Replace native Syncthing prompts with an application-styled dialog.
+  * Show busy feedback during exports and progress during backup imports.
+  * Report Anki export counts and skipped Discover duplicates.
+
+ -- SomeDev <oleg.szew@outlook.com>  Tue, 28 Jul 2026 12:00:00 +0000
+
 word-hunter (1.0.9~rc.3) unstable; urgency=medium
 
   * Avoid re-tokenizing the entire book on word selection in the Reader.

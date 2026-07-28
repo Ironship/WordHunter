@@ -703,7 +703,11 @@
     "flashcardHeading": "Повторення та алгоритм",
     "translatorEyebrow": "Перекладач і словник",
     "translatorHeading": "Переклади та посилання",
-    "groupLocalData": "Дані на цьому пристрої"
+    "groupLocalData": "Дані на цьому пристрої",
+    "syncthingPairTitle": "Додати пристрій",
+    "syncthingPairDeviceIdLabel": "ID пристрою",
+    "syncthingPairDeviceNameLabel": "Назва пристрою",
+    "syncthingPairDeviceNameHint": "Необов'язкова назва для ідентифікації пристрою"
   },
   "translator": {
     "sizeMb": "≈{size} МБ",
@@ -775,8 +779,8 @@
     "contactIssues": "<strong>Звіти про помилки та пропозиції нових функцій:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Контакт:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Ліцензія:</strong> AGPL-3.0-or-later. Для комерційного використання похідного коду із закритим вихідним кодом потрібна окрема письмова ліцензія. Докладніше: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 — покращення продуктивності, оптимізації кешу та виправлення TTS.</strong>",
-    "version": "<strong>Версія:</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 підтримує більші резервні копії та PDF на Android, чіткіше показує перебіг експорту й імпорту та замінює запити Syncthing вбудованим діалогом.</strong>",
+    "version": "<strong>Версія:</strong> Word Hunter 1.0.9-rc.5",
     "focusHint1": "Натисніть <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, щоб увійти в текст або повернутися до нього",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> для навігації словами",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Пробіл</kbd> озвучити речення",
@@ -951,7 +955,10 @@
     "ankiExportEmpty": "Немає слів для експорту з вибраними статусами.",
     "vocabExportEmpty": "Немає слів для експорту з поточними фільтрами.",
     "importDoneCount": "Імпорт завершено ({count}).",
-    "emptyFields": "Заповніть назву та текст."
+    "emptyFields": "Заповніть назву та текст.",
+    "importing": "Імпортування...",
+    "exportReadyCount": "Експортовано слів: {n}.",
+    "addedManyWithSkipped": "Додано {added} книг. Пропущено {skipped} (вже в бібліотеці)."
   },
   "languages": {
     "pl": "Польська",

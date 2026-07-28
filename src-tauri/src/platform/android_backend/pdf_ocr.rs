@@ -8,7 +8,7 @@ use tauri::AppHandle;
 
 use crate::{server::OcrJobState, store::Store};
 
-const MAX_PDF_BYTES: usize = 128 * 1024 * 1024;
+const MAX_PDF_BYTES: usize = 400 * 1024 * 1024;
 const MAX_PAGES: usize = 2_000;
 const MAX_TEXT_LAYER_CHARS: usize = 2_000_000;
 const TEXT_LAYER_EMPTY: &str = "PDF_TEXT_LAYER_EMPTY";

@@ -703,7 +703,11 @@
     "flashcardHeading": "Repasos y algoritmo",
     "translatorEyebrow": "Traductor y Diccionario",
     "translatorHeading": "Traducciones y enlaces",
-    "groupLocalData": "Datos en este dispositivo"
+    "groupLocalData": "Datos en este dispositivo",
+    "syncthingPairTitle": "Añadir dispositivo",
+    "syncthingPairDeviceIdLabel": "ID del dispositivo",
+    "syncthingPairDeviceNameLabel": "Nombre del dispositivo",
+    "syncthingPairDeviceNameHint": "Nombre opcional para identificar el dispositivo"
   },
   "help": {
     "eyebrow": "Ayuda",
@@ -746,8 +750,8 @@
     "contactIssues": "<strong>Errores e ideas:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contacto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencia:</strong> AGPL-3.0-or-later. El uso comercial cerrado de código derivado requiere una licencia escrita separada. Detalles: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9-rc.3 — mejoras de rendimiento, optimizaciones de caché y correcciones de TTS.</strong>",
-    "version": "<strong>Versión:</strong> Word Hunter 1.0.9-rc.3",
+    "whatsNew": "<strong>Word Hunter 1.0.9-rc.5 admite copias y PDF más grandes en Android, muestra mejor el progreso de exportación e importación y sustituye los avisos de Syncthing por un diálogo integrado.</strong>",
+    "version": "<strong>Versión:</strong> Word Hunter 1.0.9-rc.5",
     "focusHint1": "Pulsa <kbd>Ctrl</kbd>+<kbd>Enter</kbd> para entrar o volver al texto",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> para navegar palabras",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espacio</kbd> leer oración",
@@ -922,7 +926,10 @@
     "ankiExportEmpty": "No hay palabras para exportar con los estados seleccionados.",
     "vocabExportEmpty": "No hay palabras para exportar con los filtros actuales.",
     "importDoneCount": "Importación finalizada ({count}).",
-    "emptyFields": "Rellena el título y el texto."
+    "emptyFields": "Rellena el título y el texto.",
+    "importing": "Importando...",
+    "exportReadyCount": "{n} palabras exportadas.",
+    "addedManyWithSkipped": "{added} libros añadidos. {skipped} omitidos (ya en la biblioteca)."
   },
   "languages": {
     "pl": "Polaco",

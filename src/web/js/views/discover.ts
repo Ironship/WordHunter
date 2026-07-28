@@ -293,12 +293,13 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
     return added;
   }
 
-  async function addSelected(): Promise<number> {
+  async function addSelected(): Promise<{ added: number; selected: number }> {
+    const total = selected.size;
     let added = 0;
     for (const id of [...selected]) {
       if (await addOne(id, { silent: true })) added++;
     }
-    return added;
+    return { added, selected: total };
   }
 
   function toggleAll(checked: boolean): void {

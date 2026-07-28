@@ -118,7 +118,7 @@ data between devices, create a JSON backup from the app.
 ## Release status
 
 - **Stable:** [1.0.8](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.8)
-- **Prerelease:** [1.0.9-rc.3](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9-rc.3) — performance improvements, cache optimizations, and TTS fixes. See [release notes](docs/releases/1.0.9-rc.3.md). **Prerelease artifacts are for testing only and do not update stable installs.**
+- **Prerelease:** [1.0.9-rc.5](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9-rc.5) — larger Android backups and PDFs, clearer export/import feedback, and a native-looking Syncthing pairing dialog. See [release notes](docs/releases/1.0.9-rc.5.md). **Prerelease artifacts are for testing only and do not update stable installs.**
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
