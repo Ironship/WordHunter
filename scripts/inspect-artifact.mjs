@@ -538,12 +538,16 @@ export function inspectLinuxAppImage(path) {
   }
 }
 
+export function debianVersionForRelease(version) {
+  return version.replace(/-rc\.(\d+)$/, "~rc.$1");
+}
+
 export function inspectLinuxDeb(path) {
   const packageName = run("dpkg-deb", ["--field", path, "Package"]).trim();
   if (packageName !== "word-hunter") fail(`${path} has Debian package name ${packageName || "unknown"}; expected word-hunter`);
   const version = run("dpkg-deb", ["--field", path, "Version"]).trim();
   const filename = basename(path).match(/^word-hunter_(.+)_amd64\.deb$/);
-  if (!filename || version.replace("+", ".") !== filename[1]) {
+  if (!filename || version.replace("+", ".") !== debianVersionForRelease(filename[1])) {
     fail(`${path} has Debian version ${version || "unknown"} inconsistent with its release filename`);
   }
   const architecture = run("dpkg-deb", ["--field", path, "Architecture"]).trim();

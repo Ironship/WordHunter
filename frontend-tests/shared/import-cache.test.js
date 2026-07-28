@@ -162,9 +162,14 @@ describe("state import cache invalidation", () => {
     const portable = JSON.parse(exported.data);
     assert.equal(Object.values(portable.preferences.readerBookmarks).reduce((total, items) => total + items.length, 0), 1000);
     replaceState(createDefaultState(), { save: false });
+    let ordinarySaveAttempts = 0;
     globalThis.fetch = async (url, options) => {
-      if (url === "/__store/save?snapshot=1") return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
-      if (url === "/__store/save" || url === "/__store/ui_state" || url === "/__store/ack_snapshot") {
+      if (url === "/__store/save?snapshot=1&restore=1") return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
+      if (url === "/__store/save") {
+        ordinarySaveAttempts += 1;
+        throw new Error("cannot hydrate projected text record");
+      }
+      if (url === "/__store/ui_state" || url === "/__store/ack_snapshot") {
         return { ok: true, json: async () => ({}) };
       }
       throw new Error(`unexpected URL: ${url}`);
@@ -180,6 +185,7 @@ describe("state import cache invalidation", () => {
     assert.equal(Object.values(state.preferences.readerBookmarks).reduce((total, items) => total + items.length, 0), 1000);
     assert.deepEqual(Object.values(state.preferences.readerBookmarks).map((items) => items.length), [200, 200, 200, 200, 200]);
     assert.deepEqual(new Set(state.preferences.readerBookmarks[books[0].id].map((bookmark) => bookmark.color)), new Set(["amber", "red", "green", "blue", "purple"]));
+    assert.equal(ordinarySaveAttempts, 0);
   });
 
   it("preserves a legacy text body stored only in the top-level custom-text list", async () => {
@@ -199,7 +205,7 @@ describe("state import cache invalidation", () => {
         bookTextReads += 1;
         throw new Error("the embedded body should make this read unnecessary");
       }
-      if (url === "/__store/save?snapshot=1") {
+      if (url === "/__store/save?snapshot=1&restore=1") {
         const payload = JSON.parse(options.body);
         return { ok: true, json: async () => ({ snapshot: payload }) };
       }
@@ -246,7 +252,7 @@ describe("state import cache invalidation", () => {
       if (String(url).startsWith("/__book/text?id=")) {
         return { ok: true, json: async () => ({ text: "" }) };
       }
-      if (url === "/__store/save?snapshot=1") {
+      if (url === "/__store/save?snapshot=1&restore=1") {
         savedPayload = JSON.parse(options.body);
         return { ok: true, json: async () => ({ snapshot: savedPayload }) };
       }
@@ -291,7 +297,7 @@ describe("state import cache invalidation", () => {
     let savedPayload = null;
     globalThis.fetch = async (url, options) => {
       if (String(url).startsWith("/__book/text?id=")) return { ok: false, status: 500 };
-      if (url === "/__store/save?snapshot=1") {
+      if (url === "/__store/save?snapshot=1&restore=1") {
         savedPayload = JSON.parse(options.body);
         return { ok: true, json: async () => ({ snapshot: savedPayload }) };
       }
@@ -336,7 +342,7 @@ describe("state import cache invalidation", () => {
       imported.customTexts = imported.profiles.de.customTexts;
       replaceState(createDefaultState(), { save: false });
       globalThis.fetch = async (url, options) => {
-        if (url === "/__store/save?snapshot=1") {
+        if (url === "/__store/save?snapshot=1&restore=1") {
           const payload = JSON.parse(options.body);
           return { ok: true, json: async () => ({ snapshot: payload }) };
         }
@@ -376,7 +382,7 @@ describe("state import cache invalidation", () => {
     bookTexts.set("same-user-book", "old cached body");
     globalThis.fetch = async (url, options) => {
       if (url === "/__store/save") return { ok: true, json: async () => ({}) };
-      if (url === "/__store/save?snapshot=1") {
+      if (url === "/__store/save?snapshot=1&restore=1") {
         return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
       }
       if (url === "/__store/ack_snapshot" || url === "/__store/ui_state") return { ok: true, json: async () => ({}) };
@@ -406,7 +412,7 @@ describe("state import cache invalidation", () => {
     replaceState(createDefaultState(), { save: false });
     let uiSaveAttempts = 0;
     globalThis.fetch = async (url, options) => {
-      if (url === "/__store/save?snapshot=1") {
+      if (url === "/__store/save?snapshot=1&restore=1") {
         return { ok: true, json: async () => ({ snapshot: JSON.parse(options.body) }) };
       }
       if (url === "/__store/ui_state") {
@@ -455,7 +461,7 @@ describe("state import cache invalidation", () => {
     const currentSnapshot = buildSavePayload(current);
     globalThis.fetch = async (url) => {
       if (url === "/__store/save") return { ok: true, json: async () => ({}) };
-      if (url === "/__store/save?snapshot=1") return { ok: false, status: 500 };
+      if (url === "/__store/save?snapshot=1&restore=1") return { ok: false, status: 500 };
       if (url === "/__store/load?ack=0") return { ok: true, json: async () => currentSnapshot };
       if (url === "/__store/ack_snapshot") return { ok: true, json: async () => ({}) };
       return { ok: true, text: async () => `${url} ${"word ".repeat(50)}` };

@@ -189,6 +189,31 @@ impl Store {
         validate_snapshot_payload_schema(&payload)?;
         let base = self.base_records.lock().unwrap().clone();
         let saved_at = record_files::now_millis();
+        let mut incoming = record_files::payload_to_records(&payload, self.device_id(), saved_at);
+        self.hydrate_text_records(&mut incoming)?;
+        let journal = self.save_journal_path();
+        durable::write_json_atomic(
+            &journal,
+            &encode_save_journal(&payload, &base, saved_at),
+            false,
+            false,
+        )?;
+
+        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        remove_if_exists(journal)
+    }
+
+    pub fn restore_backup(&self, payload: Value) -> Result<(), String> {
+        let _guard = self.lock_writes()?;
+        if self.recover_pending_wipe()? {
+            self.base_records.lock().unwrap().clear();
+        }
+        validate_snapshot_payload_schema(&payload)?;
+        let current = record_files::load_records(&self.dir())?;
+        let base = record_files::fingerprints(&current);
+        let saved_at = record_files::now_millis();
+        let mut incoming = record_files::payload_to_records(&payload, self.device_id(), saved_at);
+        self.hydrate_text_records(&mut incoming)?;
         let journal = self.save_journal_path();
         durable::write_json_atomic(
             &journal,
@@ -1451,6 +1476,55 @@ mod tests {
 
         assert!(error.contains("cannot hydrate projected text record"));
         assert_eq!(std::fs::metadata(path).unwrap().len(), 0);
+        assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
+    fn complete_backup_supersedes_an_unhydratable_save_journal() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let old = json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "texts": [{ "id": "de-book", "title": "Book", "text": "stale backup body" }],
+            "prefs": {},
+            "hiddenBooks": [],
+            "vocab": {}
+        });
+        let full = json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "texts": [{ "id": "de-book", "title": "Book", "text": "backup body" }],
+            "prefs": {},
+            "hiddenBooks": [],
+            "vocab": {}
+        });
+        store.bulk_save(old).unwrap();
+        store.bulk_save(full.clone()).unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        let projected = record_files::records_to_snapshot_payload(dir.path(), &records);
+        store.acknowledge_frontend_snapshot(&projected).unwrap();
+        let path = std::fs::read_dir(dir.path().join("records/v1/texts"))
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .find(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
+            .unwrap();
+        std::fs::write(&path, []).unwrap();
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&encode_save_journal(
+                &projected,
+                &store.base_records.lock().unwrap().clone(),
+                record_files::now_millis(),
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+
+        store.restore_backup(full).unwrap();
+
+        let saved = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(saved["text:de-book"].data["text"], "backup body");
+        assert!(!store.save_journal_path().exists());
     }
 
     #[test]

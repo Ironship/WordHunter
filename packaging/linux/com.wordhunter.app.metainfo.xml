@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.6" date="2026-07-28" type="development">
+      <description>
+        <ul>
+          <li>Allow complete JSON backups to repair unreadable local text records.</li>
+          <li>Prevent failed projected-text saves from leaving a blocking recovery journal.</li>
+          <li>Keep ordinary saves fail-closed so missing book content is never overwritten.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.5" date="2026-07-28" type="development">
       <description>
         <ul>

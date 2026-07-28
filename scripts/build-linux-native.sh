@@ -40,7 +40,7 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "$1 is required"
 }
 
-for command_name in cargo curl find gzip install npm node sha256sum strip tar unzip; do
+for command_name in cargo curl dpkg-deb find gzip install npm node sed sha256sum strip tar unzip; do
   require_command "$command_name"
 done
 
@@ -52,6 +52,7 @@ esac
 package_version="$(node -e 'const fs = require("fs"); const c = JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")); if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(c.version)) process.exit(1); process.stdout.write(c.version);')" \
   || die "src-tauri/tauri.conf.json does not contain a valid package version"
 release_version="${package_version/+/.}"
+debian_version="${package_version/-rc./~rc.}"
 
 mkdir -p "$cache_dir" "$outputs_dir"
 
@@ -321,6 +322,15 @@ deb_output="$outputs_dir/word-hunter_${release_version}_amd64.deb"
 cp "$appimage_source" "$appimage_output"
 cp "$deb_source" "$deb_output"
 chmod 0755 "$appimage_output"
+
+if [[ "$debian_version" != "$package_version" ]]; then
+  deb_repack_dir="$root/src-tauri/target/.tauri/deb-repack"
+  rm -rf "$deb_repack_dir"
+  dpkg-deb --raw-extract "$deb_output" "$deb_repack_dir"
+  sed -i "s/^Version: .*/Version: $debian_version/" "$deb_repack_dir/DEBIAN/control"
+  dpkg-deb --root-owner-group --build "$deb_repack_dir" "$deb_output"
+  rm -rf "$deb_repack_dir"
+fi
 
 [[ -s "$appimage_output" ]] || die "AppImage output is empty"
 [[ -s "$deb_output" ]] || die "Debian package output is empty"

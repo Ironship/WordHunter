@@ -570,7 +570,7 @@ export function importStateFile(event: unknown): void {
           const startingRevision = getDurableStateRevision();
           let result: unknown;
           try {
-            const response = await fetch("/__store/save?snapshot=1", {
+            const response = await fetch("/__store/save?snapshot=1&restore=1", {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
               body: JSON.stringify(buildSavePayload(imported))
@@ -606,7 +606,7 @@ export function importStateFile(event: unknown): void {
           if (!await applyBridgeCommandResult(result, startingRevision, false)) {
             throw new Error("import snapshot was superseded by a local state change");
           }
-        });
+        }, { saveFirst: false });
       } else {
         clearAllBookTextCaches();
         replaceState(imported);
