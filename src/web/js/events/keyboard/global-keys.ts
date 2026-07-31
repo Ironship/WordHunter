@@ -112,7 +112,7 @@ export function handleGlobalKeys(event: KeyboardEvent, key: string, inField: boo
     return true;
   }
 
-  const views: Partial<Record<string, string>> = { "?": "help", b: "library", d: "discover", f: "flashcards", g: "graphs", s: "settings", t: "translator", v: "vocabulary", y: "sync" };
+  const views: Partial<Record<string, string>> = { "?": "help", b: "library", d: "discover", f: "flashcards", g: "graphs", s: "settings", t: "translator", v: "vocabulary", y: "export" };
   if (key === "r" && navigationKey(event, key)) {
     event.preventDefault();
     openReaderView();

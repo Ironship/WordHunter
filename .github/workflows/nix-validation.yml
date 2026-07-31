@@ -75,24 +75,17 @@ jobs:
                 platformSupported = builtins.elem
                   builtins.currentSystem
                   package.meta.platforms;
-                syncthingExecutable = package.syncthingExecutable;
-                systemSyncthing = toString package.systemSyncthing;
-                wrapperProfile = package.wrapperProfile;
               }
             '
           })"
           printf '%s\n' "${metadata}" | jq .
           printf '%s\n' "${metadata}" | jq -e '
-            .systemSyncthing as $syncthing |
-            .syncthingExecutable as $syncthingExecutable |
             .pname == "wordhunter" and
-            .version == "1.0.6" and
+            .version == "1.0.8" and
             .binaryNativeCode == true and
             .license == "AGPL-3.0-or-later" and
             .mainProgram == "wordhunter" and
-            .platformSupported == true and
-            $syncthingExecutable == ($syncthing + "/bin/syncthing") and
-            (.wrapperProfile | contains($syncthingExecutable))
+            .platformSupported == true
           ' >/dev/null
 
       - name: Build from the pinned nixpkgs revision
@@ -111,48 +104,17 @@ jobs:
             in
             package.appimageContents
           '
-          syncthing_expression='
-            let
-              pkgs = import <nixpkgs> { };
-              package = pkgs.callPackage ./packaging/nix/package.nix { };
-            in
-            package.systemSyncthing
-          '
-
           package_path="$(nix-build --no-out-link -E "${package_expression}")"
           contents_path="$(nix-build --no-out-link -E "${contents_expression}")"
-          syncthing_path="$(nix-build --no-out-link -E "${syncthing_expression}")"
-
           test -d "${package_path}"
           test -d "${contents_path}"
-          test -d "${syncthing_path}"
           printf 'NIX_PACKAGE=%s\n' "${package_path}" >> "${GITHUB_ENV}"
           printf 'NIX_APPIMAGE_CONTENTS=%s\n' "${contents_path}" >> "${GITHUB_ENV}"
-          printf 'NIX_SYNCTHING=%s\n' "${syncthing_path}" >> "${GITHUB_ENV}"
 
-      - name: Verify the modified AppImage and system Syncthing
+      - name: Verify the AppImage contents
         run: |
           set -euo pipefail
           test -x "${NIX_APPIMAGE_CONTENTS}/usr/bin/word-hunter-rustified"
-          test ! -e "${NIX_APPIMAGE_CONTENTS}/usr/bin/syncthing"
-          if find "${NIX_APPIMAGE_CONTENTS}" \
-            \( -type f -o -type l \) -name syncthing -print -quit | grep -q .; then
-            echo 'The modified AppImage still contains a bundled Syncthing executable.' >&2
-            exit 1
-          fi
-
-          for notice in SYNCTHING-LICENSE.txt SYNCTHING-AUTHORS.txt; do
-            match="$(
-              find "${NIX_APPIMAGE_CONTENTS}" -type f -name "${notice}" \
-                -print -quit
-            )"
-            test -n "${match}" || {
-              printf 'The extracted AppImage lost legal notice %s.\n' "${notice}" >&2
-              exit 1
-            }
-            printf 'Preserved notice: %s\n' "${match}"
-          done
-
           ocr_runner="$(
             find "${NIX_APPIMAGE_CONTENTS}/usr/lib" -type f \
               -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
@@ -172,18 +134,6 @@ jobs:
           ocr_help="$("${ocr_runner}" --help 2>&1)"
           printf '%s\n' "${ocr_help}"
           grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}"
-
-          system_syncthing="${NIX_SYNCTHING}/bin/syncthing"
-          test -x "${system_syncthing}"
-          syncthing_version="$("${system_syncthing}" --version 2>&1)"
-          printf '%s\n' "${syncthing_version}"
-          grep -iqF syncthing <<<"${syncthing_version}"
-          syncthing_home="${RUNNER_TEMP}/wordhunter-nix-syncthing"
-          "${system_syncthing}" generate --home "${syncthing_home}"
-          test -f "${syncthing_home}/config.xml"
-
-          nix-store --query --requisites "${NIX_PACKAGE}" \
-            | grep -Fxq "${NIX_SYNCTHING}"
 
       - name: Validate installed desktop metadata
         run: |

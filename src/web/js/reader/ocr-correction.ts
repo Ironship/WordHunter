@@ -134,7 +134,7 @@ export function openPdfOcrCorrection(
         const message = error && typeof error === "object" && "message" in error
           ? String((error as { message?: unknown }).message || "")
           : "";
-        status.textContent = message || t("toast.syncUnavailable");
+        status.textContent = message || t("toast.saveUnavailable");
         textarea.focus();
       }
     });

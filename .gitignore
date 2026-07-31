@@ -9,8 +9,6 @@ src-tauri/ocr-runtime/bin/*
 !src-tauri/ocr-runtime/bin/.gitkeep
 src-tauri/ocr-runtime/models/*
 !src-tauri/ocr-runtime/models/.gitkeep
-src-tauri/syncthing/*
-!src-tauri/syncthing/.gitkeep
 src-tauri/gen/
 *.spec
 

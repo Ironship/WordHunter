@@ -4,12 +4,6 @@ type SaveResult = WhBridgeSaveResult | void;
 
 const TRANSIENT_ROOT_KEYS = new Set<PropertyKey>([
   "dataDirectory",
-  "syncDirectory",
-  "syncHealth",
-  "cloudSyncStatus",
-  "syncthingStatus",
-  "syncConflictCount",
-  "syncConflicts",
   "recoveryStatus"
 ]);
 
@@ -92,9 +86,6 @@ export function createAutosave(getState: () => WhAppState) {
     if (!result || typeof result !== "object") return;
     const current = rawState();
     if (Object.hasOwn(result, "recoveryStatus")) current.recoveryStatus = result.recoveryStatus;
-    if (Object.hasOwn(result, "syncHealth")) current.syncHealth = result.syncHealth;
-    if (Object.hasOwn(result, "syncConflictCount")) current.syncConflictCount = result.syncConflictCount;
-    if (Object.hasOwn(result, "syncConflicts")) current.syncConflicts = result.syncConflicts;
   }
 
   function doSave(): Promise<SaveResult> {
@@ -113,7 +104,6 @@ export function createAutosave(getState: () => WhAppState) {
       applyBackendSaveStatus(result);
       retryDelayMs = 0;
       saveInFlight = false;
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { ...result, time: new Date().toLocaleTimeString() } }));
       if (savePending) {
         savePending = false;
         return doSave();
@@ -124,7 +114,7 @@ export function createAutosave(getState: () => WhAppState) {
       console.error("bridge save failed after retries", error);
       savePending = false;
       retryDelayMs = retryDelayMs ? Math.min(retryDelayMs * 2, 30000) : 1000;
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-error", { detail: { retryDelayMs } }));
+      window.dispatchEvent(new CustomEvent("wordhunter:state-save-error", { detail: { retryDelayMs } }));
       scheduleSave(retryDelayMs);
       throw error;
     });

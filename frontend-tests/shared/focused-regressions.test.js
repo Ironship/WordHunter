@@ -678,7 +678,7 @@ describe("focused frontend regressions", () => {
     await module.openEditBookModal("custom-1");
 
     assert.equal(showCount, 0);
-    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+    assert.deepEqual(toasts, ["toast.saveUnavailable"]);
     assert.equal(module.isEditBookDirty(), false);
   });
 

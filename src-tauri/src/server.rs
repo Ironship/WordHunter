@@ -8,7 +8,6 @@ use tauri::AppHandle;
 use tiny_http::Server;
 
 use crate::store::Store;
-use crate::syncthing_manager::SyncthingManager;
 
 const MAX_REGULAR_REQUEST_WORKERS: usize = 10;
 const MAX_STORE_REQUEST_WORKERS: usize = 4;
@@ -61,7 +60,6 @@ pub struct ServerState {
     pub store: Arc<Store>,
     pub token: String,
     pub app_handle: AppHandle,
-    pub syncthing: SyncthingManager,
     pub(crate) ocr_jobs: Mutex<OcrJobState>,
     pub ocr_slot: Mutex<()>,
 }
@@ -164,7 +162,6 @@ fn start_server_from_listener(
         store,
         token,
         app_handle,
-        syncthing: SyncthingManager::new(),
         ocr_jobs: Mutex::new(OcrJobState::default()),
         ocr_slot: Mutex::new(()),
     });

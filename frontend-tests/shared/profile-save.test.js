@@ -286,9 +286,6 @@ describe("profile save payload", () => {
       __bridgeState: {
         schemaVersion: STATE_SCHEMA_VERSION,
         dataDir: "/data/user/0/com.wordhunter.pocket/WordHunter",
-        syncDir: "Google Drive",
-        syncConflictCount: 3,
-        syncConflicts: [{ id: "abc", key: "vocab:de:haus" }],
         recoveryStatus: {
           schemaVersion: 1,
           skippedRecordCount: 1,
@@ -304,16 +301,6 @@ describe("profile save payload", () => {
     const restored = loadState();
 
     assert.equal(restored.dataDirectory, "/data/user/0/com.wordhunter.pocket/WordHunter");
-    assert.equal(restored.syncDirectory, "Google Drive");
-    assert.equal(restored.syncConflictCount, 3);
-    assert.deepEqual(restored.syncConflicts, [{
-      id: "abc",
-      key: "vocab:de:haus",
-      reason: "",
-      timestamp: "",
-      kept: {},
-      conflict: {}
-    }]);
     assert.equal(restored.recoveryStatus.skippedRecordCount, 1);
     assert.equal(restored.recoveryStatus.skippedRecords[0].path, "records/v1/vocab/bad.json");
     assert.equal(restored.recoveryStatus.pendingSaveJournal, true);

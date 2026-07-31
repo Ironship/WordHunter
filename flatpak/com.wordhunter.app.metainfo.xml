@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.7" date="2026-07-31" type="development">
+      <description>
+        <ul>
+          <li>Replace background folder synchronization with explicit ZIP export and import.</li>
+          <li>Store transferred words and books as individual YAML records with update timestamps.</li>
+          <li>Carry rendered PDF page images to Android and merge only newer imported records.</li>
+          <li>Remove the bundled Syncthing executable and package dependency.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.6" date="2026-07-28" type="development">
       <description>
         <ul>

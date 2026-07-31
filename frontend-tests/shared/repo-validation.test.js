@@ -201,7 +201,7 @@ describe("repository validation wiring", () => {
     );
     assert.match(
       stepByName(linuxRuntime, "Validate and smoke-test the self-contained AppImage").run,
-      /appstreamcli validate[\s\S]*wordhunter-paddleocr[\s\S]*syncthing[\s\S]*xvfb-run/,
+      /appstreamcli validate[\s\S]*wordhunter-paddleocr[\s\S]*xvfb-run/,
     );
     assert.match(
       stepByName(linuxRuntime, "Validate, install, smoke-test, and remove the DEB").run,
@@ -324,8 +324,6 @@ describe("repository validation wiring", () => {
     assert.doesNotMatch(gitignore, /^docs\/\*\.md$/m);
     assert.doesNotMatch(gitignore, /^docs\/\*\*\/\*\.md$/m);
     assert.doesNotMatch(gitignore, /^src-tauri\/ocr-runner\/Cargo\.lock$/m);
-    assert.match(gitignore, /^src-tauri\/syncthing\/\*$/m);
-    assert.match(gitignore, /^!src-tauri\/syncthing\/\.gitkeep$/m);
     assert.match(docs, /WORDHUNTER_VALIDATE_CLIPPY=0/);
     assert.match(docs, /artifact-validation\.yml/);
   });

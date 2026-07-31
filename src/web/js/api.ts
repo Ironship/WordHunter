@@ -81,13 +81,12 @@ export function saveSyncXhr(body: string): void {
       } catch (error) {
         console.warn("sync save response parse failed", error);
       }
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-saved", { detail: { ...result, time: new Date().toLocaleTimeString() } }));
     } else {
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-error"));
+      window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));
     }
   } catch (e) {
     console.error("sync save failed", e);
-    window.dispatchEvent(new CustomEvent("wordhunter:sync-error"));
+    window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));
   }
 }
 

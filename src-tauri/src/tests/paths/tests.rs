@@ -1,4 +1,4 @@
-use super::{data_dir, device_id, read_app_config, sanitize_id, set_sync_dir, sync_dir};
+use super::{data_dir, device_id, read_config_file, sanitize_id, write_config_file};
 use std::ffi::OsString;
 
 struct EnvGuard {
@@ -43,32 +43,6 @@ fn sanitizes_ids_to_file_names() {
 }
 
 #[test]
-fn stores_sync_redirect_in_xdg_config_home() {
-    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
-    let home = tempfile::tempdir().unwrap();
-    let xdg_config = tempfile::tempdir().unwrap();
-    let xdg_data = tempfile::tempdir().unwrap();
-    let sync = tempfile::tempdir().unwrap();
-    let _appdata = EnvGuard::unset("APPDATA");
-    let _home = EnvGuard::set("HOME", home.path());
-    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
-    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
-
-    set_sync_dir("WordHunter", sync.path()).unwrap();
-
-    let redirect = xdg_config.path().join("WordHunter-sync-dir.txt");
-    assert_eq!(
-        std::fs::read_to_string(redirect).unwrap(),
-        sync.path().to_string_lossy()
-    );
-    assert!(!home.path().join(".config/WordHunter-sync-dir.txt").exists());
-    assert_eq!(
-        sync_dir("WordHunter").unwrap(),
-        Some(sync.path().to_path_buf())
-    );
-}
-
-#[test]
 fn config_write_keeps_backup_of_previous_value() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
@@ -81,15 +55,25 @@ fn config_write_keeps_backup_of_previous_value() {
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
-    set_sync_dir("WordHunter", first.path()).unwrap();
-    set_sync_dir("WordHunter", second.path()).unwrap();
+    write_config_file(
+        "WordHunter",
+        "device-id",
+        first.path().to_string_lossy().as_bytes(),
+    )
+    .unwrap();
+    write_config_file(
+        "WordHunter",
+        "device-id",
+        second.path().to_string_lossy().as_bytes(),
+    )
+    .unwrap();
 
     assert_eq!(
-        std::fs::read_to_string(xdg_config.path().join("WordHunter-sync-dir.txt")).unwrap(),
+        std::fs::read_to_string(xdg_config.path().join("WordHunter-device-id.txt")).unwrap(),
         second.path().to_string_lossy()
     );
     assert_eq!(
-        std::fs::read_to_string(xdg_config.path().join("WordHunter-sync-dir.bak")).unwrap(),
+        std::fs::read_to_string(xdg_config.path().join("WordHunter-device-id.bak")).unwrap(),
         first.path().to_string_lossy()
     );
 }
@@ -100,23 +84,21 @@ fn config_read_recovers_missing_primary_from_backup() {
     let home = tempfile::tempdir().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
     let xdg_data = tempfile::tempdir().unwrap();
-    let sync = tempfile::tempdir().unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
     let _home = EnvGuard::set("HOME", home.path());
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
-    let primary = xdg_config.path().join("WordHunter-sync-dir.txt");
-    let backup = xdg_config.path().join("WordHunter-sync-dir.bak");
-    std::fs::write(&backup, sync.path().to_string_lossy().as_bytes()).unwrap();
+    let primary = xdg_config.path().join("WordHunter-device-id.txt");
+    let backup = xdg_config.path().join("WordHunter-device-id.bak");
+    std::fs::write(&backup, b"restored-device").unwrap();
 
     assert_eq!(
-        sync_dir("WordHunter").unwrap(),
-        Some(sync.path().to_path_buf())
+        read_config_file("WordHunter", "device-id")
+            .unwrap()
+            .as_deref(),
+        Some("restored-device")
     );
-    assert_eq!(
-        std::fs::read_to_string(primary).unwrap(),
-        sync.path().to_string_lossy()
-    );
+    assert_eq!(std::fs::read_to_string(primary).unwrap(), "restored-device");
     assert!(backup.is_file());
 }
 
@@ -135,7 +117,7 @@ fn config_read_completes_interrupted_temp_replace_when_primary_is_missing() {
     std::fs::write(&temp, b"device-from-temp").unwrap();
 
     assert_eq!(
-        read_app_config("WordHunter", "device-id")
+        read_config_file("WordHunter", "device-id")
             .unwrap()
             .as_deref(),
         Some("device-from-temp")
@@ -182,25 +164,20 @@ fn defaults_data_dir_to_xdg_data_home_even_when_config_dir_has_app_folder() {
 }
 
 #[test]
-fn ignores_home_config_redirect_when_xdg_config_home_is_explicit() {
+fn ignores_home_config_when_xdg_config_home_is_explicit() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
     let xdg_data = tempfile::tempdir().unwrap();
-    let sync = tempfile::tempdir().unwrap();
     let home_config = home.path().join(".config");
     std::fs::create_dir_all(&home_config).unwrap();
-    std::fs::write(
-        home_config.join("WordHunter-sync-dir.txt"),
-        sync.path().to_string_lossy().as_bytes(),
-    )
-    .unwrap();
+    std::fs::write(home_config.join("WordHunter-device-id.txt"), b"home-device").unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
     let _home = EnvGuard::set("HOME", home.path());
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
-    assert_eq!(sync_dir("WordHunter").unwrap(), None);
+    assert_eq!(read_config_file("WordHunter", "device-id").unwrap(), None);
 }
 
 #[test]
@@ -208,11 +185,10 @@ fn config_reads_fallback_to_home_config_when_xdg_config_home_is_unset() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let home = tempfile::tempdir().unwrap();
     let xdg_data = tempfile::tempdir().unwrap();
-    let sync = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(home.path().join(".config")).unwrap();
     std::fs::write(
-        home.path().join(".config/WordHunter-sync-dir.txt"),
-        sync.path().to_string_lossy().as_bytes(),
+        home.path().join(".config/WordHunter-device-id.txt"),
+        b"home-device",
     )
     .unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
@@ -221,8 +197,10 @@ fn config_reads_fallback_to_home_config_when_xdg_config_home_is_unset() {
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
     assert_eq!(
-        sync_dir("WordHunter").unwrap(),
-        Some(sync.path().to_path_buf())
+        read_config_file("WordHunter", "device-id")
+            .unwrap()
+            .as_deref(),
+        Some("home-device")
     );
 }
 
@@ -235,7 +213,7 @@ fn config_reads_fail_without_appdata_xdg_config_home_or_home() {
     let _xdg_config = EnvGuard::unset("XDG_CONFIG_HOME");
     let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
-    let error = sync_dir("WordHunter").unwrap_err();
+    let error = read_config_file("WordHunter", "device-id").unwrap_err();
 
     assert!(error.contains("could not locate user config directory"));
 }

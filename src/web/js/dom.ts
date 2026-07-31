@@ -80,8 +80,6 @@ export function cacheElements() {
   els.reviewReverseToggle = document.getElementById("review-reverse-toggle");
   els.reviewReverseLabel = document.getElementById("review-reverse-label");
 
-  els.exportState = document.getElementById("export-state");
-  els.importState = document.getElementById("import-state");
   els.exportAnkiTsv = document.getElementById("export-anki-tsv");
   els.importAnkiTsv = document.getElementById("import-anki-tsv");
   els.ankiExportStatusFilters = [...document.querySelectorAll<HTMLInputElement>("[data-anki-export-status]")];
@@ -170,27 +168,9 @@ export function cacheElements() {
 
   els.storageSummary = document.getElementById("storage-summary");
   els.dataDirectory = document.getElementById("data-directory");
-  els.syncDirectory = document.getElementById("sync-directory");
-  els.syncStatus = document.getElementById("sync-status");
-  els.syncHealth = document.getElementById("sync-health");
-  els.syncthingStatus = document.getElementById("syncthing-status");
-  els.syncthingPeers = document.getElementById("syncthing-peers");
-  els.syncthingStart = document.getElementById("syncthing-start");
-  els.syncthingStop = document.getElementById("syncthing-stop");
-  els.syncthingPair = document.getElementById("syncthing-pair");
-  els.syncthingShowQR = document.getElementById("syncthing-show-qr");
-  els.syncthingQRDialog = document.getElementById("syncthing-qr-dialog");
-  els.syncthingQRContainer = document.getElementById("syncthing-qr-container");
-  els.syncthingQRDeviceID = document.getElementById("syncthing-qr-device-id");
-  els.syncthingQRClose = document.getElementById("syncthing-qr-close");
-  els.syncConflictsPanel = document.getElementById("sync-conflicts-panel");
-  els.syncConflictsList = document.getElementById("sync-conflicts-list");
   els.recoveryStatusPanel = document.getElementById("recovery-status-panel");
   els.recoveryStatusList = document.getElementById("recovery-status-list");
   els.chooseDataDirectory = document.getElementById("choose-data-directory");
-  els.prepareSyncDirectory = document.getElementById("prepare-sync-directory");
-  els.chooseSyncDirectory = document.getElementById("choose-sync-directory");
-  els.forceSync = document.getElementById("force-sync");
 
   els.discoverForm = byId("discover-form");
   els.discoverQuery = byId("discover-query");

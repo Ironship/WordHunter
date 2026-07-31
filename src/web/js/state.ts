@@ -178,7 +178,7 @@ export async function requestWordHunterClose(): Promise<void> {
     nativeCloseRequested = false;
     console.warn("Word Hunter remains open because final state saving failed");
     void Promise.all([import("./toast.js"), import("./i18n.js")])
-      .then(([{ showToast }, { t }]) => showToast(t("toast.syncUnavailable"), "error"));
+      .then(([{ showToast }, { t }]) => showToast(t("toast.saveUnavailable"), "error"));
     return;
   }
   try {
@@ -229,9 +229,6 @@ export function applyBridgeSnapshotToState(
     : {};
   if (!snapshotPreferences.__discover && state.discover) {
     snapshot.prefs = { ...snapshotPreferences, __discover: { ...state.discover } };
-  }
-  if (!snapshot?.cloudSyncStatus && state.cloudSyncStatus) {
-    snapshot.cloudSyncStatus = clonePlain(rawState().cloudSyncStatus);
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();
