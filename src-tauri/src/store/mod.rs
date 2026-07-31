@@ -3,10 +3,7 @@ pub(crate) mod durable;
 pub(crate) mod media_assets;
 pub mod record_files;
 pub mod snapshot;
-
-#[cfg(test)]
-#[path = "../tests/store_sync/tests.rs"]
-mod sync_tests;
+pub mod transfer;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -74,6 +71,7 @@ impl Store {
         #[cfg(not(target_os = "android"))]
         {
             store.recover_pending_save()?;
+            record_files::migrate_legacy_json_records(&store.dir())?;
             store.discard_abandoned_book_imports()?;
         }
         // Snapshot refreshes records on first load; do not block Android WebView creation here.
@@ -212,7 +210,6 @@ fn merge_data_dir(
         record_files::now_millis(),
     );
     record_files::write_records(to, &merged.records)?;
-    record_files::write_conflicts(to, &merged.conflicts)?;
     media_assets::merge_book_assets_into(from, to, device_id)?;
     let source_packages = from.join("argos-packages");
     if source_packages.is_dir() {

@@ -77,9 +77,6 @@ function portableFixture() {
   const pe = createPeX64();
   return {
     "Word.Hunter.portable.exe": pe,
-    "syncthing.exe": pe,
-    "SYNCTHING-LICENSE.txt": "license",
-    "SYNCTHING-AUTHORS.txt": "authors",
     LICENSE: "license",
     "THIRD-PARTY-NOTICES.md": "notices",
     "THIRD-PARTY-LICENSES.html": "licenses",
@@ -114,17 +111,11 @@ describe("OCR runtime packaging", () => {
     }
 
     assert.equal(powershellString(buildScript, "WindowsRustTarget"), "x86_64-pc-windows-msvc");
-    assert.equal(powershellString(buildScript, "SyncthingVersion"), "2.1.0");
-    assert.match(powershellString(buildScript, "SyncthingSha256"), /^[0-9A-F]{64}$/);
     assert.match(powershellString(ocrScript, "PaddleModelsSha256"), /^[0-9A-F]{64}$/);
     assert.match(powershellString(ocrScript, "PdfiumSha256"), /^[0-9A-F]{64}$/);
     assert.doesNotMatch(ocrScript, /releases\/latest\/download/);
     assert.match(ocrScript, /cargo\.exe build --locked --release --target \$WindowsRustTarget --manifest-path \$RunnerManifest/);
 
-    const downloadSyncthing = powershellFunction(buildScript, "Download-Syncthing");
-    assert.match(downloadSyncthing, /Download-File \$url \$zip \$SyncthingSha256/);
-    assert.match(downloadSyncthing, /"LICENSE\.txt"\) -Destination \$SyncthingLicense/);
-    assert.match(downloadSyncthing, /"AUTHORS\.txt"\) -Destination \$SyncthingAuthors/);
     const portable = powershellFunction(buildScript, "Build-Portable");
     const installer = powershellFunction(buildScript, "Build-Installer");
     assert.match(portable, /--target", \$WindowsRustTarget/);
@@ -139,8 +130,6 @@ describe("OCR runtime packaging", () => {
     }
 
     const resources = windowsConfig.bundle.resources;
-    assert.equal(resources["syncthing/syncthing.exe"], "syncthing.exe");
-    assert.equal(resources["syncthing/SYNCTHING-LICENSE.txt"], "SYNCTHING-LICENSE.txt");
     assert.equal(resources["../THIRD-PARTY-LICENSES.html"], "THIRD-PARTY-LICENSES.html");
     assert.equal(resources["../OCR-THIRD-PARTY-LICENSES.html"], "OCR-THIRD-PARTY-LICENSES.html");
   });
@@ -167,7 +156,6 @@ describe("OCR runtime packaging", () => {
     assert.ok(commands.some((command) => command.includes("/app/bin/ocr-runtime/bin/wordhunter-paddleocr")));
     assert.ok(commands.some((command) => command.includes("/app/lib/libwebgpu_dawn.so")));
     assert.ok(commands.some((command) => command.includes("/app/bin/ocr-runtime/bin/libpdfium.so")));
-    assert.ok(commands.some((command) => command.includes("SYNCTHING-LICENSE.txt")));
     assert.ok(commands.some((command) => command.includes("THIRD-PARTY-LICENSES.html OCR-THIRD-PARTY-LICENSES.html")));
 
     const archives = module.sources.filter((source) => source && source.type === "archive");
@@ -180,7 +168,6 @@ describe("OCR runtime packaging", () => {
     assert.ok(archives.some((source) => source.url.includes("x86_64-unknown-linux-gnu")));
     assert.ok(archives.some((source) => source.url.includes("x86_64-unknown-linux-gnu+wgpu.tgz")));
     assert.ok(archives.some((source) => source.url.includes("pdfium-linux-x64")));
-    assert.ok(archives.some((source) => source.url.includes("syncthing-linux-amd64-v2.1.0")));
 
     const ocrCargo = read("../../src-tauri/ocr-runner/Cargo.toml");
     assert.match(ocrCargo, /cfg\(target_os = "linux"\)[\s\S]*features = \["webgpu"\]/);

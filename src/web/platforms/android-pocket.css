@@ -327,13 +327,6 @@ html.pocket-mode {
   display: none;
 }
 
-.pocket-mode .wizard-step-num-desktop {
-  display: none;
-}
-
-.pocket-mode .wizard-step-num-pocket {
-  display: inline;
-}
 
 .pocket-mode .desktop-only-control {
   display: none;

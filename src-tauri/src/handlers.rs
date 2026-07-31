@@ -1,11 +1,10 @@
 use serde_json::Value;
-#[cfg(target_os = "android")]
-use serde_json::json;
 use std::path::{Component, Path};
 use std::{fs, path::PathBuf};
 use tauri::Manager;
 use tiny_http::Request;
 
+use crate::store::transfer::ExportScope;
 use crate::{offline_translator, response, server::ServerState, tts};
 
 pub(crate) fn parse_window_zoom_percent(payload: &Value) -> Result<f64, String> {
@@ -239,7 +238,6 @@ fn write_export_file(path: &std::path::Path, data: &str) -> Result<(), String> {
         .ok_or_else(|| format!("path has no parent: {}", path.display()))?;
     std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     let temp = export_sidecar_path(path, ".wordhunter-export.tmp")?;
-    let backup = export_sidecar_path(path, ".wordhunter-export.bak")?;
     crate::store::durable::remove_file_if_exists(&temp)?;
     {
         use std::io::Write;
@@ -250,30 +248,7 @@ fn write_export_file(path: &std::path::Path, data: &str) -> Result<(), String> {
         file.sync_all()
             .map_err(|e| format!("could not sync export temp {}: {e}", temp.display()))?;
     }
-    if !path.exists() {
-        std::fs::rename(&temp, path)
-            .map_err(|e| format!("could not install export {}: {e}", path.display()))?;
-        return crate::store::durable::sync_parent(path);
-    }
-
-    crate::store::durable::remove_file_if_exists(&backup)?;
-    std::fs::rename(path, &backup)
-        .map_err(|e| format!("could not stage previous export {}: {e}", path.display()))?;
-    if let Err(install_error) = std::fs::rename(&temp, path) {
-        let restore = std::fs::rename(&backup, path);
-        return match restore {
-            Ok(()) => Err(format!(
-                "could not replace export {}; previous file was restored: {install_error}",
-                path.display()
-            )),
-            Err(restore_error) => Err(format!(
-                "could not replace export {} ({install_error}) or restore its backup ({restore_error})",
-                path.display()
-            )),
-        };
-    }
-    crate::store::durable::remove_file_if_exists(&backup)?;
-    crate::store::durable::sync_parent(path)
+    install_export_temp(path, &temp)
 }
 
 #[cfg(not(target_os = "android"))]
@@ -289,6 +264,134 @@ fn export_sidecar_path(path: &std::path::Path, suffix: &str) -> Result<std::path
 #[cfg(target_os = "android")]
 pub(crate) fn save_export(_payload: Value) -> Result<bool, String> {
     Err("Export file picker is not available in Word Hunter Pocket yet".to_string())
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Value, String> {
+    let scope = ExportScope::parse(
+        payload
+            .get("scope")
+            .and_then(Value::as_str)
+            .unwrap_or("all"),
+    )?;
+    let filename = payload
+        .get("filename")
+        .and_then(Value::as_str)
+        .unwrap_or("wordhunter-transfer.zip");
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("WordHunter package", &["zip"])
+        .set_file_name(filename)
+        .save_file()
+    else {
+        return Ok(serde_json::json!({ "saved": false }));
+    };
+    let temp = export_sidecar_path(&path, ".wordhunter-export.tmp")?;
+    crate::store::durable::remove_file_if_exists(&temp)?;
+    let summary = state.store.export_transfer(&temp, scope)?;
+    install_export_temp(&path, &temp)?;
+    Ok(serde_json::json!({ "saved": true, "summary": summary }))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Value, String> {
+    let scope = ExportScope::parse(
+        payload
+            .get("scope")
+            .and_then(Value::as_str)
+            .unwrap_or("all"),
+    )?;
+    let request_id = crate::paths::sanitize_id(
+        payload
+            .get("requestId")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Android export requestId is required".to_string())?,
+    )?;
+    let filename = payload
+        .get("filename")
+        .and_then(Value::as_str)
+        .unwrap_or("wordhunter-transfer.zip");
+    let cache = state
+        .app_handle
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("wordhunter-transfer");
+    std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+    let path = cache.join(format!("{request_id}.zip"));
+    let summary = state.store.export_transfer(&path, scope)?;
+    Ok(serde_json::json!({
+        "saved": true,
+        "path": path,
+        "filename": filename,
+        "summary": summary,
+    }))
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn import_transfer(state: &ServerState, _payload: &Value) -> Result<Value, String> {
+    let Some(path) = rfd::FileDialog::new()
+        .add_filter("WordHunter package", &["zip"])
+        .pick_file()
+    else {
+        return Ok(serde_json::json!({ "imported": false }));
+    };
+    let summary = state.store.import_transfer(&path)?;
+    Ok(serde_json::json!({ "imported": true, "summary": summary }))
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn import_transfer(state: &ServerState, payload: &Value) -> Result<Value, String> {
+    let source = PathBuf::from(
+        payload
+            .get("path")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Android import path is required".to_string())?,
+    );
+    let cache = state
+        .app_handle
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("wordhunter-transfer");
+    let cache = std::fs::canonicalize(&cache)
+        .map_err(|_| "Android transfer cache is unavailable".to_string())?;
+    let source = std::fs::canonicalize(&source)
+        .map_err(|_| "Android import file is unavailable".to_string())?;
+    if !source.starts_with(&cache)
+        || source.extension().and_then(|value| value.to_str()) != Some("zip")
+    {
+        return Err("Android import path is invalid".to_string());
+    }
+    let result = state.store.import_transfer(&source);
+    let cleanup = crate::store::durable::remove_file_if_exists(&source);
+    match (result, cleanup) {
+        (Ok(summary), Ok(())) => Ok(serde_json::json!({ "imported": true, "summary": summary })),
+        (Err(error), _) => Err(error),
+        (Ok(_), Err(error)) => Err(format!(
+            "import succeeded but temporary file cleanup failed: {error}"
+        )),
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+fn install_export_temp(path: &Path, temp: &Path) -> Result<(), String> {
+    let backup = export_sidecar_path(path, ".wordhunter-export.bak")?;
+    if !path.exists() {
+        std::fs::rename(temp, path)
+            .map_err(|e| format!("could not install export {}: {e}", path.display()))?;
+        return crate::store::durable::sync_parent(path);
+    }
+    crate::store::durable::remove_file_if_exists(&backup)?;
+    std::fs::rename(path, &backup)
+        .map_err(|e| format!("could not stage previous export {}: {e}", path.display()))?;
+    if let Err(error) = std::fs::rename(temp, path) {
+        let restore = std::fs::rename(&backup, path);
+        return Err(format!(
+            "could not install export {error}; restore: {restore:?}"
+        ));
+    }
+    crate::store::durable::remove_file_if_exists(&backup)?;
+    crate::store::durable::sync_parent(path)
 }
 
 #[cfg(not(target_os = "android"))]
@@ -310,133 +413,7 @@ pub(crate) fn choose_data_dir(state: &ServerState) -> Result<Option<String>, Str
 
 #[cfg(target_os = "android")]
 pub(crate) fn choose_data_dir(_state: &ServerState) -> Result<Option<String>, String> {
-    Err("Sync folder picker needs Android Storage Access Framework wiring".to_string())
-}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn choose_sync_dir(state: &ServerState) -> Result<Option<(String, Value)>, String> {
-    let start = crate::paths::sync_dir(crate::APP_NAME)
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| state.store.dir());
-    let Some(path) = rfd::FileDialog::new()
-        .set_title("Choose WordHunter sync folder")
-        .set_directory(start)
-        .pick_folder()
-    else {
-        return Ok(None);
-    };
-    let mut snapshot = state.store.sync_with_directory(path.clone())?;
-    crate::paths::set_sync_dir(crate::APP_NAME, &path)?;
-    state.syncthing.configure_folder_if_running(&path)?;
-    let path = path.to_string_lossy().into_owned();
-    snapshot["syncDir"] = Value::String(path.clone());
-    Ok(Some((path, snapshot)))
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn choose_sync_dir(_state: &ServerState) -> Result<Option<(String, Value)>, String> {
-    Err("Sync folder picker is handled by the Android bridge".to_string())
-}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn prepare_sync_dir(state: &ServerState) -> Result<Value, String> {
-    let dir = crate::sync_assistant::managed_sync_dir()?;
-    let mut snapshot = state.store.sync_with_directory(dir.clone())?;
-    crate::paths::set_sync_dir(crate::APP_NAME, &dir)?;
-    state.syncthing.configure_folder_if_running(&dir)?;
-    let path = dir.to_string_lossy().into_owned();
-    snapshot["syncDir"] = Value::String(path.clone());
-    Ok(serde_json::json!({
-        "path": path,
-        "snapshot": snapshot,
-        "health": crate::sync_assistant::folder_health(&dir),
-    }))
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn prepare_sync_dir(_state: &ServerState) -> Result<Value, String> {
-    Err("Sync folder setup is handled by the Android bridge".to_string())
-}
-
-pub(crate) fn sync_health() -> Value {
-    crate::sync_assistant::configured_sync_health()
-}
-
-pub(crate) fn syncthing_status(state: &ServerState) -> Value {
-    state.syncthing.status()
-}
-
-pub(crate) fn syncthing_start(state: &ServerState) -> Result<Value, String> {
-    state.syncthing.start()
-}
-
-pub(crate) fn syncthing_stop(state: &ServerState) -> Result<Value, String> {
-    state.syncthing.stop()
-}
-
-pub(crate) fn syncthing_device_qr(state: &ServerState) -> Result<String, String> {
-    state.syncthing.device_qr_svg()
-}
-
-pub(crate) fn syncthing_pair(
-    state: &ServerState,
-    device_id: &str,
-    device_name: &str,
-) -> Result<Value, String> {
-    state.syncthing.pair_device(device_id, device_name)
-}
-
-pub(crate) fn sync_now(state: &ServerState) -> Result<Value, String> {
-    let dir = crate::paths::sync_dir(crate::APP_NAME)?
-        .ok_or_else(|| "sync folder is not configured".to_string())?;
-    state.store.sync_with_directory(dir)
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn sync_android_staging(state: &ServerState, payload: &Value) -> Result<Value, String> {
-    let request_id = payload
-        .get("requestId")
-        .and_then(Value::as_str)
-        .ok_or_else(|| "Android sync requestId is required".to_string())?;
-    let request_id = crate::paths::sanitize_id(request_id)?;
-    let cache_dir = state
-        .app_handle
-        .path()
-        .app_cache_dir()
-        .map_err(|e| e.to_string())?;
-    let staging_parent = cache_dir.join("wordhunter-sync-staging");
-    let staging_root = staging_parent.join(request_id);
-    let incoming_dir = staging_root.join("incoming");
-
-    let staging_parent = std::fs::canonicalize(&staging_parent)
-        .map_err(|_| "Android sync staging parent is unavailable".to_string())?;
-    let staging_root = std::fs::canonicalize(&staging_root)
-        .map_err(|_| "Android sync staging folder is unavailable".to_string())?;
-    let incoming_dir = std::fs::canonicalize(&incoming_dir)
-        .map_err(|_| "Android sync input folder is unavailable".to_string())?;
-    if !staging_root.starts_with(&staging_parent) || !incoming_dir.starts_with(&staging_root) {
-        return Err("Android sync staging path is invalid".to_string());
-    }
-
-    state.store.recover_pending_save_guarded()?;
-    let local_dir = state.store.dir();
-    state.store.sync_with_directory(incoming_dir.clone())?;
-    Ok(json!({
-        "status": "synced",
-        "health": {
-            "staging": crate::sync_assistant::folder_health(&incoming_dir),
-            "local": crate::sync_assistant::folder_health(&local_dir),
-        }
-    }))
-}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn sync_android_staging(
-    _state: &ServerState,
-    _payload: &Value,
-) -> Result<Value, String> {
-    Err("Android staged sync is only available on Word Hunter Pocket".to_string())
+    Err("Changing the local data folder is not supported on Android".to_string())
 }
 
 #[cfg(test)]

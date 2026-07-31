@@ -46,25 +46,10 @@ fn read_config_file(app_name: &str, suffix: &str) -> Result<Option<String>, Stri
     }
 }
 
-#[cfg(not(target_os = "android"))]
-pub(crate) fn read_app_config(app_name: &str, suffix: &str) -> Result<Option<String>, String> {
-    read_config_file(app_name, suffix)
-}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn app_config_path(app_name: &str, suffix: &str) -> Result<PathBuf, String> {
-    config_file_path(app_name, suffix)
-}
-
 fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
     let path = config_file_path(app_name, suffix)?;
     crate::store::durable::recover_replace(&path)?;
     crate::store::durable::write_file_atomic(&path, bytes, true)
-}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn write_app_config(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), String> {
-    write_config_file(app_name, suffix, bytes)
 }
 
 fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
@@ -105,30 +90,6 @@ pub fn set_data_dir(app_name: &str, dir: &Path) -> Result<(), String> {
     write_config_file(app_name, "data-dir", dir.to_string_lossy().as_bytes())
 }
 
-pub fn sync_dir(app_name: &str) -> Result<Option<PathBuf>, String> {
-    let value = match read_config_file(app_name, "sync-dir")? {
-        Some(value) => value,
-        None => return Ok(None),
-    };
-    let dir = PathBuf::from(value.trim());
-    if dir.as_os_str().is_empty() {
-        return Ok(None);
-    }
-    if !dir.is_dir() {
-        return Err(format!(
-            "configured sync folder is missing: {}",
-            dir.display()
-        ));
-    }
-    Ok(Some(dir))
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn set_sync_dir(app_name: &str, dir: &Path) -> Result<(), String> {
-    std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    write_config_file(app_name, "sync-dir", dir.to_string_lossy().as_bytes())
-}
-
 pub fn device_id(app_name: &str) -> Result<String, String> {
     if let Some(value) = read_config_file(app_name, "device-id")? {
         let value = value.trim();
@@ -143,13 +104,6 @@ pub fn device_id(app_name: &str) -> Result<String, String> {
     let id = format!("{}-{}", std::process::id(), millis);
     write_config_file(app_name, "device-id", id.as_bytes())?;
     Ok(id)
-}
-
-#[cfg(not(target_os = "android"))]
-pub fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("USERPROFILE")
-        .or_else(|| std::env::var_os("HOME"))
-        .map(PathBuf::from)
 }
 
 pub fn sanitize_id(id: &str) -> Result<String, String> {

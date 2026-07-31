@@ -91,7 +91,7 @@ export async function openEditBookModal(id: string): Promise<void> {
         editingBookId = null;
         editingBookKind = null;
         editBookOriginalValues = null;
-        showToast(t("toast.syncUnavailable"), "error");
+        showToast(t("toast.saveUnavailable"), "error");
       }
       return;
     }
@@ -172,7 +172,7 @@ export async function saveEditedBook(): Promise<void> {
       if (window.__qtBridge) await upsertStoredText({ ...nextCustomText, text: cleanText });
     } catch(e) {
       console.warn("upsert_text failed", e);
-      showToast(t("toast.syncUnavailable"), "error");
+      showToast(t("toast.saveUnavailable"), "error");
       editBookSaveRunning = false;
       if (els.editBookCancel) els.editBookCancel.disabled = false;
       if (els.editBookSave) els.editBookSave.disabled = false;
@@ -200,7 +200,7 @@ export async function saveEditedBook(): Promise<void> {
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("edit book recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     editBookSaveRunning = false;
     if (els.editBookCancel) els.editBookCancel.disabled = false;
     if (els.editBookSave) els.editBookSave.disabled = false;

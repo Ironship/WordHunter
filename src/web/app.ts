@@ -2,7 +2,7 @@
 import { cacheElements, els } from "./js/dom.js";
 import { showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
-import { applyPreferences, setSyncStatus, syncSettingsControls } from "./js/preferences.js";
+import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t } from "./js/i18n.js";
@@ -116,21 +116,8 @@ window.addEventListener("resize", () => {
   graphResizeTimer = setTimeout(render, 120);
 });
 
-window.addEventListener("wordhunter:sync-conflict", () => {
-  setSyncStatus("Error");
-  showToast(t("toast.syncConflict"));
-});
-
-window.addEventListener("wordhunter:sync-error", () => {
-  setSyncStatus("Error");
-  showToast(t("toast.syncUnavailable"));
-});
-
-window.addEventListener("wordhunter:sync-saved", (event) => {
-  const time = event instanceof CustomEvent && typeof event.detail?.time === "string"
-    ? event.detail.time
-    : new Date().toLocaleTimeString();
-  setSyncStatus("Saved", { time });
+window.addEventListener("wordhunter:state-save-error", () => {
+  showToast(t("toast.saveUnavailable"));
 });
 
 window.addEventListener("wordhunter:state-replaced", () => {

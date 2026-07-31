@@ -43,9 +43,6 @@ modules:
       - install -Dm755 src-tauri/target/flatpak-onnxruntime/lib/libwebgpu_dawn.so /app/lib/libwebgpu_dawn.so
       - install -Dm755 src-tauri/target/flatpak-pdfium/libpdfium.so /app/bin/ocr-runtime/bin/libpdfium.so
       - install -Dm644 src-tauri/target/flatpak-ocr-models/*.onnx -t /app/bin/ocr-runtime/models/
-      - install -Dm755 src-tauri/target/flatpak-syncthing/syncthing /app/bin/syncthing
-      - install -Dm644 src-tauri/target/flatpak-syncthing/LICENSE.txt /app/share/doc/word-hunter/SYNCTHING-LICENSE.txt
-      - install -Dm644 src-tauri/target/flatpak-syncthing/AUTHORS.txt /app/share/doc/word-hunter/SYNCTHING-AUTHORS.txt
       - install -Dm644 LICENSE /app/share/licenses/com.wordhunter.app/LICENSE
       - install -Dm644 THIRD-PARTY-NOTICES.md THIRD-PARTY-LICENSES.html OCR-THIRD-PARTY-LICENSES.html -t /app/share/doc/word-hunter/
       - install -Dm644 flatpak/com.wordhunter.app.desktop /app/share/applications/com.wordhunter.app.desktop
@@ -95,13 +92,6 @@ modules:
         url: https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip
         sha256: 2fa4055b10dc4e9c1433444fe29f8d5acca2fccc0a0e86b3313caa5cc9e56b7a
         dest: src-tauri/target/flatpak-ocr-models
-      - type: archive
-        archive-type: tar-gzip
-        url: https://github.com/syncthing/syncthing/releases/download/v2.1.0/syncthing-linux-amd64-v2.1.0.tar.gz
-        sha256: 624c2f3303c9ed7d6f27a98ad9767ab95a7b5e453c3c5e17ce8a60f166e47011
-        dest: src-tauri/target/flatpak-syncthing
-        strip-components: 1
-
       - type: archive
         url: https://github.com/OpenNMT/CTranslate2/archive/refs/tags/v4.6.0.tar.gz
         sha256: 9421d846668573466ceb713b27f71fb16fed8486ed7bdb654583c48c3c20621b

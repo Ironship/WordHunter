@@ -166,19 +166,6 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Get, "/__store/data_dir") => {
             response::json_response(request, json!({ "path": state.store.dir() }))
         }
-        (Method::Get, "/__store/sync_status") => {
-            response::json_response(request, state.store.sync_status())
-        }
-        (Method::Get, "/__store/sync_health") => {
-            response::json_response(request, handlers::sync_health())
-        }
-        (Method::Get, "/__syncthing/status") => {
-            response::json_response(request, handlers::syncthing_status(&state))
-        }
-        (Method::Get, "/__syncthing/qr") => match handlers::syncthing_device_qr(&state) {
-            Ok(svg) => response::respond(request, 200, svg.into_bytes(), "image/svg+xml", false),
-            Err(err) => response::error_response(request, 500, &err),
-        },
         (Method::Get, "/__store/recovery_status") => {
             response::json_response(request, state.store.recovery_status())
         }
@@ -300,79 +287,18 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 Ok(None) => response::json_response(request, json!({ "path": null })),
                 Err(err) => response::error_response(request, 500, &err),
             },
-            "/__store/choose_sync_dir" => match handlers::choose_sync_dir(&state) {
-                Ok(Some((path, snapshot))) => {
-                    response::json_response(request, json!({ "path": path, "snapshot": snapshot }))
-                }
-                Ok(None) => response::json_response(request, json!({ "path": null })),
-                Err(err) => response::error_response(request, 500, &err),
-            },
-            "/__store/prepare_sync_dir" => match handlers::prepare_sync_dir(&state) {
-                Ok(payload) => response::json_response(request, payload),
-                Err(err) => response::error_response(request, 500, &err),
-            },
-            "/__syncthing/start" => match handlers::syncthing_start(&state) {
-                Ok(payload) => response::json_response(request, payload),
-                Err(err) => response::error_response(request, 500, &err),
-            },
-            "/__syncthing/stop" => match handlers::syncthing_stop(&state) {
-                Ok(payload) => response::json_response(request, payload),
-                Err(err) => response::error_response(request, 500, &err),
-            },
-            "/__syncthing/pair" => {
-                let payload = read_json_or_400!(request);
-                let device_id = payload
-                    .get("deviceId")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let device_name = payload
-                    .get("deviceName")
-                    .and_then(Value::as_str)
-                    .unwrap_or(device_id);
-                match handlers::syncthing_pair(&state, device_id, device_name) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 500, &err),
-                }
-            }
-            "/__store/sync_now" => match handlers::sync_now(&state) {
-                Ok(snapshot) => response::json_response(request, json!({ "snapshot": snapshot })),
-                Err(err) => response::error_response(request, 500, &err),
-            },
-            "/__store/sync_android_staging" => {
+            "/__store/export_transfer" => {
                 let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                match handlers::sync_android_staging(&state, &payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 500, &err),
+                match handlers::export_transfer(&state, &payload) {
+                    Ok(result) => response::json_response(request, result),
+                    Err(error) => response::error_response(request, 500, &error),
                 }
             }
-            "/__store/resolve_conflict" => {
-                let payload = read_json_or_400!(request);
-                let id = payload
-                    .get("id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let resolution = payload
-                    .get("resolution")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                match state.store.resolve_sync_conflict(id, resolution) {
-                    Ok(snapshot) => {
-                        response::json_response(request, json!({ "snapshot": snapshot }))
-                    }
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__store/resolve_all_conflicts" => {
-                let payload = read_json_or_400!(request);
-                let resolution = payload
-                    .get("resolution")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                match state.store.resolve_all_sync_conflicts(resolution) {
-                    Ok(snapshot) => {
-                        response::json_response(request, json!({ "snapshot": snapshot }))
-                    }
-                    Err(err) => response::error_response(request, 400, &err),
+            "/__store/import_transfer" => {
+                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+                match handlers::import_transfer(&state, &payload) {
+                    Ok(result) => response::json_response(request, result),
+                    Err(error) => response::error_response(request, 422, &error),
                 }
             }
             "/__store/upsert_text" => {

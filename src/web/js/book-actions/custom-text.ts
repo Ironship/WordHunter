@@ -122,7 +122,7 @@ export async function importCustomText(
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("custom text recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return null;
   }
   showToast(t("toast.textAdded"));
@@ -213,7 +213,7 @@ export async function removeCustomText(id: string): Promise<void> {
         console.warn("delete_text recovery reload failed", reloadError);
       });
     }
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
 

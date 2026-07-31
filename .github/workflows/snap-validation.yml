@@ -73,7 +73,6 @@ jobs:
           test -x "$root/usr/bin/word-hunter-rustified"
           test -x "$root/usr/bin/dbus-run-session"
           test -r "$root/usr/share/dbus-1/session.conf"
-          test -x "$root/usr/bin/syncthing"
           test -f "$root/usr/share/applications/word-hunter.desktop"
           test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
           test -f "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
@@ -98,18 +97,13 @@ jobs:
           grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
             "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
-          grep -Eq "^version: ['\"]?1\\.0\\.6['\"]?$" "$root/meta/snap.yaml"
+          grep -Eq "^version: ['\"]?1\\.0\\.8['\"]?$" "$root/meta/snap.yaml"
           grep -Fx 'base: core24' "$root/meta/snap.yaml"
           grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
           grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
           grep -Fq 'default-provider: mesa-2404' "$root/meta/snap.yaml"
           grep -Fq 'snap/command-chain/gpu-2404-wrapper' "$root/meta/snap.yaml"
           grep -Fq 'webkit2gtk-4.1' "$root/meta/snap.yaml"
-
-          "$root/usr/bin/syncthing" --version | grep -F 'v2.1.0'
-          syncthing_home="$RUNNER_TEMP/syncthing-generate"
-          "$root/usr/bin/syncthing" generate --home "$syncthing_home"
-          test -f "$syncthing_home/config.xml"
 
       - name: Smoke-test strict Snap
         env:
@@ -119,9 +113,6 @@ jobs:
           sudo snap install --dangerous "$SNAP_PATH"
           snap list word-hunter
           snap connections word-hunter
-          snap run --shell word-hunter -c \
-            '"$SNAP/usr/bin/syncthing" generate --home "$SNAP_USER_DATA/syncthing-ci" && test -f "$SNAP_USER_DATA/syncthing-ci/config.xml"'
-
           set +e
           # GitHub-hosted runners live in hosted-compute-agent.service. Enter
           # the confined app environment before creating the private D-Bus

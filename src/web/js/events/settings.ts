@@ -7,9 +7,9 @@ import { getTextById, renderReader } from "../reader/renderer.js";
 import { renderWordPanel } from "../reader/word-panel.js";
 import { renderReview } from "../views/vocabulary.js";
 import { renderDiscover } from "../views/discover.js";
-import { applyPreferences, setSyncStatus, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
+import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
 import { showToast } from "../toast.js";
-import { exportState, importStateFile, clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv } from "../sync-actions.js";
+import { clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
 import { acknowledgeBackendSnapshot, loadBackendSnapshot } from "../store-bridge.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
@@ -20,47 +20,12 @@ import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, re
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import { remapReaderBookmarksForAlgorithm } from "../reader/bookmarks.js";
 
-type AndroidSyncResult = {
-  requestId?: string;
-  path?: string;
-  health?: WhRecord;
-  terminal?: boolean;
-  cancelled?: boolean;
-  success?: boolean;
-  error?: string;
-  status?: string;
-};
-
-type SyncNowOptions = {
-  background?: boolean;
-  saveFirst?: boolean;
-};
-
 type ApplyBridgeSnapshotOptions = {
   expectedRevision?: number;
   preserveActiveReader?: boolean;
 };
 
-type ApplySyncSnapshotOptions = {
-  exclusive?: boolean;
-  preserveActiveReader?: boolean;
-};
-
-let syncIntervalStarted = false;
-let backgroundSyncTimer: number | null = null;
-let backgroundSyncRunning = false;
-let syncOperationQueue: Promise<unknown> | null = null;
 let wordAlgorithmChangeGeneration = 0;
-
-function queueSyncOperation<T>(operation: () => Promise<T>): Promise<T> {
-  const result = syncOperationQueue ? syncOperationQueue.then(operation, operation) : operation();
-  const settled = result.then((): void => {}, (): void => {});
-  syncOperationQueue = settled;
-  void settled.finally(() => {
-    if (syncOperationQueue === settled) syncOperationQueue = null;
-  });
-  return result;
-}
 
 function resetReaderScrollForCurrentText() {
   if (!state.currentTextId) return;
@@ -131,83 +96,6 @@ function confirmDataFolderChange(): Promise<boolean> {
   });
 }
 
-function createAndroidSyncRequestId() {
-  return `android-sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-function waitForAndroidSyncResult(
-  startSync: ((requestId: string) => boolean) | null | undefined
-): Promise<AndroidSyncResult | null> | null {
-  if (typeof startSync !== "function") return null;
-
-  return new Promise<AndroidSyncResult | null>((resolve, reject) => {
-    const requestId = createAndroidSyncRequestId();
-    let timeout: number;
-    const cleanup = () => {
-      window.removeEventListener("wordhunter:android-sync-folder", onResult);
-      clearTimeout(timeout);
-    };
-    const armTimeout = () => {
-      clearTimeout(timeout);
-      timeout = window.setTimeout(() => {
-        cleanup();
-        reject(new Error(t("settings.syncFolderChangeFailed")));
-      }, 190000);
-    };
-    const onResult = (event: Event) => {
-      const detail = (event as CustomEvent<AndroidSyncResult>).detail || {};
-      if (detail.requestId !== requestId) return;
-      if (detail.path) {
-        state.syncDirectory = detail.path;
-      }
-      if (detail.health && typeof detail.health === "object") state.syncHealth = detail.health;
-      if (detail.path || detail.health) syncSettingsControls();
-      if (detail.terminal === false) {
-        armTimeout();
-        return;
-      }
-      cleanup();
-      if (detail.cancelled) {
-        resolve(null);
-      } else if (detail.success) {
-        resolve(detail);
-      } else {
-        reject(new Error(detail.error || detail.status || t("settings.syncFolderChangeFailed")));
-      }
-    };
-    window.addEventListener("wordhunter:android-sync-folder", onResult);
-    armTimeout();
-    try {
-      const started = startSync(requestId);
-      if (started === false) {
-        cleanup();
-        resolve(null);
-      }
-    } catch (error) {
-      cleanup();
-      reject(error);
-    }
-  });
-}
-
-function chooseAndroidSyncFolder(): Promise<AndroidSyncResult | null> | null {
-  if (typeof window.WordHunterAndroid?.chooseSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult((requestId) => window.WordHunterAndroid.chooseSyncFolder(window.WH_TOKEN || "", requestId));
-}
-
-function forceAndroidSyncFolder(): Promise<AndroidSyncResult | null> | null {
-  if (typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return null;
-  return waitForAndroidSyncResult((requestId) => window.WordHunterAndroid.forceSyncFolder(window.WH_TOKEN || "", requestId));
-}
-
-function showSyncFolderError(error: unknown): void {
-  const fallback = t("settings.syncFolderChangeFailed");
-  const detail = error instanceof Error ? error.message.trim() : "";
-  showToast(detail && detail !== fallback
-    ? t("settings.syncFolderChangeFailedDetail", { error: detail })
-    : fallback, "error");
-}
-
 export function applyBridgeSnapshot(
   snapshot: unknown,
   {
@@ -226,195 +114,12 @@ export function applyBridgeSnapshot(
   return true;
 }
 
-async function applySyncSnapshot(
-  snapshot: WhBridgeSnapshot,
-  startingRevision: number,
-  {
-    exclusive = false,
-    preserveActiveReader = false
-  }: ApplySyncSnapshotOptions = {}
-): Promise<boolean> {
-  const apply = async (): Promise<boolean> => {
-    if (!applyBridgeSnapshot(snapshot, { expectedRevision: startingRevision, preserveActiveReader })) {
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-snapshot-skipped"));
-      return false;
-    }
-    try {
-      await acknowledgeBackendSnapshot(snapshot);
-    } catch (error) {
-      window.dispatchEvent(new CustomEvent("wordhunter:sync-snapshot-skipped"));
-      throw error;
-    }
-    return true;
-  };
-  return exclusive ? runExclusiveStateWrite(apply) : apply();
-}
-
-async function reloadActiveDataFolder() {
-  if (!window.__qtBridge) return;
-  await flushAllPendingFrontendState();
-  const startingRevision = getDurableStateRevision();
-  const snapshot = await loadBackendSnapshot();
-  if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
-}
-
-async function refreshSyncHealth() {
-  if (!window.__qtBridge) return;
-  try {
-    const response = await fetch("/__store/sync_health", { cache: "no-store" });
-    if (!response.ok) return;
-    state.syncHealth = await response.json();
-    syncSettingsControls();
-  } catch (error) {
-    console.warn("Sync health check failed", error);
-  }
-}
-
-async function refreshRecoveryStatus() {
-  if (!window.__qtBridge) return;
-  try {
-    const response = await fetch("/__store/recovery_status", { cache: "no-store" });
-    if (!response.ok) return;
-    state.recoveryStatus = await response.json();
-    syncSettingsControls();
-  } catch (error) {
-    console.warn("Recovery status check failed", error);
-  }
-}
-
-async function refreshSyncthingStatus() {
-  if (!window.__qtBridge) return;
-  try {
-    const response = await fetch("/__syncthing/status", { cache: "no-store" });
-    if (!response.ok) return;
-    state.syncthingStatus = await response.json();
-    syncSettingsControls();
-  } catch (error) {
-    console.warn("Syncthing status check failed", error);
-  }
-}
-
-async function syncNowOnce({ background = false, saveFirst = true }: SyncNowOptions = {}): Promise<boolean> {
-  if (!window.__qtBridge && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") return false;
-  if (!state.syncDirectory && typeof window.WordHunterAndroid?.forceSyncFolder !== "function") {
-    if (!background) showToast(t("settings.syncFolderMissing"), "error");
-    return false;
-  }
-  const performSync = async (): Promise<boolean> => {
-    const preserveActiveReader = background;
-    const startingRevision = getDurableStateRevision();
-    let androidResult;
-    try {
-      androidResult = await forceAndroidSyncFolder();
-    } catch (error) {
-      // A SAF export can fail after Rust committed the merge. Reloading prevents a
-      // subsequent stale frontend save from deleting records imported by that merge.
-      try {
-        const snapshot = await loadBackendSnapshot();
-        if (snapshot) {
-          await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
-        }
-      } catch (reloadError) {
-        console.warn("Could not reload data after Android sync failure", reloadError);
-      }
-      throw error;
-    }
-    if (androidResult) {
-      const snapshot = await loadBackendSnapshot();
-      if (!snapshot) return false;
-      snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-      await applySyncSnapshot(snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
-      return true;
-    }
-    if (androidResult === null && typeof window.WordHunterAndroid?.forceSyncFolder === "function") {
-      if (!background) showToast(t("settings.syncFolderMissing"), "error");
-      return false;
-    }
-    const response = await fetch("/__store/sync_now", {
-      method: "POST",
-      headers: { "X-WH-Token": window.WH_TOKEN || "" }
-    });
-    if (!response.ok) {
-      const detail = (await response.text()).trim();
-      throw new Error(detail || t("toast.syncUnavailable"));
-    }
-    const result = await response.json();
-    if (result.snapshot) {
-      await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: saveFirst, preserveActiveReader });
-    }
-    if (!background) refreshSyncHealth();
-    return true;
-  };
-  if (saveFirst) await flushAllPendingFrontendState();
-  return performSync();
-}
-
-export function syncNow(options: SyncNowOptions = {}): Promise<boolean> {
-  return queueSyncOperation(() => syncNowOnce(options));
-}
-
-async function resolveSyncConflict(id: string | null, resolution: string): Promise<boolean> {
-  if (!window.__qtBridge) return false;
-  return queueSyncOperation(async () => {
-    await flushAllPendingFrontendState();
-    const startingRevision = getDurableStateRevision();
-    const response = await fetch(id ? "/__store/resolve_conflict" : "/__store/resolve_all_conflicts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: JSON.stringify(id ? { id, resolution } : { resolution })
-    });
-    if (!response.ok) throw new Error(t("toast.syncUnavailable"));
-    const snapshot = ((await response.json()) as { snapshot?: WhBridgeSnapshot }).snapshot || null;
-    if (snapshot) await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
-    await syncNowOnce({ saveFirst: false });
+async function applyLoadedSnapshot(snapshot: WhBridgeSnapshot, startingRevision: number): Promise<boolean> {
+  return runExclusiveStateWrite(async () => {
+    if (!applyBridgeSnapshot(snapshot, { expectedRevision: startingRevision })) return false;
+    await acknowledgeBackendSnapshot(snapshot);
     return true;
   });
-}
-
-function startBackgroundSyncJob() {
-  if (syncIntervalStarted) return;
-  syncIntervalStarted = true;
-  let rerunDelayMs: number | null = null;
-  const runBackgroundSync = () => {
-    backgroundSyncTimer = null;
-    if (document.visibilityState === "hidden") return;
-    if (backgroundSyncRunning) {
-      rerunDelayMs = rerunDelayMs === null ? 5000 : Math.min(rerunDelayMs, 5000);
-      return;
-    }
-    backgroundSyncRunning = true;
-    syncNow({ background: true, saveFirst: true })
-      .catch((error) => console.warn("Background sync failed", error))
-      .finally(() => {
-        backgroundSyncRunning = false;
-        if (rerunDelayMs !== null) {
-          const delayMs = rerunDelayMs;
-          rerunDelayMs = null;
-          scheduleBackgroundSync(delayMs);
-        }
-      });
-  };
-  const scheduleBackgroundSync = (delayMs = 0) => {
-    if (backgroundSyncRunning) {
-      rerunDelayMs = rerunDelayMs === null ? delayMs : Math.min(rerunDelayMs, delayMs);
-      return;
-    }
-    if (backgroundSyncTimer !== null) clearTimeout(backgroundSyncTimer);
-    backgroundSyncTimer = window.setTimeout(runBackgroundSync, delayMs);
-  };
-  scheduleBackgroundSync(30000);
-  window.addEventListener("wordhunter:sync-saved", () => {
-    if (!backgroundSyncRunning) scheduleBackgroundSync(5000);
-  });
-  window.addEventListener("wordhunter:sync-snapshot-skipped", () => scheduleBackgroundSync(5000));
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      scheduleBackgroundSync(2000);
-      refreshSyncHealth();
-      refreshSyncthingStatus();
-    }
-  });
-  window.setInterval(() => scheduleBackgroundSync(), 15 * 60 * 1000);
 }
 
 function bindPreferenceControls() {
@@ -535,13 +240,24 @@ export function bindSettingsEvents() {
   bindPreferenceControls();
   bindSelectedWordPanelSettings();
 
-  const exportBtn = document.getElementById("export-state");
-  if (exportBtn) exportBtn.addEventListener("click", async () => {
-    setElementBusy(exportBtn, true, { disable: true });
+  for (const [id, scope] of [["export-transfer-all", "all"], ["export-transfer-words", "vocabulary"]] as const) {
+    const button = document.getElementById(id);
+    button?.addEventListener("click", async () => {
+      setElementBusy(button, true, { disable: true });
+      try {
+        await exportTransfer(scope);
+      } finally {
+        setElementBusy(button, false, { disable: true });
+      }
+    });
+  }
+  const importTransferButton = document.getElementById("import-transfer");
+  importTransferButton?.addEventListener("click", async () => {
+    setElementBusy(importTransferButton, true, { disable: true });
     try {
-      await exportState();
+      await importTransfer();
     } finally {
-      setElementBusy(exportBtn, false, { disable: true });
+      setElementBusy(importTransferButton, false, { disable: true });
     }
   });
 
@@ -564,324 +280,21 @@ export function bindSettingsEvents() {
       const result = await response.json();
       if (result.path) {
         if (result.snapshot) {
-          await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
+          await applyLoadedSnapshot(result.snapshot, startingRevision);
         } else {
           state.dataDirectory = result.path;
         }
-        setSyncStatus("Ready");
         syncSettingsControls();
         render();
         showToast(t("settings.dataFolderChanged"));
       }
     } catch (error) {
       console.error(error);
-      showSyncFolderError(error);
+      showToast(t("settings.dataFolderChangeFailed"), "error");
     } finally {
       setElementBusy(els.chooseDataDirectory, false, { disable: true });
     }
   });
-
-  if (els.prepareSyncDirectory) els.prepareSyncDirectory.addEventListener("click", async () => {
-    setElementBusy(els.prepareSyncDirectory, true, { disable: true });
-    try {
-      await flushAllPendingFrontendState();
-      const startingRevision = getDurableStateRevision();
-      const androidResult = await chooseAndroidSyncFolder();
-      if (androidResult) {
-        const snapshot = await loadBackendSnapshot();
-        if (!snapshot) return;
-        snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
-        setSyncStatus("Ready");
-        showToast(t("settings.syncFolderChanged"));
-        return;
-      }
-      if (androidResult === null && typeof window.WordHunterAndroid?.chooseSyncFolder === "function") return;
-
-      const response = await fetch("/__store/prepare_sync_dir", {
-        method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
-      });
-      if (!response.ok) throw new Error((await response.text()).trim());
-      const result = await response.json();
-      if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
-      if (result.path) state.syncDirectory = result.path;
-      if (result.health) state.syncHealth = result.health;
-      setSyncStatus("Ready");
-      syncSettingsControls();
-      showToast(t("settings.syncFolderChanged"));
-    } catch (error) {
-      console.error(error);
-      showSyncFolderError(error);
-    } finally {
-      setElementBusy(els.prepareSyncDirectory, false, { disable: true });
-    }
-  });
-
-  if (els.syncthingStart) els.syncthingStart.addEventListener("click", async () => {
-    setElementBusy(els.syncthingStart, true, { disable: true });
-    try {
-      const response = await fetch("/__syncthing/start", {
-        method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
-      });
-      if (!response.ok) throw new Error(await response.text());
-      state.syncthingStatus = await response.json();
-      syncSettingsControls();
-      showToast(t("settings.syncthingStarted"));
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || t("settings.syncthingError"), "error");
-    } finally {
-      setElementBusy(els.syncthingStart, false, { disable: true });
-      refreshSyncthingStatus();
-    }
-  });
-
-  if (els.syncthingStop) els.syncthingStop.addEventListener("click", async () => {
-    setElementBusy(els.syncthingStop, true, { disable: true });
-    try {
-      const response = await fetch("/__syncthing/stop", {
-        method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
-      });
-      if (!response.ok) throw new Error(await response.text());
-      state.syncthingStatus = await response.json();
-      syncSettingsControls();
-      showToast(t("settings.syncthingStopped"));
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || t("settings.syncthingError"), "error");
-    } finally {
-      setElementBusy(els.syncthingStop, false, { disable: true });
-      refreshSyncthingStatus();
-    }
-  });
-
-  function showSyncthingPairDialog(): Promise<{ deviceId: string; deviceName: string } | null> {
-    const dialog = document.querySelector<HTMLDialogElement>("#syncthing-pair-dialog");
-    if (!dialog || typeof HTMLDialogElement === "undefined") {
-      const deviceId = prompt(t("settings.syncthingPairPrompt"));
-      if (!deviceId) return Promise.resolve(null);
-      const deviceName = prompt(t("settings.syncthingPairNamePrompt")) || deviceId;
-      return Promise.resolve({ deviceId, deviceName });
-    }
-
-    const idInput = dialog.querySelector<HTMLInputElement>("#syncthing-pair-id");
-    const nameInput = dialog.querySelector<HTMLInputElement>("#syncthing-pair-name");
-    const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
-    const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
-
-    if (idInput) idInput.value = "";
-    if (nameInput) nameInput.value = "";
-
-    return new Promise<{ deviceId: string; deviceName: string } | null>((resolve) => {
-      const cleanup = (value: { deviceId: string; deviceName: string } | null) => {
-        cancelButton.removeEventListener("click", onCancel);
-        confirmButton.removeEventListener("click", onConfirm);
-        dialog.removeEventListener("cancel", onCancel);
-        dialog.removeEventListener("click", onBackdrop);
-        dialog.removeEventListener("keydown", onKeydown);
-        dialog.close();
-        resolve(value);
-      };
-      const onCancel = (event: Event) => {
-        event.preventDefault();
-        cleanup(null);
-      };
-      const onConfirm = () => {
-        const deviceId = idInput?.value.trim() || "";
-        if (!deviceId) {
-          idInput?.focus();
-          return;
-        }
-        const deviceName = nameInput?.value.trim() || deviceId;
-        cleanup({ deviceId, deviceName });
-      };
-      const onBackdrop = (event: MouseEvent) => {
-        if (event.target === dialog) cleanup(null);
-      };
-      const onKeydown = (event: KeyboardEvent) => {
-        if (event.key === "Enter" && document.activeElement !== nameInput) {
-          event.preventDefault();
-          onConfirm();
-        }
-      };
-
-      cancelButton.addEventListener("click", onCancel);
-      confirmButton.addEventListener("click", onConfirm);
-      dialog.addEventListener("cancel", onCancel);
-      dialog.addEventListener("click", onBackdrop);
-      dialog.addEventListener("keydown", onKeydown);
-      dialog.showModal();
-      idInput?.focus();
-    });
-  }
-
-  if (els.syncthingPair) els.syncthingPair.addEventListener("click", async () => {
-    const pair = await showSyncthingPairDialog();
-    if (!pair) return;
-    const { deviceId, deviceName } = pair;
-    setElementBusy(els.syncthingPair, true, { disable: true });
-    try {
-      const response = await fetch("/__syncthing/pair", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({ deviceId, deviceName })
-      });
-      if (!response.ok) throw new Error(await response.text());
-      state.syncthingStatus = await response.json();
-      syncSettingsControls();
-      showToast(t("settings.syncthingPaired"));
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || t("settings.syncthingError"), "error");
-    } finally {
-      setElementBusy(els.syncthingPair, false, { disable: true });
-      refreshSyncthingStatus();
-    }
-  });
-
-  if (els.syncthingShowQR) els.syncthingShowQR.addEventListener("click", async () => {
-    setElementBusy(els.syncthingShowQR, true, { disable: true });
-    try {
-      const qrResponse = await fetch("/__syncthing/qr", { cache: "no-store" });
-      if (!qrResponse.ok) throw new Error(await qrResponse.text());
-      const svg = await qrResponse.text();
-      const statusResponse = await fetch("/__syncthing/status", { cache: "no-store" });
-      const st = statusResponse.ok ? await statusResponse.json() : {};
-      if (els.syncthingQRContainer) els.syncthingQRContainer.innerHTML = svg;
-      if (els.syncthingQRDeviceID) {
-        els.syncthingQRDeviceID.textContent = st.deviceId
-          ? `ID: ${st.deviceId}`
-          : "";
-      }
-      if (els.syncthingQRDialog && typeof els.syncthingQRDialog.showModal === "function") {
-        els.syncthingQRDialog.showModal();
-      }
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || t("settings.syncthingError"), "error");
-    } finally {
-      setElementBusy(els.syncthingShowQR, false, { disable: true });
-    }
-  });
-
-  if (els.syncthingQRClose) els.syncthingQRClose.addEventListener("click", () => {
-    if (els.syncthingQRDialog) els.syncthingQRDialog.close();
-  });
-  if (els.syncthingQRDialog) {
-    els.syncthingQRDialog.addEventListener("click", (event: MouseEvent) => {
-      if (event.target === els.syncthingQRDialog) els.syncthingQRDialog.close();
-    });
-  }
-
-  if (els.chooseSyncDirectory) els.chooseSyncDirectory.addEventListener("click", async () => {
-    setElementBusy(els.chooseSyncDirectory, true, { disable: true });
-    try {
-      await flushAllPendingFrontendState();
-      const startingRevision = getDurableStateRevision();
-      const androidResult = await chooseAndroidSyncFolder();
-      if (androidResult) {
-        const snapshot = await loadBackendSnapshot();
-        if (!snapshot) return;
-        snapshot.syncDir = androidResult.path || snapshot.syncDir || state.syncDirectory;
-        await applySyncSnapshot(snapshot, startingRevision, { exclusive: true });
-        setSyncStatus("Ready");
-        showToast(t("settings.syncFolderChanged"));
-        return;
-      }
-      if (androidResult === null && typeof window.WordHunterAndroid?.chooseSyncFolder === "function") return;
-
-      const response = await fetch("/__store/choose_sync_dir", {
-        method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
-      });
-      if (!response.ok) throw new Error(t("settings.dataFolderChangeFailed"));
-      const result = await response.json();
-      if (result.path) {
-        if (result.snapshot) await applySyncSnapshot(result.snapshot, startingRevision, { exclusive: true });
-        state.syncDirectory = result.path;
-        setSyncStatus("Ready");
-        await refreshSyncHealth();
-        syncSettingsControls();
-        showToast(t("settings.syncFolderChanged"));
-      }
-    } catch (error) {
-      console.error(error);
-      showToast(t("settings.dataFolderChangeFailed"), "error");
-    } finally {
-      setElementBusy(els.chooseSyncDirectory, false, { disable: true });
-    }
-  });
-
-  if (els.forceSync) els.forceSync.addEventListener("click", async () => {
-    setElementBusy(els.forceSync, true, { disable: true });
-    try {
-      const synced = await syncNow();
-      if (synced) setSyncStatus("Saved", { time: new Date().toLocaleTimeString() });
-    } catch (error) {
-      console.error(error);
-      setSyncStatus("Error");
-      showToast(error.message || t("toast.syncUnavailable"), "error");
-    } finally {
-      setElementBusy(els.forceSync, false, { disable: true });
-      setTimeout(syncSettingsControls, 500);
-    }
-  });
-
-  if (els.syncConflictsList) {
-    els.syncConflictsList.addEventListener("click", async (event: MouseEvent) => {
-      const bulkButton = event.target instanceof Element
-        ? event.target.closest<HTMLElement>("[data-conflict-resolution-all]")
-        : null;
-      const button = event.target instanceof Element
-        ? event.target.closest<HTMLElement>("[data-conflict-resolution]")
-        : null;
-      if (!button && !bulkButton) return;
-      if (bulkButton) {
-        if (!state.syncConflictCount) return;
-        setElementBusy(bulkButton, true, { disable: true });
-        try {
-          await resolveSyncConflict(null, bulkButton.dataset.conflictResolutionAll || "keep-current");
-          showToast(t("settings.syncConflictResolved"));
-        } catch (error) {
-          console.warn("resolve conflicts failed", error);
-          showToast(t("toast.syncUnavailable"), "error");
-        } finally {
-          setElementBusy(bulkButton, false, { disable: true });
-        }
-        return;
-      }
-      const item = button.closest<HTMLElement>("[data-conflict-id]");
-      const id = item?.dataset.conflictId;
-      const resolution = button.dataset.conflictResolution;
-      if (!id || !resolution) return;
-      setElementBusy(button, true, { disable: true });
-      try {
-        await resolveSyncConflict(id, resolution);
-        showToast(t("settings.syncConflictResolved"));
-      } catch (error) {
-        console.warn("resolve conflict failed", error);
-        showToast(t("toast.syncUnavailable"), "error");
-      } finally {
-        setElementBusy(button, false, { disable: true });
-      }
-    });
-  }
-
-  startBackgroundSyncJob();
-  window.addEventListener("wordhunter:view-changed", (event) => {
-    if ((event as CustomEvent<{ view?: string }>).detail?.view !== "sync") return;
-    refreshSyncHealth();
-    refreshRecoveryStatus();
-    refreshSyncthingStatus();
-  });
-  if (state.currentView === "sync") {
-    refreshSyncHealth();
-    refreshRecoveryStatus();
-    refreshSyncthingStatus();
-  }
 
   const checkUpdatesBtn = document.getElementById("check-updates");
   if (checkUpdatesBtn) checkUpdatesBtn.addEventListener("click", async () => {
@@ -915,9 +328,6 @@ export function bindSettingsEvents() {
       });
     });
   }
-
-  const importFile = document.getElementById("import-state");
-  if (importFile) importFile.addEventListener("change", importStateFile);
 
   const importAnkiFile = document.getElementById("import-anki-tsv");
   if (importAnkiFile) importAnkiFile.addEventListener("change", importAnkiTsv);

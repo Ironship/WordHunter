@@ -112,10 +112,10 @@ describe("Android Pocket platform", () => {
     assert.doesNotMatch(logo.transform, /translate/);
   });
 
-  it("detects Android from the native sync bridge when the user agent is generic", async () => {
+  it("detects Android from the native bridge when the user agent is generic", async () => {
     globalThis.window = {
       location: { search: "" },
-      WordHunterAndroid: { chooseSyncFolder() {} }
+      WordHunterAndroid: { saveExportFile() {} }
     };
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
@@ -140,7 +140,7 @@ describe("Android Pocket platform", () => {
 
     globalThis.window = {
       location: { search: "" },
-      WordHunterAndroid: { chooseSyncFolder() {} }
+      WordHunterAndroid: { saveExportFile() {} }
     };
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
@@ -182,11 +182,10 @@ describe("Android Pocket platform", () => {
     for (const [id, parentTag] of desktopSettingParents) {
       assert.ok(classTokens(ancestorOpeningTag(html, id, parentTag)).has("desktop-only-setting"), `${id} ${parentTag}`);
     }
-    assert.ok(classTokens(ancestorOpeningTag(html, "choose-sync-directory", "details")).has("desktop-only-setting"));
     for (const id of ["reader-word-panel-toggle", "choose-data-directory"]) {
       assert.ok(classTokens(openingTagById(html, id)).has("desktop-only-control"), id);
     }
-    for (const id of ["export-state", "export-anki-tsv"]) {
+    for (const id of ["export-transfer-all", "export-anki-tsv"]) {
       assert.equal(classTokens(openingTagById(html, id)).has("desktop-only-control"), false, id);
     }
     assert.equal(classTokens(ancestorOpeningTag(html, "pref-auto-add-learning", "label")).has("desktop-only-setting"), false);

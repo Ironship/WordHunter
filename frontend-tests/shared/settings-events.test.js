@@ -107,8 +107,6 @@ function setupDom() {
     "syncHealth",
     "cloudSyncStatus",
     "syncDirectory",
-    "syncConflictsPanel",
-    "syncConflictsList",
     "recoveryStatusPanel",
     "recoveryStatusList",
     "ocrGpuStatus"
@@ -133,33 +131,6 @@ describe("settings bridge snapshots", () => {
     setupDom();
   });
 
-  it("preserves cloud connector status when local sync snapshots omit it", () => {
-    const cloudSyncStatus = {
-      configured: true,
-      status: "ready",
-      remote: "wordhunter-drive:WordHunterSync"
-    };
-    resetState({
-      currentView: "settings",
-      syncDirectory: "/home/user/Documents/WordHunterSync",
-      cloudSyncStatus
-    });
-
-    applyBridgeSnapshot({
-      schemaVersion: STATE_SCHEMA_VERSION,
-      prefs: {},
-      texts: [],
-      hiddenBooks: [],
-      vocab: {},
-      syncDir: "/home/user/Documents/WordHunterSync",
-      syncHealth: { status: "ready", recordCount: 4, issueCount: 0 }
-    }, "settings");
-
-    assert.deepEqual(state.cloudSyncStatus, cloudSyncStatus);
-    assert.deepEqual(window.__bridgeState.cloudSyncStatus, cloudSyncStatus);
-    assert.equal(state.syncHealth.status, "ready");
-  });
-
   it("does not serialize storage usage while Settings is hidden", () => {
     resetState({ currentView: "library" });
     let summaryWrites = 0;
@@ -174,27 +145,6 @@ describe("settings bridge snapshots", () => {
     state.currentView = "settings";
     syncSettingsControls();
     assert.equal(summaryWrites, 1);
-  });
-
-  it("uses explicit cloud connector status from the backend when present", () => {
-    resetState({
-      cloudSyncStatus: {
-        configured: true,
-        status: "ready",
-        remote: "wordhunter-drive:WordHunterSync"
-      }
-    });
-
-    applyBridgeSnapshot({
-      schemaVersion: STATE_SCHEMA_VERSION,
-      prefs: {},
-      texts: [],
-      hiddenBooks: [],
-      vocab: {},
-      cloudSyncStatus: { configured: false, status: "auth_required" }
-    }, "settings");
-
-    assert.deepEqual(state.cloudSyncStatus, { configured: false, status: "auth_required" });
   });
 
   it("applies canonical bridge data without overwriting local reader UI state", () => {
