@@ -824,16 +824,15 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .library-filters-toggle").display, "inline-flex");
   });
 
-  it("keeps Settings and Sync as separate structural sections", () => {
+  it("keeps Settings and Export as separate structural sections", () => {
     const settingsSection = elementById(html, "settings-view");
-    const syncSection = elementById(html, "sync-view");
+    const exportSection = elementById(html, "export-view");
     for (const key of ["groupLanguage", "groupLearningDisplay", "groupReader", "groupTts", "groupLocalData", "groupBackup"]) {
       elementByAttribute(settingsSection, "data-i18n", `settings.${key}`);
     }
-    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "sync-directory"), null);
-    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "syncthing-setup-wizard"), null);
-    assert.equal(attribute(openingTag(syncSection), "data-title-key"), "nav.sync");
-    elementByAttribute(syncSection, "data-i18n", "settings.groupSync");
+    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "export-transfer-all"), null);
+    assert.equal(attribute(openingTag(exportSection), "data-title-key"), "nav.export");
+    elementByAttribute(exportSection, "data-i18n", "transfer.heading");
     assert.equal(cssDeclarations(css, ".settings-subheading")["text-transform"], "uppercase");
   });
 

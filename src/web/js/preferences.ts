@@ -13,12 +13,6 @@ import { themeIcon } from "./icons.js";
 import { normalizeSelectedWordPanelItems, rekeyActiveVocabForLocale } from "./state/normalize.js";
 import { postStoreJson } from "./store-bridge.js";
 
-type SyncStatus = {
-  status: string;
-  vars: WhRecord;
-};
-
-let syncStatus: SyncStatus | null = null;
 let queuedNativeUiScale: number | null = null;
 let nativeUiScaleQueue: Promise<void> = Promise.resolve();
 
@@ -48,65 +42,6 @@ function applyUiScale(uiScale: number): Promise<void> {
       console.warn("Failed to apply native window zoom", error);
     });
   return nativeUiScaleQueue;
-}
-
-function getAndroidSyncFolderLabel() {
-  const getter = window.WordHunterAndroid?.getSyncFolderLabel;
-  if (!isAndroidPlatform() || typeof getter !== "function") return "";
-  try {
-    return String(getter.call(window.WordHunterAndroid) || "");
-  } catch (error) {
-    console.warn("Failed to read Android sync folder label", error);
-    return "";
-  }
-}
-
-function formatConflictRecord(record: WhRecord | null | undefined): string {
-  const device = record?.deviceId ? t("settings.syncConflictDevice", { device: record.deviceId }) : "";
-  const stateLabel = record?.deleted ? t("settings.syncConflictDeleted") : t("settings.syncConflictUpdated");
-  const updatedAt = Number(record?.updatedAt);
-  const changedAt = Number.isFinite(updatedAt) && updatedAt > 0
-    ? new Date(updatedAt).toLocaleString(getLocale())
-    : "";
-  return [stateLabel, changedAt, device].filter(Boolean).join(" · ");
-}
-
-function renderSyncConflicts() {
-  const conflicts = Array.isArray(state.syncConflicts) ? state.syncConflicts : [];
-  const hasConflicts = conflicts.length > 0 || Math.max(0, Number(state.syncConflictCount) || 0) > 0;
-  if (els.syncConflictsPanel) {
-    els.syncConflictsPanel.hidden = !hasConflicts;
-  }
-  if (!els.syncConflictsList) return;
-  if (!conflicts.length) {
-    els.syncConflictsList.innerHTML = hasConflicts
-      ? `<p class="muted-copy">${escapeHtml(t("settings.syncConflictRefresh"))}</p>`
-      : "";
-    return;
-  }
-  const items = conflicts.map((conflict) => {
-    const key = conflict.key || "";
-    const kept = formatConflictRecord(conflict.kept);
-    const other = formatConflictRecord(conflict.conflict);
-    return `
-      <div class="sync-conflict-item" data-conflict-id="${escapeHtml(conflict.id)}">
-        <div>
-          <div class="sync-conflict-title">${escapeHtml(key || t("settings.syncConflictUnknown"))}</div>
-          <div class="sync-conflict-meta">${escapeHtml(t("settings.syncConflictMeta", { kept, other }))}</div>
-        </div>
-        <div class="sync-conflict-actions">
-          <button type="button" class="secondary-button" data-conflict-resolution="keep-current">${escapeHtml(t("settings.syncConflictKeepCurrent"))}</button>
-          <button type="button" class="secondary-button" data-conflict-resolution="use-conflict">${escapeHtml(t("settings.syncConflictUseOther"))}</button>
-        </div>
-      </div>
-    `;
-  }).join("");
-  els.syncConflictsList.innerHTML = `
-    <div class="sync-conflict-actions">
-      <button type="button" class="primary-button" data-conflict-resolution-all="keep-current">${escapeHtml(t("settings.syncConflictUseNewestAll"))}</button>
-    </div>
-    ${items}
-  `;
 }
 
 function recoveryIssueCount(status: WhRecoveryStatus | null): number {
@@ -152,133 +87,6 @@ function renderRecoveryStatus() {
     </ul>
     ${details.length ? `<div class="recovery-status-details">${details.map((item) => `<code>${escapeHtml(item.path || item.error || "")}</code>`).join("")}</div>` : ""}
   `;
-}
-
-function renderSyncHealth() {
-  if (!els.syncHealth) return;
-  const health = state.syncHealth;
-  if (!health || typeof health !== "object" || health.status === "not-configured") {
-    els.syncHealth.textContent = "";
-    els.syncHealth.hidden = true;
-    return;
-  }
-  const records = Math.max(0, Math.trunc(Number(health.recordCount) || 0));
-  const issues = Math.max(0, Math.trunc(Number(health.issueCount) || 0));
-  const keys: Record<string, string> = {
-    ready: "settings.syncHealthReady",
-    caution: "settings.syncHealthCaution",
-    "needs-attention": "settings.syncHealthNeedsAttention",
-    "read-only": "settings.syncHealthReadOnly",
-    missing: "settings.syncHealthMissing",
-    "not-a-folder": "settings.syncHealthNotFolder"
-  };
-  els.syncHealth.hidden = false;
-  els.syncHealth.textContent = t(keys[health.status] || "settings.syncHealthUnknown", { records, issues });
-}
-
-function renderCloudSyncStatus() {
-  if (!els.cloudSyncStatus) return;
-  const status = state.cloudSyncStatus;
-  if (!status || typeof status !== "object" || status.status === "not_configured") {
-    els.cloudSyncStatus.textContent = t("settings.cloudSyncStatusDefault");
-    return;
-  }
-  const keys: Record<string, string> = {
-    ready: "settings.cloudSyncStatusReady",
-    syncing: "settings.cloudSyncStatusSyncing",
-    complete: "settings.cloudSyncStatusComplete",
-    not_supported: "settings.cloudSyncStatusNotSupported",
-    "needs-attention": "settings.cloudSyncStatusNeedsAttention",
-    needs_attention: "settings.cloudSyncStatusNeedsAttention",
-    auth_required: "settings.cloudSyncStatusAuthRequired",
-    offline: "settings.cloudSyncStatusOffline",
-    error: "settings.cloudSyncStatusError"
-  };
-  els.cloudSyncStatus.textContent = t(keys[status.status] || "settings.cloudSyncStatusUnknown", {
-    remote: status.remote || ""
-  });
-}
-
-function renderSyncthingStatus() {
-  if (!els.syncthingStatus) return;
-  const st = state.syncthingStatus;
-  if (!st) {
-    els.syncthingStatus.textContent = t("settings.syncthingNotConfigured");
-    if (els.syncthingPeers) els.syncthingPeers.textContent = "";
-    return;
-  }
-  if (!st.running) {
-    els.syncthingStatus.textContent = t("settings.syncthingStopped");
-    if (els.syncthingPeers) els.syncthingPeers.textContent = "";
-    return;
-  }
-  const deviceId = st.deviceId || "";
-  const peerCount = Array.isArray(st.peers) ? st.peers.filter((peer) => peer.connected).length : 0;
-  const folderOk = st.folderOk ? "✓" : "✗";
-  els.syncthingStatus.textContent = t("settings.syncthingRunning", { deviceId: deviceId.slice(0, 14) + "…", folderOk });
-  if (els.syncthingPeers) {
-    els.syncthingPeers.textContent = peerCount > 0
-      ? t("settings.syncthingPeers", { count: peerCount })
-      : t("settings.syncthingNoPeers");
-  }
-}
-
-function renderSyncthingWizard() {
-  const st = state.syncthingStatus;
-  const hasSyncDir = !!(state.syncDirectory || getAndroidSyncFolderLabel());
-  const running = st?.running === true;
-  const peers = Array.isArray(st?.peers) ? st.peers : [];
-  const connectedPeers = peers.filter(p => p.connected);
-  const steps = document.querySelectorAll<HTMLElement>(".syncthing-wizard-step[data-step]");
-
-  steps.forEach(step => {
-    const num = parseInt(step.dataset.step, 10);
-    step.classList.remove("syncthing-wizard-step-active", "syncthing-wizard-step-done");
-
-    if (num === 1) {
-      if (hasSyncDir) {
-        step.classList.add("syncthing-wizard-step-done");
-      } else {
-        step.classList.add("syncthing-wizard-step-active");
-      }
-    } else if (num === 2) {
-      if (running) {
-        step.classList.add("syncthing-wizard-step-done");
-      } else if (hasSyncDir) {
-        step.classList.add("syncthing-wizard-step-active");
-      }
-    } else if (num === 3) {
-      if (connectedPeers.length > 0) {
-        step.classList.add("syncthing-wizard-step-done");
-      } else if (running) {
-        step.classList.add("syncthing-wizard-step-active");
-      }
-    } else if (num === 4) {
-      if (connectedPeers.length > 0 && peers.length > 0) {
-        step.classList.add("syncthing-wizard-step-done");
-      }
-    }
-  });
-
-  const finalStep = document.getElementById("syncthing-running-step");
-  if (finalStep) {
-    finalStep.hidden = !running;
-    if (running) {
-      const statusEl = document.getElementById("syncthing-final-status");
-      if (statusEl) {
-        const deviceId = st.deviceId || "";
-        const peerNames = connectedPeers.map(p => p.name || p.deviceId).join(", ");
-        statusEl.textContent = connectedPeers.length > 0
-          ? t("settings.syncWizFinalActive", { deviceId: deviceId.slice(0, 14) + "…", peers: peerNames })
-          : t("settings.syncWizFinalNoPeers", { deviceId: deviceId.slice(0, 14) + "…" });
-      }
-    }
-  }
-}
-
-export function setSyncStatus(status: string, vars: WhRecord = {}): void {
-  syncStatus = { status, vars };
-  syncSettingsControls();
 }
 
 export function themeLabel(theme: unknown): string {
@@ -527,46 +335,7 @@ export function syncSettingsControls() {
       ? t("settings.dataFolderPath", { path: state.dataDirectory })
       : t("settings.dataFolderDefault");
   }
-  const syncDirectory = state.syncDirectory || getAndroidSyncFolderLabel();
-  if (els.syncDirectory) {
-    els.syncDirectory.textContent = syncDirectory
-      ? t("settings.syncFolderPath", { path: syncDirectory })
-      : t("settings.syncFolderDefault");
-  }
-  if (els.syncStatus) {
-    const key = syncStatus
-      ? `settings.syncStatus${syncStatus.status[0].toUpperCase()}${syncStatus.status.slice(1)}`
-      : (syncDirectory ? "settings.syncStatusReady" : "settings.syncStatusDefault");
-    let label = t(key, syncStatus?.vars);
-    const conflictCount = Math.max(0, Math.trunc(Number(state.syncConflictCount) || 0));
-    if (conflictCount > 0) {
-      label += ` ${t("settings.syncConflictCount", { n: conflictCount })}`;
-    }
-    els.syncStatus.textContent = label;
-  }
-  renderSyncHealth();
-  renderCloudSyncStatus();
-  renderSyncthingStatus();
-  renderSyncthingWizard();
-  renderSyncConflicts();
   renderRecoveryStatus();
-  if (els.forceSync) els.forceSync.disabled = typeof window.flushAllPendingFrontendState !== "function";
-  if (els.syncthingStart) {
-    const running = state.syncthingStatus?.running === true;
-    els.syncthingStart.disabled = running || typeof window.flushAllPendingFrontendState !== "function";
-  }
-  if (els.syncthingStop) {
-    const running = state.syncthingStatus?.running === true;
-    els.syncthingStop.disabled = !running;
-  }
-  if (els.syncthingPair) {
-    const running = state.syncthingStatus?.running === true;
-    els.syncthingPair.disabled = !running;
-  }
-  if (els.syncthingShowQR) {
-    const running = state.syncthingStatus?.running === true;
-    els.syncthingShowQR.disabled = !running || !state.syncthingStatus?.deviceId;
-  }
 }
 
 export function updatePreferenceValue(key: string, value: unknown): void {

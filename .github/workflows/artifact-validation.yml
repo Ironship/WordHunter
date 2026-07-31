@@ -421,9 +421,8 @@ jobs:
 
           main="$root/usr/bin/word-hunter-rustified"
           ocr_runner="$(find "$root/usr/lib" -type f -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit)"
-          syncthing="$root/usr/bin/syncthing"
-          test -x "$main" && test -x "$ocr_runner" && test -x "$syncthing"
-          for executable in "$main" "$ocr_runner" "$syncthing"; do
+          test -x "$main" && test -x "$ocr_runner"
+          for executable in "$main" "$ocr_runner"; do
             ldd_output="$(ldd "$executable" 2>&1 || true)"
             if grep -F "not found" <<<"$ldd_output"; then
               echo "Unresolved dynamic dependency in $executable" >&2
@@ -431,7 +430,6 @@ jobs:
             fi
           done
           "$ocr_runner" --help | grep -F "wordhunter-paddleocr"
-          "$syncthing" --version | grep -i -F "syncthing"
 
           set +e
           APPIMAGE_EXTRACT_AND_RUN=1 timeout 20s dbus-run-session -- xvfb-run -a "$APPIMAGE_PATH"
@@ -465,11 +463,8 @@ jobs:
           main=/usr/bin/word-hunter-rustified
           package_files="$(dpkg-query -L "$package_name")"
           ocr_runner="$(awk '/\/ocr-runtime\/bin\/wordhunter-paddleocr$/ { print; exit }' <<<"$package_files")"
-          syncthing="$(command -v syncthing)"
-          ! grep -Fqx "/usr/bin/syncthing" <<<"$package_files"
-          dpkg-query -S "$syncthing" | grep -E '^syncthing:'
-          test -x "$main" && test -x "$ocr_runner" && test -x "$syncthing"
-          for executable in "$main" "$ocr_runner" "$syncthing"; do
+          test -x "$main" && test -x "$ocr_runner"
+          for executable in "$main" "$ocr_runner"; do
             ldd_output="$(ldd "$executable" 2>&1 || true)"
             if grep -F "not found" <<<"$ldd_output"; then
               echo "Unresolved dynamic dependency in $executable" >&2
@@ -477,7 +472,6 @@ jobs:
             fi
           done
           "$ocr_runner" --help | grep -F "wordhunter-paddleocr"
-          "$syncthing" --version | grep -i -F "syncthing"
 
           set +e
           timeout 20s dbus-run-session -- xvfb-run -a "$main"

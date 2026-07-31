@@ -14,8 +14,6 @@ pdfium_url="https://github.com/bblanchon/pdfium-binaries/releases/download/chrom
 pdfium_sha256="49ab3afbd4e6c1e284b5f2898129c8bb8a10fd785c1c5392c8c1fc70242f9ced"
 models_url="https://github.com/mg-chao/paddle-ocr-rs/releases/download/onnx_models/Paddle.OCR.V5.zip"
 models_sha256="2fa4055b10dc4e9c1433444fe29f8d5acca2fccc0a0e86b3313caa5cc9e56b7a"
-syncthing_url="https://github.com/syncthing/syncthing/releases/download/v2.1.0/syncthing-linux-amd64-v2.1.0.tar.gz"
-syncthing_sha256="624c2f3303c9ed7d6f27a98ad9767ab95a7b5e453c3c5e17ce8a60f166e47011"
 apprun_url="https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64"
 apprun_sha256="f30140a43a0a59e46db21bdefdf749b9e9f2c6946e92afabbacf98b8ae73fb4f"
 linuxdeploy_url="https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-x86_64.AppImage"
@@ -212,37 +210,27 @@ prepare_ctranslate2_sources() {
 }
 
 prepare_native_runtime() {
-  local ort_archive pdfium_archive models_archive syncthing_archive
+  local ort_archive pdfium_archive models_archive
   local ort_dir="$root/src-tauri/target/linux-native-onnxruntime"
   local pdfium_dir="$root/src-tauri/target/linux-native-pdfium"
   local models_dir="$root/src-tauri/target/linux-native-ocr-models"
-  local syncthing_dir="$root/src-tauri/target/linux-native-syncthing"
   local runtime_bin="$root/src-tauri/ocr-runtime/bin"
   local runtime_models="$root/src-tauri/ocr-runtime/models"
-  local bundle_syncthing="$root/src-tauri/syncthing"
   local pdfium_library model_count webgpu_library
 
   ort_archive="$(download_checked "ort-1.22.0-linux-x86_64-wgpu.tgz" "$ort_url" "$ort_sha256")"
   pdfium_archive="$(download_checked "pdfium-chromium-7920-linux-x64.tgz" "$pdfium_url" "$pdfium_sha256")"
   models_archive="$(download_checked "Paddle.OCR.V5.zip" "$models_url" "$models_sha256")"
-  syncthing_archive="$(download_checked "syncthing-linux-amd64-v2.1.0.tar.gz" "$syncthing_url" "$syncthing_sha256")"
-
-  note "Extracting OCR and Syncthing runtime inputs"
+  note "Extracting OCR runtime inputs"
   extract_tgz "$ort_archive" "$ort_dir" 1
   extract_tgz "$pdfium_archive" "$pdfium_dir"
   extract_zip "$models_archive" "$models_dir"
-  extract_tgz "$syncthing_archive" "$syncthing_dir" 1
 
   [[ -d "$ort_dir/lib" ]] || die "ONNX Runtime archive does not contain lib/"
   pdfium_library="$(find "$pdfium_dir" -type f -name 'libpdfium.so' -print -quit)"
   [[ -n "$pdfium_library" ]] || die "PDFium archive does not contain libpdfium.so"
-  [[ -x "$syncthing_dir/syncthing" ]] || die "Syncthing archive does not contain an executable syncthing binary"
-  [[ -f "$syncthing_dir/LICENSE.txt" ]] || die "Syncthing archive does not contain LICENSE.txt"
-  [[ -f "$syncthing_dir/AUTHORS.txt" ]] || die "Syncthing archive does not contain AUTHORS.txt"
-
   find "$runtime_bin" -mindepth 1 ! -name .gitkeep -delete
   find "$runtime_models" -mindepth 1 ! -name .gitkeep -delete
-  find "$bundle_syncthing" -mindepth 1 ! -name .gitkeep -delete
 
   cp "$pdfium_library" "$runtime_bin/libpdfium.so"
   webgpu_library="$(find -L "$ort_dir/lib" -maxdepth 1 -type f -name 'libwebgpu_dawn.so' -print -quit)"
@@ -256,11 +244,6 @@ prepare_native_runtime() {
 
   model_count="$(find "$runtime_models" -maxdepth 1 -type f -name '*.onnx' | wc -l)"
   [[ "$model_count" -ge 3 ]] || die "PaddleOCR archive yielded fewer than three ONNX models"
-  cp "$syncthing_dir/syncthing" "$bundle_syncthing/syncthing"
-  cp "$syncthing_dir/LICENSE.txt" "$bundle_syncthing/SYNCTHING-LICENSE.txt"
-  cp "$syncthing_dir/AUTHORS.txt" "$bundle_syncthing/SYNCTHING-AUTHORS.txt"
-  chmod 0755 "$bundle_syncthing/syncthing"
-
   printf '%s\n' "$ort_dir"
 }
 

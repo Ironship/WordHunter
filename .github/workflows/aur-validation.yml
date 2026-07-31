@@ -71,9 +71,9 @@ jobs:
           runuser -u aur-builder -- bash -c \
             "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
 
-          asset="${AUR_BUILD_DIR}/WordHunter-1.0.6-x86_64.AppImage"
+          asset="${AUR_BUILD_DIR}/WordHunter-1.0.8-x86_64.AppImage"
           printf '%s  %s\n' \
-            '01194b3a0855cfd4c76e67977b4bd2eb4aa233c393cbdaf17b7a9a9bd009db3f' \
+            '052fd8f0f3d8c500807819dda96869ca50471ce969b31fdae6b8ddcd5b8b7bf5' \
             "${asset}" | sha256sum -c -
 
       - name: Build and inspect the Arch package
@@ -116,7 +116,6 @@ jobs:
           for required in \
             opt/wordhunter/AppRun \
             opt/wordhunter/usr/bin/word-hunter-rustified \
-            opt/wordhunter/usr/bin/syncthing \
             opt/wordhunter/usr/lib/libcairo.so.2 \
             opt/wordhunter/usr/lib/libgdk_pixbuf-2.0.so.0 \
             opt/wordhunter/usr/lib/libpango-1.0.so.0 \
@@ -139,7 +138,7 @@ jobs:
           fi
 
           grep -Fxq 'pkgname = wordhunter-bin' "${metadata}"
-          grep -Fxq 'pkgver = 1.0.6-1' "${metadata}"
+          grep -Fxq 'pkgver = 1.0.8-1' "${metadata}"
           for dependency in \
             fontconfig \
             fribidi \
@@ -160,7 +159,7 @@ jobs:
         run: |
           set -euo pipefail
           pacman -U --noconfirm "${AUR_PACKAGE}"
-          test "$(pacman -Q wordhunter-bin)" = 'wordhunter-bin 1.0.6-1'
+          test "$(pacman -Q wordhunter-bin)" = 'wordhunter-bin 1.0.8-1'
           pacman -Qkk wordhunter-bin
           pacman -Ql wordhunter-bin
 
@@ -198,8 +197,7 @@ jobs:
             find /opt/wordhunter/usr/lib -type f \
               -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
           )"
-          syncthing=/opt/wordhunter/usr/bin/syncthing
-          for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
+          for executable in "${main}" "${ocr_runner}"; do
             test -x "${executable}" || {
               printf 'Expected executable is missing or not executable: %s\n' \
                 "${executable:-<empty path>}" >&2
@@ -207,7 +205,7 @@ jobs:
             }
           done
 
-          for executable in "${main}" "${ocr_runner}" "${syncthing}"; do
+          for executable in "${main}" "${ocr_runner}"; do
             ldd_output="$(ldd "${executable}" 2>&1 || true)"
             if grep -F 'not found' <<<"${ldd_output}"; then
               printf 'Unresolved dynamic dependency in %s\n' "${executable}" >&2
@@ -223,18 +221,6 @@ jobs:
           printf '%s\n' "${ocr_help}"
           grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}" || {
             echo 'OCR helper output does not identify wordhunter-paddleocr.' >&2
-            exit 1
-          }
-
-          syncthing_version="$("${syncthing}" --version 2>&1)" || {
-            status=$?
-            printf '%s\nSyncthing --version exited with status %s.\n' \
-              "${syncthing_version}" "${status}" >&2
-            exit 1
-          }
-          printf '%s\n' "${syncthing_version}"
-          grep -iqF 'syncthing' <<<"${syncthing_version}" || {
-            echo 'Syncthing version output is unexpected.' >&2
             exit 1
           }
 

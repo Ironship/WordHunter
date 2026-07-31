@@ -88,16 +88,16 @@ describe("Android Pocket navigation", () => {
     openingTagByAttribute(html, "img", "data-language-flag", "learning");
   });
 
-  it("includes Discover and Sync in the Pocket navigation drawer", () => {
+  it("includes Discover and Export in the Pocket navigation drawer", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     openingTagByAttribute(html, "button", "data-view", "discover");
-    openingTagByAttribute(html, "button", "data-view", "sync");
+    openingTagByAttribute(html, "button", "data-view", "export");
     openingTagByAttribute(html, "section", "id", "discover-view");
     openingTagByAttribute(html, "option", "value", "gutenberg");
     assert.equal(hasSelector(css, '.pocket-mode .nav-item[data-view="discover"]'), false);
-    assert.equal(hasSelector(css, '.pocket-mode .nav-item[data-view="sync"]'), false);
+    assert.equal(hasSelector(css, '.pocket-mode .nav-item[data-view="export"]'), false);
     assert.equal(declarationBlock(css, ".pocket-mode .nav-list")["grid-template-columns"], "minmax(0, 1fr)");
     assert.equal(declarationBlock(css, ".pocket-mode .sidebar").visibility, "hidden");
     assert.equal(declarationBlock(css, ".pocket-mode.pocket-navigation-open .sidebar").visibility, "visible");
@@ -133,7 +133,7 @@ describe("Android Pocket navigation", () => {
 
     const requiredKeys = [
       "pocketHeading", "pocketIntro", "pocketControlsTitle", "pocketControlsBody",
-      "pocketSyncTitle", "pocketSyncBody", "pocketLimitsTitle", "pocketLimitsBody"
+      "pocketTransferTitle", "pocketTransferBody", "pocketLimitsTitle", "pocketLimitsBody"
     ];
     for (const code of ["de", "en", "es", "fr", "it", "ja", "pl", "ru", "uk"]) {
       const dict = JSON.parse(readFileSync(new URL(`../../dist/web/i18n/${code}.json`, import.meta.url), "utf8"));

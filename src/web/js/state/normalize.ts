@@ -120,17 +120,6 @@ export function assertSupportedStateSchemaVersion(
   }
 }
 
-function normalizeSyncConflicts(value: unknown): WhSyncConflict[] {
-  return objectArray(value).map((conflict) => ({
-    id: typeof conflict.id === "string" ? conflict.id : "",
-    key: typeof conflict.key === "string" ? conflict.key : "",
-    reason: typeof conflict.reason === "string" ? conflict.reason : "",
-    timestamp: typeof conflict.timestamp === "string" ? conflict.timestamp : "",
-    kept: isRecord(conflict.kept) ? conflict.kept : {},
-    conflict: isRecord(conflict.conflict) ? conflict.conflict : {}
-  })).filter((conflict) => conflict.id);
-}
-
 function normalizeRecoveryItems(value: unknown): WhRecord[] {
   return objectArray(value).map((item) => ({
     path: typeof item.path === "string" ? item.path : "",
@@ -369,12 +358,6 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     : "en";
   nextState.vocab = normalizeVocabEntries(nextState.vocab, legacyVocabularyLanguage);
   nextState.dataDirectory = typeof nextState.dataDirectory === "string" ? nextState.dataDirectory : "";
-  nextState.syncDirectory = typeof nextState.syncDirectory === "string" ? nextState.syncDirectory : "";
-  nextState.syncHealth = isRecord(nextState.syncHealth) ? nextState.syncHealth : null;
-  nextState.cloudSyncStatus = isRecord(nextState.cloudSyncStatus) ? nextState.cloudSyncStatus : null;
-  nextState.syncthingStatus = isRecord(nextState.syncthingStatus) ? nextState.syncthingStatus : null;
-  nextState.syncConflictCount = Math.max(0, Math.trunc(Number(nextState.syncConflictCount) || 0));
-  nextState.syncConflicts = normalizeSyncConflicts(nextState.syncConflicts);
   nextState.recoveryStatus = normalizeRecoveryStatus(nextState.recoveryStatus);
   const rawFilters = isRecord(nextState.filters) ? nextState.filters : {};
   nextState.filters = { ...defaults.filters, ...rawFilters };
@@ -469,6 +452,8 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     nextState.preferences.dictionaryUrl = getDefaultDictionaryUrl(lang);
   }
 
+  if (nextState.currentView === "sync") nextState.currentView = "export";
+
   if (typeof nextState.selectedWord === "string" && nextState.selectedWord) {
     const canonicalWord = normalizeVocabularyWord(nextState.selectedWord, lang);
     if (!canonicalWord) {
@@ -504,12 +489,6 @@ export function loadState(): WhAppState {
         ...fallback,
         schemaVersion: snap.schemaVersion || fallback.schemaVersion,
         dataDirectory: typeof snap.dataDir === "string" ? snap.dataDir : "",
-        syncDirectory: typeof snap.syncDir === "string" ? snap.syncDir : "",
-        syncHealth: isRecord(snap.syncHealth) ? snap.syncHealth : null,
-        cloudSyncStatus: isRecord(snap.cloudSyncStatus) ? snap.cloudSyncStatus : null,
-        syncthingStatus: isRecord(snap.syncthingStatus) ? snap.syncthingStatus : null,
-        syncConflictCount: snap.syncConflictCount,
-        syncConflicts: snap.syncConflicts,
         recoveryStatus: snap.recoveryStatus,
         customTexts: [] as WhText[],
         userBooks: [] as WhText[],

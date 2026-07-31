@@ -388,7 +388,7 @@ fn existing_text_data(dir: &std::path::Path, id: &str) -> Result<Value, String> 
     }
 }
 
-fn validate_pdf_page_assets(
+pub(crate) fn validate_pdf_page_assets(
     dir: &std::path::Path,
     id: &str,
     metadata: &Value,
@@ -552,7 +552,7 @@ mod tests {
         );
         assert!(
             !dir.path()
-                .join("records/v1/assets/media-manifest.json")
+                .join("records/v1/assets/media-manifest.yaml")
                 .exists()
         );
     }
@@ -664,7 +664,7 @@ mod tests {
         );
         assert!(
             !dir.path()
-                .join("records/v1/assets/media-manifest.json")
+                .join("records/v1/assets/media-manifest.yaml")
                 .exists()
         );
         store
@@ -675,7 +675,7 @@ mod tests {
             }))
             .unwrap();
         let manifest =
-            std::fs::read_to_string(dir.path().join("records/v1/assets/media-manifest.json"))
+            std::fs::read_to_string(dir.path().join("records/v1/assets/media-manifest.yaml"))
                 .unwrap();
         assert!(manifest.contains("books/de-new/images/page.png"));
         assert!(!manifest.contains("ocr-temp"));

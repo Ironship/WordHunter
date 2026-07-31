@@ -1,5 +1,5 @@
-import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, saveUiState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
-import { STATE_SCHEMA_VERSION, STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
+import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, saveUiState, createDefaultState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
+import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -8,17 +8,13 @@ import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
 import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
 import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "./bridge-commit.js";
-import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, postStoreCommand, postStoreJson } from "./store-bridge.js";
-import { assertSupportedStateSchemaVersion } from "./state/normalize.js";
-import { captureUiState } from "./state/ui-cache.js";
-import { clearAllBookTextCaches, clearBookTextCache, loadAllBookTexts, loadAllCustomTextContents, loadCustomTextContent } from "./books.js";
+import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, postStoreCommand } from "./store-bridge.js";
+import { clearAllBookTextCaches, clearBookTextCache } from "./books.js";
 import { isCustomTextReferenced } from "./book-actions/profile-library.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
-const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
 const MAX_ANKI_IMPORT_BYTES = 32 * 1024 * 1024;
-const PORTABLE_BACKUP_TEXT_CONCURRENCY = 2;
 
 type UnknownRecord = Record<string, unknown>;
 type VocabularyExportFormat = "txt" | "anki";
@@ -140,9 +136,7 @@ function createAndroidExportRequestId(): string {
   return `android-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
-  const bridge = window.WordHunterAndroid;
-  if (typeof bridge?.saveExport !== "function") return null;
+function waitForAndroidExport(start: (requestId: string) => boolean): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
     const requestId = createAndroidExportRequestId();
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -177,8 +171,7 @@ export function saveWithAndroidBridge(data: string, filename: string, mime: stri
 
     window.addEventListener("wordhunter:android-export", onResult);
     try {
-      const started = bridge.saveExport(data, filename, mime, requestId);
-      if (started === false) {
+      if (start(requestId) === false) {
         cleanup();
         resolve(false);
       }
@@ -187,6 +180,18 @@ export function saveWithAndroidBridge(data: string, filename: string, mime: stri
       reject(error);
     }
   });
+}
+
+export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.saveExport !== "function") return null;
+  return waitForAndroidExport((requestId) => bridge.saveExport(data, filename, mime, requestId));
+}
+
+function saveFileWithAndroidBridge(path: string, filename: string): Promise<boolean> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.saveExportFile !== "function") return null;
+  return waitForAndroidExport((requestId) => bridge.saveExportFile(path, filename, "application/zip", requestId));
 }
 
 async function nativeSave(data: string, filename: string, mime: string): Promise<boolean> {
@@ -211,101 +216,6 @@ async function nativeSave(data: string, filename: string, mime: string): Promise
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     return true;
   }
-}
-
-function customTextRecords(value: unknown): WhText[] {
-  if (!isRecord(value)) return [];
-  const records = Array.isArray(value.customTexts) ? value.customTexts.filter(isRecord) as WhText[] : [];
-  if (!isRecord(value.profiles)) return records;
-  for (const profile of Object.values(value.profiles)) {
-    if (isRecord(profile) && Array.isArray(profile.customTexts)) {
-      records.push(...profile.customTexts.filter(isRecord) as WhText[]);
-    }
-  }
-  return records;
-}
-
-function setTextBody(value: unknown, id: string, text: string): void {
-  for (const record of customTextRecords(value)) {
-    if (record.id === id) record.text = text;
-  }
-}
-
-function propagateEmbeddedTextBodies(value: unknown): void {
-  const bodies = new Map<string, string>();
-  for (const record of customTextRecords(value)) {
-    if (typeof record.id === "string" && typeof record.text === "string" && record.text.trim()) {
-      bodies.set(record.id, record.text);
-    }
-  }
-  for (const [id, text] of bodies) setTextBody(value, id, text);
-}
-
-function setPortableTextBody(value: WhRecord, id: string, text: string): void {
-  let storedInProfile = false;
-  if (isRecord(value.profiles)) {
-    for (const profile of Object.values(value.profiles)) {
-      if (!isRecord(profile) || !Array.isArray(profile.customTexts)) continue;
-      for (const record of profile.customTexts.filter(isRecord) as WhText[]) {
-        if (record.id !== id) continue;
-        record.text = text;
-        storedInProfile = true;
-      }
-    }
-  }
-  if (storedInProfile || !Array.isArray(value.customTexts)) return;
-  for (const record of value.customTexts.filter(isRecord) as WhText[]) {
-    if (record.id === id) record.text = text;
-  }
-}
-
-interface PortableBackupResult {
-  payload: string;
-  textCount: number;
-  missingTextCount: number;
-}
-
-async function portableBackupPayload(): Promise<PortableBackupResult> {
-  const portable = JSON.parse(JSON.stringify(state)) as WhRecord;
-  const sources = new Map<string, WhText>();
-  for (const text of customTextRecords(state)) {
-    if (typeof text.id === "string" && text.id) sources.set(text.id, text);
-  }
-  const missingTextIds: string[] = [];
-  const entries = [...sources];
-  let nextIndex = 0;
-  const loadNextText = async (): Promise<void> => {
-    while (nextIndex < entries.length) {
-      const [id, metadata] = entries[nextIndex++];
-      try {
-        const text = await loadCustomTextContent(metadata);
-        if (!text.trim()) throw new Error("stored text is empty");
-        setPortableTextBody(portable, id, text);
-      } catch (error) {
-        console.warn(`Could not include book text in backup: ${id}`, error);
-        missingTextIds.push(id);
-      }
-    }
-  };
-  await Promise.all(Array.from(
-    { length: Math.min(PORTABLE_BACKUP_TEXT_CONCURRENCY, entries.length) },
-    () => loadNextText()
-  ));
-  portable.backupIncludesTextBodies = missingTextIds.length === 0;
-  portable.backupMissingTextIds = missingTextIds.sort();
-  portable.backupIncludesMediaFiles = false;
-  const payload = JSON.stringify(portable, null, 2);
-  return { payload, textCount: sources.size, missingTextCount: missingTextIds.length };
-}
-
-function removeImportedTexts(value: WhAppState, ids: Set<string>): void {
-  value.customTexts = (value.customTexts || []).filter((text) => !ids.has(text.id));
-  for (const profile of Object.values(value.profiles || {})) {
-    profile.customTexts = (profile.customTexts || []).filter((text) => !ids.has(text.id));
-  }
-  const activeLanguage = value.preferences?.learningLanguage || "de";
-  if (value.profiles?.[activeLanguage]) value.customTexts = value.profiles[activeLanguage].customTexts;
-  removeUnreferencedBookState(value, ids);
 }
 
 function removeUnreferencedBookState(value: WhAppState, candidates: Iterable<string>): void {
@@ -347,58 +257,9 @@ function removeUnreferencedBookState(value: WhAppState, candidates: Iterable<str
   }
 }
 
-function degradeMissingPdfMediaToText(value: WhAppState): void {
-  for (const text of customTextRecords(value)) {
-    if (text.pdfOcrPages?.length && typeof text.text === "string" && text.text.trim()) {
-      delete text.pdfOcrPages;
-    }
-    if (typeof text.coverDataUrl === "string" && text.coverDataUrl.startsWith("/__media")) {
-      text.coverDataUrl = "";
-    }
-    if (typeof text.text === "string" && text.text.includes("[IMG:")) {
-      text.text = text.text.replace(/\s*\[IMG:[^\]]+\]\s*/g, "\n").trim();
-    }
-  }
-}
-
-async function recoverImportedTextBodies(value: WhAppState): Promise<number> {
-  const records = new Map<string, WhText>();
-  for (const text of customTextRecords(value)) {
-    if (typeof text.id === "string" && text.id) records.set(text.id, text);
-  }
-  const missing = new Set<string>();
-  for (const [id, metadata] of records) {
-    if (typeof metadata.text === "string" && metadata.text.trim()) continue;
-    if (!window.__qtBridge) {
-      missing.add(id);
-      continue;
-    }
-    try {
-      const response = await fetch(`/__book/text?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(`existing text load HTTP ${response.status}: ${id}`);
-      const result: unknown = await response.json();
-      const text = isRecord(result) && typeof result.text === "string" ? result.text : "";
-      if (text.trim()) setTextBody(value, id, text);
-      else missing.add(id);
-    } catch (error) {
-      console.warn(`Could not recover imported text body ${id}`, error);
-      missing.add(id);
-    }
-  }
-  if (missing.size) removeImportedTexts(value, missing);
-  return missing.size;
-}
-
 async function backupBeforeClear() {
-  const filename = `wordhunter-backup-before-clear-${new Date().toISOString().slice(0, 10)}.json`;
   try {
-    const backup = await portableBackupPayload();
-    try {
-      localStorage.setItem(LAST_BACKUP_KEY, backup.payload);
-    } catch (error) {
-      console.warn("local backup cache is unavailable", error);
-    }
-    if (!await nativeSave(backup.payload, filename, "application/json") || backup.missingTextCount > 0) {
+    if (!await exportTransfer("all", "wordhunter-backup-before-clear", false)) {
       showToast(t("toast.backupRequired"));
       return false;
     }
@@ -407,6 +268,109 @@ async function backupBeforeClear() {
   } catch (error) {
     console.warn("backup before clear failed", error);
     showToast(t("toast.backupRequired"));
+    return false;
+  }
+}
+
+function waitForAndroidImport(): Promise<string | null> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.chooseImportPackage !== "function") return null;
+  return new Promise<string | null>((resolve, reject) => {
+    const requestId = `android-import-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let timeout: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
+      clearTimeout(timeout);
+      window.removeEventListener("wordhunter:android-import", onResult);
+    };
+    const onResult = (event: Event) => {
+      const detail = eventDetail(event);
+      if (detail.requestId !== requestId) return;
+      cleanup();
+      if (detail.cancelled) resolve(null);
+      else if (detail.success && typeof detail.path === "string") resolve(detail.path);
+      else reject(new Error(String(detail.error || "android import failed")));
+    };
+    timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("android import timed out"));
+    }, 10 * 60 * 1000);
+    window.addEventListener("wordhunter:android-import", onResult);
+    try {
+      if (bridge.chooseImportPackage(requestId) === false) {
+        cleanup();
+        resolve(null);
+      }
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
+export async function exportTransfer(
+  scope: "all" | "vocabulary",
+  prefix = scope === "all" ? "wordhunter-full" : "wordhunter-words",
+  notify = true
+): Promise<boolean> {
+  const filename = `${prefix}-${new Date().toISOString().slice(0, 10)}.zip`;
+  try {
+    await window.flushAllPendingFrontendState?.();
+    const requestId = `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const response = await fetch("/__store/export_transfer", {
+      method: "POST",
+      headers: WH_TOKEN_HEADER,
+      body: JSON.stringify({ scope, filename, requestId })
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
+    const result = await response.json() as UnknownRecord;
+    if (result.saved === false) {
+      if (notify) showToast(t("toast.exportCancelled"));
+      return false;
+    }
+    if (typeof result.path === "string") {
+      const saved = await saveFileWithAndroidBridge(result.path, filename);
+      if (!saved) {
+        if (notify) showToast(t("toast.exportCancelled"));
+        return false;
+      }
+    } else if (result.saved !== true) {
+      throw new Error("transfer export response is missing a saved file");
+    }
+    if (notify) showToast(t("toast.transferExported"));
+    return true;
+  } catch (error) {
+    console.warn("transfer export failed", error);
+    if (notify) showToast(t("toast.exportFailed"), "error");
+    return false;
+  }
+}
+
+export async function importTransfer(): Promise<boolean> {
+  try {
+    await window.flushAllPendingFrontendState?.();
+    const androidImport = waitForAndroidImport();
+    const androidPath = androidImport ? await androidImport : undefined;
+    if (androidImport && androidPath === null) {
+      showToast(t("toast.exportCancelled"));
+      return false;
+    }
+    const response = await fetch("/__store/import_transfer", {
+      method: "POST",
+      headers: WH_TOKEN_HEADER,
+      body: JSON.stringify(androidPath ? { path: androidPath } : {})
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || `import HTTP ${response.status}`);
+    const result = await response.json() as UnknownRecord;
+    if (result.imported === false) return false;
+    clearAllBookTextCaches();
+    await reloadBridgeSnapshot();
+    ensureCurrentText();
+    render();
+    showToast(t("toast.transferImported"));
+    return true;
+  } catch (error) {
+    console.warn("transfer import failed", error);
+    showToast(t("toast.importFailed"), "error");
     return false;
   }
 }
@@ -483,18 +447,6 @@ function exportRequestBase(filename: string, format: VocabularyExportFormat): Vo
   };
 }
 
-function hydrateImportedLibrary(): void {
-  Promise.all([loadAllBookTexts(), loadAllCustomTextContents()])
-    .then(() => render())
-    .catch((error) => console.warn("Imported book hydration failed", error));
-}
-
-function renderImportedState(): void {
-  ensureCurrentText();
-  render();
-  hydrateImportedLibrary();
-}
-
 export async function exportVocabularySelection(format: VocabularyExportFormat): Promise<void> {
   const textId = state.filters?.vocabTextId || "all";
   const text = textId === "all" ? null : getVocabularyTextById(textId);
@@ -519,118 +471,6 @@ export async function exportVocabularySelection(format: VocabularyExportFormat):
   }
 }
 
-export async function exportState(): Promise<void> {
-  const filename = `wordhunter-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  try {
-    const backup = await portableBackupPayload();
-    if (!await nativeSave(backup.payload, filename, "application/json")) {
-      showToast(t("toast.exportCancelled"));
-    } else if (backup.missingTextCount > 0) {
-      showToast(t("toast.exportReadyMissingTexts", { n: backup.missingTextCount }));
-    } else {
-      showToast(backup.textCount > 0 ? t("toast.exportReadyWithoutMedia") : t("toast.exportReady"));
-    }
-  } catch (error) {
-    console.warn("state export failed", error);
-    showToast(t("toast.exportFailed"));
-  }
-}
-
-export function importStateFile(event: unknown): void {
-  const target = fileInputTarget(event);
-  const file = target?.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.addEventListener("load", async () => {
-    try {
-      const raw = String(reader.result || "{}");
-      const parsed: unknown = JSON.parse(raw);
-      assertSupportedStateSchemaVersion(parsed, "import file");
-      // JSON backups do not carry binary book assets; legacy marker values are not proof that
-      // the corresponding /__media files exist on this device.
-      const backupOmitsMedia = customTextRecords(parsed).length > 0;
-      const preview = {
-        words: Object.keys(parsed.vocab || {}).length,
-        texts: Array.isArray(parsed.customTexts) ? parsed.customTexts.length : 0,
-        profiles: Object.keys(isRecord(parsed.profiles) ? parsed.profiles : {}).length
-      };
-      const msg = t("sync.importConfirm", { words: preview.words, texts: preview.texts, profiles: preview.profiles });
-      if (!window.confirm(msg)) {
-        target.value = "";
-        return;
-      }
-
-      propagateEmbeddedTextBodies(parsed);
-      const imported = normalizeState({ ...createDefaultState(), ...parsed });
-      const missingTextCount = await recoverImportedTextBodies(imported);
-      if (backupOmitsMedia) degradeMissingPdfMediaToText(imported);
-      if (window.__qtBridge) {
-        await runExclusiveStateWrite(async () => {
-          const startingRevision = getDurableStateRevision();
-          let result: unknown;
-          try {
-            const response = await fetch("/__store/save?snapshot=1&restore=1", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-              body: JSON.stringify(buildSavePayload(imported))
-            });
-            if (!response.ok) throw new Error(`import save HTTP ${response.status}`);
-            result = await response.json() as unknown;
-            if (!isRecord(result) || !result.snapshot) throw new Error("import save response is missing snapshot");
-          } catch (saveError) {
-            try {
-              const snapshot = await loadBackendSnapshot();
-              clearAllBookTextCaches();
-              if (snapshot && applyBridgeSnapshotToState(snapshot, {
-                expectedRevision: startingRevision,
-                preserveLocalUi: false
-              })) {
-                await acknowledgeBackendSnapshot(snapshot);
-              }
-              renderImportedState();
-            } catch (reloadError) {
-              console.warn("Could not reconcile state after import failure", reloadError);
-            }
-            throw saveError;
-          }
-          const importedUiState = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(imported) };
-          if (isRecord(result) && isRecord(result.snapshot)) result.snapshot.uiState = importedUiState;
-          try {
-            await postStoreJson("/__store/ui_state", importedUiState);
-          } catch (uiSaveError) {
-            console.warn("Imported data was saved, but its Reader position needs a retry", uiSaveError);
-            void saveUiState();
-          }
-          clearAllBookTextCaches();
-          if (!await applyBridgeCommandResult(result, startingRevision, false)) {
-            throw new Error("import snapshot was superseded by a local state change");
-          }
-        }, { saveFirst: false });
-      } else {
-        clearAllBookTextCaches();
-        replaceState(imported);
-        ensureCurrentText();
-        await saveState();
-      }
-
-      renderImportedState();
-      showToast(missingTextCount
-        ? t(backupOmitsMedia ? "toast.importDoneMissingTextsWithoutMedia" : "toast.importDoneMissingTexts", { n: missingTextCount })
-        : t(backupOmitsMedia ? "toast.importDoneWithoutMedia" : "toast.importDone"));
-    } catch (error) {
-      console.warn(error);
-      showToast(t("toast.importFailed"));
-    }
-  });
-  const readFailed = () => showToast(t("toast.importFailed"));
-  reader.addEventListener("error", readFailed);
-  reader.addEventListener("abort", readFailed);
-  showToast(t("toast.importing"));
-  reader.readAsText(file);
-  target.value = "";
-}
-
 export async function clearWords(): Promise<void> {
   const confirmed = window.confirm(t("toast.confirmClearWords"));
   if (!confirmed) return;
@@ -651,7 +491,7 @@ export async function clearWords(): Promise<void> {
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear words recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
   render();
@@ -690,7 +530,7 @@ export async function clearLibrary(): Promise<void> {
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear library recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
   if (window.__qtBridge) {
@@ -727,7 +567,7 @@ export async function clearLocalState(): Promise<void> {
       });
     } catch (error) {
       console.warn("wipe failed", error);
-      showToast(t("toast.syncUnavailable"), "error");
+      showToast(t("toast.saveUnavailable"), "error");
       return;
     }
   } else {

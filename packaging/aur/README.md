@@ -18,7 +18,7 @@ digest-pinned official Arch Linux `base-devel` container. It:
 3. builds the package as an unprivileged user with `makepkg`;
 4. inspects the package with `namcap`, `bsdtar`, and `pacman`;
 5. installs it in the disposable CI container and checks the desktop metadata,
-   bundled OCR runner, bundled Syncthing executable, and dynamic libraries;
+   bundled OCR runner and dynamic libraries;
 6. starts the installed application under Xvfb and requires it to remain alive
    until the smoke-test timeout; and
 7. removes the package and checks that its public launchers are gone.

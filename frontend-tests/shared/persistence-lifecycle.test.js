@@ -324,8 +324,7 @@ describe("persistence lifecycle", () => {
     const rawState = {
       preferences: { theme: "familiar" },
       profiles: {},
-      syncHealth: null,
-      syncthingStatus: null
+      recoveryStatus: null
     };
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
@@ -343,8 +342,7 @@ describe("persistence lifecycle", () => {
     const autosave = createAutosave(() => rawState);
     const state = autosave.wrap(rawState);
 
-    state.syncHealth = { status: "ready" };
-    state.syncthingStatus = { running: true };
+    state.recoveryStatus = { pendingSaveJournal: true };
     assert.equal(scheduled, 0);
     assert.equal(autosave.getDurableStateRevision(), 0);
     state.preferences.theme = "classic-dark";
@@ -685,7 +683,7 @@ describe("persistence lifecycle", () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     assert.equal(closeRequests.includes("/__app/close"), false);
-    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+    assert.deepEqual(toasts, ["toast.saveUnavailable"]);
   });
 
   it("allows close after a transient UI-state save failure is retried successfully", async () => {
@@ -786,7 +784,7 @@ describe("persistence lifecycle", () => {
     await new Promise((resolve) => setImmediate(resolve));
 
     assert.deepEqual(closeRequests, []);
-    assert.deepEqual(toasts, ["toast.syncUnavailable"]);
+    assert.deepEqual(toasts, ["toast.saveUnavailable"]);
   });
 
   it("queues autosaves behind an exclusive state write", async () => {
@@ -867,57 +865,6 @@ describe("persistence lifecycle", () => {
     await assert.rejects(queuedSave, /post-import save failed/);
   });
 
-  it("keeps sync UI, endpoint, and event contracts", () => {
-    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
-    const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
-    const autosave = readFileSync(new URL("../../dist/web/js/state/autosave.js", import.meta.url), "utf8");
-    const api = readFileSync(new URL("../../dist/web/js/api.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
-    const storeBridge = readFileSync(new URL("../../dist/web/js/store-bridge.js", import.meta.url), "utf8");
-    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
-
-    for (const id of [
-      "sync-status",
-      "sync-health",
-      "sync-directory",
-      "prepare-sync-directory",
-      "choose-sync-directory",
-      "sync-conflicts-panel",
-      "sync-conflicts-list",
-      "recovery-status-panel",
-      "recovery-status-list"
-    ]) {
-      assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
-    }
-    for (const endpoint of [
-      "/__store/sync_now",
-      "/__store/sync_health",
-      "/__store/prepare_sync_dir",
-      "/__store/resolve_conflict",
-      "/__store/resolve_all_conflicts"
-    ]) {
-      assert.ok(settings.includes(`"${endpoint}"`), `missing frontend endpoint ${endpoint}`);
-    }
-    assert.ok(storeBridge.includes('"/__store/ack_snapshot"'));
-    for (const endpoint of [
-      "/__store/recovery_status",
-      "/__store/sync_health",
-      "/__store/prepare_sync_dir"
-    ]) {
-      assert.ok(router.includes(`"${endpoint}"`), `missing router endpoint ${endpoint}`);
-    }
-    assert.ok(app.includes("wordhunter:sync-error"));
-    assert.ok(app.includes('t("toast.syncUnavailable")'));
-    assert.ok(autosave.includes("wordhunter:sync-saved"));
-    assert.ok(autosave.includes("wordhunter:sync-error"));
-    assert.ok(api.includes("wordhunter:sync-error"));
-    assert.match(settings, /scheduleBackgroundSync\(30000\)/);
-    assert.match(settings, /queueSyncOperation\(\(\) => syncNowOnce\(options\)\)/);
-    assert.match(settings, /await syncNowOnce\(\{ saveFirst: false \}\)/);
-    assert.match(settings, /syncNow\(\{ background: true, saveFirst: true \}\)/);
-    assert.match(settings, /wordhunter:sync-snapshot-skipped/);
-  });
-
   it("keeps startup boot CSS scoped and removes the boot state after initialization", async () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
@@ -971,6 +918,7 @@ describe("persistence lifecycle", () => {
     const downstreamCalls = [];
     const toasts = [];
     let applyShouldThrow = false;
+    let transferResponse = { ok: true, saved: false };
     const window = fakeEventTarget({
       WH_TOKEN: "test-token",
       __qtBridge: false,
@@ -1108,7 +1056,11 @@ describe("persistence lifecycle", () => {
       Blob: class Blob {},
       URL: { createObjectURL: () => "blob:test", revokeObjectURL() {} },
       document: { createElement: () => ({ click() {} }) },
-      fetch: async () => ({ ok: true, json: async () => ({}) }),
+      fetch: async () => ({
+        ok: transferResponse.ok,
+        json: async () => ({ saved: transferResponse.saved }),
+        text: async () => "disk unavailable"
+      }),
       setTimeout: () => 1,
       clearTimeout() {},
       console: { warn() {}, error() {} }
@@ -1121,14 +1073,7 @@ describe("persistence lifecycle", () => {
         storageRemovals.length = 0;
         toasts.length = 0;
         const before = JSON.parse(JSON.stringify(state));
-        window.WordHunterAndroid.saveExport = (_data, _filename, _mime, requestId) => {
-          window.dispatchEvent(new CustomEvent("wordhunter:android-export", {
-            detail: outcome === "cancelled"
-              ? { requestId, cancelled: true }
-              : { requestId, success: false, error: "disk unavailable" }
-          }));
-          return true;
-        };
+        transferResponse = { ok: outcome === "cancelled", saved: false };
 
         await actions[actionName]();
 
@@ -1140,12 +1085,7 @@ describe("persistence lifecycle", () => {
     }
 
     resetState();
-    window.WordHunterAndroid.saveExport = (_data, _filename, _mime, requestId) => {
-      window.dispatchEvent(new CustomEvent("wordhunter:android-export", {
-        detail: { requestId, success: true }
-      }));
-      return true;
-    };
+    transferResponse = { ok: true, saved: true };
 
     await actions.clearLibrary();
 
@@ -1189,40 +1129,15 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(storageRemovals, ["wordhunter-state", "wordhunter-ui-state"]);
   });
 
-  it("ships sync safety copy in every locale", () => {
+  it("ships transfer and recovery copy in every locale", () => {
     const localeDir = new URL("../../dist/web/i18n/", import.meta.url);
     const required = [
-      ["settings", "syncStatusDefault"],
-      ["settings", "syncStatusReady"],
-      ["settings", "syncStatusSaved"],
-      ["settings", "syncStatusError"],
-      ["settings", "cloudSyncStatusDefault"],
-      ["settings", "cloudSyncStatusReady"],
-      ["settings", "cloudSyncStatusSyncing"],
-      ["settings", "cloudSyncStatusComplete"],
-      ["settings", "cloudSyncStatusNotSupported"],
-      ["settings", "cloudSyncStatusNeedsAttention"],
-      ["settings", "cloudSyncStatusAuthRequired"],
-      ["settings", "cloudSyncStatusOffline"],
-      ["settings", "cloudSyncStatusError"],
-      ["settings", "cloudSyncStatusUnknown"],
-      ["settings", "syncHealthReady"],
-      ["settings", "syncHealthCaution"],
-      ["settings", "syncHealthNeedsAttention"],
-      ["settings", "syncHealthReadOnly"],
-      ["settings", "syncHealthMissing"],
-      ["settings", "syncHealthNotFolder"],
-      ["settings", "syncHealthUnknown"],
-      ["settings", "syncConflictCount"],
-      ["settings", "syncConflictDevice"],
-      ["settings", "syncConflictDeleted"],
-      ["settings", "syncConflictUpdated"],
-      ["settings", "syncConflictRefresh"],
-      ["settings", "syncConflictUnknown"],
-      ["settings", "syncConflictMeta"],
-      ["settings", "syncConflictKeepCurrent"],
-      ["settings", "syncConflictUseOther"],
-      ["settings", "syncConflictResolved"],
+      ["transfer", "heading"],
+      ["transfer", "intro"],
+      ["transfer", "mergeHint"],
+      ["transfer", "exportAll"],
+      ["transfer", "exportWords"],
+      ["transfer", "import"],
       ["settings", "recoveryStatusTitle"],
       ["settings", "recoveryPendingSave"],
       ["settings", "recoveryPendingSaveTemp"],
@@ -1230,25 +1145,13 @@ describe("persistence lifecycle", () => {
       ["settings", "recoveryQuarantinedJournal"],
       ["settings", "recoverySkippedRecords"],
       ["settings", "recoveryCorruptConflicts"],
-      ["settings", "syncFolderDefault"],
-      ["settings", "syncFolderPath"],
-      ["settings", "prepareSyncFolder"],
-      ["settings", "connectGoogleDrive"],
-      ["settings", "cloudSyncNow"],
-      ["settings", "chooseSyncFolder"],
-      ["settings", "syncAdvanced"],
-      ["settings", "syncFolderChanged"],
-      ["settings", "cloudSyncConnected"],
-      ["settings", "cloudSyncUnavailable"],
-      ["settings", "cloudSyncComplete"],
-      ["settings", "syncFolderMissing"],
       ["settings", "androidDataFolderFixed"],
-      ["settings", "dataFolderCloudDelay"],
-      ["settings", "forceSync"],
       ["toast", "backupCreated"],
       ["toast", "backupRequired"],
       ["toast", "exportCancelled"],
-      ["toast", "syncUnavailable"]
+      ["toast", "saveUnavailable"],
+      ["toast", "transferExported"],
+      ["toast", "transferImported"]
     ];
 
     for (const file of readdirSync(localeDir).filter((name) => name.endsWith(".json"))) {

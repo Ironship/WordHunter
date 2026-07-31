@@ -13,9 +13,7 @@ const PAYLOAD_SCHEMA_VERSION: u64 = 2;
 const ROOT: &str = "records";
 const VERSION: &str = "v1";
 const RECORD_DIRS: [&str; 6] = ["profiles", "vocab", "texts", "prefs", "hidden", "books"];
-const SYNC_RECORD_KINDS: [&str; 5] = ["profile", "vocab", "text", "hidden", "book"];
 const IN_TEXT_REVIEW_COMPLETIONS_KEY: &str = "pref:inTextReviewCompletedGuesses";
-const SYNCED_PREF_KEYS: [&str; 2] = ["pref:readerBookmarks", IN_TEXT_REVIEW_COMPLETIONS_KEY];
 static LAST_CLOCK_MS: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug)]
@@ -85,11 +83,7 @@ pub(crate) fn validate_records_layout(dir: &Path) -> Result<(), String> {
         return Ok(());
     }
 
-    for name in RECORD_DIRS
-        .iter()
-        .copied()
-        .chain(["conflicts", "resolved-conflicts"])
-    {
+    for name in RECORD_DIRS {
         ensure_optional_dir(&root.join(name))?;
     }
     Ok(())
@@ -120,19 +114,32 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
         for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())? {
             let entry = entry.map_err(|e| e.to_string())?;
             let path = entry.path();
-            if is_syncthing_conflict_path(&path) {
+            if path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .is_some_and(|name| name.contains(".sync-conflict-"))
+            {
                 continue;
             }
-            let is_json = path.extension().and_then(|value| value.to_str()) == Some("json");
+            let extension = path.extension().and_then(|value| value.to_str());
+            let is_record = matches!(extension, Some("yaml" | "yml" | "json"));
             let is_backup = path.extension().and_then(|value| value.to_str()) == Some("bak");
-            let path = if is_json {
+            let path = if is_record {
+                if extension == Some("json") && path.with_extension("yaml").exists() {
+                    continue;
+                }
                 path
             } else if is_backup {
-                let primary = path.with_extension("json");
+                let yaml = path.with_extension("yaml");
+                let primary = if yaml.exists() {
+                    yaml
+                } else {
+                    path.with_extension("json")
+                };
                 if primary.exists() {
                     continue;
                 }
-                primary
+                path
             } else {
                 continue;
             };
@@ -141,7 +148,7 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
                     records.insert(record.key.clone(), record);
                 }
                 Err(error) => {
-                    // Cloud sync can briefly expose a zero-byte file; skip one bad record instead of killing startup.
+                    // Skip one bad record instead of killing startup; recovery status reports it.
                     eprintln!("{error}");
                 }
             }
@@ -150,69 +157,22 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
     Ok(canonicalize_vocab_records(records))
 }
 
-pub(crate) fn load_sync_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, String> {
+pub(crate) fn migrate_legacy_json_records(dir: &Path) -> Result<usize, String> {
     let records = load_records(dir)?;
-    Ok(sync_records(&records))
-}
-
-pub(crate) fn ingest_syncthing_conflict_copies(
-    dir: &Path,
-    device_id: &str,
-) -> Result<usize, String> {
-    let root = records_root(dir);
-    let mut paths = Vec::new();
-    for kind_dir in RECORD_DIRS {
-        let record_dir = root.join(kind_dir);
-        if !record_dir.exists() {
+    let mut migrated = 0;
+    for record in records.values() {
+        let yaml = record_path(dir, record);
+        let json = yaml.with_extension("json");
+        if !json.exists() {
             continue;
         }
-        paths.extend(
-            std::fs::read_dir(&record_dir)
-                .map_err(|e| e.to_string())?
-                .filter_map(Result::ok)
-                .map(|entry| entry.path())
-                .filter(|path| is_syncthing_conflict_path(path)),
-        );
+        write_record_with_backup(dir, record, true)?;
+        read_record_file(&yaml)?;
+        durable::remove_file_if_exists(&json)?;
+        durable::remove_file_if_exists(&json.with_extension("bak"))?;
+        migrated += 1;
     }
-    paths.sort();
-
-    let mut ingested = 0;
-    for path in paths {
-        if path.extension().and_then(|value| value.to_str()) == Some("bak")
-            && path.with_extension("json").exists()
-        {
-            continue;
-        }
-        let conflict_record = read_syncthing_conflict_file(&path)?;
-        let canonical_path = record_path(dir, &conflict_record);
-        let current_record =
-            if canonical_path.exists() || canonical_path.with_extension("bak").exists() {
-                Some(read_record_file(&canonical_path)?)
-            } else {
-                None
-            };
-        let incoming = BTreeMap::from([(conflict_record.key.clone(), conflict_record)]);
-        let current = current_record
-            .map(|record| BTreeMap::from([(record.key.clone(), record)]))
-            .unwrap_or_default();
-        let merged = merge_records(&BTreeMap::new(), incoming, current, device_id, now_millis());
-        write_records(dir, &merged.records)?;
-        write_conflicts(dir, &merged.conflicts)?;
-        durable::remove_file_if_exists(&path)?;
-        if path.extension().and_then(|value| value.to_str()) == Some("json") {
-            durable::remove_file_if_exists(&path.with_extension("bak"))?;
-        }
-        ingested += 1;
-    }
-    Ok(ingested)
-}
-
-pub(crate) fn sync_records(records: &BTreeMap<String, SyncRecord>) -> BTreeMap<String, SyncRecord> {
-    records
-        .iter()
-        .filter(|(_, record)| is_sync_record(record))
-        .map(|(key, record)| (key.clone(), record.clone()))
-        .collect()
+    Ok(migrated)
 }
 
 pub(crate) fn write_records(
@@ -225,215 +185,12 @@ pub(crate) fn write_records(
     Ok(())
 }
 
-pub(crate) fn write_conflicts(dir: &Path, conflicts: &[Value]) -> Result<(), String> {
-    if conflicts.is_empty() {
-        return Ok(());
-    }
-    let dir = records_root(dir).join("conflicts");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    for conflict in conflicts {
-        if is_local_only_conflict(conflict) {
-            continue;
-        }
-        if is_conflict_resolved(dir.parent().unwrap_or(&dir), conflict) {
-            continue;
-        }
-        let key = conflict
-            .get("key")
-            .and_then(Value::as_str)
-            .unwrap_or("conflict");
-        let timestamp = conflict
-            .get("timestamp")
-            .and_then(Value::as_str)
-            .unwrap_or("0");
-        let path = dir.join(format!("{timestamp}-{}.json", stable_hash(key)));
-        atomic_json(&path, conflict, true)?;
-    }
-    Ok(())
-}
-
-pub(crate) fn prune_sync_folder_private_records(dir: &Path) -> Result<(), String> {
-    let prefs = records_root(dir).join("prefs");
-    if !prefs.exists() {
-        return Ok(());
-    }
-    for entry in std::fs::read_dir(&prefs).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let value = std::fs::read(&path)
-            .ok()
-            .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok());
-        let future_record = value.as_ref().is_some_and(|value| {
-            value
-                .get("format")
-                .and_then(Value::as_u64)
-                .is_some_and(|format| format > FORMAT)
-                || value
-                    .get("schemaVersion")
-                    .and_then(Value::as_u64)
-                    .is_some_and(|schema| schema > PAYLOAD_SCHEMA_VERSION)
-        });
-        let key = value
-            .as_ref()
-            .and_then(|value| value.get("key"))
-            .and_then(Value::as_str);
-        if !future_record && key.map(is_local_only_key).unwrap_or(false) {
-            durable::remove_file_if_exists(&path)?;
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn sync_resolved_conflict_markers(left: &Path, right: &Path) -> Result<(), String> {
-    copy_resolved_conflict_markers(left, right)?;
-    copy_resolved_conflict_markers(right, left)?;
-    prune_resolved_conflicts(left)?;
-    prune_resolved_conflicts(right)
-}
-
-pub(crate) fn conflict_count(dir: &Path) -> Result<usize, String> {
-    let dir = records_root(dir).join("conflicts");
-    if !dir.exists() {
-        return Ok(0);
-    }
-    let mut count = 0;
-    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        if entry.path().extension().and_then(|value| value.to_str()) == Some("json") {
-            if let Ok(raw) = std::fs::read(entry.path())
-                && let Ok(value) = serde_json::from_slice::<Value>(&raw)
-                && is_local_only_conflict(&value)
-            {
-                continue;
-            }
-            count += 1;
-        }
-    }
-    Ok(count)
-}
-
-pub(crate) fn conflict_summaries(dir: &Path, limit: usize) -> Result<Vec<Value>, String> {
-    let dir = records_root(dir).join("conflicts");
-    if !dir.exists() {
-        return Ok(Vec::new());
-    }
-    let mut paths = Vec::new();
-    for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        if path.extension().and_then(|value| value.to_str()) == Some("json") {
-            paths.push(path);
-        }
-    }
-    paths.sort();
-    paths.reverse();
-
-    let mut conflicts = Vec::new();
-    for path in paths.into_iter().take(limit) {
-        let raw = match std::fs::read(&path) {
-            Ok(raw) => raw,
-            Err(error) => {
-                eprintln!("could not read conflict {}: {error}", path.display());
-                continue;
-            }
-        };
-        let value: Value = match serde_json::from_slice(&raw) {
-            Ok(value) => value,
-            Err(error) => {
-                eprintln!("conflict {} is corrupt: {error}", path.display());
-                continue;
-            }
-        };
-        if is_local_only_conflict(&value) {
-            continue;
-        }
-        let id = path
-            .file_stem()
-            .and_then(|value| value.to_str())
-            .unwrap_or_default()
-            .to_string();
-        conflicts.push(conflict_summary(&id, &value));
-    }
-    Ok(conflicts)
-}
-
-pub(crate) fn resolve_conflict(
-    dir: &Path,
-    id: &str,
-    use_conflict: bool,
-    device_id: &str,
-    now: u128,
-) -> Result<Option<SyncRecord>, String> {
-    let id = sanitize_conflict_id(id)?;
-    let path = records_root(dir)
-        .join("conflicts")
-        .join(format!("{id}.json"));
-    let raw = std::fs::read(&path)
-        .map_err(|e| format!("could not read conflict {}: {e}", path.display()))?;
-    let value: Value = serde_json::from_slice(&raw)
-        .map_err(|e| format!("conflict {} is corrupt: {e}", path.display()))?;
-    let kept = parse_record(
-        value
-            .get("kept")
-            .ok_or_else(|| "kept conflict record is missing".to_string())?,
-    )?;
-    let conflict = parse_record(
-        value
-            .get("conflict")
-            .ok_or_else(|| "conflict record is missing".to_string())?,
-    )?;
-    let current = load_records(dir)?.remove(&kept.key);
-    let mut record = if use_conflict {
-        conflict.clone()
-    } else {
-        current.clone().unwrap_or_else(|| kept.clone())
-    };
-    for (device, counter) in kept
-        .causal
-        .iter()
-        .chain(conflict.causal.iter())
-        .chain(current.iter().flat_map(|record| record.causal.iter()))
-    {
-        record
-            .causal
-            .entry(device.clone())
-            .and_modify(|current| *current = (*current).max(*counter))
-            .or_insert(*counter);
-    }
-    bump_causal(&mut record.causal, device_id, now);
-    record.device_id = device_id.to_string();
-    record.updated_at = now;
-    if record.deleted_at.is_some() {
-        record.deleted_at = Some(now);
-    }
-    write_record(dir, &record)?;
-    write_resolved_conflict_marker(dir, &value, use_conflict)?;
-    std::fs::remove_file(&path)
-        .map_err(|e| format!("could not remove resolved conflict {}: {e}", path.display()))?;
-    durable::sync_parent(&path)?;
-    Ok(Some(record))
-}
-
-pub(crate) fn sync_status(dir: &Path) -> Value {
-    let conflicts = conflict_summaries(dir, 25).unwrap_or_default();
-    json!({
-        "conflictCount": conflict_count(dir).unwrap_or(0),
-        "conflicts": conflicts,
-    })
-}
-
 pub(crate) fn recovery_status(dir: &Path) -> Value {
     let record_problems = scan_record_problems(dir, 25);
-    let conflict_problems = scan_conflict_problems(dir, 25);
     json!({
         "schemaVersion": 1,
         "skippedRecordCount": record_problems.total,
         "skippedRecords": record_problems.items,
-        "corruptConflictCount": conflict_problems.total,
-        "corruptConflicts": conflict_problems.items,
     })
 }
 
@@ -1434,9 +1191,14 @@ pub(crate) fn merge_missing_text_media_metadata(
 
 fn text_record(dir: &Path, id: &str) -> Result<Option<SyncRecord>, String> {
     let key = format!("text:{id}");
-    let path = records_root(dir)
+    let yaml = records_root(dir)
         .join(kind_dir("text"))
-        .join(format!("{}.json", stable_hash(&key)));
+        .join(format!("{}.yaml", stable_hash(&key)));
+    let path = if yaml.exists() || yaml.with_extension("bak").exists() {
+        yaml
+    } else {
+        yaml.with_extension("json")
+    };
     if !path.exists() && !path.with_extension("bak").exists() {
         return Ok(None);
     }
@@ -1706,7 +1468,7 @@ fn write_record_with_backup(
         {
             return write_record_recovery_backup(&path);
         }
-        atomic_json(&path, &value, false)?;
+        atomic_yaml(&path, &value, false)?;
         return write_record_recovery_backup(&path);
     }
     if path.exists()
@@ -1716,7 +1478,7 @@ fn write_record_with_backup(
     {
         return Ok(());
     }
-    atomic_json(&path, &record_value(record), keep_backup)
+    atomic_yaml(&path, &record_value(record), keep_backup)
 }
 
 fn write_record_recovery_backup(path: &Path) -> Result<(), String> {
@@ -1769,41 +1531,8 @@ fn read_record_file(path: &Path) -> Result<SyncRecord, String> {
 }
 
 fn parse_record_file(path: &Path) -> Result<SyncRecord, String> {
-    parse_record_file_with_stem(path, None)
-}
-
-fn read_syncthing_conflict_file(path: &Path) -> Result<SyncRecord, String> {
-    match parse_syncthing_conflict_file(path) {
-        Ok(record) => Ok(record),
-        Err(primary) => {
-            let backup = path.with_extension("bak");
-            if path.extension().and_then(|value| value.to_str()) == Some("json") && backup.exists()
-            {
-                parse_syncthing_conflict_file(&backup).map_err(|backup_error| {
-                    format!(
-                        "{primary}; backup {} is also unusable: {backup_error}",
-                        backup.display()
-                    )
-                })
-            } else {
-                Err(primary)
-            }
-        }
-    }
-}
-
-fn parse_syncthing_conflict_file(path: &Path) -> Result<SyncRecord, String> {
-    let canonical_stem = syncthing_conflict_canonical_stem(path)
-        .ok_or_else(|| format!("{} is not a Syncthing conflict copy", path.display()))?;
-    parse_record_file_with_stem(path, Some(&canonical_stem))
-}
-
-fn parse_record_file_with_stem(
-    path: &Path,
-    actual_stem_override: Option<&str>,
-) -> Result<SyncRecord, String> {
     let raw = std::fs::read(path).map_err(|e| format!("could not read {}: {e}", path.display()))?;
-    let value: Value = serde_json::from_slice(&raw)
+    let value: Value = serde_yaml::from_slice(&raw)
         .map_err(|e| format!("record {} is corrupt: {e}", path.display()))?;
     let record =
         parse_record(&value).map_err(|e| format!("record {} is invalid: {e}", path.display()))?;
@@ -1820,11 +1549,10 @@ fn parse_record_file_with_stem(
         ));
     }
     let expected_name = stable_hash(&record.key);
-    let actual_name = actual_stem_override.unwrap_or_else(|| {
-        path.file_stem()
-            .and_then(|value| value.to_str())
-            .unwrap_or_default()
-    });
+    let actual_name = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
     if actual_name != expected_name {
         return Err(format!(
             "record {} has a noncanonical filename",
@@ -1834,27 +1562,9 @@ fn parse_record_file_with_stem(
     Ok(record)
 }
 
-fn is_syncthing_conflict_path(path: &Path) -> bool {
-    syncthing_conflict_canonical_stem(path).is_some()
-}
-
-fn syncthing_conflict_canonical_stem(path: &Path) -> Option<String> {
-    let name = path.file_name()?.to_str()?;
-    let stem = name
-        .strip_suffix(".json")
-        .or_else(|| name.strip_suffix(".bak"))?;
-    let (canonical, suffix) = stem.split_once(".sync-conflict-")?;
-    if canonical.len() != 16
-        || !canonical.bytes().all(|byte| byte.is_ascii_hexdigit())
-        || suffix.is_empty()
-    {
-        return None;
-    }
-    Some(canonical.to_string())
-}
-
-fn atomic_json(path: &Path, value: &Value, keep_backup: bool) -> Result<(), String> {
-    durable::write_json_atomic(path, value, false, keep_backup)
+fn atomic_yaml(path: &Path, value: &Value, keep_backup: bool) -> Result<(), String> {
+    let bytes = serde_yaml::to_string(value).map_err(|e| e.to_string())?;
+    durable::write_file_atomic(path, bytes.as_bytes(), keep_backup)
 }
 
 fn remove_backup_files(dir: &Path) -> Result<(), String> {
@@ -1874,94 +1584,10 @@ fn remove_backup_files(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn record_path(dir: &Path, record: &SyncRecord) -> PathBuf {
+pub(crate) fn record_path(dir: &Path, record: &SyncRecord) -> PathBuf {
     records_root(dir)
         .join(kind_dir(&record.kind))
-        .join(format!("{}.json", stable_hash(&record.key)))
-}
-
-fn resolved_conflicts_dir(dir: &Path) -> PathBuf {
-    records_root(dir).join("resolved-conflicts")
-}
-
-fn is_conflict_resolved(records_v1_root: &Path, conflict: &Value) -> bool {
-    let signature = conflict_signature(conflict);
-    records_v1_root
-        .join("resolved-conflicts")
-        .join(format!("{signature}.json"))
-        .is_file()
-}
-
-fn write_resolved_conflict_marker(
-    dir: &Path,
-    conflict: &Value,
-    use_conflict: bool,
-) -> Result<(), String> {
-    let signature = conflict_signature(conflict);
-    let path = resolved_conflicts_dir(dir).join(format!("{signature}.json"));
-    let value = json!({
-        "schemaVersion": 1,
-        "signature": signature,
-        "key": conflict.get("key").cloned().unwrap_or(Value::Null),
-        "resolvedAt": now_millis().to_string(),
-        "resolution": if use_conflict { "use-conflict" } else { "keep-current" },
-    });
-    durable::write_json_atomic(&path, &value, true, true)
-}
-
-fn copy_resolved_conflict_markers(from: &Path, to: &Path) -> Result<(), String> {
-    let from_dir = resolved_conflicts_dir(from);
-    if !from_dir.exists() {
-        return Ok(());
-    }
-    let to_dir = resolved_conflicts_dir(to);
-    std::fs::create_dir_all(&to_dir).map_err(|e| e.to_string())?;
-    let mut paths = std::fs::read_dir(&from_dir)
-        .map_err(|e| e.to_string())?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
-        .collect::<Vec<_>>();
-    paths.sort();
-    for source in paths {
-        let Some(name) = source.file_name() else {
-            continue;
-        };
-        let target = to_dir.join(name);
-        if target.exists() {
-            continue;
-        }
-        durable::copy_file_atomic(&source, &target, true)?;
-    }
-    Ok(())
-}
-
-fn prune_resolved_conflicts(dir: &Path) -> Result<(), String> {
-    let conflicts_dir = records_root(dir).join("conflicts");
-    if !conflicts_dir.exists() {
-        return Ok(());
-    }
-    let mut paths = std::fs::read_dir(&conflicts_dir)
-        .map_err(|e| e.to_string())?
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
-        .collect::<Vec<_>>();
-    paths.sort();
-    for path in paths {
-        let raw = match std::fs::read(&path) {
-            Ok(raw) => raw,
-            Err(_) => continue,
-        };
-        let value = match serde_json::from_slice::<Value>(&raw) {
-            Ok(value) => value,
-            Err(_) => continue,
-        };
-        if is_conflict_resolved(records_root(dir).as_path(), &value) {
-            durable::remove_file_if_exists(&path)?;
-        }
-    }
-    Ok(())
+        .join(format!("{}.yaml", stable_hash(&record.key)))
 }
 
 fn kind_dir(kind: &str) -> &str {
@@ -1976,7 +1602,7 @@ fn kind_dir(kind: &str) -> &str {
     }
 }
 
-fn parse_record(value: &Value) -> Result<SyncRecord, String> {
+pub(crate) fn parse_record(value: &Value) -> Result<SyncRecord, String> {
     if value.get("format").and_then(Value::as_u64).unwrap_or(0) != FORMAT {
         return Err("unsupported format".to_string());
     }
@@ -2045,7 +1671,7 @@ fn reject_future_record_at_path(path: &Path) -> Result<(), String> {
                 candidate.display()
             )
         })?;
-        let Ok(value) = serde_json::from_slice::<Value>(&raw) else {
+        let Ok(value) = serde_yaml::from_slice::<Value>(&raw) else {
             continue;
         };
         let future_format = value
@@ -2096,33 +1722,27 @@ fn scan_record_problems(dir: &Path, limit: usize) -> ScanProblems {
             .collect::<Vec<_>>();
         paths.sort();
         for path in paths {
-            if is_syncthing_conflict_path(&path) {
-                let has_primary = path.extension().and_then(|value| value.to_str()) == Some("bak")
-                    && path.with_extension("json").exists();
-                if has_primary {
-                    continue;
-                }
-                if let Err(error) = read_syncthing_conflict_file(&path) {
-                    problems.total += 1;
-                    if problems.items.len() < limit {
-                        problems.items.push(json!({
-                            "path": display_relative(&dir, &path),
-                            "kind": kind_dir.trim_end_matches('s'),
-                            "error": error,
-                        }));
-                    }
-                }
+            if path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .is_some_and(|name| name.contains(".sync-conflict-"))
+            {
                 continue;
             }
             let extension = path.extension().and_then(|value| value.to_str());
             let record_path = match extension {
-                Some("json") => path,
+                Some("yaml" | "yml" | "json") => path,
                 Some("bak") => {
-                    let primary = path.with_extension("json");
+                    let yaml = path.with_extension("yaml");
+                    let primary = if yaml.exists() {
+                        yaml
+                    } else {
+                        path.with_extension("json")
+                    };
                     if primary.exists() {
                         continue;
                     }
-                    primary
+                    path
                 }
                 _ => continue,
             };
@@ -2139,50 +1759,6 @@ fn scan_record_problems(dir: &Path, limit: usize) -> ScanProblems {
         }
     }
     problems
-}
-
-fn scan_conflict_problems(dir: &Path, limit: usize) -> ScanProblems {
-    let dir = records_root(dir).join("conflicts");
-    let mut problems = ScanProblems {
-        total: 0,
-        items: Vec::new(),
-    };
-    if !dir.exists() {
-        return problems;
-    }
-    let Ok(entries) = std::fs::read_dir(&dir) else {
-        return problems;
-    };
-    let mut paths = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|value| value.to_str()) == Some("json"))
-        .collect::<Vec<_>>();
-    paths.sort();
-    for path in paths {
-        let result = std::fs::read(&path)
-            .map_err(|e| format!("could not read {}: {e}", path.display()))
-            .and_then(|raw| {
-                serde_json::from_slice::<Value>(&raw)
-                    .map(|_| ())
-                    .map_err(|e| format!("conflict {} is corrupt: {e}", path.display()))
-            });
-        if let Err(error) = result {
-            problems.total += 1;
-            if problems.items.len() < limit {
-                problems.items.push(json!({
-                    "path": display_relative(dir.parent().unwrap_or(&dir), &path),
-                    "error": error,
-                }));
-            }
-        }
-    }
-    problems
-}
-
-fn is_sync_record(record: &SyncRecord) -> bool {
-    SYNCED_PREF_KEYS.contains(&record.key.as_str())
-        || (SYNC_RECORD_KINDS.contains(&record.kind.as_str()) && !is_local_only_key(&record.key))
 }
 
 fn bookmark_identity(value: &Value) -> Option<String> {
@@ -2288,37 +1864,6 @@ fn merge_reader_bookmark_data(
     true
 }
 
-fn is_local_only_key(key: &str) -> bool {
-    key.starts_with("pref:") && !SYNCED_PREF_KEYS.contains(&key)
-}
-
-fn is_local_only_conflict(value: &Value) -> bool {
-    value
-        .get("key")
-        .and_then(Value::as_str)
-        .map(is_local_only_key)
-        .unwrap_or(false)
-        || value
-            .get("kept")
-            .map(is_local_only_record_value)
-            .unwrap_or(false)
-        || value
-            .get("conflict")
-            .map(is_local_only_record_value)
-            .unwrap_or(false)
-}
-
-fn is_local_only_record_value(value: &Value) -> bool {
-    if let Some(key) = value.get("key").and_then(Value::as_str) {
-        return is_local_only_key(key);
-    }
-    value
-        .get("kind")
-        .and_then(Value::as_str)
-        .map(|kind| kind == "pref")
-        .unwrap_or(false)
-}
-
 fn display_relative(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
@@ -2363,7 +1908,7 @@ fn tombstone_with_base(
     }
 }
 
-fn record_value(record: &SyncRecord) -> Value {
+pub(crate) fn record_value(record: &SyncRecord) -> Value {
     json!({
         "format": FORMAT,
         "schemaVersion": PAYLOAD_SCHEMA_VERSION,
@@ -2417,7 +1962,7 @@ fn merge_equal_records(incoming: &SyncRecord, current: &SyncRecord) -> SyncRecor
     merged
 }
 
-fn stable_hash(value: &str) -> String {
+pub(crate) fn stable_hash(value: &str) -> String {
     let mut hash: u64 = 0xcbf29ce484222325;
     for byte in value.as_bytes() {
         hash ^= u64::from(*byte);
@@ -2462,7 +2007,7 @@ fn parse_required_time(value: Option<&Value>, field: &str) -> Result<u128, Strin
         .ok_or_else(|| format!("{field} is invalid"))
 }
 
-fn record_time(record: &SyncRecord) -> u128 {
+pub(crate) fn record_time(record: &SyncRecord) -> u128 {
     record
         .deleted_at
         .unwrap_or(record.updated_at)
@@ -2551,73 +2096,6 @@ fn parse_causal(value: Option<&Value>) -> Result<CausalClock, String> {
     Ok(causal)
 }
 
-fn conflict_summary(id: &str, value: &Value) -> Value {
-    let kept = value.get("kept").unwrap_or(&Value::Null);
-    let conflict = value.get("conflict").unwrap_or(&Value::Null);
-    json!({
-        "id": id,
-        "timestamp": value.get("timestamp").cloned().unwrap_or(Value::Null),
-        "key": value.get("key").cloned().unwrap_or(Value::Null),
-        "reason": value.get("reason").cloned().unwrap_or(Value::Null),
-        "kept": record_summary(kept),
-        "conflict": record_summary(conflict),
-    })
-}
-
-fn record_summary(value: &Value) -> Value {
-    json!({
-        "kind": value.get("kind").cloned().unwrap_or(Value::Null),
-        "deviceId": value.get("deviceId").cloned().unwrap_or(Value::Null),
-        "updatedAt": value.get("updatedAt").cloned().unwrap_or(Value::Null),
-        "deleted": value.get("deletedAt").map(|value| !value.is_null()).unwrap_or(false),
-    })
-}
-
-fn conflict_signature(value: &Value) -> String {
-    let mut sides = [
-        serde_json::to_string(&conflict_record_signature(
-            value.get("kept").unwrap_or(&Value::Null),
-        ))
-        .unwrap_or_default(),
-        serde_json::to_string(&conflict_record_signature(
-            value.get("conflict").unwrap_or(&Value::Null),
-        ))
-        .unwrap_or_default(),
-    ];
-    sides.sort();
-    let signature = json!({
-        "key": value.get("key").cloned().unwrap_or(Value::Null),
-        "reason": value.get("reason").cloned().unwrap_or(Value::Null),
-        "records": sides,
-    });
-    stable_hash(&serde_json::to_string(&signature).unwrap_or_default())
-}
-
-fn conflict_record_signature(value: &Value) -> Value {
-    json!({
-        "key": value.get("key").cloned().unwrap_or(Value::Null),
-        "kind": value.get("kind").cloned().unwrap_or(Value::Null),
-        "deletedAt": value.get("deletedAt").cloned().unwrap_or(Value::Null),
-        "data": value.get("data").cloned().unwrap_or(Value::Null),
-    })
-}
-
-fn sanitize_conflict_id(id: &str) -> Result<String, String> {
-    let id = id.trim();
-    if id.is_empty()
-        || id == "."
-        || id == ".."
-        || id.contains('/')
-        || id.contains('\\')
-        || !id
-            .chars()
-            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
-    {
-        return Err("invalid conflict id".to_string());
-    }
-    Ok(id.to_string())
-}
-
 fn infer_kind(key: &str) -> &str {
     key.split_once(':')
         .map(|(kind, _)| kind)
@@ -2676,14 +2154,12 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::{
-        FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, canonicalize_vocab_records, conflict_count,
-        conflict_summaries, fingerprints, ingest_syncthing_conflict_copies, live_record,
-        load_records, load_sync_records, merge_records, merge_vocab_entry_data,
-        merge_vocab_schedule, merge_vocab_status, parse_record, parse_record_file,
-        payload_to_records, prepare_local_records, prune_sync_folder_private_records,
-        read_record_file, record_path, record_value, records_to_mobile_snapshot_payload,
-        records_to_payload, records_to_snapshot_payload, recovery_status, resolve_conflict,
-        stable_hash, tombstone_all, value_id, write_conflicts, write_record, write_records,
+        FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, canonicalize_vocab_records, fingerprints,
+        live_record, load_records, merge_records, merge_vocab_entry_data, merge_vocab_schedule,
+        merge_vocab_status, parse_record, parse_record_file, payload_to_records,
+        prepare_local_records, read_record_file, record_path, records_to_mobile_snapshot_payload,
+        records_to_payload, records_to_snapshot_payload, recovery_status, tombstone_all, value_id,
+        write_record, write_records,
     };
 
     fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
@@ -2960,9 +2436,9 @@ mod tests {
         write_records(dir.path(), &records).unwrap();
         let path = record_path(dir.path(), records.values().next().unwrap());
         std::fs::copy(&path, path.with_extension("bak")).unwrap();
-        let mut malformed: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        let mut malformed: Value = serde_yaml::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         malformed["deletedAt"] = Value::String("not-a-time".to_string());
-        std::fs::write(&path, serde_json::to_vec(&malformed).unwrap()).unwrap();
+        std::fs::write(&path, serde_yaml::to_string(&malformed).unwrap()).unwrap();
 
         let loaded = load_records(dir.path()).unwrap();
 
@@ -3051,77 +2527,6 @@ mod tests {
     }
 
     #[test]
-    fn recovery_status_reports_skipped_records_and_corrupt_conflicts() {
-        let dir = tempfile::tempdir().unwrap();
-        let records = payload_to_records(
-            &json!({
-                "texts": [],
-                "prefs": { "theme": "dark" },
-                "hiddenBooks": [],
-                "vocab": {}
-            }),
-            "device-a",
-            1,
-        );
-        write_records(dir.path(), &records).unwrap();
-        std::fs::create_dir_all(dir.path().join("records/v1/prefs")).unwrap();
-        std::fs::write(dir.path().join("records/v1/prefs/empty.json"), "").unwrap();
-        std::fs::create_dir_all(dir.path().join("records/v1/conflicts")).unwrap();
-        std::fs::write(dir.path().join("records/v1/conflicts/bad.json"), "{").unwrap();
-
-        let status = recovery_status(dir.path());
-
-        assert_eq!(status["skippedRecordCount"], 1);
-        assert_eq!(status["skippedRecords"][0]["kind"], "pref");
-        assert_eq!(status["skippedRecords"][0]["path"], "empty.json");
-        assert!(
-            status["skippedRecords"][0]["error"]
-                .as_str()
-                .unwrap()
-                .contains("corrupt")
-        );
-        assert_eq!(status["corruptConflictCount"], 1);
-        assert_eq!(status["corruptConflicts"][0]["path"], "conflicts/bad.json");
-    }
-
-    #[test]
-    fn syncthing_conflict_copy_is_merged_into_wordhunter_conflicts() {
-        let dir = tempfile::tempdir().unwrap();
-        let key = "vocab:de:haus".to_string();
-        let current = live_record(
-            key.clone(),
-            "vocab",
-            json!({ "translation": "house" }),
-            "desktop",
-            1,
-        );
-        let incoming = live_record(key, "vocab", json!({ "translation": "home" }), "phone", 2);
-        write_record(dir.path(), &current).unwrap();
-        let conflict_path = record_path(dir.path(), &current).with_file_name(format!(
-            "{}.sync-conflict-20260711-030832-PHONE.json",
-            stable_hash(&current.key)
-        ));
-        std::fs::write(
-            &conflict_path,
-            serde_json::to_vec(&record_value(&incoming)).unwrap(),
-        )
-        .unwrap();
-
-        assert_eq!(recovery_status(dir.path())["skippedRecordCount"], 0);
-        assert_eq!(
-            ingest_syncthing_conflict_copies(dir.path(), "desktop").unwrap(),
-            1
-        );
-
-        assert!(!conflict_path.exists());
-        assert_eq!(
-            load_records(dir.path()).unwrap()[&current.key].data["translation"],
-            "home"
-        );
-        assert_eq!(conflict_count(dir.path()).unwrap(), 1);
-    }
-
-    #[test]
     fn load_records_recovers_from_backup_when_primary_was_removed() {
         let dir = tempfile::tempdir().unwrap();
         let payload = json!({
@@ -3141,37 +2546,6 @@ mod tests {
         let loaded = load_records(dir.path()).unwrap();
 
         assert!(loaded.contains_key("pref:theme"));
-    }
-
-    #[test]
-    fn sync_record_set_keeps_preferences_private_except_explicitly_synced_keys() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut source = vocab_payload(&["haus"]);
-        source["prefs"]["theme"] = json!("dark");
-        source["prefs"]["readerBookmarks"] = json!({
-            "book": [{ "id": "mark", "wordIndex": 12 }]
-        });
-        source["prefs"]["inTextReviewCompletedGuesses"] = json!(2);
-        let records = payload_to_records(&source, "device-a", 1);
-        write_records(dir.path(), &records).unwrap();
-
-        let local = load_records(dir.path()).unwrap();
-        let syncable = load_sync_records(dir.path()).unwrap();
-        let payload = records_to_payload(dir.path(), &local);
-
-        assert!(local.contains_key("pref:learningLanguage"));
-        assert_eq!(payload["prefs"]["learningLanguage"], "de");
-        assert_eq!(payload["prefs"]["inTextReviewCompletedGuesses"], 2);
-        assert!(
-            payload["vocab"]["de"]["preferences"]
-                .get("inTextReviewCompletedGuesses")
-                .is_none()
-        );
-        assert!(syncable.contains_key("vocab:de:haus"));
-        assert!(syncable.contains_key("pref:readerBookmarks"));
-        assert!(syncable.contains_key("pref:inTextReviewCompletedGuesses"));
-        assert!(!syncable.contains_key("pref:learningLanguage"));
-        assert!(!syncable.contains_key("pref:theme"));
     }
 
     #[test]
@@ -3220,56 +2594,6 @@ mod tests {
                 .deleted_at
                 .is_none()
         );
-    }
-
-    #[test]
-    fn pref_conflicts_are_private_and_do_not_surface_as_sync_conflicts() {
-        let dir = tempfile::tempdir().unwrap();
-        let pref_conflict = json!({
-            "timestamp": "10",
-            "key": "pref:locale",
-            "reason": "concurrent-record-changes",
-            "kept": {
-                "format": 1,
-                "schemaVersion": 2,
-                "key": "pref:locale",
-                "kind": "pref",
-                "updatedAt": "8",
-                "deletedAt": null,
-                "deviceId": "pc-device",
-                "causal": { "pc-device": 8 },
-                "data": "pl"
-            },
-            "conflict": {
-                "format": 1,
-                "schemaVersion": 2,
-                "key": "pref:locale",
-                "kind": "pref",
-                "updatedAt": "9",
-                "deletedAt": null,
-                "deviceId": "phone-device",
-                "causal": { "phone-device": 9 },
-                "data": "en"
-            }
-        });
-
-        write_conflicts(dir.path(), std::slice::from_ref(&pref_conflict)).unwrap();
-
-        assert_eq!(conflict_count(dir.path()).unwrap(), 0);
-        assert!(conflict_summaries(dir.path(), 25).unwrap().is_empty());
-
-        let mut bookmark_conflict = pref_conflict;
-        bookmark_conflict["key"] = json!("pref:readerBookmarks");
-        bookmark_conflict["kept"]["key"] = json!("pref:readerBookmarks");
-        bookmark_conflict["kept"]["data"] = json!({ "book": [{ "id": "pc" }] });
-        bookmark_conflict["conflict"]["key"] = json!("pref:readerBookmarks");
-        bookmark_conflict["conflict"]["data"] = json!({ "book": [{ "id": "phone" }] });
-        write_conflicts(dir.path(), std::slice::from_ref(&bookmark_conflict)).unwrap();
-
-        assert_eq!(conflict_count(dir.path()).unwrap(), 1);
-        let summaries = conflict_summaries(dir.path(), 25).unwrap();
-        assert_eq!(summaries.len(), 1);
-        assert_eq!(summaries[0]["key"], "pref:readerBookmarks");
     }
 
     #[test]
@@ -3387,74 +2711,6 @@ mod tests {
     }
 
     #[test]
-    fn pruning_private_preferences_preserves_future_reader_bookmarks() {
-        let dir = tempfile::tempdir().unwrap();
-        let bookmark = live_record(
-            "pref:readerBookmarks".to_string(),
-            "pref",
-            json!({ "book": [{ "id": "future-mark" }] }),
-            "future-device",
-            10,
-        );
-        let bookmark_path = record_path(dir.path(), &bookmark);
-        std::fs::create_dir_all(bookmark_path.parent().unwrap()).unwrap();
-        let future = r#"{
-          "format": 1,
-          "schemaVersion": 99,
-          "key": "pref:readerBookmarks",
-          "kind": "pref",
-          "updatedAt": "10",
-          "deletedAt": null,
-          "deviceId": "future-device",
-          "causal": { "future-device": 10 },
-          "data": { "book": [{ "id": "future-mark" }] }
-        }"#;
-        std::fs::write(&bookmark_path, future).unwrap();
-        let private = live_record(
-            "pref:theme".to_string(),
-            "pref",
-            json!("classic-dark"),
-            "device-a",
-            11,
-        );
-        let private_path = record_path(dir.path(), &private);
-        write_record(dir.path(), &private).unwrap();
-
-        prune_sync_folder_private_records(dir.path()).unwrap();
-
-        assert_eq!(std::fs::read_to_string(bookmark_path).unwrap(), future);
-        assert!(!private_path.exists());
-
-        let future_preference = live_record(
-            "pref:readerHighlights".to_string(),
-            "pref",
-            json!({ "book": [] }),
-            "future-device",
-            12,
-        );
-        let future_preference_path = record_path(dir.path(), &future_preference);
-        let future_preference_raw = r#"{
-          "format": 1,
-          "schemaVersion": 99,
-          "key": "pref:readerHighlights",
-          "kind": "pref",
-          "updatedAt": "12",
-          "deletedAt": null,
-          "deviceId": "future-device",
-          "causal": { "future-device": 12 },
-          "data": { "book": [] }
-        }"#;
-        std::fs::write(&future_preference_path, future_preference_raw).unwrap();
-
-        prune_sync_folder_private_records(dir.path()).unwrap();
-
-        assert_eq!(
-            std::fs::read_to_string(future_preference_path).unwrap(),
-            future_preference_raw
-        );
-    }
-
-    #[test]
     fn snapshot_payload_keeps_text_bodies_out_of_startup_load() {
         let dir = tempfile::tempdir().unwrap();
         let payload = json!({
@@ -3512,7 +2768,7 @@ mod tests {
         let snapshot = records_to_snapshot_payload(dir.path(), &records);
         let record = records.values().next().unwrap();
         let record_file: Value =
-            serde_json::from_slice(&std::fs::read(record_path(dir.path(), record)).unwrap())
+            serde_yaml::from_slice(&std::fs::read(record_path(dir.path(), record)).unwrap())
                 .unwrap();
 
         assert_eq!(payload["schemaVersion"], 2);
@@ -4064,35 +3320,6 @@ mod tests {
         assert_eq!(merged_record.causal["phone-device"], 2);
         assert_eq!(merged_record.causal["laptop-device"], 2);
         assert_eq!(merged.conflicts.len(), 1);
-
-        let dir = tempfile::tempdir().unwrap();
-        write_record(dir.path(), merged_record).unwrap();
-        write_conflicts(dir.path(), &merged.conflicts).unwrap();
-        let id = format!("6000-{}", stable_hash("pref:readerBookmarks"));
-        let resolved = resolve_conflict(dir.path(), &id, false, "resolve-device", 7000)
-            .unwrap()
-            .unwrap();
-        let resolved_ids = resolved.data["book"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(value_id)
-            .collect::<BTreeSet<_>>();
-        assert_eq!(resolved_ids, ids);
-
-        let dir = tempfile::tempdir().unwrap();
-        write_record(dir.path(), merged_record).unwrap();
-        write_conflicts(dir.path(), &merged.conflicts).unwrap();
-        let resolved = resolve_conflict(dir.path(), &id, true, "resolve-device", 7000)
-            .unwrap()
-            .unwrap();
-        let resolved_ids = resolved.data["book"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(value_id)
-            .collect::<BTreeSet<_>>();
-        assert_eq!(resolved_ids, ids);
     }
 
     #[test]

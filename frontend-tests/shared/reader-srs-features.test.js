@@ -592,7 +592,6 @@ describe("new interface copy", () => {
       assert.equal(typeof data.help.readerKeys.inTextReview, "string", `${locale}.help.readerKeys.inTextReview`);
       assert.ok(data.help.whatsNew.includes(appVersion), `${locale}.help.whatsNew version`);
       assert.ok(data.help.version.includes(appVersion), `${locale}.help.version`);
-      assert.match(data.help.creditSync, /Syncthing 2\.1\.0[\s\S]*MPL-2\.0/, `${locale}.help.creditSync`);
       assert.match(data.help.creditNotices, /THIRD-PARTY-NOTICES\.md/, `${locale}.help.creditNotices`);
     });
   }

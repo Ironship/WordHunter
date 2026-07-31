@@ -28,7 +28,7 @@ Intel Macs and iOS are intentionally outside the current layout.
 
 - `src-tauri/src/platform/web_app.rs` contains shared Windows/Linux/macOS desktop startup glue.
 - `src-tauri/src/platform/android.rs` contains Android startup glue.
-- `src-tauri/platforms/android/MainActivity.kt` contains the Android WebView bridge, including the sync folder picker.
+- `src-tauri/platforms/android/MainActivity.kt` contains the Android WebView bridge, including system file pickers for transfer packages.
 - `src-tauri/platforms/android/AndroidManifest.xml` contains the Android manifest template copied into Tauri's generated project.
 
 ## Android-only backend replacements
@@ -40,7 +40,7 @@ The Android backend shims live in `src-tauri/src/platform/android_backend/`. The
 - `tts.rs`: disables desktop Edge TTS on Pocket.
 - `popup.rs`: disables desktop dictionary popup endpoints on Pocket.
 
-EPUB import uses the shared Rust ebook parser on every platform. MOBI/AZW still depends on desktop Calibre `ebook-convert`, so Pocket should receive MOBI books through PC sync until a mobile parser exists.
+EPUB import uses the shared Rust ebook parser on every platform. MOBI/AZW still depends on desktop Calibre `ebook-convert`, so import those books on a computer and move them to Pocket with a full transfer package.
 
 ## Config files
 
