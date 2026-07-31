@@ -366,7 +366,10 @@ fn book_yaml_entries(
             .and_then(Value::as_str)
             .unwrap_or_default();
         entries.push((
-            format!("books/{safe_id}/records/{}.yaml", record_files::stable_hash(key)),
+            format!(
+                "books/{safe_id}/records/{}.yaml",
+                record_files::stable_hash(key)
+            ),
             record.clone(),
         ));
     }
@@ -381,9 +384,7 @@ fn write_asset_tree<W: Write + Seek>(
     depth: usize,
 ) -> Result<usize, String> {
     if depth > MAX_ASSET_TREE_DEPTH {
-        return Err(format!(
-            "book asset tree is too deep below {archive_dir}"
-        ));
+        return Err(format!("book asset tree is too deep below {archive_dir}"));
     }
     if !dir.exists() {
         return Ok(0);
@@ -757,8 +758,7 @@ mod tests {
     fn asset_tree_depth_is_limited() {
         let dir = tempfile::tempdir().unwrap();
         let images = dir.path().join("books/b1/images");
-        let nested = (0..20)
-            .fold(images.clone(), |path, _| path.join("d"));
+        let nested = (0..20).fold(images.clone(), |path, _| path.join("d"));
         std::fs::create_dir_all(&nested).unwrap();
         std::fs::write(nested.join("file.png"), b"x").unwrap();
         let file = std::fs::File::create(dir.path().join("out.zip")).unwrap();
