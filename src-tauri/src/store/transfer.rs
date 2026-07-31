@@ -11,8 +11,11 @@ const FORMAT: &str = "wordhunter-transfer";
 const SCHEMA_VERSION: u64 = 1;
 const MAX_ENTRIES: usize = 100_000;
 const MAX_YAML_BYTES: u64 = 8 * 1024 * 1024;
+const MAX_BOOK_YAML_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_ASSET_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+const MAX_PATH_COMPONENTS: usize = 32;
+const MAX_ASSET_TREE_DEPTH: usize = 16;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ExportScope {
@@ -119,18 +122,12 @@ impl Store {
         let mut exported_assets = 0usize;
         if scope == ExportScope::All {
             for (book_id, book_records) in &books {
-                let safe_id = crate::paths::sanitize_id(book_id)?;
-                write_yaml(
-                    &mut zip,
-                    &format!("books/{safe_id}/book.yaml"),
-                    &json!({
-                        "schemaVersion": SCHEMA_VERSION,
-                        "bookId": book_id,
-                        "records": book_records,
-                    }),
-                    options,
-                )?;
+                for (name, value) in book_yaml_entries(book_id, book_records, MAX_BOOK_YAML_BYTES)?
+                {
+                    write_yaml(&mut zip, &name, &value, options)?;
+                }
                 exported_records += book_records.len();
+                let safe_id = crate::paths::sanitize_id(book_id)?;
                 if books_with_assets.contains(book_id) {
                     let images = root.join("books").join(&safe_id).join("images");
                     exported_assets += write_asset_tree(
@@ -138,6 +135,7 @@ impl Store {
                         &images,
                         &format!("books/{safe_id}/images"),
                         options,
+                        0,
                     )?;
                 }
             }
@@ -337,12 +335,56 @@ fn write_yaml<W: Write + Seek>(
     zip.write_all(yaml.as_bytes()).map_err(|e| e.to_string())
 }
 
+fn book_yaml_entries(
+    book_id: &str,
+    records: &[Value],
+    max_book_yaml: u64,
+) -> Result<Vec<(String, Value)>, String> {
+    let safe_id = crate::paths::sanitize_id(book_id)?;
+    let book_value = json!({
+        "schemaVersion": SCHEMA_VERSION,
+        "bookId": book_id,
+        "records": records,
+    });
+    if serde_yaml::to_string(&book_value)
+        .map(|yaml| yaml.len() as u64 <= max_book_yaml)
+        .unwrap_or(true)
+    {
+        return Ok(vec![(format!("books/{safe_id}/book.yaml"), book_value)]);
+    }
+    let mut entries = Vec::new();
+    for record in records {
+        let yaml = serde_yaml::to_string(record).map_err(|e| e.to_string())?;
+        if yaml.len() as u64 > MAX_YAML_BYTES {
+            return Err(format!(
+                "book {book_id} has a record too large to transfer ({} bytes)",
+                yaml.len()
+            ));
+        }
+        let key = record
+            .get("key")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        entries.push((
+            format!("books/{safe_id}/records/{}.yaml", record_files::stable_hash(key)),
+            record.clone(),
+        ));
+    }
+    Ok(entries)
+}
+
 fn write_asset_tree<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
     dir: &Path,
     archive_dir: &str,
     options: SimpleFileOptions,
+    depth: usize,
 ) -> Result<usize, String> {
+    if depth > MAX_ASSET_TREE_DEPTH {
+        return Err(format!(
+            "book asset tree is too deep below {archive_dir}"
+        ));
+    }
     if !dir.exists() {
         return Ok(0);
     }
@@ -367,6 +409,7 @@ fn write_asset_tree<W: Write + Seek>(
                 &entry.path(),
                 &format!("{archive_dir}/{name}"),
                 options,
+                depth + 1,
             )?;
         } else if file_type.is_file() {
             zip.start_file(format!("{archive_dir}/{name}"), options)
@@ -507,6 +550,9 @@ fn validated_archive_name(name: &str) -> Result<String, String> {
     if parts.is_empty() {
         return Err("archive path is empty".to_string());
     }
+    if parts.len() > MAX_PATH_COMPONENTS {
+        return Err("archive path has too many components".to_string());
+    }
     Ok(parts.join("/"))
 }
 
@@ -514,7 +560,8 @@ fn is_record_yaml(name: &str) -> bool {
     name.ends_with(".yaml")
         && (name.starts_with("words/")
             || name.starts_with("records/")
-            || (name.starts_with("books/") && name.ends_with("/book.yaml")))
+            || (name.starts_with("books/")
+                && (name.ends_with("/book.yaml") || name.contains("/records/"))))
 }
 
 fn record_book_id(record: &record_files::SyncRecord) -> Option<String> {
@@ -620,6 +667,111 @@ mod tests {
             validated_archive_name("words/one.yaml").unwrap(),
             "words/one.yaml"
         );
+        assert!(validated_archive_name(&format!("{}x.yaml", "a/".repeat(40))).is_err());
+    }
+
+    #[test]
+    fn oversized_book_yaml_splits_into_per_record_entries() {
+        let long = "x".repeat(500);
+        let records = vec![
+            json!({ "key": "text:book-1", "data": long }),
+            json!({ "key": "book:de:book-1", "data": "b" }),
+        ];
+        let entries = book_yaml_entries("book-1", &records, 64).unwrap();
+        assert_eq!(entries.len(), 2);
+        assert!(
+            entries
+                .iter()
+                .all(|(name, _)| name.starts_with("books/book-1/records/"))
+        );
+        for (_, value) in &entries {
+            assert!(serde_yaml::to_string(value).unwrap().len() as u64 <= MAX_YAML_BYTES);
+        }
+        let small = book_yaml_entries("book-1", &records, 1024 * 1024).unwrap();
+        assert_eq!(small.len(), 1);
+        assert!(small[0].0.ends_with("/book.yaml"));
+
+        let huge = vec![json!({ "key": "text:book-1", "data": "x".repeat(9 * 1024 * 1024) })];
+        assert!(book_yaml_entries("book-1", &huge, 64).is_err());
+    }
+
+    #[test]
+    fn split_book_package_imports_all_records_and_assets() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = store(dir.path(), "phone");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}}},
+                "texts": [{
+                    "id": "book-1",
+                    "title": "Big PDF",
+                    "pdfOcrPages": [{"imageName": "page.png"}]
+                }],
+            }),
+            "pc",
+            200,
+        );
+        let book_records = records
+            .values()
+            .filter(|record| record_book_id(record).is_some())
+            .map(record_files::record_value)
+            .collect::<Vec<_>>();
+
+        let archive = dir.path().join("split.zip");
+        let file = std::fs::File::create(&archive).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let options = SimpleFileOptions::default();
+        write_yaml(
+            &mut zip,
+            "manifest.yaml",
+            &json!({
+                "format": FORMAT,
+                "schemaVersion": SCHEMA_VERSION,
+                "appVersion": "1.0.9-rc.7",
+                "exportedAt": "1",
+                "scope": "all",
+            }),
+            options,
+        )
+        .unwrap();
+        for (name, value) in book_yaml_entries("book-1", &book_records, 1).unwrap() {
+            write_yaml(&mut zip, &name, &value, options).unwrap();
+        }
+        zip.start_file("books/book-1/images/page.png", options)
+            .unwrap();
+        zip.write_all(b"page image").unwrap();
+        zip.finish().unwrap();
+
+        let result = target.import_transfer(&archive).unwrap();
+        assert_eq!(result["imported"], 1);
+        assert_eq!(result["assets"], 1);
+        let loaded = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(loaded["text:book-1"].data["title"], "Big PDF");
+        assert_eq!(
+            std::fs::read(dir.path().join("books/book-1/images/page.png")).unwrap(),
+            b"page image"
+        );
+    }
+
+    #[test]
+    fn asset_tree_depth_is_limited() {
+        let dir = tempfile::tempdir().unwrap();
+        let images = dir.path().join("books/b1/images");
+        let nested = (0..20)
+            .fold(images.clone(), |path, _| path.join("d"));
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("file.png"), b"x").unwrap();
+        let file = std::fs::File::create(dir.path().join("out.zip")).unwrap();
+        let mut zip = ZipWriter::new(file);
+        let result = write_asset_tree(
+            &mut zip,
+            &images,
+            "books/b1/images",
+            SimpleFileOptions::default(),
+            0,
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("too deep"));
     }
 
     #[test]
