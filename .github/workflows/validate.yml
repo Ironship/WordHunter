@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Repository validation (tests, clippy, licenses)
@@ -60,6 +64,9 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+
       - name: Install pinned cargo-about
         run: cargo install cargo-about --version 0.9.1 --locked --features cli
 
@@ -79,6 +86,7 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
         with:
           node-version: "22"
+          cache: npm
 
       - name: Set up Java
         uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a
@@ -99,6 +107,9 @@ jobs:
         uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
         with:
           targets: aarch64-linux-android
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
