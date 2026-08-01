@@ -593,7 +593,7 @@ mod tests {
     }
 
     #[test]
-    fn redirected_missing_data_dir_errors_instead_of_creating_empty_folder() {
+    fn redirected_missing_data_dir_falls_back_to_default_folder() {
         let _lock = crate::TEST_ENV_LOCK
             .lock()
             .unwrap_or_else(|e| e.into_inner());
@@ -606,9 +606,17 @@ mod tests {
         )
         .unwrap();
 
-        let error = crate::paths::data_dir("WordHunter").unwrap_err();
+        let dir = crate::paths::data_dir("WordHunter").unwrap();
 
-        assert!(error.contains("configured data folder is missing"));
+        assert_eq!(dir, appdata.path().join("WordHunter"));
+        assert!(dir.is_dir());
+        // The stale pointer is cleared so the next start does not fail again.
+        assert_eq!(
+            std::fs::read_to_string(appdata.path().join("WordHunter-data-dir.txt"))
+                .unwrap_or_default()
+                .trim(),
+            ""
+        );
         assert!(!missing.exists());
     }
 }
