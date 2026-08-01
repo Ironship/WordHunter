@@ -92,7 +92,7 @@ export function analyzeReaderSession(
   vocabularyRevision: number
 ): ReaderSession {
   if (session.analysisRevision === vocabularyRevision && session.classifications && session.stats) return session;
-  session.classifications = classifyTokenOccurrences(session.tokens, vocab, language);
+  session.classifications = classifyTokenOccurrences(session.tokens, vocab, language, vocabularyRevision);
   session.stats = getTokenStatsFromClassifications(session.tokens, session.classifications, language);
   session.analysisRevision = vocabularyRevision;
   return session;

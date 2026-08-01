@@ -1,0 +1,13 @@
+Word Hunter 1.0.9-rc.9
+
+- Requires a local token for reader, library, and store data endpoints; other
+  apps on a shared loopback can no longer read your vocabulary.
+- Caps the "whole book" page size so very large books no longer freeze the UI.
+- Speeds up page turns on large vocabularies (phrase index is cached).
+- Bounds per-book scroll history; deleted books are cleaned up.
+- Export/import: ZIP packages now honor the same size and entry limits as the
+  importer, and exporting no longer blocks saves for the whole build.
+- HTTP server: stalled clients are dropped after 60 seconds (slow-loris fix).
+- Hardened Content-Security-Policy and Android TTS bridge limits.
+- Android PDF overlay import: page rendering yields between pages and is
+  capped to keep the UI responsive.

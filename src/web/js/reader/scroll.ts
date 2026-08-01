@@ -17,6 +17,17 @@ export interface RememberReaderScrollOptions {
   flush?: boolean;
 }
 
+const MAX_READER_SCROLLS_PER_PAGE_ENTRIES = 5000;
+
+function trimReaderScrollsPerPage(): void {
+  if (!state.readerScrollsPerPage) return;
+  const keys = Object.keys(state.readerScrollsPerPage);
+  if (keys.length <= MAX_READER_SCROLLS_PER_PAGE_ENTRIES) return;
+  for (const key of keys.slice(0, keys.length - MAX_READER_SCROLLS_PER_PAGE_ENTRIES)) {
+    delete state.readerScrollsPerPage[key];
+  }
+}
+
 function readWordIndex(token: HTMLElement | null): number | null {
   const idx = Number.parseInt(token?.dataset.wordIndex || "", 10);
   return Number.isFinite(idx) ? idx : null;
@@ -89,6 +100,7 @@ export function rememberReaderScrollPosition({ precise = true, flush = false }: 
   state.readerScrolls[state.currentTextId] = next;
   if (state.readerScrollsPerPage && perPageKey) {
     state.readerScrollsPerPage[perPageKey] = scrollTop;
+    trimReaderScrollsPerPage();
   }
   if (flush) saveUiState();
 }

@@ -1,6 +1,6 @@
 [package]
 name = "word-hunter"
-version = "1.0.9-rc.8"
+version = "1.0.9-rc.9"
 description = "Word Hunter Rust/Tauri desktop reader, vocabulary trainer, and offline translator"
 authors = ["Ironship <25068602+Ironship@users.noreply.github.com>"]
 edition = "2024"
@@ -35,6 +35,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = { package = "serde_yaml_ng", version = "0.10" }
 sha2 = "0.10"
+socket2 = { version = "0.6", features = ["all"] }
 tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }

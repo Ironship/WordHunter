@@ -16,6 +16,7 @@ import {
   computeIndexedPageSlice,
   cacheTotalPages,
   changeReaderPage,
+  effectiveWordsPerPage,
   goToReaderPage
 } from "./pagination.js";
 import { analyzeReaderSession, getReaderSession } from "./session.js";
@@ -226,7 +227,7 @@ export function renderReader(): void {
       renderTrackingSummary(stats);
       els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
 
-      const wordsPerPage = Number(state.preferences.wordsPerPage) || 1000;
+      const wordsPerPage = effectiveWordsPerPage(Number(state.preferences.wordsPerPage) || 1000);
       const totalPages = computeTotalPages(session.totalWords, wordsPerPage);
       cacheTotalPages(current.id, totalPages);
 
