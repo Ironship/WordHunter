@@ -72,10 +72,13 @@ pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
             } else if dir.is_dir() {
                 dir
             } else {
-                return Err(format!(
-                    "configured data folder is missing: {}",
-                    dir.display()
-                ));
+                // The user-chosen folder no longer exists (it was deleted,
+                // moved, or sits on a detached drive). Falling back to the
+                // default data folder keeps the app launchable, and the stale
+                // pointer is cleared so the next start does not hit the same
+                // dead end. The user can re-select a folder in Settings.
+                let _ = write_config_file(app_name, "data-dir", &[]);
+                default
             }
         }
         None => default,
