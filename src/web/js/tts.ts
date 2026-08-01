@@ -8,6 +8,7 @@ let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
 let currentEdgeTtsRequest: AbortController | null = null;
 let currentAudioObjectUrl: string | null = null;
+let currentEdgeWatchdog = 0;
 let onFinishCallback: (() => void) | null = null;
 let androidUtteranceSeq = 0;
 let currentTtsWordToken: Element | null = null;
@@ -450,13 +451,30 @@ function playEdgeTtsAudio(
   audio.onended = () => {
     if (settled) return;
     settled = true;
+    clearTimeout(currentEdgeWatchdog);
+    currentEdgeWatchdog = 0;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
     if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
   };
+  const watchdog = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    currentEdgeWatchdog = 0;
+    if (currentAudio === audio) currentAudio = null;
+    releaseAudioObjectUrl(objectUrl);
+    console.warn("Edge TTS playback watchdog fired; falling back to local speech");
+    if (!speaking || sessionId !== ttsSessionId) return;
+    speakSentenceLocal(sentence, () => {
+      if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+    }, tracker);
+  }, sentence.length * 120 + 15_000);
+  currentEdgeWatchdog = watchdog;
   const fallback = (err: unknown) => {
     if (settled) return;
     settled = true;
+    clearTimeout(currentEdgeWatchdog);
+    currentEdgeWatchdog = 0;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
     console.warn("Edge TTS play failed", err);
@@ -480,6 +498,8 @@ function parseEdgeWordTimings(value: string | null): number[] {
 function clearCurrentEdgeAudio(): void {
   currentEdgeTtsRequest?.abort();
   currentEdgeTtsRequest = null;
+  clearTimeout(currentEdgeWatchdog);
+  currentEdgeWatchdog = 0;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;

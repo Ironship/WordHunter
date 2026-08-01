@@ -134,7 +134,34 @@ fn run_ytdlp(
         .arg("-o")
         .arg(&output_template)
         .arg(watch_url(&info.id));
-    let output = process.output().map_err(|e| e.to_string())?;
+    let mut child = process
+        .spawn()
+        .map_err(|e| format!("Could not start yt-dlp: {e}"))?;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    let output = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let output = child.wait_with_output();
+                break match output {
+                    Ok(output) => std::process::Output {
+                        status,
+                        stdout: output.stdout,
+                        stderr: output.stderr,
+                    },
+                    Err(e) => return Err(format!("Could not read yt-dlp output: {e}")),
+                };
+            }
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err("yt-dlp timed out after 120 seconds".to_string());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => return Err(format!("Could not wait for yt-dlp: {e}")),
+        }
+    };
     if !output.status.success() {
         return Err(process_error(&output));
     }
