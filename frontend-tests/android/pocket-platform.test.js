@@ -152,6 +152,7 @@ describe("Android Pocket platform", () => {
         classList: createClassList(),
         style: { zoom: "", setProperty(name, value) { this[name] = value; } }
       },
+      addEventListener() {},
       getElementById(id) {
         if (id === "import-file") return importFile;
         if (id === "import-file-hint") return importHint;
@@ -220,6 +221,7 @@ describe("Android Pocket platform", () => {
         classList: createClassList(),
         style: { zoom: "", setProperty(name, value) { this[name] = value; } }
       },
+      addEventListener() {},
       getElementById(id) {
         if (id === "import-file") return importFile;
         if (id === "import-file-hint") return importHint;
@@ -318,6 +320,7 @@ describe("Android Pocket platform", () => {
     });
     globalThis.document = {
       documentElement: root,
+      addEventListener(type, handler) { addListener(listeners, type, handler); },
       getElementById(id) {
         if (id === "pocket-word-panel-sheet-handle") return handle;
         if (id === "word-panel") return wordPanel;
@@ -336,18 +339,18 @@ describe("Android Pocket platform", () => {
     assert.equal(handle.listeners.pointerdown.length, 1);
     assert.equal(listeners.resize.length, 1);
     assert.equal(listeners.orientationchange.length, 1);
-    assert.equal(visualViewportListeners.resize.length, 1);
+    assert.equal(visualViewportListeners.resize.length, 2);
     assert.equal(observedContent.target, wordPanel);
     assert.deepEqual(observedContent.options.attributeFilter, ["hidden"]);
     assert.equal(wordPanel.listeners.load.length, 1);
     assert.equal(wrapper.style.values["--pocket-word-sheet-expanded-top"], "80px");
-    assert.equal(handle.attrs["aria-expanded"], "false");
+    assert.equal(handle.attrs["aria-expanded"], "true");
 
     handle.listeners.click[0]({ preventDefault() {} });
-    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
-    assert.equal(handle.attrs["aria-expanded"], "true");
-    handle.listeners.click[0]({ preventDefault() {} });
     assert.equal(wrapper.dataset.pocketSheetState, "collapsed");
+    assert.equal(handle.attrs["aria-expanded"], "false");
+    handle.listeners.click[0]({ preventDefault() {} });
+    assert.equal(wrapper.dataset.pocketSheetState, "expanded");
 
     handle.listeners.pointerdown[0]({ isPrimary: true, button: 0, pointerId: 4, clientX: 100, clientY: 550 });
     now = 16;
