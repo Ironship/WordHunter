@@ -179,6 +179,9 @@ pub(crate) fn serve_edge_tts(request: Request, query: &str) -> Result<(), String
     if text.trim().is_empty() {
         return response::error_response(request, 400, "TTS text is empty");
     }
+    if text.chars().count() > 500 {
+        return response::error_response(request, 400, "TTS text is too long (max 500 characters)");
+    }
 
     match tts::synthesize(&text, &lang, &rate) {
         Ok(result) => {

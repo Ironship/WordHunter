@@ -194,6 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.documentElement.classList.remove("app-booting");
   }
   window.requestAnimationFrame(() => {
+    if (document.documentElement.dataset.platform === "android") return;
     setTimeout(() => import("./js/update-checker.js").then(m => m.checkForUpdates()), 0);
   });
 });

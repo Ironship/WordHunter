@@ -150,6 +150,7 @@ class MainActivity : TauriActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     cleanTransferCache()
+    cleanPdfRenderCache()
     textToSpeech = TextToSpeech(this) { status ->
       ttsReady = status == TextToSpeech.SUCCESS
     }
@@ -199,6 +200,17 @@ class MainActivity : TauriActivity() {
         if (!file.delete()) {
           Log.w("WordHunter", "Could not clean stale transfer cache: ${file.absolutePath}")
         }
+      }
+    }
+  }
+
+  private fun cleanPdfRenderCache() {
+    val root = cacheDir
+    val stale = root.listFiles { file -> file.isFile && file.name.startsWith("wordhunter-pdf-render-") }
+      ?: return
+    for (file in stale) {
+      if (!file.delete()) {
+        Log.w("WordHunter", "Could not clean stale PDF render cache: ${file.absolutePath}")
       }
     }
   }
@@ -341,19 +353,28 @@ class MainActivity : TauriActivity() {
         val id = safePdfRenderSessionId(sessionId)
         val data = decodeDataUrl(dataUrl)
         val file = File(cacheDir, "wordhunter-pdf-render-$id.pdf")
-        FileOutputStream(file).use { output ->
-          output.write(data)
-          output.fd.sync()
-        }
-        val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        val renderer = PdfRenderer(descriptor)
-        synchronized(pdfRenderLock) {
-          pdfRenderSessions.remove(id)?.close()
-          pdfRenderSessions[id] = PdfRenderSession(file, descriptor, renderer)
+        var descriptor: ParcelFileDescriptor? = null
+        try {
+          FileOutputStream(file).use { output ->
+            output.write(data)
+            output.fd.sync()
+          }
+          descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+          val renderer = PdfRenderer(descriptor)
+          synchronized(pdfRenderLock) {
+            pdfRenderSessions.remove(id)?.close()
+            pdfRenderSessions[id] = PdfRenderSession(file, descriptor, renderer)
+          }
+        } catch (error: Throwable) {
+          descriptor?.close()
+          if (!file.delete()) {
+            Log.w("WordHunter", "Could not delete failed PDF render temp: ${file.absolutePath}")
+          }
+          throw error
         }
         JSONObject()
           .put("success", true)
-          .put("pageCount", renderer.pageCount)
+          .put("pageCount", pdfRenderSessions[id]?.renderer?.pageCount ?: 0)
           .toString()
       }.getOrElse { error ->
         JSONObject()
