@@ -21,6 +21,7 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Base64
 import android.util.Log
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
@@ -35,10 +36,13 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
 private const val ANDROID_EXPORT_TIMEOUT_MS = 120000L
+private const val ANDROID_EXPORT_WRITE_TIMEOUT_MS = 300000L
 private const val ANDROID_TRANSFER_MAX_BYTES = 2L * 1024L * 1024L * 1024L
 private const val ANDROID_PDF_MAX_BITMAP_PIXELS = 8_000_000
+private const val ANDROID_DIRECT_EXPORT_MAX_CHARS = 64L * 1024L * 1024L
 private const val TTS_NOTIFICATION_CHANNEL_ID = "wordhunter-tts"
 private const val TTS_NOTIFICATION_ID = 1001
+private const val EXTRA_TTS_STOP = "wordhunter-tts-stop"
 
 class MainActivity : TauriActivity() {
   private var appWebView: WebView? = null
@@ -77,7 +81,15 @@ class MainActivity : TauriActivity() {
         false
       } else {
         export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
-        export.timeoutRunnable = null
+        val writeTimeout = Runnable {
+          synchronized(bridgeLock) {
+            if (pendingExport?.requestId == export.requestId) pendingExport = null
+          }
+          export.sourcePath?.let { File(it).delete() }
+          dispatchAndroidExportResult(export.requestId, success = false, error = "Android export write timed out.", cancelled = false, status = "timeout")
+        }
+        export.timeoutRunnable = writeTimeout
+        mainHandler.postDelayed(writeTimeout, ANDROID_EXPORT_WRITE_TIMEOUT_MS)
         true
       }
     }
@@ -115,18 +127,20 @@ class MainActivity : TauriActivity() {
     ActivityResultContracts.StartActivityForResult()
   ) { result ->
     val requestId = pendingImportRequestId ?: return@registerForActivityResult
-    pendingImportRequestId = null
     val uri = result.data?.data
     if (result.resultCode != Activity.RESULT_OK || uri == null) {
+      pendingImportRequestId = null
       dispatchAndroidImportResult(requestId, success = false, path = null, error = null, cancelled = true)
       return@registerForActivityResult
     }
     exportExecutor.execute {
       runCatching { copyImportDocument(uri, requestId) }
         .onSuccess { path ->
+          pendingImportRequestId = null
           dispatchAndroidImportResult(requestId, success = true, path = path, error = null, cancelled = false)
         }
         .onFailure { error ->
+          pendingImportRequestId = null
           dispatchAndroidImportResult(requestId, success = false, path = null, error = error.message, cancelled = false)
         }
     }
@@ -135,6 +149,7 @@ class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    cleanTransferCache()
     textToSpeech = TextToSpeech(this) { status ->
       ttsReady = status == TextToSpeech.SUCCESS
     }
@@ -144,18 +159,15 @@ class MainActivity : TauriActivity() {
       }
 
       override fun onDone(utteranceId: String?) {
-        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "done")
       }
 
       @Deprecated("Deprecated in Android API")
       override fun onError(utteranceId: String?) {
-        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "error")
       }
 
       override fun onStop(utteranceId: String?, interrupted: Boolean) {
-        hideTtsNotification()
         dispatchAndroidTtsResult(utteranceId, "stopped")
       }
 
@@ -163,6 +175,40 @@ class MainActivity : TauriActivity() {
         dispatchAndroidTtsResult(utteranceId, "range", start, end)
       }
     })
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    if (!intent.getBooleanExtra(EXTRA_TTS_STOP, false)) return
+    intent.removeExtra(EXTRA_TTS_STOP)
+    runOnUiThread {
+      textToSpeech?.stop()
+      hideTtsNotification()
+      clearKeepScreenOn()
+    }
+    val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-tts-stop'));"
+    appWebView?.post { appWebView?.evaluateJavascript(script, null) }
+  }
+
+  private fun cleanTransferCache() {
+    val root = File(cacheDir, "wordhunter-transfer")
+    val children = root.listFiles() ?: return
+    val cutoff = System.currentTimeMillis() - 6 * 60 * 60 * 1000L
+    for (file in children) {
+      if (file.isFile && file.lastModified() < cutoff) {
+        if (!file.delete()) {
+          Log.w("WordHunter", "Could not clean stale transfer cache: ${file.absolutePath}")
+        }
+      }
+    }
+  }
+
+  private fun keepScreenOn() {
+    runOnUiThread { window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+  }
+
+  private fun clearKeepScreenOn() {
+    runOnUiThread { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
   }
 
   override fun onResume() {
@@ -192,6 +238,7 @@ class MainActivity : TauriActivity() {
     exportExecutor.shutdownNow()
     closeAllPdfRenderSessions()
     hideTtsNotification()
+    clearKeepScreenOn()
     textToSpeech?.stop()
     textToSpeech?.shutdown()
     textToSpeech = null
@@ -244,12 +291,25 @@ class MainActivity : TauriActivity() {
         return false
       }
       engine.setSpeechRate(rate.toFloat().coerceIn(0.5f, 2.0f))
-      return engine.speak(
+      val started = engine.speak(
         phrase,
         TextToSpeech.QUEUE_FLUSH,
         Bundle.EMPTY,
         utteranceId ?: System.nanoTime().toString()
       ) == TextToSpeech.SUCCESS
+      if (started) keepScreenOn()
+      return started
+    }
+
+    @JavascriptInterface
+    fun isTtsReady(): Boolean = ttsReady
+
+    @JavascriptInterface
+    fun endTtsSession() {
+      runOnUiThread {
+        hideTtsNotification()
+        clearKeepScreenOn()
+      }
     }
 
     @JavascriptInterface
@@ -257,6 +317,7 @@ class MainActivity : TauriActivity() {
       runOnUiThread {
         textToSpeech?.stop()
         hideTtsNotification()
+        clearKeepScreenOn()
       }
     }
 
@@ -487,6 +548,9 @@ class MainActivity : TauriActivity() {
   }
 
   private fun writeExportDocument(uri: Uri, data: String) {
+    if (data.length > ANDROID_DIRECT_EXPORT_MAX_CHARS) {
+      error("Export is too large for direct Android write.")
+    }
     contentResolver.openFileDescriptor(uri, "wt")?.use { descriptor ->
       FileOutputStream(descriptor.fileDescriptor).use { output ->
         val writer = OutputStreamWriter(output, Charsets.UTF_8)
@@ -648,6 +712,16 @@ class MainActivity : TauriActivity() {
         openApp,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
       )
+      val stopIntent = Intent(this, MainActivity::class.java).apply {
+        addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        putExtra(EXTRA_TTS_STOP, true)
+      }
+      val stopPendingIntent = PendingIntent.getActivity(
+        this,
+        1,
+        stopIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      )
       val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         Notification.Builder(this, TTS_NOTIFICATION_CHANNEL_ID)
       } else {
@@ -660,10 +734,11 @@ class MainActivity : TauriActivity() {
           .setContentTitle(applicationInfo.loadLabel(packageManager))
           .setContentText("TTS")
           .setContentIntent(contentIntent)
-          .setAutoCancel(true)
+          .setOngoing(true)
           .setOnlyAlertOnce(true)
           .setCategory(Notification.CATEGORY_TRANSPORT)
           .setVisibility(Notification.VISIBILITY_PRIVATE)
+          .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
           .build()
       )
     }
