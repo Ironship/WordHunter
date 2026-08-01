@@ -14,6 +14,17 @@ interface PageSlice {
   pageEndIndex: number;
 }
 
+/**
+ * Hard ceiling for one rendered page. "Whole book" (999999) would build a DOM
+ * with hundreds of thousands of word-token buttons and freeze the UI for
+ * minutes on large books, so it is clamped to this many words per page.
+ */
+const MAX_WORDS_PER_PAGE = 10000;
+
+export function effectiveWordsPerPage(preferred: number): number {
+  return Math.min(Math.max(1, Math.trunc(preferred) || 1), MAX_WORDS_PER_PAGE);
+}
+
 let _cachedTotalPages: { textId: string | null; totalPages: number } = { textId: null, totalPages: 1 };
 
 function countWordTokens(tokens: readonly TextToken[]): number {
@@ -48,11 +59,11 @@ export function computeIndexedPageSlice(
   readerPage: number,
   wordsPerPage: number
 ): PageSlice {
-  if (wordsPerPage >= 999999) return { pageStartIndex: 0, pageEndIndex: tokenCount };
-  const startWord = Math.max(0, readerPage - 1) * wordsPerPage;
+  const limit = effectiveWordsPerPage(wordsPerPage);
+  const startWord = Math.max(0, readerPage - 1) * limit;
   return {
     pageStartIndex: startWord === 0 ? 0 : wordTokenIndexes[startWord] ?? tokenCount,
-    pageEndIndex: wordTokenIndexes[startWord + wordsPerPage] ?? tokenCount
+    pageEndIndex: wordTokenIndexes[startWord + limit] ?? tokenCount
   };
 }
 

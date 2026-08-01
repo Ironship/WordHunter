@@ -20,11 +20,19 @@ enum PendingRecovery {
 
 impl Store {
     fn save_journal_path(&self) -> std::path::PathBuf {
-        self.inner.lock().unwrap().dir.join("save-journal.json")
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .dir
+            .join("save-journal.json")
     }
 
     fn wipe_journal_path(&self) -> std::path::PathBuf {
-        self.inner.lock().unwrap().dir.join("wipe-journal.json")
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .dir
+            .join("wipe-journal.json")
     }
 
     pub(crate) fn recover_pending_save(&self) -> Result<(), String> {
@@ -54,7 +62,11 @@ impl Store {
                     continue;
                 }
             };
-            let current_base = self.base_records.lock().unwrap().clone();
+            let current_base = self
+                .base_records
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone();
             let (payload, base, saved_at) = match decode_save_journal(&journal_value, current_base)
             {
                 Ok(journal) => journal,
@@ -144,13 +156,17 @@ impl Store {
     pub fn acknowledge_frontend_snapshot(&self, payload: &Value) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         validate_snapshot_payload_schema(payload)?;
-        let previous = self.base_records.lock().unwrap().clone();
+        let previous = self
+            .base_records
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let now = record_files::now_millis();
         let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let current = record_files::load_records(&self.dir())?;
-        *self.base_records.lock().unwrap() =
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(&previous, &incoming_fingerprints, &current);
         Ok(())
     }
@@ -173,14 +189,21 @@ impl Store {
         match self.recover_pending_operations()? {
             PendingRecovery::None => {}
             PendingRecovery::Save => {
-                self.base_records.lock().unwrap().clear();
+                self.base_records
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .clear();
             }
             PendingRecovery::Wipe => {
                 return Err("pending wipe was recovered; reload before saving".to_string());
             }
         }
         validate_snapshot_payload_schema(&payload)?;
-        let base = self.base_records.lock().unwrap().clone();
+        let base = self
+            .base_records
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         let saved_at = record_files::now_millis();
         let mut incoming = record_files::payload_to_records(&payload, self.device_id(), saved_at);
         self.hydrate_text_records(&mut incoming)?;
@@ -199,7 +222,10 @@ impl Store {
     pub fn restore_backup(&self, payload: Value) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         if self.recover_pending_wipe()? {
-            self.base_records.lock().unwrap().clear();
+            self.base_records
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clear();
         }
         validate_snapshot_payload_schema(&payload)?;
         let current = record_files::load_records(&self.dir())?;
@@ -233,7 +259,7 @@ impl Store {
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let merged = record_files::merge_records(base, incoming, current, self.device_id(), now);
         record_files::write_records(&self.dir(), &merged.records)?;
-        *self.base_records.lock().unwrap() =
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
         Ok(())
     }
@@ -254,7 +280,8 @@ impl Store {
     fn records_snapshot(&self) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
-        *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
+            record_files::fingerprints(&records);
         if records.is_empty() {
             return Ok(empty_snapshot(dir));
         }
@@ -290,12 +317,13 @@ impl Store {
     fn write_wipe_tombstones(&self) -> Result<(), String> {
         let records = record_files::tombstone_all(&self.dir(), self.device_id())?;
         media_assets::tombstone_all(&self.dir(), self.device_id())?;
-        *self.base_records.lock().unwrap() = record_files::fingerprints(&records);
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
+            record_files::fingerprints(&records);
         Ok(())
     }
 
     fn cleanup_after_wipe(&self) -> Result<(), String> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         record_files::remove_record_backups(&inner.dir)?;
         let ui_state = inner.dir.join(super::UI_STATE_FILE);
         remove_if_exists(&ui_state)?;

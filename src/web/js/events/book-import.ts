@@ -84,6 +84,13 @@ let youtubeTracks: YoutubeTrack[] = [];
 let youtubeTracksUrl = "";
 const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
 const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+/**
+ * Rendering each PDF page synchronously on the JavaBridge stalls the JS
+ * renderer ~100–500 ms per page. A 2000-page book would freeze the UI for
+ * dozens of minutes, so Android overlay rendering is capped here (and the
+ * page loop yields between pages so the spinner keeps painting).
+ */
+const MAX_POCKET_PDF_RENDER_PAGES = 300;
 const MAX_DESKTOP_OCR_IMAGE_BYTES = 32 * 1024 * 1024;
 const MAX_DESKTOP_IMPORT_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_POCKET_IMPORT_FILE_BYTES = 24 * 1024 * 1024;
@@ -188,14 +195,18 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
   const bridge = getAndroidPdfRendererBridge();
   if (!bridge) throw new Error(t("toast.pdfOcrRequiresApp"));
 
+  const limitedPages = pages.slice(0, MAX_POCKET_PDF_RENDER_PAGES);
   const sessionId = `wh-pdf-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   parseAndroidPdfRenderResponse(
     bridge.beginPdfRender(sessionId, data),
     t("toast.pdfOcrNoText")
   );
   try {
-    for (let index = 0; index < pages.length; index += 1) {
-      const page = pages[index];
+    for (let index = 0; index < limitedPages.length; index += 1) {
+      // Yield between synchronous bridge renders so the UI keeps painting
+      // (spinner, progress) instead of freezing for the whole import.
+      await waitForUiPaint();
+      const page = limitedPages[index];
       const rendered = parseAndroidPdfRenderResponse(
         bridge.renderPdfPage(sessionId, index, 1400),
         t("toast.pdfOcrNoText")

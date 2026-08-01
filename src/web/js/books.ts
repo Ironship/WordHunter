@@ -230,7 +230,10 @@ function fetchCustomTextContent(text: WhText): Promise<string> {
   const generation = (textCacheGenerationById.get(text.id) || 0) + 1;
   textCacheGenerationById.set(text.id, generation);
   staleBookTextIds.add(text.id);
-  const promise = fetchWithTimeout(`/__book/text?id=${encodeURIComponent(text.id)}`, { cache: "no-store" }, 20_000)
+  const promise = fetchWithTimeout(`/__book/text?id=${encodeURIComponent(text.id)}`, {
+    cache: "no-store",
+    headers: { "X-WH-Token": window.WH_TOKEN || "" }
+  }, 20_000)
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
@@ -261,7 +264,10 @@ export async function loadCustomTextPdfPages(text: WhText): Promise<WhRecord[]> 
     return text?.pdfOcrPages || [];
   }
   if (pdfPagesLoadingById.has(text.id)) return pdfPagesLoadingById.get(text.id);
-  const promise = fetchWithTimeout(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, { cache: "no-store" }, 20_000)
+  const promise = fetchWithTimeout(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, {
+    cache: "no-store",
+    headers: { "X-WH-Token": window.WH_TOKEN || "" }
+  }, 20_000)
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();

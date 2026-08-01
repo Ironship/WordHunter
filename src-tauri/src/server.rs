@@ -4,6 +4,7 @@ use std::net::TcpListener;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 use tauri::AppHandle;
 use tiny_http::Server;
 
@@ -12,6 +13,7 @@ use crate::store::Store;
 const MAX_REGULAR_REQUEST_WORKERS: usize = 10;
 const MAX_STORE_REQUEST_WORKERS: usize = 4;
 const MAX_CONTROL_REQUEST_WORKERS: usize = 2;
+const REQUEST_READ_TIMEOUT: Duration = Duration::from_secs(60);
 
 struct RequestPermit {
     active: Arc<AtomicUsize>,
@@ -149,6 +151,19 @@ pub fn start_server_on_port(
     start_server_from_listener(listener, store, token, app_handle)
 }
 
+fn apply_socket_timeouts(listener: &TcpListener) -> Result<(), String> {
+    use socket2::SockRef;
+
+    let socket = SockRef::from(listener);
+    socket
+        .set_read_timeout(Some(REQUEST_READ_TIMEOUT))
+        .map_err(|e| e.to_string())?;
+    socket
+        .set_write_timeout(Some(REQUEST_READ_TIMEOUT))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn start_server_from_listener(
     listener: TcpListener,
     store: Arc<Store>,
@@ -156,6 +171,9 @@ fn start_server_from_listener(
     app_handle: AppHandle,
 ) -> Result<u16, String> {
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    // Enforce a read timeout on every accepted connection so a stalled client
+    // (slow-loris) cannot pin a worker thread forever with an incomplete body.
+    apply_socket_timeouts(&listener)?;
     let server = Server::from_listener(listener, None).map_err(|e| e.to_string())?;
     let state = Arc::new(ServerState {
         base_url: format!("http://{}:{}", crate::HOST, port),

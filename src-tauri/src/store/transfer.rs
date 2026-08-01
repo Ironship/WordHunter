@@ -62,17 +62,23 @@ impl Drop for ImportPlan {
 
 impl Store {
     pub fn export_transfer(&self, target: &Path, scope: ExportScope) -> Result<Value, String> {
-        let _guard = self.lock_writes()?;
-        self.recover_pending_save()?;
-        let root = self.dir();
-        let records = record_files::load_records(&root)?;
+        // Keep the write lock only for the quick snapshot phase (record listing and
+        // pending-save recovery). Building the ZIP reads asset files and can take
+        // minutes for large libraries — holding the lock that long would block all
+        // saves, snapshots, and imports app-wide.
+        let records = {
+            let _guard = self.lock_writes()?;
+            self.recover_pending_save()?;
+            record_files::load_records(&self.dir())?
+        };
         let file = std::fs::File::create(target)
             .map_err(|e| format!("could not create export {}: {e}", target.display()))?;
         let mut zip = ZipWriter::new(file);
         let options = SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(0o600);
-        write_yaml(
+        let mut counters = ExportCounters::default();
+        write_yaml_counted(
             &mut zip,
             "manifest.yaml",
             &json!({
@@ -83,24 +89,25 @@ impl Store {
                 "scope": scope.as_str(),
             }),
             options,
+            &mut counters,
         )?;
 
         let mut books: BTreeMap<String, Vec<Value>> = BTreeMap::new();
         let mut books_with_assets = BTreeSet::new();
-        let mut exported_records = 0usize;
         for record in records.values() {
             if scope == ExportScope::Vocabulary && record.kind != "vocab" {
                 continue;
             }
             let value = record_files::record_value(record);
             if record.kind == "vocab" {
-                write_yaml(
+                write_yaml_counted(
                     &mut zip,
                     &format!("words/{}.yaml", record_files::stable_hash(&record.key)),
                     &value,
                     options,
+                    &mut counters,
                 )?;
-                exported_records += 1;
+                counters.records += 1;
             } else if scope == ExportScope::All {
                 if let Some(book_id) = record_book_id(record) {
                     if record.kind == "text" && record.deleted_at.is_none() {
@@ -108,34 +115,35 @@ impl Store {
                     }
                     books.entry(book_id).or_default().push(value);
                 } else {
-                    write_yaml(
+                    write_yaml_counted(
                         &mut zip,
                         &format!("records/{}.yaml", record_files::stable_hash(&record.key)),
                         &value,
                         options,
+                        &mut counters,
                     )?;
-                    exported_records += 1;
+                    counters.records += 1;
                 }
             }
         }
 
-        let mut exported_assets = 0usize;
         if scope == ExportScope::All {
             for (book_id, book_records) in &books {
                 for (name, value) in book_yaml_entries(book_id, book_records, MAX_BOOK_YAML_BYTES)?
                 {
-                    write_yaml(&mut zip, &name, &value, options)?;
+                    write_yaml_counted(&mut zip, &name, &value, options, &mut counters)?;
                 }
-                exported_records += book_records.len();
+                counters.records += book_records.len();
                 let safe_id = crate::paths::sanitize_id(book_id)?;
                 if books_with_assets.contains(book_id) {
-                    let images = root.join("books").join(&safe_id).join("images");
-                    exported_assets += write_asset_tree(
+                    let images = self.dir().join("books").join(&safe_id).join("images");
+                    write_asset_tree_counted(
                         &mut zip,
                         &images,
                         &format!("books/{safe_id}/images"),
                         options,
                         0,
+                        &mut counters,
                     )?;
                 }
             }
@@ -146,10 +154,11 @@ impl Store {
             .map_err(|e| format!("could not sync export {}: {e}", target.display()))?;
         durable::sync_parent(target)?;
         Ok(json!({
-            "records": exported_records,
+            "records": counters.records,
             "books": books.len(),
-            "assets": exported_assets,
+            "assets": counters.assets,
             "scope": scope.as_str(),
+            "bytes": counters.bytes,
         }))
     }
 
@@ -324,6 +333,7 @@ fn restore_targets(backups: &[FileBackup]) -> Result<(), String> {
     }
 }
 
+#[cfg(test)]
 fn write_yaml<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
     name: &str,
@@ -332,6 +342,55 @@ fn write_yaml<W: Write + Seek>(
 ) -> Result<(), String> {
     zip.start_file(name, options).map_err(|e| e.to_string())?;
     let yaml = serde_yaml::to_string(value).map_err(|e| e.to_string())?;
+    zip.write_all(yaml.as_bytes()).map_err(|e| e.to_string())
+}
+
+#[derive(Default)]
+struct ExportCounters {
+    entries: usize,
+    records: usize,
+    assets: usize,
+    bytes: u64,
+}
+
+impl ExportCounters {
+    fn add_entry(&mut self, name: &str, size: u64) -> Result<(), String> {
+        self.entries += 1;
+        if self.entries > MAX_ENTRIES {
+            return Err(
+                "export exceeds the 100,000 entry limit of the WordHunter import format"
+                    .to_string(),
+            );
+        }
+        self.bytes = self
+            .bytes
+            .checked_add(size)
+            .ok_or_else(|| "export size overflow".to_string())?;
+        if self.bytes > MAX_TOTAL_BYTES {
+            return Err(
+                "export exceeds the 2 GB total size limit of the WordHunter import format"
+                    .to_string(),
+            );
+        }
+        if size > MAX_YAML_BYTES && name.ends_with(".yaml") {
+            return Err(format!(
+                "{name} exceeds the 8 MB YAML limit of the WordHunter import format"
+            ));
+        }
+        Ok(())
+    }
+}
+
+fn write_yaml_counted<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    name: &str,
+    value: &Value,
+    options: SimpleFileOptions,
+    counters: &mut ExportCounters,
+) -> Result<(), String> {
+    let yaml = serde_yaml::to_string(value).map_err(|e| e.to_string())?;
+    counters.add_entry(name, yaml.len() as u64)?;
+    zip.start_file(name, options).map_err(|e| e.to_string())?;
     zip.write_all(yaml.as_bytes()).map_err(|e| e.to_string())
 }
 
@@ -376,12 +435,13 @@ fn book_yaml_entries(
     Ok(entries)
 }
 
-fn write_asset_tree<W: Write + Seek>(
+fn write_asset_tree_counted<W: Write + Seek>(
     zip: &mut ZipWriter<W>,
     dir: &Path,
     archive_dir: &str,
     options: SimpleFileOptions,
     depth: usize,
+    counters: &mut ExportCounters,
 ) -> Result<usize, String> {
     if depth > MAX_ASSET_TREE_DEPTH {
         return Err(format!("book asset tree is too deep below {archive_dir}"));
@@ -405,22 +465,44 @@ fn write_asset_tree<W: Write + Seek>(
             .ok_or_else(|| "book asset name is not UTF-8".to_string())?
             .to_string();
         if file_type.is_dir() {
-            count += write_asset_tree(
+            count += write_asset_tree_counted(
                 zip,
                 &entry.path(),
                 &format!("{archive_dir}/{name}"),
                 options,
                 depth + 1,
+                counters,
             )?;
         } else if file_type.is_file() {
-            zip.start_file(format!("{archive_dir}/{name}"), options)
+            let size = entry.metadata().map_err(|e| e.to_string())?.len();
+            if size > MAX_ASSET_BYTES {
+                return Err(format!(
+                    "book asset exceeds the 512 MB limit of the WordHunter import format: {archive_dir}/{name}"
+                ));
+            }
+            let archive_name = format!("{archive_dir}/{name}");
+            counters.add_entry(&archive_name, size)?;
+            zip.start_file(archive_name, options)
                 .map_err(|e| e.to_string())?;
             let mut file = std::fs::File::open(entry.path()).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, zip).map_err(|e| e.to_string())?;
+            counters.assets += 1;
             count += 1;
         }
     }
     Ok(count)
+}
+
+#[cfg(test)]
+fn write_asset_tree<W: Write + Seek>(
+    zip: &mut ZipWriter<W>,
+    dir: &Path,
+    archive_dir: &str,
+    options: SimpleFileOptions,
+    depth: usize,
+) -> Result<usize, String> {
+    let mut counters = ExportCounters::default();
+    write_asset_tree_counted(zip, dir, archive_dir, options, depth, &mut counters)
 }
 
 fn build_import_plan(source: &Path, data_root: &Path) -> Result<ImportPlan, String> {

@@ -124,6 +124,22 @@ export function isCustomTextReferenced(id: string): boolean {
     );
 }
 
+function forgetReaderPosition(id: string): void {
+  if (state.readerPages && Object.hasOwn(state.readerPages, id)) delete state.readerPages[id];
+  if (state.readerScrolls && Object.hasOwn(state.readerScrolls, id)) delete state.readerScrolls[id];
+  if (state.readerScrollsPerPage) {
+    const prefix = `${id}-`;
+    for (const key of Object.keys(state.readerScrollsPerPage)) {
+      if (key.startsWith(prefix)) delete state.readerScrollsPerPage[key];
+    }
+  }
+  if (state.preferences?.lastReadTextIds) {
+    for (const [lang, lastId] of Object.entries(state.preferences.lastReadTextIds)) {
+      if (lastId === id) delete state.preferences.lastReadTextIds[lang];
+    }
+  }
+}
+
 export function removeCustomTextFromActiveProfile(id: string): WhText | null {
   const idx = state.customTexts.findIndex((text) => text.id === id);
   if (idx === -1) return null;
@@ -140,6 +156,11 @@ export function removeUserBookFromActiveProfile(id: string): WhText | null {
   const removed = state.userBooks.splice(idx, 1)[0];
   if (!isBookReferenced(id) && state.preferences.readerBookmarks) delete state.preferences.readerBookmarks[id];
   return removed;
+}
+
+/** Clean reader position state for a book that is no longer referenced anywhere. */
+export function forgetReaderPositionIfUnreferenced(id: string): void {
+  if (!isBookReferenced(id)) forgetReaderPosition(id);
 }
 
 export function planCustomTextMove(id: string, targetLang: string) {

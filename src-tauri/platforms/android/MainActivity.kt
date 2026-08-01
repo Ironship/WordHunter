@@ -40,6 +40,7 @@ private const val ANDROID_EXPORT_WRITE_TIMEOUT_MS = 300000L
 private const val ANDROID_TRANSFER_MAX_BYTES = 2L * 1024L * 1024L * 1024L
 private const val ANDROID_PDF_MAX_BITMAP_PIXELS = 8_000_000
 private const val ANDROID_DIRECT_EXPORT_MAX_CHARS = 64L * 1024L * 1024L
+private const val MAX_TTS_SPEAK_CHARS = 20_000
 private const val TTS_NOTIFICATION_CHANNEL_ID = "wordhunter-tts"
 private const val TTS_NOTIFICATION_ID = 1001
 private const val EXTRA_TTS_STOP = "wordhunter-tts-stop"
@@ -298,6 +299,9 @@ class MainActivity : TauriActivity() {
       val engine = textToSpeech ?: return false
       val phrase = text?.trim()?.takeIf { it.isNotEmpty() } ?: return false
       if (!ttsReady) return false
+      // Guard against arbitrary JS allocating unbounded TTS buffers through the
+      // bridge (the frontend splits segments at 500 chars anyway).
+      if (phrase.length > MAX_TTS_SPEAK_CHARS) return false
       val result = engine.setLanguage(localeFor(lang ?: "en"))
       if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
         return false
