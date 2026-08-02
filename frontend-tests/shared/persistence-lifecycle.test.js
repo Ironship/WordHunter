@@ -429,6 +429,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
@@ -502,6 +503,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
@@ -577,6 +579,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
@@ -648,6 +651,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
@@ -697,6 +701,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
@@ -749,6 +754,7 @@ describe("persistence lifecycle", () => {
       runExclusiveWrite: (callback) => callback(),
       markDurableStateReplaced() {},
       flushPendingSave() {},
+      hasPendingChanges: () => true,
       withoutAutoSave: (callback) => callback()
     };
     const noOp = () => {};
