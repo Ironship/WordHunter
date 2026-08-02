@@ -71,7 +71,25 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
         command.creation_flags(CREATE_NO_WINDOW);
     }
 
-    let Ok(output) = command.output() else {
+    let Ok(mut child) = command.spawn() else {
+        return gpu_status_value("failed");
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let output = loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break child.wait_with_output().ok(),
+            Ok(None) => {
+                if std::time::Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return gpu_status_value("failed");
+                }
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(_) => return gpu_status_value("failed"),
+        }
+    };
+    let Some(output) = output else {
         return gpu_status_value("failed");
     };
     if !output.status.success() {
