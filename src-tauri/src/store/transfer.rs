@@ -80,7 +80,10 @@ impl Store {
         if let Some(progress) = progress {
             progress.set_phase("words");
             progress.set_totals(
-                records.values().filter(|record| record.kind == "vocab").count(),
+                records
+                    .values()
+                    .filter(|record| record.kind == "vocab")
+                    .count(),
                 records
                     .values()
                     .filter(|record| record.kind != "vocab" && record_book_id(record).is_none())
@@ -491,18 +494,10 @@ impl ExportProgress {
         let (phase, percent, error, summary) = if let Ok(inner) = self.inner.lock() {
             let percent = match inner.phase {
                 "preparing" => 0u8,
-                "words" => {
-                    2 + scaled_percent(inner.done_words, inner.total_words, 23)
-                }
-                "records" => {
-                    25 + scaled_percent(inner.done_records, inner.total_records, 10)
-                }
-                "books" => {
-                    35 + scaled_percent(inner.done_books, inner.total_books, 10)
-                }
-                "images" => {
-                    45 + scaled_percent(inner.done_assets, inner.total_assets, 50)
-                }
+                "words" => 2 + scaled_percent(inner.done_words, inner.total_words, 23),
+                "records" => 25 + scaled_percent(inner.done_records, inner.total_records, 10),
+                "books" => 35 + scaled_percent(inner.done_books, inner.total_books, 10),
+                "images" => 45 + scaled_percent(inner.done_assets, inner.total_assets, 50),
                 "finalizing" => 95,
                 "done" => 100,
                 _ => 0,
@@ -922,7 +917,9 @@ mod tests {
         record_files::write_records(target_dir.path(), &older).unwrap();
 
         let archive = source_dir.path().join("transfer.zip");
-        source.export_transfer(&archive, ExportScope::All, None).unwrap();
+        source
+            .export_transfer(&archive, ExportScope::All, None)
+            .unwrap();
         let result = target.import_transfer(&archive).unwrap();
         assert_eq!(result["assets"], 1);
         let records = record_files::load_records(target_dir.path()).unwrap();
