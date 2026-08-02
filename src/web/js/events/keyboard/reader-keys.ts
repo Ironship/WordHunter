@@ -106,7 +106,7 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   if (isSpace && exactCtrl) {
     event.preventDefault();
     import("../../tts.js").then((tts) => {
-      if (window.speechSynthesis?.speaking) {
+      if (tts.isSpeaking()) {
         tts.stopSpeaking();
         return;
       }

@@ -113,7 +113,8 @@ async function fetchTextWithFallback(url: string): Promise<string> {
   let lastError: unknown;
   for (const target of attempts) {
     try {
-      const response = await fetch(target, { cache: "force-cache" });
+      const { fetchWithTimeout } = await import("../request.js");
+      const response = await fetchWithTimeout(target, { cache: "force-cache" }, 20_000);
       if (!response.ok) { lastError = new Error(`HTTP ${response.status} (${target})`); continue; }
       const text = await response.text();
       if (text && text.length >= 500) return text;
@@ -190,7 +191,8 @@ async function addMediaWikiBook(result: UnknownRecord, title: string): Promise<b
   showToast(t("toast.fetchingTxt", { title }));
   try {
     const apiUrl = `https://${apiLang}.${domain}/w/api.php?action=query&prop=extracts&explaintext=1&pageids=${mediaWikiId}&format=json&origin=*`;
-    const res = await fetch(apiUrl);
+    const { fetchWithTimeout } = await import("../request.js");
+    const res = await fetchWithTimeout(apiUrl, {}, 20_000);
     const data: unknown = await res.json();
     const dataRecord = asRecord(data);
     const query = asRecord(dataRecord?.query);

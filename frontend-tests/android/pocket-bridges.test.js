@@ -72,6 +72,8 @@ describe("Android Pocket bridges", () => {
       scrollTo(options) { scrolls.push(options); this.scrollTop = options.top; }
     };
     speakText("Hallo. Welt.", container, () => { finished = true; });
+    await Promise.resolve();
+    await Promise.resolve();
 
     assert.equal(calls.length, 1);
     assert.equal(calls[0].text, "Hallo.");
@@ -95,6 +97,8 @@ describe("Android Pocket bridges", () => {
     assert.equal(stopped, true);
 
     speakText("Welt.", container, null, { startTokenIndex: 2 });
+    await Promise.resolve();
+    await Promise.resolve();
     assert.equal(calls.length, 3);
     listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "range", start: 0, end: 4 } });
     assert.equal(tokenClasses[1].has("tts-current-word"), false);
@@ -149,8 +153,11 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /PendingIntent\.FLAG_UPDATE_CURRENT or PendingIntent\.FLAG_IMMUTABLE/);
     assert.match(activity, /setVisibility\(Notification\.VISIBILITY_PRIVATE\)/);
     assert.match(activity, /override fun onStart\(utteranceId: String\?\) \{\s*showTtsNotification\(\)/);
-    assert.match(activity, /override fun onDone\(utteranceId: String\?\) \{\s*hideTtsNotification\(\)/);
+    assert.match(activity, /override fun onDone\(utteranceId: String\?\) \{\s*dispatchAndroidTtsResult\(utteranceId, "done"\)/);
     assert.match(activity, /fun stopTts\(\) \{[\s\S]*textToSpeech\?\.stop\(\)[\s\S]*hideTtsNotification\(\)/);
+    assert.match(activity, /fun endTtsSession\(\) \{[\s\S]*hideTtsNotification\(\)[\s\S]*clearKeepScreenOn\(\)/);
+    assert.match(activity, /setOngoing\(true\)/);
+    assert.match(activity, /addAction\(android\.R\.drawable\.ic_media_pause, "Stop", stopPendingIntent\)/);
     assert.doesNotMatch(activity, /\bMediaSession\b|startForeground\(|startForegroundService\(|class \w+ : Service/);
   });
 
@@ -193,7 +200,7 @@ describe("Android Pocket bridges", () => {
     assert.match(syncActions, /typeof bridge\?\.saveExport !== "function"/);
     assert.match(syncActions, /wordhunter:android-export/);
     assert.match(syncActions, /detail\.requestId !== requestId/);
-    assert.match(syncActions, /detail\.status === "writing"/);
+    assert.match(syncActions, /detail\.terminal === false/);
     assert.match(syncActions, /timeout = null/);
     assert.match(syncActions, /bridge\.saveExport\(data, filename, mime, requestId\)/);
   });

@@ -139,20 +139,27 @@ function createAndroidExportRequestId(): string {
 function waitForAndroidExport(start: (requestId: string) => boolean): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
     const requestId = createAndroidExportRequestId();
+    const overallDeadline = Date.now() + 15 * 60 * 1000;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const cleanup = () => {
       window.removeEventListener("wordhunter:android-export", onResult);
       if (timeout !== null) clearTimeout(timeout);
       timeout = null;
     };
+    const fail = (message: string) => {
+      cleanup();
+      reject(new Error(message));
+    };
     const onResult = (event: Event) => {
       const detail = eventDetail(event);
       if (detail.requestId !== requestId) return;
       if (detail.terminal === false) {
-        if (detail.status === "writing" && timeout !== null) {
-          clearTimeout(timeout);
-          timeout = null;
-        }
+        if (timeout !== null) clearTimeout(timeout);
+        const remaining = overallDeadline - Date.now();
+        timeout = setTimeout(
+          () => fail("android export write timed out"),
+          Math.min(Math.max(remaining, 30_000), 5 * 60 * 1000)
+        );
         return;
       }
       cleanup();
@@ -164,10 +171,7 @@ function waitForAndroidExport(start: (requestId: string) => boolean): Promise<bo
         reject(new Error(String(detail.error || detail.status || "android export failed")));
       }
     };
-    timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("android export timed out"));
-    }, 130000);
+    timeout = setTimeout(() => fail("android export timed out"), 130000);
 
     window.addEventListener("wordhunter:android-export", onResult);
     try {
@@ -197,6 +201,9 @@ function saveFileWithAndroidBridge(path: string, filename: string): Promise<bool
 async function nativeSave(data: string, filename: string, mime: string): Promise<boolean> {
   const androidSaved = saveWithAndroidBridge(data, filename, mime);
   if (androidSaved) return androidSaved;
+  if (window.WordHunterAndroid) {
+    throw new Error("Android export bridge is unavailable");
+  }
   if (window.__qtBridge) {
     const response = await fetch("/__export/save", {
       method: "POST",
@@ -307,11 +314,24 @@ function waitForAndroidImport(): Promise<string | null> | null {
   });
 }
 
+let transferInProgress = false;
+
+function transferErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const short = message.replace(/\s+/g, " ").trim();
+  return short.length > 160 ? `${short.slice(0, 157)}...` : short;
+}
+
 export async function exportTransfer(
   scope: "all" | "vocabulary",
   prefix = scope === "all" ? "wordhunter-full" : "wordhunter-words",
   notify = true
 ): Promise<boolean> {
+  if (transferInProgress) {
+    if (notify) showToast(t("toast.transferBusy"), "error");
+    return false;
+  }
+  transferInProgress = true;
   const filename = `${prefix}-${new Date().toISOString().slice(0, 10)}.zip`;
   try {
     await window.flushAllPendingFrontendState?.();
@@ -340,18 +360,25 @@ export async function exportTransfer(
     return true;
   } catch (error) {
     console.warn("transfer export failed", error);
-    if (notify) showToast(t("toast.exportFailed"), "error");
+    if (notify) showToast(`${t("toast.exportFailed")}: ${transferErrorMessage(error)}`, "error");
     return false;
+  } finally {
+    transferInProgress = false;
   }
 }
 
 export async function importTransfer(): Promise<boolean> {
+  if (transferInProgress) {
+    showToast(t("toast.transferBusy"), "error");
+    return false;
+  }
+  transferInProgress = true;
   try {
     await window.flushAllPendingFrontendState?.();
     const androidImport = waitForAndroidImport();
     const androidPath = androidImport ? await androidImport : undefined;
     if (androidImport && androidPath === null) {
-      showToast(t("toast.exportCancelled"));
+      showToast(t("toast.importCancelled"));
       return false;
     }
     const response = await fetch("/__store/import_transfer", {
@@ -363,15 +390,21 @@ export async function importTransfer(): Promise<boolean> {
     const result = await response.json() as UnknownRecord;
     if (result.imported === false) return false;
     clearAllBookTextCaches();
-    await reloadBridgeSnapshot();
+    const reloaded = await reloadBridgeSnapshot();
     ensureCurrentText();
     render();
-    showToast(t("toast.transferImported"));
+    if (reloaded) {
+      showToast(t("toast.transferImported"));
+    } else {
+      showToast(t("toast.transferImportedReload"), "error");
+    }
     return true;
   } catch (error) {
     console.warn("transfer import failed", error);
-    showToast(t("toast.importFailed"), "error");
+    showToast(`${t("toast.importFailed")}: ${transferErrorMessage(error)}`, "error");
     return false;
+  } finally {
+    transferInProgress = false;
   }
 }
 

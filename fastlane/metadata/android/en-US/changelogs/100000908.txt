@@ -1,0 +1,7 @@
+Word Hunter 1.0.9-rc.8
+
+- Fixes TTS interruptions and system audio-focus loss on Android.
+- Fixes tiny, unscrollable translation and note fields on Android (issue #73).
+- Keeps the screen on and a controllable TTS notification while reading aloud.
+- Hardens ZIP package export/import timeouts and error reporting on Android.
+- Disables Android cloud backup of app data.
