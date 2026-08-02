@@ -96,6 +96,9 @@ pub(crate) fn bootstrap_script(
     const storeLoadTimeout = setTimeout(function() {{ storeLoadController.abort(); }}, 12000);
     window.__bridgeStatePromise = origFetch('/__store/load', {{
       cache: 'no-store',
+      headers: {{
+        'X-WH-Token': {escaped}
+      }},
       signal: storeLoadController.signal
     }}).then(function(response) {{
       if (!response.ok) throw new Error('Store load failed: HTTP ' + response.status);

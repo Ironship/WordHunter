@@ -102,6 +102,13 @@ async function runMove({ saveFails, sharedOldId, reloadSucceeds = true }) {
         return true;
       },
       forgetArchivedBook() {},
+      forgetReaderPositionIfUnreferenced(id) {
+        delete state.readerPages[id];
+        delete state.readerScrolls[id];
+        for (const key of Object.keys(state.readerScrollsPerPage)) {
+          if (key.startsWith(`${id}-`)) delete state.readerScrollsPerPage[key];
+        }
+      },
       hideBuiltInBookId() { return false; },
       isCustomTextReferenced: isReferenced,
       moveCustomTextToProfile() {

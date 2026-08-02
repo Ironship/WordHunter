@@ -14,6 +14,7 @@ import {
   archiveBookId,
   clearCurrentBookSelectionIfMatches,
   forgetArchivedBook,
+  forgetReaderPositionIfUnreferenced,
   hideBuiltInBookId,
   isCustomTextReferenced,
   moveCustomTextToProfile,
@@ -155,6 +156,7 @@ export function removeUserBook(id: string): void {
   const bookObj = removeUserBookFromActiveProfile(id);
   if (!bookObj) return;
   clearBookTextCache(id);
+  forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
   saveState();
