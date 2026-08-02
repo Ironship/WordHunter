@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.drawable.Icon
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
@@ -750,6 +751,7 @@ class MainActivity : TauriActivity() {
       val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         Notification.Builder(this, TTS_NOTIFICATION_CHANNEL_ID)
       } else {
+        @Suppress("DEPRECATION") // pre-O devices have no channel constructor
         Notification.Builder(this)
       }
       manager.notify(
@@ -763,7 +765,13 @@ class MainActivity : TauriActivity() {
           .setOnlyAlertOnce(true)
           .setCategory(Notification.CATEGORY_TRANSPORT)
           .setVisibility(Notification.VISIBILITY_PRIVATE)
-          .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+          .addAction(
+            Notification.Action.Builder(
+              Icon.createWithResource(this, android.R.drawable.ic_media_pause),
+              "Stop",
+              stopPendingIntent
+            ).build()
+          )
           .build()
       )
     }

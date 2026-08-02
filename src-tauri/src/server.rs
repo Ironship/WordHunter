@@ -75,6 +75,7 @@ pub(crate) struct OcrJobState {
 }
 
 impl OcrJobState {
+    #[cfg(not(target_os = "android"))]
     pub(crate) fn is_cancelled(&self, job_id: &str) -> bool {
         self.cancelled.contains(job_id)
     }

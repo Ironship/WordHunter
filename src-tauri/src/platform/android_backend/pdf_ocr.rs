@@ -1,6 +1,5 @@
 use std::sync::Mutex;
 
-use base64::Engine;
 use pdf_extract::{MediaBox, OutputDev, OutputError, Transform};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -13,17 +12,6 @@ const MAX_PAGES: usize = 2_000;
 const MAX_TEXT_LAYER_CHARS: usize = 2_000_000;
 const TEXT_LAYER_EMPTY: &str = "PDF_TEXT_LAYER_EMPTY";
 const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2";
-
-pub fn import(
-    payload: Value,
-    store: &Store,
-    _app_handle: &AppHandle,
-    _jobs: &Mutex<OcrJobState>,
-) -> Result<Value, String> {
-    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
-    let data = decode_payload(data_url)?;
-    import_decoded(payload, &data, store)
-}
 
 pub fn import_bytes(
     payload: Value,
@@ -114,23 +102,6 @@ pub fn gpu_status(_app_handle: &AppHandle) -> Value {
 
 pub fn image_ocr_available(_app_handle: &AppHandle) -> bool {
     false
-}
-
-fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {
-    let encoded = data_url
-        .split_once(',')
-        .map(|(_, data)| data)
-        .unwrap_or(data_url);
-    if encoded.len() > MAX_PDF_BYTES.saturating_mul(4) / 3 + 4 {
-        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
-    }
-    let data = base64::engine::general_purpose::STANDARD
-        .decode(encoded)
-        .map_err(|e| e.to_string())?;
-    if data.len() > MAX_PDF_BYTES {
-        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
-    }
-    Ok(data)
 }
 
 fn readable_chars(text: &str) -> usize {

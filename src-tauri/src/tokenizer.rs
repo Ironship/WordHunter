@@ -180,8 +180,7 @@ pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
     } else {
         compatible
     }
-    .replace('‘', "'")
-    .replace('’', "'");
+    .replace(['‘', '’'], "'");
     let prefixes: &[(&str, &str)] = match language.as_ref() {
         "fr" => &[("l'", "l’")],
         "it" => &[("un'", "un’"), ("l'", "l’")],

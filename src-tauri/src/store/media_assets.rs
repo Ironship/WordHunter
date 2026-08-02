@@ -185,6 +185,7 @@ fn update_manifest_from_files(
     Ok(())
 }
 
+#[cfg(not(target_os = "android"))]
 fn merge_manifests(left: Manifest, right: Manifest) -> Manifest {
     let mut merged = left;
     for (path, incoming) in right {
@@ -198,6 +199,7 @@ fn merge_manifests(left: Manifest, right: Manifest) -> Manifest {
     merged
 }
 
+#[cfg(not(target_os = "android"))]
 fn should_keep_asset(current: &AssetEntry, incoming: &AssetEntry) -> bool {
     let current_time = asset_time(current);
     let incoming_time = asset_time(incoming);
@@ -213,6 +215,7 @@ fn should_keep_asset(current: &AssetEntry, incoming: &AssetEntry) -> bool {
     current.hash >= incoming.hash
 }
 
+#[cfg(not(target_os = "android"))]
 fn asset_time(entry: &AssetEntry) -> u128 {
     entry
         .deleted_at
@@ -220,6 +223,7 @@ fn asset_time(entry: &AssetEntry) -> u128 {
         .max(entry.updated_at)
 }
 
+#[cfg(not(target_os = "android"))]
 fn apply_manifest(
     target_root: &Path,
     source_root: &Path,
