@@ -85,14 +85,19 @@ fn authenticate_request(
     path: &str,
     token: &str,
 ) -> Result<Option<Request>, String> {
-    if request.method() == &Method::Post
-        && path != "/__log_error"
-        && !response::valid_token(&request, token)
-    {
+    let requires_token = request.method() == &Method::Post && path != "/__log_error"
+        || request.method() == &Method::Get && sensitive_get_path(path);
+    if requires_token && !response::valid_token(&request, token) {
         response::error_response(request, 403, "forbidden")?;
         return Ok(None);
     }
     Ok(Some(request))
+}
+
+/// GET endpoints that expose stored user data and must not be reachable by
+/// other local processes on a shared loopback (Android uses a fixed port).
+fn sensitive_get_path(path: &str) -> bool {
+    path.starts_with("/__store/") || path.starts_with("/__book/")
 }
 
 fn dispatch_state_independent_request(

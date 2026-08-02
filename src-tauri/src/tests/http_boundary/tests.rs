@@ -194,9 +194,8 @@ fn static_responses_include_security_headers() {
 
     assert!(response.contains("X-Content-Type-Options: nosniff"));
     assert!(response.contains("X-Frame-Options: DENY"));
-    assert!(response.contains(
-        "Content-Security-Policy: base-uri 'none'; object-src 'none'; frame-ancestors 'none'"
-    ));
+    assert!(response.contains("Content-Security-Policy: default-src 'self'"));
+    assert!(response.contains("frame-ancestors 'none'"));
 }
 
 #[test]

@@ -20,6 +20,22 @@ import { normalizeVocabularyWord } from "../tokenizer_v2.js";
 
 type UnknownRecord = Record<string, unknown>;
 
+const MAX_READER_SCROLLS_PER_PAGE_ENTRIES = 5000;
+
+/**
+ * Bound `readerScrollsPerPage` growth. Keys are `"<textId>-p<page>"`; the
+ * least-recently-written entries are dropped first (plain insertion order is
+ * a stable LRU proxy since entries are written on page visits).
+ */
+function trimReaderScrollsPerPage(entries: UnknownRecord): UnknownRecord {
+  const keys = Object.keys(entries);
+  if (keys.length <= MAX_READER_SCROLLS_PER_PAGE_ENTRIES) return entries;
+  const trimmed: UnknownRecord = {};
+  const keep = keys.slice(keys.length - MAX_READER_SCROLLS_PER_PAGE_ENTRIES);
+  for (const key of keep) trimmed[key] = entries[key];
+  return trimmed;
+}
+
 function cleanSavedCatalogTitles(items: unknown): void {
   if (!Array.isArray(items)) return;
   for (const item of items as unknown[]) {
@@ -410,6 +426,9 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.readerScrolls = nextState.readerScrolls && typeof nextState.readerScrolls === "object" ? nextState.readerScrolls : {};
   nextState.readerScrollsPerPage = nextState.readerScrollsPerPage && typeof nextState.readerScrollsPerPage === "object" && !Array.isArray(nextState.readerScrollsPerPage)
     ? nextState.readerScrollsPerPage : {};
+  if (Object.keys(nextState.readerScrollsPerPage).length > MAX_READER_SCROLLS_PER_PAGE_ENTRIES) {
+    nextState.readerScrollsPerPage = trimReaderScrollsPerPage(nextState.readerScrollsPerPage);
+  }
   nextState.readerSelectionRange = null;
   nextState.selectedWordIndex = Number.isInteger(nextState.selectedWordIndex) && nextState.selectedWordIndex >= 0
     ? nextState.selectedWordIndex
