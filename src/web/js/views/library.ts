@@ -331,6 +331,9 @@ export function renderLibrary(): void {
     const gutenbergLink = book.pageUrl && !book.isCustom
       ? `<a class="icon-button" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 16)}</a>`
       : "";
+    const sourceLink = book.pageUrl && book.isCustom
+      ? `<a class="icon-button" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeAttribute(t("import.openVideo"))}">${icon("external", 16)}</a>`
+      : "";
     return `
       <article class="book-card ${cover ? "has-cover" : ""} ${isArchived ? "archived" : ""}" data-book-id="${escapeAttribute(book.id)}" data-level="${escapeHtml(book.level)}">
         ${cover}
@@ -354,6 +357,7 @@ export function renderLibrary(): void {
               ${escapeHtml(t("library.read"))}
             </button>
             ${gutenbergLink}
+            ${sourceLink}
             ${moveButton}
             <button class="icon-button" type="button" data-action="${isArchived ? "unarchive-book" : "archive-book"}" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t(isArchived ? "library.unarchiveTitle" : "library.archiveTitle"))}">${icon(isArchived ? "unarchive" : "archive", 16)}</button>
             ${removeButton}

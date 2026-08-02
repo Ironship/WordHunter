@@ -1575,6 +1575,38 @@ button.icon-button {
   grid-column: 1 / -1;
 }
 
+.import-source-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--control-accent) 30%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--control-accent) 8%, transparent);
+  font-size: 0.82rem;
+}
+
+.import-source-link[hidden] {
+  display: none;
+}
+
+.import-source-link > span {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.import-source-link a {
+  color: var(--blue);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-source-link a:hover {
+  text-decoration: underline;
+}
+
 .import-form > label:not(.import-cover-dropzone) {
   display: flex;
   flex-direction: column;

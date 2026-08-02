@@ -65,7 +65,8 @@ export async function importCustomText(
   title: string,
   text: string,
   meta: CustomTextMeta = {},
-  openAfterImport = true
+  openAfterImport = true,
+  onProgress?: (percent: number, stageKey: string) => void
 ): Promise<string | null> {
   const cleanTitle = title.trim();
   const cleanText = text.trim();
@@ -103,6 +104,7 @@ export async function importCustomText(
   }
 
   if (window.__qtBridge) {
+    onProgress?.(12, "import.addProgressSavingText");
     try {
       await upsertStoredText({ ...customText, text: cleanText });
     } catch (error) {
@@ -117,6 +119,7 @@ export async function importCustomText(
   upsertCustomText(customText);
 
   try {
+    onProgress?.(45, "import.addProgressSavingLibrary");
     await saveStateAndReloadBridge();
   } catch (error) {
     console.warn("custom text profile save failed", error);
@@ -127,6 +130,7 @@ export async function importCustomText(
     return null;
   }
   showToast(t("toast.textAdded"));
+  onProgress?.(80, "import.addProgressOpening");
   if (openAfterImport) {
     const { openBook } = await import("../book-actions.js");
     await openBook(id);
