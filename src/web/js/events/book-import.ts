@@ -261,6 +261,49 @@ function setImportLoading(visible: boolean, messageKey = "import.parsingEbook"):
 let _ocrTimerHandle: number | null = null;
 let androidPdfRenderCancelled = false;
 let _androidPdfProgressTimer: number | null = null;
+let importSubmitProgressOverlay: HTMLDivElement | null = null;
+
+function showImportSubmitProgress(): void {
+  hideImportSubmitProgress();
+  if (typeof document.createElement !== "function") return;
+  const overlay = document.createElement("div");
+  overlay.id = "import-submit-progress";
+  overlay.className = "export-progress-overlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.innerHTML = `
+    <div class="ocr-progress-card">
+      <div class="ocr-progress-document" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+        <i class="ocr-progress-scan-line"></i>
+      </div>
+      <div class="ocr-progress-copy">
+        <p id="import-submit-progress-text"></p>
+        <p class="muted-copy ocr-progress-eta" id="import-submit-progress-eta"></p>
+      </div>
+      <div class="ocr-progress-bar" aria-hidden="true"><div class="ocr-progress-bar-fill" id="import-submit-progress-fill"></div></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  importSubmitProgressOverlay = overlay;
+}
+
+function updateImportSubmitProgress(percent: number, stageKey: string): void {
+  const overlay = importSubmitProgressOverlay;
+  if (!overlay) return;
+  const clamped = Math.min(100, Math.max(0, Math.trunc(percent)));
+  const text = overlay.querySelector("#import-submit-progress-text");
+  const eta = overlay.querySelector("#import-submit-progress-eta");
+  const fill = overlay.querySelector<HTMLElement>("#import-submit-progress-fill");
+  if (text) text.textContent = t("import.addProgress", { percent: clamped });
+  if (eta) eta.textContent = t(stageKey);
+  if (fill) fill.style.width = `${clamped}%`;
+}
+
+function hideImportSubmitProgress(): void {
+  importSubmitProgressOverlay?.remove();
+  importSubmitProgressOverlay = null;
+}
 
 function startAndroidPdfProgress(total: number, onCancel: () => void): void {
   stopOcrProgress();
@@ -393,6 +436,23 @@ function resetYoutubeTracks(clearUrl = false) {
   }
   if (els.importYoutubeLoad) els.importYoutubeLoad.textContent = t("import.youtubeLoad");
   if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = "";
+  setImportSourceLink("");
+}
+
+function setImportSourceLink(url: string): void {
+  const row = document.getElementById("import-source-link");
+  const anchor = document.getElementById("import-source-link-a") as HTMLAnchorElement | null;
+  if (!row || !anchor) return;
+  const cleanUrl = String(url || "").trim();
+  if (!cleanUrl) {
+    row.hidden = true;
+    anchor.removeAttribute("href");
+    anchor.textContent = "";
+    return;
+  }
+  anchor.href = cleanUrl;
+  anchor.textContent = cleanUrl;
+  row.hidden = false;
 }
 
 async function youtubeCaptionsRequest(payload: YoutubeCaptionsPayload): Promise<YoutubeCaptionsResponse> {
@@ -451,6 +511,7 @@ async function importYoutubeTrack(url: string, trackIndex: string | number): Pro
     sourceUrl: data.sourceUrl || url,
     textUrl: data.sourceUrl || url
   };
+  setImportSourceLink(data.sourceUrl || url);
   if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeLoaded");
   showToast(t("toast.youtubeCaptionsLoaded"));
 }
@@ -933,8 +994,17 @@ function bindImportFormEvents() {
     };
     const levelVal = els.importLevel?.value;
     if (levelVal) meta.level = levelVal;
+    showImportSubmitProgress();
+    updateImportSubmitProgress(2, "import.addProgressPreparing");
     try {
-      const importedId = await importCustomText(els.importTitle.value, els.importText.value, meta);
+      const importedId = await importCustomText(
+        els.importTitle.value,
+        els.importText.value,
+        meta,
+        true,
+        (percent, stageKey) => updateImportSubmitProgress(percent, stageKey)
+      );
+      updateImportSubmitProgress(100, "import.addProgressSavingLibrary");
       if (!importedId) return;
       els.importForm.reset();
       clearPendingImportMeta();
@@ -943,6 +1013,7 @@ function bindImportFormEvents() {
     } catch (e) {
       console.error("import custom text failed", e);
     } finally {
+      hideImportSubmitProgress();
       releaseForm();
       releaseButton();
     }

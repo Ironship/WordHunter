@@ -1,0 +1,8 @@
+Word Hunter 1.0.10-rc.1
+
+- Adds a 0-100% progress bar with an animated scan effect to the
+  Add-to-library import, with stage labels for saving text, saving the
+  library, and opening the book.
+- YouTube imports now show a clickable source video link above the
+  imported text (and on the library card), opening in the default
+  browser or YouTube app.
