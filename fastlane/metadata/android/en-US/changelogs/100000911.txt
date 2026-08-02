@@ -1,0 +1,10 @@
+Word Hunter 1.0.9-rc.11
+
+- Adds a 0–100% progress bar to desktop package export, with stage labels
+  and a background export job so the UI no longer freezes.
+- Speeds up PC shutdown by skipping a redundant full save when nothing
+  changed and using a non-blocking keepalive flush.
+- Android UX: PDF import shows per-page progress and a cancel button,
+  word-sheet pull gestures expand/collapse the card, landscape phones keep
+  the Pocket layout, startup renders from the UI cache immediately, and
+  continuous TTS pauses/resumes when the app goes to the background.
