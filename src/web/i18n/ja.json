@@ -164,7 +164,9 @@
     "pdfOcrBlurb": "{engine} OCRでインポートしました（{pages}ページ）。",
     "pdfOcrBlurbTruncated": "{engine} OCRでインポートしました（{total}ページ中{processed}ページ）。",
     "imageOcrBlurb": "画像から{engine} OCRでインポートしました。",
-    "level": "レベル（任意）"
+    "level": "レベル（任意）",
+    "pdfPageRenderProgress": "PDFページをレンダリング中: {processed} / {total}",
+    "pdfPageRenderStatus": "ページ画像をレンダリング中… {elapsed} 経過"
   },
   "reader": {
     "title": "リーダー",

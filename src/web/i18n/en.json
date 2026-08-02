@@ -164,7 +164,9 @@
     "pdfTextLayerBlurb": "Imported from a PDF text layer ({pages} pages). Scanned PDFs need OCR in the desktop app.",
     "pdfOcrBlurb": "Imported with {engine} OCR ({pages} pages).",
     "pdfOcrBlurbTruncated": "Imported with {engine} OCR ({processed} of {total} pages).",
-    "imageOcrBlurb": "Imported from an image with {engine} OCR."
+    "imageOcrBlurb": "Imported from an image with {engine} OCR.",
+    "pdfPageRenderProgress": "Rendering PDF pages: {processed} of {total}",
+    "pdfPageRenderStatus": "Rendering page images… {elapsed} elapsed."
   },
   "reader": {
     "title": "Reader",

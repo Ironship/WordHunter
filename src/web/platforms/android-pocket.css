@@ -1341,3 +1341,17 @@ html.pocket-mode {
     gap: 0.125rem;
   }
 }
+
+/* Phone in landscape (>=781px wide) must keep the Pocket page-scroll layout.
+   The desktop locked-viewport rules target IDs and would otherwise turn the
+   library into an internal-scroll container with a sticky import button. */
+@media (min-width: 781px) {
+  .pocket-mode #library-view.active {
+    overflow: visible;
+  }
+
+  .pocket-mode #library-view.active > .library-layout {
+    height: auto;
+    min-height: 0;
+  }
+}

@@ -5,7 +5,7 @@ import { bindEvents } from "./js/events.js";
 import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
-import { loadLocale, applyTranslations, t } from "./js/i18n.js";
+import { loadLocale, applyTranslations, t, getLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
@@ -123,6 +123,12 @@ window.addEventListener("wordhunter:state-save-error", () => {
 window.addEventListener("wordhunter:state-replaced", () => {
   applyPreferences();
   syncSettingsControls();
+  if (document.documentElement.classList.contains("app-booting")) return;
+  if (getLocale() !== state.preferences?.locale) {
+    void loadLocale(state.preferences?.locale || "en").then(() => applyTranslations());
+  }
+  ensureCurrentText();
+  render();
 });
 
 window.addEventListener("wordhunter:theme-changed", () => {
@@ -132,16 +138,25 @@ window.addEventListener("wordhunter:theme-changed", () => {
   if (["vocabulary", "flashcards"].includes(state.currentView)) renderReview();
 });
 
-async function loadBridgeStateBeforeRender() {
-  if (!window.__qtBridge || window.__bridgeState) return;
-  if (window.__bridgeStatePromise) {
-    applyBridgeSnapshotToState(await window.__bridgeStatePromise);
-    delete window.__bridgeStatePromise;
-    return;
-  }
-  const response = await fetchWithTimeout("/__store/load", { cache: "no-store" }, 12_000);
-  if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
-  applyBridgeSnapshotToState(await response.json());
+let bridgeStateLoadStarted = false;
+function startBridgeStateLoad(): void {
+  if (!window.__qtBridge || window.__bridgeState || bridgeStateLoadStarted) return;
+  bridgeStateLoadStarted = true;
+  const promise = window.__bridgeStatePromise
+    ?? fetchWithTimeout("/__store/load", { cache: "no-store" }, 12_000)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
+        return response.json();
+      });
+  window.__bridgeStatePromise = promise;
+  void promise
+    .then((snapshot) => {
+      applyBridgeSnapshotToState(snapshot);
+      delete window.__bridgeStatePromise;
+    })
+    .catch((error) => {
+      reportClientError(`Store load failed: ${error?.stack || error}`, error);
+    });
 }
 
 function showLanguageOnboardingIfNeeded() {
@@ -161,7 +176,7 @@ function showLanguageOnboardingIfNeeded() {
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
-    await loadBridgeStateBeforeRender();
+    startBridgeStateLoad();
     await Promise.all([
       applyPreferences(),
       loadLocale(state.preferences?.locale || "en"),

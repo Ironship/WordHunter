@@ -164,7 +164,9 @@
     "pdfTextLayerBlurb": "Zaimportowano warstwę tekstową pliku PDF. Liczba stron: {pages}. Zeskanowane pliki PDF wymagają OCR w wersji komputerowej.",
     "pdfOcrBlurb": "Zaimportowano za pomocą {engine}. Liczba stron: {pages}.",
     "pdfOcrBlurbTruncated": "Zaimportowano za pomocą {engine}. Przetworzone strony: {processed}/{total}.",
-    "imageOcrBlurb": "Zaimportowano z obrazu za pomocą OCR {engine}."
+    "imageOcrBlurb": "Zaimportowano z obrazu za pomocą OCR {engine}.",
+    "pdfPageRenderProgress": "Renderowanie stron PDF: {processed} z {total}",
+    "pdfPageRenderStatus": "Renderowanie obrazów stron… upłynęło {elapsed}"
   },
   "reader": {
     "title": "Czytnik",
