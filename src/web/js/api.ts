@@ -66,24 +66,26 @@ export async function saveWithRetry(body: string, maxRetries: number): Promise<W
   return {};
 }
 
-/** Synchronous XHR save for window close / flush scenarios. */
+/** Fire-and-forget save for window close / flush scenarios.
+ *
+ * Uses a keepalive fetch instead of a blocking synchronous XHR: the server is
+ * already shutting down when this fires from pagehide, so a sync XHR could
+ * hang the renderer for its full timeout with no one left to answer.
+ */
 export function saveSyncXhr(body: string): void {
   try {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/__store/save", false);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("X-WH-Token", window.WH_TOKEN || "");
-    xhr.send(body);
-    if (xhr.status >= 200 && xhr.status < 300) {
-      let result = {};
-      try {
-        result = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-      } catch (error) {
-        console.warn("sync save response parse failed", error);
-      }
-    } else {
+    void fetch("/__store/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+      body,
+      keepalive: true
+    }).then((response) => {
+      if (response.ok) return;
       window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));
-    }
+    }).catch((error) => {
+      console.error("sync save failed", error);
+      window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));
+    });
   } catch (e) {
     console.error("sync save failed", e);
     window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));
