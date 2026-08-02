@@ -157,7 +157,7 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /fun stopTts\(\) \{[\s\S]*textToSpeech\?\.stop\(\)[\s\S]*hideTtsNotification\(\)/);
     assert.match(activity, /fun endTtsSession\(\) \{[\s\S]*hideTtsNotification\(\)[\s\S]*clearKeepScreenOn\(\)/);
     assert.match(activity, /setOngoing\(true\)/);
-    assert.match(activity, /addAction\(android\.R\.drawable\.ic_media_pause, "Stop", stopPendingIntent\)/);
+    assert.match(activity, /Notification\.Action\.Builder\(\s*Icon\.createWithResource\(this, android\.R\.drawable\.ic_media_pause\),\s*"Stop",\s*stopPendingIntent\s*\)\.build\(\)/);
     assert.doesNotMatch(activity, /\bMediaSession\b|startForeground\(|startForegroundService\(|class \w+ : Service/);
   });
 

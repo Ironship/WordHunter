@@ -51,18 +51,18 @@ pub fn run() {
         std::process::exit(offline_translator::run_worker());
     }
 
-    let mut builder = tauri::Builder::default();
+    let builder = tauri::Builder::default();
     #[cfg(desktop)]
-    {
+    let builder = {
         use tauri::Manager as _;
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
             }
-        }));
-    }
+        }))
+    };
 
     let app = builder
         .setup(platform::setup)
@@ -76,5 +76,7 @@ pub fn run() {
             api.prevent_exit();
             platform::request_graceful_exit(app_handle);
         }
+        #[cfg(target_os = "android")]
+        let _ = (app_handle, event);
     });
 }

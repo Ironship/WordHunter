@@ -102,7 +102,7 @@ impl Store {
         Ok(true)
     }
 
-    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    #[allow(dead_code)]
     pub(crate) fn recover_pending_save_guarded(&self) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         self.recover_pending_save()

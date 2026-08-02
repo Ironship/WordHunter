@@ -40,6 +40,8 @@ pub(crate) type Fingerprints = BTreeMap<String, RecordFingerprint>;
 
 pub(crate) struct MergeResult {
     pub records: BTreeMap<String, SyncRecord>,
+    // Conflict detection is asserted by tests; production callers keep the resolved records only.
+    #[cfg_attr(not(test), allow(dead_code))]
     pub conflicts: Vec<Value>,
 }
 
