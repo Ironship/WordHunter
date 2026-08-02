@@ -798,7 +798,14 @@
     "wordsHint": "本や画像を除く、単語、翻訳、状態、変更日時の小さなパッケージです。",
     "exportWords": "単語をエクスポート",
     "toolsEyebrow": "その他のツール",
-    "toolsHeading": "Ankiとデータ整理"
+    "toolsHeading": "Ankiとデータ整理",
+    "exportProgress": "パッケージをエクスポート中… {percent}%",
+    "phasePreparing": "レコードを準備中",
+    "phaseWords": "語彙をエクスポート中",
+    "phaseRecords": "設定とプロファイルをエクスポート中",
+    "phaseBooks": "書籍をエクスポート中",
+    "phaseImages": "書籍画像をエクスポート中",
+    "phaseFinalizing": "パッケージを仕上げ中"
   },
   "toast": {
     "wordRemoved": "単語をリストから削除しました。",

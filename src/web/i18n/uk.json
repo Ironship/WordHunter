@@ -798,7 +798,14 @@
     "wordsHint": "Невеликий пакет зі словами, перекладами, статусами й датами без книг і зображень.",
     "exportWords": "Експортувати слова",
     "toolsEyebrow": "Інші інструменти",
-    "toolsHeading": "Anki та очищення даних"
+    "toolsHeading": "Anki та очищення даних",
+    "exportProgress": "Експорт пакета… {percent}%",
+    "phasePreparing": "Підготовка записів",
+    "phaseWords": "Експорт словника",
+    "phaseRecords": "Експорт налаштувань і профілів",
+    "phaseBooks": "Експорт книг",
+    "phaseImages": "Експорт зображень книг",
+    "phaseFinalizing": "Завершення пакета"
   },
   "toast": {
     "wordRemoved": "Слово вилучено зі списку.",

@@ -850,7 +850,14 @@
     "wordsHint": "Mała paczka zawiera słowa, tłumaczenia, statusy i daty zmian, bez książek i obrazów.",
     "exportWords": "Eksportuj słowa",
     "toolsEyebrow": "Pozostałe narzędzia",
-    "toolsHeading": "Anki i porządkowanie danych"
+    "toolsHeading": "Anki i porządkowanie danych",
+    "exportProgress": "Eksportowanie paczki… {percent}%",
+    "phasePreparing": "Przygotowywanie rekordów",
+    "phaseWords": "Eksportowanie słownictwa",
+    "phaseRecords": "Eksportowanie ustawień i profili",
+    "phaseBooks": "Eksportowanie książek",
+    "phaseImages": "Eksportowanie obrazów książek",
+    "phaseFinalizing": "Finalizowanie paczki"
   },
   "toast": {
     "wordRemoved": "Usunięto słowo i wszystkie jego dane.",
