@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde_json::{Value, json};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
@@ -61,7 +62,12 @@ impl Drop for ImportPlan {
 }
 
 impl Store {
-    pub fn export_transfer(&self, target: &Path, scope: ExportScope) -> Result<Value, String> {
+    pub fn export_transfer(
+        &self,
+        target: &Path,
+        scope: ExportScope,
+        progress: Option<&ExportProgress>,
+    ) -> Result<Value, String> {
         // Keep the write lock only for the quick snapshot phase (record listing and
         // pending-save recovery). Building the ZIP reads asset files and can take
         // minutes for large libraries — holding the lock that long would block all
@@ -71,6 +77,21 @@ impl Store {
             self.recover_pending_save()?;
             record_files::load_records(&self.dir())?
         };
+        if let Some(progress) = progress {
+            progress.set_phase("words");
+            progress.set_totals(
+                records.values().filter(|record| record.kind == "vocab").count(),
+                records
+                    .values()
+                    .filter(|record| record.kind != "vocab" && record_book_id(record).is_none())
+                    .count(),
+                records
+                    .values()
+                    .filter(|record| record_book_id(record).is_some())
+                    .count(),
+                0,
+            );
+        }
         let file = std::fs::File::create(target)
             .map_err(|e| format!("could not create export {}: {e}", target.display()))?;
         let mut zip = ZipWriter::new(file);
@@ -91,6 +112,9 @@ impl Store {
             options,
             &mut counters,
         )?;
+        if let Some(progress) = progress {
+            progress.set_phase("words");
+        }
 
         let mut books: BTreeMap<String, Vec<Value>> = BTreeMap::new();
         let mut books_with_assets = BTreeSet::new();
@@ -108,6 +132,9 @@ impl Store {
                     &mut counters,
                 )?;
                 counters.records += 1;
+                if let Some(progress) = progress {
+                    progress.add_word();
+                }
             } else if scope == ExportScope::All {
                 if let Some(book_id) = record_book_id(record) {
                     if record.kind == "text" && record.deleted_at.is_none() {
@@ -123,11 +150,17 @@ impl Store {
                         &mut counters,
                     )?;
                     counters.records += 1;
+                    if let Some(progress) = progress {
+                        progress.add_record();
+                    }
                 }
             }
         }
 
         if scope == ExportScope::All {
+            if let Some(progress) = progress {
+                progress.set_phase("books");
+            }
             for (book_id, book_records) in &books {
                 for (name, value) in book_yaml_entries(book_id, book_records, MAX_BOOK_YAML_BYTES)?
                 {
@@ -137,6 +170,11 @@ impl Store {
                 let safe_id = crate::paths::sanitize_id(book_id)?;
                 if books_with_assets.contains(book_id) {
                     let images = self.dir().join("books").join(&safe_id).join("images");
+                    let asset_total = count_asset_files(&images);
+                    if let Some(progress) = progress {
+                        progress.set_phase("images");
+                        progress.set_total_assets(asset_total);
+                    }
                     write_asset_tree_counted(
                         &mut zip,
                         &images,
@@ -144,9 +182,16 @@ impl Store {
                         options,
                         0,
                         &mut counters,
+                        progress,
                     )?;
                 }
+                if let Some(progress) = progress {
+                    progress.add_book();
+                }
             }
+        }
+        if let Some(progress) = progress {
+            progress.set_phase("finalizing");
         }
         zip.finish()
             .map_err(|e| format!("could not finish export {}: {e}", target.display()))?
@@ -353,6 +398,147 @@ struct ExportCounters {
     bytes: u64,
 }
 
+/// Shared progress state for a running package export. The desktop HTTP
+/// handler publishes it so the frontend can poll a stage-based progress bar
+/// instead of leaving users staring at a frozen button while the ZIP is built.
+#[derive(Clone, Default)]
+pub struct ExportProgress {
+    inner: Arc<std::sync::Mutex<ExportProgressInner>>,
+}
+
+#[derive(Default)]
+struct ExportProgressInner {
+    phase: &'static str,
+    done_words: usize,
+    total_words: usize,
+    done_records: usize,
+    total_records: usize,
+    done_books: usize,
+    total_books: usize,
+    done_assets: usize,
+    total_assets: usize,
+    error: Option<String>,
+    summary: Option<Value>,
+}
+
+impl ExportProgress {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    fn set_phase(&self, phase: &'static str) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.phase = phase;
+        }
+    }
+
+    fn set_totals(&self, words: usize, records: usize, books: usize, assets: usize) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.total_words = words;
+            inner.total_records = records;
+            inner.total_books = books;
+            inner.total_assets = assets;
+        }
+    }
+
+    fn set_total_assets(&self, assets: usize) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.total_assets = assets;
+        }
+    }
+
+    fn add_word(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.done_words += 1;
+        }
+    }
+
+    fn add_record(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.done_records += 1;
+        }
+    }
+
+    fn add_book(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.done_books += 1;
+        }
+    }
+
+    fn add_asset(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.done_assets += 1;
+        }
+    }
+
+    pub fn set_error(&self, error: String) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.phase = "error";
+            inner.error = Some(error);
+        }
+    }
+
+    pub fn set_done(&self, summary: Value) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.phase = "done";
+            inner.summary = Some(summary);
+        }
+    }
+
+    /// Stage-weighted percentage: preparing 0–2, words 2–25, records 25–35,
+    /// books 35–45, images 45–95, finalizing 95, done 100.
+    pub fn snapshot(&self) -> Value {
+        let (phase, percent, error, summary) = if let Ok(inner) = self.inner.lock() {
+            let percent = match inner.phase {
+                "preparing" => 0u8,
+                "words" => {
+                    2 + scaled_percent(inner.done_words, inner.total_words, 23)
+                }
+                "records" => {
+                    25 + scaled_percent(inner.done_records, inner.total_records, 10)
+                }
+                "books" => {
+                    35 + scaled_percent(inner.done_books, inner.total_books, 10)
+                }
+                "images" => {
+                    45 + scaled_percent(inner.done_assets, inner.total_assets, 50)
+                }
+                "finalizing" => 95,
+                "done" => 100,
+                _ => 0,
+            };
+            (
+                inner.phase.to_string(),
+                percent,
+                inner.error.clone(),
+                inner.summary.clone(),
+            )
+        } else {
+            ("preparing".to_string(), 0u8, None, None)
+        };
+        let mut value = json!({
+            "phase": phase,
+            "percent": percent,
+            "done": phase == "done" || error.is_some(),
+        });
+        if let Some(error) = error {
+            value["error"] = Value::String(error);
+        }
+        if let Some(summary) = summary {
+            value["summary"] = summary;
+        }
+        value
+    }
+}
+
+fn scaled_percent(done: usize, total: usize, span: u8) -> u8 {
+    if total == 0 {
+        return span;
+    }
+    let value = (u64::from(span) * done.min(total) as u64) / total as u64;
+    value.min(u64::from(span)) as u8
+}
+
 impl ExportCounters {
     fn add_entry(&mut self, name: &str, size: u64) -> Result<(), String> {
         self.entries += 1;
@@ -442,6 +628,7 @@ fn write_asset_tree_counted<W: Write + Seek>(
     options: SimpleFileOptions,
     depth: usize,
     counters: &mut ExportCounters,
+    progress: Option<&ExportProgress>,
 ) -> Result<usize, String> {
     if depth > MAX_ASSET_TREE_DEPTH {
         return Err(format!("book asset tree is too deep below {archive_dir}"));
@@ -472,6 +659,7 @@ fn write_asset_tree_counted<W: Write + Seek>(
                 options,
                 depth + 1,
                 counters,
+                progress,
             )?;
         } else if file_type.is_file() {
             let size = entry.metadata().map_err(|e| e.to_string())?.len();
@@ -487,10 +675,33 @@ fn write_asset_tree_counted<W: Write + Seek>(
             let mut file = std::fs::File::open(entry.path()).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, zip).map_err(|e| e.to_string())?;
             counters.assets += 1;
+            if let Some(progress) = progress {
+                progress.add_asset();
+            }
             count += 1;
         }
     }
     Ok(count)
+}
+
+/// Fast pre-pass that counts files below `dir` so the export progress bar can
+/// show a proportional percentage during the asset phase.
+fn count_asset_files(dir: &Path) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return 0;
+    };
+    let mut total = 0;
+    for entry in entries.flatten() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            total += count_asset_files(&entry.path());
+        } else if file_type.is_file() {
+            total += 1;
+        }
+    }
+    total
 }
 
 #[cfg(test)]
@@ -502,7 +713,7 @@ fn write_asset_tree<W: Write + Seek>(
     depth: usize,
 ) -> Result<usize, String> {
     let mut counters = ExportCounters::default();
-    write_asset_tree_counted(zip, dir, archive_dir, options, depth, &mut counters)
+    write_asset_tree_counted(zip, dir, archive_dir, options, depth, &mut counters, None)
 }
 
 fn build_import_plan(source: &Path, data_root: &Path) -> Result<ImportPlan, String> {
@@ -711,7 +922,7 @@ mod tests {
         record_files::write_records(target_dir.path(), &older).unwrap();
 
         let archive = source_dir.path().join("transfer.zip");
-        source.export_transfer(&archive, ExportScope::All).unwrap();
+        source.export_transfer(&archive, ExportScope::All, None).unwrap();
         let result = target.import_transfer(&archive).unwrap();
         assert_eq!(result["assets"], 1);
         let records = record_files::load_records(target_dir.path()).unwrap();

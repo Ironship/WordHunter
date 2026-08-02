@@ -64,6 +64,8 @@ pub struct ServerState {
     pub app_handle: AppHandle,
     pub(crate) ocr_jobs: Mutex<OcrJobState>,
     pub ocr_slot: Mutex<()>,
+    #[cfg(not(target_os = "android"))]
+    pub exports: Mutex<std::collections::HashMap<String, crate::handlers::ExportJob>>,
 }
 
 #[derive(Default)]
@@ -182,6 +184,8 @@ fn start_server_from_listener(
         app_handle,
         ocr_jobs: Mutex::new(OcrJobState::default()),
         ocr_slot: Mutex::new(()),
+        #[cfg(not(target_os = "android"))]
+        exports: Mutex::new(std::collections::HashMap::new()),
     });
 
     thread::spawn(move || {

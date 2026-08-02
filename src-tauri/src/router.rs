@@ -174,6 +174,13 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Get, "/__store/recovery_status") => {
             response::json_response(request, state.store.recovery_status())
         }
+        #[cfg(not(target_os = "android"))]
+        (Method::Get, "/__store/export_progress") => {
+            match handlers::export_progress(&state, query) {
+                Ok(result) => response::json_response(request, result),
+                Err(error) => response::error_response(request, 404, &error),
+            }
+        }
         (Method::Get, "/__data") => {
             crate::platform::open_path(state.store.dir());
             response::no_content(request)

@@ -850,7 +850,14 @@
     "wordsHint": "A small package with words, translations, statuses and change dates, without books or images.",
     "exportWords": "Export words",
     "toolsEyebrow": "Other tools",
-    "toolsHeading": "Anki and data cleanup"
+    "toolsHeading": "Anki and data cleanup",
+    "exportProgress": "Exporting package… {percent}%",
+    "phasePreparing": "Preparing records",
+    "phaseWords": "Exporting vocabulary",
+    "phaseRecords": "Exporting settings and profiles",
+    "phaseBooks": "Exporting books",
+    "phaseImages": "Exporting book images",
+    "phaseFinalizing": "Finalizing package"
   },
   "toast": {
     "wordRemoved": "Word removed from the list.",

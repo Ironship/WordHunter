@@ -315,6 +315,76 @@ function waitForAndroidImport(): Promise<string | null> | null {
 }
 
 let transferInProgress = false;
+let exportProgressOverlay: HTMLDivElement | null = null;
+
+function phaseLabel(phase: string): string {
+  const key = `transfer.phase${phase.charAt(0).toUpperCase()}${phase.slice(1)}`;
+  const value = t(key);
+  return value === key ? "" : value;
+}
+
+function showExportProgress(): void {
+  hideExportProgress();
+  const overlay = document.createElement("div");
+  overlay.id = "export-progress-overlay";
+  overlay.className = "export-progress-overlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.innerHTML = `
+    <div class="ocr-progress-card">
+      <div class="ocr-progress-document" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+        <i class="ocr-progress-scan-line"></i>
+      </div>
+      <div class="ocr-progress-copy">
+        <p id="export-progress-text"></p>
+        <p class="muted-copy ocr-progress-eta" id="export-progress-eta"></p>
+      </div>
+      <div class="ocr-progress-bar" aria-hidden="true"><div class="ocr-progress-bar-fill" id="export-progress-fill"></div></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  exportProgressOverlay = overlay;
+}
+
+function updateExportProgress(percent: number, phase: string): void {
+  const overlay = exportProgressOverlay;
+  if (!overlay) return;
+  const clamped = Math.min(100, Math.max(0, Math.trunc(percent)));
+  const text = overlay.querySelector("#export-progress-text");
+  const eta = overlay.querySelector("#export-progress-eta");
+  const fill = overlay.querySelector<HTMLElement>("#export-progress-fill");
+  if (text) text.textContent = t("transfer.exportProgress", { percent: clamped });
+  if (eta) eta.textContent = phaseLabel(phase);
+  if (fill) fill.style.width = `${clamped}%`;
+}
+
+function hideExportProgress(): void {
+  exportProgressOverlay?.remove();
+  exportProgressOverlay = null;
+}
+
+async function waitForExportJob(job: string): Promise<boolean> {
+  showExportProgress();
+  try {
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
+        headers: { "X-WH-Token": window.WH_TOKEN || "" },
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error(`export progress HTTP ${response.status}`);
+      const progress = await response.json() as UnknownRecord;
+      if (progress.done === true) {
+        if (progress.error) throw new Error(String(progress.error));
+        return true;
+      }
+      updateExportProgress(Number(progress.percent) || 0, String(progress.phase || ""));
+    }
+  } finally {
+    hideExportProgress();
+  }
+}
 
 function transferErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
@@ -343,11 +413,13 @@ export async function exportTransfer(
     });
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
-    if (result.saved === false) {
+    if (typeof result.job === "string") {
+      const ok = await waitForExportJob(result.job);
+      if (!ok) return false;
+    } else if (result.saved === false) {
       if (notify) showToast(t("toast.exportCancelled"));
       return false;
-    }
-    if (typeof result.path === "string") {
+    } else if (typeof result.path === "string") {
       const saved = await saveFileWithAndroidBridge(result.path, filename);
       if (!saved) {
         if (notify) showToast(t("toast.exportCancelled"));
