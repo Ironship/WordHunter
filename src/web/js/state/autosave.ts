@@ -43,6 +43,15 @@ export function createAutosave(getState: () => WhAppState) {
   let rejectQueuedSave: ((reason?: any) => void) | null;
   let durableStateRevision = 0;
   let vocabularyRevision = 0;
+  let lastMutationAt = 0;
+  let lastSaveSucceededAt = 0;
+
+  function hasPendingChanges(): boolean {
+    return lastMutationAt > lastSaveSucceededAt
+      || saveInFlight
+      || savePending
+      || saveTimer !== null;
+  }
 
   function rawState(): WhAppState {
     const state = getState();
@@ -67,6 +76,7 @@ export function createAutosave(getState: () => WhAppState) {
   }
 
   function scheduleSave(delayMs = 200): void {
+    lastMutationAt = Date.now();
     if (suspendAutoSave > 0) return;
     if (exclusiveWriteActive) {
       savePending = true;
@@ -94,6 +104,7 @@ export function createAutosave(getState: () => WhAppState) {
     if (!window.__qtBridge) {
       try {
         saveToLocalStorage(current);
+        lastSaveSucceededAt = Date.now();
         return Promise.resolve();
       } catch (error) {
         return Promise.reject(error);
@@ -103,6 +114,7 @@ export function createAutosave(getState: () => WhAppState) {
     savePromise = saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then((result) => {
       applyBackendSaveStatus(result);
       retryDelayMs = 0;
+      lastSaveSucceededAt = Date.now();
       saveInFlight = false;
       if (savePending) {
         savePending = false;
@@ -266,11 +278,17 @@ export function createAutosave(getState: () => WhAppState) {
         savePending = true;
         return;
       }
+      // The autosave debounce already persisted everything when nothing
+      // changed since the last successful save — skip the redundant full
+      // serialization (a multi-megabyte JSON.stringify) that used to make
+      // window shutdown hang for seconds.
+      if (!hasPendingChanges()) return;
       const current = rawState();
       syncProfilePreferences();
       if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
     },
+    hasPendingChanges,
     withoutAutoSave<T>(callback: () => T): T {
       suspendAutoSave++;
       try { return callback(); } finally { suspendAutoSave--; }

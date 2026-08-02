@@ -172,7 +172,12 @@ export async function requestWordHunterClose(): Promise<void> {
   nativeCloseRequested = true;
   flushFrontendStateBuffers();
   const finalUiSave = window.__qtBridge ? drainUiSaves().then(postCurrentUiState) : Promise.resolve();
-  const results = await Promise.allSettled([saveState(), finalUiSave]);
+  // Skip the redundant full-state save when the autosave debounce already
+  // persisted everything — serializing a large vocabulary + all book texts
+  // and rewriting every record used to make shutdown take many seconds.
+  const results = await Promise.allSettled(
+    autosave.hasPendingChanges() ? [saveState(), finalUiSave] : [finalUiSave]
+  );
   const saveFailed = results.some((result) => result.status === "rejected");
   if (saveFailed) {
     nativeCloseRequested = false;
