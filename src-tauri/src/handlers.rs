@@ -345,14 +345,16 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
 }
 
 #[cfg(not(target_os = "android"))]
-pub(crate) fn export_progress(
-    state: &ServerState,
-    query: &str,
-) -> Result<Value, String> {
+pub(crate) fn export_progress(state: &ServerState, query: &str) -> Result<Value, String> {
     let job_id = crate::paths::sanitize_id(
-        response::query_value(query, "job").as_deref().unwrap_or_default(),
+        response::query_value(query, "job")
+            .as_deref()
+            .unwrap_or_default(),
     )?;
-    let jobs = state.exports.lock().map_err(|_| "export jobs unavailable".to_string())?;
+    let jobs = state
+        .exports
+        .lock()
+        .map_err(|_| "export jobs unavailable".to_string())?;
     let job = jobs
         .get(&job_id)
         .ok_or_else(|| "unknown export job".to_string())?;
