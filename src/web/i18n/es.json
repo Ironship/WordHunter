@@ -260,7 +260,7 @@
     "smartSuggestBtn": "Unir con '{word}' ➜",
     "nextPageTitle": "Página siguiente (PageDown)",
     "prevPageTitle": "Página anterior (PageUp)",
-    "pageInfo": "Page {current} of {total}",
+    "pageInfo": "Página {current} de {total}",
     "pageJumpLabel": "Ir a la página",
     "sourceGutenberg": "Project Gutenberg",
     "sourceGutenbergTxt": "Project Gutenberg TXT",
