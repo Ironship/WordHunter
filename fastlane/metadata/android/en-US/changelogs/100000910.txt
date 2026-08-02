@@ -1,0 +1,6 @@
+Word Hunter 1.0.9-rc.10
+
+- Fixes PC startup when the configured data folder no longer exists.
+- Shows a native error dialog instead of a silent crash on startup failure.
+- Restores remote book covers blocked by the hardened CSP.
+- Adds Chinese (Simplified) as an interface language.
