@@ -164,7 +164,9 @@
     "pdfOcrBlurb": "Импортировано с OCR {engine} ({pages} стр.).",
     "pdfOcrBlurbTruncated": "Импортировано с OCR {engine} ({processed} из {total} стр.).",
     "imageOcrBlurb": "Импортировано из изображения с OCR {engine}.",
-    "level": "Уровень (необязательно)"
+    "level": "Уровень (необязательно)",
+    "pdfPageRenderProgress": "Рендеринг страниц PDF: {processed} из {total}",
+    "pdfPageRenderStatus": "Рендеринг изображений страниц… прошло {elapsed}"
   },
   "reader": {
     "title": "Читатель",
