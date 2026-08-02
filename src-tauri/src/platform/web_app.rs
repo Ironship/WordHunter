@@ -58,10 +58,16 @@ pub(crate) fn request_graceful_exit(app_handle: &tauri::AppHandle) {
 
 pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
     app.manage(ExitCoordinator::default());
-    let store = Arc::new(Store::new(APP_NAME).map_err(boxed_string)?);
+    let store = Arc::new(Store::new(APP_NAME).map_err(|error| {
+        show_startup_error(&error);
+        boxed_string(error)
+    })?);
     let token = server::make_token();
     let app_handle = app.handle().clone();
-    let port = server::start_server(store, token, app_handle).map_err(boxed_string)?;
+    let port = server::start_server(store, token, app_handle).map_err(|error| {
+        show_startup_error(&error);
+        boxed_string(error)
+    })?;
     let url = format!("http://{HOST}:{port}/index.html");
 
     #[cfg(target_os = "linux")]
@@ -195,4 +201,15 @@ where
 
 fn boxed_string(err: String) -> Box<dyn std::error::Error> {
     Box::new(std::io::Error::other(err))
+}
+
+fn show_startup_error(message: &str) {
+    #[cfg(not(target_os = "android"))]
+    let _ = rfd::MessageDialog::new()
+        .set_title("Word Hunter could not start")
+        .set_description(message)
+        .set_level(rfd::MessageLevel::Error)
+        .show();
+    #[cfg(target_os = "android")]
+    let _ = message;
 }
