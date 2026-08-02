@@ -11,7 +11,11 @@ use super::{Store, books, durable, media_assets, record_files};
 const FORMAT: &str = "wordhunter-transfer";
 const SCHEMA_VERSION: u64 = 1;
 const MAX_ENTRIES: usize = 100_000;
-const MAX_YAML_BYTES: u64 = 8 * 1024 * 1024;
+// Per-entry YAML cap. Large enough for whole-book OCR text records (the
+// biggest real book bodies are tens of MB), while serde_yaml_ng bounds alias
+// expansion with its own "repetition limit", so a bigger input cannot turn
+// into a memory bomb on import.
+const MAX_YAML_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_BOOK_YAML_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_ASSET_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -80,7 +84,10 @@ impl Store {
         if let Some(progress) = progress {
             progress.set_phase("words");
             progress.set_totals(
-                records.values().filter(|record| record.kind == "vocab").count(),
+                records
+                    .values()
+                    .filter(|record| record.kind == "vocab")
+                    .count(),
                 records
                     .values()
                     .filter(|record| record.kind != "vocab" && record_book_id(record).is_none())
@@ -491,18 +498,10 @@ impl ExportProgress {
         let (phase, percent, error, summary) = if let Ok(inner) = self.inner.lock() {
             let percent = match inner.phase {
                 "preparing" => 0u8,
-                "words" => {
-                    2 + scaled_percent(inner.done_words, inner.total_words, 23)
-                }
-                "records" => {
-                    25 + scaled_percent(inner.done_records, inner.total_records, 10)
-                }
-                "books" => {
-                    35 + scaled_percent(inner.done_books, inner.total_books, 10)
-                }
-                "images" => {
-                    45 + scaled_percent(inner.done_assets, inner.total_assets, 50)
-                }
+                "words" => 2 + scaled_percent(inner.done_words, inner.total_words, 23),
+                "records" => 25 + scaled_percent(inner.done_records, inner.total_records, 10),
+                "books" => 35 + scaled_percent(inner.done_books, inner.total_books, 10),
+                "images" => 45 + scaled_percent(inner.done_assets, inner.total_assets, 50),
                 "finalizing" => 95,
                 "done" => 100,
                 _ => 0,
@@ -560,7 +559,8 @@ impl ExportCounters {
         }
         if size > MAX_YAML_BYTES && name.ends_with(".yaml") {
             return Err(format!(
-                "{name} exceeds the 8 MB YAML limit of the WordHunter import format"
+                "{name} exceeds the {mb} MB YAML limit of the WordHunter import format",
+                mb = MAX_YAML_BYTES / (1024 * 1024)
             ));
         }
         Ok(())
@@ -922,7 +922,9 @@ mod tests {
         record_files::write_records(target_dir.path(), &older).unwrap();
 
         let archive = source_dir.path().join("transfer.zip");
-        source.export_transfer(&archive, ExportScope::All, None).unwrap();
+        source
+            .export_transfer(&archive, ExportScope::All, None)
+            .unwrap();
         let result = target.import_transfer(&archive).unwrap();
         assert_eq!(result["assets"], 1);
         let records = record_files::load_records(target_dir.path()).unwrap();
@@ -985,7 +987,7 @@ mod tests {
         assert_eq!(small.len(), 1);
         assert!(small[0].0.ends_with("/book.yaml"));
 
-        let huge = vec![json!({ "key": "text:book-1", "data": "x".repeat(9 * 1024 * 1024) })];
+        let huge = vec![json!({ "key": "text:book-1", "data": "x".repeat(65 * 1024 * 1024) })];
         assert!(book_yaml_entries("book-1", &huge, 64).is_err());
     }
 
