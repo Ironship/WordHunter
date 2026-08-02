@@ -164,7 +164,9 @@
     "pdfOcrBlurb": "Importé avec l'OCR {engine} ({pages} pages).",
     "pdfOcrBlurbTruncated": "Importé avec l'OCR {engine} ({processed} sur {total} pages).",
     "imageOcrBlurb": "Importé depuis une image avec l’OCR {engine}.",
-    "level": "Niveau (optionnel)"
+    "level": "Niveau (optionnel)",
+    "pdfPageRenderProgress": "Rendu des pages PDF : {processed} sur {total}",
+    "pdfPageRenderStatus": "Rendu des images de page… {elapsed} écoulés"
   },
   "reader": {
     "title": "Lecteur",

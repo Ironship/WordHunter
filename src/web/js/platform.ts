@@ -223,6 +223,41 @@ function bindPocketWordPanelSheet(): void {
   root.dataset.pocketWordSheetBound = "true";
 
   const wordPanel = document.getElementById("word-panel");
+  const formScroller = typeof wordPanel?.querySelector === "function"
+    ? wordPanel.querySelector<HTMLElement>(".word-form")
+    : null;
+  if (formScroller) {
+    let pull: { pointerId: number; startY: number; atEdge: "top" | "bottom" | null } | null = null;
+    const beginPull = (clientY: number, pointerId: number) => {
+      if (!panelIsOpen() || drag) return;
+      const atTop = formScroller.scrollTop <= 4;
+      const atBottom = formScroller.scrollHeight - formScroller.scrollTop - formScroller.clientHeight <= 4;
+      if (!atTop && !atBottom) return;
+      pull = { pointerId, startY: clientY, atEdge: atTop ? "top" : "bottom" };
+    };
+    formScroller.addEventListener("touchstart", (event) => {
+      const touch = event.touches[0];
+      if (touch) beginPull(touch.clientY, touch.identifier);
+    }, { passive: true });
+    formScroller.addEventListener("touchmove", (event) => {
+      if (!pull) return;
+      const touch = event.touches[0];
+      if (!touch || touch.identifier !== pull.pointerId) return;
+      const deltaY = touch.clientY - pull.startY;
+      if (pull.atEdge === "top" && deltaY > 40) {
+        pull = null;
+        userSheetStateSet = true;
+        setState("collapsed");
+      } else if (pull.atEdge === "bottom" && deltaY < -40) {
+        pull = null;
+        userSheetStateSet = true;
+        setState("expanded");
+      }
+    }, { passive: true });
+    const endPull = () => { pull = null; };
+    formScroller.addEventListener("touchend", endPull, { passive: true });
+    formScroller.addEventListener("touchcancel", endPull, { passive: true });
+  }
   const restoreAfterContentChange = (): void => {
     if (drag) {
       contentBoundsDirty = true;

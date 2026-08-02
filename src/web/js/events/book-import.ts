@@ -203,9 +203,11 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
   );
   try {
     for (let index = 0; index < limitedPages.length; index += 1) {
+      if (androidPdfRenderCancelled) throw new Error("android pdf render cancelled");
       // Yield between synchronous bridge renders so the UI keeps painting
       // (spinner, progress) instead of freezing for the whole import.
       await waitForUiPaint();
+      updateAndroidPdfProgress(index + 1, limitedPages.length);
       const page = limitedPages[index];
       const rendered = parseAndroidPdfRenderResponse(
         bridge.renderPdfPage(sessionId, index, 1400),
@@ -257,6 +259,69 @@ function setImportLoading(visible: boolean, messageKey = "import.parsingEbook"):
 }
 
 let _ocrTimerHandle: number | null = null;
+let androidPdfRenderCancelled = false;
+let _androidPdfProgressTimer: number | null = null;
+
+function startAndroidPdfProgress(total: number, onCancel: () => void): void {
+  stopOcrProgress();
+  const overlay = document.getElementById("import-loading");
+  if (!overlay) return;
+  const startedAt = Date.now();
+  overlay.innerHTML = `
+    <div class="ocr-progress-card">
+      <div class="ocr-progress-document" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+        <i class="ocr-progress-scan-line"></i>
+      </div>
+      <div class="ocr-progress-copy">
+        <p id="ocr-progress-text"></p>
+        <p class="muted-copy ocr-progress-eta" id="ocr-progress-eta" aria-hidden="true"></p>
+      </div>
+      <div class="ocr-progress-bar" aria-hidden="true"><div class="ocr-progress-bar-fill"></div></div>
+      <button class="secondary-button" type="button" id="ocr-cancel">${t("import.ocrCancel")}</button>
+    </div>
+  `;
+  const textEl = () => overlay.querySelector<HTMLElement>("#ocr-progress-text");
+  const etaEl = () => overlay.querySelector<HTMLElement>("#ocr-progress-eta");
+  const fillEl = () => overlay.querySelector<HTMLElement>(".ocr-progress-bar-fill");
+  const fmt = (sec: number): string => {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
+  const tick = () => {
+    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    if (textEl()) textEl().textContent = t("import.pdfPageRenderProgress", { processed: 0, total });
+    if (etaEl()) etaEl().textContent = t("import.pdfPageRenderStatus", { elapsed: fmt(elapsed) });
+  };
+  overlay.querySelector<HTMLButtonElement>("#ocr-cancel")?.addEventListener("click", (event) => {
+    (event.currentTarget as HTMLButtonElement).disabled = true;
+    if (textEl()) textEl().textContent = t("import.ocrCancelling");
+    stopOcrProgress();
+    onCancel();
+  });
+  tick();
+  _androidPdfProgressTimer = setInterval(tick, 1000);
+}
+
+function updateAndroidPdfProgress(processed: number, total: number): void {
+  const overlay = document.getElementById("import-loading");
+  if (!overlay) return;
+  const textEl = overlay.querySelector<HTMLElement>("#ocr-progress-text");
+  const fillEl = overlay.querySelector<HTMLElement>(".ocr-progress-bar-fill");
+  if (textEl) textEl.textContent = t("import.pdfPageRenderProgress", { processed, total });
+  if (fillEl && total > 0) {
+    fillEl.style.width = `${Math.round((processed / total) * 100)}%`;
+  }
+}
+
+function stopAndroidPdfProgress(): void {
+  if (_androidPdfProgressTimer !== null) {
+    clearInterval(_androidPdfProgressTimer);
+    _androidPdfProgressTimer = null;
+  }
+}
+
 function waitForUiPaint(): Promise<void> {
   if (typeof requestAnimationFrame !== "function") return Promise.resolve();
   return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
@@ -576,8 +641,14 @@ async function runPdfImport(file: File): Promise<boolean> {
     const ocrEngine = imported.ocrEngine || "PaddleOCR";
     const hasOverlayPages = pages.length > 0;
     if (androidPdfOverlay && hasOverlayPages) {
+      androidPdfRenderCancelled = false;
+      startAndroidPdfProgress(Math.min(pages.length, MAX_POCKET_PDF_RENDER_PAGES), () => {
+        androidPdfRenderCancelled = true;
+        cancelled = true;
+      });
       data = await readFileAsBase64(file);
       await renderAndSaveAndroidPdfPages(data, id, pages);
+      stopAndroidPdfProgress();
     }
     const blurb = androidPdfOverlay
       ? t("import.pdfTextLayerBlurb", { pages: pageCount })

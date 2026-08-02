@@ -17,6 +17,18 @@ let clearAndroidTtsListener: (() => void) | null = null;
 let androidTtsBroken = false;
 const MAX_TTS_SEGMENT_LENGTH = 500;
 const TTS_WORD_CLASS = "tts-current-word";
+const TTS_BACKGROUND_RESUME_WINDOW_MS = 60_000;
+
+interface TtsPausedChain {
+  sentences: string[];
+  index: number;
+  containerElement: HTMLElement | null | undefined;
+  tracker: TtsWordTracker | null;
+  onFinish: (() => void) | null;
+  at: number;
+}
+
+let pausedChain: TtsPausedChain | null = null;
 
 interface TtsWordRun {
   word: string;
@@ -305,6 +317,7 @@ export async function speakText(
     const ready = await waitForAndroidTtsReady();
     if (!speaking) return;
     if (ready) {
+      rememberAndroidChain(sentences, 0, containerElement, tracker, onFinish);
       readNextSentenceAndroid(sentences, 0, containerElement, tracker);
       return;
     }
@@ -320,6 +333,48 @@ export async function speakText(
 window.addEventListener?.("wordhunter:android-tts-stop", () => {
   if (speaking) stopSpeaking();
 });
+
+function rememberAndroidChain(
+  sentences: string[],
+  index: number,
+  containerElement: HTMLElement | null | undefined,
+  tracker: TtsWordTracker | null,
+  onFinish: (() => void) | null
+): void {
+  pausedChain = {
+    sentences,
+    index,
+    containerElement: containerElement || null,
+    tracker,
+    onFinish,
+    at: Date.now()
+  };
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener?.("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      if (speaking && getAndroidTtsBridge()) {
+        const chain = pausedChain;
+        if (chain) chain.at = Date.now();
+        stopSpeaking();
+      }
+      return;
+    }
+    const chain = pausedChain;
+    if (!chain) return;
+    pausedChain = null;
+    if (Date.now() - chain.at > TTS_BACKGROUND_RESUME_WINDOW_MS) return;
+    if (chain.index >= chain.sentences.length) return;
+    const container = chain.containerElement && document.body?.contains(chain.containerElement)
+      ? chain.containerElement
+      : null;
+    if (!container && chain.index > 0) return;
+    onFinishCallback = chain.onFinish;
+    speaking = true;
+    readNextSentenceAndroid(chain.sentences, chain.index, container, chain.tracker);
+  });
+}
 
 function splitTextForTts(text: string): string[] {
   const normalized = normalizeTextForTts(text);
@@ -545,6 +600,7 @@ function readNextSentenceAndroid(
   const started = speakSentenceAndroid(sentence, (status) => {
     if (!speaking || sessionId !== ttsSessionId) return;
     if (status === "done") {
+      if (pausedChain) pausedChain.index = index + 1;
       readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
     } else {
       finishAndroidTtsChain(status);

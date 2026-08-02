@@ -164,7 +164,9 @@
     "pdfOcrBlurb": "Імпортовано за допомогою OCR {engine} ({pages} стор.).",
     "pdfOcrBlurbTruncated": "Імпортовано за допомогою OCR {engine} ({processed} з {total} стор.).",
     "imageOcrBlurb": "Імпортовано із зображення за допомогою OCR {engine}.",
-    "level": "Рівень (необов’язково)"
+    "level": "Рівень (необов’язково)",
+    "pdfPageRenderProgress": "Рендеринг сторінок PDF: {processed} з {total}",
+    "pdfPageRenderStatus": "Рендеринг зображень сторінок… минуло {elapsed}"
   },
   "reader": {
     "title": "Читалка",

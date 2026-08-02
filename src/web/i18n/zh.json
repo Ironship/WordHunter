@@ -164,7 +164,9 @@
     "pdfTextLayerBlurb": "从 PDF 文本层导入（{pages} 页）。扫描版 PDF 需要在桌面应用中运行 OCR。",
     "pdfOcrBlurb": "使用 {engine} OCR 导入（{pages} 页）。",
     "pdfOcrBlurbTruncated": "使用 {engine} OCR 导入（已处理 {processed} / {total} 页）。",
-    "imageOcrBlurb": "使用 {engine} OCR 从图像导入。"
+    "imageOcrBlurb": "使用 {engine} OCR 从图像导入。",
+    "pdfPageRenderProgress": "正在渲染 PDF 页面：{processed} / {total}",
+    "pdfPageRenderStatus": "正在渲染页面图像… 已用时 {elapsed}"
   },
   "reader": {
     "title": "阅读器",
