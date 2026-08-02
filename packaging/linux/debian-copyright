@@ -14,11 +14,10 @@ License: AGPL-3+
  On Debian systems, the complete text of the GNU Affero General Public License
  version 3 can be found in /usr/share/common-licenses/AGPL-3.
 
-Files: src-tauri/ocr-runtime/* src-tauri/syncthing/*
-Copyright: respective ONNX Runtime, WebGPU Dawn, PDFium, PaddleOCR, and Syncthing contributors
+Files: src-tauri/ocr-runtime/*
+Copyright: respective ONNX Runtime, WebGPU Dawn, PDFium, and PaddleOCR contributors
 License: bundled-third-party
  These components are redistributed under their respective free-software
  licenses. The package installs the corresponding notices and complete license
- reports under /usr/lib/Word Hunter/ as SYNCTHING-LICENSE.txt,
- SYNCTHING-AUTHORS.txt, THIRD-PARTY-NOTICES.md,
+ reports under /usr/lib/Word Hunter/ as THIRD-PARTY-NOTICES.md,
  THIRD-PARTY-LICENSES.html, and OCR-THIRD-PARTY-LICENSES.html.

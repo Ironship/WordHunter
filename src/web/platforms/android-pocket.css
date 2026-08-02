@@ -327,13 +327,6 @@ html.pocket-mode {
   display: none;
 }
 
-.pocket-mode .wizard-step-num-desktop {
-  display: none;
-}
-
-.pocket-mode .wizard-step-num-pocket {
-  display: inline;
-}
 
 .pocket-mode .desktop-only-control {
   display: none;
@@ -1225,13 +1218,20 @@ html.pocket-mode {
 }
 
 .pocket-mode .context-box {
-  max-height: 5.5rem;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
+  overflow-wrap: anywhere;
 }
 
 .pocket-mode .word-form textarea {
-  min-height: 92px;
-  max-height: 120px;
+  min-height: 150px;
+  max-height: 45dvh;
+  resize: vertical;
+}
+
+.pocket-mode .word-form input[data-word-field="translation"] {
+  min-height: 2.6rem;
+  overflow-wrap: anywhere;
 }
 
 .pocket-mode .review-card {
@@ -1246,7 +1246,9 @@ html.pocket-mode {
 
 .pocket-mode .review-word {
   min-height: 300px;
-  max-height: none;
+  max-height: 55dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.25rem 1rem;
 }
 
@@ -1319,6 +1321,9 @@ html.pocket-mode {
 .pocket-mode dialog {
   width: calc(100vw - 1.5rem);
   max-width: calc(100vw - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @media (max-width: 380px) {
@@ -1334,5 +1339,19 @@ html.pocket-mode {
 
   .pocket-mode .word-panel .in-text-review .sm2-grades {
     gap: 0.125rem;
+  }
+}
+
+/* Phone in landscape (>=781px wide) must keep the Pocket page-scroll layout.
+   The desktop locked-viewport rules target IDs and would otherwise turn the
+   library into an internal-scroll container with a sticky import button. */
+@media (min-width: 781px) {
+  .pocket-mode #library-view.active {
+    overflow: visible;
+  }
+
+  .pocket-mode #library-view.active > .library-layout {
+    height: auto;
+    min-height: 0;
   }
 }

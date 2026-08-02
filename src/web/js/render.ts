@@ -14,7 +14,7 @@ import { t } from "./i18n.js";
 import { els } from "./dom.js";
 import { applyPlatformUi, isAndroidPlatform } from "./platform.js";
 
-type ViewName = "library" | "reader" | "vocabulary" | "flashcards" | "graphs" | "discover" | "translator" | "sync" | "settings" | "help";
+type ViewName = "library" | "reader" | "vocabulary" | "flashcards" | "graphs" | "discover" | "translator" | "export" | "settings" | "help";
 type ViewRenderer = (() => void) | null;
 type OcrGpuState = "ready" | "unavailable" | "failed";
 type OcrGpuProvider = "webgpu" | "directml" | "cpu";
@@ -39,7 +39,7 @@ const VIEW_RENDERERS: Record<ViewName, ViewRenderer> = {
   graphs: () => renderGraphs(),
   discover: () => renderDiscover(),
   translator: () => renderTranslator(),
-  sync: () => { syncSettingsControls(); applyPlatformUi(); },
+  export: () => { syncSettingsControls(); applyPlatformUi(); },
   settings: () => { syncSettingsControls(); applyPlatformUi(); if (!isAndroidPlatform()) refreshOcrGpuStatus(); },
   help: null
 };

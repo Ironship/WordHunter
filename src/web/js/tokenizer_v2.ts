@@ -424,7 +424,47 @@ export function getSentenceForWord(
   return "";
 }
 
-export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en"): Map<number, TokenClassification> {
+interface VocabularyPhraseIndex {
+  phrasesByFirstWord: Map<string, { key: string; words: string[]; status: WhVocabStatus }[]>;
+  revision: number;
+}
+
+let cachedPhraseIndex: VocabularyPhraseIndex | null = null;
+
+/**
+ * Build (once per vocabulary change) the phrase lookup used by
+ * `classifyTokenOccurrences`. Iterating the entire vocabulary for multi-word
+ * phrases is O(vocab) — with 100k entries this used to stall the main thread
+ * on every page turn whenever the vocabulary revision changed.
+ */
+export function buildVocabularyPhraseIndex(
+  vocab: Vocabulary,
+  lang = "en",
+  revision: number | null = null
+): VocabularyPhraseIndex {
+  if (cachedPhraseIndex && revision !== null && cachedPhraseIndex.revision === revision) {
+    return cachedPhraseIndex;
+  }
+  const phrases = Object.entries(vocab || {})
+    .filter(([word]) => word.includes(" "))
+    .map(([key, entry]) => ({
+      key,
+      words: key.split(/\s+/).map((word) => normalizeVocabularyWord(word, lang)).filter(Boolean),
+      status: (entry?.status as WhVocabStatus) || "new"
+    }))
+    .filter((phrase) => phrase.words.length > 1)
+    .sort((a, b) => b.words.length - a.words.length);
+  const phrasesByFirstWord = new Map<string, { key: string; words: string[]; status: WhVocabStatus }[]>();
+  for (const phrase of phrases) {
+    const values = phrasesByFirstWord.get(phrase.words[0]) || [];
+    values.push(phrase);
+    phrasesByFirstWord.set(phrase.words[0], values);
+  }
+  if (revision !== null) cachedPhraseIndex = { phrasesByFirstWord, revision };
+  return { phrasesByFirstWord, revision: revision ?? -1 };
+}
+
+export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vocabulary, lang = "en", revision: number | null = null): Map<number, TokenClassification> {
   const classifications = new Map<number, TokenClassification>();
   const keyIndex = vocabularyKeyIndex(vocab, lang);
   const resolvedWords = new Map<string, string>();
@@ -439,21 +479,7 @@ export function classifyTokenOccurrences(tokens: readonly TextToken[], vocab: Vo
     classifications.set(tokenIndex, { key, status: vocab?.[key]?.status || "new" });
   });
 
-  const phrases = Object.entries(vocab || {})
-    .filter(([word]) => word.includes(" "))
-    .map(([key, entry]) => ({
-      key,
-      words: key.split(/\s+/).map((word) => normalizeVocabularyWord(word, lang)).filter(Boolean),
-      status: entry?.status || "new"
-    }))
-    .filter((phrase) => phrase.words.length > 1)
-    .sort((a, b) => b.words.length - a.words.length);
-  const phrasesByFirstWord = new Map<string, typeof phrases>();
-  for (const phrase of phrases) {
-    const values = phrasesByFirstWord.get(phrase.words[0]) || [];
-    values.push(phrase);
-    phrasesByFirstWord.set(phrase.words[0], values);
-  }
+  const { phrasesByFirstWord } = buildVocabularyPhraseIndex(vocab, lang, revision);
 
   const claimed = new Set<number>();
   for (let tokenIndex = 0; tokenIndex < tokens.length; tokenIndex++) {

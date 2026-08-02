@@ -29,40 +29,6 @@ const selectedWordPanelKeys = [
   "edit",
   "remove"
 ];
-const syncthingRegressionKeys = [
-  "syncthingStart",
-  "syncthingStop",
-  "syncthingPair",
-  "syncthingShowQR",
-  "syncthingNotConfigured",
-  "syncthingStopped",
-  "syncthingRunning",
-  "syncthingPeers",
-  "syncthingNoPeers",
-  "syncthingStarted",
-  "syncthingPaired",
-  "syncthingError",
-  "syncthingPairPrompt",
-  "syncthingPairNamePrompt",
-  "syncthingQRTitle",
-  "syncthingQRHint",
-  "syncthingQRClose",
-  "syncWizStep1Title",
-  "syncWizStep1Desc",
-  "syncWizStep2Title",
-  "syncWizStep2Desc",
-  "syncWizStep3Title",
-  "syncWizStep3Desc",
-  "syncWizStep4Title",
-  "syncWizStep4Desc",
-  "syncWizAndroid1",
-  "syncWizAndroid2",
-  "syncWizAndroid3",
-  "syncWizAndroid4",
-  "syncWizAndroid5",
-  "syncWizFinalActive",
-  "syncWizFinalNoPeers"
-].map((key) => `settings.${key}`);
 const helpShortcutRegressionKeys = [
   "help.readerTitle",
   ...[
@@ -73,7 +39,7 @@ const helpShortcutRegressionKeys = [
     "vocab",
     "flashcards",
     "graphs",
-    "sync",
+    "export",
     "settings",
     "help"
   ].map((key) => `help.navKeys.${key}`),
@@ -105,12 +71,12 @@ const helpShortcutRegressionKeys = [
   ].map((key) => `help.flashcardsKeys.${key}`)
 ];
 const copiedEnglishAllowlist = new Set([
+  "help.navKeys.export",
   "settings.wordPanelItems.youglish",
   "settings.translationProviderDeepL",
   "settings.translationProviderLmStudio"
 ]);
 const copiedEnglishRegressionKeys = [
-  ...syncthingRegressionKeys,
   ...helpShortcutRegressionKeys,
   "reader.nextPageTitle",
   "reader.prevPageTitle",

@@ -3,10 +3,7 @@ pub(crate) mod durable;
 pub(crate) mod media_assets;
 pub mod record_files;
 pub mod snapshot;
-
-#[cfg(test)]
-#[path = "../tests/store_sync/tests.rs"]
-mod sync_tests;
+pub mod transfer;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -74,6 +71,7 @@ impl Store {
         #[cfg(not(target_os = "android"))]
         {
             store.recover_pending_save()?;
+            record_files::migrate_legacy_json_records(&store.dir())?;
             store.discard_abandoned_book_imports()?;
         }
         // Snapshot refreshes records on first load; do not block Android WebView creation here.
@@ -81,7 +79,11 @@ impl Store {
     }
 
     pub fn dir(&self) -> PathBuf {
-        self.inner.lock().unwrap().dir.clone()
+        self.inner
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .dir
+            .clone()
     }
 
     pub(crate) fn device_id(&self) -> &str {
@@ -158,10 +160,14 @@ impl Store {
         } else {
             merge_data_dir(&current, &dir, self.device_id())?;
         }
-        let previous_inner = self.inner.lock().unwrap().clone();
-        let previous_base_records = self.base_records.lock().unwrap().clone();
+        let previous_inner = self.inner.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let previous_base_records = self
+            .base_records
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
         {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             inner.books_dir = dir.join("books");
             inner.dir = dir.clone();
         }
@@ -172,9 +178,9 @@ impl Store {
             Ok(())
         })();
         if let Err(error) = result {
-            let mut inner = self.inner.lock().unwrap();
+            let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             *inner = previous_inner;
-            *self.base_records.lock().unwrap() = previous_base_records;
+            *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = previous_base_records;
             return Err(error);
         }
         Ok(dir)
@@ -212,7 +218,6 @@ fn merge_data_dir(
         record_files::now_millis(),
     );
     record_files::write_records(to, &merged.records)?;
-    record_files::write_conflicts(to, &merged.conflicts)?;
     media_assets::merge_book_assets_into(from, to, device_id)?;
     let source_packages = from.join("argos-packages");
     if source_packages.is_dir() {
@@ -455,7 +460,9 @@ mod tests {
 
     #[test]
     fn relocation_merges_existing_target_without_overwriting_it() {
-        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let source = tempfile::tempdir().unwrap();
@@ -489,7 +496,9 @@ mod tests {
 
     #[test]
     fn relocation_into_existing_target_keeps_source_text_and_media() {
-        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let source = tempfile::tempdir().unwrap();
@@ -567,7 +576,9 @@ mod tests {
 
     #[test]
     fn relocation_does_not_persist_target_until_it_is_usable() {
-        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+        let _lock = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let source = tempfile::tempdir().unwrap();
@@ -582,8 +593,10 @@ mod tests {
     }
 
     #[test]
-    fn redirected_missing_data_dir_errors_instead_of_creating_empty_folder() {
-        let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    fn redirected_missing_data_dir_falls_back_to_default_folder() {
+        let _lock = crate::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         let appdata = tempfile::tempdir().unwrap();
         let _appdata = AppDataGuard::set(appdata.path());
         let missing = appdata.path().join("missing-cloud-folder");
@@ -593,9 +606,17 @@ mod tests {
         )
         .unwrap();
 
-        let error = crate::paths::data_dir("WordHunter").unwrap_err();
+        let dir = crate::paths::data_dir("WordHunter").unwrap();
 
-        assert!(error.contains("configured data folder is missing"));
+        assert_eq!(dir, appdata.path().join("WordHunter"));
+        assert!(dir.is_dir());
+        // The stale pointer is cleared so the next start does not fail again.
+        assert_eq!(
+            std::fs::read_to_string(appdata.path().join("WordHunter-data-dir.txt"))
+                .unwrap_or_default()
+                .trim(),
+            ""
+        );
         assert!(!missing.exists());
     }
 }

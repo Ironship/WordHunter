@@ -68,12 +68,6 @@ export function createDefaultState(): WhAppState {
     readerScrolls: {},
     readerScrollsPerPage: {},
     dataDirectory: "",
-    syncDirectory: "",
-    syncHealth: null,
-    cloudSyncStatus: null,
-    syncthingStatus: null,
-    syncConflictCount: 0,
-    syncConflicts: [],
     recoveryStatus: null,
     filters: {
       libraryQuery: "",

@@ -1,0 +1,5 @@
+Word Hunter 1.0.9-rc.6
+
+- Repairs unreadable local text records from complete JSON backups.
+- Prevents failed saves from blocking later imports and recovery.
+- Keeps missing book content protected during ordinary saves.

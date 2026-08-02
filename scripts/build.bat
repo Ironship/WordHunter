@@ -29,13 +29,6 @@ $LicenseFile = Join-Path $Root "LICENSE"
 $ThirdPartyNotices = Join-Path $Root "THIRD-PARTY-NOTICES.md"
 $ThirdPartyLicenses = Join-Path $Root "THIRD-PARTY-LICENSES.html"
 $OcrThirdPartyLicenses = Join-Path $Root "OCR-THIRD-PARTY-LICENSES.html"
-$SyncthingVersion = "2.1.0"
-$SyncthingArchive = "syncthing-windows-amd64-v$SyncthingVersion.zip"
-$SyncthingSha256 = "33DA7C8371F4A70DCF7E5F9136D71DBF5EA280D06BB99DB0D1E979B14C324DEB"
-$SyncthingDir = Join-Path $Root "src-tauri\syncthing"
-$SyncthingExe = Join-Path $SyncthingDir "syncthing.exe"
-$SyncthingLicense = Join-Path $SyncthingDir "SYNCTHING-LICENSE.txt"
-$SyncthingAuthors = Join-Path $SyncthingDir "SYNCTHING-AUTHORS.txt"
 $script:FrontendBuilt = $false
 
 . $WindowsRuntimeScript
@@ -207,9 +200,6 @@ function New-WindowsRuntimeTauriConfig([string[]]$RuntimeDlls, [string]$Executab
         "../src/assets/**/*" = "src/assets/"
         "ocr-runtime/bin/**/*" = "ocr-runtime/bin/"
         "ocr-runtime/models/**/*" = "ocr-runtime/models/"
-        "syncthing/syncthing.exe" = "syncthing.exe"
-        "syncthing/SYNCTHING-LICENSE.txt" = "SYNCTHING-LICENSE.txt"
-        "syncthing/SYNCTHING-AUTHORS.txt" = "SYNCTHING-AUTHORS.txt"
         "../LICENSE" = "LICENSE"
         "../THIRD-PARTY-NOTICES.md" = "THIRD-PARTY-NOTICES.md"
         "../THIRD-PARTY-LICENSES.html" = "THIRD-PARTY-LICENSES.html"
@@ -290,39 +280,6 @@ function Assert-ArchiveContainsFile([string]$ArchivePath, [string]$ExpectedFile)
     if (-not ($listing -match [regex]::Escape($ExpectedFile))) {
         Fail "$ArchivePath is missing required file: $ExpectedFile"
     }
-}
-
-function Download-Syncthing {
-    if ((Test-Path -LiteralPath $SyncthingExe) -and
-        (Test-Path -LiteralPath $SyncthingLicense) -and
-        (Test-Path -LiteralPath $SyncthingAuthors)) {
-        return
-    }
-    Write-Step "Downloading Syncthing for Windows"
-    Ensure-Directory $SyncthingDir
-    $url = "https://github.com/syncthing/syncthing/releases/download/v$SyncthingVersion/$SyncthingArchive"
-    $zip = Join-Path $SyncthingDir $SyncthingArchive
-    Download-File $url $zip $SyncthingSha256
-    Expand-Archive -LiteralPath $zip -DestinationPath $SyncthingDir -Force
-    $subDir = Join-Path $SyncthingDir "syncthing-windows-amd64-v$SyncthingVersion"
-    if (-not (Test-Path -LiteralPath $subDir)) {
-        Fail "Syncthing archive did not contain the expected directory: $subDir"
-    }
-    $downloadedExe = Join-Path $subDir "syncthing.exe"
-    if (-not (Test-Path -LiteralPath $downloadedExe)) {
-        Fail "Syncthing archive did not contain syncthing.exe"
-    }
-    foreach ($requiredFile in @("LICENSE.txt", "AUTHORS.txt")) {
-        if (-not (Test-Path -LiteralPath (Join-Path $subDir $requiredFile))) {
-            Fail "Syncthing archive did not contain $requiredFile"
-        }
-    }
-    Move-Item -LiteralPath $downloadedExe -Destination $SyncthingExe -Force
-    Copy-Item -LiteralPath (Join-Path $subDir "LICENSE.txt") -Destination $SyncthingLicense -Force
-    Copy-Item -LiteralPath (Join-Path $subDir "AUTHORS.txt") -Destination $SyncthingAuthors -Force
-    Remove-Item -LiteralPath $subDir -Recurse -Force
-    Remove-Item -LiteralPath $zip -Force
-    Write-Host "Syncthing downloaded to $SyncthingExe" -ForegroundColor Green
 }
 
 function Ensure-Cargo {
@@ -724,8 +681,6 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     Ensure-FrontendBuild
     Ensure-Cargo
     Ensure-WindowsRustTarget
-    Download-Syncthing
-
     Enable-MSVC
     Ensure-Directory $Outputs
     if (-not $SkipRuntime) {
@@ -745,9 +700,6 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     Remove-Item -LiteralPath $PortableDir -Recurse -Force -ErrorAction SilentlyContinue
     Ensure-Directory $PortableDir
     Copy-Item -LiteralPath $RustExe -Destination $OutputPortable -Force
-    Copy-Item -LiteralPath $SyncthingExe -Destination (Join-Path $PortableDir "syncthing.exe") -Force
-    Copy-Item -LiteralPath $SyncthingLicense -Destination $PortableDir -Force
-    Copy-Item -LiteralPath $SyncthingAuthors -Destination $PortableDir -Force
     foreach ($legalFile in @($LicenseFile, $ThirdPartyNotices, $ThirdPartyLicenses, $OcrThirdPartyLicenses)) {
         Copy-Item -LiteralPath $legalFile -Destination $PortableDir -Force
     }
@@ -760,9 +712,6 @@ function Build-Portable([switch]$SkipRuntime, [switch]$SkipRustBuild) {
     }
     Compress-Archive -Path (Join-Path $PortableDir "*") -DestinationPath $OutputPortableZip -Force
     Assert-ArchiveContainsRuntimeDlls $OutputPortableZip $portableRuntimeDlls
-    Assert-ArchiveContainsFile $OutputPortableZip "syncthing.exe"
-    Assert-ArchiveContainsFile $OutputPortableZip "SYNCTHING-LICENSE.txt"
-    Assert-ArchiveContainsFile $OutputPortableZip "SYNCTHING-AUTHORS.txt"
     Assert-ArchiveContainsFile $OutputPortableZip "LICENSE"
     Assert-ArchiveContainsFile $OutputPortableZip "THIRD-PARTY-NOTICES.md"
     Assert-ArchiveContainsFile $OutputPortableZip "THIRD-PARTY-LICENSES.html"
@@ -779,7 +728,6 @@ function Build-Installer([switch]$SkipRuntime) {
     Ensure-Cargo
     Ensure-WindowsRustTarget
     Enable-MSVC
-    Download-Syncthing
     Ensure-Directory $Outputs
     if (-not $SkipRuntime) {
         Build-OcrRuntime
@@ -819,9 +767,6 @@ function Build-Installer([switch]$SkipRuntime) {
 
     Copy-Item -LiteralPath $installer.FullName -Destination $OutputInstaller -Force
     Assert-ArchiveContainsRuntimeDlls $OutputInstaller $installerRuntimeDlls
-    Assert-ArchiveContainsFile $OutputInstaller "syncthing.exe"
-    Assert-ArchiveContainsFile $OutputInstaller "SYNCTHING-LICENSE.txt"
-    Assert-ArchiveContainsFile $OutputInstaller "SYNCTHING-AUTHORS.txt"
     Assert-ArchiveContainsFile $OutputInstaller "LICENSE"
     Assert-ArchiveContainsFile $OutputInstaller "THIRD-PARTY-NOTICES.md"
     Assert-ArchiveContainsFile $OutputInstaller "THIRD-PARTY-LICENSES.html"

@@ -4,15 +4,16 @@ use std::net::TcpListener;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 use tauri::AppHandle;
 use tiny_http::Server;
 
 use crate::store::Store;
-use crate::syncthing_manager::SyncthingManager;
 
 const MAX_REGULAR_REQUEST_WORKERS: usize = 10;
 const MAX_STORE_REQUEST_WORKERS: usize = 4;
 const MAX_CONTROL_REQUEST_WORKERS: usize = 2;
+const REQUEST_READ_TIMEOUT: Duration = Duration::from_secs(60);
 
 struct RequestPermit {
     active: Arc<AtomicUsize>,
@@ -61,9 +62,10 @@ pub struct ServerState {
     pub store: Arc<Store>,
     pub token: String,
     pub app_handle: AppHandle,
-    pub syncthing: SyncthingManager,
     pub(crate) ocr_jobs: Mutex<OcrJobState>,
     pub ocr_slot: Mutex<()>,
+    #[cfg(not(target_os = "android"))]
+    pub exports: Mutex<std::collections::HashMap<String, crate::handlers::ExportJob>>,
 }
 
 #[derive(Default)]
@@ -151,6 +153,19 @@ pub fn start_server_on_port(
     start_server_from_listener(listener, store, token, app_handle)
 }
 
+fn apply_socket_timeouts(listener: &TcpListener) -> Result<(), String> {
+    use socket2::SockRef;
+
+    let socket = SockRef::from(listener);
+    socket
+        .set_read_timeout(Some(REQUEST_READ_TIMEOUT))
+        .map_err(|e| e.to_string())?;
+    socket
+        .set_write_timeout(Some(REQUEST_READ_TIMEOUT))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 fn start_server_from_listener(
     listener: TcpListener,
     store: Arc<Store>,
@@ -158,15 +173,19 @@ fn start_server_from_listener(
     app_handle: AppHandle,
 ) -> Result<u16, String> {
     let port = listener.local_addr().map_err(|e| e.to_string())?.port();
+    // Enforce a read timeout on every accepted connection so a stalled client
+    // (slow-loris) cannot pin a worker thread forever with an incomplete body.
+    apply_socket_timeouts(&listener)?;
     let server = Server::from_listener(listener, None).map_err(|e| e.to_string())?;
     let state = Arc::new(ServerState {
         base_url: format!("http://{}:{}", crate::HOST, port),
         store,
         token,
         app_handle,
-        syncthing: SyncthingManager::new(),
         ocr_jobs: Mutex::new(OcrJobState::default()),
         ocr_slot: Mutex::new(()),
+        #[cfg(not(target_os = "android"))]
+        exports: Mutex::new(std::collections::HashMap::new()),
     });
 
     thread::spawn(move || {

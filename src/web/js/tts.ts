@@ -8,13 +8,27 @@ let speaking = false;
 let currentAudio: HTMLAudioElement | null = null;
 let currentEdgeTtsRequest: AbortController | null = null;
 let currentAudioObjectUrl: string | null = null;
+let currentEdgeWatchdog = 0;
 let onFinishCallback: (() => void) | null = null;
 let androidUtteranceSeq = 0;
 let currentTtsWordToken: Element | null = null;
 let ttsSessionId = 0;
 let clearAndroidTtsListener: (() => void) | null = null;
+let androidTtsBroken = false;
 const MAX_TTS_SEGMENT_LENGTH = 500;
 const TTS_WORD_CLASS = "tts-current-word";
+const TTS_BACKGROUND_RESUME_WINDOW_MS = 60_000;
+
+interface TtsPausedChain {
+  sentences: string[];
+  index: number;
+  containerElement: HTMLElement | null | undefined;
+  tracker: TtsWordTracker | null;
+  onFinish: (() => void) | null;
+  at: number;
+}
+
+let pausedChain: TtsPausedChain | null = null;
 
 interface TtsWordRun {
   word: string;
@@ -34,6 +48,8 @@ export interface SpeakTextOptions {
 
 type AndroidSpeakBridge = WhAndroidBridge & {
   speak: (text: string, language: string, rate: number, requestId: string) => boolean;
+  isTtsReady?: () => boolean;
+  endTtsSession?: () => void;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -75,6 +91,42 @@ function getAndroidTtsBridge(): AndroidSpeakBridge | null {
   return bridge && typeof bridge.speak === "function" ? bridge as AndroidSpeakBridge : null;
 }
 
+function isAndroidTtsReady(): boolean {
+  const bridge = getAndroidTtsBridge();
+  if (!bridge) return false;
+  if (typeof bridge.isTtsReady !== "function") return true;
+  try {
+    return bridge.isTtsReady() === true;
+  } catch {
+    return false;
+  }
+}
+
+function waitForAndroidTtsReady(maxMs = 1500): Promise<boolean> {
+  if (!getAndroidTtsBridge()) return Promise.resolve(false);
+  if (isAndroidTtsReady()) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const timer = window.setInterval(() => {
+      if (isAndroidTtsReady() || Date.now() - start >= maxMs) {
+        window.clearInterval(timer);
+        resolve(isAndroidTtsReady());
+      }
+    }, 100);
+  });
+}
+
+function endAndroidTtsSession(): void {
+  const bridge = getAndroidTtsBridge();
+  if (bridge && typeof bridge.endTtsSession === "function") {
+    try {
+      bridge.endTtsSession();
+    } catch {
+      // Ignore a failing native session end; the bridge may already be gone.
+    }
+  }
+}
+
 function speakSentenceAndroid(
   sentence: string,
   onEnd?: (status: string) => void,
@@ -111,26 +163,38 @@ function speakSentenceAndroid(
   };
   window.addEventListener("wordhunter:android-tts", finish);
   clearAndroidTtsListener = cleanup;
+  const rate = getTtsRate(state.preferences.ttsRate || "normal");
+  const estimateMs = Math.ceil((sentence.length / Math.max(0.5, rate)) * 80) + 10_000;
   timeout = setTimeout(() => {
     cleanup();
     if (sessionId === ttsSessionId && onEnd) onEnd("timeout");
-  }, 30_000);
+  }, Math.max(20_000, Math.min(180_000, estimateMs)));
   const ok = bridge.speak(
     sentence,
     getTtsLang(activeTtsLanguage()),
-    getTtsRate(state.preferences.ttsRate || "normal"),
+    rate,
     id
   );
   if (!ok) cleanup();
   return ok;
 }
 
-export function speakWord(word: string): void {
+export function isSpeaking(): boolean {
+  return speaking;
+}
+
+export async function speakWord(word: string): Promise<void> {
   stopSpeaking();
   const sessionId = ttsSessionId;
-  if (speakSentenceAndroid(word)) return;
-
-  if (state.preferences.useEdgeTts === true) {
+  if (!androidTtsBroken && getAndroidTtsBridge()) {
+    const ready = await waitForAndroidTtsReady();
+    if (sessionId !== ttsSessionId) return;
+    if (ready && speakSentenceAndroid(word)) return;
+    androidTtsBroken = true;
+    speakWordLocal(word);
+    return;
+  }
+  if (state.preferences.useEdgeTts === true && !window.WordHunterAndroid) {
     const lang = activeTtsLanguage();
     const url = edgeTtsUrl(word, lang);
     const request = new AbortController();
@@ -171,7 +235,12 @@ export function speakWord(word: string): void {
 }
 
 function speakWordLocal(word: string): void {
-  if (!window.speechSynthesis) return;
+  if (!window.speechSynthesis) {
+    void import("./toast.js").then((m) => {
+      void import("./i18n.js").then((i) => m.showToast(i.t("toast.ttsMissing"), "error"));
+    });
+    return;
+  }
   window.speechSynthesis.cancel();
   
   const lang = activeTtsLanguage();
@@ -191,12 +260,21 @@ function speakWordLocal(word: string): void {
   const utterance = new SpeechSynthesisUtterance(word);
   utterance.lang = getTtsLang(activeTtsLanguage());
   utterance.rate = getTtsRate(state.preferences.ttsRate || "normal");
+  utterance.onerror = (event) => {
+    console.warn("TTS utterance failed", event.error);
+    import("./toast.js").then(m => {
+      import("./i18n.js").then(i => {
+        m.showToast(i.t("toast.ttsMissing"), "error");
+      });
+    });
+  };
   window.speechSynthesis.speak(utterance);
 }
 
 export function stopSpeaking(): void {
   ttsSessionId += 1;
   speaking = false;
+  androidTtsBroken = false;
   clearAndroidTtsListener?.();
   const androidBridge = getAndroidTtsBridge();
   if (androidBridge && typeof androidBridge.stopTts === "function") {
@@ -207,18 +285,19 @@ export function stopSpeaking(): void {
     window.speechSynthesis.cancel();
   }
   clearHighlights();
+  endAndroidTtsSession();
   if (onFinishCallback) {
     onFinishCallback();
     onFinishCallback = null;
   }
 }
 
-export function speakText(
+export async function speakText(
   text: string,
   containerElement?: HTMLElement | null,
   onFinish?: (() => void) | null,
   options: SpeakTextOptions = {}
-): void {
+): Promise<void> {
   stopSpeaking();
   onFinishCallback = onFinish;
 
@@ -234,13 +313,67 @@ export function speakText(
   
   speaking = true;
 
-  if (getAndroidTtsBridge()) {
-    readNextSentenceAndroid(sentences, 0, containerElement, tracker);
-  } else if (state.preferences.useEdgeTts === true) {
+  if (!androidTtsBroken && getAndroidTtsBridge()) {
+    const ready = await waitForAndroidTtsReady();
+    if (!speaking) return;
+    if (ready) {
+      rememberAndroidChain(sentences, 0, containerElement, tracker, onFinish);
+      readNextSentenceAndroid(sentences, 0, containerElement, tracker);
+      return;
+    }
+    androidTtsBroken = true;
+  }
+  if (state.preferences.useEdgeTts === true && !window.WordHunterAndroid) {
     readNextSentenceEdge(sentences, 0, containerElement, tracker);
   } else {
     readNextSentenceLocal(sentences, 0, containerElement, tracker);
   }
+}
+
+window.addEventListener?.("wordhunter:android-tts-stop", () => {
+  if (speaking) stopSpeaking();
+});
+
+function rememberAndroidChain(
+  sentences: string[],
+  index: number,
+  containerElement: HTMLElement | null | undefined,
+  tracker: TtsWordTracker | null,
+  onFinish: (() => void) | null
+): void {
+  pausedChain = {
+    sentences,
+    index,
+    containerElement: containerElement || null,
+    tracker,
+    onFinish,
+    at: Date.now()
+  };
+}
+
+if (typeof document !== "undefined") {
+  document.addEventListener?.("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      if (speaking && getAndroidTtsBridge()) {
+        const chain = pausedChain;
+        if (chain) chain.at = Date.now();
+        stopSpeaking();
+      }
+      return;
+    }
+    const chain = pausedChain;
+    if (!chain) return;
+    pausedChain = null;
+    if (Date.now() - chain.at > TTS_BACKGROUND_RESUME_WINDOW_MS) return;
+    if (chain.index >= chain.sentences.length) return;
+    const container = chain.containerElement && document.body?.contains(chain.containerElement)
+      ? chain.containerElement
+      : null;
+    if (!container && chain.index > 0) return;
+    onFinishCallback = chain.onFinish;
+    speaking = true;
+    readNextSentenceAndroid(chain.sentences, chain.index, container, chain.tracker);
+  });
 }
 
 function splitTextForTts(text: string): string[] {
@@ -373,13 +506,30 @@ function playEdgeTtsAudio(
   audio.onended = () => {
     if (settled) return;
     settled = true;
+    clearTimeout(currentEdgeWatchdog);
+    currentEdgeWatchdog = 0;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
     if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
   };
+  const watchdog = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    currentEdgeWatchdog = 0;
+    if (currentAudio === audio) currentAudio = null;
+    releaseAudioObjectUrl(objectUrl);
+    console.warn("Edge TTS playback watchdog fired; falling back to local speech");
+    if (!speaking || sessionId !== ttsSessionId) return;
+    speakSentenceLocal(sentence, () => {
+      if (speaking && sessionId === ttsSessionId) readNextSentenceEdge(sentences, index + 1, containerElement, tracker);
+    }, tracker);
+  }, sentence.length * 120 + 15_000);
+  currentEdgeWatchdog = watchdog;
   const fallback = (err: unknown) => {
     if (settled) return;
     settled = true;
+    clearTimeout(currentEdgeWatchdog);
+    currentEdgeWatchdog = 0;
     if (currentAudio === audio) currentAudio = null;
     releaseAudioObjectUrl(objectUrl);
     console.warn("Edge TTS play failed", err);
@@ -403,6 +553,8 @@ function parseEdgeWordTimings(value: string | null): number[] {
 function clearCurrentEdgeAudio(): void {
   currentEdgeTtsRequest?.abort();
   currentEdgeTtsRequest = null;
+  clearTimeout(currentEdgeWatchdog);
+  currentEdgeWatchdog = 0;
   if (currentAudio) {
     currentAudio.pause();
     currentAudio = null;
@@ -414,6 +566,16 @@ function releaseAudioObjectUrl(objectUrl: string | null): void {
   if (!objectUrl) return;
   URL.revokeObjectURL(objectUrl);
   if (currentAudioObjectUrl === objectUrl) currentAudioObjectUrl = null;
+}
+
+function finishAndroidTtsChain(status: string): void {
+  console.warn("Android TTS chain stopped unexpectedly", status);
+  stopSpeaking();
+  if (status === "error" || status === "timeout") {
+    void import("./toast.js").then((m) => {
+      void import("./i18n.js").then((i) => m.showToast(i.t("toast.ttsInterrupted"), "error"));
+    });
+  }
 }
 
 function readNextSentenceAndroid(
@@ -435,10 +597,21 @@ function readNextSentenceAndroid(
   }
 
   highlightContainer(containerElement);
-  const started = speakSentenceAndroid(sentence, () => {
-    if (speaking && sessionId === ttsSessionId) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
+  const started = speakSentenceAndroid(sentence, (status) => {
+    if (!speaking || sessionId !== ttsSessionId) return;
+    if (status === "done") {
+      if (pausedChain) pausedChain.index = index + 1;
+      readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
+    } else {
+      finishAndroidTtsChain(status);
+    }
   }, tracker);
   if (!started) {
+    if (!window.speechSynthesis) {
+      finishAndroidTtsChain("error");
+      return;
+    }
+    androidTtsBroken = true;
     speakSentenceLocal(sentence, () => {
       if (speaking && sessionId === ttsSessionId) readNextSentenceAndroid(sentences, index + 1, containerElement, tracker);
     }, tracker);

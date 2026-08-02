@@ -1,7 +1,7 @@
 # Word Hunter Third-Party Notices
 
 This document describes the principal third-party technologies used or
-distributed by Word Hunter 1.0.9-rc.3. Word Hunter itself is licensed under
+distributed by Word Hunter 1.0.9-rc.7. Word Hunter itself is licensed under
 AGPL-3.0-or-later; the complete license is distributed as `LICENSE`.
 
 The exact Rust dependency license texts generated from the locked dependency
@@ -13,7 +13,7 @@ graphs are distributed as:
 The corresponding source for this release, including build instructions and
 lockfiles, is available at:
 
-https://github.com/Ironship/WordHunter/tree/WordHunter1.0.9-rc.3
+https://github.com/Ironship/WordHunter/tree/WordHunter1.0.9-rc.7
 
 ## Application Platform
 
@@ -46,19 +46,6 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.0.9-rc.3
 The model and native-runtime URLs and SHA-256 checksums used for release builds
 are pinned in `src-tauri/ocr-runtime/prepare-runtime.ps1`,
 `scripts/build-linux-native.sh`, and `com.wordhunter.app.yml`.
-
-## Synchronization
-
-Syncthing 2.1.0 is distributed as a separate executable next to Word Hunter on
-Windows, under `/app/bin` in the Flatpak, and under `/usr/bin` inside the
-AppImage. The DEB declares the distribution's `syncthing` package as a runtime
-dependency instead of installing a second copy into `/usr/bin`. Syncthing is
-licensed under MPL-2.0. Its corresponding source is available at:
-
-https://github.com/syncthing/syncthing/tree/v2.1.0
-
-Word Hunter communicates with Syncthing through its local HTTP API. Syncthing
-is not linked into the Word Hunter executable.
 
 ## Linux Packaging Tools
 

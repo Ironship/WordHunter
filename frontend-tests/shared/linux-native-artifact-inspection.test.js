@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { inspectLinuxTree } from "../../scripts/inspect-artifact.mjs";
+import { debianVersionForRelease, inspectLinuxTree } from "../../scripts/inspect-artifact.mjs";
 
 const linuxConfig = JSON.parse(
   readFileSync(new URL("../../src-tauri/tauri.linux-bundle.conf.json", import.meta.url), "utf8"),
@@ -51,7 +51,6 @@ function createLinuxTree(root, format = "appimage") {
     writeExecutable(root, name, elf);
   }
   if (format === "appimage") {
-    writeExecutable(root, "usr/bin/syncthing", elf);
     write(root, "apprun-hooks/linuxdeploy-plugin-gstreamer.sh", "export GST_PLUGIN_PATH_1_0=fixture\n");
     for (const plugin of ["libgstcoreelements.so", "libgstplayback.so", "libgstautodetect.so"]) {
       write(root, `usr/lib/gstreamer-1.0/${plugin}`, elf);
@@ -65,8 +64,6 @@ function createLinuxTree(root, format = "appimage") {
     "THIRD-PARTY-NOTICES.md",
     "THIRD-PARTY-LICENSES.html",
     "OCR-THIRD-PARTY-LICENSES.html",
-    "SYNCTHING-LICENSE.txt",
-    "SYNCTHING-AUTHORS.txt",
   ]) {
     write(root, `usr/lib/word-hunter-rustified/${name}`);
   }
@@ -95,17 +92,13 @@ function createLinuxTree(root, format = "appimage") {
 }
 
 describe("Linux native artifact inspection", () => {
-  it("pins native packaging inputs and keeps Syncthing format-specific", () => {
+  it("pins native packaging inputs", () => {
     const bundle = linuxConfig.bundle;
     assert.deepEqual(bundle.targets, ["appimage", "deb"]);
     assert.equal(bundle.useLocalToolsDir, true);
     assert.equal(bundle.linux.appimage.bundleMediaFramework, true);
-    assert.equal(bundle.linux.appimage.files["/usr/bin/syncthing"], "syncthing/syncthing");
-    assert.equal(bundle.resources["syncthing/syncthing"], undefined);
-    assert.ok(bundle.linux.deb.depends.includes("syncthing"));
     assert.ok(bundle.linux.deb.depends.includes("libc6 (>= 2.35)"));
     assert.equal(bundle.linux.deb.desktopTemplate, "../flatpak/com.wordhunter.app.desktop");
-    assert.equal(bundle.linux.deb.files["/usr/bin/syncthing"], undefined);
     assert.equal(
       bundle.linux.deb.files["/usr/share/doc/word-hunter/copyright"],
       "../packaging/linux/debian-copyright",
@@ -133,8 +126,12 @@ describe("Linux native artifact inspection", () => {
     assert.match(buildScript, /gzip -9 -n -c .*debian-changelog/);
     assert.match(buildScript, /CARGO_PROFILE_RELEASE_STRIP=symbols/);
     assert.match(buildScript, /release_version="\$\{package_version\/\+\/\.\}"/);
+    assert.match(buildScript, /debian_version="\$\{package_version\/-rc\.\/~rc\.\}"/);
+    assert.match(buildScript, /dpkg-deb --root-owner-group --build/);
     assert.match(buildScript, /WordHunter-\$release_version-x86_64\.AppImage/);
     assert.match(buildScript, /word-hunter_\$\{release_version\}_amd64\.deb/);
+    assert.equal(debianVersionForRelease("1.0.9-rc.7"), "1.0.9~rc.7");
+    assert.equal(debianVersionForRelease("1.0.9"), "1.0.9");
   });
 
   it("accepts a complete x86_64 tree and rejects architecture drift", () => {
@@ -151,22 +148,6 @@ describe("Linux native artifact inspection", () => {
       assert.throws(
         () => inspectLinuxTree(root, "fixture", { format: "appimage" }),
         /wrong machine architecture/,
-      );
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  it("accepts a DEB tree with a system Syncthing dependency and rejects a bundled copy", () => {
-    const root = mkdtempSync(join(tmpdir(), "wordhunter-linux-deb-tree-test-"));
-    try {
-      createLinuxTree(root, "deb");
-      assert.doesNotThrow(() => inspectLinuxTree(root, "fixture", { format: "deb" }));
-
-      writeExecutable(root, "usr/bin/syncthing", createElf());
-      assert.throws(
-        () => inspectLinuxTree(root, "fixture", { format: "deb" }),
-        /Debian syncthing dependency/,
       );
     } finally {
       rmSync(root, { recursive: true, force: true });

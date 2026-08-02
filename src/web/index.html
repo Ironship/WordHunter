@@ -2,7 +2,7 @@
 <html lang="pl" class="app-booting" data-theme="dark" data-color-theme="familiar">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="description" data-i18n-attr="content=app.description" content="Word Hunter — local Rust/Tauri reader, vocabulary trainer, and offline translator.">
   <title data-i18n="app.title">Word Hunter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -40,6 +40,7 @@
                 <option value="uk" data-i18n="languages.uk">Українська</option>
                 <option value="ru" data-i18n="languages.ru">Państwo Moskiewskie</option>
                 <option value="ja" data-i18n="languages.ja">日本語 (Japoński)</option>
+                <option value="zh" data-i18n="languages.zh">中文 (Chiński)</option>
               </select>
             </div>
             
@@ -103,9 +104,9 @@
           <span data-i18n="nav.graphs">Wykresy</span>
           <span class="shortcut-badge">Alt+G</span>
         </button>
-        <button class="nav-item" type="button" data-view="sync" data-i18n-attr="title=nav.sync">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M16 16h5v5"/></svg></span>
-          <span data-i18n="nav.sync">Synchronizacja</span>
+        <button class="nav-item" type="button" data-view="export" data-i18n-attr="title=nav.export">
+          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg></span>
+          <span data-i18n="nav.export">Eksport</span>
           <span class="shortcut-badge">Alt+Y</span>
         </button>
         <button class="nav-item" type="button" data-view="settings" data-i18n-attr="title=nav.settings">
@@ -649,6 +650,7 @@
                     <option value="uk" data-i18n="languages.uk">Українська</option>
                     <option value="ru" data-i18n="languages.ru">Państwo Moskiewskie</option>
                     <option value="ja" data-i18n="languages.ja">日本語 (Japoński)</option>
+                    <option value="zh" data-i18n="languages.zh">中文 (Chiński)</option>
                   </select>
                 </span>
               </label>
@@ -1062,6 +1064,9 @@
               <div class="data-actions compact-actions desktop-only-setting">
                 <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Wybierz folder danych</button>
               </div>
+              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
+                <div id="recovery-status-list" class="recovery-status-list"></div>
+              </div>
               <p class="settings-subheading" data-i18n="settings.groupBackup">Kopie i import</p>
               <div class="data-actions">
                 <section class="data-action-row desktop-only-setting">
@@ -1075,56 +1080,6 @@
                 </section>
                 <section class="data-action-row">
                   <div class="data-action-copy">
-                    <h3 data-i18n="settings.backupTitle">Pełna kopia WordHuntera</h3>
-                    <p data-i18n="settings.backupHint">JSON zawiera ustawienia, profile językowe, bazę słów, własne teksty i ukryte książki. Import JSON zastępuje aktualny stan aplikacji danymi z pliku.</p>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="primary-button" type="button" id="export-state" data-i18n="settings.exportJson">Eksportuj JSON</button>
-                    <label class="file-button">
-                      <span data-i18n="settings.importJson">Importuj JSON</span>
-                      <input id="import-state" type="file" accept="application/json">
-                    </label>
-                  </div>
-                </section>
-
-                <section class="data-action-row">
-                  <div class="data-action-copy">
-                    <h3 data-i18n="settings.ankiTitle">Wymiana słówek z Anki</h3>
-                    <p data-i18n="settings.ankiHint">TSV eksportuje słowa, tłumaczenia, pierwszy kontekst i opcjonalne rodzajniki. Import TSV dopisuje lub aktualizuje słówka, ale nie przenosi ustawień, książek ani profili.</p>
-                    <fieldset class="status-filter-field anki-export-statuses">
-                      <legend data-i18n="settings.ankiExportStatuses">Eksportowane statusy</legend>
-                      <div class="status-filter-options">
-                        <label class="status-check">
-                          <input type="checkbox" value="new" data-anki-export-status>
-                          <span data-i18n="vocab.statusNew">Nowe</span>
-                        </label>
-                        <label class="status-check">
-                          <input type="checkbox" value="learning" data-anki-export-status>
-                          <span data-i18n="vocab.statusLearning">Uczę się</span>
-                        </label>
-                        <label class="status-check">
-                          <input type="checkbox" value="known" data-anki-export-status>
-                          <span data-i18n="vocab.statusKnown">Znane</span>
-                        </label>
-                        <label class="status-check">
-                          <input type="checkbox" value="ignored" data-anki-export-status>
-                          <span data-i18n="vocab.statusIgnored">Ignorowane</span>
-                        </label>
-                      </div>
-                      <small data-i18n="settings.ankiExportStatusesHint">Wybierz, które statusy słów trafią do TSV. Anki dostaje kolumny: słowo, tłumaczenie, kontekst i opcjonalny rodzajnik.</small>
-                    </fieldset>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="primary-button" type="button" id="export-anki-tsv" data-i18n="settings.exportAnkiTsv">Eksportuj do Anki (TSV)</button>
-                    <label class="file-button">
-                      <span data-i18n="settings.importAnkiTsv">Importuj z Anki (TSV)</span>
-                      <input id="import-anki-tsv" type="file" accept=".tsv,.txt">
-                    </label>
-                  </div>
-                </section>
-
-                <section class="data-action-row">
-                  <div class="data-action-copy">
                     <h3 data-i18n="settings.resetTitle">Przywrócenie ustawień</h3>
                     <p data-i18n="settings.resetHint">Resetuje motyw, czytnik, słownik, TTS i inne preferencje do wartości domyślnych. Nie usuwa słówek ani tekstów.</p>
                   </div>
@@ -1133,25 +1088,6 @@
                   </div>
                 </section>
 
-                <section class="data-action-row danger-zone">
-                  <div class="data-action-copy">
-                    <h3 data-i18n="settings.clearWordsTitle">Wyczyść bazę słów</h3>
-                    <p data-i18n="settings.clearWordsHint">Usuwa wszystkie zapisane słowa, tłumaczenia i postęp nauki dla tego języka.</p>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="danger-button" type="button" id="clear-words" data-i18n="settings.clearWords">Wyczyść słowa</button>
-                  </div>
-                </section>
-
-                <section class="data-action-row danger-zone">
-                  <div class="data-action-copy">
-                    <h3 data-i18n="settings.clearLibraryTitle">Wyczyść bibliotekę</h3>
-                    <p data-i18n="settings.clearLibraryHint">Usuwa wszystkie własne teksty i resetuje listę książek, zachowując bazę Twoich słów.</p>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="danger-button" type="button" id="clear-library" data-i18n="settings.clearLibrary">Wyczyść bibliotekę</button>
-                  </div>
-                </section>
               </div>
             </div>
           </section>
@@ -1159,183 +1095,79 @@
         </div>
       </section>
 
-      <section class="view" id="sync-view" data-title-key="nav.sync">
-        <div class="settings-grid sync-page-grid">
-          <section class="panel sync-guide-panel" aria-labelledby="sync-guide-heading">
+      <section class="view" id="export-view" data-title-key="nav.export">
+        <div class="settings-grid">
+          <section class="panel" aria-labelledby="transfer-heading">
             <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="syncGuide.eyebrow">Synchronizacja PC i Android</p>
-              <h2 id="sync-guide-heading" data-i18n="syncGuide.heading">Instrukcja krok po kroku</h2>
-            </div>
-            <div class="settings-body sync-guide-body">
-              <p class="muted-copy" data-i18n="syncGuide.intro">Ta zakładka przeprowadza przez synchronizację między komputerem i Androidem. Word Hunter nie wymaga konta; urządzenia wymieniają pliki przez folder WordHunterSync.</p>
-              <div class="sync-guide-note" data-i18n="syncGuide.sourceOfTruth">Najważniejsze: lokalne dane aplikacji są głównym źródłem prawdy. Folder Syncthing jest kopią do wymiany między urządzeniami. Na Androidzie Word Hunter najpierw przygotowuje dane do scalenia, robi bezpieczny merge, a dopiero potem odsyła wynik do folderu.</div>
-
-              <div class="sync-guide-section">
-                <h3 data-i18n="syncGuide.beforeTitle">Zanim zaczniesz</h3>
-                <ol class="sync-guide-list">
-                  <li data-i18n="syncGuide.before1">Zrób ręczny eksport JSON w Ustawieniach, jeśli przenosisz ważne dane po raz pierwszy.</li>
-                  <li data-i18n="syncGuide.before2">Na każdym urządzeniu zamknij inne aplikacje, które mogłyby edytować folder WordHunterSync.</li>
-                  <li data-i18n="syncGuide.before3">Użyj folderu przeznaczonego tylko dla Word Huntera. Po reinstalacji możesz ponownie wybrać istniejący folder z danymi.</li>
-                  <li data-i18n="syncGuide.before4">Jeśli korzystasz z chmury lub Syncthing, poczekaj na status „up to date” przed otwarciem drugiego urządzenia.</li>
-                  <li data-i18n="syncGuide.before5">Nie wybieraj lokalnego folderu danych aplikacji jako folderu synchronizacji. To mają być dwa różne miejsca.</li>
-                </ol>
-              </div>
-
-              <div class="sync-guide-section desktop-only-setting">
-                <h3 data-i18n="syncGuide.pcTitle">PC: przygotowanie folderu i Syncthing</h3>
-                <ol class="sync-guide-list">
-                  <li data-i18n="syncGuide.pc1">Kliknij „Przygotuj folder Syncthing”. Word Hunter utworzy lub zaktualizuje folder WordHunterSync.</li>
-                  <li data-i18n="syncGuide.pc2">Sprawdź w statusie, czy folder synchronizacji jest wybrany i czy kondycja folderu jest gotowa.</li>
-                  <li data-i18n="syncGuide.pc3">Kliknij „Uruchom Syncthing”. Wersja PC ma Syncthing wbudowany w aplikację.</li>
-                  <li data-i18n="syncGuide.pc4">Kliknij „Pokaż mój kod QR” i zostaw okno otwarte, jeśli chcesz zeskanować PC z telefonu.</li>
-                  <li data-i18n="syncGuide.pc5">Na telefonie w Syncthing-Fork dodaj nowe urządzenie przez kod QR albo ręcznie wpisz Device ID z PC.</li>
-                  <li data-i18n="syncGuide.pc6">Gdy telefon zapyta o folder, wskaż lub utwórz folder WordHunterSync na telefonie.</li>
-                  <li data-i18n="syncGuide.pc7">Na PC zaakceptuj nowe urządzenie, jeśli Syncthing o to poprosi.</li>
-                  <li data-i18n="syncGuide.pc8">Zostaw Word Hunter i Syncthing otwarte, aż Syncthing pokaże, że folder jest zsynchronizowany.</li>
-                  <li data-i18n="syncGuide.pc9">Dopiero wtedy otwórz Word Hunter Pocket na Androidzie i wykonaj synchronizację folderu.</li>
-                </ol>
-              </div>
-
-              <div class="sync-guide-section">
-                <h3 data-i18n="syncGuide.androidTitle">Android: Word Hunter Pocket</h3>
-                <ol class="sync-guide-list">
-                  <li data-i18n="syncGuide.android1">Zainstaluj Syncthing-Fork z Play Store albo F-Droid. Sama aplikacja Word Hunter Pocket nie uruchamia Syncthing.</li>
-                  <li data-i18n="syncGuide.android2">W Syncthing-Fork sparuj telefon z PC przez kod QR albo Device ID.</li>
-                  <li data-i18n="syncGuide.android3">W Syncthing-Fork ustaw folder WordHunterSync na telefonie i poczekaj, aż pliki się pobiorą.</li>
-                  <li data-i18n="syncGuide.android4">Otwórz Word Hunter Pocket i przejdź do tej zakładki Synchronizacja.</li>
-                  <li data-i18n="syncGuide.android5">Kliknij wybór folderu synchronizacji i wskaż dokładnie ten folder, którego używa Syncthing-Fork.</li>
-                  <li data-i18n="syncGuide.android6">Android pokaże systemowy ekran wyboru folderu. Potwierdź dostęp do całego folderu, nie do pojedynczego pliku.</li>
-                  <li data-i18n="syncGuide.android7">Word Hunter sprawdzi, czy może czytać, zapisywać i usuwać plik testowy w tym folderze.</li>
-                  <li data-i18n="syncGuide.android8">Po udanym sprawdzeniu aplikacja skopiuje folder do stagingu, wykona merge i wyśle wynik z powrotem.</li>
-                  <li data-i18n="syncGuide.android9">Po zakończeniu wróć do Syncthing-Fork i poczekaj, aż wyśle zmiany na PC.</li>
-                  <li data-i18n="syncGuide.android10">Na PC kliknij „Scal dane teraz” albo poczekaj na automatyczne scalanie w tle.</li>
-                </ol>
-              </div>
-
-              <div class="sync-guide-section">
-                <h3 data-i18n="syncGuide.verifyTitle">Po czym poznasz, że działa</h3>
-                <ol class="sync-guide-list">
-                  <li data-i18n="syncGuide.verify1">W statusie folderu powinno być widać wybrany folder WordHunterSync.</li>
-                  <li data-i18n="syncGuide.verify2">Syncthing na PC powinien pokazać połączone urządzenie.</li>
-                  <li data-i18n="syncGuide.verify3">Syncthing-Fork na Androidzie powinien pokazać folder jako aktualny.</li>
-                  <li data-i18n="syncGuide.verify4">Nowe słowo dodane na PC powinno pojawić się na Androidzie po synchronizacji obu stron.</li>
-                  <li data-i18n="syncGuide.verify5">Nowy tekst dodany na Androidzie powinien pojawić się na PC po synchronizacji obu stron.</li>
-                  <li data-i18n="syncGuide.verify6">Jeśli pojawi się konflikt, nie kasuj folderu. Użyj panelu konfliktów w tej zakładce.</li>
-                </ol>
-              </div>
-
-              <div class="sync-guide-section">
-                <h3 data-i18n="syncGuide.troubleTitle">Gdy coś nie działa</h3>
-                <ol class="sync-guide-list">
-                  <li data-i18n="syncGuide.trouble1">Jeśli Android nie widzi zmian, otwórz Syncthing-Fork i sprawdź, czy folder jest „up to date”.</li>
-                  <li data-i18n="syncGuide.trouble2">Jeśli PC nie widzi telefonu, upewnij się, że oba urządzenia są w tej samej sieci albo mają dostęp do internetu.</li>
-                  <li data-i18n="syncGuide.trouble3">Jeśli folder jest tylko do odczytu, wybierz inny folder albo napraw uprawnienia w systemowym pickerze Androida.</li>
-                  <li data-i18n="syncGuide.trouble4">Jeśli widzisz stare dane, najpierw poczekaj na Syncthing, potem kliknij „Scal dane teraz” w Word Hunter.</li>
-                  <li data-i18n="syncGuide.trouble5">Nie naprawiaj problemu przez ręczne kopiowanie plików z folderu aplikacji. Używaj folderu WordHunterSync.</li>
-                  <li data-i18n="syncGuide.trouble6">Jeśli masz dwa telefony, dodawaj je pojedynczo i sprawdzaj po każdym urządzeniu, czy dane są aktualne.</li>
-                  <li data-i18n="syncGuide.trouble7">Przed dużymi zmianami, importem wielu książek albo testami nowego telefonu zrób eksport JSON.</li>
-                </ol>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="sync-actions-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.groupSync">Synchronizacja</p>
-              <h2 id="sync-actions-heading" data-i18n="syncGuide.actionsHeading">Folder i połączenie</h2>
+              <p class="eyebrow" data-i18n="transfer.eyebrow">Ręczne przenoszenie danych</p>
+              <h2 id="transfer-heading" data-i18n="transfer.heading">Eksport i import paczek</h2>
             </div>
             <div class="settings-body">
-              <p class="muted-copy" id="sync-directory"></p>
-              <p class="muted-copy" id="sync-status" role="status" aria-live="polite" aria-atomic="true"></p>
-              <p class="muted-copy" id="sync-health"></p>
-              <div class="data-actions compact-actions">
-                <button id="prepare-sync-directory" type="button" class="primary-button" data-i18n="settings.prepareSyncFolder">Przygotuj folder Syncthing</button>
-                <button id="force-sync" type="button" class="secondary-button" data-i18n="settings.forceSync">Scal dane teraz</button>
-              </div>
-
-              <div id="sync-conflicts-panel" class="sync-conflicts-panel" hidden>
-                <div id="sync-conflicts-list" class="sync-conflicts-list"></div>
-              </div>
-              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
-                <div id="recovery-status-list" class="recovery-status-list"></div>
-              </div>
-
-              <div id="syncthing-setup-wizard" class="syncthing-wizard">
-                <div class="syncthing-wizard-step" data-step="1">
-                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num"><span class="wizard-step-num-desktop">1</span><span class="wizard-step-num-pocket">1</span></span></div>
-                  <div class="syncthing-wizard-step-body">
-                    <strong data-i18n="settings.syncWizStep1Title">Przygotuj folder synchronizacji</strong>
-                    <p class="muted-copy" data-i18n="settings.syncWizStep1Desc">WordHunter utworzy folder WordHunterSync i skopiuje tam twoje dane. To jest wspólny folder między urządzeniami.</p>
+              <p class="muted-copy" data-i18n="transfer.intro">Paczka ZIP zawiera osobny YAML dla każdego słowa i książki oraz wszystkie obrazy stron PDF. Możesz bezpiecznie przenosić ją między komputerem i Androidem.</p>
+              <div class="transfer-note" data-i18n="transfer.mergeHint">Import nie usuwa innych danych. Gdy ten sam rekord istnieje na obu urządzeniach, Word Hunter zachowuje wersję z nowszym updatedAt zapisanym w YAML-u.</div>
+              <div class="data-actions">
+                <section class="data-action-row">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="transfer.fullTitle">Książki, słowa i ustawienia</h3>
+                    <p data-i18n="transfer.fullHint">Pełna paczka zawiera książki, treść, obrazy PDF, słownictwo, postęp nauki i ustawienia.</p>
                   </div>
-                </div>
-
-                <div class="syncthing-wizard-step desktop-only-setting" data-step="2">
-                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num">2</span></div>
-                  <div class="syncthing-wizard-step-body">
-                    <strong data-i18n="settings.syncWizStep2Title">Uruchom Syncthing</strong>
-                    <p class="muted-copy" data-i18n="settings.syncWizStep2Desc">Syncthing automatycznie synchronizuje pliki między urządzeniami. WordHunter może uruchomić go w tle.</p>
-                    <div class="data-actions compact-actions">
-                      <button id="syncthing-start" type="button" class="primary-button" data-i18n="settings.syncthingStart">Uruchom Syncthing</button>
-                      <button id="syncthing-stop" type="button" class="secondary-button" data-i18n="settings.syncthingStop">Zatrzymaj Syncthing</button>
-                    </div>
-                    <p class="muted-copy" id="syncthing-status" style="margin-top:0.5rem;"></p>
-                    <p class="muted-copy" id="syncthing-peers"></p>
+                  <div class="data-action-buttons">
+                    <button class="primary-button" type="button" id="export-transfer-all" data-i18n="transfer.exportAll">Eksportuj wszystko</button>
+                    <button class="secondary-button" type="button" id="import-transfer" data-i18n="transfer.import">Importuj paczkę</button>
                   </div>
-                </div>
-
-                <div class="syncthing-wizard-step desktop-only-setting" data-step="3">
-                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num">3</span></div>
-                  <div class="syncthing-wizard-step-body">
-                    <strong data-i18n="settings.syncWizStep3Title">Połącz drugie urządzenie</strong>
-                    <p class="muted-copy" data-i18n="settings.syncWizStep3Desc">Zeskanuj kod QR na drugim urządzeniu lub wpisz ręcznie ID urządzenia. Oba urządzenia muszą mieć uruchomiony Syncthing.</p>
-                    <div class="data-actions compact-actions">
-                      <button id="syncthing-show-qr" type="button" class="primary-button" data-i18n="settings.syncthingShowQR">Pokaż mój kod QR</button>
-                      <button id="syncthing-pair" type="button" class="secondary-button" data-i18n="settings.syncthingPair">Dodaj urządzenie ręcznie</button>
-                    </div>
+                </section>
+                <section class="data-action-row">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="transfer.wordsTitle">Tylko słowa</h3>
+                    <p data-i18n="transfer.wordsHint">Mała paczka zawiera słowa, tłumaczenia, statusy i daty zmian, bez książek i obrazów.</p>
                   </div>
-                </div>
-
-                <div class="syncthing-wizard-step" data-step="4">
-                  <div class="syncthing-wizard-step-status"><span class="wizard-step-num"><span class="wizard-step-num-desktop">4</span><span class="wizard-step-num-pocket">2</span></span></div>
-                  <div class="syncthing-wizard-step-body">
-                    <strong data-i18n="settings.syncWizStep4Title">Na Androidzie</strong>
-                    <p class="muted-copy" data-i18n="settings.syncWizStep4Desc">WordHunter Pocket nie ma wbudowanego Syncthing. Zainstaluj Syncthing Fork na telefonie, a kod QR lub Device ID weź z WordHuntera na PC.</p>
-                    <ol class="syncthing-android-steps">
-                      <li data-i18n="settings.syncWizAndroid1">Zainstaluj Syncthing Fork z Play Store lub F-Droid.</li>
-                      <li data-i18n="settings.syncWizAndroid2">Otwórz Syncthing Fork i kliknij + w zakładce Urządzenia.</li>
-                      <li data-i18n="settings.syncWizAndroid3">Na PC otwórz WordHunter > Synchronizacja, uruchom Syncthing i kliknij Pokaż mój kod QR. Zeskanuj ten kod albo wpisz Device ID PC.</li>
-                      <li data-i18n="settings.syncWizAndroid4">W WordHunter Pocket przygotuj folder synchronizacji i wybierz ten sam folder co w Syncthing.</li>
-                      <li data-i18n="settings.syncWizAndroid5">Gotowe. Dane będą synchronizowane automatycznie.</li>
-                    </ol>
+                  <div class="data-action-buttons">
+                    <button class="primary-button" type="button" id="export-transfer-words" data-i18n="transfer.exportWords">Eksportuj słowa</button>
                   </div>
-                </div>
-                <div id="syncthing-running-step" class="sync-guide-note" hidden>
-                  <p id="syncthing-final-status" class="muted-copy" role="status" aria-live="polite"></p>
-                </div>
+                </section>
               </div>
-
-              <details class="desktop-only-setting">
-                <summary data-i18n="settings.syncAdvanced">Zaawansowane</summary>
-                <div class="data-actions compact-actions">
-                  <button id="choose-sync-directory" type="button" class="secondary-button" data-i18n="settings.chooseSyncFolder">Wybierz folder synchronizacji</button>
-                </div>
-              </details>
             </div>
           </section>
-        </div>
-
-        <dialog id="syncthing-qr-dialog" class="panel syncthing-qr-dialog" aria-labelledby="syncthing-qr-title">
-          <div class="panel-header">
-            <h2 id="syncthing-qr-title" data-i18n="settings.syncthingQRTitle">Kod QR urządzenia</h2>
-          </div>
-          <div class="settings-body" style="text-align:center;">
-            <div id="syncthing-qr-container" style="margin:1rem 0;min-height:320px;display:flex;align-items:center;justify-content:center;"></div>
-            <p class="muted-copy" id="syncthing-qr-device-id"></p>
-            <p class="muted-copy" data-i18n="settings.syncthingQRHint">Zeskanuj ten kod w Syncthing na drugim urządzeniu.</p>
-            <button type="button" class="primary-button" id="syncthing-qr-close" data-i18n="settings.syncthingQRClose">Zamknij</button>
-          </div>
-        </dialog>
-      </section>
+          <section class="panel" aria-labelledby="transfer-tools-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="transfer.toolsEyebrow">Pozostałe narzędzia</p>
+              <h2 id="transfer-tools-heading" data-i18n="transfer.toolsHeading">Anki i porządkowanie danych</h2>
+            </div>
+            <div class="settings-body">
+              <div class="data-actions" id="transfer-secondary-actions">
+                <section class="data-action-row">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="settings.ankiTitle">Wymiana słówek z Anki</h3>
+                    <p data-i18n="settings.ankiHint">TSV eksportuje słowa, tłumaczenia, pierwszy kontekst i opcjonalne rodzajniki. Import TSV dopisuje lub aktualizuje słówka, ale nie przenosi ustawień, książek ani profili.</p>
+                    <fieldset class="status-filter-field anki-export-statuses">
+                      <legend data-i18n="settings.ankiExportStatuses">Eksportowane statusy</legend>
+                      <div class="status-filter-options">
+                        <label class="status-check"><input type="checkbox" value="new" data-anki-export-status><span data-i18n="vocab.statusNew">Nowe</span></label>
+                        <label class="status-check"><input type="checkbox" value="learning" data-anki-export-status><span data-i18n="vocab.statusLearning">Uczę się</span></label>
+                        <label class="status-check"><input type="checkbox" value="known" data-anki-export-status><span data-i18n="vocab.statusKnown">Znane</span></label>
+                        <label class="status-check"><input type="checkbox" value="ignored" data-anki-export-status><span data-i18n="vocab.statusIgnored">Ignorowane</span></label>
+                      </div>
+                      <small data-i18n="settings.ankiExportStatusesHint">Wybierz, które statusy słów trafią do TSV. Anki dostaje kolumny: słowo, tłumaczenie, kontekst i opcjonalny rodzajnik.</small>
+                    </fieldset>
+                  </div>
+                  <div class="data-action-buttons">
+                    <button class="primary-button" type="button" id="export-anki-tsv" data-i18n="settings.exportAnkiTsv">Eksportuj do Anki (TSV)</button>
+                    <label class="file-button"><span data-i18n="settings.importAnkiTsv">Importuj z Anki (TSV)</span><input id="import-anki-tsv" type="file" accept=".tsv,.txt"></label>
+                  </div>
+                </section>
+                <section class="data-action-row danger-zone">
+                  <div class="data-action-copy"><h3 data-i18n="settings.clearWordsTitle">Wyczyść bazę słów</h3><p data-i18n="settings.clearWordsHint">Usuwa wszystkie zapisane słowa, tłumaczenia i postęp nauki dla tego języka.</p></div>
+                  <div class="data-action-buttons"><button class="danger-button" type="button" id="clear-words" data-i18n="settings.clearWords">Wyczyść słowa</button></div>
+                </section>
+                <section class="data-action-row danger-zone">
+                  <div class="data-action-copy"><h3 data-i18n="settings.clearLibraryTitle">Wyczyść bibliotekę</h3><p data-i18n="settings.clearLibraryHint">Usuwa wszystkie własne teksty i resetuje listę książek, zachowując bazę Twoich słów.</p></div>
+                  <div class="data-action-buttons"><button class="danger-button" type="button" id="clear-library" data-i18n="settings.clearLibrary">Wyczyść bibliotekę</button></div>
+                </section>
+              </div>
+            </div>
+          </section>
+       </div>
+     </section>
 
       <section class="view" id="help-view" data-title-key="nav.help">
         <div class="settings-grid">
@@ -1351,8 +1183,8 @@
                 <p class="muted-copy" data-i18n-html="help.pocketControlsBody"></p>
               </div>
               <div>
-                <h3 data-i18n="help.pocketSyncTitle"></h3>
-                <p class="muted-copy" data-i18n-html="help.pocketSyncBody"></p>
+                <h3 data-i18n="help.pocketTransferTitle"></h3>
+                <p class="muted-copy" data-i18n-html="help.pocketTransferBody"></p>
               </div>
               <div>
                 <h3 data-i18n="help.pocketLimitsTitle"></h3>
@@ -1379,7 +1211,7 @@
                     <li data-i18n-html="help.navKeys.vocab"></li>
                     <li data-i18n-html="help.navKeys.flashcards"></li>
                     <li data-i18n-html="help.navKeys.graphs"></li>
-                    <li data-i18n-html="help.navKeys.sync"></li>
+                    <li data-i18n-html="help.navKeys.export"></li>
                     <li data-i18n-html="help.navKeys.settings"></li>
                     <li data-i18n-html="help.navKeys.help"></li>
                     <li data-i18n-html="help.navKeys.search"></li>
@@ -1509,7 +1341,6 @@
                 <li data-i18n-html="help.creditOfflineTranslator"></li>
                 <li data-i18n-html="help.creditPyside"></li>
                 <li data-i18n-html="help.creditInter"></li>
-                <li data-i18n-html="help.creditSync"></li>
                 <li data-i18n-html="help.creditNotices"></li>
               </ul>
             </div>
@@ -1561,6 +1392,7 @@
             <option value="uk" data-i18n="languages.uk">Українська</option>
             <option value="ru" data-i18n="languages.ru">Państwo Moskiewskie</option>
             <option value="ja" data-i18n="languages.ja">日本語 (Japoński)</option>
+            <option value="zh" data-i18n="languages.zh">中文 (Chiński)</option>
           </select>
         </span>
       </label>
@@ -1669,6 +1501,7 @@
       </div>
     </div>
   </dialog>
+
 
   <dialog id="edit-book-dialog" class="panel edit-book-dialog">
     <div class="panel-header">

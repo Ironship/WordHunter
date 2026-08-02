@@ -849,38 +849,7 @@ kbd {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.sync-page-grid {
-  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
-  align-items: start;
-}
-
-.sync-guide-panel {
-  grid-row: span 2;
-}
-
-.sync-guide-body {
-  gap: 1.25rem;
-}
-
-.sync-guide-section {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.sync-guide-section h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
-.sync-guide-list {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: grid;
-  gap: 0.45rem;
-  color: var(--ink);
-}
-
-.sync-guide-note {
+.transfer-note {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel-strong);
@@ -1645,111 +1614,6 @@ button.icon-button {
 
 .settings-body details .data-actions {
   margin-top: 0.75rem;
-}
-
-.syncthing-wizard {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.syncthing-wizard-step {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: start;
-  padding: 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-strong);
-}
-
-.syncthing-wizard-step-active {
-  border-color: var(--control-accent);
-  box-shadow: 0 0 0 1px var(--control-accent-soft);
-}
-
-.syncthing-wizard-step-active .wizard-step-num,
-.syncthing-wizard-step-done .wizard-step-num {
-  background: var(--control-accent);
-  color: var(--control-accent-ink);
-}
-
-.syncthing-wizard-step-done {
-  border-color: color-mix(in srgb, var(--control-accent) 55%, var(--line));
-}
-
-.syncthing-wizard-step-status {
-  display: flex;
-  justify-content: center;
-}
-
-.wizard-step-num {
-  display: inline-grid;
-  width: 1.75rem;
-  height: 1.75rem;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--control-accent-soft);
-  color: var(--control-accent);
-  font-size: 0.85rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.wizard-step-num-pocket {
-  display: none;
-}
-
-.syncthing-wizard-step-body {
-  display: grid;
-  min-width: 0;
-  gap: 0.45rem;
-}
-
-.syncthing-wizard-step-body > strong {
-  color: var(--ink);
-  line-height: 1.25;
-}
-
-.syncthing-android-steps {
-  display: grid;
-  gap: 0.35rem;
-  margin: 0.15rem 0 0;
-  padding-left: 1.15rem;
-  color: var(--ink);
-}
-
-.sync-conflicts-panel {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.sync-conflicts-list {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.sync-conflict-item {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.75rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.sync-conflict-title {
-  font-weight: 700;
-}
-
-.sync-conflict-meta {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.sync-conflict-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 .recovery-status-panel {
@@ -2914,6 +2778,21 @@ html[data-max-width="full"] .reader-text {
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--control-accent) 12%, transparent), transparent 58%),
     var(--panel);
   box-shadow: 0 18px 50px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+/* Full-screen backdrop for the package export progress bar. */
+.export-progress-overlay {
+  position: fixed;
+  z-index: 220;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--bg, #0d1114) 55%, transparent);
+  backdrop-filter: blur(2px);
+}
+.export-progress-overlay .ocr-progress-card {
+  width: min(420px, 100%);
 }
 .ocr-progress-document {
   position: relative;
@@ -4386,7 +4265,6 @@ dialog {
   #flashcards-view.active > .flashcards-layout,
   #translator-view.active > .translator-layout,
   #settings-view.active > .settings-grid,
-  #sync-view.active > .sync-page-grid,
   #help-view.active > .help-grid {
     min-height: 0;
   }

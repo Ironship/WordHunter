@@ -183,15 +183,6 @@ declare global {
     page: number;
   }
 
-  interface WhSyncConflict extends WhRecord {
-    id: string;
-    key: string;
-    reason: string;
-    timestamp: string;
-    kept: WhRecord;
-    conflict: WhRecord;
-  }
-
   interface WhRecoveryStatus extends WhRecord {
     schemaVersion: number;
     skippedRecordCount: number;
@@ -226,12 +217,6 @@ declare global {
     readerScrolls: Record<string, any>;
     readerScrollsPerPage: Record<string, number>;
     dataDirectory: string;
-    syncDirectory: string;
-    syncHealth: WhRecord | null;
-    cloudSyncStatus: WhRecord | null;
-    syncthingStatus: WhRecord | null;
-    syncConflictCount: number;
-    syncConflicts: WhSyncConflict[];
     recoveryStatus: WhRecoveryStatus | null;
     filters: WhStateFilters;
     discover: WhDiscoverState;
@@ -259,12 +244,6 @@ declare global {
   interface WhBridgeSnapshot {
     schemaVersion: number;
     dataDir?: string;
-    syncDir?: string;
-    syncHealth?: WhRecord | null;
-    cloudSyncStatus?: WhRecord | null;
-    syncthingStatus?: WhRecord | null;
-    syncConflictCount?: number;
-    syncConflicts?: WhSyncConflict[];
     recoveryStatus?: WhRecoveryStatus | null;
     prefs?: WhRecord;
     vocab?: Record<string, WhProfile | WhRecord>;
@@ -278,9 +257,6 @@ declare global {
     ok?: boolean;
     snapshot?: WhBridgeSnapshot;
     recoveryStatus?: WhRecoveryStatus | null;
-    syncHealth?: WhRecord | null;
-    syncConflictCount?: number;
-    syncConflicts?: WhSyncConflict[];
   }
 
   interface WhBridgeSnapshotChange {
@@ -315,11 +291,10 @@ declare global {
   interface WhAndroidBridge {
     openUrl(url: string): boolean;
     saveExport?(data: string, filename: string, mime: string, requestId: string): boolean;
+    saveExportFile?(path: string, filename: string, mime: string, requestId: string): boolean;
+    chooseImportPackage?(requestId: string): boolean;
     speak?(text: string, language: string, rate: number, requestId: string): boolean;
     stopTts?(): void;
-    getSyncFolderLabel?(): string;
-    chooseSyncFolder?(token: string, requestId: string): boolean;
-    forceSyncFolder?(token: string, requestId: string): boolean;
     beginPdfRender?(sessionId: string, data: string): string;
     renderPdfPage?(sessionId: string, pageIndex: number, width: number): string;
     endPdfRender?(sessionId: string): void;

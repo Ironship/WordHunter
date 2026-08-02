@@ -14,6 +14,7 @@ import { deleteStoredText, upsertStoredText } from "../store-bridge.js";
 import {
   clearCurrentBookSelectionIfMatches,
   findCustomText,
+  forgetReaderPositionIfUnreferenced,
   isCustomTextReferenced,
   removeCustomTextFromActiveProfile,
   uniqueCustomTextId,
@@ -122,7 +123,7 @@ export async function importCustomText(
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("custom text recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return null;
   }
   showToast(t("toast.textAdded"));
@@ -201,6 +202,7 @@ export async function removeCustomText(id: string): Promise<void> {
   if (!textObj) return;
   const deleteBackendText = !isCustomTextReferenced(id);
   clearBookTextCache(id);
+  if (deleteBackendText) forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
 
@@ -213,7 +215,7 @@ export async function removeCustomText(id: string): Promise<void> {
         console.warn("delete_text recovery reload failed", reloadError);
       });
     }
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
 

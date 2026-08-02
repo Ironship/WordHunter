@@ -2,11 +2,11 @@
 
 Word Hunter's Snap recipe repackages the already validated Linux Debian
 artifact. It does not rebuild the application and it does not wrap the
-AppImage. The pinned input for version 1.0.6 is:
+AppImage. The pinned input for version 1.0.8 is:
 
-- URL: `https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.6/word-hunter_1.0.6_amd64.deb`
-- size: `54,036,708` bytes
-- SHA-256: `774eda03b1904ee7c3ebe793c31a21f5b842543835c5267a513711383278b4b5`
+- URL: `https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.8/word-hunter_1.0.8_amd64.deb`
+- size: `54,571,770` bytes
+- SHA-256: `3e222116ef84359f0081328c2ab98dac194c4409c9a367ffff2331a600753a01`
 
 Snapcraft's `dump` plugin supports a remote Debian package as `source-type:
 deb`, and `source-checksum` verifies it before unpacking. This keeps the Snap
@@ -23,12 +23,11 @@ libraries pulled in by Debian dependencies. This keeps Mesa's loader and
 drivers on one compatible content-snap stack. Word Hunter adds only the
 interfaces required by its own features:
 
-- `network` for online dictionaries, model downloads, and Syncthing peers;
-- `network-bind` for Word Hunter's local server and the embedded Syncthing
-  process;
+- `network` for online dictionaries and model downloads;
+- `network-bind` for Word Hunter's local server;
 - `browser-support` for the sandboxed WebKitGTK web content used by Tauri;
 - `audio-playback` for text-to-speech and media playback;
-- `home` for books, subtitles, exports, and user-selected sync folders under
+- `home` for books, subtitles, exports, and imports under
   the non-hidden part of the home directory;
 - `removable-media` for optional files under `/media`, `/run/media`, and
   `/mnt`.
@@ -48,15 +47,8 @@ from the core24 archive. Noble splits the reference bus into the
 policy copied and sanitized by the CI smoke test. Both packages are explicit
 because Snapcraft can otherwise satisfy the latter from its build environment
 without priming its configuration into the application payload.
-The core24 Syncthing package is too old for the `generate --home` command used
-by Word Hunter, so the recipe instead downloads the same upstream Syncthing
-2.1.0 archive as the validated AppImage and verifies its pinned SHA-256.
-`WORDHUNTER_SYNCTHING` points Word Hunter at that staged
-`$SNAP/usr/bin/syncthing`, so binary discovery does not depend on the host
-`PATH`.
-
 Snap confinement remaps the application home directory. Word Hunter's config,
-learning data, downloaded translation models, and Syncthing state therefore
+learning data, and downloaded translation models therefore
 stay in the Snap-specific user data area. The OCR runtime and its bundled
 models remain read-only inside the Snap. Files selected elsewhere in the
 user's home or on removable media remain subject to the declared interface
@@ -72,8 +64,7 @@ GitHub-hosted runner it:
 2. uploads the resulting `.snap` as a workflow artifact;
 3. unpacks it and checks its metadata, application binary, desktop entry,
    icons, OCR runtime/models, GNOME/WebKit and Mesa content integration,
-   absence of duplicated Mesa payload drivers, Syncthing version, and the
-   Syncthing configuration-generation command used by Word Hunter;
+   and absence of duplicated Mesa payload drivers;
 4. installs it with `--dangerous` only inside the disposable CI runner and
    verifies that the GUI remains alive under Xvfb for the smoke-test window.
    GitHub-hosted runners cannot move their agent service into a Snap app cgroup,
@@ -106,9 +97,9 @@ Publishing remains blocked until the maintainer:
 
 1. signs in with Ubuntu One and reserves the `word-hunter` name (or updates the
    recipe to the reserved name);
-2. manually tests imports, TTS, model downloads, OCR, and Syncthing under
+2. manually tests imports, exports, TTS, model downloads, and OCR under
    strict confinement on a supported desktop;
-3. reviews any AppArmor denials, especially external sync folders and
+3. reviews any AppArmor denials, especially external import/export files and
    speech-service integration;
 4. creates narrowly scoped Snap Store credentials only after that review.
 

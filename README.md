@@ -13,7 +13,7 @@
   <a href="#download-and-install">Download</a> ·
   <a href="#first-5-minutes">First 5 minutes</a> ·
   <a href="#feature-tour">Feature tour</a> ·
-  <a href="#sync-and-backups">Sync and backups</a>
+  <a href="#exports-imports-and-backups">Exports and backups</a>
 </p>
 
 Word Hunter is a local-first reader and vocabulary trainer for Windows, macOS,
@@ -93,8 +93,8 @@ The DMG is signed ad hoc and is not notarized with an Apple Developer ID:
 4. Continue reading. Your saved words remain highlighted in context.
 5. Open **Word Base** to manage vocabulary or **Flashcards** to review due words.
 
-You can start locally and configure sync later. Before testing sync or moving
-data between devices, create a JSON backup from the app.
+You can start locally and move data later with a ZIP transfer package from the
+**Export** view. No account, shared folder, or background service is required.
 
 ## Why Word Hunter
 
@@ -104,27 +104,27 @@ data between devices, create a JSON backup from the app.
 - Review with spaced repetition, pronunciation, keyboard shortcuts, and TTS.
 - Use OCR and PDF text layers locally in desktop packages.
 - Read and review on Android with the Pocket interface.
-- Optionally synchronize books, vocabulary, settings, and progress through a
-  folder you choose.
+- Move books, images, vocabulary, settings, and progress with explicit ZIP
+  export/import packages.
 
 ## Your data stays yours
 
 - No account is required.
 - Books, vocabulary, progress, and settings are stored locally.
-- Sync is optional and uses a folder selected by you.
+- Transfers happen only when you explicitly export or import a package.
 - Online requests happen only when you use an online feature such as catalog
   discovery, dictionary links, translation, or online speech.
 
 ## Release status
 
 - **Stable:** [1.0.8](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.8)
-- **Prerelease:** [1.0.9-rc.3](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9-rc.3) — performance improvements, cache optimizations, and TTS fixes. See [release notes](docs/releases/1.0.9-rc.3.md). **Prerelease artifacts are for testing only and do not update stable installs.**
+- **Prerelease:** 1.0.9-RC.7 — replaces background folder synchronization with explicit YAML-based ZIP export/import packages. See [release notes](docs/releases/1.0.9-rc.7.md). **Prerelease artifacts are for testing only and do not update stable installs.**
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
 
-- Versions older than `1.0.0` predate the current storage and sync compatibility
-  baseline. Export a JSON backup before upgrading.
+- Versions older than `1.0.0` predate the current storage compatibility
+  baseline. Export a backup before upgrading.
 - If Android reports an incompatible signature when moving from an early 1.0.7
   test APK, export a backup before uninstalling.
   Uninstalling an Android app clears its local app data.
@@ -251,44 +251,39 @@ growth remain visible away from the desktop.
 
 <img src="docs/screenshots/pocket-graphs.png" width="300" alt="Word Hunter Pocket graphs with vocabulary progress and heatmap">
 
-### Desktop and Pocket Sync
+### Desktop and Pocket transfers
 
-Word Hunter is local-first. Desktop and Android can share custom texts, user
+Word Hunter is local-first. Desktop and Android can move custom texts, user
 books, vocabulary, settings, progress, and imported reading materials through a
-user-selected sync folder. The screenshots below show a shared demo library with
-vocabulary progress rendered on desktop and Pocket.
+ZIP transfer package. The package includes book images, including rendered PDF
+pages, so imported books remain usable in Pocket.
 
 | Desktop | Pocket |
 | --- | --- |
-| <img src="docs/screenshots/pc-library.png" width="420" alt="Word Hunter desktop library with synchronized learning data"> | <img src="docs/screenshots/pocket-library.png" width="220" alt="Word Hunter Pocket library with synchronized learning data"> |
+| <img src="docs/screenshots/pc-library.png" width="420" alt="Word Hunter desktop library with local learning data"> | <img src="docs/screenshots/pocket-library.png" width="220" alt="Word Hunter Pocket library with imported learning data"> |
 
 Pocket intentionally keeps heavy import work lighter than desktop. Larger
-conversion and OCR work is best done on desktop, then moved to Pocket through
-sync.
+conversion and OCR work is best done on desktop, then moved to Pocket with a
+full transfer package.
 
-## Sync and backups
+## Exports, imports, and backups
 
 Word Hunter does not require an account or a central server. The app stores data
-locally and can copy changes through a folder chosen by the user. Windows,
-Flatpak, and AppImage builds bundle Syncthing 2.1.0 as a separate MPL-2.0
-executable. The Debian package uses the distribution-provided `syncthing`
-dependency and deliberately leaves `/usr/bin/syncthing` untouched. Android
-shares a folder with a separately installed Syncthing client.
+locally and creates portable ZIP packages only when requested.
 
-- Desktop can use a local data folder and an optional sync folder.
-- Android keeps local data inside the app and lets the user pick a separate sync
-  folder.
-- Sync transfers books, vocabulary, settings, progress, and imported reading
-  materials.
-- Deleted books and words stay deleted after sync instead of returning from an
-  older device copy.
-- Concurrent changes to the same record are retained as visible conflicts rather
-  than being silently discarded; the Settings sync panel allows the retained
-  version to be reviewed and resolved.
-- Cloud folders can be delayed. When using Google Drive or similar providers,
-  use a dedicated Word Hunter folder and wait until cloud upload/download is
-  complete before opening another device.
-- Full backup export is useful before testing new sync setups.
+- **Export everything** includes books, rendered PDF images, vocabulary,
+  settings, and progress.
+- **Export words** creates a smaller package containing vocabulary only.
+- **Export to Anki** remains available for flashcard workflows.
+- Import merges records using the `updatedAt` value stored inside each YAML
+  record; filesystem modification times are ignored.
+- A newer incoming word or book replaces an older local record. The local record
+  wins when timestamps are equal.
+- Every word is stored as its own YAML record, and every transferred book has a
+  `book.yaml` plus its image folder.
+- Android uses the system file picker for both saving and opening packages, so
+  Word Hunter never needs broad storage access.
+- Clearing local data first requires a successfully saved full transfer package.
 
 ## For contributors
 
@@ -415,15 +410,14 @@ Tauri 2 shell. Windows uses WebView2, Linux uses WebKitGTK/GTK, and Pocket uses
 Android System WebView. Desktop translation and OCR can use CTranslate2,
 SentencePiece, PaddleOCR through ONNX Runtime, PDFium, and platform execution
 providers. OCR uses DirectML on Windows and WebGPU/Vulkan on Linux, with a safe
-CPU fallback. Windows, Flatpak, and AppImage sync use the separately bundled
-Syncthing executable, while the Debian package uses the distribution-provided
-`syncthing` dependency. The Flatpak routes file dialogs through XDG Desktop
-Portal and can use the active GTK theme extension, so KDE sessions receive
+CPU fallback. The Flatpak routes file dialogs through XDG Desktop Portal and can
+use the active GTK theme extension, so KDE sessions receive
 their portal dialogs and the matching Breeze GTK styling when that extension
 is installed.
 
-Word Hunter data is stored as local record files and JSON snapshots; the current
-application does not use SQLite. The built-in scheduler is Word Hunter's own
+Word Hunter data is stored as individual YAML record files; small internal UI
+state and recovery journals remain JSON. The application does not use SQLite.
+The built-in scheduler is Word Hunter's own
 implementation inspired by published SM-2 and FSRS concepts, not the official
 FSRS library or the proprietary SuperMemo application.
 

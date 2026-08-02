@@ -172,13 +172,18 @@ export async function requestWordHunterClose(): Promise<void> {
   nativeCloseRequested = true;
   flushFrontendStateBuffers();
   const finalUiSave = window.__qtBridge ? drainUiSaves().then(postCurrentUiState) : Promise.resolve();
-  const results = await Promise.allSettled([saveState(), finalUiSave]);
+  // Skip the redundant full-state save when the autosave debounce already
+  // persisted everything — serializing a large vocabulary + all book texts
+  // and rewriting every record used to make shutdown take many seconds.
+  const results = await Promise.allSettled(
+    autosave.hasPendingChanges() ? [saveState(), finalUiSave] : [finalUiSave]
+  );
   const saveFailed = results.some((result) => result.status === "rejected");
   if (saveFailed) {
     nativeCloseRequested = false;
     console.warn("Word Hunter remains open because final state saving failed");
     void Promise.all([import("./toast.js"), import("./i18n.js")])
-      .then(([{ showToast }, { t }]) => showToast(t("toast.syncUnavailable"), "error"));
+      .then(([{ showToast }, { t }]) => showToast(t("toast.saveUnavailable"), "error"));
     return;
   }
   try {
@@ -195,11 +200,14 @@ export async function requestWordHunterClose(): Promise<void> {
 }
 window.requestWordHunterClose = () => { void requestWordHunterClose(); };
 
-export function runExclusiveStateWrite<T>(callback: () => T | Promise<T>): Promise<T> {
+export function runExclusiveStateWrite<T>(
+  callback: () => T | Promise<T>,
+  options: { saveFirst?: boolean } = {}
+): Promise<T> {
   flushFrontendStateBuffers();
   uiWritesPaused += 1;
   return drainUiSaves()
-    .then(() => autosave.runExclusiveWrite(callback))
+    .then(() => autosave.runExclusiveWrite(callback, options))
     .finally(() => {
       uiWritesPaused = Math.max(0, uiWritesPaused - 1);
       if (uiWritesPaused === 0 && uiSaveRequestedWhilePaused) {
@@ -226,9 +234,6 @@ export function applyBridgeSnapshotToState(
     : {};
   if (!snapshotPreferences.__discover && state.discover) {
     snapshot.prefs = { ...snapshotPreferences, __discover: { ...state.discover } };
-  }
-  if (!snapshot?.cloudSyncStatus && state.cloudSyncStatus) {
-    snapshot.cloudSyncStatus = clonePlain(rawState().cloudSyncStatus);
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();

@@ -305,9 +305,6 @@ export function inspectWindowsPortable(path, requiredDlls = []) {
   const names = namesOf(archive);
   const required = [
     "Word.Hunter.portable.exe",
-    "syncthing.exe",
-    "SYNCTHING-LICENSE.txt",
-    "SYNCTHING-AUTHORS.txt",
     ...legalFiles,
     "ocr-runtime/bin/wordhunter-paddleocr.exe",
     "ocr-runtime/bin/pdfium.dll",
@@ -318,7 +315,6 @@ export function inspectWindowsPortable(path, requiredDlls = []) {
   if (models.length < 3) fail(`${path} must contain all three PaddleOCR ONNX models`);
   for (const executable of [
     "Word.Hunter.portable.exe",
-    "syncthing.exe",
     "ocr-runtime/bin/wordhunter-paddleocr.exe",
   ]) {
     assertPeX64(zipEntryBytes(archive, requireEntry(archive, executable)), `${path}:${executable}`);
@@ -413,10 +409,8 @@ export function inspectLinuxTree(root, description = root, options = {}) {
   const ocrRunner = requireLinuxResource(names, "ocr-runtime/bin/wordhunter-paddleocr");
   const pdfium = requireLinuxResource(names, "ocr-runtime/bin/libpdfium.so");
   const webGpuDawn = requireLinuxResource(names, "ocr-runtime/bin/libwebgpu_dawn.so");
-  let syncthing = null;
   const mediaRuntime = [];
   if (format === "appimage") {
-    syncthing = requireSuffix(names, "usr/bin/syncthing");
     requireSuffix(names, "apprun-hooks/linuxdeploy-plugin-gstreamer.sh");
     for (const plugin of [
       "usr/lib/gstreamer-1.0/libgstcoreelements.so",
@@ -425,8 +419,6 @@ export function inspectLinuxTree(root, description = root, options = {}) {
     ]) {
       mediaRuntime.push(requireSuffix(names, plugin));
     }
-  } else if (names.some((name) => /(?:^|\/)syncthing$/i.test(name))) {
-    fail(`${description} must use the Debian syncthing dependency instead of bundling the executable`);
   }
 
   const models = names.filter((name) => (
@@ -437,8 +429,6 @@ export function inspectLinuxTree(root, description = root, options = {}) {
 
   for (const legalFile of [
     ...legalFiles,
-    "SYNCTHING-LICENSE.txt",
-    "SYNCTHING-AUTHORS.txt",
   ]) {
     requireSuffix(names, legalFile);
   }
@@ -480,7 +470,7 @@ export function inspectLinuxTree(root, description = root, options = {}) {
     fail(`${description}:${appStream} is not Word Hunter AppStream metadata`);
   }
 
-  for (const name of [main, ocrRunner, pdfium, webGpuDawn, syncthing, ...mediaRuntime].filter(Boolean)) {
+  for (const name of [main, ocrRunner, pdfium, webGpuDawn, ...mediaRuntime].filter(Boolean)) {
     assertElfMachine(
       readFileSync(localArtifactPath(root, name)),
       62,
@@ -489,7 +479,6 @@ export function inspectLinuxTree(root, description = root, options = {}) {
   }
   assertExecutable(root, main, description);
   assertExecutable(root, ocrRunner, description);
-  if (syncthing) assertExecutable(root, syncthing, description);
   if (format === "deb") {
     requireSuffix(names, "usr/share/doc/word-hunter/copyright");
     requireSuffix(names, "usr/share/doc/word-hunter/changelog.Debian.gz");
@@ -538,12 +527,16 @@ export function inspectLinuxAppImage(path) {
   }
 }
 
+export function debianVersionForRelease(version) {
+  return version.replace(/-rc\.(\d+)$/, "~rc.$1");
+}
+
 export function inspectLinuxDeb(path) {
   const packageName = run("dpkg-deb", ["--field", path, "Package"]).trim();
   if (packageName !== "word-hunter") fail(`${path} has Debian package name ${packageName || "unknown"}; expected word-hunter`);
   const version = run("dpkg-deb", ["--field", path, "Version"]).trim();
   const filename = basename(path).match(/^word-hunter_(.+)_amd64\.deb$/);
-  if (!filename || version.replace("+", ".") !== filename[1]) {
+  if (!filename || version.replace("+", ".") !== debianVersionForRelease(filename[1])) {
     fail(`${path} has Debian version ${version || "unknown"} inconsistent with its release filename`);
   }
   const architecture = run("dpkg-deb", ["--field", path, "Architecture"]).trim();
@@ -560,7 +553,6 @@ export function inspectLinuxDeb(path) {
     "libxdo3",
     "gstreamer1.0-plugins-base",
     "gstreamer1.0-plugins-good",
-    "syncthing",
   ]) {
     const pattern = new RegExp(`(?:^|,\\s*)${dependency.replaceAll(".", "\\.")}(?:\\s*\\([^)]*\\))?(?:,|$)`);
     if (!pattern.test(dependencies)) fail(`${path} is missing Debian dependency: ${dependency}`);
@@ -582,9 +574,6 @@ export function inspectWindowsNsis(path, requiredDlls = []) {
     run(sevenZip, ["x", "-y", `-o${extractDir}`, path]);
     const names = walkFiles(extractDir);
     for (const name of [
-      "syncthing.exe",
-      "SYNCTHING-LICENSE.txt",
-      "SYNCTHING-AUTHORS.txt",
       ...legalFiles,
       "wordhunter-paddleocr.exe",
       "pdfium.dll",
@@ -597,12 +586,11 @@ export function inspectWindowsNsis(path, requiredDlls = []) {
     }
     const executableNames = names.filter((name) => /\.exe$/i.test(name));
     const main = executableNames.find(
-      (name) => !/syncthing|wordhunter-paddleocr|uninstall|uninst/i.test(basename(name)),
+      (name) => !/wordhunter-paddleocr|uninstall|uninst/i.test(basename(name)),
     );
     if (!main) fail(`${path} contains no installed application executable`);
     for (const name of [
       main,
-      requireSuffix(names, "syncthing.exe"),
       requireSuffix(names, "wordhunter-paddleocr.exe"),
     ]) {
       assertPeX64(readFileSync(join(extractDir, name)), `${path}:${name}`);
@@ -637,10 +625,7 @@ export function inspectFlatpak(path) {
       "/files/bin/ocr-runtime/bin/wordhunter-paddleocr",
       "/files/bin/ocr-runtime/bin/libpdfium.so",
       "/files/lib/libwebgpu_dawn.so",
-      "/files/bin/syncthing",
       "/files/share/licenses/com.wordhunter.app/LICENSE",
-      "/files/share/doc/word-hunter/SYNCTHING-LICENSE.txt",
-      "/files/share/doc/word-hunter/SYNCTHING-AUTHORS.txt",
       "/files/share/doc/word-hunter/THIRD-PARTY-NOTICES.md",
       "/files/share/doc/word-hunter/THIRD-PARTY-LICENSES.html",
       "/files/share/doc/word-hunter/OCR-THIRD-PARTY-LICENSES.html",
@@ -656,7 +641,6 @@ export function inspectFlatpak(path) {
     for (const name of [
       "/files/bin/word-hunter-rustified",
       "/files/bin/ocr-runtime/bin/wordhunter-paddleocr",
-      "/files/bin/syncthing",
     ]) {
       const bytes = run("ostree", ["cat", `--repo=${repo}`, ref, name], { binary: true });
       assertElfMachine(bytes, 62, `${path}:${name}`);

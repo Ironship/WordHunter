@@ -42,14 +42,14 @@ It rebuilds and validates:
 - arm64 Android debug APK and release AAB file lists, ELF architecture, legal
   resources, and the absence of the desktop OCR runtime;
 - x86_64 Windows portable ZIP and NSIS contents, native executables, OCR models,
-  Syncthing notices, compiler runtime DLLs discovered by the build, and all
+  compiler runtime DLLs discovered by the build, and all
   legal reports;
 - the Apple Silicon macOS DMG, app bundle, arm64 executable, ad-hoc signature,
   drag-to-Applications layout, and a launch smoke test;
 - the x86_64 Flatpak ref, installed file list, native ELF architecture, OCR
-  models, Syncthing notices, desktop metadata, and legal reports;
+  models, desktop metadata, and legal reports;
 - x86_64 Linux AppImage and DEB installed file trees, native ELF architecture,
-  OCR models and runtime, Syncthing integration, canonical desktop and
+  OCR models and runtime, canonical desktop and
   AppStream metadata, Debian control fields, executable modes, and legal
   reports.
 
@@ -68,11 +68,9 @@ from the exact pinned Tauri CLI revision.
 A separate Ubuntu 22.04 container downloads the completed workflow artifact
 without inheriting the build job's development packages. It validates the
 desktop and AppStream files with upstream tools, rejects unresolved ELF
-dependencies, runs the OCR helper and Syncthing, and starts the AppImage under
-Xvfb before installing the DEB. It then runs Lintian, installs the DEB and its
-declared system Syncthing dependency, repeats the sidecar and GUI smoke tests,
-and removes the package. The AppImage contains its own Syncthing executable;
-the DEB deliberately does not overwrite `/usr/bin/syncthing`.
+dependencies, runs the OCR helper, and starts the AppImage under
+Xvfb before installing the DEB. It then runs Lintian, installs the DEB, repeats
+the sidecar and GUI smoke tests, and removes the package.
 
 Lintian errors remain release-blocking. The DEB ships three narrowly scoped
 overrides for `freetype`, `lcms2`, and `openjpeg` detected inside the pinned
@@ -103,9 +101,8 @@ and target operating systems stay outside the normal repository gate:
   stable AppImage in an Arch Linux container, inspects and installs the package,
   exercises its bundled tools and GUI, and removes it again; and
 - `.github/workflows/nix-validation.yml` builds the pinned AppImage wrapper with
-  an exact `nixpkgs` revision, verifies that the bundled Syncthing executable is
-  replaced by the Nixpkgs package while legal notices remain, validates desktop
-  metadata, and exercises the OCR helper, Syncthing, and GUI on a disposable
+  an exact `nixpkgs` revision, validates desktop metadata, and exercises the OCR
+  helper and GUI on a disposable
   runner.
 
 Each store workflow is path-scoped to its own recipe. Prerelease version bumps

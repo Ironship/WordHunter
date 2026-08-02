@@ -1,0 +1,5 @@
+Word Hunter 1.0.9-rc.5
+
+- Removes Android JSON backup export and portable JSON import limits.
+- Raises Android PDF import and rendering limits to 400 MB.
+- Adds clearer export, import, Syncthing pairing, and duplicate-book feedback.

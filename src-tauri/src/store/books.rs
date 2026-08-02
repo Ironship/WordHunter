@@ -8,7 +8,7 @@ use super::record_files;
 
 impl Store {
     pub(crate) fn discard_abandoned_book_imports(&self) -> Result<(), String> {
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let mut pending_books = Vec::new();
         if inner.books_dir.is_dir() {
             for entry in std::fs::read_dir(&inner.books_dir).map_err(|e| e.to_string())? {
@@ -142,7 +142,7 @@ impl Store {
 
     pub(crate) fn delete_text_unlocked(&self, id: &str) -> Result<(), String> {
         let safe_id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let path = inner.books_dir.join(&safe_id);
         record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         media_assets::tombstone_book_assets(&inner.dir, &safe_id, self.device_id())?;
@@ -157,7 +157,7 @@ impl Store {
     pub(crate) fn discard_book_import_assets(&self, id: &str) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         let safe_id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let path = inner.dir.join("ocr-import-staging").join(&safe_id);
         if path.exists() {
             std::fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
@@ -177,7 +177,7 @@ impl Store {
         self.recover_pending_save()?;
         let import_id = crate::paths::sanitize_id(import_id)?;
         let img_name = crate::paths::sanitize_id(img_name)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let import_root = inner.dir.join("ocr-import-staging").join(import_id);
         let marker = import_root.join(media_assets::IMPORT_PENDING_MARKER);
         if !marker.exists() {
@@ -195,7 +195,7 @@ impl Store {
 
     fn ensure_new_book_import_id_unlocked(&self, id: &str) -> Result<(), String> {
         let safe_id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let has_record =
             record_files::load_records(&inner.dir)?.contains_key(&format!("text:{id}"));
         if has_record || inner.books_dir.join(safe_id).exists() {
@@ -210,7 +210,7 @@ impl Store {
         self.recover_pending_save()?;
         self.ensure_new_book_import_id_unlocked(id)?;
         let id = crate::paths::sanitize_id(id)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let marker = inner
             .books_dir
             .join(id)
@@ -229,7 +229,7 @@ impl Store {
         self.ensure_new_book_import_id_unlocked(final_id)?;
         let temporary_id = crate::paths::sanitize_id(temporary_id)?;
         let final_id = crate::paths::sanitize_id(final_id)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let source = inner.dir.join("ocr-import-staging").join(&temporary_id);
         if !source.is_dir() {
             return Ok(());
@@ -311,7 +311,7 @@ impl Store {
             .unwrap_or(false)
         {
             let safe_book = crate::paths::sanitize_id(book_id)?;
-            let inner = self.inner.lock().unwrap();
+            let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             let marker = inner
                 .books_dir
                 .join(safe_book)
@@ -343,7 +343,7 @@ impl Store {
     ) -> Result<(), String> {
         let safe_book = crate::paths::sanitize_id(book_id)?;
         let safe_img = crate::paths::sanitize_id(img_name)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         let relative = format!("books/{safe_book}/images/{safe_img}");
         let image_path = media_assets::safe_join(&inner.dir, &relative)?;
         let img_dir = image_path
@@ -371,7 +371,7 @@ impl Store {
     pub fn book_image_path(&self, book: &str, img: &str) -> Result<std::path::PathBuf, String> {
         let safe_book = crate::paths::sanitize_id(book)?;
         let safe_img = crate::paths::sanitize_id(img)?;
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         media_assets::safe_join(&inner.dir, &format!("books/{safe_book}/images/{safe_img}"))
     }
 }
@@ -388,7 +388,7 @@ fn existing_text_data(dir: &std::path::Path, id: &str) -> Result<Value, String> 
     }
 }
 
-fn validate_pdf_page_assets(
+pub(crate) fn validate_pdf_page_assets(
     dir: &std::path::Path,
     id: &str,
     metadata: &Value,
@@ -552,7 +552,7 @@ mod tests {
         );
         assert!(
             !dir.path()
-                .join("records/v1/assets/media-manifest.json")
+                .join("records/v1/assets/media-manifest.yaml")
                 .exists()
         );
     }
@@ -664,7 +664,7 @@ mod tests {
         );
         assert!(
             !dir.path()
-                .join("records/v1/assets/media-manifest.json")
+                .join("records/v1/assets/media-manifest.yaml")
                 .exists()
         );
         store
@@ -675,7 +675,7 @@ mod tests {
             }))
             .unwrap();
         let manifest =
-            std::fs::read_to_string(dir.path().join("records/v1/assets/media-manifest.json"))
+            std::fs::read_to_string(dir.path().join("records/v1/assets/media-manifest.yaml"))
                 .unwrap();
         assert!(manifest.contains("books/de-new/images/page.png"));
         assert!(!manifest.contains("ocr-temp"));

@@ -45,7 +45,7 @@ not be hidden inside the release hotfix.
 | P1 | Android PDF import passes full PDF and rendered PNG pages through synchronous base64 JavaScript bridges | Keep `PdfRenderer` in Kotlin, but use file handles and an asynchronous Rust-managed import job with small progress messages |
 | P1 | Text and PDF metadata are monolithic records | Split book metadata, text body, PDF page metadata, and media into directly addressable chunks |
 | P1 | Android sync cancellation does not propagate into Rust | Add a cancellable job ID/token checked between inventory, merge, and copy batches |
-| P1 | Calibre, CT2, `yt-dlp`, `pdftoppm`, GPU probes, and Syncthing setup do not share one deadline-safe process runner | Add a Rust child-process guard that drains pipes, kills, and reaps on deadline/cancellation |
+| P1 | Calibre, CT2, `yt-dlp`, `pdftoppm`, and GPU probes do not share one deadline-safe process runner | Add a Rust child-process guard that drains pipes, kills, and reaps on deadline/cancellation |
 | P1 | Final lifecycle saves can still be interrupted by Android process suspension | Add ordered write revisions in Rust and a bounded Kotlin lifecycle persistence handshake |
 | P1 | Portable backup explicitly omits media but destructive clear accepts it | Implement a streamed Rust archive with records, text, media, and a manifest before treating backup as lossless |
 | P2 | PDF page reconciliation repeats cumulative offsets and quadratic LCS work | Compute cumulative indexes and bounded alignment in Rust at import/correction time |

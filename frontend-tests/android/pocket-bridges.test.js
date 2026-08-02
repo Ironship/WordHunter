@@ -10,41 +10,7 @@ function assertSourceOrder(source, before, after, message) {
   assert.ok(beforeIndex < afterIndex, message || `Expected ${before} before ${after}`);
 }
 
-function sourceBetween(source, startMarker, endMarker) {
-  const normalized = source.replaceAll("\r\n", "\n");
-  const start = normalized.indexOf(startMarker);
-  const end = normalized.indexOf(endMarker, start + startMarker.length);
-  assert.notEqual(start, -1, `Missing source marker: ${startMarker}`);
-  assert.notEqual(end, -1, `Missing source marker: ${endMarker}`);
-  assert.ok(start < end, `Expected ${startMarker} before ${endMarker}`);
-  return normalized.slice(start, end);
-}
-
 describe("Android Pocket bridges", () => {
-  it("defines the request-scoped Android sync bridge ABI", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const preferences = readFileSync(new URL("../../dist/web/js/preferences.js", import.meta.url), "utf8");
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
-
-    assert.match(activity, /fun chooseSyncFolder\(token: String\?, requestId: String\?\): Boolean/);
-    assert.match(activity, /fun forceSyncFolder\(token: String\?, requestId: String\?\): Boolean/);
-    assert.match(activity, /fun cancelSyncFolder\(requestId: String\?\): Boolean/);
-    assert.match(activity, /fun getSyncFolderLabel\(\): String\?/);
-    assert.match(activity, /beginSyncRequest\(requestId, token\)/);
-    assert.match(activity, /private fun rememberSyncFolder\(uri: Uri, folder: DocumentFile, persistPermission: Boolean\): String/);
-    assert.match(activity, /\.put\("requestId", request\.id\)/);
-    assert.match(activity, /\.put\("terminal", false\)/);
-    assert.match(activity, /\.put\("terminal", true\)/);
-    assert.match(activity, /\.put\("health", health\)/);
-    assert.doesNotMatch(activity, /fun chooseSyncFolder\(token: String\?\)\s*\{/);
-    assert.match(settings, /createAndroidSyncRequestId\(\)/);
-    assert.match(settings, /detail\.requestId !== requestId/);
-    assert.match(settings, /detail\.terminal === false/);
-    assert.match(settings, /chooseSyncFolder\(window\.WH_TOKEN \|\| "", requestId\)/);
-    assert.match(settings, /forceSyncFolder\(window\.WH_TOKEN \|\| "", requestId\)/);
-    assert.match(preferences, /getAndroidSyncFolderLabel\(\)/);
-  });
-
   it("routes Pocket TTS through the Android native bridge", async () => {
     const listeners = {};
     const calls = [];
@@ -106,6 +72,8 @@ describe("Android Pocket bridges", () => {
       scrollTo(options) { scrolls.push(options); this.scrollTop = options.top; }
     };
     speakText("Hallo. Welt.", container, () => { finished = true; });
+    await Promise.resolve();
+    await Promise.resolve();
 
     assert.equal(calls.length, 1);
     assert.equal(calls[0].text, "Hallo.");
@@ -129,6 +97,8 @@ describe("Android Pocket bridges", () => {
     assert.equal(stopped, true);
 
     speakText("Welt.", container, null, { startTokenIndex: 2 });
+    await Promise.resolve();
+    await Promise.resolve();
     assert.equal(calls.length, 3);
     listeners["wordhunter:android-tts"]({ detail: { id: calls[2].id, status: "range", start: 0, end: 4 } });
     assert.equal(tokenClasses[1].has("tts-current-word"), false);
@@ -183,8 +153,11 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /PendingIntent\.FLAG_UPDATE_CURRENT or PendingIntent\.FLAG_IMMUTABLE/);
     assert.match(activity, /setVisibility\(Notification\.VISIBILITY_PRIVATE\)/);
     assert.match(activity, /override fun onStart\(utteranceId: String\?\) \{\s*showTtsNotification\(\)/);
-    assert.match(activity, /override fun onDone\(utteranceId: String\?\) \{\s*hideTtsNotification\(\)/);
+    assert.match(activity, /override fun onDone\(utteranceId: String\?\) \{\s*dispatchAndroidTtsResult\(utteranceId, "done"\)/);
     assert.match(activity, /fun stopTts\(\) \{[\s\S]*textToSpeech\?\.stop\(\)[\s\S]*hideTtsNotification\(\)/);
+    assert.match(activity, /fun endTtsSession\(\) \{[\s\S]*hideTtsNotification\(\)[\s\S]*clearKeepScreenOn\(\)/);
+    assert.match(activity, /setOngoing\(true\)/);
+    assert.match(activity, /addAction\(android\.R\.drawable\.ic_media_pause, "Stop", stopPendingIntent\)/);
     assert.doesNotMatch(activity, /\bMediaSession\b|startForeground\(|startForegroundService\(|class \w+ : Service/);
   });
 
@@ -207,142 +180,6 @@ describe("Android Pocket bridges", () => {
     assert.match(importEvents, /pending_import: true/);
   });
 
-  it("requires least-privilege persisted SAF access before remembering a folder", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-
-    assert.match(activity, /Intent\(Intent\.ACTION_OPEN_DOCUMENT_TREE\)/);
-    assert.match(activity, /Intent\.FLAG_GRANT_READ_URI_PERMISSION/);
-    assert.match(activity, /Intent\.FLAG_GRANT_WRITE_URI_PERMISSION/);
-    assert.match(activity, /Intent\.FLAG_GRANT_PERSISTABLE_URI_PERMISSION/);
-    assert.match(activity, /FLAG_GRANT_PREFIX_URI_PERMISSION/);
-    assert.doesNotMatch(activity, /ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION/);
-    assert.doesNotMatch(activity, /MANAGE_EXTERNAL_STORAGE/);
-    assert.match(activity, /private fun persistSyncPermission\(uri: Uri, grantFlags: Int\): JSONObject/);
-    assert.match(activity, /contentResolver\.takePersistableUriPermission\(uri, granted\)/);
-    assert.match(activity, /Persisted sync folder permission is missing read\/write access/);
-    assert.match(activity, /private fun verifySafSyncFolder\(uri: Uri, folder: DocumentFile, permission: JSONObject\): JSONObject/);
-    assert.match(activity, /folder\.listFiles\(\)/);
-    assert.match(activity, /folder\.createFile\("application\/octet-stream", probeName\)/);
-    assert.match(activity, /contentResolver\.openOutputStream\(probe\.uri, "wt"\)/);
-    assert.match(activity, /contentResolver\.openInputStream\(probe\.uri\)/);
-    assert.match(activity, /probe\.delete\(\)/);
-    assert.match(activity, /ANDROID_SYNC_MARKER_NAME = "\.wordhunter-sync\.json"/);
-    assert.match(activity, /verifySyncFolderOwnership\(folder, entries\)/);
-    assert.match(activity, /"\.stfolder", "\.stversions", "\.stignore"/);
-    assert.match(activity, /Select a dedicated or existing Word Hunter sync folder/);
-    assert.match(activity, /"argos-packages"/);
-    assert.match(activity, /startsWith\("\.stfolder\.removed-"\)/);
-    assert.match(activity, /recordsV1\?\.isDirectory != true/);
-    assertSourceOrder(activity, "verifySafSyncFolder(uri, folder, permission)", "rememberSyncFolder(uri, folder, persistPermission)");
-    assertSourceOrder(activity, "rememberSyncFolder(uri, folder, persistPermission)", "prepareSyncStagingRoot(request)");
-    assert.match(activity, /if \(!prefs\.commit\(\)\)/);
-  });
-
-  it("guards the Android staging endpoint and record namespace", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
-    const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
-    const authentication = sourceBetween(router, "fn authenticate_request(", "fn dispatch_state_independent_request(");
-    const androidHandler = sourceBetween(
-      handlers,
-      "#[cfg(target_os = \"android\")]\npub(crate) fn sync_android_staging",
-      "#[cfg(not(target_os = \"android\"))]"
-    );
-
-    assert.match(activity, /URL\("http:\/\/127\.0\.0\.1:38619\/__store\/sync_android_staging"\)/);
-    assert.match(activity, /connection\.setRequestProperty\("X-WH-Token", syncToken\)/);
-    assert.match(authentication, /request\.method\(\) == &Method::Post/);
-    assert.match(authentication, /path != "\/__log_error"/);
-    assert.match(authentication, /!response::valid_token\(&request, token\)/);
-    assertSourceOrder(
-      router,
-      "authenticate_request(request, path, &state.token)",
-      "\"/__store/sync_android_staging\"",
-      "Android staging must remain behind POST token validation"
-    );
-    assert.match(router, /"\/__store\/sync_android_staging" => \{[\s\S]*handlers::sync_android_staging\(&state, &payload\)/);
-    assert.match(androidHandler, /payload[\s\S]*"requestId"/);
-    assert.match(androidHandler, /std::fs::canonicalize\(&staging_parent\)/);
-    assert.match(androidHandler, /std::fs::canonicalize\(&staging_root\)/);
-    assert.match(androidHandler, /std::fs::canonicalize\(&incoming_dir\)/);
-    assert.match(androidHandler, /!staging_root\.starts_with\(&staging_parent\)/);
-    assert.match(androidHandler, /!incoming_dir\.starts_with\(&staging_root\)/);
-    assert.match(androidHandler, /recover_pending_save_guarded\(\)/);
-    assert.match(androidHandler, /sync_with_directory\(incoming_dir\.clone\(\)\)/);
-    assert.doesNotMatch(androidHandler, /"snapshot"/);
-    assert.match(activity, /private val recordDataNames = setOf\("records"\)/);
-    assert.match(activity, /private val mediaDataNames = setOf\("books"\)/);
-    assert.match(activity, /private val knownDataNames = recordDataNames \+ mediaDataNames/);
-    assert.doesNotMatch(activity, /knownDataNames = setOf\([^\n]*"argos-packages"/);
-    assert.match(activity, /private val skippedBookRecordNames = setOf\("book\.json", "book\.bak", "metadata\.json", "text\.txt"\)/);
-    assert.match(activity, /private fun shouldSyncRelativePath\(relativePath: String, isDirectory: Boolean, recordsOnly: Boolean\): Boolean/);
-    assert.match(activity, /recordsOnly && rootName !in recordDataNames/);
-    assert.match(activity, /rootName !in knownDataNames/);
-    assert.doesNotMatch(activity, /"store\.sqlite"/);
-    assert.doesNotMatch(activity, /"vocab\.json"/);
-    assert.doesNotMatch(activity, /"save-journal\.json"/);
-    assert.doesNotMatch(activity, /"device-id\.txt"/);
-    assert.match(activity, /copyDocumentTreeToFile\([\s\S]*root = true,[\s\S]*recordsOnly = false/);
-    assert.match(activity, /copyFileTreeToDocument\([\s\S]*root = true,[\s\S]*recordsOnly = false/);
-    assert.match(activity, /"assets"/);
-  });
-
-  it("defines temporary-document replacement guards for SAF writes", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-
-    assert.match(activity, /private fun copyFileToDocument\(/);
-    assert.match(activity, /existing: DocumentFile\?/);
-    assert.match(activity, /request: SyncRequest/);
-    assert.match(activity, /val tempName = "\$\{source\.name\}\.tmp"/);
-    assert.match(activity, /val expectedLength = source\.length\(\)/);
-    assertSourceOrder(activity, "target.createFile(mimeFor(source.name), tempName)", "replaceDocumentWithTemp(");
-    assert.match(activity, /while \(true\) \{[\s\S]*ensureSyncActive\(request\)[\s\S]*input\.read\(buffer\)/);
-    assertSourceOrder(activity, "val current = target.findFile(source.name)", "replaceDocumentWithTemp(");
-    assert.match(activity, /private fun replaceDocumentWithTemp\([\s\S]*expectedDigest: ByteArray\?/);
-    assert.match(activity, /backupDigest\.contentEquals\(expectedDigest\)/);
-    assert.match(activity, /existing\.renameTo\(backupName\)/);
-    assert.match(activity, /temp\.renameTo\(finalName\)/);
-    assert.match(activity, /if \(!existing\.renameTo\(finalName\)\)/);
-  });
-
-  it("synchronizes changed records instead of comparing filenames only", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const stagingCopy = sourceBetween(activity, "private fun copyDocumentFileToFile(", "private fun inventoryObsoleteDocumentTree(");
-
-    assert.match(activity, /val existingDigest = ensureRemoteFileUnchanged\(relativePath, existing, stats\)/);
-    assert.match(activity, /streamDigest\(it\)\.contentEquals\(existingDigest\)/);
-    assert.doesNotMatch(stagingCopy, /output\.fd\.sync\(\)/);
-    assert.doesNotMatch(activity, /kotlin\.math\.abs\(sourceModified - existingModified\)/);
-    assert.doesNotMatch(activity, /expectedLength >= 262144L\) return true/);
-    assert.match(activity, /syncRecordDirectoryNames = setOf\(/);
-    assert.match(activity, /syncRecordDirectoryNames = setOf\([^)]*"prefs"/s);
-    assert.match(activity, /isObsoleteLocalOnlySyncPath\(relativePath: String\)[\s\S]*records\/v1\/prefs/);
-  });
-
-  it("bounds Android staging and mirrors media tombstones back to SAF", () => {
-    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-
-    assert.match(activity, /ANDROID_SYNC_MAX_ENTRIES = 100000/);
-    assert.match(activity, /ANDROID_SYNC_MAX_DEPTH = 8/);
-    assert.match(activity, /ANDROID_SYNC_MAX_FILE_BYTES = 256L \* 1024L \* 1024L/);
-    assert.match(activity, /ANDROID_SYNC_MAX_TOTAL_BYTES = 2L \* 1024L \* 1024L \* 1024L/);
-    assert.match(activity, /stats\.visitRemote\(childRelativePath\)/);
-    assert.match(activity, /stats\.ensureCanStage\(relativePath, copied\)/);
-    assert.match(activity, /deleteManagedDocumentEntry\(child, childRelativePath, recordsOnly, request, stats\)/);
-    assert.match(activity, /ensureRemoteFileUnchanged\(relativePath, existing, stats\)/);
-    assert.match(activity, /initialRemoteFileDigests/);
-    assert.match(activity, /File\(stagingParent, request\.id\)/);
-    assert.match(activity, /connection\.readTimeout = 10 \* 60 \* 1000/);
-    assert.match(activity, /request\.backendInProgress/);
-    assert.match(activity, /mainHandler\.postDelayed\(it, ANDROID_SYNC_TIMEOUT_MS\)/);
-    assert.match(activity, /processedExportFileCount % 100/);
-    const androidPlatform = readFileSync(new URL("../../src-tauri/src/platform/android.rs", import.meta.url), "utf8");
-    assert.ok(androidPlatform.indexOf("recover_android_startup_guarded()") < androidPlatform.indexOf("start_server_on_port"));
-    assert.match(activity, /Cannot list local sync staging path/);
-    assert.match(activity, /validateLocalExportTree\(incomingDir, stats, root = true\)/);
-    assert.match(activity, /isObsoleteLocalOnlySyncPath\(childRelativePath\)/);
-  });
-
   it("defines the Android create-document export ABI", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
     const syncActions = readFileSync(new URL("../../dist/web/js/sync-actions.js", import.meta.url), "utf8");
@@ -356,7 +193,6 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /openFileDescriptor\(uri, "wt"\)/);
     assert.match(activity, /exportExecutor\.execute \{/);
     assert.match(activity, /OutputStreamWriter\(output, Charsets\.UTF_8\)/);
-    assert.match(activity, /ANDROID_EXPORT_MAX_CHARS = 32 \* 1024 \* 1024/);
     assert.match(activity, /dispatchAndroidExportProgress\(export\.requestId, "writing"\)/);
     assert.doesNotMatch(activity, /data\.toByteArray\(Charsets\.UTF_8\)/);
     assert.match(activity, /output\.fd\.sync\(\)/);
@@ -364,7 +200,7 @@ describe("Android Pocket bridges", () => {
     assert.match(syncActions, /typeof bridge\?\.saveExport !== "function"/);
     assert.match(syncActions, /wordhunter:android-export/);
     assert.match(syncActions, /detail\.requestId !== requestId/);
-    assert.match(syncActions, /detail\.status === "writing"/);
+    assert.match(syncActions, /detail\.terminal === false/);
     assert.match(syncActions, /timeout = null/);
     assert.match(syncActions, /bridge\.saveExport\(data, filename, mime, requestId\)/);
   });

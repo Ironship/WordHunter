@@ -2,40 +2,23 @@
   appimageTools,
   fetchurl,
   lib,
-  syncthing,
 }:
 
 let
   pname = "wordhunter";
-  version = "1.0.6";
+  version = "1.0.8";
 
   src = fetchurl {
     url = "https://github.com/Ironship/WordHunter/releases/download/WordHunter${version}/WordHunter-${version}-x86_64.AppImage";
-    hash = "sha256-ARlLOghVz9THbmeXe0vS60qiM8OTy9rxe3qam9AJ2z8=";
+    hash = "sha256-BS/Y8PPYxQCAeBndqWhpylBHHOlpsx/a5rjdzVuLe/U=";
   };
 
-  appimageContents = appimageTools.extract {
-    inherit pname version src;
-
-    postExtract = ''
-      rm "$out/usr/bin/syncthing"
-      test ! -e "$out/usr/bin/syncthing"
-    '';
-  };
-
-  syncthingExecutable = lib.getExe syncthing;
-  wrapperProfile = ''
-    export WORDHUNTER_SYNCTHING="${syncthingExecutable}"
-  '';
+  appimageContents = appimageTools.extract { inherit pname version src; };
 in
 appimageTools.wrapAppImage {
   inherit pname version;
 
   src = appimageContents;
-
-  extraPkgs = _pkgs: [ syncthing ];
-
-  profile = wrapperProfile;
 
   extraInstallCommands = ''
     install -m 444 -D \
@@ -59,8 +42,7 @@ appimageTools.wrapAppImage {
   '';
 
   passthru = {
-    inherit appimageContents src syncthingExecutable wrapperProfile;
-    systemSyncthing = syncthing;
+    inherit appimageContents src;
   };
 
   meta = {

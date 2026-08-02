@@ -20,6 +20,22 @@ import { normalizeVocabularyWord } from "../tokenizer_v2.js";
 
 type UnknownRecord = Record<string, unknown>;
 
+const MAX_READER_SCROLLS_PER_PAGE_ENTRIES = 5000;
+
+/**
+ * Bound `readerScrollsPerPage` growth. Keys are `"<textId>-p<page>"`; the
+ * least-recently-written entries are dropped first (plain insertion order is
+ * a stable LRU proxy since entries are written on page visits).
+ */
+function trimReaderScrollsPerPage(entries: UnknownRecord): UnknownRecord {
+  const keys = Object.keys(entries);
+  if (keys.length <= MAX_READER_SCROLLS_PER_PAGE_ENTRIES) return entries;
+  const trimmed: UnknownRecord = {};
+  const keep = keys.slice(keys.length - MAX_READER_SCROLLS_PER_PAGE_ENTRIES);
+  for (const key of keep) trimmed[key] = entries[key];
+  return trimmed;
+}
+
 function cleanSavedCatalogTitles(items: unknown): void {
   if (!Array.isArray(items)) return;
   for (const item of items as unknown[]) {
@@ -118,17 +134,6 @@ export function assertSupportedStateSchemaVersion(
   if (version !== STATE_SCHEMA_VERSION) {
     throw new UnsupportedStateSchemaError(source, value.schemaVersion);
   }
-}
-
-function normalizeSyncConflicts(value: unknown): WhSyncConflict[] {
-  return objectArray(value).map((conflict) => ({
-    id: typeof conflict.id === "string" ? conflict.id : "",
-    key: typeof conflict.key === "string" ? conflict.key : "",
-    reason: typeof conflict.reason === "string" ? conflict.reason : "",
-    timestamp: typeof conflict.timestamp === "string" ? conflict.timestamp : "",
-    kept: isRecord(conflict.kept) ? conflict.kept : {},
-    conflict: isRecord(conflict.conflict) ? conflict.conflict : {}
-  })).filter((conflict) => conflict.id);
 }
 
 function normalizeRecoveryItems(value: unknown): WhRecord[] {
@@ -369,12 +374,6 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     : "en";
   nextState.vocab = normalizeVocabEntries(nextState.vocab, legacyVocabularyLanguage);
   nextState.dataDirectory = typeof nextState.dataDirectory === "string" ? nextState.dataDirectory : "";
-  nextState.syncDirectory = typeof nextState.syncDirectory === "string" ? nextState.syncDirectory : "";
-  nextState.syncHealth = isRecord(nextState.syncHealth) ? nextState.syncHealth : null;
-  nextState.cloudSyncStatus = isRecord(nextState.cloudSyncStatus) ? nextState.cloudSyncStatus : null;
-  nextState.syncthingStatus = isRecord(nextState.syncthingStatus) ? nextState.syncthingStatus : null;
-  nextState.syncConflictCount = Math.max(0, Math.trunc(Number(nextState.syncConflictCount) || 0));
-  nextState.syncConflicts = normalizeSyncConflicts(nextState.syncConflicts);
   nextState.recoveryStatus = normalizeRecoveryStatus(nextState.recoveryStatus);
   const rawFilters = isRecord(nextState.filters) ? nextState.filters : {};
   nextState.filters = { ...defaults.filters, ...rawFilters };
@@ -427,6 +426,9 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.readerScrolls = nextState.readerScrolls && typeof nextState.readerScrolls === "object" ? nextState.readerScrolls : {};
   nextState.readerScrollsPerPage = nextState.readerScrollsPerPage && typeof nextState.readerScrollsPerPage === "object" && !Array.isArray(nextState.readerScrollsPerPage)
     ? nextState.readerScrollsPerPage : {};
+  if (Object.keys(nextState.readerScrollsPerPage).length > MAX_READER_SCROLLS_PER_PAGE_ENTRIES) {
+    nextState.readerScrollsPerPage = trimReaderScrollsPerPage(nextState.readerScrollsPerPage);
+  }
   nextState.readerSelectionRange = null;
   nextState.selectedWordIndex = Number.isInteger(nextState.selectedWordIndex) && nextState.selectedWordIndex >= 0
     ? nextState.selectedWordIndex
@@ -469,6 +471,8 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     nextState.preferences.dictionaryUrl = getDefaultDictionaryUrl(lang);
   }
 
+  if (nextState.currentView === "sync") nextState.currentView = "export";
+
   if (typeof nextState.selectedWord === "string" && nextState.selectedWord) {
     const canonicalWord = normalizeVocabularyWord(nextState.selectedWord, lang);
     if (!canonicalWord) {
@@ -504,12 +508,6 @@ export function loadState(): WhAppState {
         ...fallback,
         schemaVersion: snap.schemaVersion || fallback.schemaVersion,
         dataDirectory: typeof snap.dataDir === "string" ? snap.dataDir : "",
-        syncDirectory: typeof snap.syncDir === "string" ? snap.syncDir : "",
-        syncHealth: isRecord(snap.syncHealth) ? snap.syncHealth : null,
-        cloudSyncStatus: isRecord(snap.cloudSyncStatus) ? snap.cloudSyncStatus : null,
-        syncthingStatus: isRecord(snap.syncthingStatus) ? snap.syncthingStatus : null,
-        syncConflictCount: snap.syncConflictCount,
-        syncConflicts: snap.syncConflicts,
         recoveryStatus: snap.recoveryStatus,
         customTexts: [] as WhText[],
         userBooks: [] as WhText[],

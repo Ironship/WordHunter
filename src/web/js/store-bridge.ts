@@ -45,7 +45,10 @@ export async function postStoreCommand(path: string): Promise<WhRecord> {
 
 export async function loadBackendSnapshot(): Promise<WhBridgeSnapshot | null> {
   if (!window.__qtBridge) return null;
-  const response = await fetchWithTimeout("/__store/load?ack=0", { cache: "no-store" }, 20_000);
+  const response = await fetchWithTimeout("/__store/load?ack=0", {
+    cache: "no-store",
+    headers: TOKEN_HEADERS()
+  }, 20_000);
   if (!response.ok) throw new Error(`/__store/load HTTP ${response.status}`);
   return response.json();
 }

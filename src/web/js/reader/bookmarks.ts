@@ -63,7 +63,7 @@ export function getReaderBookmarkPage(bookmark: WhReaderBookmark, textId = state
   const wordIndex = textId ? resolvedBookmarkIndex(bookmark, textId) : bookmark.wordIndex;
   if (wordIndex === null || current?.pdfOcrPages?.length) return bookmark.page;
   const wordsPerPage = Math.max(1, Number(state.preferences.wordsPerPage) || 1000);
-  return wordsPerPage >= 999999 ? 1 : Math.floor(wordIndex / wordsPerPage) + 1;
+  return Math.floor(wordIndex / wordsPerPage) + 1;
 }
 
 export function getReaderBookmarks(textId = state.currentTextId): WhReaderBookmark[] {

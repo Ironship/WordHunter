@@ -74,12 +74,6 @@ function setupSettingsControls() {
     "prefStatusSoundVolume",
     "prefStatusSoundVolumeLabel",
     "storageSummary",
-    "syncStatus",
-    "syncHealth",
-    "cloudSyncStatus",
-    "syncDirectory",
-    "syncConflictsPanel",
-    "syncConflictsList",
     "recoveryStatusPanel",
     "recoveryStatusList"
   ]) {
@@ -258,66 +252,6 @@ describe("preferences settings summary", () => {
     state.preferences.selectedWordPanelItems[1].visible = false;
     renderWordPanel({ id: "reader-test", text: "Das Haus ist groß." });
     assert.doesNotMatch(els.wordPanel.innerHTML, /data-word-field="note"/);
-  });
-
-  it("renders actionable sync conflict details when the backend exposes them", () => {
-    resetState({
-      syncConflictCount: 1,
-      syncConflicts: [{
-        id: "1234-conflict",
-        key: "vocab:de:haus",
-        kept: { kind: "vocab", deviceId: "pc-device", updatedAt: "1784563200000", deleted: false },
-        conflict: { kind: "vocab", deviceId: "phone-device", updatedAt: "1784476800000", deleted: true }
-      }]
-    });
-
-    syncSettingsControls();
-
-    assert.equal(els.syncConflictsPanel.hidden, false);
-    assert.match(els.syncStatus.textContent, /settings\.syncConflictCount/);
-    assert.match(els.syncConflictsList.innerHTML, /data-conflict-id="1234-conflict"/);
-    assert.match(els.syncConflictsList.innerHTML, /vocab:de:haus/);
-    assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution-all="keep-current"/);
-    assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="keep-current"/);
-    assert.match(els.syncConflictsList.innerHTML, /data-conflict-resolution="use-conflict"/);
-  });
-
-  it("renders sync folder health without requiring users to understand staging", () => {
-    resetState({
-      syncDirectory: "/home/user/Documents/WordHunterSync",
-      syncHealth: { status: "needs-attention", recordCount: 12, issueCount: 2 }
-    });
-
-    syncSettingsControls();
-
-    assert.equal(els.syncHealth.hidden, false);
-    assert.match(els.syncHealth.textContent, /settings\.syncHealthNeedsAttention/);
-
-    resetState({ syncHealth: { status: "not-configured" } });
-    syncSettingsControls();
-
-    assert.equal(els.syncHealth.hidden, true);
-    assert.equal(els.syncHealth.textContent, "");
-  });
-
-  it("renders cloud sync status separately from the local sync folder", () => {
-    resetState({
-      cloudSyncStatus: { configured: true, status: "ready", remote: "gdrive:WordHunterSync" }
-    });
-
-    syncSettingsControls();
-
-    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusReady/);
-
-    resetState({ cloudSyncStatus: { status: "not_configured" } });
-    syncSettingsControls();
-
-    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusDefault/);
-
-    resetState({ cloudSyncStatus: { supported: false, status: "not_supported" } });
-    syncSettingsControls();
-
-    assert.match(els.cloudSyncStatus.textContent, /settings\.cloudSyncStatusNotSupported/);
   });
 
   it("renders recovery status details only when the backend reports issues", () => {

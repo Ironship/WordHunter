@@ -77,20 +77,6 @@ pub(crate) fn tombstone_all(root: &Path, device_id: &str) -> Result<(), String> 
     write_manifest(root, &manifest)
 }
 
-pub(crate) fn sync_book_assets(
-    local_root: &Path,
-    remote_root: &Path,
-    device_id: &str,
-) -> Result<(), String> {
-    let local = refresh_book_manifest(local_root, device_id)?;
-    let remote = refresh_book_manifest(remote_root, device_id)?;
-    let merged = merge_manifests(local, remote);
-    apply_manifest(local_root, remote_root, &merged)?;
-    apply_manifest(remote_root, local_root, &merged)?;
-    write_manifest(local_root, &merged)?;
-    write_manifest(remote_root, &merged)
-}
-
 #[cfg(not(target_os = "android"))]
 pub(crate) fn merge_book_assets_into(
     source_root: &Path,
@@ -265,7 +251,15 @@ fn load_manifest(root: &Path) -> Result<Manifest, String> {
     let path = manifest_path(root);
     durable::recover_replace(&path)?;
     if !path.exists() {
-        return Ok(Manifest::new());
+        let legacy = path.with_extension("json");
+        if !legacy.exists() {
+            return Ok(Manifest::new());
+        }
+        let manifest = parse_manifest(&read_manifest_value(&legacy)?)?;
+        write_manifest(root, &manifest)?;
+        durable::remove_file_if_exists(&legacy)?;
+        durable::remove_file_if_exists(&legacy.with_extension("bak"))?;
+        return Ok(manifest);
     }
     let value = read_manifest_value(&path)?;
     parse_manifest(&value)
@@ -273,14 +267,15 @@ fn load_manifest(root: &Path) -> Result<Manifest, String> {
 
 fn write_manifest(root: &Path, manifest: &Manifest) -> Result<(), String> {
     let path = manifest_path(root);
-    durable::write_json_atomic(&path, &manifest_value(manifest), true, true)
+    let yaml = serde_yaml::to_string(&manifest_value(manifest)).map_err(|e| e.to_string())?;
+    durable::write_file_atomic(&path, yaml.as_bytes(), true)
 }
 
 fn read_manifest_value(path: &Path) -> Result<Value, String> {
     let primary = std::fs::read(path)
         .map_err(|e| format!("could not read media manifest {}: {e}", path.display()))
         .and_then(|raw| {
-            serde_json::from_slice::<Value>(&raw)
+            serde_yaml::from_slice::<Value>(&raw)
                 .map_err(|e| format!("media manifest {} is corrupt: {e}", path.display()))
         });
     match primary {
@@ -292,7 +287,7 @@ fn read_manifest_value(path: &Path) -> Result<Value, String> {
             }
             let raw = std::fs::read(&backup)
                 .map_err(|e| format!("{primary_error}; backup {}: {e}", backup.display()))?;
-            serde_json::from_slice::<Value>(&raw).map_err(|e| {
+            serde_yaml::from_slice::<Value>(&raw).map_err(|e| {
                 format!(
                     "{primary_error}; backup {} is corrupt: {e}",
                     backup.display()
@@ -368,10 +363,10 @@ fn manifest_value(manifest: &Manifest) -> Value {
     })
 }
 
-fn manifest_path(root: &Path) -> PathBuf {
+pub(crate) fn manifest_path(root: &Path) -> PathBuf {
     record_files::records_root(root)
         .join("assets")
-        .join("media-manifest.json")
+        .join("media-manifest.yaml")
 }
 
 fn list_book_asset_files(root: &Path) -> Result<Vec<PathBuf>, String> {

@@ -1,0 +1,8 @@
+Word Hunter 1.0.9
+
+- Replaces background synchronization with explicit ZIP transfer packages
+  storing words and books as YAML records.
+- Adds a 0-100% progress bar to desktop package export.
+- Fixes PC startup and speeds up shutdown.
+- Improves Android TTS, word sheet, PDF import, and startup.
+- Adds Chinese (Simplified) interface.

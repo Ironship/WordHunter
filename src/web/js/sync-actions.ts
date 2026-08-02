@@ -1,5 +1,5 @@
-import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, saveUiState, createDefaultState, normalizeState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
-import { STATE_SCHEMA_VERSION, STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
+import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, saveUiState, createDefaultState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
+import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
@@ -8,19 +8,13 @@ import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
 import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
 import { VOCAB_STATUS_FILTERS } from "./events/vocab-status.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "./bridge-commit.js";
-import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, postStoreCommand, postStoreJson } from "./store-bridge.js";
-import { assertSupportedStateSchemaVersion } from "./state/normalize.js";
-import { captureUiState } from "./state/ui-cache.js";
-import { clearAllBookTextCaches, clearBookTextCache, loadAllBookTexts, loadAllCustomTextContents, loadCustomTextContent } from "./books.js";
+import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, postStoreCommand } from "./store-bridge.js";
+import { clearAllBookTextCaches, clearBookTextCache } from "./books.js";
 import { isCustomTextReferenced } from "./book-actions/profile-library.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
-const LAST_BACKUP_KEY = `${STORAGE_KEY}:last-backup`;
-const MAX_STATE_IMPORT_BYTES = 128 * 1024 * 1024;
 const MAX_ANKI_IMPORT_BYTES = 32 * 1024 * 1024;
-const MAX_POCKET_EXPORT_BYTES = 32 * 1024 * 1024;
-const PORTABLE_BACKUP_TEXT_CONCURRENCY = 2;
 
 type UnknownRecord = Record<string, unknown>;
 type VocabularyExportFormat = "txt" | "anki";
@@ -47,6 +41,7 @@ interface VocabularyExportFile {
   content: string;
   filename: string;
   mime: string;
+  count: number;
 }
 
 interface AnkiImportRow {
@@ -119,7 +114,7 @@ function vocabularyExportFile(value: unknown): VocabularyExportFile | null {
   if (typeof value.content !== "string" || typeof value.filename !== "string" || typeof value.mime !== "string") {
     throw new Error("vocab export response is missing file data");
   }
-  return { content: value.content, filename: value.filename, mime: value.mime };
+  return { content: value.content, filename: value.filename, mime: value.mime, count: Number(value.count) || 0 };
 }
 
 function normalizeAnkiRows(value: unknown): AnkiImportRow[] {
@@ -141,48 +136,30 @@ function createAndroidExportRequestId(): string {
   return `android-export-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-export function exceedsPocketExportLimit(
-  data: string,
-  maxBytes = MAX_POCKET_EXPORT_BYTES
-): boolean {
-  if (data.length > maxBytes) return true;
-  let bytes = 0;
-  for (let index = 0; index < data.length; index += 1) {
-    const code = data.charCodeAt(index);
-    if (code <= 0x7f) bytes += 1;
-    else if (code <= 0x7ff) bytes += 2;
-    else if (code >= 0xd800 && code <= 0xdbff && index + 1 < data.length
-      && data.charCodeAt(index + 1) >= 0xdc00 && data.charCodeAt(index + 1) <= 0xdfff) {
-      bytes += 4;
-      index += 1;
-    } else bytes += 3;
-    if (bytes > maxBytes) return true;
-  }
-  return false;
-}
-
-export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
-  const bridge = window.WordHunterAndroid;
-  if (typeof bridge?.saveExport !== "function") return null;
-  if (exceedsPocketExportLimit(data)) {
-    return Promise.reject(new Error("Pocket export exceeds the 32 MB safety limit."));
-  }
+function waitForAndroidExport(start: (requestId: string) => boolean): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
     const requestId = createAndroidExportRequestId();
+    const overallDeadline = Date.now() + 15 * 60 * 1000;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const cleanup = () => {
       window.removeEventListener("wordhunter:android-export", onResult);
       if (timeout !== null) clearTimeout(timeout);
       timeout = null;
     };
+    const fail = (message: string) => {
+      cleanup();
+      reject(new Error(message));
+    };
     const onResult = (event: Event) => {
       const detail = eventDetail(event);
       if (detail.requestId !== requestId) return;
       if (detail.terminal === false) {
-        if (detail.status === "writing" && timeout !== null) {
-          clearTimeout(timeout);
-          timeout = null;
-        }
+        if (timeout !== null) clearTimeout(timeout);
+        const remaining = overallDeadline - Date.now();
+        timeout = setTimeout(
+          () => fail("android export write timed out"),
+          Math.min(Math.max(remaining, 30_000), 5 * 60 * 1000)
+        );
         return;
       }
       cleanup();
@@ -194,15 +171,11 @@ export function saveWithAndroidBridge(data: string, filename: string, mime: stri
         reject(new Error(String(detail.error || detail.status || "android export failed")));
       }
     };
-    timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("android export timed out"));
-    }, 130000);
+    timeout = setTimeout(() => fail("android export timed out"), 130000);
 
     window.addEventListener("wordhunter:android-export", onResult);
     try {
-      const started = bridge.saveExport(data, filename, mime, requestId);
-      if (started === false) {
+      if (start(requestId) === false) {
         cleanup();
         resolve(false);
       }
@@ -213,9 +186,24 @@ export function saveWithAndroidBridge(data: string, filename: string, mime: stri
   });
 }
 
+export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.saveExport !== "function") return null;
+  return waitForAndroidExport((requestId) => bridge.saveExport(data, filename, mime, requestId));
+}
+
+function saveFileWithAndroidBridge(path: string, filename: string): Promise<boolean> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.saveExportFile !== "function") return null;
+  return waitForAndroidExport((requestId) => bridge.saveExportFile(path, filename, "application/zip", requestId));
+}
+
 async function nativeSave(data: string, filename: string, mime: string): Promise<boolean> {
   const androidSaved = saveWithAndroidBridge(data, filename, mime);
   if (androidSaved) return androidSaved;
+  if (window.WordHunterAndroid) {
+    throw new Error("Android export bridge is unavailable");
+  }
   if (window.__qtBridge) {
     const response = await fetch("/__export/save", {
       method: "POST",
@@ -235,105 +223,6 @@ async function nativeSave(data: string, filename: string, mime: string): Promise
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     return true;
   }
-}
-
-function customTextRecords(value: unknown): WhText[] {
-  if (!isRecord(value)) return [];
-  const records = Array.isArray(value.customTexts) ? value.customTexts.filter(isRecord) as WhText[] : [];
-  if (!isRecord(value.profiles)) return records;
-  for (const profile of Object.values(value.profiles)) {
-    if (isRecord(profile) && Array.isArray(profile.customTexts)) {
-      records.push(...profile.customTexts.filter(isRecord) as WhText[]);
-    }
-  }
-  return records;
-}
-
-function setTextBody(value: unknown, id: string, text: string): void {
-  for (const record of customTextRecords(value)) {
-    if (record.id === id) record.text = text;
-  }
-}
-
-function propagateEmbeddedTextBodies(value: unknown): void {
-  const bodies = new Map<string, string>();
-  for (const record of customTextRecords(value)) {
-    if (typeof record.id === "string" && typeof record.text === "string" && record.text.trim()) {
-      bodies.set(record.id, record.text);
-    }
-  }
-  for (const [id, text] of bodies) setTextBody(value, id, text);
-}
-
-function setPortableTextBody(value: WhRecord, id: string, text: string): void {
-  let storedInProfile = false;
-  if (isRecord(value.profiles)) {
-    for (const profile of Object.values(value.profiles)) {
-      if (!isRecord(profile) || !Array.isArray(profile.customTexts)) continue;
-      for (const record of profile.customTexts.filter(isRecord) as WhText[]) {
-        if (record.id !== id) continue;
-        record.text = text;
-        storedInProfile = true;
-      }
-    }
-  }
-  if (storedInProfile || !Array.isArray(value.customTexts)) return;
-  for (const record of value.customTexts.filter(isRecord) as WhText[]) {
-    if (record.id === id) record.text = text;
-  }
-}
-
-interface PortableBackupResult {
-  payload: string;
-  textCount: number;
-  missingTextCount: number;
-}
-
-async function portableBackupPayload(): Promise<PortableBackupResult> {
-  const portable = JSON.parse(JSON.stringify(state)) as WhRecord;
-  const sources = new Map<string, WhText>();
-  for (const text of customTextRecords(state)) {
-    if (typeof text.id === "string" && text.id) sources.set(text.id, text);
-  }
-  const missingTextIds: string[] = [];
-  const entries = [...sources];
-  let nextIndex = 0;
-  const loadNextText = async (): Promise<void> => {
-    while (nextIndex < entries.length) {
-      const [id, metadata] = entries[nextIndex++];
-      try {
-        const text = await loadCustomTextContent(metadata);
-        if (!text.trim()) throw new Error("stored text is empty");
-        setPortableTextBody(portable, id, text);
-      } catch (error) {
-        console.warn(`Could not include book text in backup: ${id}`, error);
-        missingTextIds.push(id);
-      }
-    }
-  };
-  await Promise.all(Array.from(
-    { length: Math.min(PORTABLE_BACKUP_TEXT_CONCURRENCY, entries.length) },
-    () => loadNextText()
-  ));
-  portable.backupIncludesTextBodies = missingTextIds.length === 0;
-  portable.backupMissingTextIds = missingTextIds.sort();
-  portable.backupIncludesMediaFiles = false;
-  const payload = JSON.stringify(portable, null, 2);
-  const payloadBytes = new Blob([payload], { type: "application/json" }).size;
-  if (Number.isFinite(payloadBytes) && payloadBytes > MAX_STATE_IMPORT_BYTES) {
-    throw new Error(`Portable backup exceeds ${MAX_STATE_IMPORT_BYTES} bytes`);
-  }
-  return { payload, textCount: sources.size, missingTextCount: missingTextIds.length };
-}
-
-function removeImportedTexts(value: WhAppState, ids: Set<string>): void {
-  value.customTexts = (value.customTexts || []).filter((text) => !ids.has(text.id));
-  for (const profile of Object.values(value.profiles || {})) {
-    profile.customTexts = (profile.customTexts || []).filter((text) => !ids.has(text.id));
-  }
-  const activeLanguage = value.preferences?.learningLanguage || "de";
-  if (value.profiles?.[activeLanguage]) value.customTexts = value.profiles[activeLanguage].customTexts;
-  removeUnreferencedBookState(value, ids);
 }
 
 function removeUnreferencedBookState(value: WhAppState, candidates: Iterable<string>): void {
@@ -375,58 +264,9 @@ function removeUnreferencedBookState(value: WhAppState, candidates: Iterable<str
   }
 }
 
-function degradeMissingPdfMediaToText(value: WhAppState): void {
-  for (const text of customTextRecords(value)) {
-    if (text.pdfOcrPages?.length && typeof text.text === "string" && text.text.trim()) {
-      delete text.pdfOcrPages;
-    }
-    if (typeof text.coverDataUrl === "string" && text.coverDataUrl.startsWith("/__media")) {
-      text.coverDataUrl = "";
-    }
-    if (typeof text.text === "string" && text.text.includes("[IMG:")) {
-      text.text = text.text.replace(/\s*\[IMG:[^\]]+\]\s*/g, "\n").trim();
-    }
-  }
-}
-
-async function recoverImportedTextBodies(value: WhAppState): Promise<number> {
-  const records = new Map<string, WhText>();
-  for (const text of customTextRecords(value)) {
-    if (typeof text.id === "string" && text.id) records.set(text.id, text);
-  }
-  const missing = new Set<string>();
-  for (const [id, metadata] of records) {
-    if (typeof metadata.text === "string" && metadata.text.trim()) continue;
-    if (!window.__qtBridge) {
-      missing.add(id);
-      continue;
-    }
-    try {
-      const response = await fetch(`/__book/text?id=${encodeURIComponent(id)}`, { cache: "no-store" });
-      if (!response.ok) throw new Error(`existing text load HTTP ${response.status}: ${id}`);
-      const result: unknown = await response.json();
-      const text = isRecord(result) && typeof result.text === "string" ? result.text : "";
-      if (text.trim()) setTextBody(value, id, text);
-      else missing.add(id);
-    } catch (error) {
-      console.warn(`Could not recover imported text body ${id}`, error);
-      missing.add(id);
-    }
-  }
-  if (missing.size) removeImportedTexts(value, missing);
-  return missing.size;
-}
-
 async function backupBeforeClear() {
-  const filename = `wordhunter-backup-before-clear-${new Date().toISOString().slice(0, 10)}.json`;
   try {
-    const backup = await portableBackupPayload();
-    try {
-      localStorage.setItem(LAST_BACKUP_KEY, backup.payload);
-    } catch (error) {
-      console.warn("local backup cache is unavailable", error);
-    }
-    if (!await nativeSave(backup.payload, filename, "application/json") || backup.missingTextCount > 0) {
+    if (!await exportTransfer("all", "wordhunter-backup-before-clear", false)) {
       showToast(t("toast.backupRequired"));
       return false;
     }
@@ -436,6 +276,207 @@ async function backupBeforeClear() {
     console.warn("backup before clear failed", error);
     showToast(t("toast.backupRequired"));
     return false;
+  }
+}
+
+function waitForAndroidImport(): Promise<string | null> | null {
+  const bridge = window.WordHunterAndroid;
+  if (typeof bridge?.chooseImportPackage !== "function") return null;
+  return new Promise<string | null>((resolve, reject) => {
+    const requestId = `android-import-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    let timeout: ReturnType<typeof setTimeout>;
+    const cleanup = () => {
+      clearTimeout(timeout);
+      window.removeEventListener("wordhunter:android-import", onResult);
+    };
+    const onResult = (event: Event) => {
+      const detail = eventDetail(event);
+      if (detail.requestId !== requestId) return;
+      cleanup();
+      if (detail.cancelled) resolve(null);
+      else if (detail.success && typeof detail.path === "string") resolve(detail.path);
+      else reject(new Error(String(detail.error || "android import failed")));
+    };
+    timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("android import timed out"));
+    }, 10 * 60 * 1000);
+    window.addEventListener("wordhunter:android-import", onResult);
+    try {
+      if (bridge.chooseImportPackage(requestId) === false) {
+        cleanup();
+        resolve(null);
+      }
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
+let transferInProgress = false;
+let exportProgressOverlay: HTMLDivElement | null = null;
+
+function phaseLabel(phase: string): string {
+  const key = `transfer.phase${phase.charAt(0).toUpperCase()}${phase.slice(1)}`;
+  const value = t(key);
+  return value === key ? "" : value;
+}
+
+function showExportProgress(): void {
+  hideExportProgress();
+  const overlay = document.createElement("div");
+  overlay.id = "export-progress-overlay";
+  overlay.className = "export-progress-overlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.innerHTML = `
+    <div class="ocr-progress-card">
+      <div class="ocr-progress-document" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+        <i class="ocr-progress-scan-line"></i>
+      </div>
+      <div class="ocr-progress-copy">
+        <p id="export-progress-text"></p>
+        <p class="muted-copy ocr-progress-eta" id="export-progress-eta"></p>
+      </div>
+      <div class="ocr-progress-bar" aria-hidden="true"><div class="ocr-progress-bar-fill" id="export-progress-fill"></div></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  exportProgressOverlay = overlay;
+}
+
+function updateExportProgress(percent: number, phase: string): void {
+  const overlay = exportProgressOverlay;
+  if (!overlay) return;
+  const clamped = Math.min(100, Math.max(0, Math.trunc(percent)));
+  const text = overlay.querySelector("#export-progress-text");
+  const eta = overlay.querySelector("#export-progress-eta");
+  const fill = overlay.querySelector<HTMLElement>("#export-progress-fill");
+  if (text) text.textContent = t("transfer.exportProgress", { percent: clamped });
+  if (eta) eta.textContent = phaseLabel(phase);
+  if (fill) fill.style.width = `${clamped}%`;
+}
+
+function hideExportProgress(): void {
+  exportProgressOverlay?.remove();
+  exportProgressOverlay = null;
+}
+
+async function waitForExportJob(job: string): Promise<boolean> {
+  showExportProgress();
+  try {
+    for (;;) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
+        headers: { "X-WH-Token": window.WH_TOKEN || "" },
+        cache: "no-store"
+      });
+      if (!response.ok) throw new Error(`export progress HTTP ${response.status}`);
+      const progress = await response.json() as UnknownRecord;
+      if (progress.done === true) {
+        if (progress.error) throw new Error(String(progress.error));
+        return true;
+      }
+      updateExportProgress(Number(progress.percent) || 0, String(progress.phase || ""));
+    }
+  } finally {
+    hideExportProgress();
+  }
+}
+
+function transferErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const short = message.replace(/\s+/g, " ").trim();
+  return short.length > 160 ? `${short.slice(0, 157)}...` : short;
+}
+
+export async function exportTransfer(
+  scope: "all" | "vocabulary",
+  prefix = scope === "all" ? "wordhunter-full" : "wordhunter-words",
+  notify = true
+): Promise<boolean> {
+  if (transferInProgress) {
+    if (notify) showToast(t("toast.transferBusy"), "error");
+    return false;
+  }
+  transferInProgress = true;
+  const filename = `${prefix}-${new Date().toISOString().slice(0, 10)}.zip`;
+  try {
+    await window.flushAllPendingFrontendState?.();
+    const requestId = `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const response = await fetch("/__store/export_transfer", {
+      method: "POST",
+      headers: WH_TOKEN_HEADER,
+      body: JSON.stringify({ scope, filename, requestId })
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
+    const result = await response.json() as UnknownRecord;
+    if (typeof result.job === "string") {
+      const ok = await waitForExportJob(result.job);
+      if (!ok) return false;
+    } else if (result.saved === false) {
+      if (notify) showToast(t("toast.exportCancelled"));
+      return false;
+    } else if (typeof result.path === "string") {
+      const saved = await saveFileWithAndroidBridge(result.path, filename);
+      if (!saved) {
+        if (notify) showToast(t("toast.exportCancelled"));
+        return false;
+      }
+    } else if (result.saved !== true) {
+      throw new Error("transfer export response is missing a saved file");
+    }
+    if (notify) showToast(t("toast.transferExported"));
+    return true;
+  } catch (error) {
+    console.warn("transfer export failed", error);
+    if (notify) showToast(`${t("toast.exportFailed")}: ${transferErrorMessage(error)}`, "error");
+    return false;
+  } finally {
+    transferInProgress = false;
+  }
+}
+
+export async function importTransfer(): Promise<boolean> {
+  if (transferInProgress) {
+    showToast(t("toast.transferBusy"), "error");
+    return false;
+  }
+  transferInProgress = true;
+  try {
+    await window.flushAllPendingFrontendState?.();
+    const androidImport = waitForAndroidImport();
+    const androidPath = androidImport ? await androidImport : undefined;
+    if (androidImport && androidPath === null) {
+      showToast(t("toast.importCancelled"));
+      return false;
+    }
+    const response = await fetch("/__store/import_transfer", {
+      method: "POST",
+      headers: WH_TOKEN_HEADER,
+      body: JSON.stringify(androidPath ? { path: androidPath } : {})
+    });
+    if (!response.ok) throw new Error((await response.text()).trim() || `import HTTP ${response.status}`);
+    const result = await response.json() as UnknownRecord;
+    if (result.imported === false) return false;
+    clearAllBookTextCaches();
+    const reloaded = await reloadBridgeSnapshot();
+    ensureCurrentText();
+    render();
+    if (reloaded) {
+      showToast(t("toast.transferImported"));
+    } else {
+      showToast(t("toast.transferImportedReload"), "error");
+    }
+    return true;
+  } catch (error) {
+    console.warn("transfer import failed", error);
+    showToast(`${t("toast.importFailed")}: ${transferErrorMessage(error)}`, "error");
+    return false;
+  } finally {
+    transferInProgress = false;
   }
 }
 
@@ -511,18 +552,6 @@ function exportRequestBase(filename: string, format: VocabularyExportFormat): Vo
   };
 }
 
-function hydrateImportedLibrary(): void {
-  Promise.all([loadAllBookTexts(), loadAllCustomTextContents()])
-    .then(() => render())
-    .catch((error) => console.warn("Imported book hydration failed", error));
-}
-
-function renderImportedState(): void {
-  ensureCurrentText();
-  render();
-  hydrateImportedLibrary();
-}
-
 export async function exportVocabularySelection(format: VocabularyExportFormat): Promise<void> {
   const textId = state.filters?.vocabTextId || "all";
   const text = textId === "all" ? null : getVocabularyTextById(textId);
@@ -547,123 +576,6 @@ export async function exportVocabularySelection(format: VocabularyExportFormat):
   }
 }
 
-export async function exportState(): Promise<void> {
-  const filename = `wordhunter-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  try {
-    const backup = await portableBackupPayload();
-    if (!await nativeSave(backup.payload, filename, "application/json")) {
-      showToast(t("toast.exportCancelled"));
-    } else if (backup.missingTextCount > 0) {
-      showToast(t("toast.exportReadyMissingTexts", { n: backup.missingTextCount }));
-    } else {
-      showToast(backup.textCount > 0 ? t("toast.exportReadyWithoutMedia") : t("toast.exportReady"));
-    }
-  } catch (error) {
-    console.warn("state export failed", error);
-    showToast(t("toast.exportFailed"));
-  }
-}
-
-export function importStateFile(event: unknown): void {
-  const target = fileInputTarget(event);
-  const file = target?.files?.[0];
-  if (!file) return;
-
-  if (file.size > MAX_STATE_IMPORT_BYTES) {
-    showToast(t("toast.backupTooLarge", { mb: MAX_STATE_IMPORT_BYTES / (1024 * 1024) }));
-    target.value = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.addEventListener("load", async () => {
-    try {
-      const raw = String(reader.result || "{}");
-      const parsed: unknown = JSON.parse(raw);
-      assertSupportedStateSchemaVersion(parsed, "import file");
-      // JSON backups do not carry binary book assets; legacy marker values are not proof that
-      // the corresponding /__media files exist on this device.
-      const backupOmitsMedia = customTextRecords(parsed).length > 0;
-      const preview = {
-        words: Object.keys(parsed.vocab || {}).length,
-        texts: Array.isArray(parsed.customTexts) ? parsed.customTexts.length : 0,
-        profiles: Object.keys(isRecord(parsed.profiles) ? parsed.profiles : {}).length
-      };
-      const msg = t("sync.importConfirm", { words: preview.words, texts: preview.texts, profiles: preview.profiles });
-      if (!window.confirm(msg)) {
-        target.value = "";
-        return;
-      }
-
-      propagateEmbeddedTextBodies(parsed);
-      const imported = normalizeState({ ...createDefaultState(), ...parsed });
-      const missingTextCount = await recoverImportedTextBodies(imported);
-      if (backupOmitsMedia) degradeMissingPdfMediaToText(imported);
-      if (window.__qtBridge) {
-        await runExclusiveStateWrite(async () => {
-          const startingRevision = getDurableStateRevision();
-          let result: unknown;
-          try {
-            const response = await fetch("/__store/save?snapshot=1", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-              body: JSON.stringify(buildSavePayload(imported))
-            });
-            if (!response.ok) throw new Error(`import save HTTP ${response.status}`);
-            result = await response.json() as unknown;
-            if (!isRecord(result) || !result.snapshot) throw new Error("import save response is missing snapshot");
-          } catch (saveError) {
-            try {
-              const snapshot = await loadBackendSnapshot();
-              clearAllBookTextCaches();
-              if (snapshot && applyBridgeSnapshotToState(snapshot, {
-                expectedRevision: startingRevision,
-                preserveLocalUi: false
-              })) {
-                await acknowledgeBackendSnapshot(snapshot);
-              }
-              renderImportedState();
-            } catch (reloadError) {
-              console.warn("Could not reconcile state after import failure", reloadError);
-            }
-            throw saveError;
-          }
-          const importedUiState = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(imported) };
-          if (isRecord(result) && isRecord(result.snapshot)) result.snapshot.uiState = importedUiState;
-          try {
-            await postStoreJson("/__store/ui_state", importedUiState);
-          } catch (uiSaveError) {
-            console.warn("Imported data was saved, but its Reader position needs a retry", uiSaveError);
-            void saveUiState();
-          }
-          clearAllBookTextCaches();
-          if (!await applyBridgeCommandResult(result, startingRevision, false)) {
-            throw new Error("import snapshot was superseded by a local state change");
-          }
-        });
-      } else {
-        clearAllBookTextCaches();
-        replaceState(imported);
-        ensureCurrentText();
-        await saveState();
-      }
-
-      renderImportedState();
-      showToast(missingTextCount
-        ? t(backupOmitsMedia ? "toast.importDoneMissingTextsWithoutMedia" : "toast.importDoneMissingTexts", { n: missingTextCount })
-        : t(backupOmitsMedia ? "toast.importDoneWithoutMedia" : "toast.importDone"));
-    } catch (error) {
-      console.warn(error);
-      showToast(t("toast.importFailed"));
-    }
-  });
-  const readFailed = () => showToast(t("toast.importFailed"));
-  reader.addEventListener("error", readFailed);
-  reader.addEventListener("abort", readFailed);
-  reader.readAsText(file);
-  target.value = "";
-}
-
 export async function clearWords(): Promise<void> {
   const confirmed = window.confirm(t("toast.confirmClearWords"));
   if (!confirmed) return;
@@ -684,7 +596,7 @@ export async function clearWords(): Promise<void> {
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear words recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
   render();
@@ -723,7 +635,7 @@ export async function clearLibrary(): Promise<void> {
     await reloadBridgeSnapshot().catch((reloadError) => {
       console.warn("clear library recovery reload failed", reloadError);
     });
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return;
   }
   if (window.__qtBridge) {
@@ -760,7 +672,7 @@ export async function clearLocalState(): Promise<void> {
       });
     } catch (error) {
       console.warn("wipe failed", error);
-      showToast(t("toast.syncUnavailable"), "error");
+      showToast(t("toast.saveUnavailable"), "error");
       return;
     }
   } else {
@@ -801,7 +713,11 @@ export async function exportAnkiTsv(): Promise<void> {
       showToast(t("toast.ankiExportEmpty"));
       return;
     }
-    showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
+    if (await nativeSave(result.content, result.filename, result.mime)) {
+      showToast(t("toast.exportReadyCount", { n: result.count || 0 }));
+    } else {
+      showToast(t("toast.exportCancelled"));
+    }
   } catch (error) {
     console.warn("anki export failed", error);
   }

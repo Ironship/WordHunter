@@ -37,6 +37,36 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.9~rc.7" date="2026-07-31" type="development">
+      <description>
+        <ul>
+          <li>Replace background folder synchronization with explicit ZIP export and import.</li>
+          <li>Store transferred words and books as individual YAML records with update timestamps.</li>
+          <li>Carry rendered PDF page images to Android and merge only newer imported records.</li>
+          <li>Remove the bundled Syncthing executable and package dependency.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.9~rc.6" date="2026-07-28" type="development">
+      <description>
+        <ul>
+          <li>Allow complete JSON backups to repair unreadable local text records.</li>
+          <li>Prevent failed projected-text saves from leaving a blocking recovery journal.</li>
+          <li>Keep ordinary saves fail-closed so missing book content is never overwritten.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.9~rc.5" date="2026-07-28" type="development">
+      <description>
+        <ul>
+          <li>Remove the Android JSON backup export limit and the portable JSON import limit.</li>
+          <li>Increase Android PDF import and rendering limits to 400 MB.</li>
+          <li>Replace native Syncthing pairing prompts with an application-styled dialog.</li>
+          <li>Show busy feedback during JSON and Anki exports and report import progress.</li>
+          <li>Report exported Anki word counts and skipped Discover duplicates.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.3" date="2026-07-27" type="development">
       <description>
         <ul>

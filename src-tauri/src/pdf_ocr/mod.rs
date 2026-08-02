@@ -546,11 +546,20 @@ fn render_text_layer_page_images(
                 renderer.path.display()
             )
         })?;
+        let deadline = std::time::Instant::now() + Duration::from_secs(120);
         let status = loop {
             if let Err(error) = ensure_not_cancelled(job_id, jobs) {
                 let _ = child.kill();
                 let _ = child.wait();
                 return Err(error);
+            }
+            if std::time::Instant::now() >= deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!(
+                    "PDF page renderer timed out for page {} after 120 seconds.",
+                    page.page
+                ));
             }
             match child.try_wait().map_err(|e| e.to_string())? {
                 Some(status) => break status,

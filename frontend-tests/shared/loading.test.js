@@ -86,7 +86,7 @@ describe("loading state", () => {
     const bookImport = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     const reducedMotion = styles.slice(styles.indexOf("@media (prefers-reduced-motion: reduce)"));
 
-    for (const id of ["translator-status", "discover-status", "sync-status"]) {
+    for (const id of ["translator-status", "discover-status"]) {
       assert.match(html, new RegExp(`id="${id}"[^>]*role="status"[^>]*aria-live="polite"`));
     }
     assert.match(styles, /\.book-grid\[aria-busy="true"\]::after/);

@@ -11,15 +11,12 @@
     "useLocalToolsDir": true,
     "resources": {
       "ocr-runtime/bin/**/*": "ocr-runtime/bin/",
-      "ocr-runtime/models/**/*": "ocr-runtime/models/",
-      "syncthing/SYNCTHING-AUTHORS.txt": "SYNCTHING-AUTHORS.txt",
-      "syncthing/SYNCTHING-LICENSE.txt": "SYNCTHING-LICENSE.txt"
+      "ocr-runtime/models/**/*": "ocr-runtime/models/"
     },
     "linux": {
       "appimage": {
         "bundleMediaFramework": true,
         "files": {
-          "/usr/bin/syncthing": "syncthing/syncthing",
           "/usr/share/icons/hicolor/16x16/apps/com.wordhunter.app.png": "../src/assets/icon-16.png",
           "/usr/share/icons/hicolor/32x32/apps/com.wordhunter.app.png": "../src/assets/icon-32.png",
           "/usr/share/icons/hicolor/48x48/apps/com.wordhunter.app.png": "../src/assets/icon-48.png",
@@ -34,8 +31,7 @@
           "libc6 (>= 2.35)",
           "libxdo3",
           "gstreamer1.0-plugins-base",
-          "gstreamer1.0-plugins-good",
-          "syncthing"
+          "gstreamer1.0-plugins-good"
         ],
         "section": "education",
         "desktopTemplate": "../flatpak/com.wordhunter.app.desktop",

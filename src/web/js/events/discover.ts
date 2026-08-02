@@ -63,9 +63,15 @@ export function bindDiscoverEvents() {
   els.discoverClear.addEventListener("click", () => discoverHandlers.toggleAll(false));
   els.discoverAddSelected.addEventListener("click", async () => {
     els.discoverAddSelected.disabled = true;
-    const added = await discoverHandlers.addSelected();
+    const result = await discoverHandlers.addSelected();
     els.discoverAddSelected.disabled = false;
-    showToast(added ? t("toast.addedMany", { n: added }) : t("toast.addedNone"));
+    if (result.added === result.selected) {
+      showToast(t("toast.addedMany", { n: result.added }));
+    } else if (result.added > 0) {
+      showToast(t("toast.addedManyWithSkipped", { added: result.added, skipped: result.selected - result.added }));
+    } else {
+      showToast(t("toast.addedNone"));
+    }
     renderLibrary();
   });
   els.userBooksList.addEventListener("click", discoverHandlers.onUserBooksClick);

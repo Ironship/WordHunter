@@ -14,6 +14,7 @@ import {
   archiveBookId,
   clearCurrentBookSelectionIfMatches,
   forgetArchivedBook,
+  forgetReaderPositionIfUnreferenced,
   hideBuiltInBookId,
   isCustomTextReferenced,
   moveCustomTextToProfile,
@@ -93,7 +94,7 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
       }
     } catch (error) {
       console.warn("move custom text backend write failed", error);
-      showToast(t("toast.syncUnavailable"), "error");
+      showToast(t("toast.saveUnavailable"), "error");
       return false;
     }
     const moved = moveCustomTextToProfile(id, targetLang);
@@ -138,7 +139,7 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
       }
     }
     if (!movedCustom && recovered) restoreMoveUiState(previousUiState);
-    showToast(t("toast.syncUnavailable"), "error");
+    showToast(t("toast.saveUnavailable"), "error");
     return false;
   }
   if (movedCustom && window.__qtBridge && !isCustomTextReferenced(movedCustom.oldId)) {
@@ -155,6 +156,7 @@ export function removeUserBook(id: string): void {
   const bookObj = removeUserBookFromActiveProfile(id);
   if (!bookObj) return;
   clearBookTextCache(id);
+  forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
   saveState();
