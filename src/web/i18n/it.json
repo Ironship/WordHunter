@@ -769,7 +769,14 @@
     "wordsHint": "Un piccolo pacchetto con parole, traduzioni, stati e date, senza libri o immagini.",
     "exportWords": "Esporta parole",
     "toolsEyebrow": "Altri strumenti",
-    "toolsHeading": "Anki e pulizia dati"
+    "toolsHeading": "Anki e pulizia dati",
+    "exportProgress": "Esportazione pacchetto… {percent}%",
+    "phasePreparing": "Preparazione record",
+    "phaseWords": "Esportazione vocabolario",
+    "phaseRecords": "Esportazione impostazioni e profili",
+    "phaseBooks": "Esportazione libri",
+    "phaseImages": "Esportazione immagini libri",
+    "phaseFinalizing": "Finalizzazione pacchetto"
   },
   "toast": {
     "wordRemoved": "Parola eliminata",

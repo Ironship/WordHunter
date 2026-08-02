@@ -1,3 +1,4 @@
+use rand::{Rng, distributions::Alphanumeric};
 use serde_json::Value;
 use std::path::{Component, Path};
 use std::{fs, path::PathBuf};
@@ -273,6 +274,26 @@ pub(crate) fn save_export(_payload: Value) -> Result<bool, String> {
 }
 
 #[cfg(not(target_os = "android"))]
+pub(crate) struct ExportJob {
+    progress: crate::store::transfer::ExportProgress,
+}
+
+#[cfg(not(target_os = "android"))]
+impl ExportJob {
+    pub(crate) fn new(progress: crate::store::transfer::ExportProgress) -> Self {
+        Self { progress }
+    }
+
+    pub(crate) fn is_terminal(&self) -> bool {
+        self.progress
+            .snapshot()
+            .get("done")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+}
+
+#[cfg(not(target_os = "android"))]
 pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Value, String> {
     let scope = ExportScope::parse(
         payload
@@ -293,9 +314,51 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
     };
     let temp = export_sidecar_path(&path, ".wordhunter-export.tmp")?;
     crate::store::durable::remove_file_if_exists(&temp)?;
-    let summary = state.store.export_transfer(&temp, scope)?;
-    install_export_temp(&path, &temp)?;
-    Ok(serde_json::json!({ "saved": true, "summary": summary }))
+    // Run the ZIP build on a background thread and publish stage progress so
+    // the frontend can show a 0–100% bar instead of a frozen button.
+    let job_id = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect::<String>();
+    let progress = crate::store::transfer::ExportProgress::new();
+    if let Ok(mut jobs) = state.exports.lock() {
+        jobs.retain(|_, job| !job.is_terminal());
+        jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
+    }
+    let store = state.store.clone();
+    let target = path.clone();
+    std::thread::spawn(move || {
+        let result = store.export_transfer(&temp, scope, Some(&progress));
+        match result {
+            Ok(summary) => {
+                if let Err(error) = install_export_temp(&target, &temp) {
+                    progress.set_error(error);
+                    return;
+                }
+                progress.set_done(summary);
+            }
+            Err(error) => progress.set_error(error),
+        }
+    });
+    Ok(serde_json::json!({ "saved": false, "job": job_id }))
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn export_progress(
+    state: &ServerState,
+    query: &str,
+) -> Result<Value, String> {
+    let job_id = crate::paths::sanitize_id(
+        response::query_value(query, "job").as_deref().unwrap_or_default(),
+    )?;
+    let jobs = state.exports.lock().map_err(|_| "export jobs unavailable".to_string())?;
+    let job = jobs
+        .get(&job_id)
+        .ok_or_else(|| "unknown export job".to_string())?;
+    let mut value = job.progress.snapshot();
+    value["job"] = Value::String(job_id);
+    Ok(value)
 }
 
 #[cfg(target_os = "android")]
@@ -324,7 +387,7 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .join("wordhunter-transfer");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
     let path = cache.join(format!("{request_id}.zip"));
-    let summary = state.store.export_transfer(&path, scope)?;
+    let summary = state.store.export_transfer(&path, scope, None)?;
     Ok(serde_json::json!({
         "saved": true,
         "path": path,

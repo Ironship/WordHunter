@@ -798,7 +798,14 @@
     "wordsHint": "Небольшой пакет со словами, переводами, статусами и датами без книг и изображений.",
     "exportWords": "Экспортировать слова",
     "toolsEyebrow": "Другие инструменты",
-    "toolsHeading": "Anki и очистка данных"
+    "toolsHeading": "Anki и очистка данных",
+    "exportProgress": "Экспорт пакета… {percent}%",
+    "phasePreparing": "Подготовка записей",
+    "phaseWords": "Экспорт словаря",
+    "phaseRecords": "Экспорт настроек и профилей",
+    "phaseBooks": "Экспорт книг",
+    "phaseImages": "Экспорт изображений книг",
+    "phaseFinalizing": "Завершение пакета"
   },
   "toast": {
     "wordRemoved": "Слово удалено",
