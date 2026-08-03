@@ -9,9 +9,9 @@ Pocket (`com.wordhunter.pocket`).
 - The F-Droid issuebot already checked the upstream repo (labels `git-url`,
   `in-github-releases`); no maintainer feedback is outstanding.
 - The app is **not yet listed** in the F-Droid catalog.
-- The RFP checklist is complete except **"Donated to F-Droid"** — F-Droid asks
-  upstream authors to donate to the F-Droid project before a listing is
-  packaged. See [How to donate](#how-to-donate).
+- The RFP checklist is **complete (6/6)**, including **"Donated to F-Droid"**.
+  The issue description and the upstream-update note mention the current
+  stable release 1.0.9 (`versionCode 100000909`).
 
 `com.wordhunter.pocket.yml` contains the proposed fdroiddata metadata and a
 first-pass build recipe for the F-Droid build server. The recipe mirrors the
