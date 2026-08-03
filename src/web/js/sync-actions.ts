@@ -2,6 +2,7 @@ import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, 
 import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
+import { showConfirmDialog } from "./dialog-backdrop.js";
 import { t } from "./i18n.js";
 import { render, ensureCurrentText } from "./render.js";
 import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
@@ -572,12 +573,12 @@ export async function exportVocabularySelection(format: VocabularyExportFormat):
     showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
   } catch (error) {
     console.warn("vocab_export failed", error);
-    showToast(t("toast.importFailed"));
+    showToast(t("toast.vocabExportFailed"), "error");
   }
 }
 
 export async function clearWords(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClearWords"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearWords"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
@@ -604,7 +605,7 @@ export async function clearWords(): Promise<void> {
 }
 
 export async function clearLibrary(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClearLibrary"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearLibrary"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
@@ -651,7 +652,7 @@ export async function clearLibrary(): Promise<void> {
 }
 
 export async function clearLocalState(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClear"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClear"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
 
@@ -720,6 +721,7 @@ export async function exportAnkiTsv(): Promise<void> {
     }
   } catch (error) {
     console.warn("anki export failed", error);
+    showToast(t("toast.vocabExportFailed"), "error");
   }
 }
 

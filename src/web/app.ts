@@ -30,13 +30,13 @@ function showStartupFailure(error: unknown): void {
   const message = document.createElement("section");
   message.className = "empty-row";
   const title = document.createElement("h1");
-  title.textContent = "Word Hunter could not finish startup";
+  title.textContent = t("app.startupFailed");
   const detail = document.createElement("p");
   detail.textContent = error instanceof Error ? error.message : String(error);
   const retry = document.createElement("button");
   retry.className = "primary-button";
   retry.type = "button";
-  retry.textContent = "Retry";
+  retry.textContent = t("app.retry");
   retry.addEventListener("click", () => window.location.reload());
   message.append(title, detail, retry);
   panel.append(message);
@@ -75,7 +75,8 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pageshow", () => { lifecycleFlushStarted = false; });
 
-document.addEventListener("contextmenu", event => event.preventDefault());
+// Note: the global contextmenu preventDefault was removed — the webview's default
+// context menu (copy/paste/spellcheck) is expected desktop behavior for a reader app.
 document.addEventListener("click", (event) => {
   const target = event.target instanceof Element
     ? event.target

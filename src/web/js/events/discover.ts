@@ -3,7 +3,7 @@ import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { renderLibrary } from "../views/library.js";
-import { runDiscoverSearch, getDiscoverHandlers } from "../views/discover.js";
+import { runDiscoverSearch, getDiscoverHandlers, updateAddSelectedDisabled } from "../views/discover.js";
 import { addUserBook, removeUserBook, openBook } from "../book-actions.js";
 
 export function bindDiscoverEvents() {
@@ -62,9 +62,13 @@ export function bindDiscoverEvents() {
   els.discoverSelectAll.addEventListener("click", () => discoverHandlers.toggleAll(true));
   els.discoverClear.addEventListener("click", () => discoverHandlers.toggleAll(false));
   els.discoverAddSelected.addEventListener("click", async () => {
+    if (discoverHandlers.selected.size === 0) {
+      showToast(t("toast.addedNone"));
+      return;
+    }
     els.discoverAddSelected.disabled = true;
     const result = await discoverHandlers.addSelected();
-    els.discoverAddSelected.disabled = false;
+    updateAddSelectedDisabled();
     if (result.added === result.selected) {
       showToast(t("toast.addedMany", { n: result.added }));
     } else if (result.added > 0) {

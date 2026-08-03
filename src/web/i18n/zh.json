@@ -9,7 +9,9 @@
     "description": "Word Hunter — 本地 Rust/Tauri 阅读器、词汇训练器和离线翻译器。",
     "navAriaLabel": "导航",
     "jsError": "JS 错误：{msg} 位于 {url}:{line}:{col}\n{stack}",
-    "unhandledPromise": "未处理的 Promise：{reason}"
+    "unhandledPromise": "未处理的 Promise：{reason}",
+    "startupFailed": "Word Hunter 无法完成启动",
+    "retry": "重试"
   },
   "nav": {
     "library": "书库",
@@ -21,7 +23,19 @@
     "graphs": "图表",
     "export": "导出",
     "settings": "设置",
-    "help": "帮助"
+    "help": "帮助",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "sourceWikinews": "Wikinews",
     "sourcePdfOcr": "OCR 导入",
     "coverAlt": "封面",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "自定义文本",
@@ -273,7 +290,13 @@
     "keySpace": "空格",
     "keyPageUp": "Page Up",
     "keyPageDown": "Page Down",
-    "keyEnter": "回车"
+    "keyEnter": "回车",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "放弃对此修正的编辑？",
+    "wordNavPageStart": "你已到达本页第一个单词。",
+    "wordNavPageEnd": "你已到达本页最后一个单词。"
   },
   "vocab": {
     "eyebrow": "你的单词",
@@ -346,7 +369,12 @@
     "openDictionary": "打开词典",
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
-    "cardCount": "{count} 张卡片"
+    "cardCount": "{count} 张卡片",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "删除这个单词及其学习进度？",
+    "wordRequired": "请先输入单词。"
   },
   "discover": {
     "eyebrow": "在线资源",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "在网站上打开",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "档案与学习",
@@ -624,7 +655,8 @@
     "ankiTsvHeader": "单词\t翻译\t上下文\t冠词\n",
     "ankiExportStatuses": "导出的状态",
     "ankiExportStatusesHint": "选择 TSV 中包含哪些单词状态。Anki 接收单词、翻译、上下文和可选冠词列。",
-    "groupLocalData": "本设备上的数据"
+    "groupLocalData": "本设备上的数据",
+    "confirmResetMessage": "这会将主题、字体、词典地址和API密钥重置为默认值。此操作无法撤销。"
   },
   "translator": {
     "swap": "交换语言",
@@ -653,7 +685,9 @@
     "targetPlaceholder": "翻译将显示在这里…",
     "footer": "由本地离线翻译器驱动",
     "copyBtn": "复制翻译",
-    "copied": "已复制！"
+    "copied": "已复制！",
+    "copy": "复制",
+    "copyDone": "已复制到剪贴板。"
   },
   "graphs": {
     "eyebrow": "统计",
@@ -745,8 +779,8 @@
     "contactIssues": "<strong>错误报告与功能请求：</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>联系：</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>许可：</strong> AGPL-3.0-or-later。衍生代码的闭源商业使用需要单独的书面许可。详情：https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 用可靠的 ZIP 传输包取代了后台同步，包中包含独立的 YAML 记录和完整的书籍图像。</strong>",
-    "version": "<strong>版本：</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 改进了阅读和复习体验：更安全的确认对话框、更好的键盘操作、闪卡会话总结、翻译复制按钮以及大量无障碍修复。</strong>",
+    "version": "<strong>版本：</strong> Word Hunter 1.0.10",
     "tipsEyebrow": "文档",
     "focusHint1": "按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 进入或返回文本",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> 在单词间导航",
@@ -950,7 +984,9 @@
     "vocabExportEmpty": "没有单词符合当前导出筛选条件。",
     "importing": "导入中…",
     "exportReadyCount": "已导出 {n} 个单词。",
-    "addedManyWithSkipped": "已添加 {added} 本书。跳过 {skipped} 本（已在书库中）。"
+    "addedManyWithSkipped": "已添加 {added} 本书。跳过 {skipped} 本（已在书库中）。",
+    "wordPanelItemHidden": "此项目已在单词面板设置中隐藏。",
+    "vocabExportFailed": "无法导出词汇。"
   },
   "languages": {
     "pl": "波兰语",
@@ -968,7 +1004,7 @@
     "other": "其他"
   },
   "sm2": {
-    "prompt": "你记得多好？（0–5）",
+    "prompt": "你记得多好？（1–5）",
     "inTextPrompt": "这个单词是什么意思？先显示答案，然后评分你的回忆。",
     "showAnswer": "显示答案",
     "inTextRating": "你回忆得如何？（1–5）",
@@ -1020,5 +1056,16 @@
     "openReleases": "查看更新内容",
     "disableUpdates": "不再提醒我",
     "dismiss": "稍后"
+  },
+  "dialog": {
+    "cancel": "取消",
+    "confirm": "确认",
+    "confirmTitle": "确定吗？"
+  },
+  "review": {
+    "sessionSummaryTitle": "复习完成",
+    "sessionSummaryCount": "已复习卡片：{n}",
+    "sessionSummaryAccuracy": "记住率：{pct}%",
+    "sessionSummaryDone": "完成"
   }
 }

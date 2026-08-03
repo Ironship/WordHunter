@@ -945,6 +945,9 @@ describe("focused frontend regressions", () => {
 
     const module = await evaluateWithMocks("dist/web/js/events/keyboard/reader-keys.js", {
       "../../state.js": { state },
+      "../../i18n.js": { t: (key) => key },
+      "../../toast.js": { showToast() {} },
+      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
       "../../vocab-actions.js": { setWordStatus() {} },
@@ -1037,6 +1040,9 @@ describe("focused frontend regressions", () => {
     }
     const module = await evaluateWithMocks("dist/web/js/events/keyboard/reader-keys.js", {
       "../../state.js": { state },
+      "../../i18n.js": { t: (key) => key },
+      "../../toast.js": { showToast() {} },
+      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
       "../../vocab-actions.js": { setWordStatus() {} },

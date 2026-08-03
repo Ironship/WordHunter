@@ -1017,6 +1017,7 @@ describe("persistence lifecycle", () => {
       "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state", UI_STORAGE_KEY: "wordhunter-ui-state" },
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message) => toasts.push(message) },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => true },
       "./i18n.js": { t: (key) => key },
       "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
       "./render.js": {

@@ -3441,6 +3441,19 @@ textarea.vocab-translation-input {
   transform: translateY(0);
 }
 
+/* Toast type differentiation (showToast message, type). */
+.toast.toast-error {
+  border-left: 4px solid var(--red);
+}
+
+.toast.toast-success {
+  border-left: 4px solid var(--green);
+}
+
+.toast.toast-info {
+  border-left: 4px solid var(--blue);
+}
+
 .toast-close {
   position: absolute;
   top: 0.3rem;
@@ -3626,6 +3639,14 @@ textarea.vocab-translation-input {
   color: var(--ink);
   font-size: 0.95rem;
   font-weight: 500;
+  /* Whole setting rows are clickable <label>s — surface the affordance. */
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background-color 140ms ease;
+}
+
+.setting-row:hover {
+  background: var(--panel-strong);
 }
 
 .pocket-only-setting {
@@ -3646,6 +3667,32 @@ textarea.vocab-translation-input {
 
 .setting-row.toggle-row {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+/* Keyboard-reachable file inputs inside cover dropzones (replaces display:none). */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.import-cover-dropzone:focus-within,
+.edit-book-cover-dropzone:focus-within {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* Current page number in Discover pagination. */
+.page-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .word-panel-items-setting {

@@ -12,7 +12,7 @@ import { showToast } from "../toast.js";
 import { clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
 import { acknowledgeBackendSnapshot, loadBackendSnapshot } from "../store-bridge.js";
-import { registerUnsavedDialog } from "../dialog-backdrop.js";
+import { registerUnsavedDialog, showConfirmDialog } from "../dialog-backdrop.js";
 import { setElementBusy } from "../loading.js";
 import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
@@ -214,13 +214,15 @@ function updateTranslatorTextPreference(key: string, value: unknown): void {
 
 export function bindSettingsEvents() {
   let argosDownloadRunning = false;
+  let argosSelectionDirty = false;
 
   function isArgosDirty() {
-    return !!els.argosDownloadDialog?.open;
+    return argosSelectionDirty;
   }
 
   async function cancelArgosDownload() {
     if (argosDownloadRunning) return;
+    argosSelectionDirty = false;
     if (els.argosDownloadDialog) els.argosDownloadDialog.close();
     if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
     updatePreferenceValue("offlineTranslator", false);
@@ -338,6 +340,12 @@ export function bindSettingsEvents() {
 
   if (els.resetPrefs) {
     els.resetPrefs.addEventListener("click", async () => {
+      const ok = await showConfirmDialog({
+        title: t("dialog.confirmTitle"),
+        message: t("settings.confirmResetMessage"),
+        danger: true
+      });
+      if (!ok) return;
       const generation = ++wordAlgorithmChangeGeneration;
       resetPreferences();
       renderLibrary();
@@ -489,7 +497,10 @@ export function bindSettingsEvents() {
             els.argosDownloadConfirm.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
           };
           
-          (els.argosLanguagesList as HTMLElement).querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => checkbox.addEventListener("change", updateBtnText));
+          (els.argosLanguagesList as HTMLElement).querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
+            checkbox.addEventListener("change", updateBtnText);
+            checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
+          });
           updateBtnText();
         }
 
@@ -531,6 +542,7 @@ export function bindSettingsEvents() {
       setElementBusy(els.argosDownloadConfirm, true, { disable: true });
       setElementBusy(els.argosDownloadDialog, true);
       argosDownloadRunning = true;
+      argosSelectionDirty = false;
       if (els.argosDownloadCancel) els.argosDownloadCancel.disabled = true;
       els.argosDownloadConfirm.textContent = t("toast.downloadingWait");
       

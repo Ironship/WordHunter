@@ -9,7 +9,9 @@
     "description": "Word Hunter — локальная Rust/Tauri-читалка, тренажёр словаря и офлайн-переводчик.",
     "jsError": "Ошибка JS: {msg} в {url}:{line}:{col}\n{stack}",
     "navAriaLabel": "Навигация",
-    "unhandledPromise": "Необработанный Promise: {reason}"
+    "unhandledPromise": "Необработанный Promise: {reason}",
+    "startupFailed": "Word Hunter не смог завершить запуск",
+    "retry": "Повторить"
   },
   "nav": {
     "library": "Библиотека",
@@ -21,7 +23,19 @@
     "graphs": "Графики",
     "export": "Экспорт",
     "settings": "Настройки",
-    "help": "Помощь"
+    "help": "Помощь",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "Архивировать",
     "unarchiveTitle": "Восстановить из архива",
     "untitled": "Без названия",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Ваш собственный текст",
@@ -273,7 +290,13 @@
     "keySpace": "Пробел",
     "keyPageUp": "Page Up",
     "keyPageDown": "Page Down",
-    "keyEnter": "Ввод"
+    "keyEnter": "Ввод",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Отменить внесённые исправления?",
+    "wordNavPageStart": "Вы на первом слове этой страницы.",
+    "wordNavPageEnd": "Вы на последнем слове этой страницы."
   },
   "vocab": {
     "eyebrow": "Ваши слова",
@@ -346,7 +369,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "{count} карточек",
-    "uploadOwnImage": "Своё изображение"
+    "uploadOwnImage": "Своё изображение",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Удалить это слово и прогресс его изучения?",
+    "wordRequired": "Сначала введите слово."
   },
   "discover": {
     "eyebrow": "Онлайн ресурсы",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Открыть на сайте",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Профиль и обучение",
@@ -624,7 +655,8 @@
     "flashcardHeading": "Повторения и алгоритм",
     "translatorEyebrow": "Переводчик и словарь",
     "translatorHeading": "Переводы и ссылки",
-    "groupLocalData": "Данные на этом устройстве"
+    "groupLocalData": "Данные на этом устройстве",
+    "confirmResetMessage": "Это сбросит тему, шрифты, адрес словаря и ключи API к значениям по умолчанию. Это действие нельзя отменить."
   },
   "translator": {
     "sizeMb": "~{size}МБ",
@@ -653,7 +685,9 @@
     "targetPlaceholder": "Перевод появится здесь...",
     "footer": "Локальный перевод через офлайн-переводчик",
     "copyBtn": "Копировать перевод",
-    "copied": "Скопировано!"
+    "copied": "Скопировано!",
+    "copy": "Копировать",
+    "copyDone": "Скопировано в буфер обмена."
   },
   "help": {
     "eyebrow": "Помощь",
@@ -694,8 +728,8 @@
     "contactIssues": "<strong>Ошибки и идеи:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Контакты:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Лицензия:</strong> AGPL-3.0-or-later. Закрытое коммерческое использование производного кода требует отдельной письменной лицензии. Подробнее: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 заменяет фоновую синхронизацию надёжными ZIP-пакетами с отдельными записями YAML и полными изображениями книг.</strong>",
-    "version": "<strong>Версия:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 улучшает чтение и повторение: более безопасные подтверждения, улучшенное управление с клавиатуры, итоги сессии карточек, кнопка копирования в переводчике и множество исправлений доступности.</strong>",
+    "version": "<strong>Версия:</strong> Word Hunter 1.0.10",
     "focusHint1": "Нажмите <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, чтобы войти в текст или вернуться к нему",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> для навигации по словам",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Пробел</kbd> читать предложение",
@@ -898,7 +932,9 @@
     "emptyFields": "Заполните название и текст.",
     "importing": "Импорт...",
     "exportReadyCount": "Экспортировано слов: {n}.",
-    "addedManyWithSkipped": "Добавлено {added} книг. Пропущено {skipped} (уже в библиотеке)."
+    "addedManyWithSkipped": "Добавлено {added} книг. Пропущено {skipped} (уже в библиотеке).",
+    "wordPanelItemHidden": "Этот элемент скрыт в настройках панели слова.",
+    "vocabExportFailed": "Не удалось экспортировать словарь."
   },
   "languages": {
     "pl": "Польский",
@@ -1020,5 +1056,16 @@
     "openReleases": "Что нового",
     "disableUpdates": "Больше не напоминать",
     "dismiss": "Позже"
+  },
+  "dialog": {
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "confirmTitle": "Вы уверены?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Сессия завершена",
+    "sessionSummaryCount": "Повторено карточек: {n}",
+    "sessionSummaryAccuracy": "Запомнено: {pct}%",
+    "sessionSummaryDone": "Готово"
   }
 }

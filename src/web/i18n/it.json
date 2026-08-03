@@ -9,7 +9,9 @@
     "description": "Word Hunter — lettore locale Rust/Tauri, trainer di vocabolario e traduttore offline.",
     "jsError": "Errore JS: {msg} in {url}:{line}:{col}\n{stack}",
     "navAriaLabel": "Navigazione",
-    "unhandledPromise": "Promise non gestita: {reason}"
+    "unhandledPromise": "Promise non gestita: {reason}",
+    "startupFailed": "Word Hunter non ha potuto completare l'avvio",
+    "retry": "Riprova"
   },
   "nav": {
     "library": "Biblioteca",
@@ -21,7 +23,19 @@
     "graphs": "Grafici",
     "export": "Esporta",
     "settings": "Impostazioni",
-    "help": "Aiuto"
+    "help": "Aiuto",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "Archivia",
     "unarchiveTitle": "Ripristina dall'archivio",
     "untitled": "Senza titolo",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Il tuo testo",
@@ -273,7 +290,13 @@
     "keySpace": "Spazio",
     "keyPageUp": "PagSu",
     "keyPageDown": "PagGiù",
-    "keyEnter": "Invio"
+    "keyEnter": "Invio",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Scartare le modifiche a questa correzione?",
+    "wordNavPageStart": "Sei alla prima parola di questa pagina.",
+    "wordNavPageEnd": "Sei all'ultima parola di questa pagina."
   },
   "vocab": {
     "eyebrow": "Le tue parole",
@@ -346,7 +369,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "{count} carte",
-    "uploadOwnImage": "Immagine propria"
+    "uploadOwnImage": "Immagine propria",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Eliminare questa parola e i suoi progressi di apprendimento?",
+    "wordRequired": "Inserisci prima la parola."
   },
   "discover": {
     "eyebrow": "Risorse online",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Apri sul sito",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Profilo e apprendimento",
@@ -624,7 +655,8 @@
     "flashcardHeading": "Ripassi e algoritmo",
     "translatorEyebrow": "Traduttore e Dizionario",
     "translatorHeading": "Traduzioni e collegamenti",
-    "groupLocalData": "Dati su questo dispositivo"
+    "groupLocalData": "Dati su questo dispositivo",
+    "confirmResetMessage": "Questo ripristina tema, caratteri, indirizzo del dizionario e chiavi API ai valori predefiniti. Questa operazione non può essere annullata."
   },
   "help": {
     "eyebrow": "Aiuto",
@@ -665,8 +697,8 @@
     "contactIssues": "<strong>Bug e idee:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contatto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licenza:</strong> AGPL-3.0-or-later. L'uso commerciale chiuso di codice derivato richiede una licenza scritta separata. Dettagli: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 sostituisce la sincronizzazione in background con pacchetti ZIP affidabili contenenti record YAML individuali e tutte le immagini dei libri.</strong>",
-    "version": "<strong>Versione:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 migliora lettura e ripasso: conferme più sicure, migliore gestione della tastiera, riepilogo di sessione per le flashcard, pulsante copia nel traduttore e molte correzioni di accessibilità.</strong>",
+    "version": "<strong>Versione:</strong> Word Hunter 1.0.10",
     "focusHint1": "Premi <kbd>Ctrl</kbd>+<kbd>Invio</kbd> per entrare o tornare nel testo",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> per navigare le parole",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Spazio</kbd> leggi frase",
@@ -869,7 +901,9 @@
     "emptyFields": "Compila titolo e testo.",
     "importing": "Importazione...",
     "exportReadyCount": "{n} parole esportate.",
-    "addedManyWithSkipped": "{added} libri aggiunti. {skipped} saltati (già nella libreria)."
+    "addedManyWithSkipped": "{added} libri aggiunti. {skipped} saltati (già nella libreria).",
+    "wordPanelItemHidden": "Questo elemento è nascosto nelle impostazioni del pannello parole.",
+    "vocabExportFailed": "Impossibile esportare il vocabolario."
   },
   "languages": {
     "pl": "Polacco",
@@ -954,7 +988,9 @@
     "targetPlaceholder": "La traduzione apparirà qui...",
     "footer": "Fornito localmente dal traduttore offline",
     "copyBtn": "Copia traduzione",
-    "copied": "Copiato!"
+    "copied": "Copiato!",
+    "copy": "Copia",
+    "copyDone": "Copiato negli appunti."
   },
   "graphs": {
     "eyebrow": "Statistiche",
@@ -1020,5 +1056,16 @@
     "openReleases": "Novità",
     "disableUpdates": "Non ricordare più",
     "dismiss": "Più tardi"
+  },
+  "dialog": {
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "confirmTitle": "Sei sicuro?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Sessione completata",
+    "sessionSummaryCount": "Carte ripassate: {n}",
+    "sessionSummaryAccuracy": "Ricordate: {pct}%",
+    "sessionSummaryDone": "Fine"
   }
 }

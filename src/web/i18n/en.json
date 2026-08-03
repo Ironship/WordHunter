@@ -9,7 +9,9 @@
     "description": "Word Hunter — local Rust/Tauri reader, vocabulary trainer, and offline translator.",
     "navAriaLabel": "Navigation",
     "jsError": "JS Error: {msg} at {url}:{line}:{col}\n{stack}",
-    "unhandledPromise": "Unhandled Promise: {reason}"
+    "unhandledPromise": "Unhandled Promise: {reason}",
+    "startupFailed": "Word Hunter could not finish startup",
+    "retry": "Retry"
   },
   "nav": {
     "library": "Library",
@@ -21,7 +23,19 @@
     "graphs": "Graphs",
     "export": "Export",
     "settings": "Settings",
-    "help": "Help"
+    "help": "Help",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "sourceWikinews": "Wikinews",
     "sourcePdfOcr": "OCR import",
     "coverAlt": "Cover",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Custom text",
@@ -273,7 +290,13 @@
     "keySpace": "Space",
     "keyPageUp": "Page Up",
     "keyPageDown": "Page Down",
-    "keyEnter": "Enter"
+    "keyEnter": "Enter",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Discard your edits to this correction?",
+    "wordNavPageStart": "You are at the first word of this page.",
+    "wordNavPageEnd": "You are at the last word of this page."
   },
   "vocab": {
     "eyebrow": "Your words",
@@ -346,7 +369,12 @@
     "openDictionary": "Open dictionary",
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
-    "cardCount": "{count} cards"
+    "cardCount": "{count} cards",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Delete this word and its learning progress?",
+    "wordRequired": "Enter the word first."
   },
   "discover": {
     "eyebrow": "Online resources",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Open on site",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Profile and learning",
@@ -624,7 +655,8 @@
     "ankiTsvHeader": "Word\tTranslation\tContext\tArticle\n",
     "ankiExportStatuses": "Exported statuses",
     "ankiExportStatusesHint": "Choose which word statuses are included in the TSV. Anki receives word, translation, context, and optional article columns.",
-    "groupLocalData": "Data on this device"
+    "groupLocalData": "Data on this device",
+    "confirmResetMessage": "This resets the theme, fonts, dictionary address and API keys to their defaults. This cannot be undone."
   },
   "translator": {
     "swap": "Swap languages",
@@ -653,7 +685,9 @@
     "targetPlaceholder": "Translation will appear here...",
     "footer": "Powered locally by the offline translator",
     "copyBtn": "Copy translation",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "copy": "Copy",
+    "copyDone": "Copied to clipboard."
   },
   "graphs": {
     "eyebrow": "Statistics",
@@ -745,8 +779,8 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 replaces background synchronization with reliable ZIP transfer packages containing individual YAML records and complete book images.</strong>",
-    "version": "<strong>Version:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 improves reading and review: safer confirmation dialogs, better keyboard handling, a session summary for flashcards, a copy button in the translator, and many accessibility fixes.</strong>",
+    "version": "<strong>Version:</strong> Word Hunter 1.0.10",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -950,7 +984,9 @@
     "vocabExportEmpty": "No words match the current export filters.",
     "importing": "Importing...",
     "exportReadyCount": "Exported {n} words.",
-    "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library)."
+    "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library).",
+    "wordPanelItemHidden": "This item is hidden in the word panel settings.",
+    "vocabExportFailed": "Could not export vocabulary."
   },
   "languages": {
     "pl": "Polish",
@@ -968,7 +1004,7 @@
     "other": "Other"
   },
   "sm2": {
-    "prompt": "How well did you remember it? (0–5)",
+    "prompt": "How well did you remember it? (1–5)",
     "inTextPrompt": "What does this word mean? Reveal the answer, then rate your recall.",
     "showAnswer": "Show answer",
     "inTextRating": "How well did you recall it? (1–5)",
@@ -1020,5 +1056,16 @@
     "openReleases": "See what's new",
     "disableUpdates": "Don't remind me again",
     "dismiss": "Later"
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "confirmTitle": "Are you sure?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Session complete",
+    "sessionSummaryCount": "Cards reviewed: {n}",
+    "sessionSummaryAccuracy": "Remembered: {pct}%",
+    "sessionSummaryDone": "Done"
   }
 }

@@ -9,7 +9,9 @@
     "description": "Word Hunter — Rust/Tauri のローカルリーダー、語彙トレーナー、オフライン翻訳",
     "jsError": "JSエラー: {msg} ({url}:{line}:{col})\n{stack}",
     "navAriaLabel": "ナビゲーション",
-    "unhandledPromise": "未処理のPromise: {reason}"
+    "unhandledPromise": "未処理のPromise: {reason}",
+    "startupFailed": "Word Hunter を起動できませんでした",
+    "retry": "再試行"
   },
   "nav": {
     "library": "ライブラリ",
@@ -21,7 +23,19 @@
     "graphs": "グラフ",
     "export": "エクスポート",
     "settings": "設定",
-    "help": "ヘルプ"
+    "help": "ヘルプ",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "アーカイブする",
     "unarchiveTitle": "アーカイブから復元",
     "untitled": "無題",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "カスタムテキスト",
@@ -273,7 +290,13 @@
     "keySpace": "スペース",
     "keyPageUp": "PageUp",
     "keyPageDown": "PageDown",
-    "keyEnter": "Enter"
+    "keyEnter": "Enter",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "この修正への編集を破棄しますか？",
+    "wordNavPageStart": "このページの最初の単語です。",
+    "wordNavPageEnd": "このページの最後の単語です。"
   },
   "vocab": {
     "eyebrow": "あなたの単語",
@@ -346,7 +369,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "{count} 枚",
-    "uploadOwnImage": "画像をアップロード"
+    "uploadOwnImage": "画像をアップロード",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "この単語と学習の進捗を削除しますか？",
+    "wordRequired": "先に単語を入力してください。"
   },
   "discover": {
     "eyebrow": "オンラインリソース",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "サイトで開く",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "プロファイルと学習",
@@ -624,7 +655,8 @@
     "flashcardHeading": "復習とアルゴリズム",
     "translatorEyebrow": "翻訳と辞書",
     "translatorHeading": "翻訳とリンク",
-    "groupLocalData": "この端末のデータ"
+    "groupLocalData": "この端末のデータ",
+    "confirmResetMessage": "テーマ・フォント・辞書アドレス・APIキーを初期設定に戻します。この操作は元に戻せません。"
   },
   "translator": {
     "sizeMb": "~{size}MB",
@@ -653,7 +685,9 @@
     "targetPlaceholder": "ここに翻訳が表示されます...",
     "footer": "ローカルのオフライン翻訳で実行",
     "copyBtn": "翻訳をコピー",
-    "copied": "コピーしました！"
+    "copied": "コピーしました！",
+    "copy": "コピー",
+    "copyDone": "クリップボードにコピーしました。"
   },
   "help": {
     "eyebrow": "ヘルプ",
@@ -778,8 +812,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 はバックグラウンド同期を廃止し、個別のYAMLレコードと書籍画像を含む信頼性の高いZIP転送パッケージに置き換えます。</strong>",
-    "version": "<strong>バージョン：</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 は読書と復習を改善：より安全な確認ダイアログ、キーボード操作の改善、フラッシュカードのセッションサマリー、翻訳のコピーボタン、多数のアクセシビリティ修正。</strong>",
+    "version": "<strong>バージョン：</strong> Word Hunter 1.0.10",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。",
     "pocketTransferTitle": "パッケージのエクスポートとインポート",
@@ -898,7 +932,9 @@
     "emptyFields": "タイトルとテキストを入力してください。",
     "importing": "インポート中...",
     "exportReadyCount": "{n} 語をエクスポートしました。",
-    "addedManyWithSkipped": "{added} 冊の本を追加しました。{skipped} 冊をスキップしました（既にライブラリにあります）。"
+    "addedManyWithSkipped": "{added} 冊の本を追加しました。{skipped} 冊をスキップしました（既にライブラリにあります）。",
+    "wordPanelItemHidden": "この項目は単語パネルの設定で非表示になっています。",
+    "vocabExportFailed": "語彙をエクスポートできませんでした。"
   },
   "languages": {
     "pl": "ポーランド語",
@@ -916,7 +952,7 @@
     "other": "その他"
   },
   "sm2": {
-    "prompt": "どれくらい覚えていましたか？ (0–5)",
+    "prompt": "どれくらい覚えていましたか？ (1–5)",
     "inTextPrompt": "この単語は何を意味しますか？答えを表示してから、思い出せた度合いを評価してください。",
     "showAnswer": "答えを表示",
     "inTextRating": "どのくらい思い出せましたか？ (1～5)",
@@ -1020,5 +1056,16 @@
     "openReleases": "新機能を見る",
     "disableUpdates": "今後通知しない",
     "dismiss": "後で"
+  },
+  "dialog": {
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "confirmTitle": "本当に実行しますか？"
+  },
+  "review": {
+    "sessionSummaryTitle": "セッション完了",
+    "sessionSummaryCount": "復習したカード: {n}",
+    "sessionSummaryAccuracy": "覚えていた: {pct}%",
+    "sessionSummaryDone": "完了"
   }
 }

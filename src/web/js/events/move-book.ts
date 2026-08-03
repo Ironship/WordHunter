@@ -63,4 +63,9 @@ export function bindMoveBookEvents() {
   dialog.addEventListener("cancel", (event) => {
     if (moveRunning) event.preventDefault();
   });
+
+  // Close on backdrop click, consistent with the other dialogs.
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog && !moveRunning) dialog.close();
+  });
 }

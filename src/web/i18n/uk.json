@@ -9,7 +9,9 @@
     "description": "Word Hunter — локальна читалка й тренажер словникового запасу на Rust/Tauri з офлайн-перекладачем.",
     "jsError": "Помилка JS: {msg} у {url}:{line}:{col}\n{stack}",
     "navAriaLabel": "Навігація",
-    "unhandledPromise": "Необроблене відхилення Promise: {reason}"
+    "unhandledPromise": "Необроблене відхилення Promise: {reason}",
+    "startupFailed": "Word Hunter не зміг завершити запуск",
+    "retry": "Повторити"
   },
   "nav": {
     "library": "Бібліотека",
@@ -21,7 +23,19 @@
     "graphs": "Графіки",
     "export": "Експорт",
     "settings": "Налаштування",
-    "help": "Довідка"
+    "help": "Довідка",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "Архівувати",
     "unarchiveTitle": "Відновити з архіву",
     "untitled": "Без назви",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Власний текст",
@@ -273,7 +290,13 @@
     "keySpace": "Пробіл",
     "keyPageUp": "Page Up",
     "keyPageDown": "Page Down",
-    "keyEnter": "Enter"
+    "keyEnter": "Enter",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Скасувати внесені виправлення?",
+    "wordNavPageStart": "Ви на першому слові цієї сторінки.",
+    "wordNavPageEnd": "Ви на останньому слові цієї сторінки."
   },
   "vocab": {
     "eyebrow": "Ваші слова",
@@ -346,7 +369,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "Карток: {count}",
-    "uploadOwnImage": "Власне зображення"
+    "uploadOwnImage": "Власне зображення",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Видалити це слово та прогрес його вивчення?",
+    "wordRequired": "Спочатку введіть слово."
   },
   "discover": {
     "eyebrow": "Онлайн-ресурси",
@@ -405,7 +433,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Відкрити на сайті",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Профіль і навчання",
@@ -624,7 +655,8 @@
     "flashcardHeading": "Повторення та алгоритм",
     "translatorEyebrow": "Перекладач і словник",
     "translatorHeading": "Переклади та посилання",
-    "groupLocalData": "Дані на цьому пристрої"
+    "groupLocalData": "Дані на цьому пристрої",
+    "confirmResetMessage": "Це скине тему, шрифти, адресу словника та ключі API до значень за замовчуванням. Цю дію не можна скасувати."
   },
   "translator": {
     "sizeMb": "≈{size} МБ",
@@ -653,7 +685,9 @@
     "targetPlaceholder": "Переклад з’явиться тут…",
     "footer": "Переклад виконується локально офлайн-перекладачем",
     "copyBtn": "Копіювати переклад",
-    "copied": "Скопійовано!"
+    "copied": "Скопійовано!",
+    "copy": "Копіювати",
+    "copyDone": "Скопійовано в буфер обміну."
   },
   "help": {
     "eyebrow": "Довідка",
@@ -694,8 +728,8 @@
     "contactIssues": "<strong>Звіти про помилки та пропозиції нових функцій:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Контакт:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Ліцензія:</strong> AGPL-3.0-or-later. Для комерційного використання похідного коду із закритим вихідним кодом потрібна окрема письмова ліцензія. Докладніше: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 замінює фонову синхронізацію надійними ZIP-пакетами з окремими записами YAML і повними зображеннями книжок.</strong>",
-    "version": "<strong>Версія:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 покращує читання та повторення: безпечніші підтвердження, краще керування з клавіатури, підсумок сесії карток, кнопка копіювання в перекладачі та багато виправлень доступності.</strong>",
+    "version": "<strong>Версія:</strong> Word Hunter 1.0.10",
     "focusHint1": "Натисніть <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, щоб увійти в текст або повернутися до нього",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> для навігації словами",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Пробіл</kbd> озвучити речення",
@@ -898,7 +932,9 @@
     "emptyFields": "Заповніть назву та текст.",
     "importing": "Імпортування...",
     "exportReadyCount": "Експортовано слів: {n}.",
-    "addedManyWithSkipped": "Додано {added} книг. Пропущено {skipped} (вже в бібліотеці)."
+    "addedManyWithSkipped": "Додано {added} книг. Пропущено {skipped} (вже в бібліотеці).",
+    "wordPanelItemHidden": "Цей елемент приховано в налаштуваннях панелі слова.",
+    "vocabExportFailed": "Не вдалося експортувати словник."
   },
   "languages": {
     "pl": "Польська",
@@ -916,7 +952,7 @@
     "other": "Інша"
   },
   "sm2": {
-    "prompt": "Наскільки добре ви пригадали слово? (0–5)",
+    "prompt": "Наскільки добре ви пригадали слово? (1–5)",
     "inTextPrompt": "Що означає це слово? Покажіть відповідь, а потім оцініть, як ви його пригадали.",
     "showAnswer": "Показати відповідь",
     "inTextRating": "Наскільки добре ви його пригадали? (1–5)",
@@ -1020,5 +1056,16 @@
     "openReleases": "Що нового",
     "disableUpdates": "Більше не нагадувати",
     "dismiss": "Пізніше"
+  },
+  "dialog": {
+    "cancel": "Скасувати",
+    "confirm": "Підтвердити",
+    "confirmTitle": "Ви впевнені?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Сесію завершено",
+    "sessionSummaryCount": "Повторено карток: {n}",
+    "sessionSummaryAccuracy": "Запам'ятовано: {pct}%",
+    "sessionSummaryDone": "Готово"
   }
 }

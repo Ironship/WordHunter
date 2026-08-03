@@ -319,7 +319,10 @@ async function translateNow(): Promise<void> {
   } catch (error) {
     if (generation !== translateGeneration) return;
     console.error("Translator error", error);
-    if (els.translatorStatus) els.translatorStatus.textContent = t("translator.error");
+    const reason = error instanceof Error ? error.message : String(error);
+    if (els.translatorStatus) {
+      els.translatorStatus.textContent = reason ? `${t("translator.error")} — ${reason.slice(0, 120)}` : t("translator.error");
+    }
     showToast(t("translator.error"), "error");
   } finally {
     if (generation === translateGeneration) setTranslatorBusy(false);
@@ -373,6 +376,36 @@ export function bindTranslatorEvents(): void {
       saveOtherProfilePair(toCode, fromCode);
       renderTranslator();
       scheduleTranslate();
+    });
+  }
+
+  const copyButton = document.getElementById("translator-copy");
+  if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+      const text = els.translatorResult?.value || "";
+      if (!text.trim()) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        // Fallback: hidden textarea + execCommand when the async Clipboard API is unavailable.
+        const textarea = document.createElement("textarea");
+        try {
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          if (!document.execCommand("copy")) throw new Error("copy command rejected");
+        } catch (fallbackError) {
+          console.warn("Could not copy translation result", fallbackError);
+          showToast(t("translator.error"), "error");
+          return;
+        } finally {
+          textarea.remove();
+        }
+      }
+      showToast(t("translator.copyDone"));
     });
   }
 }
