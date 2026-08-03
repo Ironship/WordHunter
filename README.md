@@ -40,9 +40,17 @@ fixes to desktop and Android. Existing vocabulary migrates automatically.
 | Platform | Recommended download | Other supported option |
 | --- | --- | --- |
 | **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.portable.zip) |
-| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.Pocket.debug.apk) | Android may ask you to allow installation from your browser or file manager. |
+| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.Pocket.debug.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
 | **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter-1.0.9-aarch64.dmg) | Intel Macs and iOS are not supported. |
 | **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter-1.0.9-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/word-hunter_1.0.9_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
+
+> [!NOTE]
+> **F-Droid:** Word Hunter Pocket is not available on F-Droid yet, but a
+> source-built packaging request is open at
+> [fdroid/rfp#4109 (app ID `com.wordhunter.pocket`)](https://gitlab.com/fdroid/rfp/-/work_items/4109) —
+> requested 2026-07-12, upstream status last updated 2026-08-03 (stable 1.0.9,
+> Android versionCode 100000909). Track the request there; the direct APK
+> download above remains the quickest way to install meanwhile.
 
 <details>
 <summary><strong>Command-line installation</strong></summary>
