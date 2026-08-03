@@ -903,7 +903,8 @@
     "exportReadyCount": "{n} palabras exportadas.",
     "addedManyWithSkipped": "{added} libros añadidos. {skipped} omitidos (ya en la biblioteca).",
     "wordPanelItemHidden": "Este elemento está oculto en los ajustes del panel de palabras.",
-    "vocabExportFailed": "No se pudo exportar el vocabulario."
+    "vocabExportFailed": "No se pudo exportar el vocabulario.",
+    "autoTranslateUnavailable": "La traducción automática no está disponible temporalmente. Se reintentará automáticamente."
   },
   "languages": {
     "pl": "Polaco",

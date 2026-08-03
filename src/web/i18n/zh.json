@@ -986,7 +986,8 @@
     "exportReadyCount": "已导出 {n} 个单词。",
     "addedManyWithSkipped": "已添加 {added} 本书。跳过 {skipped} 本（已在书库中）。",
     "wordPanelItemHidden": "此项目已在单词面板设置中隐藏。",
-    "vocabExportFailed": "无法导出词汇。"
+    "vocabExportFailed": "无法导出词汇。",
+    "autoTranslateUnavailable": "自动翻译暂时不可用，将自动重试。"
   },
   "languages": {
     "pl": "波兰语",

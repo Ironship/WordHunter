@@ -19,6 +19,13 @@ import { getCachedReaderWord } from "./reader/session.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
+// Delay before the single retry of a failed auto-translation request (ms).
+const AUTO_TRANSLATE_RETRY_DELAY_MS = 1_200;
+// Per-word cooldown after a failed auto-translation attempt (ms) — prevents
+// hammering throttled translation endpoints when the user clicks around.
+const AUTO_TRANSLATE_FAILURE_COOLDOWN_MS = 30_000;
+const failedAutoTranslations = new Map<string, number>();
+let autoTranslateFailureNotified = false;
 
 interface SelectWordOptions {
   forceSpeak?: boolean;
@@ -33,21 +40,38 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
   if (!canUseTranslationProvider()) return false;
   if (!entry || String(entry.translation || "").trim()) return false;
   if (isAutoTranslationRejected(entry)) return false;
+  const lastFailure = failedAutoTranslations.get(word);
+  if (lastFailure && Date.now() - lastFailure < AUTO_TRANSLATE_FAILURE_COOLDOWN_MS) return false;
   if (pendingAutoTranslations.has(entry)) return false;
   pendingAutoTranslations.add(entry);
-  
+
   try {
     const pair = resolveProfileTranslationPair(state.preferences);
     const displayWord = entry.word || word;
-    const data = await translateText(displayWord, pair.fromCode, pair.toCode);
-    if (state.vocab[word] !== entry
-      || String(entry.translation || "").trim()
-      || isAutoTranslationRejected(entry)) return false;
+    let data: Awaited<ReturnType<typeof translateText>>;
+    try {
+      data = await translateText(displayWord, pair.fromCode, pair.toCode);
+    } catch (error) {
+      // Translation endpoints (especially the unofficial Google one) throttle
+      // intermittently — retry once with a short delay before giving up.
+      console.warn("Auto translation failed, retrying once", error);
+      await new Promise((resolve) => setTimeout(resolve, AUTO_TRANSLATE_RETRY_DELAY_MS));
+      data = await translateText(displayWord, pair.fromCode, pair.toCode);
+    }
+    // The entry object may have been replaced by a state reload while we waited —
+    // resolve the CURRENT entry for this word and apply the result only if it
+    // still needs a translation (fixes silently dropped translations).
+    const currentEntry = state.vocab[word];
+    if (!currentEntry
+      || String(currentEntry.translation || "").trim()
+      || isAutoTranslationRejected(currentEntry)) return false;
     const translated = String(data.translated || "").trim();
     if (translated && translated !== displayWord) {
-      entry.translation = translated;
-      entry.translationSource = data.engine || "translator";
-      entry.updatedAt = new Date().toISOString();
+      failedAutoTranslations.delete(word);
+      autoTranslateFailureNotified = false;
+      currentEntry.translation = translated;
+      currentEntry.translationSource = data.engine || "translator";
+      currentEntry.updatedAt = new Date().toISOString();
       saveState();
 
       if (state.currentView === "reader" && state.selectedWord === word) {
@@ -63,8 +87,13 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
 
       return true;
     }
-  } catch (e) {
-    console.warn("Auto translation failed", e);
+  } catch (error) {
+    console.warn("Auto translation failed", error);
+    failedAutoTranslations.set(word, Date.now());
+    if (!autoTranslateFailureNotified) {
+      autoTranslateFailureNotified = true;
+      showToast(t("toast.autoTranslateUnavailable"), "error");
+    }
   } finally {
     pendingAutoTranslations.delete(entry);
   }
@@ -216,6 +245,7 @@ export function updateWordField(word: string, field: string, value: unknown): vo
 export function deleteWord(word: string): void {
   word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   delete state.vocab[word];
+  failedAutoTranslations.delete(word);
   initialVocabKeys.delete(word);
   if (state.selectedWord === word) state.selectedWord = null;
   saveState();

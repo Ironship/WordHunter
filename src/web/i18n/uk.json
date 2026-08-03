@@ -934,7 +934,8 @@
     "exportReadyCount": "Експортовано слів: {n}.",
     "addedManyWithSkipped": "Додано {added} книг. Пропущено {skipped} (вже в бібліотеці).",
     "wordPanelItemHidden": "Цей елемент приховано в налаштуваннях панелі слова.",
-    "vocabExportFailed": "Не вдалося експортувати словник."
+    "vocabExportFailed": "Не вдалося експортувати словник.",
+    "autoTranslateUnavailable": "Автоматичний переклад тимчасово недоступний. Повторну спробу буде виконано автоматично."
   },
   "languages": {
     "pl": "Польська",

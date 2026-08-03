@@ -986,7 +986,8 @@
     "exportReadyCount": "Wyeksportowano {n} słów.",
     "addedManyWithSkipped": "Dodano {added} książek. Pominięto {skipped} (już w bibliotece).",
     "wordPanelItemHidden": "Ten element jest ukryty w ustawieniach panelu słowa.",
-    "vocabExportFailed": "Nie udało się wyeksportować słownictwa."
+    "vocabExportFailed": "Nie udało się wyeksportować słownictwa.",
+    "autoTranslateUnavailable": "Automatyczne tłumaczenie jest chwilowo niedostępne. Zostanie ponowione automatycznie."
   },
   "languages": {
     "pl": "Polski",
