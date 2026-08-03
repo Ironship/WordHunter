@@ -1,0 +1,4 @@
+Word Hunter 1.0.10-rc.1
+
+- Add-to-library import shows a progress bar with percentage and animation.
+- Imported YouTube texts show the source video link above the text.
