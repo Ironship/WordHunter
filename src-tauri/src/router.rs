@@ -4,7 +4,8 @@ use std::sync::Arc;
 use tiny_http::{Method, Request};
 
 use crate::{
-    ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy, response,
+    ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup,
+    proxy, response,
     server::{ActiveOcrJob, ServerState},
     srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish, youtube_captions,
 };
@@ -474,6 +475,27 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 match external_translator::translate(payload) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 400, &err),
+                }
+            }
+            "/__ai/explain" => {
+                let payload = read_json_or_400!(request);
+                match ai_explainer::explain(payload) {
+                    Ok(payload) => response::json_response(request, payload),
+                    Err(err) => response::error_response(request, 400, &err),
+                }
+            }
+            "/__ai/explain_stream" => {
+                let payload = read_json_or_400!(request);
+                let mut pending = Some(request);
+                match ai_explainer::explain_stream(payload, pending.take().expect("request present")) {
+                    Ok(()) => Ok(()),
+                    Err(err) => match pending {
+                        // The stream never started (validation/upstream error) —
+                        // answer the client normally.
+                        Some(unanswered) => response::error_response(unanswered, 400, &err),
+                        // The response already started streaming; nothing to send.
+                        None => Err(err),
+                    },
                 }
             }
             "/__text/vocab_index" => {

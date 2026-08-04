@@ -801,6 +801,11 @@ describe("focused frontend regressions", () => {
       "../translator-preferences.js": {
         normalizeTranslationLanguageCode: (value) => value,
         resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en", configured: true }; }
+      },
+      "../ai-explainer.js": {
+        aiExplanationConfigured: () => false,
+        explainWord: async () => ({ explanation: "", cached: false }),
+        formatAiExplanation: (text) => String(text ?? "")
       }
     }, {
       document: { getElementById() { return null; } },
@@ -1257,7 +1262,8 @@ describe("focused frontend regressions", () => {
 async function evaluateWordPanel({
   state,
   wordPanel,
-  getReaderSelectionText,
+  getReaderSelectionText = () => "",
+  getReaderWordTokens = () => [],
   getSentenceForWord,
   translateText = async () => ({ translated: "" }),
   beginElementBusy = () => () => {},
@@ -1290,7 +1296,7 @@ async function evaluateWordPanel({
       }
     },
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
-    "./selection.js": { getReaderSelectionText },
+    "./selection.js": { getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {
       articleOptionsForLanguage() { return []; },
       getSmartSuggestion() { return null; },
@@ -1311,6 +1317,13 @@ async function evaluateWordPanel({
       resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en" }; }
     },
     "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+    "../ai-explainer.js": {
+      aiExplanationConfigured: () => false,
+      aiExplanationLanguagePair: () => ({ from: "de", to: "en" }),
+      collectPdfOcrImageContext: async () => null,
+      formatAiExplanation: (text) => String(text ?? ""),
+      explainWord: async () => ({ explanation: "", cached: false })
+    },
     "../status-sounds.js": { playReviewGradeSound() {} }
   });
 }

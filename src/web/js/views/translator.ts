@@ -8,6 +8,7 @@ import { activeTranslationProvider, canUseTranslationProvider, translateWithRetr
 import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { rekeyActiveVocabForLocale } from "../state/normalize.js";
+import { aiExplanationConfigured, explainWord, formatAiExplanation } from "../ai-explainer.js";
 
 // All languages supported by online/local translator providers.
 const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
@@ -38,6 +39,7 @@ interface TranslatorPair {
 
 let translateTimer: number | null = null;
 let translateGeneration = 0;
+let translatorAiExplainGeneration = 0;
 
 function setTranslatorBusy(busy: boolean): void {
   if (els.translatorStatus) {
@@ -254,6 +256,7 @@ export function renderTranslator(): void {
   } else if (els.translatorStatus && !els.translatorStatus.dataset.busy) {
     els.translatorStatus.textContent = t("translator.ready");
   }
+  if (els.translatorAiExplain) els.translatorAiExplain.hidden = !aiExplanationConfigured();
   updateTranslatorFlags(currentFrom, currentTo);
 }
 
@@ -379,7 +382,6 @@ export function bindTranslatorEvents(): void {
       scheduleTranslate();
     });
   }
-
   const copyButton = document.getElementById("translator-copy");
   if (copyButton) {
     copyButton.addEventListener("click", async () => {
@@ -407,6 +409,41 @@ export function bindTranslatorEvents(): void {
         }
       }
       showToast(t("translator.copyDone"));
+    });
+  }
+
+  if (els.translatorAiExplain) {
+    els.translatorAiExplain.addEventListener("click", async () => {
+      const source = els.translatorSource?.value.trim() || "";
+      const output = els.translatorAiResult;
+      if (!source || !output) return;
+      if (!aiExplanationConfigured()) {
+        output.hidden = false;
+        output.textContent = t("reader.aiExplainNotConfigured");
+        return;
+      }
+      const pair = ensureSelectedPair();
+      const generation = ++translatorAiExplainGeneration;
+      output.hidden = false;
+      output.textContent = t("translator.translating");
+      setElementBusy(els.translatorAiExplain, true, { disable: true });
+      try {
+        const result = await explainWord(
+          { word: source.slice(0, 300), context: source, from: pair.fromCode, to: pair.toCode },
+          (text) => {
+            if (generation !== translatorAiExplainGeneration) return;
+            output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+          }
+        );
+        if (generation !== translatorAiExplainGeneration) return;
+        output.innerHTML = formatAiExplanation(result.explanation);
+      } catch (error) {
+        if (generation !== translatorAiExplainGeneration) return;
+        console.warn("AI explanation failed", error);
+        output.textContent = t("reader.aiExplainError");
+      } finally {
+        if (generation === translatorAiExplainGeneration) setElementBusy(els.translatorAiExplain, false, { disable: true });
+      }
     });
   }
 }

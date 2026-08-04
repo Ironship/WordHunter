@@ -14,6 +14,7 @@ const itemIds = [
   "note",
   "image",
   "context",
+  "ai",
   "copy",
   "edit",
   "remove"
@@ -55,6 +56,9 @@ describe("selected-word panel", () => {
     assert.match(panel, /id === "article"/);
     assert.match(panel, /data-copy-word/);
     assert.match(panel, /data-edit-word/);
+    assert.match(panel, /data-ai-explain/);
+    assert.match(panel, /data-ai-explanation/);
+    assert.match(panel, /aiExplanationConfigured\(\)/);
     assert.doesNotMatch(panel, /pocket-word-dictionary/);
     assert.match(panel, /word-panel-status-\$\{status\}/);
     assert.match(panel, /button\.classList\.toggle\("active", active\)/);
