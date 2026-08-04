@@ -4,8 +4,8 @@ use std::sync::Arc;
 use tiny_http::{Method, Request};
 
 use crate::{
-    ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup,
-    proxy, response,
+    ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy,
+    response,
     server::{ActiveOcrJob, ServerState},
     srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish, youtube_captions,
 };
@@ -487,7 +487,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             "/__ai/explain_stream" => {
                 let payload = read_json_or_400!(request);
                 let mut pending = Some(request);
-                match ai_explainer::explain_stream(payload, pending.take().expect("request present")) {
+                match ai_explainer::explain_stream(
+                    payload,
+                    pending.take().expect("request present"),
+                ) {
                     Ok(()) => Ok(()),
                     Err(err) => match pending {
                         // The stream never started (validation/upstream error) —

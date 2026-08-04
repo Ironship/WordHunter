@@ -38,7 +38,9 @@ fn validate_endpoint(endpoint: &str) -> Result<(), String> {
     match parsed.scheme() {
         "https" => Ok(()),
         "http" if is_loopback_host(parsed.host_str().unwrap_or_default()) => Ok(()),
-        "http" => Err("AI endpoint over plain http is only allowed for local servers (localhost)".to_string()),
+        "http" => Err(
+            "AI endpoint over plain http is only allowed for local servers (localhost)".to_string(),
+        ),
         _ => Err("AI endpoint must use http or https".to_string()),
     }
 }
@@ -123,20 +125,17 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
-    let from = payload
-        .get("from")
-        .and_then(Value::as_str)
-        .unwrap_or("en");
-    let to = payload
-        .get("to")
-        .and_then(Value::as_str)
-        .unwrap_or("en");
+    let from = payload.get("from").and_then(Value::as_str).unwrap_or("en");
+    let to = payload.get("to").and_then(Value::as_str).unwrap_or("en");
     let endpoint = payload
         .get("endpoint")
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
-    let api_key = payload.get("apiKey").and_then(Value::as_str).unwrap_or_default();
+    let api_key = payload
+        .get("apiKey")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     let model = payload
         .get("model")
         .and_then(Value::as_str)
@@ -168,7 +167,14 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
          language a learner can understand. Always reply in {to}. Keep the \
          explanation under 120 words and never repeat the prompt instructions."
     );
-    let user = build_user_content(word, context, from, to, (!image.is_empty()).then_some(image), rect);
+    let user = build_user_content(
+        word,
+        context,
+        from,
+        to,
+        (!image.is_empty()).then_some(image),
+        rect,
+    );
 
     let body = json!({
         "model": model,
@@ -198,21 +204,23 @@ fn send_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
         request = request.set("Authorization", &format!("Bearer {key}"));
     }
 
-    request.send_json(prepared.body.clone()).map_err(|error| match error {
-        ureq::Error::Status(code, response) => {
-            let detail = response
-                .into_string()
-                .ok()
-                .map(|text| text.chars().take(300).collect::<String>())
-                .unwrap_or_default();
-            if detail.is_empty() {
-                format!("AI endpoint returned HTTP {code}")
-            } else {
-                format!("AI endpoint returned HTTP {code}: {detail}")
+    request
+        .send_json(prepared.body.clone())
+        .map_err(|error| match error {
+            ureq::Error::Status(code, response) => {
+                let detail = response
+                    .into_string()
+                    .ok()
+                    .map(|text| text.chars().take(300).collect::<String>())
+                    .unwrap_or_default();
+                if detail.is_empty() {
+                    format!("AI endpoint returned HTTP {code}")
+                } else {
+                    format!("AI endpoint returned HTTP {code}: {detail}")
+                }
             }
-        }
-        ureq::Error::Transport(error) => format!("AI endpoint unreachable: {error}"),
-    })
+            ureq::Error::Transport(error) => format!("AI endpoint unreachable: {error}"),
+        })
 }
 
 pub fn explain(payload: Value) -> Result<Value, String> {
@@ -261,7 +269,10 @@ pub fn explain_stream(payload: Value, client: tiny_http::Request) -> Result<(), 
 
 #[cfg(test)]
 mod tests {
-    use super::{build_user_content, explain, explain_stream, is_loopback_host, prepare_request, validate_endpoint, validate_image};
+    use super::{
+        build_user_content, explain, explain_stream, is_loopback_host, prepare_request,
+        validate_endpoint, validate_image,
+    };
     use serde_json::json;
     use std::io::Write;
     use std::net::TcpListener;
@@ -324,10 +335,12 @@ mod tests {
         let parts = content.as_array().expect("image content is a part list");
         assert_eq!(parts.len(), 2);
         assert_eq!(parts[1]["type"], "image_url");
-        assert!(parts[0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("normalized coordinates (0.100, 0.200)"));
+        assert!(
+            parts[0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("normalized coordinates (0.100, 0.200)")
+        );
     }
 
     #[test]
@@ -335,11 +348,14 @@ mod tests {
         assert!(explain(json!({})).is_err());
         assert!(explain(json!({ "word": "run" })).is_err()); // no model
         assert!(explain(json!({ "word": "run", "model": "m" })).is_err()); // no endpoint
-        assert!(explain(json!({
-            "word": "run",
-            "model": "m",
-            "endpoint": "http://example.com/v1/chat/completions"
-        })).is_err()); // remote plain http
+        assert!(
+            explain(json!({
+                "word": "run",
+                "model": "m",
+                "endpoint": "http://example.com/v1/chat/completions"
+            }))
+            .is_err()
+        ); // remote plain http
     }
 
     /// Read a request's headers plus the Content-Length body so the mock
@@ -420,10 +436,7 @@ mod tests {
         }));
         let value = result.expect("explain should succeed against the mock server");
         assert_eq!(value["engine"], "ai");
-        assert!(value["explanation"]
-            .as_str()
-            .unwrap()
-            .contains("czasownik"));
+        assert!(value["explanation"].as_str().unwrap().contains("czasownik"));
         server.join().unwrap();
     }
 
@@ -456,7 +469,10 @@ mod tests {
         let upstream_thread = thread::spawn(move || {
             let (mut stream, _) = upstream.accept().unwrap();
             let request = read_http_request(&mut stream);
-            assert!(request.contains("\"stream\":true"), "missing stream flag: {request}");
+            assert!(
+                request.contains("\"stream\":true"),
+                "missing stream flag: {request}"
+            );
             let body = "data: {\"choices\":[{\"delta\":{\"content\":\"Hej\"}}]}\n\n\
                         data: {\"choices\":[{\"delta\":{\"content\":\" tam\"}}]}\n\n\
                         data: [DONE]\n\n";
@@ -488,7 +504,10 @@ mod tests {
         let mut output = String::new();
         client.read_to_string(&mut output).unwrap();
 
-        assert!(output.contains("text/event-stream"), "bad content type: {output}");
+        assert!(
+            output.contains("text/event-stream"),
+            "bad content type: {output}"
+        );
         assert!(output.contains("Hej"), "missing first chunk: {output}");
         assert!(output.contains(" tam"), "missing second chunk: {output}");
         assert!(output.contains("[DONE]"), "missing terminator: {output}");
@@ -522,7 +541,10 @@ mod tests {
         }))
         .expect_err("HTTP 404 should surface as an error");
         assert!(error.contains("HTTP 404"), "unexpected error: {error}");
-        assert!(error.contains("model not found"), "unexpected error: {error}");
+        assert!(
+            error.contains("model not found"),
+            "unexpected error: {error}"
+        );
         server.join().unwrap();
     }
 }
