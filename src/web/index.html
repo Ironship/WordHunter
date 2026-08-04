@@ -415,9 +415,11 @@
               </label>
             </div>
             <div class="translator-actions">
+              <button class="secondary-button button-xs" type="button" id="translator-ai-explain" data-i18n="reader.aiExplain" hidden>Explain with AI</button>
               <p class="muted-copy" id="translator-status" role="status" aria-live="polite" aria-atomic="true" data-i18n="translator.ready">Gotowy do tłumaczenia.</p>
               <div class="translator-progress" id="translator-progress"><div class="translator-progress-fill"></div></div>
             </div>
+            <p class="ai-explanation" id="translator-ai-result" role="status" aria-live="polite" hidden></p>
           </section>
         </div>
       </section>
@@ -1051,6 +1053,36 @@
               <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
                 <span data-i18n="settings.dictionaryUrl">Adres słownika (użyj {{word}})</span>
                 <input id="pref-dictionary-url" type="text" data-pref="dictionaryUrl" data-i18n-attr="placeholder=settings.dictionaryUrlPlaceholder" placeholder="https://www.diki.pl/slownik-angielskiego?q={{word}}" class="input">
+              </label>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="ai-prefs-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.aiEyebrow">Wyjaśnienia AI</p>
+              <h2 id="ai-prefs-heading" data-i18n="settings.aiHeading">Wyjaśnienia słówek i fraz przez AI</h2>
+            </div>
+            <div class="settings-body">
+              <p class="settings-subheading" data-i18n="settings.groupAi">Asystent językowy</p>
+              <p class="muted-copy" data-i18n="settings.aiHint">Wyjaśnia zaznaczone słowo lub frazę na podstawie zdania, w którym występuje. Działa z każdym serwerem zgodnym z API OpenAI — lokalnym (LM Studio, llama.cpp, Ollama) albo zdalnym (np. opencode.ai, OpenAI, DeepSeek).</p>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.aiExplanations">Włącz wyjaśnienia AI</span>
+                  <small data-i18n="settings.aiExplanationsHint">Po włączeniu przycisk „Wyjaśnij AI” pojawi się w panelu słówka. Klucz API jest przechowywany tylko lokalnie i wysyłany wyłącznie do wybranego punktu końcowego.</small>
+                </span>
+                <input id="pref-ai-explanations" type="checkbox">
+              </label>
+              <label id="pref-ai-endpoint-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <span data-i18n="settings.aiEndpoint">Punkt końcowy (OpenAI-compatible)</span>
+                <input id="pref-ai-endpoint" type="text" class="input">
+              </label>
+              <label id="pref-ai-model-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <span data-i18n="settings.aiModel">Model</span>
+                <input id="pref-ai-model" type="text" data-i18n-attr="placeholder=settings.aiModelPlaceholder" class="input">
+              </label>
+              <label id="pref-ai-key-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <span data-i18n="settings.aiApiKey">Klucz API</span>
+                <input id="pref-ai-api-key" type="password" data-i18n-attr="placeholder=settings.aiApiKeyPlaceholder" class="input">
               </label>
             </div>
           </section>

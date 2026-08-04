@@ -9,7 +9,8 @@ import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constan
 import { t } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
-import { getReaderSelectionText } from "./selection.js";
+import { getReaderSelectionText, getReaderWordTokens } from "./selection.js";
+import { getSentenceForWord } from "../tokenizer_v2.js";
 import {
   articleOptionsForLanguage,
   getSmartSuggestion,
@@ -20,6 +21,13 @@ import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
 import { canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
+import {
+  aiExplanationConfigured,
+  aiExplanationLanguagePair,
+  collectPdfOcrImageContext,
+  explainWord,
+  formatAiExplanation
+} from "../ai-explainer.js";
 import { beginElementBusy } from "../loading.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
@@ -250,6 +258,87 @@ function bindContextTranslation(word: string, context: string): void {
   });
 }
 
+/** Context for the AI explainer: the saved example sentence, or for a
+ * multi-word selection the sentence that contains the selection anchor. */
+function aiExplainContext(word: string, context: string, isTransientRange: boolean): string {
+  if (context) return context;
+  if (!isTransientRange) return "";
+  const current = getTextById(state.currentTextId);
+  const bookText = current?.text || "";
+  if (bookText) {
+    const tokens = getReaderWordTokens();
+    const anchorIndex = Number(state.readerSelectionRange?.anchor);
+    const anchorToken = Number.isInteger(anchorIndex) && anchorIndex >= 0 ? tokens[anchorIndex] : null;
+    const charOffset = anchorToken ? Number(anchorToken.dataset.charOffset) : null;
+    const firstWord = anchorToken?.dataset.displayWord || word;
+    const sentence = getSentenceForWord(
+      bookText,
+      firstWord,
+      effectiveLearningLanguage(state.preferences),
+      state.preferences.wordDetectionAlgorithm || "modern",
+      null,
+      Number.isInteger(charOffset) ? charOffset : null
+    );
+    if (sentence) return sentence;
+  }
+  return getReaderSelectionText();
+}
+
+function bindAiExplain(word: string, context: string, isTransientRange: boolean): void {
+  const panel = wordPanelElement();
+  const button = panel.querySelector<HTMLButtonElement>("[data-ai-explain]");
+  const output = panel.querySelector<HTMLElement>("[data-ai-explanation]");
+  if (!button || !output) return;
+  button.addEventListener("click", async (event: MouseEvent) => {
+    event.stopPropagation();
+    if (!aiExplanationConfigured()) {
+      output.hidden = false;
+      output.textContent = t("reader.aiExplainNotConfigured");
+      return;
+    }
+    const generation = ++contextTranslationGeneration;
+    const releaseBusy = beginElementBusy(button, { disable: true });
+    output.hidden = false;
+    output.textContent = t("translator.translating");
+    try {
+      let imageContext: Awaited<ReturnType<typeof collectPdfOcrImageContext>> = null;
+      if (!isTransientRange) {
+        try {
+          imageContext = await collectPdfOcrImageContext();
+        } catch (error) {
+          console.warn("AI explanation: no page image context", error);
+        }
+      }
+      const pair = aiExplanationLanguagePair();
+      const effectiveContext = imageContext?.context || aiExplainContext(word, context, isTransientRange);
+      const result = await explainWord(
+        {
+          word,
+          context: effectiveContext,
+          from: pair.from,
+          to: pair.to,
+          image: imageContext?.image,
+          rect: imageContext?.rect
+        },
+        (text) => {
+          if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
+          // Progressive render: plain text with line breaks while streaming,
+          // then the final formatted version below.
+          output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+        }
+      );
+      if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
+      output.innerHTML = formatAiExplanation(result.explanation);
+    } catch (error) {
+      if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
+      console.warn("AI explanation failed", error);
+      output.textContent = t("reader.aiExplainError");
+    } finally {
+      releaseBusy();
+    }
+  });
+}
+
 function wordPanelItemLabel(id: WhSelectedWordPanelItemId): string {
   return t(`settings.wordPanelItems.${id}`);
 }
@@ -363,6 +452,16 @@ function renderContentItem(
       </div>
     `;
   }
+  if (id === "ai") {
+    return `
+      <div class="word-panel-item" data-word-panel-item="ai">
+        <button class="secondary-button button-xs ai-explain-button" type="button" data-ai-explain>
+          ${icon("sparkles", 14)} ${escapeHtml(t("reader.aiExplain"))}
+        </button>
+        <p class="ai-explanation" data-ai-explanation role="status" aria-live="polite" hidden></p>
+      </div>
+    `;
+  }
   return "";
 }
 
@@ -455,6 +554,7 @@ export function renderWordPanel(currentText: WhText): void {
   `;
   bindInTextReviewControls(currentText, word, entry, hasVisibleSmartSuggestion);
   bindContextTranslation(word, context);
+  bindAiExplain(word, context, isTransientRange);
 }
 
 export function updateWordStatusInReader(word: string, status: VocabStatus, options: UpdateWordStatusOptions = {}): void {

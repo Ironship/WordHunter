@@ -17,6 +17,7 @@ import { setElementBusy } from "../loading.js";
 import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
+import { normalizeAiTextPreference } from "../ai-explainer.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import { remapReaderBookmarksForAlgorithm } from "../reader/bookmarks.js";
 
@@ -467,6 +468,39 @@ export function bindSettingsEvents() {
   if (els.prefLmStudioModel) {
     els.prefLmStudioModel.addEventListener("change", (event: Event) => {
       updateTranslatorTextPreference("lmStudioModel", (event.currentTarget as HTMLInputElement).value);
+    });
+  }
+  if (els.prefAiExplanations) {
+    els.prefAiExplanations.addEventListener("change", (event: Event) => {
+      const target = event.currentTarget as HTMLInputElement;
+      updatePreferenceValue("aiExplanationsEnabled", target.checked);
+      syncSettingsControls();
+      if (target.checked) {
+        const items = normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems);
+        const aiItem = items.find((item) => item.id === "ai");
+        if (aiItem && !aiItem.visible) {
+          aiItem.visible = true;
+          saveSelectedWordPanelItems(items);
+          showToast(t("settings.aiPanelItemShown"));
+        }
+      }
+    });
+  }
+  if (els.prefAiEndpoint) {
+    els.prefAiEndpoint.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationEndpoint", normalizeAiTextPreference("aiExplanationEndpoint", (event.currentTarget as HTMLInputElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiModel) {
+    els.prefAiModel.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationModel", normalizeAiTextPreference("aiExplanationModel", (event.currentTarget as HTMLInputElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiApiKey) {
+    els.prefAiApiKey.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationApiKey", (event.currentTarget as HTMLInputElement).value.trim());
     });
   }
   if (els.prefOfflineTranslator) {

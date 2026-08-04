@@ -16,6 +16,7 @@ declare global {
     | "note"
     | "image"
     | "context"
+    | "ai"
     | "copy"
     | "edit"
     | "remove";
@@ -130,6 +131,10 @@ declare global {
     deeplApiKey: string;
     lmStudioEndpoint: string;
     lmStudioModel: string;
+    aiExplanationsEnabled: boolean;
+    aiExplanationEndpoint: string;
+    aiExplanationApiKey: string;
+    aiExplanationModel: string;
     ankiExportStatuses: WhVocabStatus[];
     wordDetectionAlgorithm: string;
     uiScale: number;
