@@ -19,7 +19,7 @@ import {
 import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
-import { canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
 import { beginElementBusy } from "../loading.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
@@ -232,7 +232,8 @@ function bindContextTranslation(word: string, context: string): void {
     output.textContent = t("translator.translating");
     try {
       const pair = resolveProfileTranslationPair(state.preferences);
-      const result = await translateText(
+      // Retries transient endpoint failures internally (once, after a short delay).
+      const result = await translateWithRetry(
         context,
         pair.fromCode,
         pair.toCode

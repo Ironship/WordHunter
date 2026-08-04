@@ -9,7 +9,7 @@ import { renderShell } from "./views/shell.js";
 import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, toggleReviewAnswer } from "./views/vocabulary.js";
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
-import { canUseTranslationProvider, translateText } from "./translation-provider.js";
+import { canUseTranslationProvider, translateWithRetry } from "./translation-provider.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./translator-preferences.js";
@@ -19,8 +19,6 @@ import { getCachedReaderWord } from "./reader/session.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
-// Delay before the single retry of a failed auto-translation request (ms).
-const AUTO_TRANSLATE_RETRY_DELAY_MS = 1_200;
 // Per-word cooldown after a failed auto-translation attempt (ms) — prevents
 // hammering throttled translation endpoints when the user clicks around.
 const AUTO_TRANSLATE_FAILURE_COOLDOWN_MS = 30_000;
@@ -48,16 +46,8 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
   try {
     const pair = resolveProfileTranslationPair(state.preferences);
     const displayWord = entry.word || word;
-    let data: Awaited<ReturnType<typeof translateText>>;
-    try {
-      data = await translateText(displayWord, pair.fromCode, pair.toCode);
-    } catch (error) {
-      // Translation endpoints (especially the unofficial Google one) throttle
-      // intermittently — retry once with a short delay before giving up.
-      console.warn("Auto translation failed, retrying once", error);
-      await new Promise((resolve) => setTimeout(resolve, AUTO_TRANSLATE_RETRY_DELAY_MS));
-      data = await translateText(displayWord, pair.fromCode, pair.toCode);
-    }
+    // Retries transient endpoint failures internally (once, after a short delay).
+    const data = await translateWithRetry(displayWord, pair.fromCode, pair.toCode);
     // The entry object may have been replaced by a state reload while we waited —
     // resolve the CURRENT entry for this word and apply the result only if it
     // still needs a translation (fixes silently dropped translations).

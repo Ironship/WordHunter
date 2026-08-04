@@ -4,7 +4,7 @@ import { state, saveState } from "../state.js";
 import { showToast } from "../toast.js";
 import { setElementBusy } from "../loading.js";
 import { escapeHtml } from "../utils.js";
-import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { activeTranslationProvider, canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
 import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { rekeyActiveVocabForLocale } from "../state/normalize.js";
@@ -312,7 +312,8 @@ async function translateNow(): Promise<void> {
   setTranslatorBusy(true);
 
   try {
-    const data = await translateText(text, pair.fromCode, pair.toCode);
+    // Retries transient endpoint failures internally (once, after a short delay).
+    const data = await translateWithRetry(text, pair.fromCode, pair.toCode);
     if (generation !== translateGeneration) return;
     els.translatorResult.value = data.translated || "";
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.done");
