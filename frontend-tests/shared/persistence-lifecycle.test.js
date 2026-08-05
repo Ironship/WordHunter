@@ -173,6 +173,76 @@ async function loadAppHarness({
 }
 
 describe("persistence lifecycle", () => {
+  it("keeps one long-running full save in flight without a client-side deadline", async () => {
+    let fetchCalls = 0;
+    let timeoutHelperCalls = 0;
+    let resolveFetch;
+    const pendingResponse = new Promise((resolve) => { resolveFetch = resolve; });
+    const api = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" },
+      "./request.js": {
+        fetchWithTimeout() {
+          timeoutHelperCalls += 1;
+          return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+        }
+      }
+    }, {
+      window: { WH_TOKEN: "test-token" },
+      fetch() {
+        fetchCalls += 1;
+        return pendingResponse;
+      },
+      setTimeout,
+      clearTimeout,
+      console
+    });
+
+    let settled = false;
+    const saving = api.saveWithRetry("{}", 3).finally(() => { settled = true; });
+    await Promise.resolve();
+
+    assert.equal(fetchCalls, 1);
+    assert.equal(timeoutHelperCalls, 0);
+    assert.equal(settled, false);
+
+    resolveFetch({ ok: true, json: async () => ({ ok: true }) });
+    await saving;
+    assert.equal(fetchCalls, 1);
+  });
+
+  it("does not queue a duplicate full save when no state changed during the in-flight save", async () => {
+    let attempts = 0;
+    let releaseSave;
+    const blockedSave = new Promise((resolve) => { releaseSave = resolve; });
+    const rawState = { preferences: { theme: "familiar" }, profiles: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (value) => value,
+        saveToLocalStorage() {},
+        async saveWithRetry() {
+          attempts += 1;
+          if (attempts === 1) await blockedSave;
+          return {};
+        },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true, dispatchEvent() {} },
+      CustomEvent,
+      setTimeout,
+      clearTimeout,
+      console
+    });
+    const autosave = createAutosave(() => rawState);
+
+    const first = autosave.saveState();
+    const second = autosave.saveState();
+    releaseSave();
+    await Promise.all([first, second]);
+
+    assert.equal(attempts, 1);
+  });
+
   it("starts preferences, locale, and book catalog loading in parallel", async () => {
     const started = [];
     const resolvers = [];
