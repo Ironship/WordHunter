@@ -43,6 +43,8 @@ export function createAutosave(getState: () => WhAppState) {
   let rejectQueuedSave: ((reason?: any) => void) | null;
   let durableStateRevision = 0;
   let vocabularyRevision = 0;
+  let mutationSequence = 0;
+  let saveStartedMutationSequence = 0;
   let lastMutationAt = 0;
   let lastSaveSucceededAt = 0;
 
@@ -77,6 +79,7 @@ export function createAutosave(getState: () => WhAppState) {
 
   function scheduleSave(delayMs = 200): void {
     lastMutationAt = Date.now();
+    mutationSequence += 1;
     if (suspendAutoSave > 0) return;
     if (exclusiveWriteActive) {
       savePending = true;
@@ -111,6 +114,7 @@ export function createAutosave(getState: () => WhAppState) {
       }
     }
     saveInFlight = true;
+    saveStartedMutationSequence = mutationSequence;
     savePromise = saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then((result) => {
       applyBackendSaveStatus(result);
       retryDelayMs = 0;
@@ -147,7 +151,7 @@ export function createAutosave(getState: () => WhAppState) {
       return queuedSavePromise;
     }
     if (saveInFlight) {
-      savePending = true;
+      if (mutationSequence > saveStartedMutationSequence) savePending = true;
       return savePromise;
     }
     return doSave();

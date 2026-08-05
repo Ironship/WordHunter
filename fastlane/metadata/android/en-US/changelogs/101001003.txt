@@ -3,3 +3,4 @@ Word Hunter 1.0.10-rc.3
 - Adds contextual AI explanations for words and phrases.
 - Supports OpenAI-compatible services, streamed answers, scanned-page visual context, and a local cache.
 - Adds AI explanations to the reader and translator, with configurable endpoint, model, and API key.
+- Prevents duplicate durable saves from blocking application shutdown.
