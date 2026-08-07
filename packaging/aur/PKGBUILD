@@ -1,7 +1,7 @@
 # Maintainer: Ironship <25068602+Ironship at users dot noreply dot github dot com>
 
 pkgname=wordhunter-bin
-pkgver=1.0.8
+pkgver=1.0.10
 pkgrel=1
 pkgdesc="Local-first reader and vocabulary trainer (binary AppImage release)"
 arch=('x86_64')

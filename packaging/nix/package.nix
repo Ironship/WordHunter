@@ -6,7 +6,7 @@
 
 let
   pname = "wordhunter";
-  version = "1.0.8";
+  version = "1.0.10";
 
   src = fetchurl {
     url = "https://github.com/Ironship/WordHunter/releases/download/WordHunter${version}/WordHunter-${version}-x86_64.AppImage";

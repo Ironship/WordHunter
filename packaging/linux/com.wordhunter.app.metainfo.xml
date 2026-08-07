@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.10" date="2026-08-07">
+      <description>
+        <ul>
+          <li>Contextual AI explanations for words and phrases with streamed answers from OpenAI-compatible services.</li>
+          <li>Reasoning-effort levels, automatic explanations for new words, and explanations appended to word notes.</li>
+          <li>Optional visual context for scanned PDF pages and a local explanation cache.</li>
+          <li>Improved automatic translation reliability and shutdown handling for duplicate durable saves.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.7" date="2026-07-31" type="development">
       <description>
         <ul>
