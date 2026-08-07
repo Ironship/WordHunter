@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "この修正への編集を破棄しますか？",
     "wordNavPageStart": "このページの最初の単語です。",
-    "wordNavPageEnd": "このページの最後の単語です。"
+    "wordNavPageEnd": "このページの最後の単語です。",
+    "aiNoteMarker": "AIによる説明"
   },
   "vocab": {
     "eyebrow": "あなたの単語",
@@ -672,7 +673,17 @@
     "translatorEyebrow": "翻訳と辞書",
     "translatorHeading": "翻訳とリンク",
     "groupLocalData": "この端末のデータ",
-    "confirmResetMessage": "テーマ・フォント・辞書アドレス・APIキーを初期設定に戻します。この操作は元に戻せません。"
+    "confirmResetMessage": "テーマ・フォント・辞書アドレス・APIキーを初期設定に戻します。この操作は元に戻せません。",
+    "aiEffort": "思考の努力量 (effort)",
+    "aiEffortHint": "モデルが推論に費やす努力量。空 = 送信しない（エンドポイントの既定値を使う）。",
+    "aiEffortAuto": "自動（送信しない）",
+    "aiEffortMinimal": "最小",
+    "aiEffortLow": "低",
+    "aiEffortMedium": "中",
+    "aiEffortHigh": "高",
+    "aiEffortMax": "最大",
+    "aiAutoTrigger": "新しい単語を自動で説明する",
+    "aiAutoTriggerHint": "AI説明がない単語を開くと、説明が自動的に取得され、単語のノートに追記されます。"
   },
   "translator": {
     "sizeMb": "~{size}MB",

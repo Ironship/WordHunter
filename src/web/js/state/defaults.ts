@@ -131,6 +131,8 @@ export function createDefaultState(): WhAppState {
       aiExplanationEndpoint: "https://opencode.ai/zen/go/v1/chat/completions",
       aiExplanationApiKey: "",
       aiExplanationModel: "deepseek-v4-flash",
+      aiExplanationEffort: "",
+      aiExplanationAutoTrigger: false,
       ankiExportStatuses: ["learning"],
       wordDetectionAlgorithm: "modern",
       uiScale: UI_SCALE.DEFAULT,

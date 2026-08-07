@@ -5,6 +5,14 @@ import vm from "node:vm";
 
 const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
+/**
+ * Flush pending microtasks + one macrotask. The AI explain flow awaits only
+ * already-resolved promises (mocked deps, no timers/IO), so a single macrotask
+ * is guaranteed to run after the whole chain — but this contract is implicit:
+ * adding timers/debounces to the flow would make these waits flaky.
+ */
+const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function classList(initial = []) {
   const values = new Set(initial);
   return {
@@ -21,7 +29,7 @@ function classList(initial = []) {
 
 function eventTarget(extra = {}) {
   const listeners = new Map();
-  return {
+  const target = {
     addEventListener(type, listener) {
       const handlers = listeners.get(type) || [];
       handlers.push(listener);
@@ -34,8 +42,12 @@ function eventTarget(extra = {}) {
       }
       return result;
     },
+    click() {
+      return target.dispatch("click", { stopPropagation() {} });
+    },
     ...extra
   };
+  return target;
 }
 
 function deferred() {
@@ -1172,6 +1184,379 @@ describe("focused frontend regressions", () => {
     assert.notStrictEqual(panels.at(-1), detached);
   });
 
+  it("appends a finished AI explanation to the word note through updateWordField", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "To jest **bold** i *kursywa*.", cached: false }),
+      updateWordField: (word, field, value) => {
+        writes.push([word, field, value]);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "To jest **bold** i *kursywa*.",
+      "the inline output still renders the explanation"
+    );
+    assert.deepEqual(writes, [["an", "note", "reader.aiNoteMarker:\nTo jest **bold** i *kursywa*."]]);
+
+    // A second identical explanation is not appended twice
+    writes.length = 0;
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.deepEqual(writes, [], "identical explanations must not duplicate the note");
+  });
+
+  it("preserves an existing user note and appends the AI explanation to it", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "Moja własna notatka o tym słowie.", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "Wyjaśnienie.", cached: false }),
+      updateWordField: (word, field, value) => {
+        writes.push([word, field, value]);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.deepEqual(
+      writes,
+      [["an", "note", "Moja własna notatka o tym słowie.\n\nreader.aiNoteMarker:\nWyjaśnienie."]],
+      "the existing note must be preserved and the explanation appended after it"
+    );
+  });
+
+  it("does not persist AI explanations for transient phrase ranges", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "kommen an",
+      selectedWordIndex: 0,
+      vocab: {},
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getReaderSelectionText() { return "kommen an"; },
+      getSentenceForWord() { return "Wir kommen an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "Wyjaśnienie frazy.", cached: false }),
+      updateWordField: (word, field, value) => writes.push([word, field, value])
+    });
+    module.renderWordPanel({ id: "text-1", text: "Wir kommen an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.equal(wordPanel.current.output.innerHTML, "Wyjaśnienie frazy.", "inline output still shows the explanation");
+    assert.deepEqual(writes, [], "transient ranges must not create dictionary entries");
+  });
+
+  it("auto-triggers an AI explanation for a word that never had one", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => {
+        calls.push("explain");
+        return { explanation: "Auto wyjaśnienie.", cached: false };
+      },
+      hasWordExplanation: (word) => calls.some((c) => c === "explain" && word === "an"),
+      markWordExplained: (word) => calls.push(`marked:${word}`),
+      updateWordField: (word, field, value) => {
+        calls.push(`write:${field}`);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.ok(calls.includes("explain"), "the explanation must be requested automatically");
+    assert.ok(calls.includes("write:note"), "the note append must run");
+    assert.equal(state.vocab.an.note, "reader.aiNoteMarker:\nAuto wyjaśnienie.");
+    assert.ok(calls.includes("marked:an"), "the word must be remembered as explained");
+  });
+
+  it("does not auto-trigger when the setting is off", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: false
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.deepEqual(calls, [], "no automatic explanation without the setting");
+  });
+
+  it("does not auto-trigger for a word that already has an explanation", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "już było", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => true,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.deepEqual(calls, [], "an already-explained word must not be auto-explained again");
+  });
+
+  it("does not auto-trigger while an explanation is already in flight (panel re-render)", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    let releaseFirst;
+    const gate = new Promise((resolve) => { releaseFirst = resolve; });
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); await gate; return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => false,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    // The first render auto-triggers; a re-render while it is pending must not
+    // start a second request.
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+    assert.equal(calls.filter((call) => call === "explain").length, 1, "exactly one explain request while in flight");
+    releaseFirst();
+    await flushAsync();
+    assert.deepEqual(calls, ["explain", "write:note"], "the pending explanation still completes and persists");
+  });
+
+  it("never auto-triggers for transient phrase ranges", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: {},
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "komme an"; },
+      getReaderSelectionText() { return "komme an"; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => false,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+    assert.deepEqual(calls, [], "transient phrase ranges must never auto-trigger an AI explanation");
+  });
+
   it("retires the in-text review explanation after three completed guesses", async () => {
     let html = "";
     let answerButton = null;
@@ -1269,7 +1654,12 @@ async function evaluateWordPanel({
   beginElementBusy = () => () => {},
   applyReviewGrade = () => null,
   isInTextReviewDue = () => false,
-  saveState = () => {}
+  saveState = () => {},
+  aiExplanationConfigured = () => false,
+  explainWord = async () => ({ explanation: "", cached: false }),
+  hasWordExplanation = () => false,
+  markWordExplained = () => {},
+  updateWordField = () => {}
 }) {
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
     "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
@@ -1295,6 +1685,7 @@ async function evaluateWordPanel({
         return state.vocab[word] || { status: "new", translation: "", note: "", imageUrl: "", examples: [] };
       }
     },
+    "../vocab-actions.js": { updateWordField },
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
     "./selection.js": { getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {
@@ -1318,12 +1709,18 @@ async function evaluateWordPanel({
     },
     "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
     "../ai-explainer.js": {
-      aiExplanationConfigured: () => false,
+      aiExplanationConfigured,
       aiExplanationLanguagePair: () => ({ from: "de", to: "en" }),
       collectPdfOcrImageContext: async () => null,
       formatAiExplanation: (text) => String(text ?? ""),
-      explainWord: async () => ({ explanation: "", cached: false })
+      explainWord,
+      hasWordExplanation,
+      markWordExplained
     },
     "../status-sounds.js": { playReviewGradeSound() {} }
+  }, {
+    document: { querySelector() { return null; } },
+    window: {},
+    CSS: { escape: (value) => String(value) }
   });
 }

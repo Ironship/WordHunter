@@ -16,10 +16,17 @@ import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./tran
 export const DEFAULT_AI_ENDPOINT = "https://opencode.ai/zen/go/v1/chat/completions";
 export const DEFAULT_AI_MODEL = "deepseek-v4-flash";
 
+/** Reasoning-effort levels offered in settings; "" = do not send anything. */
+export const AI_EFFORT_LEVELS = ["", "minimal", "low", "medium", "high", "max"] as const;
+export type AiEffortLevel = (typeof AI_EFFORT_LEVELS)[number];
+
 export function normalizeAiTextPreference(key: string, value: unknown): string {
   const text = String(value ?? "").trim();
   if (key === "aiExplanationEndpoint") return text || DEFAULT_AI_ENDPOINT;
   if (key === "aiExplanationModel") return text || DEFAULT_AI_MODEL;
+  if (key === "aiExplanationEffort") {
+    return AI_EFFORT_LEVELS.includes(text as AiEffortLevel) ? text : "";
+  }
   return text;
 }
 
@@ -51,7 +58,10 @@ export async function requestAiExplanation(request: AiExplanationRequest): Promi
       "Content-Type": "application/json",
       "X-WH-Token": window.WH_TOKEN || ""
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
+    // A silent endpoint must not hang the explain flow (or keep a word
+    // "in flight" forever); 90s is generous for a local/remote LLM call.
+    signal: AbortSignal.timeout(90000)
   });
   if (!response.ok) {
     const detail = (await response.text()).trim();
@@ -69,7 +79,8 @@ function buildAiPayload(request: AiExplanationRequest): Record<string, unknown> 
     to: request.to,
     endpoint: normalizeAiTextPreference("aiExplanationEndpoint", preferences.aiExplanationEndpoint),
     apiKey: String(preferences.aiExplanationApiKey || ""),
-    model: normalizeAiTextPreference("aiExplanationModel", preferences.aiExplanationModel)
+    model: normalizeAiTextPreference("aiExplanationModel", preferences.aiExplanationModel),
+    effort: normalizeAiTextPreference("aiExplanationEffort", preferences.aiExplanationEffort)
   };
   if (request.image) {
     payload.image = request.image;
@@ -83,6 +94,7 @@ interface StreamResult {
   streamed: boolean;
 }
 
+/** Parse one SSE `data:` payload into the content delta. */
 function sseDelta(data: string): string {
   if (data === "[DONE]") return "";
   const event = JSON.parse(data) as {
@@ -110,7 +122,8 @@ export async function requestAiExplanationStream(
       "Content-Type": "application/json",
       "X-WH-Token": window.WH_TOKEN || ""
     },
-    body: JSON.stringify(buildAiPayload(request))
+    body: JSON.stringify(buildAiPayload(request)),
+    signal: AbortSignal.timeout(90000)
   });
   if (!response.ok) {
     const detail = (await response.text()).trim();
@@ -153,7 +166,28 @@ export async function requestAiExplanationStream(
   }
   if (!sawDelta) {
     const tail = buffer.trim();
-    if (tail) return { explanation: tail, streamed: true };
+    if (tail) {
+      // Endpoints that ignore SSE may answer with a plain JSON error body;
+      // that must never be persisted as an "explanation".
+      if (tail.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(tail) as { error?: unknown };
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            // Surface a readable message: {"error":{"message":"..."}} or a string.
+            const detail = parsed.error;
+            const message =
+              typeof detail === "object" && detail !== null
+                ? (detail as { message?: unknown }).message
+                : detail;
+            throw new Error(message ? String(message) : "AI endpoint returned an error");
+          }
+        } catch (error) {
+          if (error instanceof SyntaxError) return { explanation: tail, streamed: true };
+          throw error;
+        }
+      }
+      return { explanation: tail, streamed: true };
+    }
     throw new Error("AI endpoint returned no explanation");
   }
   return { explanation, streamed: true };
@@ -162,6 +196,71 @@ export async function requestAiExplanationStream(
 // --- explanation cache ---
 
 const EXPLANATION_CACHE_KEY = "wh-ai-explanation-cache-v1";
+
+// Words that have already received an AI explanation at least once. Used by
+// the auto-trigger setting ("explain new words automatically") so a word is
+// only auto-explained when it genuinely never had an explanation. The set is
+// independent of the explanation cache (which can be cleared/evicted).
+const AI_EXPLAINED_WORDS_KEY = "wh-ai-explained-words-v1";
+const AI_EXPLAINED_WORDS_MAX = 1000;
+
+/**
+ * The words that have received an AI explanation, persisted as a JSON array.
+ * On first load (or when the stored value is corrupt) it is seeded from the
+ * explanation cache keys, so words explained before the auto-trigger feature
+ * existed are not re-explained (and their notes re-flooded) after an upgrade.
+ */
+function loadExplainedWords(): string[] {
+  try {
+    const raw = localStorage.getItem(AI_EXPLAINED_WORDS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Corrupt or unreadable: fall through and rebuild from the cache.
+  }
+  const seeded: string[] = [];
+  try {
+    for (const key of loadExplanationCache().keys()) {
+      // Current keys are 7 fields: [model, effort, endpoint, from, to, word,
+      // context] — word at index 5. Pre-upgrade keys had 5 fields
+      // ([model, from, to, word, context]) with word at index 3; accept both
+      // so words explained before the auto-trigger feature are not
+      // re-explained once after the upgrade.
+      const parts = key.split("\u0001");
+      const word = parts[5] ?? (parts.length === 5 ? parts[3] : undefined);
+      if (word && !seeded.includes(word)) seeded.push(word);
+    }
+    localStorage.setItem(AI_EXPLAINED_WORDS_KEY, JSON.stringify(seeded));
+  } catch {
+    // Storage unavailable: treat as empty; auto-trigger will simply retry.
+  }
+  return seeded;
+}
+
+/** True when this word has already been explained by AI at least once. */
+export function hasWordExplanation(word: string): boolean {
+  try {
+    return loadExplainedWords().includes(word);
+  } catch {
+    return false;
+  }
+}
+
+/** Remember that this word received an AI explanation. */
+export function markWordExplained(word: string): void {
+  try {
+    const set = loadExplainedWords();
+    if (set.includes(word)) return;
+    if (set.length >= AI_EXPLAINED_WORDS_MAX) set.splice(0, set.length - AI_EXPLAINED_WORDS_MAX + 1);
+    set.push(word);
+    localStorage.setItem(AI_EXPLAINED_WORDS_KEY, JSON.stringify(set));
+  } catch {
+    // Storage unavailable: the auto-trigger simply treats the word as
+    // unexplained on the next open. Never throw into the explain flow.
+  }
+}
 const EXPLANATION_CACHE_MAX = 300;
 let explanationCache: Map<string, string> | null = null;
 
@@ -201,7 +300,12 @@ function storeExplanation(key: string, explanation: string): void {
 function explanationCacheKey(request: AiExplanationRequest): string {
   const preferences: Partial<WhPreferences> = state.preferences || {};
   const model = normalizeAiTextPreference("aiExplanationModel", preferences.aiExplanationModel);
-  return [model, request.from, request.to, request.word, request.context].join("\u0001");
+  const effort = normalizeAiTextPreference("aiExplanationEffort", preferences.aiExplanationEffort);
+  const endpoint = normalizeAiTextPreference("aiExplanationEndpoint", preferences.aiExplanationEndpoint);
+  // Effort and endpoint change the answer, so they are part of the cache key —
+  // a cached explanation must never be served (and auto-appended to a note)
+  // for a different provider or reasoning level.
+  return [model, effort, endpoint, request.from, request.to, request.word, request.context].join("\u0001");
 }
 
 export function clearExplanationCache(): void {
@@ -216,13 +320,16 @@ export function clearExplanationCache(): void {
 /**
  * Unified entry point: serves cached explanations instantly, otherwise streams
  * the answer (falling back to the non-streaming endpoint), then caches it.
+ * The cache key is computed ONCE before the request and reused for storage —
+ * changing effort/model mid-request must not store the response under the new
+ * settings.
  */
 export async function explainWord(
   request: AiExplanationRequest,
   onDelta?: (text: string) => void
 ): Promise<{ explanation: string; cached: boolean }> {
-  const key = explanationCacheKey(request);
-  const cached = loadExplanationCache().get(key);
+  const cacheKey = explanationCacheKey(request);
+  const cached = loadExplanationCache().get(cacheKey);
   if (cached) return { explanation: cached, cached: true };
 
   let explanation = "";
@@ -235,20 +342,85 @@ export async function explainWord(
     explanation = result.explanation || "";
   }
   if (!explanation) throw new Error("AI endpoint returned no explanation");
-  storeExplanation(key, explanation);
+  storeExplanation(cacheKey, explanation);
   return { explanation, cached: false };
 }
 
-/** Format a raw model reply into safe HTML: paragraphs plus **bold** spans. */
+/** Inline markdown on already-escaped text: code, bold, italic, line breaks. */
+function renderInline(safe: string): string {
+  // Protect code spans first so markdown inside them is not re-interpreted.
+  const codeSpans: string[] = [];
+  let text = safe.replace(/`([^`\n]+)`/gu, (_match, code: string) => {
+    codeSpans.push(code);
+    return `\u0000${codeSpans.length - 1}\u0000`;
+  });
+  text = text
+    .replace(/\*\*([^*]+)\*\*/gu, "<strong>$1</strong>")
+    .replace(/\*([^*\n]+)\*/gu, "<em>$1</em>")
+    .replace(/\n/gu, "<br>");
+  return text.replace(/\u0000(\d+)\u0000/gu, (_match, index: string) => `<code>${codeSpans[Number(index)]}</code>`);
+}
+
+/**
+ * Render one paragraph block (no blank lines inside). Consecutive bullet
+ * (`- `, `* `, `• `) and numbered (`1. `, `1) `) lines become lists; `#`
+ * headings become a bold lead line; everything else stays a paragraph with
+ * `<br>` line breaks, exactly like before.
+ */
+function renderBlock(block: string): string {
+  const lines = block.split("\n");
+  let html = "";
+  let listType: "ul" | "ol" | null = null;
+  let paragraphLines: string[] = [];
+  const flushParagraph = () => {
+    if (paragraphLines.length) {
+      html += `<p>${renderInline(escapeHtml(paragraphLines.join("\n")))}</p>`;
+      paragraphLines = [];
+    }
+  };
+  const closeList = () => {
+    if (listType) {
+      html += `</${listType}>`;
+      listType = null;
+    }
+  };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const bullet = trimmed.match(/^[-*•]\s+(.+)$/u);
+    const ordered = trimmed.match(/^\d+[.)]\s+(.+)$/u);
+    const heading = trimmed.match(/^#{1,6}\s+(.+)$/u);
+    if (bullet || ordered) {
+      flushParagraph();
+      const type = bullet ? "ul" : "ol";
+      if (listType !== type) {
+        closeList();
+        html += `<${type}>`;
+        listType = type;
+      }
+      html += `<li>${renderInline(escapeHtml((bullet || ordered)![1]))}</li>`;
+    } else if (heading) {
+      flushParagraph();
+      closeList();
+      html += `<p class="ai-heading"><strong>${renderInline(escapeHtml(heading[1]))}</strong></p>`;
+    } else {
+      closeList();
+      paragraphLines.push(trimmed);
+    }
+  }
+  flushParagraph();
+  closeList();
+  return html;
+}
+
+/** Format a raw model reply into safe HTML: paragraphs, **bold**, *italic*, `code`, lists. */
 export function formatAiExplanation(text: string): string {
-  const paragraphs = String(text || "").split(/\n{2,}/u).map((part) => part.trim()).filter(Boolean);
-  if (!paragraphs.length) return "";
-  return paragraphs.map((paragraph) => {
-    const safe = escapeHtml(paragraph)
-      .replace(/\*\*([^*]+)\*\*/gu, "<strong>$1</strong>")
-      .replace(/\n/gu, "<br>");
-    return `<p>${safe}</p>`;
-  }).join("");
+  const raw = String(text || "").trim();
+  if (!raw) return "";
+  return raw
+    .split(/\n{2,}/u)
+    .map((block) => renderBlock(block))
+    .join("");
 }
 
 interface PdfOcrImageContext {

@@ -503,6 +503,18 @@ export function bindSettingsEvents() {
       updatePreferenceValue("aiExplanationApiKey", (event.currentTarget as HTMLInputElement).value.trim());
     });
   }
+  if (els.prefAiEffort) {
+    els.prefAiEffort.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationEffort", normalizeAiTextPreference("aiExplanationEffort", (event.currentTarget as HTMLSelectElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiAutoTrigger) {
+    els.prefAiAutoTrigger.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationAutoTrigger", (event.currentTarget as HTMLInputElement).checked);
+      syncSettingsControls();
+    });
+  }
   if (els.prefOfflineTranslator) {
     els.prefOfflineTranslator.addEventListener("change", async (event: Event) => {
       const target = event.currentTarget as HTMLInputElement;

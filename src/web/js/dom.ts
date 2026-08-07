@@ -148,6 +148,10 @@ export function cacheElements() {
   els.prefAiModelRow = document.getElementById("pref-ai-model-row");
   els.prefAiApiKey = document.getElementById("pref-ai-api-key");
   els.prefAiApiKeyRow = document.getElementById("pref-ai-key-row");
+  els.prefAiEffort = document.getElementById("pref-ai-effort");
+  els.prefAiEffortRow = document.getElementById("pref-ai-effort-row");
+  els.prefAiAutoTrigger = document.getElementById("pref-ai-auto-trigger");
+  els.prefAiAutoTriggerRow = document.getElementById("pref-ai-auto-trigger-row");
   els.prefArgosAsDict = document.getElementById("pref-argos-as-dict");
   els.prefArgosAsDictRow = document.getElementById("pref-argos-as-dict-row");
   els.argosDownloadDialog = byId("argos-download-dialog");

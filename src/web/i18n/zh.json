@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "放弃对此修正的编辑？",
     "wordNavPageStart": "你已到达本页第一个单词。",
-    "wordNavPageEnd": "你已到达本页最后一个单词。"
+    "wordNavPageEnd": "你已到达本页最后一个单词。",
+    "aiNoteMarker": "AI 解释"
   },
   "vocab": {
     "eyebrow": "你的单词",
@@ -672,7 +673,17 @@
     "ankiExportStatuses": "导出的状态",
     "ankiExportStatusesHint": "选择 TSV 中包含哪些单词状态。Anki 接收单词、翻译、上下文和可选冠词列。",
     "groupLocalData": "本设备上的数据",
-    "confirmResetMessage": "这会将主题、字体、词典地址和API密钥重置为默认值。此操作无法撤销。"
+    "confirmResetMessage": "这会将主题、字体、词典地址和API密钥重置为默认值。此操作无法撤销。",
+    "aiEffort": "推理强度 (effort)",
+    "aiEffortHint": "模型在推理上投入多少努力。留空 = 不发送，由服务端使用默认值。",
+    "aiEffortAuto": "自动（不发送）",
+    "aiEffortMinimal": "最低",
+    "aiEffortLow": "低",
+    "aiEffortMedium": "中",
+    "aiEffortHigh": "高",
+    "aiEffortMax": "最高",
+    "aiAutoTrigger": "自动解释新单词",
+    "aiAutoTriggerHint": "打开没有 AI 解释的单词时，会自动获取解释并追加到单词笔记中。"
   },
   "translator": {
     "swap": "交换语言",

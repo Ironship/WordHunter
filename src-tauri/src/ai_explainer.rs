@@ -143,6 +143,11 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         .trim();
     let image = payload.get("image").and_then(Value::as_str).unwrap_or("");
     let rect = payload.get("rect");
+    let effort = payload
+        .get("effort")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim();
 
     if word.is_empty() {
         return Err("word is missing".to_string());
@@ -186,6 +191,22 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         "max_tokens": MAX_EXPLANATION_TOKENS,
         "stream": stream
     });
+
+    // Optional reasoning-effort level ("minimal" | "low" | "medium" | "high" |
+    // "max"). Sent only when the user picked one — empty keeps the endpoint's
+    // own default and stays compatible with endpoints that reject the field.
+    // Defense in depth: only known levels are forwarded (the frontend already
+    // normalizes, but a hand-crafted request must not smuggle arbitrary values).
+    let mut body = body;
+    if !effort.is_empty() {
+        if effort.len() > 32 {
+            return Err("AI effort is too long".to_string());
+        }
+        if !matches!(effort, "minimal" | "low" | "medium" | "high" | "max") {
+            return Err("AI effort is invalid".to_string());
+        }
+        body["reasoning_effort"] = json!(effort);
+    }
 
     Ok(PreparedRequest {
         endpoint: endpoint.to_string(),
@@ -394,7 +415,7 @@ mod tests {
     }
 
     /// Serve a canned OpenAI-compatible response and check the module parses
-    /// it and forwards the Authorization header.
+    /// it, forwards the Authorization header and the reasoning effort.
     #[test]
     fn explain_parses_chat_completion_response_from_server() {
         let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
@@ -422,6 +443,10 @@ mod tests {
             stream.flush().unwrap();
             assert!(request.contains("Authorization: Bearer test-key-123"));
             assert!(request.contains("\"model\":\"local-vision\""));
+            assert!(
+                request.contains("\"reasoning_effort\":\"high\""),
+                "reasoning effort must be forwarded: {request}"
+            );
         });
 
         let endpoint = format!("http://{address}/v1/chat/completions");
@@ -432,13 +457,32 @@ mod tests {
             "to": "pl",
             "endpoint": endpoint,
             "apiKey": "test-key-123",
-            "model": "local-vision"
+            "model": "local-vision",
+            "effort": "high"
         }));
         let value = result.expect("explain should succeed against the mock server");
         assert_eq!(value["engine"], "ai");
         assert!(value["explanation"].as_str().unwrap().contains("czasownik"));
         server.join().unwrap();
     }
+
+    #[test]
+    fn rejects_unknown_reasoning_effort_levels() {
+        // The allowlist check must fail BEFORE any request is sent, so the
+        // endpoint can be a dead address.
+        let result = explain(json!({
+            "word": "run",
+            "context": "She will run.",
+            "from": "en",
+            "to": "pl",
+            "endpoint": "http://127.0.0.1:9/v1/chat/completions",
+            "apiKey": "test",
+            "model": "local-vision",
+            "effort": "bogus"
+        }));
+        assert!(result.is_err());
+    }
+
 
     #[test]
     fn stream_request_sets_the_stream_flag() {
@@ -454,6 +498,47 @@ mod tests {
         )
         .expect("plain request should prepare");
         assert_eq!(plain.body["stream"], false);
+    }
+
+    #[test]
+    fn reasoning_effort_is_forwarded_only_when_picked() {
+        let with_effort = prepare_request(
+            &json!({
+                "word": "run",
+                "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+                "model": "m",
+                "effort": "max"
+            }),
+            false,
+        )
+        .expect("request with effort should prepare");
+        assert_eq!(with_effort.body["reasoning_effort"], "max");
+
+        let without = prepare_request(
+            &json!({
+                "word": "run",
+                "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+                "model": "m",
+                "effort": "  "
+            }),
+            false,
+        )
+        .expect("request without effort should prepare");
+        assert!(
+            without.body.get("reasoning_effort").is_none(),
+            "empty effort must not be sent"
+        );
+
+        let invalid = prepare_request(
+            &json!({
+                "word": "run",
+                "endpoint": "http://127.0.0.1:1234/v1/chat/completions",
+                "model": "m",
+                "effort": "x".repeat(40)
+            }),
+            false,
+        );
+        assert!(invalid.is_err(), "overlong effort must be rejected");
     }
 
     /// End-to-end: a tiny_http server runs the streaming handler, an upstream
@@ -525,7 +610,12 @@ mod tests {
             let _request = read_http_request(&mut stream);
             let body = r#"{"error":{"message":"model not found"}}"#;
             let response = format!(
-                "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                "HTTP/1.1 404 Not Found
+Content-Type: application/json
+Content-Length: {}
+Connection: close
+
+{}",
                 body.len(),
                 body
             );

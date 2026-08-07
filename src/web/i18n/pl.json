@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "Odrzucić wprowadzone poprawki?",
     "wordNavPageStart": "Jesteś na pierwszym słowie tej strony.",
-    "wordNavPageEnd": "Jesteś na ostatnim słowie tej strony."
+    "wordNavPageEnd": "Jesteś na ostatnim słowie tej strony.",
+    "aiNoteMarker": "Wyjaśnienie AI"
   },
   "vocab": {
     "eyebrow": "Twoje słowa",
@@ -672,7 +673,17 @@
     "ankiExportStatuses": "Eksportowane statusy",
     "ankiExportStatusesHint": "Wybierz statusy słów uwzględniane w TSV. Anki otrzyma kolumny: słowo, tłumaczenie, kontekst i opcjonalny rodzajnik.",
     "groupLocalData": "Dane na tym urządzeniu",
-    "confirmResetMessage": "To przywróci motyw, czcionki, adres słownika i klucze API do wartości domyślnych. Tej operacji nie można cofnąć."
+    "confirmResetMessage": "To przywróci motyw, czcionki, adres słownika i klucze API do wartości domyślnych. Tej operacji nie można cofnąć.",
+    "aiEffort": "Poziom myślenia (effort)",
+    "aiEffortHint": "Ile wysiłku model ma włożyć w rozumowanie. Puste = nie wysyłaj — endpoint użyje własnego domyślnego poziomu.",
+    "aiEffortAuto": "Automatycznie (nie wysyłaj)",
+    "aiEffortMinimal": "Minimalny",
+    "aiEffortLow": "Niski",
+    "aiEffortMedium": "Średni",
+    "aiEffortHigh": "Wysoki",
+    "aiEffortMax": "Maksymalny",
+    "aiAutoTrigger": "Automatycznie wyjaśniaj nowe słowa",
+    "aiAutoTriggerHint": "Po otwarciu słowa, które nie ma jeszcze wyjaśnienia AI, wyjaśnienie zostanie pobrane automatycznie i dopisane do notatki słowa."
   },
   "translator": {
     "swap": "Zamień języki miejscami",

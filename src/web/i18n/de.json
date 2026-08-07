@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "Ihre Änderungen an dieser Korrektur verwerfen?",
     "wordNavPageStart": "Sie sind beim ersten Wort dieser Seite.",
-    "wordNavPageEnd": "Sie sind beim letzten Wort dieser Seite."
+    "wordNavPageEnd": "Sie sind beim letzten Wort dieser Seite.",
+    "aiNoteMarker": "KI-Erklärung"
   },
   "vocab": {
     "eyebrow": "Deine Worte",
@@ -672,7 +673,17 @@
     "translatorEyebrow": "Übersetzer & Wörterbuch",
     "translatorHeading": "Übersetzungen und Links",
     "groupLocalData": "Daten auf diesem Gerät",
-    "confirmResetMessage": "Dies setzt Design, Schriften, Wörterbuchadresse und API-Schlüssel auf die Standardwerte zurück. Dies kann nicht rückgängig gemacht werden."
+    "confirmResetMessage": "Dies setzt Design, Schriften, Wörterbuchadresse und API-Schlüssel auf die Standardwerte zurück. Dies kann nicht rückgängig gemacht werden.",
+    "aiEffort": "Denkaufwand (Effort)",
+    "aiEffortHint": "Wie viel Aufwand das Modell ins Denken stecken soll. Leer = nicht senden — der Endpunkt nutzt seinen eigenen Standard.",
+    "aiEffortAuto": "Automatisch (nicht senden)",
+    "aiEffortMinimal": "Minimal",
+    "aiEffortLow": "Niedrig",
+    "aiEffortMedium": "Mittel",
+    "aiEffortHigh": "Hoch",
+    "aiEffortMax": "Maximal",
+    "aiAutoTrigger": "Neue Wörter automatisch erklären",
+    "aiAutoTriggerHint": "Beim Öffnen eines Worts ohne KI-Erklärung wird die Erklärung automatisch abgerufen und an die Notiz des Worts angehängt."
   },
   "help": {
     "eyebrow": "Helfen",

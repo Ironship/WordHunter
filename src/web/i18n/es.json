@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "¿Descartar los cambios de esta corrección?",
     "wordNavPageStart": "Estás en la primera palabra de esta página.",
-    "wordNavPageEnd": "Estás en la última palabra de esta página."
+    "wordNavPageEnd": "Estás en la última palabra de esta página.",
+    "aiNoteMarker": "Explicación IA"
   },
   "vocab": {
     "eyebrow": "tus palabras",
@@ -672,7 +673,17 @@
     "translatorEyebrow": "Traductor y Diccionario",
     "translatorHeading": "Traducciones y enlaces",
     "groupLocalData": "Datos en este dispositivo",
-    "confirmResetMessage": "Esto restablece el tema, las fuentes, la dirección del diccionario y las claves API a sus valores predeterminados. Esta acción no se puede deshacer."
+    "confirmResetMessage": "Esto restablece el tema, las fuentes, la dirección del diccionario y las claves API a sus valores predeterminados. Esta acción no se puede deshacer.",
+    "aiEffort": "Esfuerzo de razonamiento",
+    "aiEffortHint": "Cuánto esfuerzo debe poner el modelo en razonar. Vacío = no enviar — el servidor usará su propio nivel por defecto.",
+    "aiEffortAuto": "Automático (no enviar)",
+    "aiEffortMinimal": "Mínimo",
+    "aiEffortLow": "Bajo",
+    "aiEffortMedium": "Medio",
+    "aiEffortHigh": "Alto",
+    "aiEffortMax": "Máximo",
+    "aiAutoTrigger": "Explicar palabras nuevas automáticamente",
+    "aiAutoTriggerHint": "Al abrir una palabra sin explicación de IA, la explicación se obtiene automáticamente y se añade a la nota de la palabra."
   },
   "help": {
     "eyebrow": "Ayuda",

@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "Ignorer vos modifications de cette correction ?",
     "wordNavPageStart": "Vous êtes au premier mot de cette page.",
-    "wordNavPageEnd": "Vous êtes au dernier mot de cette page."
+    "wordNavPageEnd": "Vous êtes au dernier mot de cette page.",
+    "aiNoteMarker": "Explication IA"
   },
   "vocab": {
     "eyebrow": "Tes mots",
@@ -672,7 +673,17 @@
     "translatorEyebrow": "Traducteur et Dictionnaire",
     "translatorHeading": "Traductions et liens",
     "groupLocalData": "Données sur cet appareil",
-    "confirmResetMessage": "Cela rétablit le thème, les polices, l'adresse du dictionnaire et les clés API par défaut. Cette action est irréversible."
+    "confirmResetMessage": "Cela rétablit le thème, les polices, l'adresse du dictionnaire et les clés API par défaut. Cette action est irréversible.",
+    "aiEffort": "Effort de raisonnement",
+    "aiEffortHint": "Quel effort le modèle doit consacrer au raisonnement. Vide = ne rien envoyer — le serveur utilisera son propre niveau par défaut.",
+    "aiEffortAuto": "Automatique (ne rien envoyer)",
+    "aiEffortMinimal": "Minimal",
+    "aiEffortLow": "Faible",
+    "aiEffortMedium": "Moyen",
+    "aiEffortHigh": "Élevé",
+    "aiEffortMax": "Maximum",
+    "aiAutoTrigger": "Expliquer les nouveaux mots automatiquement",
+    "aiAutoTriggerHint": "Lors de l'ouverture d'un mot sans explication IA, l'explication est récupérée automatiquement et ajoutée à la note du mot."
   },
   "help": {
     "eyebrow": "Aide",

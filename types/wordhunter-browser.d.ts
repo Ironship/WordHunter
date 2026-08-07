@@ -135,6 +135,8 @@ declare global {
     aiExplanationEndpoint: string;
     aiExplanationApiKey: string;
     aiExplanationModel: string;
+    aiExplanationEffort: string;
+    aiExplanationAutoTrigger: boolean;
     ankiExportStatuses: WhVocabStatus[];
     wordDetectionAlgorithm: string;
     uiScale: number;

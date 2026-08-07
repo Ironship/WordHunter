@@ -36,7 +36,9 @@ const {
   requestAiExplanationStream,
   explainWord,
   clearExplanationCache,
-  formatAiExplanation
+  formatAiExplanation,
+  hasWordExplanation,
+  markWordExplained
 } = await import("../../dist/web/js/ai-explainer.js");
 
 function sseResponse(chunks, contentType = "text/event-stream") {
@@ -70,7 +72,8 @@ describe("ai-explainer", () => {
         aiExplanationsEnabled: true,
         aiExplanationEndpoint: "https://opencode.ai/zen/go/v1/chat/completions",
         aiExplanationApiKey: "secret-key",
-        aiExplanationModel: "deepseek-v4-flash"
+        aiExplanationModel: "deepseek-v4-flash",
+        aiExplanationEffort: ""
       }
     });
   });
@@ -81,6 +84,9 @@ describe("ai-explainer", () => {
     assert.equal(normalizeAiTextPreference("aiExplanationModel", ""), DEFAULT_AI_MODEL);
     assert.equal(normalizeAiTextPreference("aiExplanationModel", "  my-model  "), "my-model");
     assert.equal(normalizeAiTextPreference("aiExplanationApiKey", "  abc  "), "abc");
+    assert.equal(normalizeAiTextPreference("aiExplanationEffort", "  high  "), "high");
+    assert.equal(normalizeAiTextPreference("aiExplanationEffort", ""), "");
+    assert.equal(normalizeAiTextPreference("aiExplanationEffort", "ultra"), "", "unknown effort levels are dropped");
   });
 
   it("is configured only when enabled and endpoint and model are set", () => {
@@ -126,8 +132,21 @@ describe("ai-explainer", () => {
     assert.equal(body.endpoint, DEFAULT_AI_ENDPOINT);
     assert.equal(body.apiKey, "secret-key");
     assert.equal(body.model, "deepseek-v4-flash");
+    assert.equal(body.effort, "", "effort defaults to empty (do not send)");
     assert.equal(body.image, undefined);
     assert.equal(body.rect, undefined);
+  });
+
+  it("sends the chosen effort level", async () => {
+    let captured = null;
+    globalThis.fetch = async (url, options) => {
+      captured = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ explanation: "ok", engine: "ai" }) };
+    };
+    state.preferences.aiExplanationEffort = "max";
+
+    await requestAiExplanation({ word: "run", context: "", from: "en", to: "pl" });
+    assert.equal(captured.effort, "max");
   });
 
   it("includes the page image and rect when provided", async () => {
@@ -165,6 +184,31 @@ describe("ai-explainer", () => {
     const html = formatAiExplanation("Pierwszy akapit z **pogrubieniem**.\n\nDrugi <script>alert(1)</script> akapit.");
     assert.equal(html, "<p>Pierwszy akapit z <strong>pogrubieniem</strong>.</p><p>Drugi &lt;script&gt;alert(1)&lt;/script&gt; akapit.</p>");
     assert.equal(formatAiExplanation("   \n\n  "), "");
+  });
+
+  it("renders italic, inline code and headings safely", () => {
+    const html = formatAiExplanation(
+      "### Czasownik\n\nTo jest *kursywa* i **pogrubienie** oraz `kod <x>`.\n\n# Nagłówek z *emfazą*"
+    );
+    assert.equal(
+      html,
+      '<p class="ai-heading"><strong>Czasownik</strong></p>' +
+        "<p>To jest <em>kursywa</em> i <strong>pogrubienie</strong> oraz <code>kod &lt;x&gt;</code>.</p>" +
+        '<p class="ai-heading"><strong>Nagłówek z <em>emfazą</em></strong></p>'
+    );
+  });
+
+  it("renders bullet and numbered lists", () => {
+    const html = formatAiExplanation(
+      "Znaczenia:\n- pierwsze znaczenie z **boldem**\n- drugie znaczenie\n\nKroki:\n1. zrób to\n2. zrób tamto"
+    );
+    assert.equal(
+      html,
+      "<p>Znaczenia:</p>" +
+        "<ul><li>pierwsze znaczenie z <strong>boldem</strong></li><li>drugie znaczenie</li></ul>" +
+        "<p>Kroki:</p>" +
+        "<ol><li>zrób to</li><li>zrób tamto</li></ol>"
+    );
   });
 
   it("streams SSE deltas progressively", async () => {
@@ -217,6 +261,30 @@ describe("ai-explainer", () => {
     );
   });
 
+  it("remembers which words have been explained (auto-trigger set)", async () => {
+    globalThis.localStorage = workingLocalStorage();
+    assert.equal(hasWordExplanation("Hund"), false, "unknown words are unexplained");
+    markWordExplained("Hund");
+    assert.equal(hasWordExplanation("Hund"), true);
+    markWordExplained("Hund");
+    assert.equal(hasWordExplanation("Hund"), true, "marking twice must not corrupt the set");
+    assert.equal(hasWordExplanation("Katze"), false);
+    // Survives a reload (persisted in localStorage)
+    const reloaded = JSON.parse(globalThis.localStorage.getItem("wh-ai-explained-words-v1"));
+    assert.deepEqual(reloaded, ["Hund"]);
+  });
+
+  it("falls back to \"unexplained\" when storage is unavailable", async () => {
+    globalThis.localStorage = null;
+    try {
+      assert.equal(hasWordExplanation("Hund"), false);
+      markWordExplained("Hund");
+      assert.equal(hasWordExplanation("Hund"), false, "no storage => word stays unexplained");
+    } finally {
+      globalThis.localStorage = workingLocalStorage();
+    }
+  });
+
   it("serves cached explanations without a second request", async () => {
     globalThis.localStorage = workingLocalStorage();
     clearExplanationCache();
@@ -242,6 +310,37 @@ describe("ai-explainer", () => {
     const third = await explainWord({ word: "Hund", context: "Der Hund schläft.", from: "de", to: "pl" });
     assert.equal(third.cached, false);
     assert.equal(fetchCount, 2);
+
+    clearExplanationCache();
+  });
+
+  it("keeps effort and endpoint in the cache key", async () => {
+    globalThis.localStorage = workingLocalStorage();
+    clearExplanationCache();
+    let fetchCount = 0;
+    globalThis.fetch = async () => {
+      fetchCount += 1;
+      return sseResponse([
+        "data: {\"choices\":[{\"delta\":{\"content\":\"Odpowiedź\"}}]}\n\n",
+        "data: [DONE]\n\n"
+      ]);
+    };
+
+    // Same word/context, different effort => different cache key
+    const first = await explainWord({ word: "Hund", context: "Der Hund bellt.", from: "de", to: "pl" });
+    assert.equal(first.cached, false);
+    state.preferences.aiExplanationEffort = "high";
+    const second = await explainWord({ word: "Hund", context: "Der Hund bellt.", from: "de", to: "pl" });
+    assert.equal(second.cached, false, "effort must be part of the cache key");
+    assert.equal(fetchCount, 2);
+    state.preferences.aiExplanationEffort = "";
+
+    // Same word/context, different endpoint => different cache key
+    state.preferences.aiExplanationEndpoint = "https://other.example.com/v1/chat/completions";
+    const otherEndpoint = await explainWord({ word: "Hund", context: "Der Hund bellt.", from: "de", to: "pl" });
+    assert.equal(otherEndpoint.cached, false, "endpoint must be part of the cache key");
+    assert.equal(fetchCount, 3);
+    state.preferences.aiExplanationEndpoint = "https://opencode.ai/zen/go/v1/chat/completions";
 
     clearExplanationCache();
   });

@@ -1084,6 +1084,27 @@
                 <span data-i18n="settings.aiApiKey">Klucz API</span>
                 <input id="pref-ai-api-key" type="password" data-i18n-attr="placeholder=settings.aiApiKeyPlaceholder" class="input">
               </label>
+              <label id="pref-ai-effort-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <span>
+                  <span data-i18n="settings.aiEffort">Poziom myślenia (effort)</span>
+                  <small data-i18n="settings.aiEffortHint">Ile wysiłku model ma włożyć w rozumowanie. Puste = nie wysyłaj — endpoint użyje własnego domyślnego poziomu.</small>
+                </span>
+                <select id="pref-ai-effort" class="input">
+                  <option value="" data-i18n="settings.aiEffortAuto">Automatycznie (nie wysyłaj)</option>
+                  <option value="minimal" data-i18n="settings.aiEffortMinimal">Minimalny</option>
+                  <option value="low" data-i18n="settings.aiEffortLow">Niski</option>
+                  <option value="medium" data-i18n="settings.aiEffortMedium">Średni</option>
+                  <option value="high" data-i18n="settings.aiEffortHigh">Wysoki</option>
+                  <option value="max" data-i18n="settings.aiEffortMax">Maksymalny</option>
+                </select>
+              </label>
+              <label id="pref-ai-auto-trigger-row" class="setting-row toggle-row" hidden>
+                <span>
+                  <span data-i18n="settings.aiAutoTrigger">Automatycznie wyjaśniaj nowe słowa</span>
+                  <small data-i18n="settings.aiAutoTriggerHint">Po otwarciu słowa, które nie ma jeszcze wyjaśnienia AI, wyjaśnienie zostanie pobrane automatycznie i dopisane do notatki słowa.</small>
+                </span>
+                <input id="pref-ai-auto-trigger" type="checkbox">
+              </label>
             </div>
           </section>
 

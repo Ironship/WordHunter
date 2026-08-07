@@ -299,7 +299,8 @@
     },
     "pdfCorrectionDiscard": "Discard your edits to this correction?",
     "wordNavPageStart": "You are at the first word of this page.",
-    "wordNavPageEnd": "You are at the last word of this page."
+    "wordNavPageEnd": "You are at the last word of this page.",
+    "aiNoteMarker": "AI explanation"
   },
   "vocab": {
     "eyebrow": "Your words",
@@ -672,7 +673,17 @@
     "ankiExportStatuses": "Exported statuses",
     "ankiExportStatusesHint": "Choose which word statuses are included in the TSV. Anki receives word, translation, context, and optional article columns.",
     "groupLocalData": "Data on this device",
-    "confirmResetMessage": "This resets the theme, fonts, dictionary address and API keys to their defaults. This cannot be undone."
+    "confirmResetMessage": "This resets the theme, fonts, dictionary address and API keys to their defaults. This cannot be undone.",
+    "aiEffort": "Reasoning effort",
+    "aiEffortHint": "How much effort the model should put into reasoning. Empty = do not send — the endpoint uses its own default.",
+    "aiEffortAuto": "Automatic (do not send)",
+    "aiEffortMinimal": "Minimal",
+    "aiEffortLow": "Low",
+    "aiEffortMedium": "Medium",
+    "aiEffortHigh": "High",
+    "aiEffortMax": "Maximum",
+    "aiAutoTrigger": "Explain new words automatically",
+    "aiAutoTriggerHint": "When a word without an AI explanation is opened, the explanation is fetched automatically and appended to the word's note."
   },
   "translator": {
     "swap": "Swap languages",
