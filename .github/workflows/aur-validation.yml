@@ -73,7 +73,7 @@ jobs:
 
           asset="${AUR_BUILD_DIR}/WordHunter-1.0.10-x86_64.AppImage"
           printf '%s  %s\n' \
-            '6b4a71313d7d30de16740a1c20718e40ac5cc9485652dedb72687196a2c0bfb8' \
+            '309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523' \
             "${asset}" | sha256sum -c -
 
       - name: Build and inspect the Arch package
