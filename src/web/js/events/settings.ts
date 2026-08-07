@@ -475,14 +475,16 @@ export function bindSettingsEvents() {
       const target = event.currentTarget as HTMLInputElement;
       updatePreferenceValue("aiExplanationsEnabled", target.checked);
       syncSettingsControls();
-      if (target.checked) {
-        const items = normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems);
-        const aiItem = items.find((item) => item.id === "ai");
-        if (aiItem && !aiItem.visible) {
-          aiItem.visible = true;
-          saveSelectedWordPanelItems(items);
-          showToast(t("settings.aiPanelItemShown"));
-        }
+      // Keep the word-panel "ai" item in sync with the toggle in both
+      // directions: enabling shows the button, disabling hides it. A
+      // pre-existing mismatch (ai visible but feature off, or vice versa)
+      // must not leave the panel button out of sync with the setting.
+      const items = normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems);
+      const aiItem = items.find((item) => item.id === "ai");
+      if (aiItem && aiItem.visible !== target.checked) {
+        aiItem.visible = target.checked;
+        saveSelectedWordPanelItems(items);
+        if (target.checked) showToast(t("settings.aiPanelItemShown"));
       }
     });
   }

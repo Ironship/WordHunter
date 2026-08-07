@@ -264,7 +264,10 @@ function bindContextTranslation(word: string, context: string): void {
     } catch (error) {
       if (generation !== contextTranslationGeneration || state.selectedWord !== word) return;
       console.warn("Context translation failed", error);
-      output.textContent = t("translator.error");
+      // Surface the backend reason (e.g. provider throttled, missing key)
+      // so transient vs. configuration errors are distinguishable on device.
+      const reason = error instanceof Error && error.message ? ` — ${error.message}` : "";
+      output.textContent = `${t("translator.error")}${reason}`;
     } finally {
       releaseBusy();
     }
