@@ -483,7 +483,6 @@ mod tests {
         assert!(result.is_err());
     }
 
-
     #[test]
     fn stream_request_sets_the_stream_flag() {
         let prepared = prepare_request(
