@@ -432,7 +432,10 @@ export function bindTranslatorEvents(): void {
           { word: source.slice(0, 300), context: source, from: pair.fromCode, to: pair.toCode },
           (text) => {
             if (generation !== translatorAiExplainGeneration) return;
-            output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+            // Stream through the markdown renderer so bold/italic/lists are
+            // visible immediately and a stalled stream never leaves raw
+            // "**" markers on screen. formatAiExplanation escapes first.
+            output.innerHTML = formatAiExplanation(text);
           }
         );
         if (generation !== translatorAiExplainGeneration) return;

@@ -1557,6 +1557,57 @@ describe("focused frontend regressions", () => {
     assert.deepEqual(calls, [], "transient phrase ranges must never auto-trigger an AI explanation");
   });
 
+  it("streams AI explanations through the markdown renderer (no raw ** markers)", async () => {
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async (_request, onDelta) => {
+        onDelta("To jest **pogrubienie** i *kursywa*.");
+        // Let the streamed state be observable before the final result lands.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return { explanation: "final", cached: false };
+      },
+      formatAiExplanation: (text) => `FMT:${text}`
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "FMT:To jest **pogrubienie** i *kursywa*.",
+      "stream deltas must be rendered through formatAiExplanation, not as raw text"
+    );
+    await flushAsync();
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "FMT:final",
+      "the final formatted explanation still replaces the streamed preview"
+    );
+  });
+
   it("retires the in-text review explanation after three completed guesses", async () => {
     let html = "";
     let answerButton = null;
@@ -1659,6 +1710,7 @@ async function evaluateWordPanel({
   explainWord = async () => ({ explanation: "", cached: false }),
   hasWordExplanation = () => false,
   markWordExplained = () => {},
+  formatAiExplanation = (text) => String(text ?? ""),
   updateWordField = () => {}
 }) {
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
@@ -1712,7 +1764,7 @@ async function evaluateWordPanel({
       aiExplanationConfigured,
       aiExplanationLanguagePair: () => ({ from: "de", to: "en" }),
       collectPdfOcrImageContext: async () => null,
-      formatAiExplanation: (text) => String(text ?? ""),
+      formatAiExplanation,
       explainWord,
       hasWordExplanation,
       markWordExplained
