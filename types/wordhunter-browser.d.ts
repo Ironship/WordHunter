@@ -290,6 +290,19 @@ declare global {
     vocab: Record<string, WhRecord>;
   }
 
+  interface WhDeltaSavePayload {
+    schemaVersion: number;
+    delta: true;
+    fullKeys: string[];
+    records: {
+      schemaVersion: number;
+      texts: WhText[];
+      prefs: WhRecord;
+      hiddenBooks: string[];
+      vocab: Record<string, WhRecord>;
+    };
+  }
+
   interface WhStoredTextInput extends WhRecord {
     id: string;
     text: string;

@@ -415,6 +415,7 @@ pub(crate) fn merge_records(
     current: BTreeMap<String, SyncRecord>,
     device_id: &str,
     now: u128,
+    full_keys: &BTreeSet<String>,
 ) -> MergeResult {
     let incoming = canonicalize_vocab_records(incoming);
     let current = canonicalize_vocab_records(current);
@@ -459,8 +460,18 @@ pub(crate) fn merge_records(
             && base_entry
                 .and_then(|entry| entry.data.as_ref())
                 .is_some_and(is_vocab_alias_retirement);
-        let incoming_deleted =
-            incoming_record.is_none() && base_hash.is_some() && !omitted_alias_retirement;
+        // Incremental saves: a key declared in fullKeys but not sent is
+        // untouched by the frontend — treat it as unchanged (hash == base).
+        let omitted_untouched = incoming_record.is_none() && full_keys.contains(&key);
+        let incoming_hash = if omitted_untouched {
+            base_hash.cloned()
+        } else {
+            incoming_hash
+        };
+        let incoming_deleted = incoming_record.is_none()
+            && base_hash.is_some()
+            && !omitted_alias_retirement
+            && !full_keys.contains(&key);
         let incoming_changed =
             !omitted_alias_retirement && (incoming_deleted || incoming_hash.as_ref() != base_hash);
         let current_changed = current_hash.as_ref() != base_hash;
@@ -2335,6 +2346,7 @@ mod tests {
             device_a,
             "device-b",
             20,
+            &BTreeSet::new(),
         );
         assert!(deleted.records["vocab:de:am"].deleted_at.is_some());
 
@@ -2346,6 +2358,7 @@ mod tests {
             deleted.records,
             "device-a",
             30,
+            &BTreeSet::new(),
         );
         for key in ["vocab:de:am", "vocab:de:Am"] {
             assert!(converged.records[key].deleted_at.is_some(), "{key}");
@@ -2570,6 +2583,7 @@ mod tests {
             BTreeMap::from([(higher.key.clone(), higher.clone())]),
             "desktop",
             12,
+            &BTreeSet::new(),
         );
 
         assert_eq!(
@@ -2584,6 +2598,7 @@ mod tests {
             BTreeMap::from([(higher.key.clone(), higher)]),
             "legacy-device",
             13,
+            &BTreeSet::new(),
         );
         assert_eq!(
             omitted.records["pref:inTextReviewCompletedGuesses"].data,
@@ -2880,6 +2895,7 @@ mod tests {
             base.clone(),
             "phone-device",
             3,
+            &BTreeSet::new(),
         );
         let payload = records_to_payload(dir.path(), &merged.records);
 
@@ -2919,7 +2935,18 @@ mod tests {
             "local-device",
             100,
         );
-        let merged = merge_records(&BTreeMap::new(), incoming, current, "merge-device", 101);
+        let full_keys = incoming
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>();
+        let merged = merge_records(
+            &BTreeMap::new(),
+            incoming,
+            current,
+            "merge-device",
+            101,
+            &full_keys,
+        );
 
         assert!(merged.records[&key].deleted_at.is_none());
         assert_eq!(merged.records[&key].causal.get("remote-device"), Some(&9));
@@ -2938,6 +2965,7 @@ mod tests {
             base.clone(),
             "phone-device",
             3,
+            &BTreeSet::new(),
         );
 
         assert_eq!(merged.records["vocab:de:boot"].deleted_at, Some(3));
@@ -2979,6 +3007,7 @@ mod tests {
             compact_records,
             "pc-device",
             3,
+            &BTreeSet::new(),
         );
         let record = &merged.records["text:de-book"];
 
@@ -3025,6 +3054,7 @@ mod tests {
             current_records,
             "phone-device",
             6000,
+            &BTreeSet::new(),
         );
 
         assert_eq!(
@@ -3071,6 +3101,7 @@ mod tests {
             current_records,
             "phone-device",
             6000,
+            &BTreeSet::new(),
         );
 
         assert_eq!(
@@ -3127,6 +3158,7 @@ mod tests {
                 [(current.key.clone(), current)].into_iter().collect(),
                 device,
                 6_000,
+                &BTreeSet::new(),
             )
         };
         let first = merge(known.clone(), edited_learning.clone(), "phone-device");
@@ -3216,6 +3248,7 @@ mod tests {
             [(known.key.clone(), known)].into_iter().collect(),
             "phone-device",
             6_000,
+            &BTreeSet::new(),
         );
 
         let record = &merged.records["vocab:de:haus"];
@@ -3305,6 +3338,7 @@ mod tests {
             current_records,
             "merge-device",
             6000,
+            &BTreeSet::new(),
         );
         let merged_record = &merged.records["pref:readerBookmarks"];
         let ids = merged_record.data["book"]
@@ -3378,6 +3412,7 @@ mod tests {
             [(current.key.clone(), current)].into_iter().collect(),
             "merge-device",
             6000,
+            &BTreeSet::new(),
         );
         let books = merged.records["pref:readerBookmarks"]
             .data
@@ -3434,6 +3469,7 @@ mod tests {
             current_records,
             "merge-device",
             6000,
+            &BTreeSet::new(),
         );
 
         assert_eq!(
@@ -3484,6 +3520,7 @@ mod tests {
             current_records,
             "merge-device",
             6000,
+            &BTreeSet::new(),
         );
 
         assert!(
@@ -3539,6 +3576,7 @@ mod tests {
             current_records,
             "merge-device",
             6000,
+            &BTreeSet::new(),
         );
         let bookmarks = merged.records["pref:readerBookmarks"].data["book"]
             .as_array()
@@ -3580,6 +3618,7 @@ mod tests {
             current_records,
             "phone-device",
             6000,
+            &BTreeSet::new(),
         );
 
         assert!(merged.records["vocab:de:haus"].deleted_at.is_some());
@@ -3611,7 +3650,14 @@ mod tests {
         let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
         let current_records = [(current.key.clone(), current)].into_iter().collect();
 
-        let merged = merge_records(&base, incoming_records, current_records, "z-device", 11);
+        let merged = merge_records(
+            &base,
+            incoming_records,
+            current_records,
+            "z-device",
+            11,
+            &BTreeSet::new(),
+        );
 
         assert_eq!(
             merged.records["vocab:de:haus"].data["translation"],
@@ -3651,6 +3697,7 @@ mod tests {
                 .collect(),
             "z-device",
             11,
+            &BTreeSet::new(),
         );
         let second = merge_records(
             &base,
@@ -3658,6 +3705,7 @@ mod tests {
             [(z_record.key.clone(), z_record)].into_iter().collect(),
             "a-device",
             11,
+            &BTreeSet::new(),
         );
 
         assert_eq!(first.records["vocab:de:haus"].data["translation"], "z");
@@ -3695,6 +3743,7 @@ mod tests {
             [(update.key.clone(), update.clone())].into_iter().collect(),
             "z-device",
             11,
+            &BTreeSet::new(),
         );
         let second = merge_records(
             &base,
@@ -3702,6 +3751,7 @@ mod tests {
             [(tombstone.key.clone(), tombstone)].into_iter().collect(),
             "a-device",
             11,
+            &BTreeSet::new(),
         );
 
         assert_eq!(first.records["vocab:de:haus"].deleted_at, Some(10));
