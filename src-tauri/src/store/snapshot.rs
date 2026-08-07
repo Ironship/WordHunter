@@ -265,14 +265,8 @@ impl Store {
         record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let full_keys = full_keys_from_payload(payload, &incoming)?;
-        let merged = record_files::merge_records(
-            base,
-            incoming,
-            current,
-            self.device_id(),
-            now,
-            &full_keys,
-        );
+        let merged =
+            record_files::merge_records(base, incoming, current, self.device_id(), now, &full_keys);
         record_files::write_records(&self.dir(), &merged.records)?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
@@ -754,7 +748,11 @@ mod tests {
         let store = store_at(&dir);
         store.bulk_save(payload("Wort")).unwrap();
         store
-            .bulk_save(delta_payload("Wort", FULL_KEYS_TWO, profile_with("Wort", "known")))
+            .bulk_save(delta_payload(
+                "Wort",
+                FULL_KEYS_TWO,
+                profile_with("Wort", "known"),
+            ))
             .unwrap();
         let records = record_files::load_records(dir.path()).unwrap();
         let snapshot = store.snapshot();
@@ -818,7 +816,11 @@ mod tests {
         let base = store.base_records.lock().unwrap().clone();
         let delta = delta_payload("Wort", FULL_KEYS_TWO, profile_with("Wort", "known"));
         let journal = encode_save_journal(&delta, &base, record_files::now_millis());
-        std::fs::write(store.save_journal_path(), serde_json::to_vec(&journal).unwrap()).unwrap();
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&journal).unwrap(),
+        )
+        .unwrap();
         // A fresh store instance replays the interrupted delta save.
         let store2 = store_at(&dir);
         store2.recover_pending_save().unwrap();

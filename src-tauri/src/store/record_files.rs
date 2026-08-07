@@ -2935,8 +2935,18 @@ mod tests {
             "local-device",
             100,
         );
-        let full_keys = incoming.keys().cloned().collect::<std::collections::BTreeSet<_>>();
-        let merged = merge_records(&BTreeMap::new(), incoming, current, "merge-device", 101, &full_keys);
+        let full_keys = incoming
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>();
+        let merged = merge_records(
+            &BTreeMap::new(),
+            incoming,
+            current,
+            "merge-device",
+            101,
+            &full_keys,
+        );
 
         assert!(merged.records[&key].deleted_at.is_none());
         assert_eq!(merged.records[&key].causal.get("remote-device"), Some(&9));
@@ -3640,7 +3650,12 @@ mod tests {
         let incoming_records = [(incoming.key.clone(), incoming)].into_iter().collect();
         let current_records = [(current.key.clone(), current)].into_iter().collect();
 
-        let merged = merge_records(&base, incoming_records, current_records, "z-device", 11,
+        let merged = merge_records(
+            &base,
+            incoming_records,
+            current_records,
+            "z-device",
+            11,
             &BTreeSet::new(),
         );
 
