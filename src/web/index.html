@@ -250,7 +250,7 @@
               </label>
               <label>
                 <span data-i18n="import.text">Tekst</span>
-                <textarea id="import-text" rows="10" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
+                <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
               </label>
               <div class="form-group" style="margin-bottom: 1.5rem; text-align: center;">
                 <label for="import-cover" class="import-cover-dropzone" id="import-cover-dropzone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: background 0.2s, border-color 0.2s;" data-i18n-attr="title=import.cover">
@@ -404,12 +404,12 @@
             <div class="translator-grid">
               <label class="translator-field">
                 <span data-i18n="translator.source">Tekst źródłowy</span>
-                <textarea id="translator-source" data-i18n-attr="placeholder=translator.sourcePlaceholder"></textarea>
+                <textarea id="translator-source" spellcheck="false" data-i18n-attr="placeholder=translator.sourcePlaceholder"></textarea>
               </label>
               <label class="translator-field">
                 <span data-i18n="translator.result">Tłumaczenie</span>
                 <div style="display: flex; gap: 0.5rem; align-items: stretch; flex: 1; min-height: 0;">
-                  <textarea id="translator-result" readonly data-i18n-attr="placeholder=translator.resultPlaceholder" style="flex: 1;"></textarea>
+                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" style="flex: 1;"></textarea>
                   <button type="button" id="translator-copy" class="secondary-button" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy" style="align-self: flex-end; flex-shrink: 0;">Kopiuj</button>
                 </div>
               </label>
@@ -1606,7 +1606,7 @@
       </div>
       <label class="setting-row edit-book-field edit-book-text-field">
         <span data-i18n="editBook.textLabel">Tekst (Możesz wklejać obrazki za pomocą Ctrl+V)</span>
-        <textarea id="edit-book-text" class="input"></textarea>
+        <textarea id="edit-book-text" class="input" spellcheck="false"></textarea>
       </label>
       <div class="edit-book-actions">
         <button id="edit-book-cancel" class="secondary-button" data-i18n="editBook.cancel">Anuluj</button>
@@ -1697,7 +1697,7 @@
         </fieldset>
         <label class="word-editor-field word-editor-example">
           <span data-i18n="vocab.addExampleLabel">Przykładowe zdanie (opcjonalnie)</span>
-          <textarea id="add-example-input" class="input" rows="4" autocomplete="off"></textarea>
+          <textarea id="add-example-input" class="input" rows="4" autocomplete="off" spellcheck="false"></textarea>
         </label>
       </div>
       <div class="word-editor-actions">

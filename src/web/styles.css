@@ -2335,6 +2335,11 @@ html[data-max-width="full"] .reader-text {
   background: var(--word-panel-status-bg, var(--panel));
 }
 
+#translator-ai-result {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+}
+
 .ai-explanation ul,
 .ai-explanation ol {
   margin: 0.35rem 0 0.5rem;

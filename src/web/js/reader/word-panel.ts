@@ -553,7 +553,7 @@ function renderContentItem(
         <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
           ${escapeHtml(t("reader.noteLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">N</span>
         </span>
-        <textarea rows="4" data-word="${escapeAttribute(word)}" data-word-field="note" placeholder="${escapeAttribute(t("reader.notePlaceholder"))}">${escapeHtml(entry.note || "")}</textarea>
+        <textarea rows="4" spellcheck="false" data-word="${escapeAttribute(word)}" data-word-field="note" placeholder="${escapeAttribute(t("reader.notePlaceholder"))}">${escapeHtml(entry.note || "")}</textarea>
       </label>
     `;
   }
