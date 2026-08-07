@@ -1,3 +1,12 @@
+word-hunter (1.0.10) unstable; urgency=medium
+
+  * Contextual AI explanations for words and phrases (streamed, OpenAI-compatible services).
+  * Reasoning-effort levels and automatic explanations for new words.
+  * Explanations appended to word notes; local explanation cache.
+  * Improved translation reliability and shutdown handling.
+
+ -- Ironship <25068602+Ironship@users.noreply.github.com>  Fri, 07 Aug 2026 09:00:00 +0000
+
 word-hunter (1.0.9~rc.7) unstable; urgency=medium
 
   * Replace background synchronization with explicit ZIP transfer packages.
