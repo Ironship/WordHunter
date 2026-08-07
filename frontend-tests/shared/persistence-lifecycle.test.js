@@ -218,6 +218,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (value) => value,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() {
           attempts += 1;
@@ -354,6 +355,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry(_body, maxRetries) {
           assert.equal(maxRetries, 3);
@@ -399,6 +401,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {}
@@ -424,6 +427,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() { throw new DOMException("quota", "QuotaExceededError"); },
         async saveWithRetry() { return {}; },
         saveSyncXhr() {}
@@ -455,6 +459,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {}
@@ -873,6 +878,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (raw) => raw,
         saveToLocalStorage() {},
         async saveWithRetry(body) {
           savedThemes.push(JSON.parse(body).preferences.theme);
@@ -912,6 +918,7 @@ describe("persistence lifecycle", () => {
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() {
           attempts += 1;
@@ -1086,6 +1093,7 @@ describe("persistence lifecycle", () => {
       },
       "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state", UI_STORAGE_KEY: "wordhunter-ui-state" },
       "./api.js": { buildSavePayload: (value) => value },
+      buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./dialog-backdrop.js": { showConfirmDialog: async () => true },
       "./i18n.js": { t: (key) => key },
@@ -1237,5 +1245,120 @@ describe("persistence lifecycle", () => {
         assert.equal(typeof locale[section]?.[key], "string", `${file} missing ${section}.${key}`);
       }
     }
+});
+  it("builds incremental save payloads with only changed languages and fullKeys", async () => {
+    const { buildDeltaSavePayload, buildFullKeys, buildSavePayload } = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" }
+    }, {
+      localStorage: { getItem() { return null; }, setItem() {} }
+    });
+    const rawState = {
+      preferences: { learningLanguage: "de" },
+      hiddenBuiltInBooks: ["builtin-a"],
+      customTexts: [{ id: "text-1", text: "Hallo Welt." }],
+      profiles: {
+        de: {
+          vocab: { hallo: { status: "learning", translation: "cześć" }, welt: { status: "new" } },
+          customTexts: [],
+          userBooks: [{ id: "book-1", title: "Buch" }],
+          hiddenBuiltInBooks: [],
+          archivedBookIds: []
+        },
+        en: {
+          vocab: { hello: { status: "known" } },
+          customTexts: [],
+          userBooks: [],
+          hiddenBuiltInBooks: [],
+          archivedBookIds: []
+        }
+      }
+    };
+
+    const fullKeys = buildFullKeys(rawState);
+    for (const expected of [
+      "profile:de", "profile:en",
+      "vocab:de:hallo", "vocab:de:welt", "vocab:en:hello",
+      "book:de:book-1", "text:text-1", "pref:learningLanguage", "pref:__discover", "hidden:builtin-a"
+    ]) {
+      assert.ok(fullKeys.includes(expected), `missing ${expected}`);
+    }
+    assert.equal(fullKeys.length, 10);
+
+    const delta = buildDeltaSavePayload(rawState, new Set(["de"]), false);
+    assert.equal(delta.delta, true);
+    assert.deepEqual(Object.keys(delta.records.vocab), ["de"]);
+    assert.deepEqual(Object.keys(delta.records.vocab.de.vocab), ["hallo", "welt"]);
+    assert.ok(Array.isArray(delta.records.texts), "texts must be an array");
+    assert.equal(delta.records.texts.length, 0, "clean texts must not be sent");
+    assert.deepEqual(delta.records.hiddenBooks, ["builtin-a"]);
+    assert.ok(Array.isArray(delta.fullKeys));
+
+    const deltaWithTexts = buildDeltaSavePayload(rawState, new Set(), true);
+    assert.equal(Object.keys(deltaWithTexts.records.vocab).length, 0, "no dirty language");
+    assert.equal(deltaWithTexts.records.texts.length, 1, "dirty texts must be sent");
+
+    const full = buildSavePayload(rawState);
+    assert.equal(full.texts.length, 1);
+    assert.deepEqual(Object.keys(full.vocab), ["de", "en"]);
+  });
+
+  it("falls back to a full snapshot when the backend rejects the delta with 4xx", async () => {
+    const bodies = [];
+    const rawState = { preferences: { theme: "familiar" }, profiles: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => ({ ...state, full: true }),
+        buildDeltaSavePayload: (raw) => ({ ...raw, delta: true }),
+        saveToLocalStorage() {},
+        async saveWithRetry(body) {
+          bodies.push(JSON.parse(body));
+          if (bodies.length === 1) {
+            const error = new Error("delta payload is missing fullKeys");
+            error.status = 400;
+            throw error;
+          }
+          return {};
+        },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true, dispatchEvent() {} },
+      CustomEvent,
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {} }
+    });
+    const autosave = createAutosave(() => rawState);
+    const result = await autosave.saveState();
+    assert.equal(bodies.length, 2, "delta then full snapshot fallback");
+    assert.equal(bodies[0].delta, true);
+    assert.equal(bodies[1].full, true);
+    assert.deepEqual(result, {});
+  });
+
+  it("does not fall back to a full snapshot on network failures", async () => {
+    let attempts = 0;
+    const rawState = { preferences: {}, profiles: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => ({ ...state, full: true }),
+        buildDeltaSavePayload: (raw) => ({ ...raw, delta: true }),
+        saveToLocalStorage() {},
+        async saveWithRetry() {
+          attempts += 1;
+          throw new TypeError("Failed to fetch");
+        },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true, dispatchEvent() {} },
+      CustomEvent,
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {} }
+    });
+    const autosave = createAutosave(() => rawState);
+    await assert.rejects(autosave.saveState(), /Failed to fetch/);
+    assert.equal(attempts, 1, "network errors must not trigger the full-snapshot fallback");
   });
 });

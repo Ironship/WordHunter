@@ -58,7 +58,6 @@ impl Store {
                 Ok(value) => value,
                 Err(error) => {
                     quarantine_journal(path)?;
-                    eprintln!("interrupted save journal is corrupt: {error}");
                     continue;
                 }
             };
@@ -72,7 +71,6 @@ impl Store {
                 Ok(journal) => journal,
                 Err(error) => {
                     quarantine_journal(path)?;
-                    eprintln!("interrupted save journal is invalid: {error}");
                     continue;
                 }
             };
@@ -91,7 +89,6 @@ impl Store {
             return Ok(false);
         }
         let path = if journal.exists() { &journal } else { &temp };
-        eprintln!("[store] completing interrupted wipe");
         self.write_wipe_tombstones()?;
         self.cleanup_after_wipe()?;
         remove_if_exists(self.save_journal_path())?;
@@ -252,12 +249,24 @@ impl Store {
         now: u128,
     ) -> Result<(), String> {
         validate_snapshot_payload_schema(payload)?;
-        let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
+        let effective = if payload.get("delta").and_then(Value::as_bool) == Some(true) {
+            // Incremental save: changed records live under "records", shaped
+            // exactly like a full payload (vocab/texts/prefs/hiddenBooks).
+            payload
+                .get("records")
+                .cloned()
+                .ok_or_else(|| "delta payload is missing records".to_string())?
+        } else {
+            payload.clone()
+        };
+        let mut incoming = record_files::payload_to_records(&effective, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
         let current = record_files::load_records(&self.dir())?;
         record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
-        let merged = record_files::merge_records(base, incoming, current, self.device_id(), now);
+        let full_keys = full_keys_from_payload(payload, &incoming)?;
+        let merged =
+            record_files::merge_records(base, incoming, current, self.device_id(), now, &full_keys);
         record_files::write_records(&self.dir(), &merged.records)?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
@@ -347,6 +356,39 @@ fn quarantine_journal(path: &Path) -> Result<(), String> {
 
 fn remove_if_exists(path: impl AsRef<Path>) -> Result<(), String> {
     durable::remove_file_if_exists(path.as_ref())
+}
+
+fn full_keys_from_payload(
+    payload: &Value,
+    incoming: &BTreeMap<String, record_files::SyncRecord>,
+) -> Result<std::collections::BTreeSet<String>, String> {
+    if payload.get("delta").and_then(Value::as_bool) == Some(true) {
+        // Incremental save: fullKeys is the complete list of record keys the
+        // frontend currently holds. Keys absent from both the delta records and
+        // fullKeys are deletions; keys listed in fullKeys but not sent are
+        // untouched and must survive untouched.
+        let keys = payload
+            .get("fullKeys")
+            .and_then(Value::as_array)
+            .ok_or_else(|| "delta payload is missing fullKeys".to_string())?;
+        let mut full = std::collections::BTreeSet::new();
+        for key in keys {
+            let key = key
+                .as_str()
+                .ok_or_else(|| "delta fullKeys must be strings".to_string())?;
+            full.insert(key.to_string());
+        }
+        for key in incoming.keys() {
+            if !full.contains(key) {
+                return Err(format!("delta record key {key} is not listed in fullKeys"));
+            }
+        }
+        Ok(full)
+    } else {
+        // Full snapshot: every incoming key is held by the frontend, so the
+        // legacy tombstone semantics (absent from incoming = deleted) apply.
+        Ok(incoming.keys().cloned().collect())
+    }
 }
 
 fn validate_snapshot_payload_schema(payload: &Value) -> Result<(), String> {
@@ -520,7 +562,6 @@ fn empty_snapshot(dir: PathBuf) -> Value {
 }
 
 fn add_snapshot_error(mut snapshot: Value, error: String) -> Value {
-    eprintln!("[snapshot] failed to load {error}");
     if let Some(errors) = snapshot.get_mut("errors").and_then(Value::as_array_mut) {
         errors.push(Value::String(error));
     }
@@ -666,5 +707,125 @@ mod tests {
                 .values()
                 .all(|record| record.deleted_at.is_some())
         );
+    }
+
+    fn delta_payload(word: &str, full_keys: &[&str], vocab: Value) -> Value {
+        json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "delta": true,
+            "fullKeys": full_keys,
+            "records": { "vocab": { "de": vocab } }
+        })
+    }
+
+    fn profile_with(word: &str, status: &str) -> Value {
+        json!({
+            "preferences": {},
+            "userBooks": [],
+            "hiddenBuiltInBooks": [],
+            "archivedBookIds": [],
+            "vocab": {
+                word: { "word": word, "translation": "word", "status": status }
+            }
+        })
+    }
+
+    fn profile_empty() -> Value {
+        json!({
+            "preferences": {},
+            "userBooks": [],
+            "hiddenBuiltInBooks": [],
+            "archivedBookIds": [],
+            "vocab": {}
+        })
+    }
+
+    const FULL_KEYS_TWO: &[&str] = &["profile:de", "vocab:de:wort", "pref:learningLanguage"];
+
+    #[test]
+    fn delta_save_updates_only_changed_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        store
+            .bulk_save(delta_payload(
+                "Wort",
+                FULL_KEYS_TWO,
+                profile_with("Wort", "known"),
+            ))
+            .unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        let snapshot = store.snapshot();
+        assert_eq!(snapshot["vocab"]["de"]["vocab"]["wort"]["status"], "known");
+        assert!(records["vocab:de:wort"].deleted_at.is_none());
+        assert!(records.contains_key("pref:learningLanguage"));
+    }
+
+    #[test]
+    fn delta_save_keeps_untouched_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        // No records changed; every key still listed in fullKeys.
+        store
+            .bulk_save(delta_payload("Wort", FULL_KEYS_TWO, profile_empty()))
+            .unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert!(records["vocab:de:wort"].deleted_at.is_none());
+        assert_eq!(records["vocab:de:wort"].data["status"], "learning");
+    }
+
+    #[test]
+    fn delta_save_tombstones_keys_missing_from_full_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        // The word is no longer listed in fullKeys: the frontend deleted it.
+        store
+            .bulk_save(delta_payload(
+                "Wort",
+                &["profile:de", "pref:learningLanguage"],
+                profile_empty(),
+            ))
+            .unwrap();
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert!(records["vocab:de:wort"].deleted_at.is_some());
+    }
+
+    #[test]
+    fn delta_save_rejects_record_keys_missing_from_full_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        let result = store.bulk_save(delta_payload(
+            "Wort",
+            &["profile:de", "pref:learningLanguage"],
+            profile_with("Wort", "known"),
+        ));
+        assert!(result.is_err());
+        // Nothing was applied.
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(records["vocab:de:wort"].data["status"], "learning");
+    }
+
+    #[test]
+    fn delta_save_journal_recovery_replays() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        let base = store.base_records.lock().unwrap().clone();
+        let delta = delta_payload("Wort", FULL_KEYS_TWO, profile_with("Wort", "known"));
+        let journal = encode_save_journal(&delta, &base, record_files::now_millis());
+        std::fs::write(
+            store.save_journal_path(),
+            serde_json::to_vec(&journal).unwrap(),
+        )
+        .unwrap();
+        // A fresh store instance replays the interrupted delta save.
+        let store2 = store_at(&dir);
+        store2.recover_pending_save().unwrap();
+        let snapshot = store2.snapshot();
+        assert_eq!(snapshot["vocab"]["de"]["vocab"]["wort"]["status"], "known");
+        assert!(!store2.save_journal_path().exists());
     }
 }
