@@ -128,7 +128,6 @@ async function loadAppHarness({
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
       flushUiStateSync: noOp,
-      hasPendingLocalChanges: () => false,
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
     },
@@ -510,6 +509,58 @@ describe("persistence lifecycle", () => {
     assert.equal(autosave.hasPendingChanges(), true, "fresh edit is pending");
     await autosave.saveState();
     assert.equal(autosave.hasPendingChanges(), false, "pending clears after a successful save");
+  });
+
+  it("buffers saves to localStorage until the backend snapshot is applied", async () => {
+    const localStorageSaves = [];
+    const backendSaves = [];
+    const rawState = { preferences: { theme: "familiar" }, profiles: {}, vocab: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
+        async saveWithRetry(body) { backendSaves.push(body); return {}; },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: null },
+      setTimeout() { return 1; },
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+    state.preferences.theme = "classic-dark";
+    await autosave.saveState();
+    assert.equal(localStorageSaves.length, 1, "edit buffered to localStorage before the snapshot lands");
+    assert.equal(backendSaves.length, 0, "nothing sent to the backend before the snapshot lands");
+  });
+
+  it("sends to the backend once the snapshot has been applied", async () => {
+    const localStorageSaves = [];
+    const backendSaves = [];
+    const rawState = { preferences: { theme: "familiar" }, profiles: {}, vocab: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
+        async saveWithRetry(body) { backendSaves.push(body); return {}; },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: {} },
+      setTimeout() { return 1; },
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+    state.preferences.theme = "classic-dark";
+    await autosave.saveState();
+    assert.equal(localStorageSaves.length, 0, "no localStorage buffering once the snapshot is applied");
+    assert.equal(backendSaves.length, 1, "edit sent to the backend once the snapshot is applied");
   });
 
   it("writes an explicit bridge UI save to the local UI cache", async () => {
