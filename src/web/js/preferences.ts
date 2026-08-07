@@ -5,6 +5,7 @@ import { els } from "./dom.js";
 import { clamp, escapeAttribute, escapeHtml } from "./utils.js";
 import { getLocale, t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
+import { DEFAULT_AI_ENDPOINT, DEFAULT_AI_MODEL, normalizeAiTextPreference } from "./ai-explainer.js";
 import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
 import { applyTheme, nextTheme, normalizeTheme, type ThemeName } from "./theme.js";
@@ -282,6 +283,18 @@ export function syncSettingsControls() {
   if (els.prefDeepLApiKeyRow) els.prefDeepLApiKeyRow.hidden = provider !== "deepl";
   if (els.prefLmStudioEndpointRow) els.prefLmStudioEndpointRow.hidden = provider !== "lmstudio";
   if (els.prefLmStudioModelRow) els.prefLmStudioModelRow.hidden = provider !== "lmstudio";
+  const aiEnabled = prefs.aiExplanationsEnabled === true;
+  if (els.prefAiExplanations) els.prefAiExplanations.checked = aiEnabled;
+  if (els.prefAiEndpoint) els.prefAiEndpoint.value = prefs.aiExplanationEndpoint || DEFAULT_AI_ENDPOINT;
+  if (els.prefAiModel) els.prefAiModel.value = prefs.aiExplanationModel || DEFAULT_AI_MODEL;
+  if (els.prefAiApiKey) els.prefAiApiKey.value = prefs.aiExplanationApiKey || "";
+  if (els.prefAiEffort) els.prefAiEffort.value = normalizeAiTextPreference("aiExplanationEffort", prefs.aiExplanationEffort);
+  if (els.prefAiAutoTrigger) els.prefAiAutoTrigger.checked = prefs.aiExplanationAutoTrigger === true;
+  if (els.prefAiEndpointRow) els.prefAiEndpointRow.hidden = !aiEnabled;
+  if (els.prefAiModelRow) els.prefAiModelRow.hidden = !aiEnabled;
+  if (els.prefAiApiKeyRow) els.prefAiApiKeyRow.hidden = !aiEnabled;
+  if (els.prefAiEffortRow) els.prefAiEffortRow.hidden = !aiEnabled;
+  if (els.prefAiAutoTriggerRow) els.prefAiAutoTriggerRow.hidden = !aiEnabled;
   if (els.prefAutoTranslate) els.prefAutoTranslate.checked = prefs.autoTranslateWords === true;
   if (els.prefAutoTranslateRow) {
     const enabled = canUseTranslationProvider();

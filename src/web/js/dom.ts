@@ -66,6 +66,8 @@ export function cacheElements() {
   els.translatorResult = byId("translator-result");
   els.translatorStatus = document.getElementById("translator-status");
   els.translatorProgress = document.getElementById("translator-progress");
+  els.translatorAiExplain = byId("translator-ai-explain");
+  els.translatorAiResult = byId("translator-ai-result");
 
   els.vocabSearch = byId("vocab-search");
   els.vocabTextFilter = byId("vocab-text-filter");
@@ -139,6 +141,17 @@ export function cacheElements() {
   els.prefLmStudioEndpointRow = document.getElementById("pref-lmstudio-endpoint-row");
   els.prefLmStudioModel = document.getElementById("pref-lmstudio-model");
   els.prefLmStudioModelRow = document.getElementById("pref-lmstudio-model-row");
+  els.prefAiExplanations = document.getElementById("pref-ai-explanations");
+  els.prefAiEndpoint = document.getElementById("pref-ai-endpoint");
+  els.prefAiEndpointRow = document.getElementById("pref-ai-endpoint-row");
+  els.prefAiModel = document.getElementById("pref-ai-model");
+  els.prefAiModelRow = document.getElementById("pref-ai-model-row");
+  els.prefAiApiKey = document.getElementById("pref-ai-api-key");
+  els.prefAiApiKeyRow = document.getElementById("pref-ai-key-row");
+  els.prefAiEffort = document.getElementById("pref-ai-effort");
+  els.prefAiEffortRow = document.getElementById("pref-ai-effort-row");
+  els.prefAiAutoTrigger = document.getElementById("pref-ai-auto-trigger");
+  els.prefAiAutoTriggerRow = document.getElementById("pref-ai-auto-trigger-row");
   els.prefArgosAsDict = document.getElementById("pref-argos-as-dict");
   els.prefArgosAsDictRow = document.getElementById("pref-argos-as-dict-row");
   els.argosDownloadDialog = byId("argos-download-dialog");

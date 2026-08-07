@@ -1,3 +1,4 @@
+mod ai_explainer;
 mod ebook;
 mod external_translator;
 mod handlers;

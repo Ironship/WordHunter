@@ -519,6 +519,9 @@ function Get-AndroidVersionInfo {
     }
 
     $baseCode = ($major * 1000000) + ($minor * 1000) + $patch
+    # Generation 1 starts above artifacts built with the pre-RC migration
+    # formula (notably 1.0.10-rc.1/rc.2, which were emitted as stable 1.0.10).
+    $versionCodeGenerationOffset = 1000000
     $releaseOrdinal = 99
     if ($match.Groups[4].Success) {
         $releaseOrdinal = [int64]$match.Groups[4].Value
@@ -532,7 +535,7 @@ function Get-AndroidVersionInfo {
         }
         $releaseOrdinal = 100
     }
-    $code = ($baseCode * 100) + $releaseOrdinal
+    $code = $versionCodeGenerationOffset + ($baseCode * 100) + $releaseOrdinal
     if ($code -le 0 -or $code -gt 2100000000) {
         Fail "Android versionCode must be between 1 and 2100000000, calculated $code from $version"
     }

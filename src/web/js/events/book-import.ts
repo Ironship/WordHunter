@@ -135,6 +135,7 @@ function safeImportErrorMessage(error: unknown): string {
   }
   if (/unsupported.*image|image.*does not match/i.test(message)) return t("toast.imageOcrUnsupported");
   if (/Image OCR requires the bundled PaddleOCR component/i.test(message)) return t("toast.imageOcrRequiresApp");
+  if (/yt-dlp|\[youtube\]|video (?:unavailable|not found)|private video|sign in to confirm/i.test(message)) return t("import.youtubeError");
   const localizedMessages = new Set([
     t("toast.pdfImportBusy"),
     t("toast.pdfOcrRequiresApp"),
@@ -473,7 +474,9 @@ async function handleYoutubeImport() {
   } catch (error) {
     console.warn(error);
     resetYoutubeTracks(false);
-    const message = error?.message?.trim() || t("import.youtubeError");
+    const message = error instanceof Error && error.message.trim()
+      ? safeImportErrorMessage(error)
+      : t("import.youtubeError");
     if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = message;
     showToast(t("toast.youtubeCaptionsError"));
   } finally {
@@ -956,7 +959,8 @@ function bindEditBookEvents() {
 
   if (els.editBookDialog) {
     els.editBookDialog.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey && !(e.target instanceof HTMLTextAreaElement)) {
+      if (e.key === "Enter" && !e.shiftKey && !(e.target instanceof HTMLTextAreaElement)
+        && !(e.target instanceof HTMLSelectElement) && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault();
         saveEditedBook();
       }

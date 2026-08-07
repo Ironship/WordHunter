@@ -4,10 +4,11 @@ import { state, saveState } from "../state.js";
 import { showToast } from "../toast.js";
 import { setElementBusy } from "../loading.js";
 import { escapeHtml } from "../utils.js";
-import { activeTranslationProvider, canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { activeTranslationProvider, canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
 import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { rekeyActiveVocabForLocale } from "../state/normalize.js";
+import { aiExplanationConfigured, explainWord, formatAiExplanation } from "../ai-explainer.js";
 
 // All languages supported by online/local translator providers.
 const SUPPORTED_LANGUAGES = TRANSLATOR_LANGUAGES;
@@ -38,6 +39,7 @@ interface TranslatorPair {
 
 let translateTimer: number | null = null;
 let translateGeneration = 0;
+let translatorAiExplainGeneration = 0;
 
 function setTranslatorBusy(busy: boolean): void {
   if (els.translatorStatus) {
@@ -254,6 +256,7 @@ export function renderTranslator(): void {
   } else if (els.translatorStatus && !els.translatorStatus.dataset.busy) {
     els.translatorStatus.textContent = t("translator.ready");
   }
+  if (els.translatorAiExplain) els.translatorAiExplain.hidden = !aiExplanationConfigured();
   updateTranslatorFlags(currentFrom, currentTo);
 }
 
@@ -312,14 +315,18 @@ async function translateNow(): Promise<void> {
   setTranslatorBusy(true);
 
   try {
-    const data = await translateText(text, pair.fromCode, pair.toCode);
+    // Retries transient endpoint failures internally (once, after a short delay).
+    const data = await translateWithRetry(text, pair.fromCode, pair.toCode);
     if (generation !== translateGeneration) return;
     els.translatorResult.value = data.translated || "";
     if (els.translatorStatus) els.translatorStatus.textContent = t("translator.done");
   } catch (error) {
     if (generation !== translateGeneration) return;
     console.error("Translator error", error);
-    if (els.translatorStatus) els.translatorStatus.textContent = t("translator.error");
+    const reason = error instanceof Error ? error.message : String(error);
+    if (els.translatorStatus) {
+      els.translatorStatus.textContent = reason ? `${t("translator.error")} — ${reason.slice(0, 120)}` : t("translator.error");
+    }
     showToast(t("translator.error"), "error");
   } finally {
     if (generation === translateGeneration) setTranslatorBusy(false);
@@ -373,6 +380,70 @@ export function bindTranslatorEvents(): void {
       saveOtherProfilePair(toCode, fromCode);
       renderTranslator();
       scheduleTranslate();
+    });
+  }
+  const copyButton = document.getElementById("translator-copy");
+  if (copyButton) {
+    copyButton.addEventListener("click", async () => {
+      const text = els.translatorResult?.value || "";
+      if (!text.trim()) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        // Fallback: hidden textarea + execCommand when the async Clipboard API is unavailable.
+        const textarea = document.createElement("textarea");
+        try {
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          if (!document.execCommand("copy")) throw new Error("copy command rejected");
+        } catch (fallbackError) {
+          console.warn("Could not copy translation result", fallbackError);
+          showToast(t("translator.error"), "error");
+          return;
+        } finally {
+          textarea.remove();
+        }
+      }
+      showToast(t("translator.copyDone"));
+    });
+  }
+
+  if (els.translatorAiExplain) {
+    els.translatorAiExplain.addEventListener("click", async () => {
+      const source = els.translatorSource?.value.trim() || "";
+      const output = els.translatorAiResult;
+      if (!source || !output) return;
+      if (!aiExplanationConfigured()) {
+        output.hidden = false;
+        output.textContent = t("reader.aiExplainNotConfigured");
+        return;
+      }
+      const pair = ensureSelectedPair();
+      const generation = ++translatorAiExplainGeneration;
+      output.hidden = false;
+      output.textContent = t("translator.translating");
+      setElementBusy(els.translatorAiExplain, true, { disable: true });
+      try {
+        const result = await explainWord(
+          { word: source.slice(0, 300), context: source, from: pair.fromCode, to: pair.toCode },
+          (text) => {
+            if (generation !== translatorAiExplainGeneration) return;
+            output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+          }
+        );
+        if (generation !== translatorAiExplainGeneration) return;
+        output.innerHTML = formatAiExplanation(result.explanation);
+      } catch (error) {
+        if (generation !== translatorAiExplainGeneration) return;
+        console.warn("AI explanation failed", error);
+        output.textContent = t("reader.aiExplainError");
+      } finally {
+        if (generation === translatorAiExplainGeneration) setElementBusy(els.translatorAiExplain, false, { disable: true });
+      }
     });
   }
 }

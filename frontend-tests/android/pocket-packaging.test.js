@@ -173,7 +173,8 @@ describe("Android Pocket packaging", () => {
     const releaseOrdinal = rcText ? Number(rcText) : (hotfixText ? 100 : 99);
     assert.ok(releaseOrdinal >= 1 && releaseOrdinal <= 100);
     if (hotfixText) assert.equal(hotfixText, "1");
-    const versionCode = (baseCode * 100) + releaseOrdinal;
+    const versionCodeGenerationOffset = 1_000_000;
+    const versionCode = versionCodeGenerationOffset + (baseCode * 100) + releaseOrdinal;
     assert.ok(Number.isSafeInteger(versionCode));
     assert.ok(versionCode > 0 && versionCode <= 2_100_000_000);
     assert.ok(versionCode < ((major + 1) * 100_000_000));
@@ -181,7 +182,8 @@ describe("Android Pocket packaging", () => {
     const versionRecipe = powershellFunction(build, "Get-AndroidVersionInfo");
     assert.match(versionRecipe, /\$minor -gt 999 -or \$patch -gt 999/);
     assert.match(versionRecipe, /\(\$major \* 1000000\) \+ \(\$minor \* 1000\) \+ \$patch/);
-    assert.match(versionRecipe, /\$code = \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
+    assert.match(versionRecipe, /\$versionCodeGenerationOffset = 1000000/);
+    assert.match(versionRecipe, /\$code = \$versionCodeGenerationOffset \+ \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
     assert.match(versionRecipe, /release-candidate ordinal must be between 1 and 98/);
     assert.match(versionRecipe, /four-part hotfix version must end in \+1/);
     assert.match(versionRecipe, /\$releaseOrdinal = 100/);

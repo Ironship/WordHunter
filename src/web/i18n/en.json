@@ -9,7 +9,9 @@
     "description": "Word Hunter — local Rust/Tauri reader, vocabulary trainer, and offline translator.",
     "navAriaLabel": "Navigation",
     "jsError": "JS Error: {msg} at {url}:{line}:{col}\n{stack}",
-    "unhandledPromise": "Unhandled Promise: {reason}"
+    "unhandledPromise": "Unhandled Promise: {reason}",
+    "startupFailed": "Word Hunter could not finish startup",
+    "retry": "Retry"
   },
   "nav": {
     "library": "Library",
@@ -21,7 +23,19 @@
     "graphs": "Graphs",
     "export": "Export",
     "settings": "Settings",
-    "help": "Help"
+    "help": "Help",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "sourceWikinews": "Wikinews",
     "sourcePdfOcr": "OCR import",
     "coverAlt": "Cover",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Custom text",
@@ -245,6 +262,9 @@
     "articleAria": "Article for {word}",
     "translateContext": "Translate sentence",
     "contextTranslationLabel": "Sentence:",
+    "aiExplain": "Explain with AI",
+    "aiExplainNotConfigured": "AI explanations are not configured. Enable them in Settings → AI explanations.",
+    "aiExplainError": "The AI explanation failed. Check the endpoint and model in Settings → AI explanations.",
     "translationPlaceholder": "e.g. transformation",
     "noteLabel": "Note",
     "notePlaceholder": "article, declension, your own example...",
@@ -273,7 +293,14 @@
     "keySpace": "Space",
     "keyPageUp": "Page Up",
     "keyPageDown": "Page Down",
-    "keyEnter": "Enter"
+    "keyEnter": "Enter",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Discard your edits to this correction?",
+    "wordNavPageStart": "You are at the first word of this page.",
+    "wordNavPageEnd": "You are at the last word of this page.",
+    "aiNoteMarker": "AI explanation"
   },
   "vocab": {
     "eyebrow": "Your words",
@@ -346,7 +373,12 @@
     "openDictionary": "Open dictionary",
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
-    "cardCount": "{count} cards"
+    "cardCount": "{count} cards",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Delete this word and its learning progress?",
+    "wordRequired": "Enter the word first."
   },
   "discover": {
     "eyebrow": "Online resources",
@@ -405,7 +437,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Open on site",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Profile and learning",
@@ -435,6 +470,7 @@
       "note": "Note",
       "image": "Image",
       "context": "Example / context sentence",
+      "ai": "AI explain",
       "copy": "Copy",
       "edit": "Edit",
       "remove": "Remove"
@@ -614,6 +650,18 @@
     "lmStudioEndpoint": "LM Studio endpoint",
     "lmStudioModel": "LM Studio model",
     "lmStudioModelPlaceholder": "e.g. local-model",
+    "aiEyebrow": "AI explanations",
+    "aiHeading": "AI explanations of words and phrases",
+    "groupAi": "Language assistant",
+    "aiHint": "Explains the selected word or phrase based on the sentence it appears in. Works with any OpenAI-compatible server — local (LM Studio, llama.cpp, Ollama) or remote (e.g. opencode.ai, OpenAI, DeepSeek).",
+    "aiExplanations": "Enable AI explanations",
+    "aiExplanationsHint": "Adds an “Explain” button to the word panel. The API key is stored locally and sent only to the endpoint you choose.",
+    "aiEndpoint": "Endpoint (OpenAI-compatible)",
+    "aiModel": "Model",
+    "aiModelPlaceholder": "e.g. deepseek-v4-flash",
+    "aiApiKey": "API key",
+    "aiApiKeyPlaceholder": "Optional for local models",
+    "aiPanelItemShown": "“AI explain” added to the word panel — you can reorder it in Selected-word panel.",
     "argosAsDict": "Dictionary button opens translator",
     "argosAsDictHint": "Makes the dictionary button (M) open the built-in offline translator for the selected word instead of your dictionary URL.",
     "argosDownloadTitle": "Download offline models",
@@ -624,7 +672,18 @@
     "ankiTsvHeader": "Word\tTranslation\tContext\tArticle\n",
     "ankiExportStatuses": "Exported statuses",
     "ankiExportStatusesHint": "Choose which word statuses are included in the TSV. Anki receives word, translation, context, and optional article columns.",
-    "groupLocalData": "Data on this device"
+    "groupLocalData": "Data on this device",
+    "confirmResetMessage": "This resets the theme, fonts, dictionary address and API keys to their defaults. This cannot be undone.",
+    "aiEffort": "Reasoning effort",
+    "aiEffortHint": "How much effort the model should put into reasoning. Empty = do not send — the endpoint uses its own default.",
+    "aiEffortAuto": "Automatic (do not send)",
+    "aiEffortMinimal": "Minimal",
+    "aiEffortLow": "Low",
+    "aiEffortMedium": "Medium",
+    "aiEffortHigh": "High",
+    "aiEffortMax": "Maximum",
+    "aiAutoTrigger": "Explain new words automatically",
+    "aiAutoTriggerHint": "When a word without an AI explanation is opened, the explanation is fetched automatically and appended to the word's note."
   },
   "translator": {
     "swap": "Swap languages",
@@ -653,7 +712,9 @@
     "targetPlaceholder": "Translation will appear here...",
     "footer": "Powered locally by the offline translator",
     "copyBtn": "Copy translation",
-    "copied": "Copied!"
+    "copied": "Copied!",
+    "copy": "Copy",
+    "copyDone": "Copied to clipboard."
   },
   "graphs": {
     "eyebrow": "Statistics",
@@ -745,8 +806,8 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 replaces background synchronization with reliable ZIP transfer packages containing individual YAML records and complete book images.</strong>",
-    "version": "<strong>Version:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 adds contextual AI explanations for words and phrases: streamed answers from OpenAI-compatible services, reasoning-effort levels, automatic explanations for new words, optional visual context for scanned pages, a local cache, a translator button, and configurable endpoint, model, and API key. It also prevents duplicate durable saves from blocking application shutdown.</strong>",
+    "version": "<strong>Version:</strong> Word Hunter 1.0.10",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -950,7 +1011,10 @@
     "vocabExportEmpty": "No words match the current export filters.",
     "importing": "Importing...",
     "exportReadyCount": "Exported {n} words.",
-    "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library)."
+    "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library).",
+    "wordPanelItemHidden": "This item is hidden in the word panel settings.",
+    "vocabExportFailed": "Could not export vocabulary.",
+    "autoTranslateUnavailable": "Automatic translation is temporarily unavailable. It will be retried automatically."
   },
   "languages": {
     "pl": "Polish",
@@ -968,7 +1032,7 @@
     "other": "Other"
   },
   "sm2": {
-    "prompt": "How well did you remember it? (0–5)",
+    "prompt": "How well did you remember it? (1–5)",
     "inTextPrompt": "What does this word mean? Reveal the answer, then rate your recall.",
     "showAnswer": "Show answer",
     "inTextRating": "How well did you recall it? (1–5)",
@@ -1020,5 +1084,16 @@
     "openReleases": "See what's new",
     "disableUpdates": "Don't remind me again",
     "dismiss": "Later"
+  },
+  "dialog": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "confirmTitle": "Are you sure?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Session complete",
+    "sessionSummaryCount": "Cards reviewed: {n}",
+    "sessionSummaryAccuracy": "Remembered: {pct}%",
+    "sessionSummaryDone": "Done"
   }
 }

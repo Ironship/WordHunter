@@ -1,5 +1,6 @@
 import { state, saveState } from "../state.js";
 import { t } from "../i18n.js";
+import { showToast } from "../toast.js";
 import { statusIcon } from "../icons.js";
 import { STATUS_ORDER, type VocabStatus } from "../constants.js";
 import { statusLabel, escapeHtml, escapeAttribute } from "../utils.js";
@@ -184,7 +185,10 @@ export function bindWordEditorEvents() {
       entry.updatedAt = now;
     } else {
       const word = addWordInput?.value.trim();
-      if (!word) return;
+      if (!word) {
+        showToast(t("vocab.wordRequired"), "error");
+        return;
+      }
       const entry = getOrCreateEntry(word);
       const previousStatus = setEntryStatus(entry, selectedStatus, now);
       if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);

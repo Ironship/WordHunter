@@ -258,6 +258,7 @@ function flushWordFieldSave(): void {
   }
 }
 (window as Window & { flushWordFieldSave?: typeof flushWordFieldSave }).flushWordFieldSave = flushWordFieldSave;
+(window as Window & { scheduleWordFieldSave?: typeof scheduleWordFieldSave }).scheduleWordFieldSave = scheduleWordFieldSave;
 
 function handleWordFieldInput(event: Event): void {
   const field = eventElement(event.target)?.closest<HTMLInputElement | HTMLTextAreaElement>("[data-word-field]");

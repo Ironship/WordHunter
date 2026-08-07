@@ -2,6 +2,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+use std::time::Duration;
 
 use tauri::webview::PageLoadEvent;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -13,10 +14,20 @@ use super::SetupResult;
 
 #[cfg(target_os = "linux")]
 const LINUX_DESKTOP_APP_ID: &str = "com.wordhunter.app";
+const GRACEFUL_EXIT_TIMEOUT: Duration = Duration::from_secs(90);
 
 #[derive(Default)]
 struct ExitCoordinator {
     permitted: AtomicBool,
+    fallback_started: AtomicBool,
+}
+
+impl ExitCoordinator {
+    fn begin_graceful_exit(&self) -> bool {
+        self.fallback_started
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
 }
 
 pub(crate) fn exit_is_permitted(app_handle: &tauri::AppHandle) -> bool {
@@ -34,6 +45,17 @@ pub(crate) fn permit_exit(app_handle: &tauri::AppHandle) {
 }
 
 pub(crate) fn request_graceful_exit(app_handle: &tauri::AppHandle) {
+    if app_handle.state::<ExitCoordinator>().begin_graceful_exit() {
+        let fallback_handle = app_handle.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(GRACEFUL_EXIT_TIMEOUT);
+            if !exit_is_permitted(&fallback_handle) {
+                eprintln!("graceful exit timed out; forcing application exit");
+                permit_exit(&fallback_handle);
+                fallback_handle.exit(0);
+            }
+        });
+    }
     let Some(window) = app_handle.get_webview_window("main") else {
         permit_exit(app_handle);
         app_handle.exit(0);
@@ -201,6 +223,18 @@ where
 
 fn boxed_string(err: String) -> Box<dyn std::error::Error> {
     Box::new(std::io::Error::other(err))
+}
+
+#[cfg(test)]
+mod exit_coordinator_tests {
+    use super::ExitCoordinator;
+
+    #[test]
+    fn graceful_exit_fallback_is_started_only_once() {
+        let coordinator = ExitCoordinator::default();
+        assert!(coordinator.begin_graceful_exit());
+        assert!(!coordinator.begin_graceful_exit());
+    }
 }
 
 fn show_startup_error(message: &str) {

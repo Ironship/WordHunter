@@ -40,6 +40,7 @@ describe("shared UI event behavior", () => {
         add(name) { if (name === "visible") visible = true; },
         remove(name) { if (name === "visible") visible = false; },
       },
+      setAttribute() {},
     };
     Object.defineProperty(toast, "textContent", {
       set() { throw new Error("replacing toast children removes the close button"); },

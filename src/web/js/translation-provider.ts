@@ -26,6 +26,26 @@ export function canUseTranslationProvider(): boolean {
   return true;
 }
 
+// Delay before the single retry of a failed translation request (ms).
+const TRANSLATE_RETRY_DELAY_MS = 1_200;
+
+/**
+ * Translates with a single retry after a short delay. Translation endpoints
+ * (especially the unofficial Google one) throttle intermittently — a bare
+ * failure is usually transient, so callers that need a reliable result
+ * (auto-translate, sentence/context translation, the translator view)
+ * should use this instead of translateText directly.
+ */
+export async function translateWithRetry(text: string, from: string, to: string): Promise<TranslationResult> {
+  try {
+    return await translateText(text, from, to);
+  } catch (error) {
+    console.warn("Translation failed, retrying once", error);
+    await new Promise((resolve) => setTimeout(resolve, TRANSLATE_RETRY_DELAY_MS));
+    return translateText(text, from, to);
+  }
+}
+
 export async function translateText(text: string, from: string, to: string): Promise<TranslationResult> {
   const fromCode = normalizeTranslationLanguageCode(from);
   const toCode = normalizeTranslationLanguageCode(to);

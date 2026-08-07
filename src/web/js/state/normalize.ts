@@ -396,6 +396,7 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
   nextState.preferences.readerFocusMode = nextState.preferences.readerFocusMode === true;
   nextState.preferences.readerWordPanelVisible = nextState.preferences.readerWordPanelVisible !== false;
+  nextState.preferences.aiExplanationAutoTrigger = nextState.preferences.aiExplanationAutoTrigger === true;
   nextState.preferences.selectedWordPanelItems = normalizeSelectedWordPanelItems(rawPreferences.selectedWordPanelItems);
   nextState.preferences.touchControls = nextState.preferences.touchControls === true;
   nextState.preferences.inTextReview = nextState.preferences.inTextReview === true;
