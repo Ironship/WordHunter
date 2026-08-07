@@ -10,7 +10,7 @@ let
 
   src = fetchurl {
     url = "https://github.com/Ironship/WordHunter/releases/download/WordHunter${version}/WordHunter-${version}-x86_64.AppImage";
-    hash = "sha256-BS/Y8PPYxQCAeBndqWhpylBHHOlpsx/a5rjdzVuLe/U=";
+    hash = "sha256-a0pxMT19MN4WdAocIHGOQKxcyUhWUt7bcmhxlqLAv7g=";
   };
 
   appimageContents = appimageTools.extract { inherit pname version src; };
