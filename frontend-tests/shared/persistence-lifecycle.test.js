@@ -128,6 +128,7 @@ async function loadAppHarness({
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
       flushUiStateSync: noOp,
+      hasPendingLocalChanges: () => false,
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
     },
@@ -483,6 +484,32 @@ describe("persistence lifecycle", () => {
     state.preferences.theme = "alternative-familiar";
     assert.equal(scheduled, 1);
     assert.equal(autosave.getDurableStateRevision(), 1);
+  });
+
+  it("reports pending local changes until the save lands, then clears them", async () => {
+    let scheduled = 0;
+    const rawState = { preferences: { theme: "familiar" }, profiles: {}, vocab: {} };
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage() {},
+        async saveWithRetry() { return {}; },
+        saveSyncXhr() {}
+      }
+    }, {
+      window: { __qtBridge: true },
+      setTimeout() { scheduled += 1; return scheduled; },
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+    assert.equal(autosave.hasPendingChanges(), false, "clean start has no pending changes");
+    state.preferences.theme = "classic-dark";
+    assert.equal(autosave.hasPendingChanges(), true, "fresh edit is pending");
+    await autosave.saveState();
+    assert.equal(autosave.hasPendingChanges(), false, "pending clears after a successful save");
   });
 
   it("writes an explicit bridge UI save to the local UI cache", async () => {
