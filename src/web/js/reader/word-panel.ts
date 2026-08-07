@@ -414,9 +414,10 @@ async function runAiExplanation(
       (text) => {
         if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
         if (!output) return;
-        // Progressive render: plain text with line breaks while streaming,
-        // then the final formatted version below.
-        output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+        // Stream through the markdown renderer so bold/italic/lists are
+        // visible immediately and a stalled stream never leaves raw "**"
+        // markers on screen. formatAiExplanation escapes first.
+        output.innerHTML = formatAiExplanation(text);
       }
     );
     if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
