@@ -68,7 +68,7 @@ export function openPdfOcrCorrection(
         ${imageUrl ? `<figure class="pdf-correction-preview"><img src="${escapeAttribute(imageUrl)}" alt="${escapeAttribute(t("reader.pdfOcrPageAlt", { n: pageIndex + 1 }))}"></figure>` : ""}
         <label class="pdf-correction-field">
           <span>${escapeHtml(t(sentenceMode ? "reader.pdfCorrectionSentenceLabel" : "reader.pdfCorrectionLabel"))}</span>
-          <textarea rows="${sentenceMode ? 7 : 18}"></textarea>
+          <textarea spellcheck="false" rows="${sentenceMode ? 7 : 18}"></textarea>
         </label>
       </div>
       <p class="muted-copy pdf-correction-status" role="status" aria-live="polite"></p>
