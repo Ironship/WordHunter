@@ -210,12 +210,14 @@ fn merge_data_dir(
 ) -> Result<(), String> {
     let source_records = record_files::load_records(from)?;
     let target_records = record_files::load_records(to)?;
+    let full_keys = source_records.keys().cloned().collect::<std::collections::BTreeSet<_>>();
     let merged = record_files::merge_records(
         &BTreeMap::new(),
         source_records,
         target_records,
         device_id,
         record_files::now_millis(),
+        &full_keys,
     );
     record_files::write_records(to, &merged.records)?;
     media_assets::merge_book_assets_into(from, to, device_id)?;

@@ -4,15 +4,14 @@ import { STATE_SCHEMA_VERSION, STORAGE_KEY } from "./constants.js";
 
 /** Build a save payload from the raw state for bridge (Tauri) communication. */
 export function buildSavePayload(rawState: WhSaveStateInput): WhSavePayload {
-  const profileTexts = Object.values(rawState.profiles || {})
-    .flatMap((profile) => Array.isArray(profile?.customTexts) ? profile.customTexts : []);
+  const texts = collectTexts(rawState);
   const profiles = Object.fromEntries(Object.entries(rawState.profiles || {}).map(([lang, profile]) => {
     const { customTexts: _customTexts, ...withoutTexts } = profile || {};
     return [lang, toPlain(withoutTexts)];
   }));
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
-    texts: toPlain(profileTexts.length ? profileTexts : (rawState.customTexts || [])),
+    texts: toPlain(texts),
     prefs: {
       ...toPlain(rawState.preferences || {}),
       __discover: toPlain(discoverPayload(rawState.discover))
@@ -20,6 +19,71 @@ export function buildSavePayload(rawState: WhSaveStateInput): WhSavePayload {
     hiddenBooks: toPlain(rawState.hiddenBuiltInBooks || []),
     // Texts have their own durable store; do not serialize every book twice.
     vocab: profiles
+  };
+}
+
+function collectTexts(rawState: WhSaveStateInput): Array<Record<string, unknown>> {
+  const profileTexts = Object.values(rawState.profiles || {})
+    .flatMap((profile) => Array.isArray(profile?.customTexts) ? profile.customTexts : []);
+  return profileTexts.length ? profileTexts : (rawState.customTexts || []);
+}
+
+/**
+ * Complete list of durable record keys the frontend currently holds, in the
+ * backend's key format. Sent with every incremental (delta) save so the
+ * backend can tell "untouched" from "deleted" without receiving a full
+ * snapshot.
+ */
+export function buildFullKeys(rawState: WhSaveStateInput): string[] {
+  const keys: string[] = [];
+  for (const [lang, profile] of Object.entries(rawState.profiles || {})) {
+    const language = lang || "other";
+    keys.push(`profile:${language}`);
+    const current = profile as WhProfile | undefined;
+    for (const word of Object.keys(current?.vocab || {})) keys.push(`vocab:${language}:${word}`);
+    for (const book of current?.userBooks || []) {
+      if (book && typeof book.id === "string") keys.push(`book:${language}:${book.id}`);
+    }
+  }
+  for (const text of collectTexts(rawState)) {
+    if (text && typeof text === "object" && typeof text.id === "string") keys.push(`text:${text.id}`);
+  }
+  for (const key of Object.keys(buildSavePayload(rawState).prefs)) keys.push(`pref:${key}`);
+  for (const id of rawState.hiddenBuiltInBooks || []) {
+    if (typeof id === "string") keys.push(`hidden:${id}`);
+  }
+  return keys;
+}
+
+/**
+ * Incremental save payload: full prefs/hiddenBooks (small), the complete
+ * vocab profiles for languages with mutations, and texts only when they
+ * changed — plus fullKeys declaring every key still held. Saves ~99% of the
+ * payload size compared to a full snapshot on every autosave tick.
+ */
+export function buildDeltaSavePayload(
+  rawState: WhSaveStateInput,
+  dirtyVocabLangs: ReadonlySet<string>,
+  dirtyTexts: boolean
+): WhDeltaSavePayload {
+  const full = buildSavePayload(rawState);
+  const vocab: Record<string, WhRecord> = {};
+  for (const [lang, profile] of Object.entries(rawState.profiles || {})) {
+    if (!dirtyVocabLangs.has(lang)) continue;
+    const { customTexts: _customTexts, ...withoutTexts } = profile || {};
+    vocab[lang] = toPlain(withoutTexts) as WhRecord;
+  }
+  return {
+    schemaVersion: STATE_SCHEMA_VERSION,
+    delta: true,
+    fullKeys: buildFullKeys(rawState),
+    records: {
+      schemaVersion: STATE_SCHEMA_VERSION,
+      texts: dirtyTexts ? full.texts : [],
+      prefs: full.prefs,
+      hiddenBooks: full.hiddenBooks,
+      vocab
+    }
   };
 }
 
@@ -59,7 +123,9 @@ export async function saveWithRetry(body: string, maxRetries: number): Promise<W
       });
       if (response.ok) return await response.json().catch(() => ({ ok: true }));
       const detail = (await response.text()).trim();
-      throw new Error(detail || `HTTP ${response.status}`);
+      const error = new Error(detail || `HTTP ${response.status}`) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     } catch (e) {
       if (attempt === maxRetries) throw e;
       await new Promise(r => setTimeout(r, 200 * (attempt + 1)));
