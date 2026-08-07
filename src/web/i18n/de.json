@@ -9,7 +9,9 @@
     "description": "Word Hunter — lokaler Rust/Tauri-Reader, Vokabeltrainer und Offline-Übersetzer.",
     "jsError": "JS-Fehler: {msg} in {url}:{line}:{col}\n{stack}",
     "navAriaLabel": "Navigation",
-    "unhandledPromise": "Unbehandeltes Promise: {reason}"
+    "unhandledPromise": "Unbehandeltes Promise: {reason}",
+    "startupFailed": "Word Hunter konnte den Start nicht abschließen",
+    "retry": "Erneut versuchen"
   },
   "nav": {
     "library": "Bibliothek",
@@ -21,7 +23,19 @@
     "graphs": "Diagramme",
     "export": "Export",
     "settings": "Einstellungen",
-    "help": "Helfen"
+    "help": "Helfen",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "Archivieren",
     "unarchiveTitle": "Aus dem Archiv wiederherstellen",
     "untitled": "Ohne Titel",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Ihr eigener Text",
@@ -241,6 +258,9 @@
     "articleAria": "Artikel für {word}",
     "translateContext": "Satz übersetzen",
     "contextTranslationLabel": "Satz:",
+    "aiExplain": "Mit KI erklären",
+    "aiExplainNotConfigured": "KI-Erklärungen sind nicht konfiguriert. Aktiviere sie unter Einstellungen → KI-Erklärungen.",
+    "aiExplainError": "Die KI-Erklärung ist fehlgeschlagen. Prüfe Endpunkt und Modell unter Einstellungen → KI-Erklärungen.",
     "translationPlaceholder": "Geben Sie die Übersetzung ein...",
     "noteLabel": "Notiz",
     "notePlaceholder": "Persönliche Notiz...",
@@ -273,7 +293,14 @@
     "keySpace": "Leertaste",
     "keyPageUp": "Bild ↑",
     "keyPageDown": "Bild ↓",
-    "keyEnter": "Eingabe"
+    "keyEnter": "Eingabe",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "Ihre Änderungen an dieser Korrektur verwerfen?",
+    "wordNavPageStart": "Sie sind beim ersten Wort dieser Seite.",
+    "wordNavPageEnd": "Sie sind beim letzten Wort dieser Seite.",
+    "aiNoteMarker": "KI-Erklärung"
   },
   "vocab": {
     "eyebrow": "Deine Worte",
@@ -346,7 +373,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "{count} Karten",
-    "uploadOwnImage": "Eigenes Bild"
+    "uploadOwnImage": "Eigenes Bild",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "Dieses Wort und seinen Lernfortschritt löschen?",
+    "wordRequired": "Geben Sie zuerst das Wort ein."
   },
   "discover": {
     "eyebrow": "Online-Ressourcen",
@@ -405,7 +437,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Auf der Seite öffnen",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Profil und Lernen",
@@ -435,6 +470,7 @@
       "note": "Notiz",
       "image": "Bild",
       "context": "Beispiel- / Kontextsatz",
+      "ai": "KI-Erklärung",
       "copy": "Kopieren",
       "edit": "Bearbeiten",
       "remove": "Entfernen"
@@ -609,6 +645,18 @@
     "lmStudioEndpoint": "LM-Studio-Endpunkt",
     "lmStudioModel": "LM-Studio-Modell",
     "lmStudioModelPlaceholder": "z. B. local-model",
+    "aiEyebrow": "KI-Erklärungen",
+    "aiHeading": "KI-Erklärungen für Wörter und Wendungen",
+    "groupAi": "Sprachassistent",
+    "aiHint": "Erklärt das ausgewählte Wort oder die Wendung anhand des Satzes, in dem es vorkommt. Funktioniert mit jedem OpenAI-kompatiblen Server — lokal (LM Studio, llama.cpp, Ollama) oder remote (z. B. opencode.ai, OpenAI, DeepSeek).",
+    "aiExplanations": "KI-Erklärungen aktivieren",
+    "aiExplanationsHint": "Fügt dem Wortfenster eine Schaltfläche „Erklären“ hinzu. Der API-Schlüssel wird nur lokal gespeichert und nur an den von dir gewählten Endpunkt gesendet.",
+    "aiEndpoint": "Endpunkt (OpenAI-kompatibel)",
+    "aiModel": "Modell",
+    "aiModelPlaceholder": "z. B. deepseek-v4-flash",
+    "aiApiKey": "API-Schlüssel",
+    "aiApiKeyPlaceholder": "Optional für lokale Modelle",
+    "aiPanelItemShown": "„KI-Erklärung“ wurde dem Wortfenster hinzugefügt — du kannst es unter „Ausgewählte Wortfenster-Elemente“ sortieren.",
     "argosAsDict": "Wörterbuch-Button öffnet Übersetzer",
     "argosAsDictHint": "Die Wörterbuch-Taste (M) öffnet den eingebauten Offline-Übersetzer statt der Wörterbuch-URL.",
     "argosDownloadTitle": "Offline-Modelle herunterladen",
@@ -624,7 +672,18 @@
     "flashcardHeading": "Wiederholungen und Algorithmus",
     "translatorEyebrow": "Übersetzer & Wörterbuch",
     "translatorHeading": "Übersetzungen und Links",
-    "groupLocalData": "Daten auf diesem Gerät"
+    "groupLocalData": "Daten auf diesem Gerät",
+    "confirmResetMessage": "Dies setzt Design, Schriften, Wörterbuchadresse und API-Schlüssel auf die Standardwerte zurück. Dies kann nicht rückgängig gemacht werden.",
+    "aiEffort": "Denkaufwand (Effort)",
+    "aiEffortHint": "Wie viel Aufwand das Modell ins Denken stecken soll. Leer = nicht senden — der Endpunkt nutzt seinen eigenen Standard.",
+    "aiEffortAuto": "Automatisch (nicht senden)",
+    "aiEffortMinimal": "Minimal",
+    "aiEffortLow": "Niedrig",
+    "aiEffortMedium": "Mittel",
+    "aiEffortHigh": "Hoch",
+    "aiEffortMax": "Maximal",
+    "aiAutoTrigger": "Neue Wörter automatisch erklären",
+    "aiAutoTriggerHint": "Beim Öffnen eines Worts ohne KI-Erklärung wird die Erklärung automatisch abgerufen und an die Notiz des Worts angehängt."
   },
   "help": {
     "eyebrow": "Helfen",
@@ -665,8 +724,8 @@
     "contactIssues": "<strong>Fehlerberichte und Ideen:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Lizenz:</strong> AGPL-3.0-or-later. Geschlossene kommerzielle Nutzung abgeleiteten Codes erfordert eine separate schriftliche Lizenz. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 ersetzt die Hintergrundsynchronisierung durch zuverlässige ZIP-Pakete mit einzelnen YAML-Datensätzen und vollständigen Buchbildern.</strong>",
-    "version": "<strong>Version:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 fügt kontextbezogene KI-Erklärungen für Wörter und Ausdrücke hinzu: gestreamte Antworten von OpenAI-kompatiblen Diensten, einstellbare Denkaufwand-Stufen, automatische Erklärungen für neue Wörter, optionaler Bildkontext für gescannte Seiten, ein lokaler Cache, eine Schaltfläche im Übersetzer sowie konfigurierbare Angaben für Endpunkt, Modell und API-Schlüssel. Außerdem verhindern wir, dass doppelte dauerhafte Speichervorgänge das Beenden der Anwendung blockieren.</strong>",
+    "version": "<strong>Version:</strong> Word Hunter 1.0.10",
     "focusHint1": "Drücke <kbd>Strg</kbd>+<kbd>Eingabe</kbd>, um den Text zu betreten oder zurückzukehren",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> um Wörter zu navigieren",
     "focusHint3": "<kbd>Strg</kbd>+<kbd>Leertaste</kbd> Satz vorlesen",
@@ -869,7 +928,10 @@
     "emptyFields": "Titel und Text ausfüllen.",
     "importing": "Importiere...",
     "exportReadyCount": "{n} Wörter exportiert.",
-    "addedManyWithSkipped": "{added} Bücher hinzugefügt. {skipped} übersprungen (bereits in der Bibliothek)."
+    "addedManyWithSkipped": "{added} Bücher hinzugefügt. {skipped} übersprungen (bereits in der Bibliothek).",
+    "wordPanelItemHidden": "Dieses Element ist in den Einstellungen des Wortpanels ausgeblendet.",
+    "vocabExportFailed": "Vokabeln konnten nicht exportiert werden.",
+    "autoTranslateUnavailable": "Automatische Übersetzung ist vorübergehend nicht verfügbar. Sie wird automatisch erneut versucht."
   },
   "languages": {
     "pl": "Polnisch",
@@ -954,7 +1016,9 @@
     "targetPlaceholder": "Die Übersetzung erscheint hier...",
     "footer": "Lokal vom Offline-Übersetzer betrieben",
     "copyBtn": "Übersetzung kopieren",
-    "copied": "Kopiert!"
+    "copied": "Kopiert!",
+    "copy": "Kopieren",
+    "copyDone": "In die Zwischenablage kopiert."
   },
   "graphs": {
     "eyebrow": "Statistiken",
@@ -1020,5 +1084,16 @@
     "openReleases": "Was ist neu",
     "disableUpdates": "Nicht mehr erinnern",
     "dismiss": "Später"
+  },
+  "dialog": {
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "confirmTitle": "Sind Sie sicher?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Sitzung abgeschlossen",
+    "sessionSummaryCount": "Karten wiederholt: {n}",
+    "sessionSummaryAccuracy": "Erinnert: {pct}%",
+    "sessionSummaryDone": "Fertig"
   }
 }

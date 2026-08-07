@@ -9,7 +9,9 @@
     "description": "Word Hunter — lector local Rust/Tauri, entrenador de vocabulario y traductor sin conexión.",
     "jsError": "Error JS: {msg} en {url}:{line}:{col}\n{stack}",
     "navAriaLabel": "Navegación",
-    "unhandledPromise": "Promise no manejada: {reason}"
+    "unhandledPromise": "Promise no manejada: {reason}",
+    "startupFailed": "Word Hunter no pudo completar el inicio",
+    "retry": "Reintentar"
   },
   "nav": {
     "library": "Biblioteca",
@@ -21,7 +23,19 @@
     "graphs": "Gráficos",
     "export": "Exportar",
     "settings": "Ajustes",
-    "help": "Ayuda"
+    "help": "Ayuda",
+    "shortcut": {
+      "library": "Alt+B",
+      "reader": "Alt+R",
+      "translator": "Alt+T",
+      "discover": "Alt+D",
+      "vocabulary": "Alt+V",
+      "flashcards": "Alt+F",
+      "graphs": "Alt+G",
+      "export": "Alt+Y",
+      "settings": "Alt+S",
+      "help": "Alt+?"
+    }
   },
   "topbar": {
     "known": "✓ {n}",
@@ -98,7 +112,10 @@
     "archiveTitle": "Archivar",
     "unarchiveTitle": "Restaurar desde el archivo",
     "untitled": "Sin título",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "import": {
     "eyebrow": "Tu propio texto",
@@ -241,6 +258,9 @@
     "articleAria": "Artículo de {word}",
     "translateContext": "Traducir frase",
     "contextTranslationLabel": "Frase:",
+    "aiExplain": "Explicar con IA",
+    "aiExplainNotConfigured": "Las explicaciones con IA no están configuradas. Actívalas en Ajustes → Explicaciones con IA.",
+    "aiExplainError": "La explicación con IA falló. Comprueba el endpoint y el modelo en Ajustes → Explicaciones con IA.",
     "translationPlaceholder": "Introduzca traducción...",
     "noteLabel": "Nota",
     "notePlaceholder": "Nota personal...",
@@ -273,7 +293,14 @@
     "keySpace": "Espacio",
     "keyPageUp": "Re Pág",
     "keyPageDown": "Av Pág",
-    "keyEnter": "Intro"
+    "keyEnter": "Intro",
+    "shortcut": {
+      "textSelect": "Ctrl+B"
+    },
+    "pdfCorrectionDiscard": "¿Descartar los cambios de esta corrección?",
+    "wordNavPageStart": "Estás en la primera palabra de esta página.",
+    "wordNavPageEnd": "Estás en la última palabra de esta página.",
+    "aiNoteMarker": "Explicación IA"
   },
   "vocab": {
     "eyebrow": "tus palabras",
@@ -346,7 +373,12 @@
     "fsrsMeta": "FSRS · S {stability} · D {difficulty}",
     "sm2Meta": "SM-2 · EF {efactor}",
     "cardCount": "{count} tarjetas",
-    "uploadOwnImage": "Imagen propia"
+    "uploadOwnImage": "Imagen propia",
+    "shortcut": {
+      "search": "/"
+    },
+    "confirmDeleteWord": "¿Eliminar esta palabra y su progreso de aprendizaje?",
+    "wordRequired": "Escribe primero la palabra."
   },
   "discover": {
     "eyebrow": "Recursos en línea",
@@ -405,7 +437,10 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "openOnSite": "Abrir en el sitio",
-    "sourceWikisource": "Wikisource"
+    "sourceWikisource": "Wikisource",
+    "shortcut": {
+      "search": "/"
+    }
   },
   "settings": {
     "profileEyebrow": "Perfil y aprendizaje",
@@ -435,6 +470,7 @@
       "note": "Nota",
       "image": "Imagen",
       "context": "Frase de ejemplo / contexto",
+      "ai": "Explicar con IA",
       "copy": "Copiar",
       "edit": "Editar",
       "remove": "Eliminar"
@@ -609,6 +645,18 @@
     "lmStudioEndpoint": "Endpoint de LM Studio",
     "lmStudioModel": "Modelo de LM Studio",
     "lmStudioModelPlaceholder": "p. ej. local-model",
+    "aiEyebrow": "Explicaciones con IA",
+    "aiHeading": "Explicaciones de palabras y frases con IA",
+    "groupAi": "Asistente de idiomas",
+    "aiHint": "Explica la palabra o frase seleccionada según la oración en la que aparece. Funciona con cualquier servidor compatible con la API de OpenAI — local (LM Studio, llama.cpp, Ollama) o remoto (p. ej. opencode.ai, OpenAI, DeepSeek).",
+    "aiExplanations": "Activar explicaciones con IA",
+    "aiExplanationsHint": "Añade un botón «Explicar» al panel de la palabra. La clave de API se guarda localmente y solo se envía al endpoint que elijas.",
+    "aiEndpoint": "Endpoint (compatible con OpenAI)",
+    "aiModel": "Modelo",
+    "aiModelPlaceholder": "p. ej. deepseek-v4-flash",
+    "aiApiKey": "Clave de API",
+    "aiApiKeyPlaceholder": "Opcional para modelos locales",
+    "aiPanelItemShown": "«Explicar con IA» se añadió al panel de la palabra; puedes reordenarlo en Elementos del panel de palabra seleccionada.",
     "argosAsDict": "El botón de diccionario abre el traductor",
     "argosAsDictHint": "El botón de diccionario (M) abre el traductor offline integrado en lugar de la URL del diccionario.",
     "argosDownloadTitle": "Descargar modelos offline",
@@ -624,7 +672,18 @@
     "flashcardHeading": "Repasos y algoritmo",
     "translatorEyebrow": "Traductor y Diccionario",
     "translatorHeading": "Traducciones y enlaces",
-    "groupLocalData": "Datos en este dispositivo"
+    "groupLocalData": "Datos en este dispositivo",
+    "confirmResetMessage": "Esto restablece el tema, las fuentes, la dirección del diccionario y las claves API a sus valores predeterminados. Esta acción no se puede deshacer.",
+    "aiEffort": "Esfuerzo de razonamiento",
+    "aiEffortHint": "Cuánto esfuerzo debe poner el modelo en razonar. Vacío = no enviar — el servidor usará su propio nivel por defecto.",
+    "aiEffortAuto": "Automático (no enviar)",
+    "aiEffortMinimal": "Mínimo",
+    "aiEffortLow": "Bajo",
+    "aiEffortMedium": "Medio",
+    "aiEffortHigh": "Alto",
+    "aiEffortMax": "Máximo",
+    "aiAutoTrigger": "Explicar palabras nuevas automáticamente",
+    "aiAutoTriggerHint": "Al abrir una palabra sin explicación de IA, la explicación se obtiene automáticamente y se añade a la nota de la palabra."
   },
   "help": {
     "eyebrow": "Ayuda",
@@ -665,8 +724,8 @@
     "contactIssues": "<strong>Errores e ideas:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contacto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencia:</strong> AGPL-3.0-or-later. El uso comercial cerrado de código derivado requiere una licencia escrita separada. Detalles: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.9 sustituye la sincronización en segundo plano por paquetes ZIP fiables con registros YAML individuales e imágenes completas de los libros.</strong>",
-    "version": "<strong>Versión:</strong> Word Hunter 1.0.9",
+    "whatsNew": "<strong>Word Hunter 1.0.10 añade explicaciones contextuales con IA para palabras y frases: respuestas en streaming desde servicios compatibles con OpenAI, niveles de esfuerzo de razonamiento, explicaciones automáticas para palabras nuevas, contexto visual opcional para páginas escaneadas, caché local, un botón en el traductor y configuración del endpoint, modelo y clave API. También evita que los guardados duraderos duplicados bloqueen el cierre de la aplicación.</strong>",
+    "version": "<strong>Versión:</strong> Word Hunter 1.0.10",
     "focusHint1": "Pulsa <kbd>Ctrl</kbd>+<kbd>Enter</kbd> para entrar o volver al texto",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> para navegar palabras",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espacio</kbd> leer oración",
@@ -869,7 +928,10 @@
     "emptyFields": "Rellena el título y el texto.",
     "importing": "Importando...",
     "exportReadyCount": "{n} palabras exportadas.",
-    "addedManyWithSkipped": "{added} libros añadidos. {skipped} omitidos (ya en la biblioteca)."
+    "addedManyWithSkipped": "{added} libros añadidos. {skipped} omitidos (ya en la biblioteca).",
+    "wordPanelItemHidden": "Este elemento está oculto en los ajustes del panel de palabras.",
+    "vocabExportFailed": "No se pudo exportar el vocabulario.",
+    "autoTranslateUnavailable": "La traducción automática no está disponible temporalmente. Se reintentará automáticamente."
   },
   "languages": {
     "pl": "Polaco",
@@ -954,7 +1016,9 @@
     "targetPlaceholder": "La traducción aparecerá aquí...",
     "footer": "Ejecutado localmente por el traductor offline",
     "copyBtn": "Copiar traducción",
-    "copied": "¡Copiado!"
+    "copied": "¡Copiado!",
+    "copy": "Copiar",
+    "copyDone": "Copiado al portapapeles."
   },
   "graphs": {
     "eyebrow": "Estadísticas",
@@ -1020,5 +1084,16 @@
     "openReleases": "Ver novedades",
     "disableUpdates": "No recordar más",
     "dismiss": "Más tarde"
+  },
+  "dialog": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "confirmTitle": "¿Estás seguro?"
+  },
+  "review": {
+    "sessionSummaryTitle": "Sesión completada",
+    "sessionSummaryCount": "Tarjetas repasadas: {n}",
+    "sessionSummaryAccuracy": "Recordadas: {pct}%",
+    "sessionSummaryDone": "Hecho"
   }
 }

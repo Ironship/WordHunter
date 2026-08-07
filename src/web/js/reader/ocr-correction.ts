@@ -1,4 +1,5 @@
 import { updatePdfOcrPageText } from "../book-actions/custom-text.js";
+import { showConfirmDialog } from "../dialog-backdrop.js";
 import { t as rawT } from "../i18n.js";
 import { escapeAttribute, escapeHtml } from "../utils.js";
 import { effectivePdfPageText, findPdfSentenceRange, replacePdfTextRange } from "./pdf-page-text.js";
@@ -87,6 +88,7 @@ export function openPdfOcrCorrection(
   textarea.value = sentenceMode
     ? sourcePageText.slice(sentenceRange!.start, sentenceRange!.end)
     : sourcePageText;
+  const initialValue = textarea.value;
 
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -100,9 +102,18 @@ export function openPdfOcrCorrection(
       resolve(saved);
     };
     cancel.addEventListener("click", () => finish(false));
-    dialog.addEventListener("cancel", (event) => {
+    dialog.addEventListener("cancel", async (event) => {
       event.preventDefault();
       if (saving) return;
+      if (textarea.value !== initialValue) {
+        const ok = await showConfirmDialog({
+          title: t("dialog.confirmTitle"),
+          message: t("reader.pdfCorrectionDiscard"),
+          confirmLabel: t("unsavedChanges.discard"),
+          danger: true
+        });
+        if (!ok) return;
+      }
       finish(false);
     });
     form.addEventListener("submit", async (event) => {

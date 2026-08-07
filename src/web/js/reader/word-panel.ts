@@ -8,8 +8,10 @@ import { icon, statusIcon } from "../icons.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constants.js";
 import { t } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
+import { updateWordField } from "../vocab-actions.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
-import { getReaderSelectionText } from "./selection.js";
+import { getReaderSelectionText, getReaderWordTokens } from "./selection.js";
+import { getSentenceForWord } from "../tokenizer_v2.js";
 import {
   articleOptionsForLanguage,
   getSmartSuggestion,
@@ -19,7 +21,16 @@ import {
 import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
-import { canUseTranslationProvider, translateText } from "../translation-provider.js";
+import { canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
+import {
+  aiExplanationConfigured,
+  aiExplanationLanguagePair,
+  collectPdfOcrImageContext,
+  explainWord,
+  formatAiExplanation,
+  hasWordExplanation,
+  markWordExplained
+} from "../ai-explainer.js";
 import { beginElementBusy } from "../loading.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
@@ -61,6 +72,16 @@ const WORD_PANEL_STATUS_CLASSES = STATUS_ORDER.map((status) => `word-panel-statu
 function wordPanelElement(): HTMLElement {
   return els.wordPanel as HTMLElement;
 }
+
+// Words with an auto-triggered AI explanation currently in flight, so a panel
+// re-render cannot fire a duplicate request for the same word.
+const aiExplainInFlight = new Set<string>();
+// Generation counter for AI explanations only. Unlike the shared
+// contextTranslationGeneration it is NOT bumped by panel re-renders, so an
+// in-flight explanation survives e.g. a status click (the output element is
+// replaced by the re-render, but the note append + cache still complete).
+// Switching the selected word is still caught by `state.selectedWord !== word`.
+let aiExplainGeneration = 0;
 
 function applyWordPanelStatus(status: VocabStatus | null): void {
   const panel = wordPanelElement();
@@ -232,7 +253,8 @@ function bindContextTranslation(word: string, context: string): void {
     output.textContent = t("translator.translating");
     try {
       const pair = resolveProfileTranslationPair(state.preferences);
-      const result = await translateText(
+      // Retries transient endpoint failures internally (once, after a short delay).
+      const result = await translateWithRetry(
         context,
         pair.fromCode,
         pair.toCode
@@ -247,6 +269,204 @@ function bindContextTranslation(word: string, context: string): void {
       releaseBusy();
     }
   });
+}
+
+/** Context for the AI explainer: the saved example sentence, or for a
+ * multi-word selection the sentence that contains the selection anchor. */
+function aiExplainContext(word: string, context: string, isTransientRange: boolean): string {
+  if (context) return context;
+  if (!isTransientRange) return "";
+  const current = getTextById(state.currentTextId);
+  const bookText = current?.text || "";
+  if (bookText) {
+    const tokens = getReaderWordTokens();
+    const anchorIndex = Number(state.readerSelectionRange?.anchor);
+    const anchorToken = Number.isInteger(anchorIndex) && anchorIndex >= 0 ? tokens[anchorIndex] : null;
+    const charOffset = anchorToken ? Number(anchorToken.dataset.charOffset) : null;
+    const firstWord = anchorToken?.dataset.displayWord || word;
+    const sentence = getSentenceForWord(
+      bookText,
+      firstWord,
+      effectiveLearningLanguage(state.preferences),
+      state.preferences.wordDetectionAlgorithm || "modern",
+      null,
+      Number.isInteger(charOffset) ? charOffset : null
+    );
+    if (sentence) return sentence;
+  }
+  return getReaderSelectionText();
+}
+
+/**
+ * Append a finished AI explanation to the word's note so it persists with the
+ * word instead of living only in the ephemeral panel output.
+ *
+ * Safety properties (from the data-loss audit):
+ * - Never runs for transient phrase ranges (`isTransientRange`) — those have
+ *   no dictionary entry, and creating one just to store the note would
+ *   pollute the vocabulary with a sparse record.
+ * - Any pending debounced field save is flushed FIRST (the global debouncer
+ *   keeps a single slot — otherwise a pending translation/note save could be
+ *   clobbered by this write, or clobber it), then the note is written through
+ *   the canonical `updateWordField` → `saveState` path and the visible
+ *   textarea is synced. No synthetic `input` event is dispatched.
+ * - Dedupe: skipped when the note already ENDS with this exact block, so a
+ *   repeat click (cache hit) never duplicates, while genuinely new
+ *   explanations for other contexts still accumulate.
+ */
+function appendAiExplanationToNote(word: string, explanation: string): void {
+  const trimmed = String(explanation || "").trim();
+  if (!trimmed) return;
+  const field = document.querySelector<HTMLTextAreaElement>(
+    `#word-panel [data-word-field="note"][data-word="${CSS.escape(word)}"]`
+  );
+  const current = field ? field.value : getOrCreateEntry(word).note || "";
+  const trimmedEscaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // The marker line is localized; the dedupe must also survive UI language
+  // switches AND the user appending their own text after the marker block —
+  // so any "<label>:\n<text>" occurrence counts as an existing append.
+  if (new RegExp(`(?:^|\\n)[^\\n]+:\\n${trimmedEscaped}`).test(current)) return;
+  const marker = `${t("reader.aiNoteMarker")}:\n${trimmed}`;
+  const next = current ? `${current}\n\n${marker}` : marker;
+  // Flush pending debounced saves for THIS word before overwriting. A naive
+  // flushWordFieldSave() could still clobber the note afterwards: the pending
+  // slot may hold an OLD value for this word (stale slot from a previous
+  // render), and a pending slot for a DIFFERENT word is preserved because we
+  // overwrite only the (word, "note") slot we are about to flush.
+  const pendingApi = window as Window & {
+    flushWordFieldSave?: () => void;
+    scheduleWordFieldSave?: (word: string, field: string, value: string) => void;
+  };
+  if (pendingApi.scheduleWordFieldSave && field) {
+    // Re-write the pending note slot from the live textarea (current + marker
+    // is what we are about to persist), then flush — one canonical write.
+    pendingApi.scheduleWordFieldSave(word, "note", next);
+    pendingApi.flushWordFieldSave?.();
+  } else {
+    pendingApi.flushWordFieldSave?.();
+  }
+  if (field) field.value = next;
+  updateWordField(word, "note", next);
+}
+
+function bindAiExplain(word: string, context: string, isTransientRange: boolean): void {
+  const panel = wordPanelElement();
+  const button = panel.querySelector<HTMLButtonElement>("[data-ai-explain]");
+  const output = panel.querySelector<HTMLElement>("[data-ai-explanation]");
+  if (button) {
+    // Bind on the button alone: if future markup ever renders the AI item
+    // without the output box, maybeAutoTriggerAiExplain's button.click() must
+    // still run the flow (otherwise the word would sit in aiExplainInFlight
+    // forever with nothing consuming it).
+    button.addEventListener("click", (event: MouseEvent) => {
+      event.stopPropagation();
+      void runAiExplanation(word, context, isTransientRange, button, output);
+    });
+  }
+  maybeAutoTriggerAiExplain(word, context, isTransientRange, button, output);
+}
+
+/**
+ * Run the full AI explanation flow. `button`/`output` may be null when the
+ * panel does not render the AI item (auto-trigger with a hidden item): the
+ * explanation is then only persisted to the word note.
+ */
+async function runAiExplanation(
+  word: string,
+  context: string,
+  isTransientRange: boolean,
+  button: HTMLButtonElement | null,
+  output: HTMLElement | null
+): Promise<void> {
+  if (!aiExplanationConfigured()) {
+    if (output) {
+      output.hidden = false;
+      output.textContent = t("reader.aiExplainNotConfigured");
+    }
+    return;
+  }
+  const generation = ++aiExplainGeneration;
+  const releaseBusy = button ? beginElementBusy(button, { disable: true }) : () => {};
+  if (output) {
+    output.hidden = false;
+    output.textContent = t("translator.translating");
+  }
+  try {
+    let imageContext: Awaited<ReturnType<typeof collectPdfOcrImageContext>> = null;
+    if (!isTransientRange) {
+      try {
+        imageContext = await collectPdfOcrImageContext();
+      } catch (error) {
+        console.warn("AI explanation: no page image context", error);
+      }
+    }
+    const pair = aiExplanationLanguagePair();
+    const effectiveContext = imageContext?.context || aiExplainContext(word, context, isTransientRange);
+    const result = await explainWord(
+      {
+        word,
+        context: effectiveContext,
+        from: pair.from,
+        to: pair.to,
+        image: imageContext?.image,
+        rect: imageContext?.rect
+      },
+      (text) => {
+        if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
+        if (!output) return;
+        // Progressive render: plain text with line breaks while streaming,
+        // then the final formatted version below.
+        output.innerHTML = escapeHtml(text).replace(/\n/g, "<br>");
+      }
+    );
+    if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
+    if (output) output.innerHTML = formatAiExplanation(result.explanation);
+    if (!isTransientRange) {
+      appendAiExplanationToNote(word, result.explanation);
+      markWordExplained(word);
+    }
+  } catch (error) {
+    if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
+    console.warn("AI explanation failed", error);
+    if (output) output.textContent = t("reader.aiExplainError");
+  } finally {
+    releaseBusy();
+    // Release the in-flight slot only when no newer run has started meanwhile
+    // (a superseded run's finally must not clear the guard while the fresh
+    // run is still streaming — that would allow a third request to start).
+    if (generation === aiExplainGeneration) aiExplainInFlight.delete(word);
+  }
+}
+
+/**
+ * Auto-trigger: when the setting is enabled, a word that has never received
+ * an AI explanation gets one automatically the moment its panel opens. The
+ * regular flow is reused (streaming, cache, note append); when the AI panel
+ * item is hidden the explanation is still fetched and persisted to the note.
+ * Transient phrase selections never auto-trigger (no dictionary entry).
+ */
+function maybeAutoTriggerAiExplain(
+  word: string,
+  context: string,
+  isTransientRange: boolean,
+  button: HTMLButtonElement | null,
+  output: HTMLElement | null
+): void {
+  if (isTransientRange) return;
+  const preferences: Partial<WhPreferences> = state.preferences || {};
+  if (preferences.aiExplanationAutoTrigger !== true) return;
+  if (!aiExplanationConfigured()) return;
+  if (hasWordExplanation(word)) return;
+  if (aiExplainInFlight.has(word)) return;
+  aiExplainInFlight.add(word);
+  if (button && !button.disabled) {
+    button.click();
+    return;
+  }
+  // No visible AI item (or a disabled button): run headless — the note still
+  // gets the explanation, and a visible output box would have been replaced
+  // by the next render anyway.
+  void runAiExplanation(word, context, isTransientRange, null, output);
 }
 
 function wordPanelItemLabel(id: WhSelectedWordPanelItemId): string {
@@ -362,6 +582,16 @@ function renderContentItem(
       </div>
     `;
   }
+  if (id === "ai") {
+    return `
+      <div class="word-panel-item" data-word-panel-item="ai">
+        <button class="secondary-button button-xs ai-explain-button" type="button" data-ai-explain>
+          ${icon("sparkles", 14)} ${escapeHtml(t("reader.aiExplain"))}
+        </button>
+        <p class="ai-explanation" data-ai-explanation role="status" aria-live="polite" hidden></p>
+      </div>
+    `;
+  }
   return "";
 }
 
@@ -454,6 +684,7 @@ export function renderWordPanel(currentText: WhText): void {
   `;
   bindInTextReviewControls(currentText, word, entry, hasVisibleSmartSuggestion);
   bindContextTranslation(word, context);
+  bindAiExplain(word, context, isTransientRange);
 }
 
 export function updateWordStatusInReader(word: string, status: VocabStatus, options: UpdateWordStatusOptions = {}): void {
