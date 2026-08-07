@@ -18,6 +18,6 @@ pkgbase = wordhunter-bin
 	noextract = WordHunter-1.0.10-x86_64.AppImage
 	options = !strip
 	source_x86_64 = WordHunter-1.0.10-x86_64.AppImage::https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-x86_64.AppImage
-	sha256sums_x86_64 = 6b4a71313d7d30de16740a1c20718e40ac5cc9485652dedb72687196a2c0bfb8
+	sha256sums_x86_64 = 309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523
 
 pkgname = wordhunter-bin

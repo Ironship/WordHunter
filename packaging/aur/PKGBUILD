@@ -25,7 +25,7 @@ _appimage="WordHunter-${pkgver}-x86_64.AppImage"
 source_x86_64=(
   "${_appimage}::https://github.com/Ironship/WordHunter/releases/download/WordHunter${pkgver}/${_appimage}"
 )
-sha256sums_x86_64=('6b4a71313d7d30de16740a1c20718e40ac5cc9485652dedb72687196a2c0bfb8')
+sha256sums_x86_64=('309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523')
 noextract=("${_appimage}")
 
 prepare() {
