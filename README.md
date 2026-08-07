@@ -30,26 +30,30 @@ data.
 ## Download and install
 
 The recommended version for new users is
-**[Word Hunter 1.0.9](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9)**.
+**[Word Hunter 1.0.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.10)**.
 Choose your platform below. All direct downloads come from the official GitHub
 Release.
 
-Version 1.0.9 replaces background folder synchronization with explicit,
-reviewable ZIP transfer packages and brings reliability, security, and UX
-fixes to desktop and Android. Existing vocabulary migrates automatically.
+Version 1.0.10 adds contextual AI explanations for words and phrases
+(streamed from any OpenAI-compatible endpoint, with optional automatic
+explanations and per-word notes), incremental saves that write only the
+changed records instead of a full snapshot, and UI fixes including disabled
+spellcheck in foreign-language fields. Existing vocabulary migrates
+automatically.
+
 | Platform | Recommended download | Other supported option |
 | --- | --- | --- |
-| **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.portable.zip) |
-| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/Word.Hunter.Pocket.debug.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
-| **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter-1.0.9-aarch64.dmg) | Intel Macs and iOS are not supported. |
-| **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/WordHunter-1.0.9-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.9/word-hunter_1.0.9_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
+| **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.portable.zip) |
+| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Pocket.debug.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
+| **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-aarch64.dmg) | Intel Macs and iOS are not supported. |
+| **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/word-hunter_1.0.10_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
 
 > [!NOTE]
 > **F-Droid:** Word Hunter Pocket is not available on F-Droid yet, but a
 > source-built packaging request is open at
 > [fdroid/rfp#4109 (app ID `com.wordhunter.pocket`)](https://gitlab.com/fdroid/rfp/-/work_items/4109) —
-> requested 2026-07-12, upstream status last updated 2026-08-03 (stable 1.0.9,
-> Android versionCode 100000909). Track the request there; the direct APK
+> requested 2026-07-12, upstream status last updated 2026-08-03 (stable 1.0.10,
+> Android versionCode 101001099). Track the request there; the direct APK
 > download above remains the quickest way to install meanwhile.
 
 <details>
@@ -69,11 +73,11 @@ brew install --cask Ironship/wordhunter/wordhunter
 flatpak install --user ./WordHunter.flatpak
 
 # Linux — run a downloaded AppImage
-chmod +x WordHunter-1.0.9-x86_64.AppImage
-./WordHunter-1.0.9-x86_64.AppImage
+chmod +x WordHunter-1.0.10-x86_64.AppImage
+./WordHunter-1.0.10-x86_64.AppImage
 
 # Debian/Ubuntu — install the downloaded DEB
-sudo apt install ./word-hunter_1.0.9_amd64.deb
+sudo apt install ./word-hunter_1.0.10_amd64.deb
 ```
 
 </details>
@@ -125,15 +129,15 @@ You can start locally and move data later with a ZIP transfer package from the
 
 ## Release status
 
-- **Stable:** [1.0.9](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.9)
-- **Prerelease:** none. Version 1.0.9 is the current stable release.
+- **Stable:** [1.0.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.10)
+- **Prerelease:** none. Version 1.0.10 is the current stable release.
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
 
 - Versions older than `1.0.0` predate the current storage compatibility
   baseline. Export a backup before upgrading.
-- Version 1.0.9 no longer reads or writes old Syncthing folders. To move
+- Version 1.0.10 no longer reads or writes old Syncthing folders. To move
   data, export a ZIP transfer package on the source device and import it on
   the target.
 - If Android reports an incompatible signature when moving from an early 1.0.7
