@@ -75,6 +75,15 @@ export function saveState(): Promise<WhBridgeSaveResult | void> {
   return autosave.saveState();
 }
 
+/**
+ * True when the user changed durable state since the last successful save
+ * (or a save is queued/in flight). Used to avoid clobbering fresh local
+ * edits with a late-arriving backend snapshot (slow start on Android).
+ */
+export function hasPendingLocalChanges(): boolean {
+  return autosave.hasPendingChanges();
+}
+
 export function saveUiState(): Promise<WhBridgeSaveResult | void> {
   if (window.__qtBridge) {
     if (uiWritesPaused > 0) {
