@@ -6,7 +6,7 @@ import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale } from "./js/i18n.js";
-import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, hasPendingLocalChanges, saveState, state } from "./js/state.js";
+import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
@@ -152,14 +152,8 @@ function startBridgeStateLoad(): void {
   window.__bridgeStatePromise = promise;
   void promise
     .then((snapshot) => {
-      delete window.__bridgeStatePromise;
-      // On Android (and any slow start) the snapshot arrives asynchronously,
-      // after the user may already have edited preferences, words, or texts.
-      // Never clobber fresh local changes with the older backend snapshot:
-      // autosave persists the user's edits on top of the backend state, and
-      // the snapshot will be applied on the next clean start instead.
-      if (hasPendingLocalChanges()) return;
       applyBridgeSnapshotToState(snapshot);
+      delete window.__bridgeStatePromise;
     })
     .catch((error) => {
       reportClientError(`Store load failed: ${error?.stack || error}`, error);

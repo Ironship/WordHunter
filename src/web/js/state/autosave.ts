@@ -122,6 +122,22 @@ export function createAutosave(getState: () => WhAppState) {
         return Promise.reject(error);
       }
     }
+    if (window.__bridgeState === null) {
+      // The backend snapshot has not been applied yet: on Android it is
+      // fetched asynchronously after boot. Sending a delta/full payload now
+      // would tombstone the store with an effectively empty state. Buffer
+      // locally; once the snapshot lands, markDurableStateReplaced flags
+      // everything dirty and the next save pushes the full state through.
+      // (In tests __bridgeState is undefined, which deliberately bypasses
+      // this guard; at runtime the bootstrap always sets it to null first.)
+      try {
+        saveToLocalStorage(current);
+        lastSaveSucceededAt = Date.now();
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }
     saveInFlight = true;
     saveStartedMutationSequence = mutationSequence;
     const markSucceeded = (result: SaveResult): SaveResult => {
@@ -349,7 +365,8 @@ export function createAutosave(getState: () => WhAppState) {
       if (!hasPendingChanges()) return;
       const current = rawState();
       syncProfilePreferences();
-      if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
+      if (window.__qtBridge && window.__bridgeState === null) saveToLocalStorage(current);
+      else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
     },
     hasPendingChanges,
