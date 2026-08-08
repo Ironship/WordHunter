@@ -37,50 +37,8 @@ export function getDefaultDictionaryUrl(lang: string): string {
   return urls[lang] || urls.en;
 }
 
-export function createDefaultState(): WhAppState {
-  const defaultProfile: WhProfile = {
-    vocab: {},
-    customTexts: [],
-    userBooks: [],
-    hiddenBuiltInBooks: [],
-    archivedBookIds: [],
-    preferences: { dictionaryUrl: getDefaultDictionaryUrl("de"), dictionaryMode: "internal" }
-  };
+export function createDefaultPreferences(): WhPreferences {
   return {
-    schemaVersion: STATE_SCHEMA_VERSION,
-    currentView: "library",
-    currentTextId: null,
-    selectedWord: null,
-    selectedWordIndex: null,
-    readerSelectionRange: null,
-    customTexts: defaultProfile.customTexts,
-    userBooks: defaultProfile.userBooks,
-    hiddenBuiltInBooks: defaultProfile.hiddenBuiltInBooks,
-    archivedBookIds: defaultProfile.archivedBookIds,
-    vocab: defaultProfile.vocab,
-    profiles: { de: defaultProfile },
-    reviewIndex: 0,
-    readerFontSize: 18,
-    readerPdfZoom: 1,
-    readerPdfViewMode: "overlay",
-    readerPage: 1,
-    readerPages: {},
-    readerScrolls: {},
-    readerScrollsPerPage: {},
-    dataDirectory: "",
-    recoveryStatus: null,
-    filters: {
-      libraryQuery: "",
-      libraryLevel: "all",
-      librarySort: "title",
-      librarySortReverse: false,
-      libraryArchive: "active",
-      vocabQuery: "",
-      vocabStatuses: ["learning", "known"],
-      vocabTextId: "all"
-    },
-    discover: { query: "", source: "gutenberg", sort: "popular", level: "", page: 1 },
-    preferences: {
       theme: DEFAULT_THEME,
       locale: "en",
       languageOnboardingDone: false,
@@ -99,7 +57,7 @@ export function createDefaultState(): WhAppState {
       cardStatsMode: "percentages",
       showCovers: true,
       learningLanguage: "de",
-      dictionaryUrl: defaultProfile.preferences.dictionaryUrl,
+      dictionaryUrl: getDefaultDictionaryUrl("de"),
       dictionaryMode: "internal",
       readerTextAlign: "left",
       readerMaxWidth: "wide",
@@ -149,6 +107,52 @@ export function createDefaultState(): WhAppState {
       reviewGraphType: "heatmap",
       graphRange: "recent",
       readerBookmarks: {}
-    }
+  };
+}
+
+export function createDefaultState(): WhAppState {
+  const defaultProfile: WhProfile = {
+    vocab: {},
+    customTexts: [],
+    userBooks: [],
+    hiddenBuiltInBooks: [],
+    archivedBookIds: [],
+    preferences: { dictionaryUrl: getDefaultDictionaryUrl("de"), dictionaryMode: "internal" }
+  };
+  return {
+    schemaVersion: STATE_SCHEMA_VERSION,
+    currentView: "library",
+    currentTextId: null,
+    selectedWord: null,
+    selectedWordIndex: null,
+    readerSelectionRange: null,
+    customTexts: defaultProfile.customTexts,
+    userBooks: defaultProfile.userBooks,
+    hiddenBuiltInBooks: defaultProfile.hiddenBuiltInBooks,
+    archivedBookIds: defaultProfile.archivedBookIds,
+    vocab: defaultProfile.vocab,
+    profiles: { de: defaultProfile },
+    reviewIndex: 0,
+    readerFontSize: 18,
+    readerPdfZoom: 1,
+    readerPdfViewMode: "overlay",
+    readerPage: 1,
+    readerPages: {},
+    readerScrolls: {},
+    readerScrollsPerPage: {},
+    dataDirectory: "",
+    recoveryStatus: null,
+    filters: {
+      libraryQuery: "",
+      libraryLevel: "all",
+      librarySort: "title",
+      librarySortReverse: false,
+      libraryArchive: "active",
+      vocabQuery: "",
+      vocabStatuses: ["learning", "known"],
+      vocabTextId: "all"
+    },
+    discover: { query: "", source: "gutenberg", sort: "popular", level: "", page: 1 },
+    preferences: createDefaultPreferences(),
   };
 }
