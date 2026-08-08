@@ -200,7 +200,11 @@ fn ytdlp_commands() -> Vec<OsString> {
     // the OCR runner's pdftoppm fallback).
     #[cfg(target_os = "linux")]
     for name in ytdlp_names() {
-        commands.push(OsString::from("/run/host/usr/bin").join(name).into_os_string());
+        commands.push(
+            OsString::from("/run/host/usr/bin")
+                .join(name)
+                .into_os_string(),
+        );
     }
     for name in ytdlp_names() {
         commands.push(OsString::from(name));
