@@ -273,7 +273,11 @@ describe("i18n coverage", () => {
     }
   });
 
-  it("keeps dynamic translator popup labels in every locale", () => {
+  // The standalone offline-translator popup labels are built natively in
+  // Rust (offline_translator/translator/ui.rs translator_labels), not from
+  // the i18n dictionaries — the translator.* i18n keys were removed as dead
+  // (see #119). This guard is retired with them.
+  it.skip("keeps dynamic translator popup labels in every locale", () => {
     for (const file of localeFiles) {
       const data = JSON.parse(fs.readFileSync(path.join(localeDir, file), "utf8"));
       for (const key of translatorPopupKeys) {
