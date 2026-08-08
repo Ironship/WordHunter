@@ -27,14 +27,14 @@ fn handle_boundary_request(request: Request, base_url: &str) -> Result<(), Strin
     if method_not_allowed(request.method(), path) {
         return response::error_response(request, 405, "method not allowed");
     }
-    let Some(request) = authenticate_request(request, &path, TOKEN)? else {
+    let Some(request) = authenticate_request(request, path, TOKEN)? else {
         return Ok(());
     };
-    let Some(request) = dispatch_state_independent_request(request, &path, &query)? else {
+    let Some(request) = dispatch_state_independent_request(request, path, query)? else {
         return Ok(());
     };
     if request.method() == &Method::Get {
-        handlers::serve_static(request, &path)
+        handlers::serve_static(request, path)
     } else {
         response::error_response(request, 404, "not found")
     }
