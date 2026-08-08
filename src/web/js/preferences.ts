@@ -207,6 +207,7 @@ export function syncSettingsControls() {
   if (els.prefTranslationTargetLanguage) els.prefTranslationTargetLanguage.value = prefs.translationTargetLanguage || translationPair.toCode;
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
+  if (els.prefYouglishMode) els.prefYouglishMode.value = prefs.youglishMode || "internal";
   els.prefFont.value = prefs.readerFont || "serif";
   els.prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
@@ -353,7 +354,7 @@ export function syncSettingsControls() {
 
 export function updatePreferenceValue(key: string, value: unknown): void {
   state.preferences[key] = value;
-  if (["dictionaryUrl", "dictionaryMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
+  if (["dictionaryUrl", "dictionaryMode", "youglishMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
     const profile = state.profiles?.[state.preferences.learningLanguage];
     if (profile) {
       profile.preferences = profile.preferences || {};
@@ -378,6 +379,7 @@ export function resetPreferences() {
     learningLanguage,
     dictionaryUrl: profilePreferences.dictionaryUrl || getDefaultDictionaryUrl(learningLanguage),
     dictionaryMode: profilePreferences.dictionaryMode || "internal",
+    youglishMode: profilePreferences.youglishMode || "internal",
     translationSourceLanguage: profilePreferences.translationSourceLanguage || "",
     translationTargetLanguage: profilePreferences.translationTargetLanguage || (learningLanguage === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""),
     lastReadTextIds,
@@ -388,6 +390,7 @@ export function resetPreferences() {
       ...(state.profiles[learningLanguage].preferences || {}),
       dictionaryUrl: state.preferences.dictionaryUrl,
       dictionaryMode: state.preferences.dictionaryMode,
+      youglishMode: state.preferences.youglishMode,
       translationSourceLanguage: state.preferences.translationSourceLanguage,
       translationTargetLanguage: state.preferences.translationTargetLanguage,
     };

@@ -1439,4 +1439,86 @@ describe("persistence lifecycle", () => {
     await assert.rejects(autosave.saveState(), /Failed to fetch/);
     assert.equal(attempts, 1, "network errors must not trigger the full-snapshot fallback");
   });
+
+  it("tracks per-text and per-language mutations through the proxy into delta payloads", async () => {
+    // End-to-end regression guard: real api.js payload builders wired to the
+    // real proxy-based dirty tracking. Guards against the proxy-vs-target
+    // keying bug that silently emptied texts/vocab in every delta payload
+    // (mutations were never attributed to a language or text id).
+    const bodies = [];
+    const realApi = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "tok" },
+      localStorage: { getItem() { return null; }, setItem() {} },
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {}, warn() {} },
+      fetch: async (url, options) => {
+        if (String(url).includes("/__store/save")) bodies.push(JSON.parse(options.body));
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+    });
+
+    const rawState = {
+      preferences: { learningLanguage: "de", locale: "en" },
+      hiddenBuiltInBooks: [],
+      profiles: {
+        de: {
+          vocab: { hallo: { status: "new" } },
+          customTexts: [{ id: "text-1", title: "Alt", text: "Hallo Welt." }],
+          userBooks: [],
+          hiddenBuiltInBooks: [],
+          archivedBookIds: [],
+          preferences: {}
+        }
+      },
+      customTexts: [],
+      userBooks: [],
+      archivedBookIds: []
+    };
+    // normalize.ts aliases the root texts array to the active profile's array.
+    rawState.customTexts = rawState.profiles.de.customTexts;
+
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": realApi
+    }, {
+      window: {
+        __qtBridge: true,
+        __bridgeState: { revision: 0 },
+        WH_TOKEN: "tok",
+        dispatchEvent() {}
+      },
+      CustomEvent,
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {}, warn() {} },
+      fetch: async (url, options) => {
+        if (String(url).includes("/__store/save")) bodies.push(JSON.parse(options.body));
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+    });
+
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+
+    // Vocab mutation through the proxy
+    state.profiles.de.vocab.hallo.status = "learning";
+    // Text mutation through the proxy (same array as the root customTexts)
+    const book = state.profiles.de.customTexts.find((text) => text.id === "text-1");
+    book.text = "Hallo verändert.";
+    book.title = "Neu";
+
+    await autosave.saveState();
+
+    assert.equal(bodies.length, 1, "one delta save");
+    const delta = bodies[0];
+    assert.equal(delta.delta, true);
+    assert.deepEqual(Object.keys(delta.records.vocab), ["de"], "only the mutated language is sent");
+    assert.equal(delta.records.vocab.de.vocab.hallo.status, "learning");
+    assert.deepEqual(delta.records.texts.map((text) => text.id), ["text-1"], "only the mutated text is sent");
+    assert.equal(delta.records.texts[0].text, "Hallo verändert.");
+    assert.ok(delta.fullKeys.includes("text:text-1"), "fullKeys declares the text key");
+    assert.ok(delta.fullKeys.length > 5, "fullKeys still declares the whole key set");
+  });
 });

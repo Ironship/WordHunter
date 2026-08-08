@@ -134,6 +134,13 @@ fn run_ytdlp(
         .arg("-o")
         .arg(&output_template)
         .arg(watch_url(&info.id));
+    // Never pop a visible console window on Windows when spawning yt-dlp
+    // from the embedded server (CREATE_NO_WINDOW = 0x08000000).
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        process.creation_flags(0x08000000);
+    }
     let mut child = process
         .spawn()
         .map_err(|e| format!("Could not start yt-dlp: {e}"))?;

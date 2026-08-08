@@ -1250,9 +1250,9 @@ pub(crate) fn upsert_text_record(dir: &Path, text: &Value, device_id: &str) -> R
     let now = now_millis();
     let key = format!("text:{id}");
     let mut record = live_record(key.clone(), "text", text.clone(), device_id, now);
-    if let Ok(records) = load_records(dir)
-        && let Some(existing) = records.get(&key)
-    {
+    // Read only the one existing record for its causal clock instead of
+    // scanning the whole records tree (which is seconds on large stores).
+    if let Ok(Some(existing)) = read_existing_record(dir, "text", &key) {
         record.causal = existing.causal.clone();
         bump_causal(&mut record.causal, device_id, now);
     }
@@ -1599,6 +1599,46 @@ pub(crate) fn record_path(dir: &Path, record: &SyncRecord) -> PathBuf {
     records_root(dir)
         .join(kind_dir(&record.kind))
         .join(format!("{}.yaml", stable_hash(&record.key)))
+}
+
+/// Read one record by key without scanning the whole records tree.
+/// Mirrors `load_records`'s file preference (yaml > yml > json; a .bak
+/// stands in only when no primary exists) and its tolerance of corrupt
+/// files (a broken record yields `None`, matching the skip-and-continue
+/// behaviour of the full scan).
+pub(crate) fn read_existing_record(
+    dir: &Path,
+    kind: &str,
+    key: &str,
+) -> Result<Option<SyncRecord>, String> {
+    let root = records_root(dir).join(kind_dir(kind));
+    let base = root.join(stable_hash(key));
+    let mut primary: Option<PathBuf> = None;
+    for extension in ["yaml", "yml", "json"] {
+        let candidate = base.with_extension(extension);
+        if candidate.exists() {
+            primary = Some(candidate);
+            break;
+        }
+    }
+    let path = match primary {
+        Some(path) => path,
+        None => {
+            let backup = base.with_extension("bak");
+            if backup.exists() {
+                backup
+            } else {
+                return Ok(None);
+            }
+        }
+    };
+    match read_record_file(&path) {
+        Ok(record) => Ok(Some(record)),
+        Err(error) => {
+            eprintln!("{error}");
+            Ok(None)
+        }
+    }
 }
 
 fn kind_dir(kind: &str) -> &str {
@@ -1971,6 +2011,15 @@ fn merge_equal_records(incoming: &SyncRecord, current: &SyncRecord) -> SyncRecor
         merged.deleted_at = incoming.deleted_at.max(current.deleted_at);
     }
     merged
+}
+
+/// True when the record's content differs from the in-memory base snapshot.
+/// Used by the delta save path to write only the records that actually
+/// changed, instead of re-opening every record file on disk.
+pub(crate) fn record_changed_since_base(record: &SyncRecord, base: &Fingerprints) -> bool {
+    base.get(&record.key)
+        .map(|entry| entry.hash != fingerprint(record))
+        .unwrap_or(true)
 }
 
 pub(crate) fn stable_hash(value: &str) -> String {

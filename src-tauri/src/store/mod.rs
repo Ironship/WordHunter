@@ -46,6 +46,11 @@ pub struct Store {
     // Global save lock; shard only if saves become a bottleneck.
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
+    // In-memory copy of all record files. Saves re-load the records tree
+    // only once (after startup or after an external mutation); every commit
+    // refreshes it from the merged output. Large stores take seconds to
+    // scan, so this cache is what keeps delta saves fast.
+    records_cache: Mutex<Option<BTreeMap<String, record_files::SyncRecord>>>,
     device_id: String,
     startup_instant: std::time::Instant,
 }
@@ -65,6 +70,7 @@ impl Store {
             inner: Mutex::new(StoreInner { dir, books_dir }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: crate::paths::device_id(app_name)?,
             startup_instant: std::time::Instant::now(),
         };
@@ -94,6 +100,37 @@ impl Store {
         self.write_lock
             .lock()
             .map_err(|_| "save lock is unavailable".to_string())
+    }
+
+    /// Invalidate the in-memory record cache after any direct record write
+    /// (text upsert/delete, wipe, transfer import) that bypasses the bulk
+    /// commit path — the next save then re-reads the records tree once.
+    pub(crate) fn invalidate_records_cache(&self) {
+        *self.records_cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
+    /// The records tree as an in-memory map, loading it from disk once when
+    /// it is not cached yet.
+    pub(crate) fn records_cache_or_load(
+        &self,
+    ) -> Result<BTreeMap<String, record_files::SyncRecord>, String> {
+        let mut cache = self
+            .records_cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        if cache.is_none() {
+            *cache = Some(record_files::load_records(&self.dir())?);
+        }
+        Ok(cache.clone().unwrap_or_default())
+    }
+
+    /// Replace the in-memory record cache with the committed state.
+    pub(crate) fn set_records_cache(&self, records: BTreeMap<String, record_files::SyncRecord>) {
+        *self.records_cache
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some(records);
     }
 
     pub fn load_ui_state(&self) -> serde_json::Value {
@@ -321,6 +358,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }

@@ -60,11 +60,16 @@ export function buildFullKeys(rawState: WhSaveStateInput): string[] {
  * vocab profiles for languages with mutations, and texts only when they
  * changed — plus fullKeys declaring every key still held. Saves ~99% of the
  * payload size compared to a full snapshot on every autosave tick.
+ *
+ * `dirtyTexts` is a set of the ids of the text records that changed (the
+ * backend merges per key, untouched keys survive via fullKeys). `true`
+ * means "everything is dirty" (full replace / restore) and sends all
+ * texts; `false` sends none.
  */
 export function buildDeltaSavePayload(
   rawState: WhSaveStateInput,
   dirtyVocabLangs: ReadonlySet<string>,
-  dirtyTexts: boolean
+  dirtyTexts: ReadonlySet<string> | boolean
 ): WhDeltaSavePayload {
   const full = buildSavePayload(rawState);
   const vocab: Record<string, WhRecord> = {};
@@ -73,13 +78,20 @@ export function buildDeltaSavePayload(
     const { customTexts: _customTexts, ...withoutTexts } = profile || {};
     vocab[lang] = toPlain(withoutTexts) as WhRecord;
   }
+  let texts: WhText[] = [];
+  if (dirtyTexts === true) {
+    texts = full.texts;
+  } else if (dirtyTexts && typeof (dirtyTexts as ReadonlySet<string>).has === "function" && (dirtyTexts as ReadonlySet<string>).size > 0) {
+    // Realm-safe set check (vm-context Sets fail `instanceof Set` in tests).
+    texts = full.texts.filter((text) => dirtyTexts.has(String(text?.id)));
+  }
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
     delta: true,
     fullKeys: buildFullKeys(rawState),
     records: {
       schemaVersion: STATE_SCHEMA_VERSION,
-      texts: dirtyTexts ? full.texts : [],
+      texts,
       prefs: full.prefs,
       hiddenBooks: full.hiddenBooks,
       vocab

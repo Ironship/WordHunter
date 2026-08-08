@@ -210,6 +210,16 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Get, "/__open_dict") => {
             popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)
         }
+        (Method::Get, "/__open_external") => {
+            let url = response::parse_query(query)
+                .get("url")
+                .cloned()
+                .unwrap_or_default();
+            match handlers::open_external_url(&url) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
         (Method::Get, "/__popup/close") => popup::serve_close_popup(request, &state.app_handle),
         (Method::Get, "/__argos/status") => {
             response::json_response(request, offline_translator::status())

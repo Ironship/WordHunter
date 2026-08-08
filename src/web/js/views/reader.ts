@@ -54,6 +54,7 @@ export function bindReaderEvents(): void {
       || !(textSelect instanceof HTMLSelectElement)
       || !(wordPanel instanceof HTMLElement)) return;
     bindReaderBookmarkEvents();
+    void import("../reader/find.js").then(({ bindReaderFindEvents }) => bindReaderFindEvents());
 
     let lastWordPanelInteractionAt = 0;
     let pdfWordClickTimer: number | null = null;

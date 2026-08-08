@@ -8,6 +8,50 @@ use tiny_http::Request;
 use crate::store::transfer::ExportScope;
 use crate::{offline_translator, response, server::ServerState, tts};
 
+/// Open an http(s) URL in the system default browser. Called from the
+/// frontend when a top-level window is needed (YouGlish fallback, source
+/// links): plain `window.open` from an async callback is popup-blocked in
+/// the webview, so the embedded server does the opening instead.
+pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
+    let url = url.trim();
+    if url.is_empty() || !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("refusing to open a non-http URL".to_string());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", url])
+            // CREATE_NO_WINDOW: never flash a console while starting the browser.
+            .creation_flags(0x08000000)
+            .spawn()
+            .map_err(|e| format!("could not open the default browser: {e}"))?;
+        return Ok(());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| format!("could not open the default browser: {e}"))?;
+        return Ok(());
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| format!("could not open the default browser: {e}"))?;
+        return Ok(());
+    }
+    #[cfg(target_os = "android")]
+    {
+        // Android opens URLs through the Java bridge (openAndroidUrl), not
+        // this endpoint.
+        Err("external URLs are opened through the Android bridge".to_string())
+    }
+}
+
 pub(crate) fn parse_window_zoom_percent(payload: &Value) -> Result<f64, String> {
     let percent = payload
         .get("percent")
@@ -492,6 +536,7 @@ mod window_zoom_tests {
     use serde_json::json;
 
     use super::parse_window_zoom_percent;
+    use super::open_external_url;
     #[cfg(not(target_os = "android"))]
     use super::{export_sidecar_path, write_export_file};
 
@@ -526,6 +571,17 @@ mod window_zoom_tests {
 
         assert!(write_export_file(&target, "new backup").is_err());
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "previous backup");
+    }
+
+    #[test]
+    fn open_external_url_rejects_non_http_and_empty() {
+        assert!(open_external_url("").is_err());
+        assert!(open_external_url("file:///C:/Windows/win.ini").is_err());
+        assert!(open_external_url("javascript:alert(1)").is_err());
+        assert!(open_external_url("not a url").is_err());
+        // Valid https URLs pass validation (on this platform they would
+        // spawn the browser; validation happens before any spawn attempt).
+        assert!(open_external_url("https://youglish.com/pronounce/klima/german").is_ok());
     }
 
     #[test]

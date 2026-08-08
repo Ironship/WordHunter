@@ -120,6 +120,7 @@ impl Store {
         validate_pdf_page_assets(&dir, id, &metadata)?;
         record_files::upsert_text_record(&dir, &metadata, self.device_id())?;
         self.complete_pending_book_import(&dir, id)?;
+        self.invalidate_records_cache();
         Ok(())
     }
 
@@ -146,6 +147,7 @@ impl Store {
         let path = inner.books_dir.join(&safe_id);
         record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         media_assets::tombstone_book_assets(&inner.dir, &safe_id, self.device_id())?;
+        self.invalidate_records_cache();
         if path.exists() {
             std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
             durable::sync_parent(&inner.books_dir)?;
@@ -377,11 +379,10 @@ impl Store {
 }
 
 fn existing_text_data(dir: &std::path::Path, id: &str) -> Result<Value, String> {
-    let records = record_files::load_records(dir)?;
-    match records
-        .get(&format!("text:{id}"))
-        .filter(|record| record.deleted_at.is_none())
-    {
+    // Single-record read instead of a full records scan (large stores take
+    // seconds to scan; the text record lives at a stable per-key path).
+    let existing = record_files::read_existing_record(dir, "text", &format!("text:{id}"))?;
+    match existing.filter(|record| record.deleted_at.is_none()) {
         Some(record) if record.data.is_object() => Ok(record.data.clone()),
         Some(_) => Err("stored text record is not an object".to_string()),
         None => Ok(Value::Object(Map::new())),
@@ -433,6 +434,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -472,6 +474,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -499,6 +502,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -529,6 +533,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -583,6 +588,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -611,6 +617,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -630,6 +637,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };

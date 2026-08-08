@@ -207,7 +207,10 @@ export async function saveEditedBook(): Promise<void> {
     return;
   }
   renderLibrary();
-  if (state.currentTextId === targetBookId) renderReader();
+  // Re-render the reader only when it is actually visible — the text changed,
+  // and the render re-tokenizes the whole book (heavy for large books). When
+  // another view is active, the next switch to the reader re-renders anyway.
+  if (state.currentTextId === targetBookId && state.currentView === "reader") renderReader();
   showToast(t("toast.textSaved"));
   editBookOriginalValues = null;
   if (els.editBookText) els.editBookText.readOnly = false;

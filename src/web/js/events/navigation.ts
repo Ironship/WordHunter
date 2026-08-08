@@ -10,6 +10,45 @@ import { handleReaderKeys } from "./keyboard/reader-keys.js";
 import { handleFlashcardKeys } from "./keyboard/flashcards-keys.js";
 import { nextTheme, normalizeTheme } from "../theme.js";
 
+/**
+ * Ctrl+E — "Explain with AI" — dispatches to the AI button of the current
+ * view: the translator's AI button, the flashcard AI button, the reader
+ * word-panel AI button or the graphs AI button.
+ */
+function triggerAiExplainShortcut(): boolean {
+  if (state.currentView === "translator") {
+    const button = document.getElementById("translator-ai-explain") as HTMLButtonElement | null;
+    if (button && !button.hidden && !button.disabled) {
+      button.click();
+      return true;
+    }
+    return false;
+  }
+  if (state.currentView === "flashcards") {
+    const button = document.querySelector<HTMLButtonElement>('#review-card [data-review-action="ai-explain"]');
+    if (button && !button.disabled) {
+      button.click();
+      return true;
+    }
+    return false;
+  }
+  if (state.currentView === "reader") {
+    const button = document.querySelector<HTMLButtonElement>("[data-ai-explain]");
+    if (button && !button.disabled) {
+      button.click();
+      return true;
+    }
+  }
+  if (state.currentView === "graphs") {
+    const button = document.getElementById("graphs-ai-explain") as HTMLButtonElement | null;
+    if (button && !button.hidden && !button.disabled) {
+      button.click();
+      return true;
+    }
+  }
+  return false;
+}
+
 export function bindNavigationEvents() {
   els.navItems.forEach((button) => button.addEventListener("click", () => {
     if (button.classList.contains("nav-item-locked") || button.getAttribute("aria-disabled") === "true") return;
@@ -46,6 +85,24 @@ export function bindNavigationEvents() {
   });
 }
 
+/**
+ * Ctrl+S — save the open editor dialog: the edit-book dialog or the word
+ * editor (add/edit word). Returns true when a dialog was open and saved.
+ */
+function triggerSaveShortcut(): boolean {
+  const editBookDialog = document.getElementById("edit-book-dialog") as HTMLDialogElement | null;
+  if (editBookDialog?.open) {
+    void import("../book-actions.js").then(({ saveEditedBook }) => saveEditedBook());
+    return true;
+  }
+  const addWordDialog = document.getElementById("add-word-dialog") as HTMLDialogElement | null;
+  if (addWordDialog?.open) {
+    document.querySelector<HTMLButtonElement>("#add-word-confirm")?.click();
+    return true;
+  }
+  return false;
+}
+
 export function handleGlobalKeydown(event: KeyboardEvent): void {
   if (event.defaultPrevented) return;
   if (!event.key) return;
@@ -57,6 +114,36 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
     (event.target instanceof HTMLElement && (event.target.isContentEditable || event.target.closest(fieldSelector)))
     || (activeElement instanceof HTMLElement && (activeElement.isContentEditable || activeElement.closest(fieldSelector)))
   );
+
+  // Ctrl+E — "Explain with AI" — works even while typing in a field (the
+  // translator textarea is the primary use case).
+  if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && key === "e") {
+    if (triggerAiExplainShortcut()) {
+      event.preventDefault();
+      return;
+    }
+  }
+
+  // Ctrl+S — save in the open editor dialogs (standard editor shortcut).
+  if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && key === "s") {
+    if (triggerSaveShortcut()) {
+      event.preventDefault();
+      return;
+    }
+  }
+
+  // F5 — reload the application (mirrors the UI reload button).
+  if (key === "f5" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+    event.preventDefault();
+    window.location.reload();
+    return;
+  }
+
+  // Ctrl+F — find in the reader text.
+  if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && key === "f" && state.currentView === "reader") {
+    void import("../reader/find.js").then(({ toggleReaderFind }) => toggleReaderFind());
+    return;
+  }
 
   if ((inField || key === "escape") && handleGlobalKeys(event, key, inField)) return;
   if (document.querySelector("dialog[open]")) return;

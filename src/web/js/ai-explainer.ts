@@ -43,6 +43,8 @@ export interface AiExplanationRequest {
   to: string;
   image?: string;
   rect?: { x0: number; y0: number; x1: number; y1: number };
+  /** "explain" (default) explains the word; "stats" analyzes the data in `context`. */
+  kind?: "explain" | "stats";
 }
 
 export interface AiExplanationResult {
@@ -86,6 +88,7 @@ function buildAiPayload(request: AiExplanationRequest): Record<string, unknown> 
     payload.image = request.image;
     payload.rect = request.rect;
   }
+  if (request.kind) payload.kind = request.kind;
   return payload;
 }
 

@@ -323,6 +323,7 @@ describe("render performance guards", () => {
         rememberReaderScrollPosition(options) { rememberCalls.push(options); }
       },
       "../reader/bookmarks.js": { bindReaderBookmarkEvents: noOp },
+      "../reader/find.js": { bindReaderFindEvents: noOp },
       "../platform.js": { refreshPocketWordPanelSheet: noOp },
       "../reader/word-navigation.js": { navigateReaderWord: noOp },
       "../reader/renderer.js": {
