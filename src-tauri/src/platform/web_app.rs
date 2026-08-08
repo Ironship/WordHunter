@@ -117,6 +117,21 @@ pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
         });
 
     let window = builder.build()?;
+    // If the page never finishes loading (stalled WebKitGTK/compositor on
+    // Linux, dead server), the window was created visible(false) and the app
+    // would run invisibly forever. Force-show it after a grace period.
+    let watchdog_ready = Arc::clone(&page_ready);
+    let watchdog_window = window.clone();
+    std::thread::Builder::new()
+        .name("window-watchdog".to_string())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(20));
+            if !watchdog_ready.load(Ordering::Acquire) {
+                let _ = watchdog_window.show();
+                let _ = watchdog_window.set_focus();
+            }
+        })
+        .ok();
     let close_app_handle = window.app_handle().clone();
     window.on_window_event(move |event| {
         if let WindowEvent::CloseRequested { api, .. } = event
