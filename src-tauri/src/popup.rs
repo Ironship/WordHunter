@@ -9,7 +9,7 @@ const INTERNAL_POPUP_LABEL: &str = "internal-popup";
 /// Escape-key handler for the popup window, kept as a template so the
 /// placeholder substitution stays reviewable (and the URL never lands in a
 /// hand-written format! string).
-const POPUP_ESCAPE_TEMPLATE: &str = include_str!("../../src/web/templates/popup-escape.js");
+const POPUP_ESCAPE_TEMPLATE: &str = include_str!("../templates/popup-escape.js");
 
 fn popup_close_url(base_url: &str) -> String {
     format!("{base_url}/__popup/close")
