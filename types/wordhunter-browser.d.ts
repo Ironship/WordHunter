@@ -241,13 +241,6 @@ declare global {
   type WhThemeFamily = "familiar" | "alternative-familiar" | "classic";
   type WhThemeMode = "light" | "dark";
 
-  interface WhResolvedTheme {
-    theme: WhThemeName;
-    family: WhThemeFamily;
-    mode: WhThemeMode;
-    color: string;
-  }
-
   interface WhBridgeSnapshot {
     schemaVersion: number;
     dataDir?: string;
