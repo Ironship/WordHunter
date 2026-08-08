@@ -724,7 +724,8 @@
     "copyBtn": "Kopiuj tłumaczenie",
     "copied": "Skopiowano.",
     "copy": "Kopiuj",
-    "copyDone": "Skopiowano do schowka."
+    "copyDone": "Skopiowano do schowka.",
+    "errorPairNotConfigured": "Para języków tłumaczenia nie jest skonfigurowana."
   },
   "graphs": {
     "eyebrow": "Statystyki",
@@ -1026,7 +1027,9 @@
     "addedManyWithSkipped": "Dodano {added} książek. Pominięto {skipped} (już w bibliotece).",
     "wordPanelItemHidden": "Ten element jest ukryty w ustawieniach panelu słowa.",
     "vocabExportFailed": "Nie udało się wyeksportować słownictwa.",
-    "autoTranslateUnavailable": "Automatyczne tłumaczenie jest chwilowo niedostępne. Zostanie ponowione automatycznie."
+    "autoTranslateUnavailable": "Automatyczne tłumaczenie jest chwilowo niedostępne. Zostanie ponowione automatycznie.",
+    "transferMissingFile": "Odpowiedź transferu nie zawierała zapisanego pliku.",
+    "androidExportUnavailable": "Mostek eksportu Androida jest niedostępny."
   },
   "languages": {
     "pl": "Polski",

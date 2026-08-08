@@ -807,7 +807,8 @@ describe("focused frontend regressions", () => {
         activeTranslationProvider() { return "offline"; },
         canUseTranslationProvider() { return false; },
         translateText() { return Promise.resolve({ translated: "" }); },
-        translateWithRetry() { return Promise.resolve({ translated: "" }); }
+        translateWithRetry() { return Promise.resolve({ translated: "" }); },
+        localizedTranslationError() { return ""; }
       },
       "../constants.js": { OTHER_PROFILE_ID: "other", TRANSLATOR_LANGUAGES: ["de", "en"] },
       "../translator-preferences.js": {
@@ -1753,7 +1754,7 @@ async function evaluateWordPanel({
     "../vocabulary/review-card.js": { applyReviewGrade },
     "../reader-colors.js": { getLearningColor() { return ""; } },
     "../sm2.js": { isInTextReviewDue },
-    "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText, translateWithRetry: translateText },
+    "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText, translateWithRetry: translateText, localizedTranslationError() { return ""; } },
     "../loading.js": { beginElementBusy },
     "../translator-preferences.js": {
       effectiveLearningLanguage() { return "de"; },
