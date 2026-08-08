@@ -3,6 +3,7 @@ import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { isAndroidPlatform, isImageOcrAvailable } from "../platform.js";
+import { fetchWithTimeout } from "../request.js";
 import { decodeImportedTextBytes, parseImportedTextFile, titleFromImportedFileName } from "../subtitles.js";
 import {
   cancelEditBook,
@@ -217,7 +218,7 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
       if (!rendered.dataUrl || !page?.imageName) {
         throw new Error(t("toast.pdfOcrNoText"));
       }
-      const response = await fetch("/__book/image", {
+      const response = await fetchWithTimeout("/__book/image", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
         body: JSON.stringify({
@@ -226,7 +227,7 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
           base64_data: rendered.dataUrl,
           pending_import: true
         })
-      });
+      }, 30_000);
       if (!response.ok) {
         const message = await response.text().catch(() => "");
         throw new Error(message || `HTTP ${response.status}`);
@@ -686,6 +687,9 @@ async function runPdfImport(file: File): Promise<boolean> {
     }
     throw error;
   } finally {
+    // The render loop can throw (bridge error, cancel, network) — the
+    // progress interval must never outlive the import (timer leak).
+    stopAndroidPdfProgress();
     stopOcrProgress();
     setImportLoading(false);
   }
