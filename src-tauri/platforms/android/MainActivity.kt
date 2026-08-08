@@ -313,7 +313,11 @@ class MainActivity : TauriActivity() {
         Bundle.EMPTY,
         utteranceId ?: System.nanoTime().toString()
       ) == TextToSpeech.SUCCESS
-      if (started) keepScreenOn()
+      if (started) {
+        // The bridge runs on the WebView JS thread; window flag changes
+        // must happen on the UI thread.
+        runOnUiThread { keepScreenOn() }
+      }
       return started
     }
 
