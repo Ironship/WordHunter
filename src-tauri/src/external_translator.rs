@@ -23,7 +23,8 @@ pub fn translate(payload: Value) -> Result<Value, String> {
         .trim();
     if text.is_empty() {
         return Err("translation requires a non-empty text".to_string());
-    }    let from = payload
+    }
+    let from = payload
         .get("from")
         .and_then(Value::as_str)
         .unwrap_or("auto");

@@ -289,7 +289,11 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                         // Schema/validation failures are client errors: the
                         // frontend's saveWithRetry treats 4xx as "send a full
                         // snapshot" while 5xx would retry the broken payload.
-                        let code = if error.contains("schemaVersion") { 400 } else { 500 };
+                        let code = if error.contains("schemaVersion") {
+                            400
+                        } else {
+                            500
+                        };
                         response::error_response(request, code, &error)
                     }
                 }
@@ -589,7 +593,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             } else {
                 response::error_response(request, 404, "not found")
             }
-        },
+        }
     }
 }
 
