@@ -535,8 +535,8 @@ pub(crate) fn choose_data_dir(_state: &ServerState) -> Result<Option<String>, St
 mod window_zoom_tests {
     use serde_json::json;
 
-    use super::parse_window_zoom_percent;
     use super::open_external_url;
+    use super::parse_window_zoom_percent;
     #[cfg(not(target_os = "android"))]
     use super::{export_sidecar_path, write_export_file};
 

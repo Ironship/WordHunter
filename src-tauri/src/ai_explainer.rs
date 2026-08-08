@@ -513,7 +513,7 @@ mod tests {
                 body.len(),
                 body
             );
-stream.write_all(response.as_bytes()).unwrap();
+            stream.write_all(response.as_bytes()).unwrap();
             stream.flush().unwrap();
             // The stats mode must ask for DATA analysis, not word meaning.
             assert!(
