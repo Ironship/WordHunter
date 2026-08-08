@@ -56,7 +56,7 @@ impl Store {
                 .map_err(|e| format!("could not read interrupted save journal: {e}"))?;
             let journal_value: Value = match serde_json::from_slice(&payload) {
                 Ok(value) => value,
-                Err(error) => {
+                Err(_error) => {
                     quarantine_journal(path)?;
                     continue;
                 }
@@ -69,7 +69,7 @@ impl Store {
             let (payload, base, saved_at) = match decode_save_journal(&journal_value, current_base)
             {
                 Ok(journal) => journal,
-                Err(error) => {
+                Err(_error) => {
                     quarantine_journal(path)?;
                     continue;
                 }
@@ -727,7 +727,7 @@ mod tests {
         );
     }
 
-    fn delta_payload(word: &str, full_keys: &[&str], vocab: Value) -> Value {
+    fn delta_payload(_word: &str, full_keys: &[&str], vocab: Value) -> Value {
         json!({
             "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "delta": true,

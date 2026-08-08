@@ -26,7 +26,7 @@ pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
             .creation_flags(0x08000000)
             .spawn()
             .map_err(|e| format!("could not open the default browser: {e}"))?;
-        return Ok(());
+        Ok(())
     }
     #[cfg(target_os = "macos")]
     {
