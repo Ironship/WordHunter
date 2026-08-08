@@ -109,7 +109,10 @@ export function flushUiStateSync(): void {
   if (!window.__qtBridge) return;
   if (uiWritesPaused > 0) {
     uiSaveRequestedWhilePaused = true;
-    return;
+    // No early return: the exclusive write pauses STORE writes, but the
+    // UI-state endpoint is separate, idempotent and last-write-wins — an
+    // exit flush must not drop the reader position (the flag alone is
+    // only replayed on the next saveUiState, which never comes on shutdown).
   }
   const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
   const body = JSON.stringify(payload);
