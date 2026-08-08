@@ -11,21 +11,10 @@ fn env_path(name: &str) -> Option<PathBuf> {
 }
 
 fn appdata_dir() -> Option<PathBuf> {
-    // APPDATA is Windows-only; on Unix it would shadow the XDG
-    // directories if a stray environment variable leaked through.
-    #[cfg(windows)]
-    {
-        return env_path("APPDATA");
-    }
-    #[cfg(not(windows))]
-    {
-        None
-    }
+    env_path("APPDATA")
 }
 
 fn home_dir_path() -> Option<PathBuf> {
-    // A missing HOME is a hard configuration error by design (the store
-    // tests enforce it) rather than a silent fallback to a guess.
     env_path("HOME")
 }
 
