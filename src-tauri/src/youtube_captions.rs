@@ -3,6 +3,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Read;
+use std::path::PathBuf;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use url::Url;
@@ -201,7 +202,7 @@ fn ytdlp_commands() -> Vec<OsString> {
     #[cfg(target_os = "linux")]
     for name in ytdlp_names() {
         commands.push(
-            OsString::from("/run/host/usr/bin")
+            PathBuf::from("/run/host/usr/bin")
                 .join(name)
                 .into_os_string(),
         );
