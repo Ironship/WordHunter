@@ -95,7 +95,7 @@ export function cacheElements() {
   els.ankiExportStatusFilters = [...document.querySelectorAll<HTMLInputElement>("[data-anki-export-status]")];
   els.clearWords = document.getElementById("clear-words");
   els.clearLibrary = document.getElementById("clear-library");
-  els.clearState = document.getElementById("clear-state");
+
   els.resetPrefs = document.getElementById("reset-prefs");
   els.prefRemovalBehavior = document.getElementById("pref-removal-behavior");
   els.prefTheme = byId("pref-theme");
@@ -168,6 +168,7 @@ export function cacheElements() {
   els.argosLanguagesList = document.getElementById("argos-languages-list");
   els.prefDictionaryUrl = document.getElementById("pref-dictionary-url");
   els.prefDictionaryMode = document.getElementById("pref-dictionary-mode");
+  els.prefYouglishMode = document.getElementById("pref-youglish-mode");
   els.prefCardStats = document.getElementById("pref-card-stats");
   els.prefCardStatsMode = document.getElementById("pref-card-stats-mode");
   els.prefCardStatsModeRow = document.getElementById("pref-card-stats-mode-row");
