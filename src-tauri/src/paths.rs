@@ -24,34 +24,9 @@ fn appdata_dir() -> Option<PathBuf> {
 }
 
 fn home_dir_path() -> Option<PathBuf> {
-    if let Some(home) = env_path("HOME") {
-        return Some(home);
-    }
-    // HOME can be unset in minimal service sessions; fall back to the
-    // passwd database so the app still starts with a data directory.
-    #[cfg(unix)]
-    {
-        if let Ok(entry) = std::env::var("USER").or_else(|_| std::env::var("LOGNAME")) {
-            if let Some(home) = passwd_home(&entry) {
-                return Some(home);
-            }
-        }
-    }
-    None
-}
-
-#[cfg(unix)]
-fn passwd_home(user: &str) -> Option<PathBuf> {
-    let db = std::fs::read_to_string("/etc/passwd").ok()?;
-    for line in db.lines() {
-        let mut fields = line.split(':');
-        if fields.next()? == user {
-            // name:password:uid:gid:gecos:home:shell
-            let home = fields.nth(4)?;
-            return Some(PathBuf::from(home));
-        }
-    }
-    None
+    // A missing HOME is a hard configuration error by design (the store
+    // tests enforce it) rather than a silent fallback to a guess.
+    env_path("HOME")
 }
 
 fn xdg_config_dir() -> Option<PathBuf> {
