@@ -5,7 +5,7 @@ export type OcrImageFormat = {
 
 type ImageFileDescriptor = Pick<File, "name" | "type">;
 
-export function ocrImageFormatFromExtension(name: string): OcrImageFormat | null {
+function ocrImageFormatFromExtension(name: string): OcrImageFormat | null {
   const extension = name.match(/\.([^.]+)$/)?.[1]?.toLowerCase();
   if (extension === "jpg" || extension === "jpeg") return { extension: "jpg", contentType: "image/jpeg" };
   if (extension === "png") return { extension: "png", contentType: "image/png" };
@@ -13,7 +13,7 @@ export function ocrImageFormatFromExtension(name: string): OcrImageFormat | null
   return null;
 }
 
-export function ocrImageFormatFromMime(type: string): OcrImageFormat | null {
+function ocrImageFormatFromMime(type: string): OcrImageFormat | null {
   const mime = type.toLowerCase().split(";", 1)[0].trim();
   if (["image/jpeg", "image/jpg", "image/pjpeg"].includes(mime)) {
     return { extension: "jpg", contentType: "image/jpeg" };

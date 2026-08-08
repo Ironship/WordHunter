@@ -17,7 +17,7 @@ export const DEFAULT_AI_ENDPOINT = "https://opencode.ai/zen/go/v1/chat/completio
 export const DEFAULT_AI_MODEL = "deepseek-v4-flash";
 
 /** Reasoning-effort levels offered in settings; "" = do not send anything. */
-export const AI_EFFORT_LEVELS = ["", "minimal", "low", "medium", "high", "max"] as const;
+const AI_EFFORT_LEVELS = ["", "minimal", "low", "medium", "high", "max"] as const;
 export type AiEffortLevel = (typeof AI_EFFORT_LEVELS)[number];
 
 export function normalizeAiTextPreference(key: string, value: unknown): string {

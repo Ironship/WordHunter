@@ -83,7 +83,7 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? (value as unknown[]).filter((item): item is string => typeof item === "string") : [];
 }
 
-export function normalizeReaderBookmarks(value: unknown): Record<string, WhReaderBookmark[]> {
+function normalizeReaderBookmarks(value: unknown): Record<string, WhReaderBookmark[]> {
   const colors = new Set<WhReaderBookmarkColor>(["amber", "red", "green", "blue", "purple"]);
   const result: Record<string, WhReaderBookmark[]> = {};
   for (const [textId, rawBookmarks] of objectEntries(value)) {
@@ -118,7 +118,7 @@ export function normalizeReaderBookmarks(value: unknown): Record<string, WhReade
   return result;
 }
 
-export class UnsupportedStateSchemaError extends Error {
+class UnsupportedStateSchemaError extends Error {
   constructor(source: string, version: unknown) {
     super(`${source} schema version ${version || "missing"} is not supported`);
     this.name = "UnsupportedStateSchemaError";
