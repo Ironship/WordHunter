@@ -68,10 +68,12 @@ jobs:
       - name: Verify the pinned release source
         run: |
           set -euo pipefail
+          export WH_APP_VERSION="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${WH_APP_VERSION}"
           runuser -u aur-builder -- bash -c \
             "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
 
-          asset="${AUR_BUILD_DIR}/WordHunter-1.0.10-x86_64.AppImage"
+          asset="${AUR_BUILD_DIR}/WordHunter-${WH_APP_VERSION}-x86_64.AppImage"
           printf '%s  %s\n' \
             '309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523' \
             "${asset}" | sha256sum -c -
@@ -138,7 +140,7 @@ jobs:
           fi
 
           grep -Fxq 'pkgname = wordhunter-bin' "${metadata}"
-          grep -Fxq 'pkgver = 1.0.10-1' "${metadata}"
+          grep -Fxq "pkgver = ${WH_APP_VERSION}-1" "${metadata}"
           for dependency in \
             fontconfig \
             fribidi \
@@ -159,7 +161,7 @@ jobs:
         run: |
           set -euo pipefail
           pacman -U --noconfirm "${AUR_PACKAGE}"
-          test "$(pacman -Q wordhunter-bin)" = 'wordhunter-bin 1.0.10-1'
+          test "$(pacman -Q wordhunter-bin)" = "wordhunter-bin ${WH_APP_VERSION}-1"
           pacman -Qkk wordhunter-bin
           pacman -Ql wordhunter-bin
 
