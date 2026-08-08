@@ -49,20 +49,37 @@ function computeMatches(query: string): FindMatch[] {
   const context = currentContext();
   if (!context) return [];
   const { session, wordsPerPage } = context;
+  // Word tokens with a mapped global offset, sorted by offset. The old
+  // code scanned every token per match — O(matches x tokens) — stalling
+  // on long books; the binary search brings it to O(matches x log tokens).
+  const indexed: { offset: number; tokenIndex: number }[] = [];
+  for (let i = 0; i < session.tokens.length; i += 1) {
+    const token = session.tokens[i];
+    if (token.type !== "word") continue;
+    const offset = session.globalCharOffsets[i];
+    if (offset >= 0) indexed.push({ offset, tokenIndex: i });
+  }
+  indexed.sort((a, b) => a.offset - b.offset);
   const matches: FindMatch[] = [];
   for (const start of findAll(session.text, query)) {
+    // Largest token offset <= start (tokens are ordered, non-overlapping).
+    let lo = 0;
+    let hi = indexed.length - 1;
     let tokenIndex = -1;
-    for (let i = 0; i < session.tokens.length; i += 1) {
-      const token = session.tokens[i];
-      if (token.type !== "word") continue;
-      const offset = session.globalCharOffsets[i];
-      if (offset < 0) continue;
-      if (start >= offset && start < offset + token.value.length) {
-        tokenIndex = i;
-        break;
+    let offset = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (indexed[mid].offset <= start) {
+        tokenIndex = indexed[mid].tokenIndex;
+        offset = indexed[mid].offset;
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
       }
     }
     if (tokenIndex === -1) continue;
+    const token = session.tokens[tokenIndex];
+    if (start >= offset + token.value.length) continue;
     const wordIndex = session.globalWordIndexes[tokenIndex];
     matches.push({ page: Math.floor(wordIndex / wordsPerPage) + 1, tokenIndex });
   }

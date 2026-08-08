@@ -109,17 +109,38 @@ export function resetReviewPresentation(): void {
   lastAutoSpokenPresentation = "";
 }
 
+// The queue rebuild (filter + sort over the whole vocab) is the hot path on
+// every grade; memoize it and invalidate explicitly on mutations.
+let reviewQueueCache: {
+  vocabRef: Record<string, WhVocabEntry>;
+  today: string;
+  autoAddLearningOnly: boolean;
+  entries: ReviewQueueEntry[];
+} | null = null;
+
 export function renderReview(transition?: ReviewTransitionDirection): void {
   if (!els.reviewCard) return;
   const today = todayISO();
-  const srsEntries: ReviewQueueEntry[] = Object.entries(state.vocab)
-    .filter(([, entry]) => {
-      if (entry.status === "ignored" || entry.status === "known") return false;
-      if (state.preferences?.autoAddLearningOnly && entry.status === "new") return false;
-      return true;
-    })
-    .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
-    .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+  const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
+  let srsEntries: ReviewQueueEntry[];
+  if (
+    reviewQueueCache &&
+    reviewQueueCache.vocabRef === state.vocab &&
+    reviewQueueCache.today === today &&
+    reviewQueueCache.autoAddLearningOnly === autoAddLearningOnly
+  ) {
+    srsEntries = reviewQueueCache.entries;
+  } else {
+    srsEntries = Object.entries(state.vocab)
+      .filter(([, entry]) => {
+        if (entry.status === "ignored" || entry.status === "known") return false;
+        if (autoAddLearningOnly && entry.status === "new") return false;
+        return true;
+      })
+      .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+    reviewQueueCache = { vocabRef: state.vocab, today, autoAddLearningOnly, entries: srsEntries };
+  }
   const reviewWords = buildReviewQueue(srsEntries, today);
 
   // A new review session starts whenever the queue goes from empty to non-empty
@@ -370,6 +391,7 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
     playReviewGradeSound(quality);
     const { hideReviewAnswer } = await import("../views/vocabulary.js");
     hideReviewAnswer();
+    reviewQueueCache = null;
     renderReview();
   } finally {
     reviewGradePending = false;
@@ -388,6 +410,7 @@ export function removeFromSrs(word: string): void {
   if (previousStatus !== "ignored") playStatusSound("ignored");
   saveState();
   state.reviewIndex = 0;
+  reviewQueueCache = null;
   renderReview();
   renderVocabulary();
 }
