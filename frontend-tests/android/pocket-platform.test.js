@@ -581,7 +581,10 @@ describe("Android Pocket platform", () => {
     assert.match(source, /if \(!androidPdfOverlay && !await confirmWholeBookOcr\(\)\)\s*return false;/);
     assert.match(source, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
     assert.match(source, /bridge\.beginPdfRender\(sessionId, data\)/);
-    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, 1400\)/);
+    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, pdfRenderWidth\(\)\)/);
+    // The render width follows the screen (device pixels), clamped to the
+    // native 512..2400 range instead of a fixed 1400.
+    assert.match(source, /function pdfRenderWidth\(\)[\s\S]*Math\.min\(2400, Math\.max\(512, width\)\)/);
     assert.match(source, /new FileReader\(\)/);
     assert.match(source, /fetch\(`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);
     assert.match(source, /MAX_POCKET_PDF_BYTES = 32 \* 1024 \* 1024/);
