@@ -23,9 +23,32 @@ fn find_ebook_convert() -> Option<PathBuf> {
         }
     }
 
-    #[cfg(windows)]
+    // Flatpak: the sandbox cannot reach the host's Calibre install through
+
+    // PATH; /run/host/usr/bin is the documented escape hatch.
+
+    #[cfg(target_os = "linux")]
+
     {
+
+        let candidate = std::path::Path::new("/run/host/usr/bin/ebook-convert");
+
+        if candidate.is_file() {
+
+            return Some(candidate.to_path_buf());
+
+        }
+
+    }
+
+
+
+    #[cfg(windows)]
+
+    {
+
         for key in ["ProgramFiles", "ProgramFiles(x86)"] {
+
             if let Some(base) = std::env::var_os(key) {
                 let candidate = PathBuf::from(base)
                     .join("Calibre2")
