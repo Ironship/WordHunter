@@ -339,7 +339,9 @@ describe("Android Pocket platform", () => {
     assert.equal(handle.listeners.pointerdown.length, 1);
     assert.equal(listeners.resize.length, 1);
     assert.equal(listeners.orientationchange.length, 1);
-    assert.equal(visualViewportListeners.resize.length, 2);
+    // The sheet binds resize+scroll (2); the pinch-zoom re-pin adds its own
+    // resize+scroll pair (2 more).
+    assert.equal(visualViewportListeners.resize.length, 4);
     assert.equal(observedContent.target, wordPanel);
     assert.deepEqual(observedContent.options.attributeFilter, ["hidden"]);
     assert.equal(wordPanel.listeners.load.length, 1);
