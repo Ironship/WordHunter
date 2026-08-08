@@ -135,7 +135,7 @@ export function renderSmartSuggestionHtml(suggestion: SmartSuggestion | null): s
   `;
 }
 
-export function getSmartSuggestionHtml(context: string, word: string): string {
+function getSmartSuggestionHtml(context: string, word: string): string {
   return renderSmartSuggestionHtml(getSmartSuggestion(context, word));
 }
 function checkGermanSeparableVerb(context: string, word: string): string | null {
