@@ -590,6 +590,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -664,6 +665,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -740,6 +742,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -812,6 +815,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -862,6 +866,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -915,6 +920,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp

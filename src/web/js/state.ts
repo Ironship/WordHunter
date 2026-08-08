@@ -1,6 +1,7 @@
 // @ts-check
 
 import { createAutosave } from "./state/autosave.js";
+import { createDefaultPreferences } from "./state/defaults.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
@@ -274,6 +275,7 @@ export function getLastReadTextId(lang = state.preferences?.learningLanguage): s
 
 export function setLastReadTextId(id: string, lang = state.preferences?.learningLanguage): void {
   if (!id || !lang) return;
+  if (!state.preferences || typeof state.preferences !== "object") state.preferences = createDefaultPreferences();
   if (!state.preferences.lastReadTextIds || typeof state.preferences.lastReadTextIds !== "object") state.preferences.lastReadTextIds = {};
   state.preferences.lastReadTextIds[lang] = id;
 }
@@ -293,6 +295,11 @@ export function clearLastReadTextForLanguage(lang = state.preferences?.learningL
 export function replaceState(nextState: WhAppState, { save = true }: { save?: boolean } = {}): void {
   autosave.withoutAutoSave(() => {
     Object.keys(state).forEach((key) => delete state[key]);
+    // A snapshot without a preferences object (legacy/corrupt save) must not
+    // null-deref every later state.preferences.* access.
+    if (!nextState.preferences || typeof nextState.preferences !== "object") {
+      nextState.preferences = createDefaultPreferences();
+    }
     Object.assign(state, nextState);
   });
   resetInitialVocabKeys();
@@ -303,6 +310,7 @@ export function replaceState(nextState: WhAppState, { save = true }: { save?: bo
 }
 
 export function switchLearningLanguage(lang: string): void {
+  if (!state.preferences || typeof state.preferences !== "object") state.preferences = createDefaultPreferences();
   const previousLang = state.preferences?.learningLanguage;
   const previousProfile = state.profiles?.[previousLang];
   if (previousProfile) {
