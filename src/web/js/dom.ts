@@ -93,11 +93,19 @@ export function cacheElements() {
   els.exportAnkiTsv = byId("export-anki-tsv");
   els.importAnkiTsv = byId("import-anki-tsv");
   els.ankiExportStatusFilters = [...document.querySelectorAll<HTMLInputElement>("[data-anki-export-status]")];
+<<<<<<< HEAD
   els.clearWords = byId("clear-words");
   els.clearLibrary = byId("clear-library");
   els.clearState = byId("clear-state");
   els.resetPrefs = byId("reset-prefs");
   els.prefRemovalBehavior = byId("pref-removal-behavior");
+=======
+  els.clearWords = document.getElementById("clear-words");
+  els.clearLibrary = document.getElementById("clear-library");
+
+  els.resetPrefs = document.getElementById("reset-prefs");
+  els.prefRemovalBehavior = document.getElementById("pref-removal-behavior");
+>>>>>>> d32614d (fix(#117): HTML/DOM wiring & a11y batch)
   els.prefTheme = byId("pref-theme");
   els.prefLocales = [
     byId<HTMLSelectElement>("pref-locale-sidebar"),
