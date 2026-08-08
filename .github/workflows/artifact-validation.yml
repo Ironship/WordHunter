@@ -108,6 +108,9 @@ jobs:
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@889dc537cf3672c0c060560c9ead940a2b8b7077
+
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
 
