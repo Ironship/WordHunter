@@ -873,7 +873,9 @@
     "wordPanelItemHidden": "Este elemento está oculto en los ajustes del panel de palabras.",
     "vocabExportFailed": "No se pudo exportar el vocabulario.",
     "autoTranslateUnavailable": "La traducción automática no está disponible temporalmente. Se reintentará automáticamente.",
-    "exportTimedOut": "Tiempo de exportación agotado. La operación tardó demasiado."
+    "exportTimedOut": "Tiempo de exportación agotado. La operación tardó demasiado.",
+    "transferMissingFile": "La respuesta de transferencia no incluía el archivo guardado.",
+    "androidExportUnavailable": "El puente de exportación de Android no está disponible."
   },
   "languages": {
     "pl": "Polaco",
@@ -960,7 +962,8 @@
     "copyBtn": "Copiar traducción",
     "copied": "¡Copiado!",
     "copy": "Copiar",
-    "copyDone": "Copiado al portapapeles."
+    "copyDone": "Copiado al portapapeles.",
+    "errorPairNotConfigured": "El par de idiomas de traducción no está configurado."
   },
   "graphs": {
     "eyebrow": "Estadísticas",

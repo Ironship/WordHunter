@@ -664,7 +664,8 @@
     "copyBtn": "翻訳をコピー",
     "copied": "コピーしました！",
     "copy": "コピー",
-    "copyDone": "クリップボードにコピーしました。"
+    "copyDone": "クリップボードにコピーしました。",
+    "errorPairNotConfigured": "翻訳の言語ペアが設定されていません。"
   },
   "help": {
     "eyebrow": "ヘルプ",
@@ -904,7 +905,9 @@
     "wordPanelItemHidden": "この項目は単語パネルの設定で非表示になっています。",
     "vocabExportFailed": "語彙をエクスポートできませんでした。",
     "autoTranslateUnavailable": "自動翻訳は一時的に利用できません。自動的に再試行されます。",
-    "exportTimedOut": "エクスポートがタイムアウトしました。操作に時間がかかりすぎました。"
+    "exportTimedOut": "エクスポートがタイムアウトしました。操作に時間がかかりすぎました。",
+    "transferMissingFile": "転送レスポンスに保存ファイルが含まれていませんでした。",
+    "androidExportUnavailable": "Android エクスポートブリッジを利用できません。"
   },
   "languages": {
     "pl": "ポーランド語",

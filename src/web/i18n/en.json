@@ -664,7 +664,8 @@
     "copyBtn": "Copy translation",
     "copied": "Copied!",
     "copy": "Copy",
-    "copyDone": "Copied to clipboard."
+    "copyDone": "Copied to clipboard.",
+    "errorPairNotConfigured": "Translation language pair is not configured."
   },
   "graphs": {
     "eyebrow": "Statistics",
@@ -958,7 +959,9 @@
     "wordPanelItemHidden": "This item is hidden in the word panel settings.",
     "vocabExportFailed": "Could not export vocabulary.",
     "autoTranslateUnavailable": "Automatic translation is temporarily unavailable. It will be retried automatically.",
-    "exportTimedOut": "Export timed out. The operation took too long."
+    "exportTimedOut": "Export timed out. The operation took too long.",
+    "transferMissingFile": "The transfer response did not include the saved file.",
+    "androidExportUnavailable": "Android export bridge is unavailable."
   },
   "languages": {
     "pl": "Polish",
