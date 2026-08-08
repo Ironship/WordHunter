@@ -26,18 +26,16 @@ impl Listener {
 
     pub(crate) fn accept(&self) -> std::io::Result<(Connection, Option<SocketAddr>)> {
         match self {
-            Self::Tcp(l) => l
-                .accept()
-                .map(|(conn, addr)| {
-                    // WordHunter vendor patch: a stalled client (slow-loris)
-                    // must not pin a worker thread forever. The app-level
-                    // listener timeout does not apply to accepted sockets on
-                    // Windows, so enforce a read/write deadline per
-                    // connection here.
-                    let _ = conn.set_read_timeout(Some(Duration::from_secs(60)));
-                    let _ = conn.set_write_timeout(Some(Duration::from_secs(60)));
-                    (Connection::from(conn), Some(addr))
-                }),
+            Self::Tcp(l) => l.accept().map(|(conn, addr)| {
+                // WordHunter vendor patch: a stalled client (slow-loris)
+                // must not pin a worker thread forever. The app-level
+                // listener timeout does not apply to accepted sockets on
+                // Windows, so enforce a read/write deadline per
+                // connection here.
+                let _ = conn.set_read_timeout(Some(Duration::from_secs(60)));
+                let _ = conn.set_write_timeout(Some(Duration::from_secs(60)));
+                (Connection::from(conn), Some(addr))
+            }),
             #[cfg(unix)]
             Self::Unix(l) => l.accept().map(|(conn, _)| (Connection::from(conn), None)),
         }
