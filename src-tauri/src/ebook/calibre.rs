@@ -59,6 +59,28 @@ pub(crate) fn convert_with_calibre(data: &[u8], suffix: &str) -> Result<String, 
     command.creation_flags(0x08000000);
 
     let mut child = command.spawn().map_err(|e| e.to_string())?;
+    // Drain stdout/stderr concurrently: ebook-convert writes progress to
+    // both pipes, and once a pipe buffer fills (~64 KB) the child blocks
+    // forever. Reading only after wait() is a deadlock.
+    let stdout_pipe = child.stdout.take();
+    let stderr_pipe = child.stderr.take();
+    let stdout_thread = stdout_pipe.map(|mut pipe| {
+        thread::spawn(move || {
+            let mut buf = Vec::new();
+            use std::io::Read;
+            let _ = pipe.read_to_end(&mut buf);
+            buf
+        })
+    });
+    let stderr_thread = stderr_pipe.map(|mut pipe| {
+        thread::spawn(move || {
+            let mut buf = Vec::new();
+            use std::io::Read;
+            let _ = pipe.read_to_end(&mut buf);
+            buf
+        })
+    });
+
     let deadline = Instant::now() + Duration::from_secs(180);
     let status = loop {
         match child.try_wait() {
@@ -75,16 +97,8 @@ pub(crate) fn convert_with_calibre(data: &[u8], suffix: &str) -> Result<String, 
         }
     };
 
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
-    if let Some(mut out) = child.stdout.take() {
-        use std::io::Read;
-        let _ = out.read_to_end(&mut stdout);
-    }
-    if let Some(mut err) = child.stderr.take() {
-        use std::io::Read;
-        let _ = err.read_to_end(&mut stderr);
-    }
+    let stdout = stdout_thread.and_then(|handle| handle.join().ok()).unwrap_or_default();
+    let stderr = stderr_thread.and_then(|handle| handle.join().ok()).unwrap_or_default();
 
     if !status.success() {
         let stderr_text = String::from_utf8_lossy(&stderr).trim().to_string();
