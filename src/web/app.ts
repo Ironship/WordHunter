@@ -7,6 +7,7 @@ import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale, initialLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
+import { buildSavePayload, saveSyncXhr } from "./js/api.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
@@ -64,7 +65,10 @@ function flushPendingStateBeforeExit() {
   flushFrontendStateBuffers();
   flushUiStateSync();
   if (isAndroidPlatform()) {
-    saveState();
+    // The webview is being torn down: an ordinary async fetch is dropped
+    // mid-flight. saveSyncXhr uses keepalive so the final state reaches
+    // the backend even when the activity finishes right after this handler.
+    saveSyncXhr(JSON.stringify(buildSavePayload(state)));
     return;
   }
   if (typeof window.flushPendingSave === "function") window.flushPendingSave();
