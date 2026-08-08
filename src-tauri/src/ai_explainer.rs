@@ -91,12 +91,13 @@ fn build_user_content(
             rect.get("y0").and_then(Value::as_f64),
             rect.get("x1").and_then(Value::as_f64),
             rect.get("y1").and_then(Value::as_f64),
-        ) {
-            prompt.push_str(&format!(
-                "\nThe word is highlighted in the attached page image between \
+        )
+    {
+        prompt.push_str(&format!(
+            "\nThe word is highlighted in the attached page image between \
                  normalized coordinates ({x0:.3}, {y0:.3}) and ({x1:.3}, {y1:.3})."
-            ));
-        }
+        ));
+    }
 
     let Some(image) = image else {
         return json!(prompt);
