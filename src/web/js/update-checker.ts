@@ -1,4 +1,5 @@
 import { state, saveState } from "./state.js";
+import { openAndroidUrl } from "./platform.js";
 import { t } from "./i18n.js";
 import { showToast } from "./toast.js";
 
@@ -127,7 +128,9 @@ export async function checkForUpdates({ manual = false }: UpdateCheckOptions = {
       if (newBtn instanceof HTMLButtonElement) {
         openBtn.replaceWith(newBtn);
         newBtn.addEventListener("click", () => {
-          window.open(GITHUB_RELEASES_URL, "_blank");
+          if (!openAndroidUrl(GITHUB_RELEASES_URL)) {
+            window.open(GITHUB_RELEASES_URL, "_blank");
+          }
           dialog.close();
         });
       }
