@@ -11,11 +11,19 @@ pub fn translate(payload: Value) -> Result<Value, String> {
         .get("provider")
         .and_then(Value::as_str)
         .unwrap_or_default();
+    // Reject garbage payloads: {} must not produce a fake 200 with an
+    // empty translation.
+    if provider.is_empty() {
+        return Err("translation requires a provider".to_string());
+    }
     let text = payload
         .get("text")
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
+    if text.is_empty() {
+        return Err("translation requires a non-empty text".to_string());
+    }
     let from = payload
         .get("from")
         .and_then(Value::as_str)
