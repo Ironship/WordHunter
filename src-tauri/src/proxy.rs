@@ -19,8 +19,10 @@ pub fn serve_proxy(request: Request, query: &str) -> Result<(), String> {
     if !matches!(host, "gutenberg.org" | "www.gutenberg.org" | "gutendex.com") {
         return response::error_response(request, 403, "domain not allowed");
     }
-    let resp = crate::http::agent()
+    let resp = crate::http::no_redirect_agent()
         .get(target)
+        // The allowlist is checked on the initial URL only; following
+        // redirects could silently proxy an arbitrary host. Disable them.
         .set("User-Agent", USER_AGENT)
         .call()
         .map_err(|e| e.to_string())?;

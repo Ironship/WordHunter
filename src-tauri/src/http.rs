@@ -11,6 +11,17 @@ pub(crate) fn agent() -> &'static ureq::Agent {
     &AGENT
 }
 
+/// Agent that never follows redirects — used where the domain allowlist is
+/// checked on the initial URL only (the proxy endpoint): a redirect could
+/// silently reach an arbitrary host.
+pub(crate) fn no_redirect_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
+        .timeout_connect(CONNECT_TIMEOUT)
+        .timeout_read(READ_TIMEOUT)
+        .redirects(0)
+        .build()
+}
+
 fn agent_with_timeouts(connect_timeout: Duration, read_timeout: Duration) -> ureq::Agent {
     ureq::AgentBuilder::new()
         .timeout_connect(connect_timeout)
