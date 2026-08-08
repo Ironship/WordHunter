@@ -165,7 +165,7 @@
     "pdfPocketScanBody": "Word Hunter Pocket can import PDFs that already contain selectable text. This file appears to be scanned. Import it in Word Hunter on your PC for OCR, then export a full transfer package to Pocket.",
     "defaultAuthor": "Custom import",
     "blurb": "Custom import",
-    "coverPasteHint": "Click to select or paste ",
+    "coverPasteHint": "Click to select or paste",
     "parsingEbook": "Parsing ebook…",
     "parsingPdfOcr": "Running PaddleOCR on the PDF…",
     "parsingImageOcr": "Running PaddleOCR on the image…",
