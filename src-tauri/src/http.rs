@@ -3,12 +3,22 @@ use std::time::Duration;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const READ_TIMEOUT: Duration = Duration::from_secs(30);
+/// Large-file downloads (offline-translator model packages, up to 400 MB)
+/// must not abort when a CDN stalls mid-stream for more than 30 s.
+const READ_TIMEOUT_EXTENDED: Duration = Duration::from_secs(300);
 
 static AGENT: LazyLock<ureq::Agent> =
     LazyLock::new(|| agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT));
+static DOWNLOAD_AGENT: LazyLock<ureq::Agent> =
+    LazyLock::new(|| agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT_EXTENDED));
 
 pub(crate) fn agent() -> &'static ureq::Agent {
     &AGENT
+}
+
+/// Agent with an extended read timeout for large downloads.
+pub(crate) fn download_agent() -> &'static ureq::Agent {
+    &DOWNLOAD_AGENT
 }
 
 fn agent_with_timeouts(connect_timeout: Duration, read_timeout: Duration) -> ureq::Agent {

@@ -123,7 +123,7 @@ fn install_package(pkg: &ModelPackageInfo) -> Result<bool, String> {
             pkg.from_code, pkg.to_code
         )
     })?;
-    let response = crate::http::agent()
+    let response = crate::http::download_agent()
         .get(link)
         .set("User-Agent", crate::proxy::USER_AGENT)
         .call()
