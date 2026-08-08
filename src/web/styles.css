@@ -247,17 +247,6 @@ kbd {
   min-width: 0;
 }
 
-.brand-mark {
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: var(--radius);
-  background: var(--sidebar-brand-bg);
-  color: var(--sidebar-ink);
-  font-weight: 800;
-}
 
 .brand strong {
   display: block;
@@ -424,30 +413,8 @@ kbd {
   font-size: 0.88rem;
 }
 
-.footer-action {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: var(--radius);
-  padding: 0.6rem 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--sidebar-nav-ink);
-  text-align: left;
-  font: inherit;
-}
 
-.footer-action:hover {
-  background: var(--sidebar-nav-active);
-  color: var(--sidebar-ink);
-}
 
-.footer-action svg {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-}
 
 .main-panel {
   min-width: 0;
@@ -463,13 +430,7 @@ kbd {
 }
 
 .topbar h1,
-.panel h2,
-.help-list h3 {
-  margin: 0;
-  line-height: 1.2;
-}
-
-.topbar h1 {
+.panel h2 {
   font-size: 1.65rem;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -477,7 +438,6 @@ kbd {
 
 .topbar-actions,
 .toolbar-buttons,
-.settings-actions,
 .word-actions,
 .row-actions {
   display: flex;
@@ -529,10 +489,6 @@ kbd {
 .workspace-grid,
 .reader-grid,
 .settings-grid,
-.help-grid {
-  display: grid;
-  gap: 1rem;
-}
 
 .library-layout {
   position: relative;
@@ -1287,18 +1243,12 @@ button:disabled {
 
 .book-card p,
 .muted-copy,
-.help-list p,
 .empty-state p {
   margin: 0;
   color: var(--muted);
 }
 
 .book-meta,
-.tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
 
 #tracking-summary {
   display: flex;
@@ -1411,12 +1361,6 @@ button:disabled {
 .card-stat-total strong { color: var(--ink); }
 
 .book-actions,
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: auto;
-}
 
 .primary-button,
 .secondary-button,
@@ -1564,7 +1508,6 @@ button.icon-button {
 }
 
 .import-form,
-.settings-actions,
 .data-actions {
   padding: 1rem;
 }
@@ -2707,13 +2650,11 @@ html[data-max-width="full"] .reader-text {
   background: var(--green-soft);
   color: var(--green);
 }
-.review-forecast,
 .review-upcoming-wrap {
   margin-top: 2rem;
   padding: 0 1rem;
 }
 
-.review-forecast h3,
 .review-upcoming-wrap h3 {
   margin: 0.15rem 0 0.6rem;
   font-size: 1rem;
@@ -3467,24 +3408,8 @@ textarea.vocab-translation-input {
   to { opacity: 1; transform: none; }
 }
 
-.help-grid {
-  max-width: 980px;
-}
 
-.help-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  padding: 1rem;
-}
 
-.help-list > div {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--ink);
-  padding: 1rem;
-}
 
 .settings-grid .panel {
   padding-bottom: 1rem;
@@ -3614,8 +3539,7 @@ textarea.vocab-translation-input {
     flex: 1 1 180px;
   }
 
-  .book-grid,
-  .help-list {
+  .book-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -3864,7 +3788,6 @@ textarea.vocab-translation-input {
 :root.touch-controls-mode:not(.pocket-mode) .row-actions button,
 :root.touch-controls-mode:not(.pocket-mode) .status-button,
 :root.touch-controls-mode:not(.pocket-mode) .nav-item,
-:root.touch-controls-mode:not(.pocket-mode) .footer-action,
 :root.touch-controls-mode:not(.pocket-mode) .status-check {
   min-width: 44px;
   min-height: 44px !important;
@@ -3907,7 +3830,6 @@ textarea.vocab-translation-input {
 :root.touch-controls-mode:not(.pocket-mode) .topbar-actions,
 :root.touch-controls-mode:not(.pocket-mode) .word-actions,
 :root.touch-controls-mode:not(.pocket-mode) .book-actions,
-:root.touch-controls-mode:not(.pocket-mode) .form-actions,
 :root.touch-controls-mode:not(.pocket-mode) .row-actions,
 :root.touch-controls-mode:not(.pocket-mode) .status-options,
 :root.touch-controls-mode:not(.pocket-mode) .status-filter-options,
@@ -4054,7 +3976,6 @@ textarea.vocab-translation-input {
 .discover-search { display: flex; gap: .6rem; padding: 1rem; align-items: flex-end; flex-wrap: wrap; }
 .discover-search .grow { flex: 1 1 240px; }
 .discover-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .6rem 1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-strong); flex-wrap: wrap; }
-.discover-toolbar .toolbar-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
 .discover-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .85rem; padding: 1rem; }
 :root.no-covers .discover-card.book-card.has-cover { grid-template-columns: 1fr; }
 .discover-card.selected { outline: 2px solid var(--control-accent); border-color: var(--control-accent); }
@@ -4062,11 +3983,7 @@ textarea.vocab-translation-input {
 .discover-card .discover-check input { width: auto; height: auto; }
 .discover-pagination { display: flex; gap: .6rem; padding: 1rem; justify-content: center; align-items: center; }
 .user-books-list { display: grid; gap: .5rem; padding: 0 1rem 1rem; }
-.user-book-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: .6rem; align-items: center; padding: .4rem .6rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); transition: border-color 0.15s ease, background 0.15s ease; cursor: default; }
-.user-book-row:hover { border-color: var(--blue); background: var(--panel-strong); }
-.user-book-row img { width: 40px; height: 56px; object-fit: cover; border-radius: 3px; }
 
-.danger-link { color: var(--red); }
 
 /* Sort direction indicator */
 #library-sort-reverse .sort-indicator {
@@ -4411,9 +4328,6 @@ dialog {
   #flashcards-view.active > .flashcards-layout,
   #translator-view.active > .translator-layout,
   #settings-view.active > .settings-grid,
-  #help-view.active > .help-grid {
-    min-height: 0;
-  }
 
   .table-wrap {
     min-height: 0;
