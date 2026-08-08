@@ -1391,7 +1391,7 @@ mod tests {
     use std::sync::Mutex;
 
     #[cfg(test)]
-use base64::Engine;
+    use base64::Engine;
     use serde_json::json;
 
     use crate::server::{ActiveOcrJob, OcrJobState};
