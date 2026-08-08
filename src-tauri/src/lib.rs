@@ -36,7 +36,6 @@ mod tts;
 mod update;
 mod vocab_export;
 mod vocab_index;
-mod youglish;
 mod youtube_captions;
 
 const APP_NAME: &str = "WordHunter";
