@@ -7,7 +7,7 @@ use crate::{
     ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy,
     response,
     server::{ActiveOcrJob, ServerState},
-    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish, youtube_captions,
+    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youtube_captions,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
@@ -528,13 +528,6 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             "/__youtube/captions" => {
                 let payload = read_json_or_400!(request);
                 match youtube_captions::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__youglish" => {
-                let payload = read_json_or_400!(request);
-                match youglish::handle(payload) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 400, &err),
                 }
