@@ -17,6 +17,15 @@ fn popup_escape_script(base_url: &str) -> String {
     )
 }
 
+/// Reject anything but http(s) targets for the OS/webview open paths.
+fn validated_open_target(target: &str) -> Result<String, String> {
+    let target = target.trim();
+    if !(target.starts_with("https://") || target.starts_with("http://")) {
+        return Err("refusing to open a non-http URL".to_string());
+    }
+    Ok(target.to_string())
+}
+
 fn is_popup_close_navigation(url: &Url, close_url: &str) -> bool {
     url.as_str() == close_url
 }
@@ -46,6 +55,14 @@ pub fn serve_open_dict(
             format!("{base_url}{url}")
         } else {
             url.to_string()
+        };
+        // Only http(s) targets may reach the OS browser or the
+        // webview: file:/custom-protocol URLs must never be handed
+        // out (audit #93). The internal popup legitimately shows
+        // third-party https pages (Youglish), so no host restriction.
+        let target = match validated_open_target(&target) {
+            Ok(ok) => ok,
+            Err(err) => return Err(err),
         };
         let mode = params.get("mode").map(String::as_str).unwrap_or("external");
         let title = params
@@ -136,8 +153,25 @@ pub fn serve_close_popup(request: Request, app_handle: &AppHandle) -> Result<(),
 
 #[cfg(test)]
 mod tests {
-    use super::{is_popup_close_navigation, popup_escape_script};
+    use super::{is_popup_close_navigation, popup_escape_script, validated_open_target};
     use url::Url;
+
+    #[test]
+    fn open_target_rejects_non_http_schemes() {
+        assert!(validated_open_target("file:///etc/passwd").is_err());
+        assert!(validated_open_target("javascript:alert(1)").is_err());
+        assert!(validated_open_target("custom-protocol://payload").is_err());
+        assert!(validated_open_target("").is_err());
+    }
+
+    #[test]
+    fn open_target_accepts_http_and_https() {
+        assert_eq!(
+            validated_open_target("https://youglish.com/pronounce/word"),
+            Ok("https://youglish.com/pronounce/word".to_string())
+        );
+        assert!(validated_open_target("http://127.0.0.1:38619/index.html").is_ok());
+    }
 
     #[test]
     fn escape_script_uses_navigation_instead_of_a_cross_site_request() {
