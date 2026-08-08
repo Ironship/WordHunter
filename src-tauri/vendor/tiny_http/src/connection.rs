@@ -2,6 +2,8 @@
 
 #[cfg(unix)]
 use std::os::unix::net as unix_net;
+#[cfg(unix)]
+use std::path::PathBuf;
 use std::{
     net::{Shutdown, SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     time::Duration,
