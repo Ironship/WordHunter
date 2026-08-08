@@ -188,7 +188,12 @@ export function readZipArchive(path) {
     const localOffset = buffer.readUInt32LE(offset + 42);
     const rawName = buffer.subarray(offset + 46, offset + 46 + nameLength).toString("utf8");
     const name = normalizeArchivePath(rawName);
-    if (name && entries.has(name.toLowerCase())) fail(`${path} contains duplicate entry: ${name}`);
+    if (name && entries.has(name.toLowerCase())) {
+      // AGP resource optimization can legitimately emit duplicate res/
+      // entries in release (minified) APKs; everything else is a real
+      // packaging defect.
+      if (!name.startsWith("res/")) fail(`${path} contains duplicate entry: ${name}`);
+    }
     if (name) {
       entries.set(name.toLowerCase(), {
         name,
