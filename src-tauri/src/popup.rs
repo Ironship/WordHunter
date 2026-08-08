@@ -6,15 +6,21 @@ use crate::response;
 
 const INTERNAL_POPUP_LABEL: &str = "internal-popup";
 
+/// Escape-key handler for the popup window, kept as a template so the
+/// placeholder substitution stays reviewable (and the URL never lands in a
+/// hand-written format! string).
+const POPUP_ESCAPE_TEMPLATE: &str = include_str!("../../src/web/templates/popup-escape.js");
+
 fn popup_close_url(base_url: &str) -> String {
     format!("{base_url}/__popup/close")
 }
 
 fn popup_escape_script(base_url: &str) -> String {
     let close_url = popup_close_url(base_url);
-    format!(
-        "window.addEventListener('keydown',e=>{{if(e.key==='Escape'){{e.preventDefault();e.stopImmediatePropagation();window.location.replace('{close_url}');}}}},true);"
-    )
+    // Defense in depth: the URL is built from a numeric-port localhost base,
+    // but a quote in it must never escape the JS string literal.
+    let safe_close_url = close_url.replace('\'', "\\'");
+    POPUP_ESCAPE_TEMPLATE.replace("{{close_url}}", &safe_close_url)
 }
 
 fn is_popup_close_navigation(url: &Url, close_url: &str) -> bool {
