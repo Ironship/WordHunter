@@ -213,6 +213,13 @@ impl Store {
             *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = previous_base_records;
             return Err(error);
         }
+        // The data directory changed: the in-memory records cache and the
+        // delta-save base both describe the OLD directory. Stale caches here
+        // made delta saves merge against records from the previous folder
+        // (deleted records resurrected, mis-merges). Drop both; the next
+        // snapshot()/records_snapshot() rebuilds them from the new dir.
+        self.invalidate_records_cache();
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = Default::default();
         Ok(dir)
     }
 }
