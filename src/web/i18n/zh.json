@@ -724,7 +724,8 @@
     "copyBtn": "复制翻译",
     "copied": "已复制！",
     "copy": "复制",
-    "copyDone": "已复制到剪贴板。"
+    "copyDone": "已复制到剪贴板。",
+    "errorPairNotConfigured": "未配置翻译语言对。"
   },
   "graphs": {
     "eyebrow": "统计",
@@ -1026,7 +1027,9 @@
     "addedManyWithSkipped": "已添加 {added} 本书。跳过 {skipped} 本（已在书库中）。",
     "wordPanelItemHidden": "此项目已在单词面板设置中隐藏。",
     "vocabExportFailed": "无法导出词汇。",
-    "autoTranslateUnavailable": "自动翻译暂时不可用，将自动重试。"
+    "autoTranslateUnavailable": "自动翻译暂时不可用，将自动重试。",
+    "transferMissingFile": "传输响应未包含已保存的文件。",
+    "androidExportUnavailable": "Android 导出桥不可用。"
   },
   "languages": {
     "pl": "波兰语",

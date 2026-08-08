@@ -941,7 +941,9 @@
     "addedManyWithSkipped": "{added} Bücher hinzugefügt. {skipped} übersprungen (bereits in der Bibliothek).",
     "wordPanelItemHidden": "Dieses Element ist in den Einstellungen des Wortpanels ausgeblendet.",
     "vocabExportFailed": "Vokabeln konnten nicht exportiert werden.",
-    "autoTranslateUnavailable": "Automatische Übersetzung ist vorübergehend nicht verfügbar. Sie wird automatisch erneut versucht."
+    "autoTranslateUnavailable": "Automatische Übersetzung ist vorübergehend nicht verfügbar. Sie wird automatisch erneut versucht.",
+    "transferMissingFile": "Die Transferantwort enthielt keine gespeicherte Datei.",
+    "androidExportUnavailable": "Die Android-Export-Bridge ist nicht verfügbar."
   },
   "languages": {
     "pl": "Polnisch",
@@ -1028,7 +1030,8 @@
     "copyBtn": "Übersetzung kopieren",
     "copied": "Kopiert!",
     "copy": "Kopieren",
-    "copyDone": "In die Zwischenablage kopiert."
+    "copyDone": "In die Zwischenablage kopiert.",
+    "errorPairNotConfigured": "Das Sprachpaar für die Übersetzung ist nicht konfiguriert."
   },
   "graphs": {
     "eyebrow": "Statistiken",

@@ -941,7 +941,9 @@
     "addedManyWithSkipped": "{added} livres ajoutés. {skipped} ignorés (déjà dans la bibliothèque).",
     "wordPanelItemHidden": "Cet élément est masqué dans les paramètres du panneau de mots.",
     "vocabExportFailed": "Impossible d'exporter le vocabulaire.",
-    "autoTranslateUnavailable": "La traduction automatique est temporairement indisponible. Elle sera réessayée automatiquement."
+    "autoTranslateUnavailable": "La traduction automatique est temporairement indisponible. Elle sera réessayée automatiquement.",
+    "transferMissingFile": "La réponse de transfert ne contenait pas le fichier enregistré.",
+    "androidExportUnavailable": "La passerelle d'export Android n'est pas disponible."
   },
   "languages": {
     "pl": "Polonais",
@@ -1028,7 +1030,8 @@
     "copyBtn": "Copier la traduction",
     "copied": "Copié !",
     "copy": "Copier",
-    "copyDone": "Copié dans le presse-papiers."
+    "copyDone": "Copié dans le presse-papiers.",
+    "errorPairNotConfigured": "La paire de langues de traduction n'est pas configurée."
   },
   "graphs": {
     "eyebrow": "Statistiques",

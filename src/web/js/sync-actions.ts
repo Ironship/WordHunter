@@ -389,6 +389,10 @@ async function waitForExportJob(job: string): Promise<boolean> {
 
 function transferErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
+  // Known internal literals map to localized strings; anything else
+  // (backend/HTTP text) is English-only and stays in the console.
+  if (message.includes("transfer export response is missing a saved file")) return t("toast.transferMissingFile");
+  if (message.includes("Android export bridge is unavailable")) return t("toast.androidExportUnavailable");
   const short = message.replace(/\s+/g, " ").trim();
   return short.length > 160 ? `${short.slice(0, 157)}...` : short;
 }
