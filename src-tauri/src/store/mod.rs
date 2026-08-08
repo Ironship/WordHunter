@@ -106,9 +106,7 @@ impl Store {
     /// (text upsert/delete, wipe, transfer import) that bypasses the bulk
     /// commit path — the next save then re-reads the records tree once.
     pub(crate) fn invalidate_records_cache(&self) {
-        *self.records_cache
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = None;
+        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = None;
     }
 
     /// The records tree as an in-memory map, loading it from disk once when
@@ -116,10 +114,7 @@ impl Store {
     pub(crate) fn records_cache_or_load(
         &self,
     ) -> Result<BTreeMap<String, record_files::SyncRecord>, String> {
-        let mut cache = self
-            .records_cache
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let mut cache = self.records_cache.lock().unwrap_or_else(|e| e.into_inner());
         if cache.is_none() {
             *cache = Some(record_files::load_records(&self.dir())?);
         }
@@ -128,9 +123,7 @@ impl Store {
 
     /// Replace the in-memory record cache with the committed state.
     pub(crate) fn set_records_cache(&self, records: BTreeMap<String, record_files::SyncRecord>) {
-        *self.records_cache
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some(records);
+        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = Some(records);
     }
 
     pub fn load_ui_state(&self) -> serde_json::Value {
