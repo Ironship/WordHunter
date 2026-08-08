@@ -367,7 +367,7 @@
 
           <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
           <div class="reader-sidebar-wrapper" data-pocket-sheet-state="collapsed">
-            <button type="button" id="pocket-word-panel-sheet-handle" class="pocket-word-panel-sheet-handle" aria-controls="word-panel" aria-expanded="false" aria-label="Rozwiń panel słowa" title="Rozwiń panel słowa">
+            <button type="button" id="pocket-word-panel-sheet-handle" class="pocket-word-panel-sheet-handle" aria-controls="word-panel" aria-expanded="false" data-i18n-attr="aria-label=reader.expandWordPanel,title=reader.expandWordPanel">
               <span aria-hidden="true"></span>
             </button>
             <aside class="panel word-panel" id="word-panel" tabindex="-1" data-i18n-attr="aria-label=reader.wordPanelEyebrow">
@@ -637,7 +637,7 @@
             <div id="graphs-stats" class="graphs-stats"></div>
             <div id="graphs-heatmap" class="graphs-heatmap"></div>
             <div id="graphs-canvas-area" class="graphs-grid"></div>
-            <div id="graphs-ai-summary" class="graphs-ai-summary">
+            <div class="graphs-ai-summary">
               <button class="secondary-button button-xs" type="button" id="graphs-ai-explain" hidden>
                 <span data-i18n="graphs.aiExplain">Objaśnij z AI</span>
                 <span class="shortcut-badge">Ctrl+E</span>
@@ -1226,7 +1226,7 @@
               <h2 id="transfer-tools-heading" data-i18n="transfer.toolsHeading">Anki i porządkowanie danych</h2>
             </div>
             <div class="settings-body">
-              <div class="data-actions" id="transfer-secondary-actions">
+              <div class="data-actions">
                 <section class="data-action-row">
                   <div class="data-action-copy">
                     <h3 data-i18n="settings.ankiTitle">Wymiana słówek z Anki</h3>
@@ -1575,7 +1575,7 @@
     </div>
     <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
       <p class="muted-copy" data-i18n="moveBook.hint">Wybierz profil językowy, do którego chcesz przenieść ten tekst:</p>
-      <select id="move-book-select" class="input"></select>
+      <select id="move-book-select" class="input" data-i18n-attr="aria-label=library.moveBook"></select>
       <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
         <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Anuluj</button>
         <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Przenieś</button>
@@ -1589,7 +1589,7 @@
       <p id="delete-book-message" class="muted-copy"></p>
       <div class="confirmation-dialog-actions">
         <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Anuluj</button>
-        <button id="delete-book-confirm" type="button" class="danger-button"></button>
+        <button id="delete-book-confirm" type="button" class="danger-button" data-i18n="library.removeConfirmButton"></button>
       </div>
     </div>
   </dialog>
