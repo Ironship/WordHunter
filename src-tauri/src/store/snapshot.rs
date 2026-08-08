@@ -239,7 +239,10 @@ impl Store {
         )?;
 
         self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal);
+        // If the journal survives, recover_pending_operations re-applies the
+        // restore payload against the new base on next launch — duplicating
+        // the restore. Propagate the removal error instead of swallowing it.
+        remove_if_exists(journal)?;
         self.invalidate_records_cache();
         Ok(())
     }
