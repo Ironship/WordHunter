@@ -131,6 +131,10 @@ async function loadAppHarness({
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
     },
+    "./js/api.js": {
+      buildSavePayload: () => "{}",
+      saveSyncXhr() { calls.push("keepalive-save"); }
+    },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
     "./js/youglish.js": { refreshYouGlishTheme: noOp },
