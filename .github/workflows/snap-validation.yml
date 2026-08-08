@@ -97,7 +97,7 @@ jobs:
           grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
             "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
-          grep -Eq "^version: ['\"]?1\\.0\\.8['\"]?$" "$root/meta/snap.yaml"
+          grep -Eq "^version: ['\"]?1\\.0\\.10['\"]?$" "$root/meta/snap.yaml"
           grep -Fx 'base: core24' "$root/meta/snap.yaml"
           grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
           grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
