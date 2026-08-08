@@ -20,7 +20,7 @@ $PortableDir = Join-Path $Outputs "Word.Hunter.portable"
 $OutputPortable = Join-Path $PortableDir "Word.Hunter.portable.exe"
 $OutputPortableZip = Join-Path $Outputs "Word.Hunter.portable.zip"
 $OutputInstaller = Join-Path $Outputs "Word.Hunter.Setup.exe"
-$OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.debug.apk"
+$OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.release.apk"
 $OutputAndroidEmulatorDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.emulator.debug.apk"
 $OutputAndroidReleaseAab = Join-Path $Outputs "Word.Hunter.Pocket.release.aab"
 $RequiredTauriCliVersion = "2.11.4"
@@ -796,7 +796,7 @@ function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $Out
     Ensure-AndroidProject
     Prepare-AndroidProject
 
-    Invoke-External "cargo.exe" @("tauri", "android", "build", "--debug", "--apk", "--target", $Target)
+    Invoke-External "cargo.exe" @("tauri", "android", "build", "--apk", "--target", $Target)
 
     $apkRoot = Join-Path $Root "src-tauri\gen\android\app\build\outputs\apk"
     $apk = Get-ChildItem -LiteralPath $apkRoot -Recurse -Filter "*.apk" -File -ErrorAction SilentlyContinue |
@@ -993,7 +993,7 @@ function Show-Usage {
     Write-Host "  .\scripts\build.bat all          build portable ZIP and Setup installer"
     Write-Host "  .\scripts\build.bat installer    build outputs\Word.Hunter.Setup.exe"
     Write-Host "  .\scripts\build.bat portable     build outputs\Word.Hunter.portable.zip"
-    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk; signs if WH_ANDROID_* env vars are set"
+    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.release.apk; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
     Write-Host "  .\scripts\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
