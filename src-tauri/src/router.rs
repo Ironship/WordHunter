@@ -191,7 +191,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             update::check(proxy::USER_AGENT, crate::APP_VERSION),
         ),
         (Method::Get, "/__book/text") => {
-            let params = response::parse_query(&query);
+            let params = response::parse_query(query);
             let id = params.get("id").cloned().unwrap_or_default();
             response::json_response(
                 request,
@@ -199,16 +199,16 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             )
         }
         (Method::Get, "/__book/pdf_pages") => {
-            let params = response::parse_query(&query);
+            let params = response::parse_query(query);
             let id = params.get("id").cloned().unwrap_or_default();
             response::json_response(
                 request,
                 json!({ "pages": state.store.get_pdf_ocr_pages(&id)? }),
             )
         }
-        (Method::Get, "/__media") => handlers::serve_media(request, &state, &query),
+        (Method::Get, "/__media") => handlers::serve_media(request, &state, query),
         (Method::Get, "/__open_dict") => {
-            popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)
+            popup::serve_open_dict(request, &state.base_url, &state.app_handle, query)
         }
         (Method::Get, "/__open_external") => {
             let url = response::parse_query(query)
@@ -231,13 +231,13 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             Ok(payload) => response::json_response(request, payload),
             Err(err) => response::error_response(request, 500, &err),
         },
-        (Method::Get, "/__argos/translate") => match offline_translator::translate(&query) {
+        (Method::Get, "/__argos/translate") => match offline_translator::translate(query) {
             Ok(payload) => response::json_response(request, payload),
             Err(err) => response::error_response(request, 500, &err),
         },
-        (Method::Get, "/__argos/ui") => handlers::serve_offline_translator_ui(request, &query),
-        (Method::Get, "/__tts") => handlers::serve_edge_tts(request, &query),
-        (Method::Get, _) => handlers::serve_static(request, &path),
+        (Method::Get, "/__argos/ui") => handlers::serve_offline_translator_ui(request, query),
+        (Method::Get, "/__tts") => handlers::serve_edge_tts(request, query),
+        (Method::Get, _) => handlers::serve_static(request, path),
         (Method::Post, "/__log_error") => {
             let body = match response::read_body_limited(&mut request, MAX_LOG_BODY) {
                 Ok(body) => body,
@@ -384,7 +384,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                let params = response::parse_query(&query);
+                let params = response::parse_query(query);
                 let job_id = params.get("job_id").cloned().unwrap_or_default();
                 let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
                     Ok(guard) => guard,
@@ -428,7 +428,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                let params = response::parse_query(&query);
+                let params = response::parse_query(query);
                 let job_id = params.get("job_id").cloned().unwrap_or_default();
                 let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
                     Ok(guard) => guard,
