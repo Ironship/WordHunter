@@ -11,11 +11,47 @@ fn env_path(name: &str) -> Option<PathBuf> {
 }
 
 fn appdata_dir() -> Option<PathBuf> {
-    env_path("APPDATA")
+    // APPDATA is Windows-only; on Unix it would shadow the XDG
+    // directories if a stray environment variable leaked through.
+    #[cfg(windows)]
+    {
+        return env_path("APPDATA");
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
 }
 
 fn home_dir_path() -> Option<PathBuf> {
-    env_path("HOME")
+    if let Some(home) = env_path("HOME") {
+        return Some(home);
+    }
+    // HOME can be unset in minimal service sessions; fall back to the
+    // passwd database so the app still starts with a data directory.
+    #[cfg(unix)]
+    {
+        if let Ok(entry) = std::env::var("USER").or_else(|_| std::env::var("LOGNAME")) {
+            if let Some(home) = passwd_home(&entry) {
+                return Some(home);
+            }
+        }
+    }
+    None
+}
+
+#[cfg(unix)]
+fn passwd_home(user: &str) -> Option<PathBuf> {
+    let db = std::fs::read_to_string("/etc/passwd").ok()?;
+    for line in db.lines() {
+        let mut fields = line.split(':');
+        if fields.next()? == user {
+            // name:password:uid:gid:gecos:home:shell
+            let home = fields.nth(4)?;
+            return Some(PathBuf::from(home));
+        }
+    }
+    None
 }
 
 fn xdg_config_dir() -> Option<PathBuf> {

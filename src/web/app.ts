@@ -6,6 +6,15 @@ import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale } from "./js/i18n.js";
+
+/// First-launch locale: saved preference, else the browser/OS language
+/// (matched against the shipped locales), else English.
+function initialLocale(): string {
+  const saved = state.preferences?.locale;
+  if (saved) return saved;
+  const nav = (navigator.language || "").split("-")[0];
+  return nav || "en";
+}
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
@@ -126,7 +135,7 @@ window.addEventListener("wordhunter:state-replaced", () => {
   syncSettingsControls();
   if (document.documentElement.classList.contains("app-booting")) return;
   if (getLocale() !== state.preferences?.locale) {
-    void loadLocale(state.preferences?.locale || "en").then(() => applyTranslations());
+    void loadLocale(initialLocale()).then(() => applyTranslations());
   }
   ensureCurrentText();
   render();
@@ -180,7 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     startBridgeStateLoad();
     await Promise.all([
       applyPreferences(),
-      loadLocale(state.preferences?.locale || "en"),
+      loadLocale(initialLocale()),
       loadBooksCatalog()
     ]);
     applyTranslations();
