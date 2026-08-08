@@ -12,7 +12,7 @@ import { loadLocale, applyTranslations, t, getLocale } from "./js/i18n.js";
 function initialLocale(): string {
   const saved = state.preferences?.locale;
   if (saved) return saved;
-  const nav = (navigator.language || "").split("-")[0];
+  const nav = typeof navigator !== "undefined" ? (navigator.language || "").split("-")[0] : "";
   return nav || "en";
 }
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
