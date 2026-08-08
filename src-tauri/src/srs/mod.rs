@@ -12,6 +12,14 @@ use self::sm2::calculate_sm2;
 pub use self::date::{add_days_iso_from, is_due, today_iso};
 
 pub fn review(payload: Value) -> Result<Value, String> {
+    // Reject garbage: a review without a quality grade or without an entry
+    // must not fabricate plausible scheduling data (success-on-garbage).
+    if payload.get("quality").and_then(Value::as_f64).is_none() {
+        return Err("srs review requires a quality grade".to_string());
+    }
+    if payload.get("entry").is_none() || payload.get("entry") == Some(&Value::Null) {
+        return Err("srs review requires an entry".to_string());
+    }
     let quality = payload
         .get("quality")
         .and_then(Value::as_f64)

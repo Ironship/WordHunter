@@ -193,18 +193,18 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Get, "/__book/text") => {
             let params = response::parse_query(&query);
             let id = params.get("id").cloned().unwrap_or_default();
-            response::json_response(
-                request,
-                json!({ "text": state.store.get_text_content(&id)? }),
-            )
+            match state.store.get_text_content(&id) {
+                Ok(text) => response::json_response(request, json!({ "text": text })),
+                Err(error) => response::error_response(request, 404, &error),
+            }
         }
         (Method::Get, "/__book/pdf_pages") => {
             let params = response::parse_query(&query);
             let id = params.get("id").cloned().unwrap_or_default();
-            response::json_response(
-                request,
-                json!({ "pages": state.store.get_pdf_ocr_pages(&id)? }),
-            )
+            match state.store.get_pdf_ocr_pages(&id) {
+                Ok(pages) => response::json_response(request, json!({ "pages": pages })),
+                Err(error) => response::error_response(request, 404, &error),
+            }
         }
         (Method::Get, "/__media") => handlers::serve_media(request, &state, &query),
         (Method::Get, "/__open_dict") => {
@@ -285,7 +285,13 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                             response::no_content(request)
                         }
                     }
-                    Err(error) => response::error_response(request, 500, &error),
+                    Err(error) => {
+                        // Schema/validation failures are client errors: the
+                        // frontend's saveWithRetry treats 4xx as "send a full
+                        // snapshot" while 5xx would retry the broken payload.
+                        let code = if error.contains("schemaVersion") { 400 } else { 500 };
+                        response::error_response(request, code, &error)
+                    }
                 }
             }
             "/__store/ui_state" => {
@@ -326,8 +332,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__store/upsert_text" => {
                 let payload = read_json_or_400!(request);
-                state.store.upsert_text(&payload)?;
-                response::no_content(request)
+                match state.store.upsert_text(&payload) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__store/delete_text" => {
                 let payload = read_json_or_400!(request);
@@ -335,8 +343,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     .get("id")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
-                state.store.delete_text(id)?;
-                response::no_content(request)
+                match state.store.delete_text(id) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__store/wipe" => {
                 let _ocr_guard = match state.ocr_slot.try_lock() {
@@ -350,8 +360,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                state.store.wipe()?;
-                response::no_content(request)
+                match state.store.wipe() {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 500, &error),
+                }
             }
             "/__book/image" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMAGE_REQUEST_BODY);
@@ -362,8 +374,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__export/save" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                let saved = handlers::save_export(payload)?;
-                response::json_response(request, json!({ "saved": saved }))
+                match handlers::save_export(payload) {
+                    Ok(saved) => response::json_response(request, json!({ "saved": saved })),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__import/ebook" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
@@ -496,6 +510,12 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__ai/explain_stream" => {
                 let payload = read_json_or_400!(request);
+                // Validate BEFORE consuming the request: if the stream never
+                // starts, the client must still get a clean 400 instead of an
+                // unanswered request (ERR_EMPTY_RESPONSE).
+                if let Err(err) = ai_explainer::prepare_request(&payload, true) {
+                    return response::error_response(request, 400, &err);
+                }
                 let mut pending = Some(request);
                 match ai_explainer::explain_stream(
                     payload,
@@ -562,7 +582,14 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             _ => response::error_response(request, 404, "not found"),
         },
-        _ => response::error_response(request, 404, "not found"),
+        _ => {
+            // Known route prefix with an unsupported method — 405, not 404.
+            if path.starts_with("/__") {
+                response::error_response(request, 405, "method not allowed")
+            } else {
+                response::error_response(request, 404, "not found")
+            }
+        },
     }
 }
 

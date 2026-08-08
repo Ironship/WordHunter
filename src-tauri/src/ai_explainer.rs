@@ -108,13 +108,13 @@ fn build_user_content(
     ])
 }
 
-struct PreparedRequest {
+pub(crate) struct PreparedRequest {
     endpoint: String,
     api_key: String,
     body: Value,
 }
 
-fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, String> {
+pub(crate) fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, String> {
     let word = payload
         .get("word")
         .and_then(Value::as_str)
