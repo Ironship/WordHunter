@@ -109,7 +109,20 @@ for (const file of buildInputs) {
   hash.update(await readFile(file));
   hash.update("\0");
 }
-await writeFile(join(temporaryDir, ".wordhunter-build.sha256"), `${hash.digest("hex")}\n`);
+const digestHex = hash.digest("hex");
+await writeFile(join(temporaryDir, ".wordhunter-build.sha256"), `${digestHex}\n`);
+
+// Centralized cache-buster: every static-asset reference (?v=...) in the
+// shipped HTML is stamped with the content hash, so a changed stylesheet
+// can never linger in a client cache under an old version string. Manual
+// cache-key bumps (and stale-key bugs like #124) are impossible from here on.
+const cacheBuster = digestHex.slice(0, 12);
+for (const file of await collectFiles(temporaryDir)) {
+  if (!file.endsWith(".html")) continue;
+  const html = await readFile(file, "utf8");
+  const stamped = html.replace(/\?v=[A-Za-z0-9-]+/g, `?v=${cacheBuster}`);
+  if (stamped !== html) await writeFile(file, stamped);
+}
 
 await rm(outputDir, { recursive: true, force: true });
 await rename(temporaryDir, outputDir);
