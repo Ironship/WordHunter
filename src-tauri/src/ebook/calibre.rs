@@ -97,8 +97,12 @@ pub(crate) fn convert_with_calibre(data: &[u8], suffix: &str) -> Result<String, 
         }
     };
 
-    let stdout = stdout_thread.and_then(|handle| handle.join().ok()).unwrap_or_default();
-    let stderr = stderr_thread.and_then(|handle| handle.join().ok()).unwrap_or_default();
+    let stdout = stdout_thread
+        .and_then(|handle| handle.join().ok())
+        .unwrap_or_default();
+    let stderr = stderr_thread
+        .and_then(|handle| handle.join().ok())
+        .unwrap_or_default();
 
     if !status.success() {
         let stderr_text = String::from_utf8_lossy(&stderr).trim().to_string();
