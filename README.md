@@ -44,7 +44,7 @@ automatically.
 | Platform | Recommended download | Other supported option |
 | --- | --- | --- |
 | **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.portable.zip) |
-| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Pocket.debug.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
+| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Pocket.release.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
 | **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-aarch64.dmg) | Intel Macs and iOS are not supported. |
 | **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/word-hunter_1.0.10_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
 

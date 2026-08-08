@@ -123,12 +123,12 @@ jobs:
         run: scripts\build.bat apk
 
       - name: Inspect Android debug APK
-        run: node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.debug.apk --abi arm64-v8a
+        run: node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.apk --abi arm64-v8a
 
       - name: Upload Android debug APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Word.Hunter.Pocket.debug.apk
-          path: outputs/Word.Hunter.Pocket.debug.apk
+          name: Word.Hunter.Pocket.release.apk
+          path: outputs/Word.Hunter.Pocket.release.apk
           if-no-files-found: error
           retention-days: 30

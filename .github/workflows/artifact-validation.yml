@@ -139,7 +139,7 @@ jobs:
 
       - name: Inspect APK and AAB
         run: |
-          node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.debug.apk --abi arm64-v8a
+          node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.apk --abi arm64-v8a
           node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.aab --abi arm64-v8a
 
       - name: Upload validated Android artifacts
@@ -147,7 +147,7 @@ jobs:
         with:
           name: validated-android
           path: |
-            outputs/Word.Hunter.Pocket.debug.apk
+            outputs/Word.Hunter.Pocket.release.apk
             outputs/Word.Hunter.Pocket.release.aab
           if-no-files-found: error
 
@@ -525,7 +525,7 @@ jobs:
           MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           for asset in \
-            Word.Hunter.Pocket.debug.apk \
+            Word.Hunter.Pocket.release.apk \
             Word.Hunter.Pocket.release.aab \
             Word.Hunter.portable.zip \
             Word.Hunter.Setup.exe \
@@ -559,7 +559,7 @@ jobs:
           MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           gh release upload "$RELEASE_TAG" \
-            release-assets/Word.Hunter.Pocket.debug.apk \
+            release-assets/Word.Hunter.Pocket.release.apk \
             release-assets/Word.Hunter.Pocket.release.aab \
             release-assets/Word.Hunter.portable.zip \
             release-assets/Word.Hunter.Setup.exe \
