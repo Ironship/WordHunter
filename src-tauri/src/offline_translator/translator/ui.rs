@@ -169,24 +169,24 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
 pub(crate) fn translator_labels(locale: &str) -> std::collections::HashMap<String, String> {
     let mut labels = std::collections::HashMap::from([
         ("title".to_string(), "Offline Translator".to_string()),
-        ("sourceLabel".to_string(), "Tekst zrodlowy".to_string()),
-        ("targetLabel".to_string(), "Tlumaczenie".to_string()),
+        ("sourceLabel".to_string(), "Tekst źródłowy".to_string()),
+        ("targetLabel".to_string(), "Tłumaczenie".to_string()),
         (
             "placeholder".to_string(),
-            "Wpisz slowo lub cale zdanie...".to_string(),
+            "Wpisz słowo lub całe zdanie...".to_string(),
         ),
         (
             "targetPlaceholder".to_string(),
-            "Tlumaczenie pojawi sie tutaj...".to_string(),
+            "Tłumaczenie pojawi się tutaj...".to_string(),
         ),
         (
             "footer".to_string(),
             "Zasilane lokalnie przez translator offline".to_string(),
         ),
-        ("copyBtn".to_string(), "Kopiuj tlumaczenie".to_string()),
+        ("copyBtn".to_string(), "Kopiuj tłumaczenie".to_string()),
         ("copied".to_string(), "Skopiowano!".to_string()),
     ]);
-    let safe_locale = if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"].contains(&locale) {
+    let safe_locale = if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"].contains(&locale) {
         locale
     } else {
         "en"
