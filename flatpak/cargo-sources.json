@@ -5722,19 +5722,6 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/tiny_http/tiny_http-0.12.0.crate",
-        "sha256": "389915df6413a2e74fb181895f933386023c71110878cd0825588928e64cdc82",
-        "dest": "cargo/vendor/tiny_http-0.12.0"
-    },
-    {
-        "type": "inline",
-        "contents": "{\"package\": \"389915df6413a2e74fb181895f933386023c71110878cd0825588928e64cdc82\", \"files\": {}}",
-        "dest": "cargo/vendor/tiny_http-0.12.0",
-        "dest-filename": ".cargo-checksum.json"
-    },
-    {
-        "type": "archive",
-        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/tinystr/tinystr-0.8.3.crate",
         "sha256": "c8323304221c2a851516f22236c5722a72eaa19749016521d6dff0824447d96d",
         "dest": "cargo/vendor/tinystr-0.8.3"
