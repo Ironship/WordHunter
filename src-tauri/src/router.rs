@@ -373,12 +373,19 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     state.store.bulk_save(payload)
                 };
                 match result {
-                    Ok(()) => {
+                    Ok(conflicts) => {
                         if query.get("snapshot").map(String::as_str) == Some("1") {
                             response::json_response(
                                 request,
-                                json!({ "snapshot": state.store.snapshot_unacknowledged() }),
+                                json!({
+                                    "snapshot": state.store.snapshot_unacknowledged(),
+                                    "conflicts": conflicts
+                                }),
                             )
+                        } else if conflicts > 0 {
+                            // Concurrent-edit conflicts were resolved (kept one side);
+                            // surface the count so clients can warn the user.
+                            response::json_response(request, json!({ "conflicts": conflicts }))
                         } else {
                             response::no_content(request)
                         }

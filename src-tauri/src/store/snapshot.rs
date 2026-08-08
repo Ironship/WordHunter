@@ -181,7 +181,7 @@ impl Store {
         snapshot
     }
 
-    pub fn bulk_save(&self, payload: Value) -> Result<(), String> {
+    pub fn bulk_save(&self, payload: Value) -> Result<usize, String> {
         let _guard = self.lock_writes()?;
         match self.recover_pending_operations()? {
             PendingRecovery::None => {}
@@ -212,11 +212,12 @@ impl Store {
             false,
         )?;
 
-        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal)
+        let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        remove_if_exists(journal)?;
+        Ok(conflicts)
     }
 
-    pub fn restore_backup(&self, payload: Value) -> Result<(), String> {
+    pub fn restore_backup(&self, payload: Value) -> Result<usize, String> {
         let _guard = self.lock_writes()?;
         if self.recover_pending_wipe()? {
             self.base_records
@@ -238,10 +239,12 @@ impl Store {
             false,
         )?;
 
-        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        // The journal cleanup must not fail silently: a leftover journal
+        // re-applies the restore payload at the next launch.
         remove_if_exists(journal)?;
         self.invalidate_records_cache();
-        Ok(())
+        Ok(conflicts)
     }
 
     fn commit_bulk_save_with_context(
@@ -249,7 +252,7 @@ impl Store {
         payload: &Value,
         base: &record_files::Fingerprints,
         now: u128,
-    ) -> Result<(), String> {
+    ) -> Result<usize, String> {
         validate_snapshot_payload_schema(payload)?;
         let effective = if payload.get("delta").and_then(Value::as_bool) == Some(true) {
             // Incremental save: changed records live under "records", shaped
@@ -285,7 +288,7 @@ impl Store {
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
         self.set_records_cache(merged.records);
-        Ok(())
+        Ok(merged.conflicts.len())
     }
 
     pub fn recovery_status(&self) -> Value {

@@ -22,21 +22,27 @@ impl Store {
                     continue;
                 }
                 // A marker created after startup belongs to a concurrent import.
+                // (The previous guard compared a wall-clock mtime against uptime +
+                // epoch-now, which can never hold — every fresh marker was dropped.)
                 if marker
                     .metadata()
                     .ok()
                     .and_then(|meta| meta.modified().ok())
                     .is_some_and(|modified| {
-                        modified
+                        // Millis, not seconds: startup and the marker often land in
+                        // the same second, where a seconds comparison is useless.
+                        let since_epoch = modified
                             .duration_since(std::time::UNIX_EPOCH)
-                            .is_ok_and(|since_epoch| {
-                                since_epoch.as_secs()
-                                    > self.startup_instant.elapsed().as_secs()
-                                        + std::time::UNIX_EPOCH
-                                            .elapsed()
-                                            .map(|d| d.as_secs())
-                                            .unwrap_or(0)
-                            })
+                            .map(|d| d.as_millis())
+                            .unwrap_or(0);
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis())
+                            .unwrap_or(0);
+                        // Wall-clock time when this process started.
+                        let started_at =
+                            now.saturating_sub(self.startup_instant.elapsed().as_millis());
+                        since_epoch > started_at
                     })
                 {
                     continue;
@@ -597,6 +603,50 @@ mod tests {
 
         assert!(!dir.path().join("ocr-import-staging").exists());
         assert!(!books_dir.join("pending").exists());
+    }
+
+    #[test]
+    fn concurrent_import_marker_created_after_startup_is_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir: books_dir.clone(),
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
+            device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
+        };
+        // The marker is written AFTER the store started — it belongs to a
+        // concurrent import and must survive the cleanup sweep. Its mtime is
+        // pinned to the future so the test is deterministic even when the
+        // write lands in the same millisecond as the startup instant.
+        std::fs::create_dir_all(books_dir.join("pending/images")).unwrap();
+        let marker = books_dir
+            .join("pending")
+            .join(media_assets::IMPORT_PENDING_MARKER);
+        std::fs::write(&marker, b"pending").unwrap();
+        let future = std::time::SystemTime::now() + std::time::Duration::from_secs(1);
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&marker)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(future))
+            .unwrap();
+
+        store.discard_abandoned_book_imports().unwrap();
+
+        assert!(books_dir.join("pending").exists());
+        assert!(
+            books_dir
+                .join("pending")
+                .join(media_assets::IMPORT_PENDING_MARKER)
+                .exists()
+        );
     }
 
     #[test]
