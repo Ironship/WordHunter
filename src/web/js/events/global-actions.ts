@@ -100,6 +100,10 @@ function handleReviewButton(reviewButton: HTMLElement): void {
     const word = reviewButton.dataset.word;
     const container = document.getElementById(`review-image-search-results-${word}`);
     if (container) renderImageSearch(container, word);
+  } else if (reviewButton.dataset.reviewAction === "ai-explain") {
+    void import("../vocabulary/review-ai.js").then(({ runReviewCardAiExplain }) =>
+      runReviewCardAiExplain(reviewButton as HTMLButtonElement, reviewButton.dataset.word || "")
+    );
   } else {
     handleReviewAction(reviewButton.dataset.reviewAction);
   }

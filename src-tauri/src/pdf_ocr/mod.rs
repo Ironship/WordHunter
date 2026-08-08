@@ -540,6 +540,13 @@ fn render_text_layer_page_images(
         let stderr_file = fs::File::create(&stderr_path)
             .map_err(|e| format!("Could not create PDF renderer log: {e}"))?;
         command.stderr(Stdio::from(stderr_file));
+        // Never pop a visible console window on Windows when spawning the
+        // PDF renderer from the embedded server (CREATE_NO_WINDOW).
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000);
+        }
         let mut child = command.spawn().map_err(|e| {
             format!(
                 "Could not start PDF page renderer {}: {e}",

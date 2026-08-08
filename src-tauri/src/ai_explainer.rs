@@ -148,6 +148,11 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
+    let kind = payload
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or("explain")
+        .trim();
 
     if word.is_empty() {
         return Err("word is missing".to_string());
@@ -166,20 +171,39 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         validate_image(image)?;
     }
 
-    let system = format!(
+    let mut system = format!(
         "You are an expert language-learning assistant. Explain the requested \
          word or phrase exactly as it is used in the given context, in simple \
          language a learner can understand. Always reply in {to}. Keep the \
          explanation under 120 words and never repeat the prompt instructions."
     );
-    let user = build_user_content(
-        word,
-        context,
-        from,
-        to,
-        (!image.is_empty()).then_some(image),
-        rect,
-    );
+    let user = if kind == "stats" {
+        // The stats mode analyzes the learner's NUMBERS, not a word: the
+        // "word" field is just a label. A word-explanation system prompt
+        // would make the model explain the label instead of the data.
+        system = format!(
+            "You are a language-learning analytics assistant. The user provides \
+             their vocabulary-learning statistics as plain text. Analyze the \
+             NUMBERS and trends: overall progress, strengths, weaknesses, \
+             workload outlook (due/overdue), interval health, what the data \
+             suggests about future results, and 2-3 concrete recommendations. \
+             Always reply in {to}. Keep it under 200 words. Do NOT explain what \
+             the words \"statistics\" or \"summary\" mean — analyze the data."
+        );
+        json!(format!(
+            "Vocabulary learning statistics for {word}:\n{context}\n\n\
+             Analyze this data and write conclusions and an outlook."
+        ))
+    } else {
+        build_user_content(
+            word,
+            context,
+            from,
+            to,
+            (!image.is_empty()).then_some(image),
+            rect,
+        )
+    };
 
     let body = json!({
         "model": model,
@@ -463,6 +487,62 @@ mod tests {
         let value = result.expect("explain should succeed against the mock server");
         assert_eq!(value["engine"], "ai");
         assert!(value["explanation"].as_str().unwrap().contains("czasownik"));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn stats_mode_swaps_the_system_prompt_to_analyze_data() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let request = read_http_request(&mut stream);
+            let body = r#"{
+                "id": "chatcmpl-stats",
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "Masz 12 zaległych powtórek."
+                    },
+                    "finish_reason": "stop"
+                }]
+            }"#;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+            // The stats mode must ask for DATA analysis, not word meaning.
+            assert!(
+                request.contains("analytics assistant"),
+                "stats system prompt must analyze data: {request}"
+            );
+            assert!(
+                request.contains("Total vocabulary entries: 120"),
+                "the data itself must be in the user content: {request}"
+            );
+            assert!(
+                !request.contains("Explain the word or phrase"),
+                "the word-explanation prompt must not be used for stats: {request}"
+            );
+        });
+
+        let endpoint = format!("http://{address}/v1/chat/completions");
+        let result = explain(json!({
+            "word": "your learning statistics",
+            "context": "Total vocabulary entries: 120\nReviews due today: 3",
+            "from": "en",
+            "to": "pl",
+            "endpoint": endpoint,
+            "apiKey": "test-key-123",
+            "model": "local-vision",
+            "kind": "stats"
+        }));
+        let value = result.expect("stats explain should succeed against the mock server");
+        assert!(value["explanation"].as_str().unwrap().contains("zaległych"));
         server.join().unwrap();
     }
 

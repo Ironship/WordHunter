@@ -218,67 +218,80 @@
               <h2 id="import-heading" data-i18n="import.heading">Import</h2>
               <button type="button" id="library-import-close" class="icon-button pocket-drawer-close" data-i18n-attr="title=reader.close,aria-label=reader.close" aria-label="Zamknij">×</button>
             </div>
-            <form id="import-form" class="import-form">
-              <label class="file-button">
-                <span data-i18n="import.fileLabel">Importuj książki / teksty</span>
-                <input id="import-file" type="file" accept=".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
-              </label>
-              <p class="muted-copy" id="import-file-hint" data-i18n-html="import.desktopOcrUnavailableFileHint"></p>
-              <label>
-                <span data-i18n="import.title">Tytuł</span>
-                <input id="import-title" type="text" data-i18n-attr="placeholder=import.titlePlaceholder" required>
-              </label>
-              <label>
-                <span data-i18n="import.author">Autor (opcjonalnie)</span>
-                <input id="import-author" type="text" data-i18n-attr="placeholder=import.authorPlaceholder">
-              </label>
-              <label>
-                <span data-i18n="import.tags">Tagi (opcjonalnie)</span>
-                <input id="import-tags" type="text" data-i18n-attr="placeholder=import.tagsPlaceholder">
-              </label>
-              <label>
-                <span data-i18n="import.level">Poziom (opcjonalnie)</span>
-                <select id="import-level">
-                  <option value="" data-i18n="library.levelAny">Dowolny</option>
-                  <option value="A1">A1</option>
-                  <option value="A2">A2</option>
-                  <option value="B1">B1</option>
-                  <option value="B2">B2</option>
-                  <option value="C1">C1</option>
-                  <option value="C2">C2</option>
+            <div class="import-mode-row">
+              <label for="import-mode-select">
+                <span data-i18n="import.modeLabel">Rodzaj importu</span>
+                <select id="import-mode-select" class="input">
+                  <option value="books" data-i18n="import.modeBooks">Importuj książki / teksty</option>
+                  <option value="youtube" data-i18n="import.modeYoutube">Importuj napisy z YouTube</option>
                 </select>
               </label>
-              <label>
-                <span data-i18n="import.text">Tekst</span>
-                <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
-              </label>
-              <div class="form-group" style="margin-bottom: 1.5rem; text-align: center;">
-                <label for="import-cover" class="import-cover-dropzone" id="import-cover-dropzone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: background 0.2s, border-color 0.2s;" data-i18n-attr="title=import.cover">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                  <span style="font-size: 0.9rem; color: var(--muted);" data-i18n="import.coverPasteHint">Kliknij by wybrać lub wklej</span>
-                  <input id="import-cover" type="file" accept="image/*" class="visually-hidden">
+            </div>
+            <div id="import-books-mode">
+              <form id="import-form" class="import-form">
+                <label class="file-button">
+                  <span data-i18n="import.fileLabel">Importuj książki / teksty</span>
+                  <input id="import-file" type="file" accept=".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
                 </label>
-              </div>
-              <div id="import-cover-preview" class="import-cover-preview" hidden style="margin-bottom: 1.5rem; position: relative; width: max-content;">
-                <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="" style="max-height: 150px; border-radius: 6px; border: 1px solid var(--line);">
-                <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: var(--red-ink); cursor: pointer;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-              </div>
-              <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Dodaj do biblioteki</button>
-            </form>
-            <section class="youtube-import-section" aria-labelledby="youtube-import-heading">
-              <h3 id="youtube-import-heading" data-i18n="import.youtubeHeading">YouTube subtitles</h3>
-              <label>
-                <span data-i18n="import.youtubeUrl">YouTube URL</span>
-                <input id="import-youtube-url" type="url" data-i18n-attr="placeholder=import.youtubePlaceholder">
-              </label>
-              <div class="youtube-import-actions">
-                <select id="import-youtube-track" hidden data-i18n-attr="aria-label=import.youtubeTrack"></select>
-                <button class="secondary-button" type="button" id="import-youtube-load" data-i18n="import.youtubeLoad">Wczytaj napisy</button>
-              </div>
-              <p class="muted-copy" id="import-youtube-status" aria-live="polite"></p>
-            </section>
+                <p class="muted-copy" id="import-file-hint" data-i18n-html="import.desktopOcrUnavailableFileHint"></p>
+                <label>
+                  <span data-i18n="import.title">Tytuł</span>
+                  <input id="import-title" type="text" data-i18n-attr="placeholder=import.titlePlaceholder" required>
+                </label>
+                <label>
+                  <span data-i18n="import.author">Autor (opcjonalnie)</span>
+                  <input id="import-author" type="text" data-i18n-attr="placeholder=import.authorPlaceholder">
+                </label>
+                <label>
+                  <span data-i18n="import.tags">Tagi (opcjonalnie)</span>
+                  <input id="import-tags" type="text" data-i18n-attr="placeholder=import.tagsPlaceholder">
+                </label>
+                <label>
+                  <span data-i18n="import.level">Poziom (opcjonalnie)</span>
+                  <select id="import-level">
+                    <option value="" data-i18n="library.levelAny">Dowolny</option>
+                    <option value="A1">A1</option>
+                    <option value="A2">A2</option>
+                    <option value="B1">B1</option>
+                    <option value="B2">B2</option>
+                    <option value="C1">C1</option>
+                    <option value="C2">C2</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="import.text">Tekst</span>
+                  <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
+                </label>
+                <div class="form-group" style="margin-bottom: 1.5rem; text-align: center;">
+                  <label for="import-cover" class="import-cover-dropzone" id="import-cover-dropzone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: background 0.2s, border-color 0.2s;" data-i18n-attr="title=import.cover">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    <span style="font-size: 0.9rem; color: var(--muted);" data-i18n="import.coverPasteHint">Kliknij by wybrać lub wklej</span>
+                    <input id="import-cover" type="file" accept="image/*" class="visually-hidden">
+                  </label>
+                </div>
+                <div id="import-cover-preview" class="import-cover-preview" hidden style="margin-bottom: 1.5rem; position: relative; width: max-content;">
+                  <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="" style="max-height: 150px; border-radius: 6px; border: 1px solid var(--line);">
+                  <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: var(--red-ink); cursor: pointer;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+                </div>
+                <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Dodaj do biblioteki</button>
+              </form>
+            </div>
+            <div id="import-youtube-mode" hidden>
+              <section class="youtube-import-section" aria-labelledby="youtube-import-heading">
+                <h3 id="youtube-import-heading" data-i18n="import.youtubeHeading">YouTube subtitles</h3>
+                <label>
+                  <span data-i18n="import.youtubeUrl">YouTube URL</span>
+                  <input id="import-youtube-url" type="url" data-i18n-attr="placeholder=import.youtubePlaceholder">
+                </label>
+                <div class="youtube-import-actions">
+                  <select id="import-youtube-track" hidden data-i18n-attr="aria-label=import.youtubeTrack"></select>
+                  <button class="secondary-button" type="button" id="import-youtube-load" data-i18n="import.youtubeLoad">Wczytaj napisy</button>
+                </div>
+                <p class="muted-copy" id="import-youtube-status" aria-live="polite"></p>
+              </section>
+            </div>
           </aside>
         </div>
       </section>
@@ -324,6 +337,13 @@
                   &gt;&gt;
                 </button>
               </div>
+            </div>
+            <div class="reader-find-bar" id="reader-find-bar" hidden>
+              <input type="search" id="reader-find-input" class="reader-find-input" data-i18n-attr="placeholder=reader.findPlaceholder,aria-label=reader.findPlaceholder" placeholder="Znajdź w tekście…">
+              <span class="reader-find-count" id="reader-find-count">0 / 0</span>
+              <button type="button" id="reader-find-prev" class="icon-button" data-i18n-attr="title=reader.findPrev,aria-label=reader.findPrev" aria-label="Poprzedni wynik">↑</button>
+              <button type="button" id="reader-find-next" class="icon-button" data-i18n-attr="title=reader.findNext,aria-label=reader.findNext" aria-label="Następny wynik">↓</button>
+              <button type="button" id="reader-find-close" class="icon-button" data-i18n-attr="title=reader.close,aria-label=reader.close" aria-label="Zamknij">×</button>
             </div>
             <div class="reader-meta">
               <div>
@@ -415,7 +435,7 @@
               </label>
             </div>
             <div class="translator-actions">
-              <button class="secondary-button button-xs" type="button" id="translator-ai-explain" data-i18n="reader.aiExplain" hidden>Explain with AI</button>
+              <button class="secondary-button button-xs" type="button" id="translator-ai-explain" data-i18n="reader.aiExplain" hidden>Explain with AI <span class="shortcut-badge">Ctrl+E</span></button>
               <p class="muted-copy" id="translator-status" role="status" aria-live="polite" aria-atomic="true" data-i18n="translator.ready">Gotowy do tłumaczenia.</p>
               <div class="translator-progress" id="translator-progress"><div class="translator-progress-fill"></div></div>
             </div>
@@ -604,17 +624,26 @@
                 <p class="eyebrow" data-i18n="graphs.eyebrow">Statystyki</p>
                 <h2 id="graphs-heading" data-i18n="graphs.heading">Wykresy</h2>
               </div>
-              <label>
-                <span data-i18n="graphs.range">Range</span>
-                <select id="graphs-range">
-                  <option value="recent" data-i18n="graphs.rangeRecent">Recent</option>
-                  <option value="all" data-i18n="graphs.rangeAll">All time</option>
-                </select>
-              </label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label>
+                  <span data-i18n="graphs.range">Range</span>
+                  <select id="graphs-range">
+                    <option value="recent" data-i18n="graphs.rangeRecent">Recent</option>
+                    <option value="all" data-i18n="graphs.rangeAll">All time</option>
+                  </select>
+                </label>
+              </div>
             </div>
             <div id="graphs-stats" class="graphs-stats"></div>
             <div id="graphs-heatmap" class="graphs-heatmap"></div>
             <div id="graphs-canvas-area" class="graphs-grid"></div>
+            <div id="graphs-ai-summary" class="graphs-ai-summary">
+              <button class="secondary-button button-xs" type="button" id="graphs-ai-explain" hidden>
+                <span data-i18n="graphs.aiExplain">Objaśnij z AI</span>
+                <span class="shortcut-badge">Ctrl+E</span>
+              </button>
+              <p class="ai-explanation" data-graphs-ai-explanation role="status" aria-live="polite" hidden></p>
+            </div>
           </section>
         </div>
       </section>
@@ -1046,6 +1075,13 @@
               <label class="setting-row desktop-only-setting">
                 <span data-i18n="settings.dictionaryMode">Otwieranie słownika</span>
                 <select id="pref-dictionary-mode" data-pref="dictionaryMode">
+                  <option value="internal" data-i18n="settings.dictModeInternal">Wewnętrzne okienko</option>
+                  <option value="external" data-i18n="settings.dictModeExternal">Zewnętrzna przeglądarka</option>
+                </select>
+              </label>
+              <label class="setting-row desktop-only-setting">
+                <span data-i18n="settings.youglishMode">Otwieranie YouGlish</span>
+                <select id="pref-youglish-mode" data-pref="youglishMode">
                   <option value="internal" data-i18n="settings.dictModeInternal">Wewnętrzne okienko</option>
                   <option value="external" data-i18n="settings.dictModeExternal">Zewnętrzna przeglądarka</option>
                 </select>

@@ -239,7 +239,9 @@ impl Store {
         )?;
 
         self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal)
+        remove_if_exists(journal);
+        self.invalidate_records_cache();
+        Ok(())
     }
 
     fn commit_bulk_save_with_context(
@@ -261,15 +263,28 @@ impl Store {
         };
         let mut incoming = record_files::payload_to_records(&effective, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
-        let current = record_files::load_records(&self.dir())?;
+        // The merge needs the current on-disk records; use the in-memory
+        // cache (refreshed after every commit) instead of re-scanning the
+        // whole records tree on every save.
+        let current = self.records_cache_or_load()?;
         record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let full_keys = full_keys_from_payload(payload, &incoming)?;
         let merged =
             record_files::merge_records(base, incoming, current, self.device_id(), now, &full_keys);
-        record_files::write_records(&self.dir(), &merged.records)?;
+        // Write only the records that actually changed since the last
+        // acknowledged base; unchanged keys already hold identical content
+        // on disk. This avoids re-opening hundreds of record files per save.
+        let changed: BTreeMap<String, crate::store::record_files::SyncRecord> = merged
+            .records
+            .iter()
+            .filter(|(_, record)| record_files::record_changed_since_base(record, base))
+            .map(|(key, record)| (key.clone(), record.clone()))
+            .collect();
+        record_files::write_records(&self.dir(), &changed)?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
+        self.set_records_cache(merged.records);
         Ok(())
     }
 
@@ -289,6 +304,7 @@ impl Store {
     fn records_snapshot(&self) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
+        self.set_records_cache(records.clone());
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             record_files::fingerprints(&records);
         if records.is_empty() {
@@ -305,6 +321,7 @@ impl Store {
         self.cleanup_after_wipe()?;
         self.discard_abandoned_book_imports()?;
         remove_if_exists(self.wipe_journal_path())?;
+        self.invalidate_records_cache();
         Ok(())
     }
 
@@ -646,6 +663,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "snapshot-test".to_string(),
             startup_instant: std::time::Instant::now(),
         }

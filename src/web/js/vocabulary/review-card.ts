@@ -272,6 +272,10 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         ${icon("video", 16)}
         <span class="shortcut-badge">Y</span>
       </button>
+      <button class="secondary-button" type="button" data-review-action="ai-explain" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.aiExplain"))}" aria-label="${escapeAttribute(t("reader.aiExplain"))}">
+        ${icon("sparkles", 16)}
+        <span class="shortcut-badge">Ctrl+E</span>
+      </button>
       <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.key)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">
         ${icon("eye", 16)}
         ${escapeHtml(reviewAnswerVisible ? t("vocab.reviewHide") : t("vocab.reviewShow"))}
@@ -294,6 +298,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
       <p class="muted-copy sm2-prompt">${escapeHtml(t("sm2.prompt"))}</p>
       <div class="sm2-grades">${ratingButtons}</div>
     ` : ""}
+    <p class="ai-explanation review-ai-explanation" data-review-ai-explanation role="status" aria-live="polite" hidden></p>
     <p class="muted-copy">${reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
   maybeAutoSpeakCard(card, today, isReverse);

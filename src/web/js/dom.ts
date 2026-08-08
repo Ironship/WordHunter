@@ -26,6 +26,9 @@ export function cacheElements() {
   els.librarySortReverse = byId("library-sort-reverse");
   els.libraryArchiveFilter = byId("library-archive-filter");
   els.importForm = byId("import-form");
+  els.importModeSelect = byId("import-mode-select");
+  els.importBooksMode = document.getElementById("import-books-mode");
+  els.importYoutubeMode = document.getElementById("import-youtube-mode");
   els.importYoutubeUrl = byId("import-youtube-url");
   els.importYoutubeLoad = byId("import-youtube-load");
   els.importYoutubeTrack = byId("import-youtube-track");
@@ -46,6 +49,11 @@ export function cacheElements() {
   els.readerHeading = document.getElementById("reader-heading");
   els.readerSource = document.getElementById("reader-source");
   els.readerText = document.getElementById("reader-text");
+  els.readerFindInput = byId("reader-find-input");
+  els.readerFindCount = document.getElementById("reader-find-count");
+  els.readerFindPrev = byId("reader-find-prev");
+  els.readerFindNext = byId("reader-find-next");
+  els.readerFindClose = byId("reader-find-close");
   els.readerHighlightToggle = document.getElementById("reader-highlight-toggle");
   els.readerWordPanelToggle = document.getElementById("reader-word-panel-toggle");
   els.readerPreviousWord = document.getElementById("reader-previous-word");

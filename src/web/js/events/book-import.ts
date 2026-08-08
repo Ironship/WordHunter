@@ -454,6 +454,11 @@ async function importYoutubeTrack(url: string, trackIndex: string | number): Pro
   };
   if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeLoaded");
   showToast(t("toast.youtubeCaptionsLoaded"));
+  // The captions are now in the books form — switch back so the user can
+  // review and submit the import.
+  if (els.importModeSelect) els.importModeSelect.value = "books";
+  if (els.importBooksMode) els.importBooksMode.hidden = false;
+  if (els.importYoutubeMode) els.importYoutubeMode.hidden = true;
 }
 
 async function handleYoutubeImport() {
@@ -872,6 +877,14 @@ function handleEditCoverFile(file: File | undefined): void {
 }
 
 function bindImportFormEvents() {
+  if (els.importModeSelect) {
+    els.importModeSelect.addEventListener("change", () => {
+      const mode = els.importModeSelect.value;
+      if (els.importBooksMode) els.importBooksMode.hidden = mode !== "books";
+      if (els.importYoutubeMode) els.importYoutubeMode.hidden = mode !== "youtube";
+    });
+  }
+
   if (els.importYoutubeLoad) {
     els.importYoutubeLoad.addEventListener("click", () => handleYoutubeImport());
   }

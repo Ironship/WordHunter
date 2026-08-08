@@ -590,7 +590,7 @@ function renderContentItem(
     return `
       <div class="word-panel-item" data-word-panel-item="ai">
         <button class="secondary-button button-xs ai-explain-button" type="button" data-ai-explain>
-          ${icon("sparkles", 14)} ${escapeHtml(t("reader.aiExplain"))}
+          ${icon("sparkles", 14)} ${escapeHtml(t("reader.aiExplain"))} <span class="shortcut-badge">Ctrl+E</span>
         </button>
         <p class="ai-explanation" data-ai-explanation role="status" aria-live="polite" hidden></p>
       </div>
