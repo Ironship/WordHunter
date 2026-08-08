@@ -1136,6 +1136,16 @@ fn should_merge_words_from_plain_text(
 
     let joined = format!("{left}{right}");
     let spaced = format!("{left} {right}");
+    // A single UPPERCASE initial followed by a lowercase fragment is the
+    // classic justified-text line-break artifact ("W" + "eltmeisterschafts
+    // status"): the plain text keeps the space, but the pair is one word.
+    // Real two-word pairs ("a lot") start lowercase and stay split.
+    let capital_initial_fragment = left.chars().count() == 1
+        && left.chars().next().is_some_and(char::is_uppercase)
+        && starts_with_lowercase(right);
+    if capital_initial_fragment && lookup_text.contains(&spaced) {
+        return true;
+    }
     lookup_text.contains(&joined) && !lookup_text.contains(&spaced)
 }
 
@@ -1602,6 +1612,36 @@ mod tests {
 
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].text, "Weltmeisterschaftsstatus");
+    }
+
+    #[test]
+    fn text_layer_merges_initial_letter_even_when_plain_text_has_the_space() {
+        // Justified text layers often keep the space between the line-break
+        // fragment and the rest of the word; the 1-char fragment must still
+        // merge ("W" + "eltmeisterschaftsstatus").
+        let words = vec![
+            test_word("W", 10.0, 20.0, 8.0, 10.0),
+            test_word("eltmeisterschaftsstatus", 21.0, 20.0, 61.0, 10.0),
+        ];
+        let merged = merge_words_using_plain_text(words, "Rennen ohne W eltmeisterschaftsstatus");
+
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].text, "Weltmeisterschaftsstatus");
+    }
+
+    #[test]
+    fn text_layer_keeps_real_two_word_pairs_when_plain_text_has_no_space() {
+        // "a" + "lot" must NOT merge into "alot" when the plain text has no
+        // joined form: the spaced form is the only evidence.
+        let words = vec![
+            test_word("a", 10.0, 20.0, 6.0, 10.0),
+            test_word("lot", 18.0, 20.0, 16.0, 10.0),
+        ];
+        let merged = merge_words_using_plain_text(words, "a lot of words");
+
+        assert_eq!(merged.len(), 2);
+        assert_eq!(merged[0].text, "a");
+        assert_eq!(merged[1].text, "lot");
     }
 
     #[test]
