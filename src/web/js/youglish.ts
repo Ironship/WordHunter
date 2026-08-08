@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { openAndroidUrl } from "./platform.js";
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
 
 interface YouGlishFetchEvent {
@@ -65,6 +66,10 @@ function youglishPageUrl(word: string): string {
  */
 function openYouglishSite(word: string): void {
   const url = youglishPageUrl(word);
+  // Android: route through the native bridge (external browser) — the
+  // internal popup is a silent no-op on Android and /__open_external
+  // is refused there (handlers.rs cfg android).
+  if (openAndroidUrl(url)) return;
   const mode = state.preferences.youglishMode || "internal";
   if (mode === "external") {
     fetch(`/__open_external?url=${encodeURIComponent(url)}`).catch((error) =>
