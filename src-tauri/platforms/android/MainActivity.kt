@@ -763,7 +763,13 @@ class MainActivity : TauriActivity() {
           .setOnlyAlertOnce(true)
           .setCategory(Notification.CATEGORY_TRANSPORT)
           .setVisibility(Notification.VISIBILITY_PRIVATE)
-          .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+          .addAction(
+            Notification.Action.Builder(
+              android.R.drawable.ic_media_pause,
+              "Stop",
+              stopPendingIntent
+            ).build()
+          )
           .build()
       )
     }
