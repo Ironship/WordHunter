@@ -65,6 +65,8 @@ parts:
       - dbus-session-bus-common
       - gstreamer1.0-plugins-base
       - gstreamer1.0-plugins-good
+      - poppler-utils
+      - calibre
       - libxdo3
     override-build: |
       craftctl default

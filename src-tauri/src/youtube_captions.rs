@@ -195,6 +195,17 @@ fn ytdlp_commands() -> Vec<OsString> {
             commands.push(dir.join("bin").join(name).into_os_string());
         }
     }
+    // Flatpak: the sandbox cannot see the host's yt-dlp through PATH;
+    // /run/host/usr/bin is the documented escape hatch (same pattern as
+    // the OCR runner's pdftoppm fallback).
+    #[cfg(target_os = "linux")]
+    for name in ytdlp_names() {
+        commands.push(
+            PathBuf::from("/run/host/usr/bin")
+                .join(name)
+                .into_os_string(),
+        );
+    }
     for name in ytdlp_names() {
         commands.push(OsString::from(name));
     }
