@@ -186,11 +186,12 @@ pub(crate) fn translator_labels(locale: &str) -> std::collections::HashMap<Strin
         ("copyBtn".to_string(), "Kopiuj tłumaczenie".to_string()),
         ("copied".to_string(), "Skopiowano!".to_string()),
     ]);
-    let safe_locale = if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"].contains(&locale) {
-        locale
-    } else {
-        "en"
-    };
+    let safe_locale =
+        if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"].contains(&locale) {
+            locale
+        } else {
+            "en"
+        };
     let path = format!("i18n/{safe_locale}.json");
     if let Some(file) = router::WEB_ASSETS.get_file(&path)
         && let Ok(value) = serde_json::from_slice::<Value>(file.contents())
