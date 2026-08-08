@@ -84,6 +84,22 @@ pub fn run() {
     ) else {
         return;
     };
+
+    // SIGTERM/SIGINT (kill, session end, Ctrl+C in a terminal) normally
+    // terminate the process immediately, skipping the graceful-exit
+    // machinery (frontend flush, journal coordination). Route them through
+    // the normal exit flow: app.exit() fires RunEvent::ExitRequested, which
+    // the handler below routes to platform::request_graceful_exit.
+    #[cfg(all(unix, not(target_os = "android")))]
+    {
+        let app_handle_for_signal = app.handle().clone();
+        if let Err(error) = ctrlc::set_handler(move || {
+            app_handle_for_signal.exit(0);
+        }) {
+            eprintln!("could not install SIGTERM/SIGINT handler: {error}");
+        }
+    }
+
     app.run(|app_handle, event| {
         #[cfg(not(target_os = "android"))]
         if let tauri::RunEvent::ExitRequested { api, .. } = event
