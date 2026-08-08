@@ -144,7 +144,7 @@ function startBridgeStateLoad(): void {
   if (!window.__qtBridge || window.__bridgeState || bridgeStateLoadStarted) return;
   bridgeStateLoadStarted = true;
   const promise = window.__bridgeStatePromise
-    ?? fetchWithTimeout("/__store/load", { cache: "no-store" }, 12_000)
+    ?? fetchWithTimeout("/__store/load", { cache: "no-store", headers: { "X-WH-Token": window.WH_TOKEN || "" } }, 12_000)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
         return response.json();
