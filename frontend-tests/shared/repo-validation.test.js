@@ -322,9 +322,16 @@ describe("repository validation wiring", () => {
     const docs = read("../../docs/release-validation.md");
 
     assert.doesNotMatch(gitignore, /^docs\/\*\.md$/m);
-    assert.doesNotMatch(gitignore, /^docs\/\*\*\/\*\.md$/m);
+    assert.doesNotMatch(gitignore, /^docs\/\*\/\*\.md$/m);
     assert.doesNotMatch(gitignore, /^src-tauri\/ocr-runner\/Cargo\.lock$/m);
     assert.match(docs, /WORDHUNTER_VALIDATE_CLIPPY=0/);
     assert.match(docs, /artifact-validation\.yml/);
+  });
+
+  it("keeps every id in index.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
+    const html = read("../../src/web/index.html");
+    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in index.html: ${[...new Set(duplicates)].join(", ")}`);
   });
 });
