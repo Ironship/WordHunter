@@ -123,7 +123,9 @@ describe("Android Pocket packaging", () => {
     assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
     assert.equal(androidConfig.app.windows.length, 1);
     assert.equal(androidConfig.app.windows[0].create, false);
-    assert.equal(androidConfig.app.windows[0].url, "http://127.0.0.1:38619/index.html");
+    // The webview URL is decided at runtime (android.rs overrides it with the
+    // actually-bound port); the config must not pin a URL or port.
+    assert.equal(Object.hasOwn(androidConfig.app.windows[0], "url"), false);
     assert.equal(JSON.stringify(androidConfig).includes("ocr-runtime"), false);
     assert.equal(JSON.stringify(baseConfig).includes("ocr-runtime"), false);
     for (const resource of [

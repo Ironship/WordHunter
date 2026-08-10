@@ -244,6 +244,22 @@ describe("repository validation wiring", () => {
     assert.match(buildScript, /WordHunter-\$\{release_version\}-aarch64\.dmg/);
   });
 
+  it("keeps the Android webview URL out of the config (the runtime override is the single source of truth)", () => {
+    const source = read("../../src-tauri/tauri.android.conf.json");
+    const androidConfig = JSON.parse(source);
+    const android = read("../../src-tauri/src/platform/android.rs");
+
+    // The window must stay declared (android.rs builds it from this config),
+    // but the URL is decided at runtime: the backend binds a port with a
+    // fallback range and android.rs overrides the window URL before building.
+    assert.equal(androidConfig.app.windows.length, 1);
+    assert.equal(androidConfig.app.windows[0].create, false);
+    assert.doesNotMatch(source, /"url"\s*:/);
+    assert.doesNotMatch(source, /127\.0\.0\.1:\d+|localhost:\d+|3861\d/);
+    assert.match(android, /ANDROID_SERVER_PORT/);
+    assert.match(android, /WebviewUrl::External/);
+  });
+
   it("opens external URLs on Windows without passing them through cmd.exe", () => {
     const cargo = read("../../src-tauri/Cargo.toml");
     const handlers = read("../../src-tauri/src/handlers.rs");
