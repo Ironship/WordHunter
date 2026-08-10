@@ -16,7 +16,7 @@ const androidConfig = JSON.parse(
   readFileSync(new URL("../../src-tauri/tauri.android.conf.json", import.meta.url), "utf8"),
 );
 
-const releaseBadging = `package: name='com.wordhunter.pocket' versionCode='1000010' versionName='1.0.10' compileSdkVersion='36' compileSdkVersionCodename='REL' platformBuildVersionName='15' platformBuildVersionCode='35' platformBuildVersionCodename='REL'
+const releaseBadging = `package: name='com.wordhunter.pocket' versionCode='101001099' versionName='1.0.10' compileSdkVersion='36' compileSdkVersionCodename='REL' platformBuildVersionName='15' platformBuildVersionCode='35' platformBuildVersionCodename='REL'
 sdkVersion:'24'
 targetSdkVersion:'36'
 application-label:'Word Hunter'
@@ -41,7 +41,7 @@ const debugBadging = releaseBadging.replace(
 const releaseXmlTree = `N: android=http://schemas.android.com/apk/res/android
   E: manifest (line=1)
     A: package="com.wordhunter.app" (Raw: "com.wordhunter.app")
-    A: android:versionCode(0x0101021b)=(type 0x10)0xf424a
+    A: android:versionCode(0x0101021b)=(type 0x10)0x605278b
     A: android:versionName(0x0101021c)="1.0.10" (Raw: "1.0.10")
     A: android:compileSdkVersion(0x01010572)=(type 0x10)0x24
     E: application (line=2)
@@ -50,22 +50,22 @@ const releaseXmlTree = `N: android=http://schemas.android.com/apk/res/android
 `;
 
 const debugXmlTree = releaseXmlTree.replace(
-  "A: android:versionCode(0x0101021b)=(type 0x10)0xf424a",
-  "A: android:versionCode(0x0101021b)=(type 0x10)0xf424a\n    A: android:debuggable(0x0101000f)=(type 0x12)0xffffffff",
+  "A: android:versionCode(0x0101021b)=(type 0x10)0x605278b",
+  "A: android:versionCode(0x0101021b)=(type 0x10)0x605278b\n    A: android:debuggable(0x0101000f)=(type 0x12)0xffffffff",
 );
 
 describe("Android release artifact assertions", () => {
   it("derives the Android versionCode the way tauri-cli 2.11.4 does", () => {
-    assert.equal(androidVersionCodeFor("1.0.10"), 1000010);
-    assert.equal(androidVersionCodeFor("1.0.9"), 1000009);
-    assert.equal(androidVersionCodeFor("1.0.10-rc.1"), 1000010);
+    assert.equal(androidVersionCodeFor("1.0.10"), 101001099);
+    assert.equal(androidVersionCodeFor("1.0.9"), 101000999);
+    assert.equal(androidVersionCodeFor("1.0.10-rc.1"), 101001001);
     assert.throws(() => androidVersionCodeFor("not-a-version"), /Cannot derive/);
   });
 
   it("pins the tauri.conf.json contract the APK/AAB assertions rely on", () => {
     assert.equal(tauriConfig.identifier, "com.wordhunter.app");
     assert.equal(tauriConfig.version, "1.0.10");
-    assert.equal(androidVersionCodeFor(tauriConfig.version), 1000010);
+    assert.equal(androidVersionCodeFor(tauriConfig.version), 101001099);
     // The Android overlay overrides the package name (Word.Hunter.Pocket);
     // androidExpectations() must use it, not the desktop identifier.
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
@@ -74,7 +74,7 @@ describe("Android release artifact assertions", () => {
   it("parses aapt2 dump badging and flags debuggable APKs", () => {
     assert.deepEqual(parseBadgingPackage(releaseBadging), {
       name: "com.wordhunter.pocket",
-      versionCode: 1000010,
+      versionCode: 101001099,
       versionName: "1.0.10",
     });
     assert.equal(parseBadgingPackage("not badging output"), null);
@@ -84,7 +84,7 @@ describe("Android release artifact assertions", () => {
 
   it("parses aapt2 dump xmltree for the AAB manifest", () => {
     assert.deepEqual(parseXmlTreeManifest(releaseXmlTree), {
-      versionCode: 1000010,
+      versionCode: 101001099,
       versionName: "1.0.10",
       debuggable: false,
     });

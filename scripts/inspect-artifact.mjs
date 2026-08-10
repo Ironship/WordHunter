@@ -277,17 +277,35 @@ const legalFiles = [
   "OCR-THIRD-PARTY-LICENSES.html",
 ];
 
-// Mirrors tauri-cli 2.11.4 `generate_tauri_properties` (mobile/android/mod.rs):
-// with no `bundle.android.version_code` and no auto-increment configured, the
-// generated `tauri.properties` (and therefore the APK/AAB versionCode) is
-// `major * 1_000_000 + minor * 1_000 + patch`. Issue #138 quoted 101001099,
-// but that value came from a release built with an older toolchain and is not
-// reproducible with the pinned CLI; deriving it from tauri.conf.json keeps the
-// assertion correct across version bumps.
+// Must mirror scripts/build.bat Get-AndroidVersionInfo: the project overrides
+// the versionCode tauri-cli would emit (see the Pocket Play history) with
+//   1000000 + ((major*1e6 + minor*1e3 + patch) * 100) + releaseOrdinal
+// where releaseOrdinal is 99 for a stable release, the rc number for
+// -rc.N, and 100 for a +1 hotfix. Keeping it in sync with build.bat keeps
+// the artifact assertion correct across version bumps.
 export function androidVersionCodeFor(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:(?:-rc\.(\d+))|(?:\+(\d+)))?$/.exec(version);
   if (!match) fail(`Cannot derive an Android versionCode from version: ${version}`);
-  return Number(match[1]) * 1_000_000 + Number(match[2]) * 1_000 + Number(match[3]);
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  if (minor > 999 || patch > 999) {
+    fail(`Android versionCode formula requires MINOR and PATCH below 1000: ${version}`);
+  }
+  const baseCode = major * 1_000_000 + minor * 1_000 + patch;
+  let releaseOrdinal = 99;
+  if (match[4]) {
+    releaseOrdinal = Number(match[4]);
+    if (releaseOrdinal < 1 || releaseOrdinal > 98) {
+      fail(`Android release-candidate ordinal must be between 1 and 98: ${version}`);
+    }
+  } else if (match[5]) {
+    if (Number(match[5]) !== 1) {
+      fail(`Android four-part hotfix version must end in +1: ${version}`);
+    }
+    releaseOrdinal = 100;
+  }
+  return 1_000_000 + baseCode * 100 + releaseOrdinal;
 }
 
 export function parseBadgingPackage(badging) {
