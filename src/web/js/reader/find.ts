@@ -165,7 +165,7 @@ function runFind(advance: boolean): void {
   void goToMatch(findIndex + (advance ? 1 : -1));
 }
 
-export function openReaderFind(): boolean {
+function openReaderFind(): boolean {
   const bar = document.getElementById("reader-find-bar");
   if (!bar) return false;
   bar.hidden = false;
@@ -177,7 +177,7 @@ export function openReaderFind(): boolean {
   return true;
 }
 
-export function closeReaderFind(): void {
+function closeReaderFind(): void {
   const bar = document.getElementById("reader-find-bar");
   if (bar) bar.hidden = true;
   findGeneration += 1;

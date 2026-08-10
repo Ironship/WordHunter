@@ -187,7 +187,7 @@ function waitForAndroidExport(start: (requestId: string) => boolean): Promise<bo
   });
 }
 
-export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
+function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
   const bridge = window.WordHunterAndroid;
   if (typeof bridge?.saveExport !== "function") return null;
   return waitForAndroidExport((requestId) => bridge.saveExport(data, filename, mime, requestId));
@@ -803,7 +803,7 @@ export function importAnkiTsv(event: unknown): void {
   target.value = "";
 }
 
-export function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
+function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
   const rows: AnkiImportRow[] = [];
   let isFirstNonEmptyLine = true;
   for (const line of text.split("\n")) {

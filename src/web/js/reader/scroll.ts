@@ -105,7 +105,7 @@ export function rememberReaderScrollPosition({ precise = true, flush = false }: 
   if (flush) saveUiState();
 }
 
-export function restoreReaderScrollPosition(
+function restoreReaderScrollPosition(
   textId: string,
   saved: unknown,
   attempt = 0,

@@ -71,7 +71,7 @@ export async function openBook(id: string) {
   return true;
 }
 
-export function isReadableBookAvailable(id: string | null) {
+function isReadableBookAvailable(id: string | null) {
   if (!id) return false;
   return hasCustomText(id) || !!findBookById(id);
 }
