@@ -63,7 +63,7 @@ function youglishPageUrl(word: string): string {
  * browser through the embedded server (plain window.open from an async
  * callback is popup-blocked in the webview).
  */
-export function openYouglishSite(word: string): void {
+function openYouglishSite(word: string): void {
   const url = youglishPageUrl(word);
   const mode = state.preferences.youglishMode || "internal";
   if (mode === "external") {

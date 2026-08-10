@@ -16,7 +16,7 @@ import { buildHeatmapActivityCounts, daysBetween } from "./helpers.js";
 import type { VocabEntry } from "./helpers.js";
 
 /** Serialize the current vocabulary statistics as plain text for the LLM. */
-export function buildGraphsSummaryText(): string {
+function buildGraphsSummaryText(): string {
   const entries = Object.values(state.vocab) as VocabEntry[];
   const today = new Date().toISOString().slice(0, 10);
   let total = 0;
