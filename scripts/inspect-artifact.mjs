@@ -3,6 +3,7 @@
 import { inflateRawSync } from "node:zlib";
 import {
   chmodSync,
+  existsSync,
   lstatSync,
   mkdtempSync,
   readFileSync,
@@ -276,10 +277,96 @@ const legalFiles = [
   "OCR-THIRD-PARTY-LICENSES.html",
 ];
 
-export function inspectAndroid(path, abi) {
+// Mirrors tauri-cli 2.11.4 `generate_tauri_properties` (mobile/android/mod.rs):
+// with no `bundle.android.version_code` and no auto-increment configured, the
+// generated `tauri.properties` (and therefore the APK/AAB versionCode) is
+// `major * 1_000_000 + minor * 1_000 + patch`. Issue #138 quoted 101001099,
+// but that value came from a release built with an older toolchain and is not
+// reproducible with the pinned CLI; deriving it from tauri.conf.json keeps the
+// assertion correct across version bumps.
+export function androidVersionCodeFor(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version);
+  if (!match) fail(`Cannot derive an Android versionCode from version: ${version}`);
+  return Number(match[1]) * 1_000_000 + Number(match[2]) * 1_000 + Number(match[3]);
+}
+
+export function parseBadgingPackage(badging) {
+  const match = badging.match(/^package:\s*name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
+  if (!match) return null;
+  return { name: match[1], versionCode: Number(match[2]), versionName: match[3] };
+}
+
+// `aapt2 dump badging` only prints `application-debuggable` when the APK is
+// debuggable, so release artifacts must never contain that line.
+export function isBadgingDebuggable(badging) {
+  return /^application-debuggable/m.test(badging);
+}
+
+export function parseXmlTreeManifest(xmltree) {
+  const versionCodeMatch = xmltree.match(/android:versionCode\(0x0101021b\)=\(type 0x10\)0x([0-9a-f]+)/i);
+  const versionNameMatch = xmltree.match(/android:versionName\(0x0101021c\)="([^"]+)"/);
+  const debuggableMatch = xmltree.match(/android:debuggable\(0x0101000f\)=\(type 0x12\)0x([0-9a-f]+)/i);
+  return {
+    versionCode: versionCodeMatch ? parseInt(versionCodeMatch[1], 16) : null,
+    versionName: versionNameMatch ? versionNameMatch[1] : null,
+    debuggable: debuggableMatch ? parseInt(debuggableMatch[1], 16) !== 0 : false,
+  };
+}
+
+function androidExpectations() {
+  const config = JSON.parse(
+    readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
+  );
+  return {
+    packageName: config.identifier,
+    versionName: config.version,
+    versionCode: androidVersionCodeFor(config.version),
+  };
+}
+
+function findAapt2() {
+  const sdkRoot = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
+  if (!sdkRoot) {
+    fail("ANDROID_HOME/ANDROID_SDK_ROOT is not set; cannot locate aapt2 for the release APK/AAB assertions");
+  }
+  const buildTools = join(sdkRoot, "build-tools");
+  let versions;
+  try {
+    versions = readdirSync(buildTools, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    fail(`No Android build-tools directory found below ${sdkRoot}`);
+  }
+  if (versions.length === 0) fail(`No Android build-tools versions found below ${buildTools}`);
+  versions.sort((a, b) => {
+    const left = a.split(".").map(Number);
+    const right = b.split(".").map(Number);
+    for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+      const diff = (right[index] ?? 0) - (left[index] ?? 0);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  });
+  for (const version of versions) {
+    const candidate = join(buildTools, version, process.platform === "win32" ? "aapt2.exe" : "aapt2");
+    if (existsSync(candidate)) return candidate;
+  }
+  fail(`aapt2 was not found below ${buildTools}`);
+}
+
+// Issue #138: zip-level checks (naming, manifest, dex, single ABI, ELF
+// machine, forbidden OCR runtime) — SDK-free so unit tests can exercise them
+// with synthetic archives. The aapt2 release assertions live in
+// inspectAndroid() and require ANDROID_HOME.
+export function inspectAndroidZipList(path, abi) {
   const archive = readZipArchive(path);
   const names = namesOf(archive);
   const isAab = path.toLowerCase().endsWith(".aab");
+  const expectedName = isAab ? "Word.Hunter.Pocket.release.aab" : "Word.Hunter.Pocket.release.apk";
+  if (basename(path) !== expectedName) {
+    fail(`${path} must be named ${expectedName}`);
+  }
   const manifest = isAab ? "base/manifest/AndroidManifest.xml" : "AndroidManifest.xml";
   requireEntry(archive, manifest);
   if (!names.some((name) => (isAab ? /^base\/dex\/classes.*\.dex$/ : /^classes.*\.dex$/).test(name))) {
@@ -302,7 +389,45 @@ export function inspectAndroid(path, abi) {
     fail(`${path} unexpectedly contains the desktop OCR runtime`);
   }
   for (const legalFile of legalFiles) requireSuffix(names, legalFile);
+
+
   console.log(`Validated ${isAab ? "AAB" : "APK"}: ${path} (${abi}, ${names.length} entries)`);
+}
+
+export function inspectAndroid(path, abi) {
+  inspectAndroidZipList(path, abi);
+  const isAab = path.toLowerCase().endsWith(".aab");
+  // Issue #138: the shipped artifact must be a release build — matching
+  // versionCode/versionName from tauri.conf.json and never debuggable.
+  const expected = androidExpectations();
+  const aapt2 = findAapt2();
+  if (isAab) {
+    const xmltree = run(aapt2, ["dump", "xmltree", "--file", "base/manifest/AndroidManifest.xml", path]);
+    const manifest = parseXmlTreeManifest(xmltree);
+    if (manifest.versionCode !== expected.versionCode) {
+      fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
+    }
+    if (manifest.versionName !== expected.versionName) {
+      fail(`${path} has versionName ${manifest.versionName}; expected ${expected.versionName}`);
+    }
+    if (manifest.debuggable) fail(`${path} is debuggable; release builds must not set android:debuggable`);
+  } else {
+    const badging = run(aapt2, ["dump", "badging", path]);
+    const packageInfo = parseBadgingPackage(badging);
+    if (!packageInfo) fail(`${path}: aapt2 dump badging reported no package line`);
+    if (packageInfo.name !== expected.packageName) {
+      fail(`${path} has package ${packageInfo.name}; expected ${expected.packageName}`);
+    }
+    if (packageInfo.versionCode !== expected.versionCode) {
+      fail(`${path} has versionCode ${packageInfo.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
+    }
+    if (packageInfo.versionName !== expected.versionName) {
+      fail(`${path} has versionName ${packageInfo.versionName}; expected ${expected.versionName}`);
+    }
+    if (isBadgingDebuggable(badging)) {
+      fail(`${path} is a debuggable APK; release builds must not set android:debuggable`);
+    }
+  }
 }
 
 export function inspectWindowsPortable(path, requiredDlls = []) {
