@@ -7,9 +7,10 @@
   },
   "scripts": {
     "lint:css": "stylelint --max-warnings 0 \"src/web/**/*.{css,html}\"",
+    "lint:html": "html-validate \"src/web/**/*.html\"",
     "build:frontend": "node scripts/build-frontend.mjs",
     "check:ts": "tsc --project tsconfig.json --noEmit",
-    "check:frontend": "npm run lint:css && npm run build:frontend && npm run check:ts",
+    "check:frontend": "npm run lint:css && npm run lint:html && npm run build:frontend && npm run check:ts",
     "test:frontend": "npm run build:frontend && node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js frontend-tests/e2e/*.test.js",
     "test:shared": "npm run build:frontend && node --experimental-vm-modules --test frontend-tests/shared/*.test.js",
     "test:desktop": "npm run build:frontend && node --experimental-vm-modules --test frontend-tests/desktop/*.test.js",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "esbuild": "0.28.1",
+    "html-validate": "11.6.2",
     "postcss-html": "1.8.1",
     "stylelint": "16.26.1",
     "stylelint-config-recommended": "17.0.0",

@@ -331,6 +331,54 @@ describe("repository validation wiring", () => {
     assert.match(rustBuild, /frontend_source_hash/);
   });
 
+  it("validates HTML and derives every cache stamp and inline script from reviewed templates", () => {
+    const packageJson = JSON.parse(read("../../package.json"));
+    const buildScript = read("../../scripts/build-frontend.mjs");
+    const buildHash = read("../../dist/web/.wordhunter-build.sha256").trim();
+    const expectedStamp = buildHash.slice(0, 12);
+    const builtHtml = [read("../../dist/web/index.html"), read("../../dist/web/templates/translator-popup.html")];
+    const builtStyles = read("../../dist/web/styles.css");
+    const localAssetUrls = builtHtml
+      .flatMap((html) => [...html.matchAll(/\b(?:src|href)="([^"]+)"/gi)].map((match) => match[1]))
+      .filter((url) => url.trim() !== "" && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url));
+    const references = localAssetUrls.map((url) => new URLSearchParams(url.split("?", 2)[1] || "").get("v"));
+
+    assert.equal(packageJson.scripts["lint:html"], "html-validate \"src/web/**/*.html\"");
+    assert.match(packageJson.scripts["check:frontend"], /npm run lint:html/);
+    assert.match(read("../../.htmlvalidate.json"), /html-validate:recommended/);
+    assert.ok(references.length > 4, localAssetUrls.join(", "));
+    assert.ok(references.every(Boolean), localAssetUrls.join(", "));
+    assert.deepEqual([...new Set(references)], [expectedStamp]);
+    assert.ok(builtHtml.some((html) => html.includes('src=""')));
+    assert.match(builtStyles, new RegExp(`url\\("favicon\\.svg\\?v=${expectedStamp}"\\)`));
+    assert.match(buildScript, /html\.replace\(\/\\b\(src\|href\)=/);
+    assert.match(buildScript, /withoutFragment\.replace\(\/\(\[\?&\]\)v=/);
+
+    const bootstrapTemplate = read("../../src-tauri/templates/bootstrap.js");
+    const popupTemplate = read("../../src-tauri/templates/popup-escape.js");
+    const handlers = read("../../src-tauri/src/handlers.rs");
+    const popup = read("../../src-tauri/src/popup.rs");
+    assert.match(bootstrapTemplate, /__WH_TOKEN_JSON__/);
+    assert.match(bootstrapTemplate, /__WH_SNAPSHOT_JSON__/);
+    assert.match(popupTemplate, /__WH_CLOSE_URL_JSON__/);
+    assert.match(handlers, /include_str!\("\.\.\/templates\/bootstrap\.js"\)/);
+    assert.match(popup, /include_str!\("\.\.\/templates\/popup-escape\.js"\)/);
+    assert.doesNotMatch(handlers, /window\.__qtBridge|window\.fetch = function/);
+    assert.doesNotMatch(popup, /window\.addEventListener/);
+  });
+
+  it("uses a real HTML parser that rejects malformed markup", async () => {
+    const { HtmlValidate } = await import("html-validate");
+    const validator = new HtmlValidate();
+    const report = await validator.validateString(
+      '<!DOCTYPE html><html><body><div id="same"><span></div><div id="same"></div></body></html>',
+      "malformed.html",
+    );
+    const ruleIds = report.results.flatMap((result) => result.messages.map((message) => message.ruleId));
+    assert.equal(report.valid, false);
+    assert.ok(ruleIds.includes("close-order") || ruleIds.includes("no-dup-id"), ruleIds.join(", "));
+  });
+
   it("derives Snap validation from the application version and verifies the release digest", () => {
     const config = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const snapcraft = read("../../snap/snapcraft.yaml");

@@ -1,7 +1,1 @@
-window.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    window.location.replace('{{close_url}}');
-  }
-}, true);
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();window.location.replace(__WH_CLOSE_URL_JSON__);}},true);
