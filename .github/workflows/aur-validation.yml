@@ -21,7 +21,7 @@ jobs:
   validate:
     name: makepkg and installed AppImage smoke test
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     container:
       image: archlinux:base-devel-20260712.0.555161@sha256:212b1e518e94ee9c52be55e8a32da75fcf11e7b5610b80b49479e67880102406
     defaults:
@@ -34,10 +34,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
+      - name: Read app version
+        run: |
+          set -euo pipefail
+          version="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${version}"
+          printf 'WH_APP_VERSION=%s\n' "${version}" >> "${GITHUB_ENV}"
+
       - name: Update Arch and install validation tools
         run: |
           set -euo pipefail
-          pacman -Syu --noconfirm --needed \
+          # The pinned base image is ~5 weeks old; a full `pacman -Syu` on shared
+          # runners can take 30-40+ minutes against slow mirrors and has been
+          # observed to exceed the job's effective lifetime. For validation we
+          # only need the tool set, so sync the package database and install the
+          # tools directly instead of upgrading the whole base system.
+          pacman -Sy --noconfirm --disable-download-timeout --needed \
             appstream \
             dbus \
             desktop-file-utils \
@@ -71,7 +83,7 @@ jobs:
           runuser -u aur-builder -- bash -c \
             "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
 
-          asset="${AUR_BUILD_DIR}/WordHunter-1.0.10-x86_64.AppImage"
+          asset="${AUR_BUILD_DIR}/WordHunter-${WH_APP_VERSION}-x86_64.AppImage"
           printf '%s  %s\n' \
             '309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523' \
             "${asset}" | sha256sum -c -
@@ -138,7 +150,7 @@ jobs:
           fi
 
           grep -Fxq 'pkgname = wordhunter-bin' "${metadata}"
-          grep -Fxq 'pkgver = 1.0.10-1' "${metadata}"
+          grep -Fxq "pkgver = ${WH_APP_VERSION}-1" "${metadata}"
           for dependency in \
             fontconfig \
             fribidi \
@@ -159,7 +171,7 @@ jobs:
         run: |
           set -euo pipefail
           pacman -U --noconfirm "${AUR_PACKAGE}"
-          test "$(pacman -Q wordhunter-bin)" = 'wordhunter-bin 1.0.10-1'
+          test "$(pacman -Q wordhunter-bin)" = "wordhunter-bin ${WH_APP_VERSION}-1"
           pacman -Qkk wordhunter-bin
           pacman -Ql wordhunter-bin
 

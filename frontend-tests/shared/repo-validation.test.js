@@ -108,6 +108,18 @@ describe("repository validation wiring", () => {
     assert.doesNotMatch(prCommands, /build-flatpak|build\.bat all|tauri build/);
   });
 
+  it("persists the derived AUR app version for every later workflow step", () => {
+    const workflow = parseSimpleYaml(read("../../.github/workflows/aur-validation.yml"));
+    const validate = workflow.jobs.validate;
+    const versionStep = stepByName(validate, "Read app version");
+
+    assert.match(versionStep.run, /tauri\.conf\.json/);
+    assert.match(versionStep.run, /WH_APP_VERSION=.*GITHUB_ENV/);
+    for (const name of ["Verify the pinned release source", "Validate package metadata and contents", "Install and smoke-test the package"]) {
+      assert.match(stepByName(validate, name).run, /WH_APP_VERSION/);
+    }
+  });
+
   it("parses the manually dispatched release matrix and requires each artifact", () => {
     const workflow = parseSimpleYaml(read("../../.github/workflows/artifact-validation.yml"));
 
