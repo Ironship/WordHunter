@@ -178,7 +178,61 @@ function staticI18nKeys() {
   return keys;
 }
 
+function decodeHtmlText(value) {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .trim();
+}
+
 describe("i18n coverage", () => {
+  it("keeps static English fallbacks aligned with en.json", () => {
+    const html = fs.readFileSync(path.join("dist", "web", "index.html"), "utf8");
+    const english = flatten(JSON.parse(fs.readFileSync(path.join(localeDir, "en.json"), "utf8")));
+    const mismatches = [];
+    const languageFallbacks = new Map();
+
+    for (const match of html.matchAll(/<([a-z][a-z0-9-]*)\b([^>]*\bdata-i18n="([^"]+)"[^>]*)>([^<]*)<\/\1>/gi)) {
+      const [, , , key, fallback] = match;
+      const decoded = decodeHtmlText(fallback);
+      if (!decoded) continue;
+      if (key.startsWith("languages.")) {
+        const values = languageFallbacks.get(key) || new Set();
+        values.add(decoded);
+        languageFallbacks.set(key, values);
+      } else if (key in english && decoded !== english[key].trim()) {
+        mismatches.push(`${key}: ${JSON.stringify(decoded)} != ${JSON.stringify(english[key].trim())}`);
+      }
+    }
+
+    for (const [key, values] of languageFallbacks) {
+      if (values.size > 1) mismatches.push(`${key} has inconsistent native-name fallbacks: ${[...values].join(" | ")}`);
+    }
+
+    for (const match of html.matchAll(/<[^>]*\bdata-i18n-attr="([^"]+)"[^>]*>/gi)) {
+      const tag = match[0];
+      for (const mapping of match[1].split(/[;,]/)) {
+        const [attribute, key] = mapping.split("=").map((part) => part.trim());
+        const fallback = tag.match(new RegExp(`\\b${attribute}="([^"]*)"`, "i"))?.[1];
+        if (fallback !== undefined && key in english && decodeHtmlText(fallback) !== english[key].trim()) {
+          mismatches.push(`${attribute}=${key}: ${JSON.stringify(decodeHtmlText(fallback))} != ${JSON.stringify(english[key].trim())}`);
+        }
+      }
+    }
+
+    assert.deepEqual(mismatches, []);
+    assert.deepEqual(
+      Object.entries(english)
+        .filter(([key, value]) => key !== "settings.ankiTsvHeader" && value !== value.trim())
+        .map(([key]) => key),
+      [],
+      "English locale values must not contain accidental edge whitespace",
+    );
+  });
+
   it("keeps locale key sets and placeholders in sync", () => {
     const locales = new Map(localeFiles.map((file) => [
       file,
