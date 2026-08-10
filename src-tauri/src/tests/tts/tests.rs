@@ -1,6 +1,17 @@
-use super::{SynthesisPermit, cached_with, rate_for, voice_for};
+use super::{SynthesisPermit, cached_with, rate_for, runtime, voice_for};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
+
+#[test]
+fn runtime_stays_alive_after_initialization() {
+    // C15 regression: caching only a Handle drops the Runtime, so the next
+    // block_on panics with "A Tokio 1.x context was found, but it is being
+    // shutdown."
+    runtime()
+        .expect("runtime init should succeed")
+        .block_on(async { tokio::time::sleep(Duration::from_millis(1)).await });
+}
 
 #[test]
 fn failed_init_is_not_cached_and_the_next_call_retries() {

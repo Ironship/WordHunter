@@ -1,12 +1,13 @@
 use edge_tts_rust::{Boundary, EdgeTtsClient, SpeakOptions, SynthesisResult};
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 const MAX_CONCURRENT_SYNTHESIS: usize = 2;
 const SYNTHESIS_TIMEOUT_SECONDS: u64 = 14;
 static ACTIVE_SYNTHESIS: AtomicUsize = AtomicUsize::new(0);
-static RUNTIME: Mutex<Option<tokio::runtime::Handle>> = Mutex::new(None);
+static RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 static CLIENT: Mutex<Option<EdgeTtsClient>> = Mutex::new(None);
 
 struct SynthesisPermit;
@@ -44,15 +45,19 @@ fn cached_with<T: Clone>(
     Ok(guard.get_or_insert(built).clone())
 }
 
-fn runtime() -> Result<tokio::runtime::Handle, String> {
-    cached_with(&RUNTIME, || {
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(MAX_CONCURRENT_SYNTHESIS)
-            .enable_all()
-            .build()
-            .map(|runtime| runtime.handle().clone())
-            .map_err(|error| error.to_string())
-    })
+fn runtime() -> Result<&'static tokio::runtime::Runtime, String> {
+    if let Some(runtime) = RUNTIME.get() {
+        return Ok(runtime);
+    }
+    let built = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(MAX_CONCURRENT_SYNTHESIS)
+        .enable_all()
+        .build()
+        .map_err(|error| error.to_string())?;
+    // Only successes are cached: a failed build is retried on the next call.
+    // The Runtime stays alive for the process lifetime, so `block_on` on the
+    // returned reference never touches a shut-down runtime.
+    Ok(RUNTIME.get_or_init(move || built))
 }
 
 fn client() -> Result<EdgeTtsClient, String> {
