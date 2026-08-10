@@ -100,7 +100,7 @@ jobs:
       - name: Install Android SDK and NDK packages
         shell: pwsh
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
           "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set up Rust
