@@ -10,10 +10,20 @@ fn popup_close_url(base_url: &str) -> String {
     format!("{base_url}/__popup/close")
 }
 
+fn inline_javascript_string(value: &str) -> String {
+    serde_json::to_string(value)
+        .unwrap_or_else(|_| "\"\"".to_string())
+        .replace('&', "\\u0026")
+        .replace('<', "\\u003c")
+        .replace('>', "\\u003e")
+        .replace('\u{2028}', "\\u2028")
+        .replace('\u{2029}', "\\u2029")
+}
+
 fn popup_escape_script(base_url: &str) -> String {
-    let close_url = popup_close_url(base_url);
+    let close_url = inline_javascript_string(&popup_close_url(base_url));
     format!(
-        "window.addEventListener('keydown',e=>{{if(e.key==='Escape'){{e.preventDefault();e.stopImmediatePropagation();window.location.replace('{close_url}');}}}},true);"
+        "window.addEventListener('keydown',e=>{{if(e.key==='Escape'){{e.preventDefault();e.stopImmediatePropagation();window.location.replace({close_url});}}}},true);"
     )
 }
 
@@ -180,6 +190,16 @@ mod tests {
         assert!(script.contains("http://127.0.0.1:1234/__popup/close"));
         assert!(script.contains("window.location.replace"));
         assert!(!script.contains("new Image"));
+    }
+
+    #[test]
+    fn escape_script_encodes_javascript_and_script_terminators() {
+        let script =
+            popup_escape_script("http://127.0.0.1:1234/\");globalThis.pwned=1;//</script>");
+
+        assert!(!script.contains("</script>"));
+        assert!(script.contains("/\\\");globalThis.pwned=1"));
+        assert!(script.contains("\\u003c/script\\u003e"));
     }
 
     #[test]
