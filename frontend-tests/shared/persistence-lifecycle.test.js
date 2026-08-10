@@ -70,7 +70,10 @@ async function loadAppHarness({
   hydrateActiveLibraryTexts = async () => {},
   hydrateCurrentReaderText = async () => true,
   loadBooksCatalog = async () => {},
-  loadLocale = async () => {}
+  loadLocale = async () => {},
+  pendingDelta = null,
+  hasPending = false,
+  deltaPayload = "{}"
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -91,6 +94,8 @@ async function loadAppHarness({
   const window = fakeEventTarget({
     __qtBridge: false,
     flushPendingSave() { calls.push("flush-save"); },
+    hasPendingChanges() { return hasPending; },
+    buildPendingDeltaPayload() { calls.push("build-delta"); return deltaPayload; },
     open() {},
     requestAnimationFrame(callback) {
       assert.equal(this, window);
@@ -133,7 +138,11 @@ async function loadAppHarness({
     },
     "./js/api.js": {
       buildSavePayload: () => "{}",
-      saveSyncXhr() { calls.push("keepalive-save"); }
+      saveSyncXhr() { calls.push("keepalive-save"); },
+      flushPendingDeltaToLocalStorage(payload) { calls.push(`pending-flush:${payload}`); },
+      readPendingDelta() { return pendingDelta; },
+      clearPendingDelta() { calls.push("clear-pending"); },
+      saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
@@ -289,6 +298,40 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls.splice(0), []);
     harness.document.emit("visibilitychange");
     assert.deepEqual(harness.calls.splice(0), []);
+  });
+
+  it("persists the Android teardown flush to localStorage instead of a keepalive fetch", async () => {
+    // Issue #137: keepalive fetches are capped at 64 KiB while the real save
+    // payload is multi-MB, so the final mutations were silently dropped on
+    // every Android activity finish. The flush must go to localStorage
+    // synchronously and must not rely on a keepalive fetch.
+    const harness = await loadAppHarness({ hasPending: true, deltaPayload: '{"delta":true,"fullKeys":[]}' });
+    harness.setAndroid(true);
+
+    harness.window.emit("pagehide");
+
+    assert.deepEqual(harness.calls, [
+      "flush-buffers",
+      "build-delta",
+      'pending-flush:{"delta":true,"fullKeys":[]}'
+    ]);
+    assert.ok(
+      !harness.calls.includes("keepalive-save"),
+      "the multi-MB payload must not go through a keepalive fetch"
+    );
+  });
+
+  it("replays a pending Android teardown flush through the normal save path at boot", async () => {
+    const harness = await loadAppHarness({ pendingDelta: '{"delta":true,"fullKeys":[]}' });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(
+      harness.calls.includes('replay:{"delta":true,"fullKeys":[]}'),
+      "the pending delta is replayed through the normal save path"
+    );
+    assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {

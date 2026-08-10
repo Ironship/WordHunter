@@ -391,6 +391,15 @@ export function createAutosave(getState: () => WhAppState) {
       else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
     },
+    // Synchronous serialization of the save delta for the Android teardown
+    // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
+    // tracking as doSave so the replayed payload merges cleanly on next boot.
+    buildPendingDeltaPayload(): string {
+      const current = rawState();
+      return JSON.stringify(
+        buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
+      );
+    },
     hasPendingChanges,
     withoutAutoSave<T>(callback: () => T): T {
       suspendAutoSave++;

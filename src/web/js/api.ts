@@ -118,6 +118,40 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
   }
 }
 
+// Android teardown flush: the keepalive fetch is capped at 64 KiB while the
+// real state is multi-MB, so the final mutations were silently dropped on
+// every activity finish (issue #137). Instead the exit flush persists the
+// save *delta* (a few MB at most, well inside the localStorage quota) under a
+// dedicated key; the next boot replays it through the normal save path.
+const PENDING_FLUSH_KEY = "wordhunter.pendingFlush.v1";
+
+export function flushPendingDeltaToLocalStorage(payload: string): void {
+  try {
+    localStorage.setItem(PENDING_FLUSH_KEY, payload);
+  } catch (e) {
+    console.error("pending-flush localStorage write failed", e);
+  }
+}
+
+/** Peek at a pending flush left by a previous teardown (null when absent). */
+export function readPendingDelta(): string | null {
+  try {
+    return localStorage.getItem(PENDING_FLUSH_KEY);
+  } catch (e) {
+    console.error("pending-flush localStorage read failed", e);
+    return null;
+  }
+}
+
+/** Drop the pending flush once it has been replayed into the backend. */
+export function clearPendingDelta(): void {
+  try {
+    localStorage.removeItem(PENDING_FLUSH_KEY);
+  } catch (e) {
+    console.error("pending-flush localStorage clear failed", e);
+  }
+}
+
 /** POST the payload to the backend bridge with retry. */
 export async function saveWithRetry(body: string, maxRetries: number): Promise<WhBridgeSaveResult> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
