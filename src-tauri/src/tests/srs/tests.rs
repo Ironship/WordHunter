@@ -20,6 +20,13 @@ fn sm2_review_sets_due_date() {
 }
 
 #[test]
+fn review_rejects_out_of_range_quality_non_object_entries_and_unknown_algorithms() {
+    assert!(review(json!({ "quality": 6, "entry": {} })).is_err());
+    assert!(review(json!({ "quality": 3, "entry": "garbage" })).is_err());
+    assert!(review(json!({ "quality": 3, "entry": {}, "algorithm": "bogus" })).is_err());
+}
+
+#[test]
 fn sm2_review_uses_exact_grade_intervals() {
     for (quality, entry, expected_repetition, expected_interval, expected_efactor, expected_date) in [
         (1, json!({}), 0, 1, 1.96, "2026-06-17"),

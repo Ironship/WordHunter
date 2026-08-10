@@ -479,9 +479,19 @@ pub(crate) fn merge_records(
         let chosen = if !incoming_changed {
             current_record.cloned()
         } else if !current_changed {
-            incoming_record
-                .cloned()
-                .or_else(|| Some(tombstone_with_base(&key, device_id, now, base_causal)))
+            match (incoming_record, current_record) {
+                (Some(incoming), Some(current))
+                    if incoming.deleted_at.is_none()
+                        && current.deleted_at.is_some()
+                        && compare_causal(&incoming.causal, &current.causal)
+                            != CausalOrder::IncomingDescends =>
+                {
+                    Some(current.clone())
+                }
+                _ => incoming_record
+                    .cloned()
+                    .or_else(|| Some(tombstone_with_base(&key, device_id, now, base_causal))),
+            }
         } else if incoming_hash.is_some() && incoming_hash == current_hash {
             match (incoming_record, current_record) {
                 (Some(incoming), Some(current)) => Some(merge_equal_records(incoming, current)),
@@ -3001,6 +3011,43 @@ mod tests {
         assert_eq!(merged.records[&key].causal.get("remote-device"), Some(&9));
         assert!(merged.records[&key].causal.get("local-device") >= Some(&100));
         assert!(merged.conflicts.is_empty());
+    }
+
+    #[test]
+    fn stale_live_record_does_not_replace_an_unchanged_newer_tombstone() {
+        let key = "vocab:de:haus".to_string();
+        let tombstone = SyncRecord {
+            key: key.clone(),
+            kind: "vocab".to_string(),
+            data: Value::Null,
+            updated_at: 200,
+            deleted_at: Some(200),
+            device_id: "remote-device".to_string(),
+            causal: causal(&[("remote-device", 9)]),
+        };
+        let stale_live = SyncRecord {
+            key: key.clone(),
+            kind: "vocab".to_string(),
+            data: json!({ "word": "haus", "translation": "house" }),
+            updated_at: 100,
+            deleted_at: None,
+            device_id: "local-device".to_string(),
+            causal: causal(&[("local-device", 1)]),
+        };
+        let base = fingerprints(&[(key.clone(), tombstone.clone())].into_iter().collect());
+        let incoming = [(key.clone(), stale_live)].into_iter().collect();
+        let current = [(key.clone(), tombstone)].into_iter().collect();
+
+        let merged = merge_records(
+            &base,
+            incoming,
+            current,
+            "merge-device",
+            300,
+            &[key.clone()].into_iter().collect(),
+        );
+
+        assert_eq!(merged.records[&key].deleted_at, Some(200));
     }
 
     #[test]

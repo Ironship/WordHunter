@@ -200,15 +200,24 @@ pub(crate) fn serve_media(
 ) -> Result<(), String> {
     let book = response::query_value(query, "book").unwrap_or_default();
     let img = response::query_value(query, "img").unwrap_or_default();
-    let file_path = state.store.book_image_path(&book, &img)?;
+    if book.is_empty() || img.is_empty() {
+        return response::error_response(request, 400, "book and img are required");
+    }
+    let file_path = match state.store.book_image_path(&book, &img) {
+        Ok(path) => path,
+        Err(_) => return response::error_response(request, 400, "invalid media path"),
+    };
     let file = match fs::File::open(&file_path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return response::error_response(request, 404, "not found");
         }
-        Err(error) => return Err(error.to_string()),
+        Err(_) => return response::error_response(request, 500, "could not open media"),
     };
-    let length = file.metadata().map_err(|error| error.to_string())?.len() as usize;
+    let length = match file.metadata() {
+        Ok(metadata) => metadata.len() as usize,
+        Err(_) => return response::error_response(request, 500, "could not read media metadata"),
+    };
     let mime = mime_guess::from_path(&file_path)
         .first_or_octet_stream()
         .essence_str()
