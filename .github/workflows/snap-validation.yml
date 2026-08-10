@@ -6,6 +6,7 @@ on:
     paths:
       - snap/**
       - packaging/snap/**
+      - src-tauri/tauri.conf.json
       - .github/workflows/snap-validation.yml
   push:
     branches:
@@ -13,6 +14,7 @@ on:
     paths:
       - snap/**
       - packaging/snap/**
+      - src-tauri/tauri.conf.json
       - .github/workflows/snap-validation.yml
 
 permissions:
@@ -33,6 +35,33 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+
+      - name: Read and validate the application version
+        id: app_version
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          test -n "$version"
+          grep -Fx "version: '$version'" snap/snapcraft.yaml
+          grep -Fq "/WordHunter${version}/word-hunter_${version}_amd64.deb" snap/snapcraft.yaml
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Verify the release asset checksum
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          asset_name="word-hunter_${APP_VERSION}_amd64.deb"
+          expected="$(sed -nE 's/^    source-checksum: sha256\/([0-9a-f]{64})$/sha256:\1/p' snap/snapcraft.yaml)"
+          test -n "$expected"
+          actual="$(curl --fail --location --retry 3 \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/Ironship/WordHunter/releases/tags/WordHunter${APP_VERSION}" \
+            | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { const name=process.argv[1]; const asset=JSON.parse(input).assets.find(item => item.name === name); if (!asset?.digest) process.exit(1); process.stdout.write(asset.digest); });' \
+              "$asset_name")"
+          test "$actual" = "$expected"
 
       - name: Build Snap
         id: snapcraft
@@ -61,6 +90,7 @@ jobs:
       - name: Inspect Snap payload
         env:
           SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
         run: |
           set -Eeuo pipefail
           trap 'echo "Snap payload inspection failed at line $LINENO: $BASH_COMMAND" >&2' ERR
@@ -97,7 +127,8 @@ jobs:
           grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
             "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
           grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
-          grep -Eq "^version: ['\"]?1\\.0\\.10['\"]?$" "$root/meta/snap.yaml"
+          actual_version="$(sed -nE "s/^version: ['\"]?([^'\"]+)['\"]?$/\1/p" "$root/meta/snap.yaml")"
+          test "$actual_version" = "$APP_VERSION"
           grep -Fx 'base: core24' "$root/meta/snap.yaml"
           grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
           grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
