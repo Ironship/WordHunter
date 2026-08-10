@@ -1,6 +1,6 @@
 name: word-hunter
 base: core24
-version: '1.0.8'
+version: '1.0.10'
 summary: Local-first reader and vocabulary trainer
 description: |
   Read real texts, save vocabulary with its original context, and review it
@@ -57,9 +57,9 @@ apps:
 parts:
   word-hunter:
     plugin: dump
-    source: https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.8/word-hunter_1.0.8_amd64.deb
+    source: https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/word-hunter_1.0.10_amd64.deb
     source-type: deb
-    source-checksum: sha256/3e222116ef84359f0081328c2ab98dac194c4409c9a367ffff2331a600753a01
+    source-checksum: sha256/9cef8fe726a8fb3b0aa9ae52293d8d1c1510c457ae72f4dd698c8ef3e2065d29
     stage-packages:
       - dbus-daemon
       - dbus-session-bus-common
