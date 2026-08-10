@@ -531,6 +531,15 @@ export function debianVersionForRelease(version) {
   return version.replace(/-rc\.(\d+)$/, "~rc.$1");
 }
 
+export const DEB_REQUIRED_DEPENDS = [
+  "libc6",
+  "libgtk-3-0",
+  "libwebkit2gtk-4.1-0",
+  "poppler-utils",
+  "gstreamer1.0-plugins-base",
+  "gstreamer1.0-plugins-good",
+];
+
 export function inspectLinuxDeb(path) {
   const packageName = run("dpkg-deb", ["--field", path, "Package"]).trim();
   if (packageName !== "word-hunter") fail(`${path} has Debian package name ${packageName || "unknown"}; expected word-hunter`);
@@ -546,14 +555,7 @@ export function inspectLinuxDeb(path) {
     fail(`${path} has invalid Debian Maintainer metadata: ${maintainer || "missing"}`);
   }
   const dependencies = run("dpkg-deb", ["--field", path, "Depends"]).trim();
-  for (const dependency of [
-    "libc6",
-    "libgtk-3-0",
-    "libwebkit2gtk-4.1-0",
-    "libxdo3",
-    "gstreamer1.0-plugins-base",
-    "gstreamer1.0-plugins-good",
-  ]) {
+  for (const dependency of DEB_REQUIRED_DEPENDS) {
     const pattern = new RegExp(`(?:^|,\\s*)${dependency.replaceAll(".", "\\.")}(?:\\s*\\([^)]*\\))?(?:,|$)`);
     if (!pattern.test(dependencies)) fail(`${path} is missing Debian dependency: ${dependency}`);
   }
