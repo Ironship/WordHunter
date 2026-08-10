@@ -339,7 +339,9 @@ describe("Android Pocket platform", () => {
     assert.equal(handle.listeners.pointerdown.length, 1);
     assert.equal(listeners.resize.length, 1);
     assert.equal(listeners.orientationchange.length, 1);
-    assert.equal(visualViewportListeners.resize.length, 2);
+    // The sheet binds resize (1) and the keyboard overlap resize (1); the
+    // pinch-zoom re-pin binds its own resize+scroll pair once (guarded).
+    assert.equal(visualViewportListeners.resize.length, 3);
     assert.equal(observedContent.target, wordPanel);
     assert.deepEqual(observedContent.options.attributeFilter, ["hidden"]);
     assert.equal(wordPanel.listeners.load.length, 1);
@@ -621,5 +623,53 @@ describe("Android Pocket platform", () => {
     assert.doesNotMatch(sharedTextLayer, /marker_room/);
     assert.match(backend, /"pages": pages/);
     assert.match(sharedTextLayer, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
+  });
+
+  it("re-pins the CSS zoom when the visual viewport rescales after a pinch", async () => {
+    const visualViewportListeners = {};
+    const addListener = (target, type, handler) => {
+      (target[type] ||= []).push(handler);
+    };
+    const root = {
+      dataset: {},
+      classList: createClassList(),
+      style: { zoom: "", setProperty(name, value) { this[name] = value; } }
+    };
+
+    globalThis.window = {
+      location: { search: "?platform=android" },
+      addEventListener() {},
+      visualViewport: {
+        addEventListener(type, handler) { addListener(visualViewportListeners, type, handler); }
+      }
+    };
+    globalThis.HTMLElement = {
+      [Symbol.hasInstance](value) { return value !== null && typeof value === "object"; }
+    };
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { userAgent: "Desktop test" }
+    });
+    globalThis.document = {
+      documentElement: root,
+      addEventListener() {},
+      getElementById() { return null; },
+      querySelector() { return null; },
+      querySelectorAll() { return []; }
+    };
+
+    const { applyPlatformUi } = await import("../../dist/web/js/platform.js");
+    applyPlatformUi();
+    applyPlatformUi();
+
+    // The re-pin listener is bound once even when the UI is applied repeatedly.
+    assert.equal(visualViewportListeners.resize.length, 2);
+    assert.equal(visualViewportListeners.scroll.length, 1);
+
+    // A pinch gesture re-scales the visual viewport under the pinned CSS zoom;
+    // the zoom must be re-pinned to "1" so the layout is not double-scaled.
+    root.style.zoom = "2";
+    for (const handler of visualViewportListeners.resize) handler();
+    assert.equal(root.style.zoom, "1");
   });
 });
