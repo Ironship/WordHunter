@@ -8,7 +8,8 @@
     "navAriaLabel": "Navegación",
     "unhandledPromise": "Promise no manejada: {reason}",
     "startupFailed": "Word Hunter no pudo completar el inicio",
-    "retry": "Reintentar"
+    "retry": "Reintentar",
+    "startupFailedDetail": "La aplicación no pudo cargar sus datos. Detalles en la consola."
   },
   "nav": {
     "library": "Biblioteca",
@@ -785,7 +786,10 @@
     "phaseRecords": "Exportando ajustes y perfiles",
     "phaseBooks": "Exportando libros",
     "phaseImages": "Exportando imágenes de libros",
-    "phaseFinalizing": "Finalizando paquete"
+    "phaseFinalizing": "Finalizando paquete",
+    "httpError": "Error HTTP {status}",
+    "exportWriteTimeout": "La exportación agotó el tiempo de escritura",
+    "genericError": "Se produjo un error inesperado durante la transferencia"
   },
   "toast": {
     "wordRemoved": "Palabra eliminada",

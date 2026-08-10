@@ -8,7 +8,8 @@
     "navAriaLabel": "ナビゲーション",
     "unhandledPromise": "未処理のPromise: {reason}",
     "startupFailed": "Word Hunter を起動できませんでした",
-    "retry": "再試行"
+    "retry": "再試行",
+    "startupFailedDetail": "アプリがデータを読み込めませんでした。詳細はコンソールを確認してください。"
   },
   "nav": {
     "library": "ライブラリ",
@@ -817,7 +818,10 @@
     "phaseRecords": "設定とプロファイルをエクスポート中",
     "phaseBooks": "書籍をエクスポート中",
     "phaseImages": "書籍画像をエクスポート中",
-    "phaseFinalizing": "パッケージを仕上げ中"
+    "phaseFinalizing": "パッケージを仕上げ中",
+    "httpError": "HTTP {status} エラー",
+    "exportWriteTimeout": "書き込み中にエクスポートがタイムアウトしました",
+    "genericError": "転送中に予期しないエラーが発生しました"
   },
   "toast": {
     "wordRemoved": "単語をリストから削除しました。",

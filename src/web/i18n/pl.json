@@ -8,7 +8,8 @@
     "jsError": "Błąd JS: {msg} w {url}:{line}:{col}\n{stack}",
     "unhandledPromise": "Nieobsłużony obiekt Promise: {reason}",
     "startupFailed": "Word Hunter nie mógł ukończyć uruchamiania",
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "startupFailedDetail": "Aplikacja nie mogła wczytać danych. Szczegóły w konsoli."
   },
   "nav": {
     "library": "Biblioteka",
@@ -871,7 +872,10 @@
     "phaseRecords": "Eksportowanie ustawień i profili",
     "phaseBooks": "Eksportowanie książek",
     "phaseImages": "Eksportowanie obrazów książek",
-    "phaseFinalizing": "Finalizowanie paczki"
+    "phaseFinalizing": "Finalizowanie paczki",
+    "httpError": "Błąd HTTP {status}",
+    "exportWriteTimeout": "Eksport przekroczył czas zapisu",
+    "genericError": "Wystąpił nieoczekiwany błąd podczas transferu"
   },
   "toast": {
     "wordRemoved": "Usunięto słowo i wszystkie jego dane.",

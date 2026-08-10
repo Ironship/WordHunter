@@ -8,7 +8,8 @@
     "navAriaLabel": "Навигация",
     "unhandledPromise": "Необработанный Promise: {reason}",
     "startupFailed": "Word Hunter не смог завершить запуск",
-    "retry": "Повторить"
+    "retry": "Повторить",
+    "startupFailedDetail": "Приложение не смогло загрузить данные. Подробности в консоли."
   },
   "nav": {
     "library": "Библиотека",
@@ -817,7 +818,10 @@
     "phaseRecords": "Экспорт настроек и профилей",
     "phaseBooks": "Экспорт книг",
     "phaseImages": "Экспорт изображений книг",
-    "phaseFinalizing": "Завершение пакета"
+    "phaseFinalizing": "Завершение пакета",
+    "httpError": "Ошибка HTTP {status}",
+    "exportWriteTimeout": "Экспорт завершился по тайм-ауту при записи",
+    "genericError": "Произошла непредвиденная ошибка при передаче"
   },
   "toast": {
     "wordRemoved": "Слово удалено",

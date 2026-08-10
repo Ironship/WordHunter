@@ -8,7 +8,8 @@
     "jsError": "JS Error: {msg} at {url}:{line}:{col}\n{stack}",
     "unhandledPromise": "Unhandled Promise: {reason}",
     "startupFailed": "Word Hunter could not finish startup",
-    "retry": "Retry"
+    "retry": "Retry",
+    "startupFailedDetail": "The app could not load its data. Check the console for details."
   },
   "nav": {
     "library": "Library",
@@ -871,7 +872,10 @@
     "phaseRecords": "Exporting settings and profiles",
     "phaseBooks": "Exporting books",
     "phaseImages": "Exporting book images",
-    "phaseFinalizing": "Finalizing package"
+    "phaseFinalizing": "Finalizing package",
+    "httpError": "HTTP {status}",
+    "exportWriteTimeout": "The export timed out while writing",
+    "genericError": "An unexpected error occurred during transfer"
   },
   "toast": {
     "wordRemoved": "Word removed from the list.",

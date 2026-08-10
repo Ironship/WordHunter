@@ -8,7 +8,8 @@
     "navAriaLabel": "Navigation",
     "unhandledPromise": "Unbehandeltes Promise: {reason}",
     "startupFailed": "Word Hunter konnte den Start nicht abschließen",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "startupFailedDetail": "Die App konnte ihre Daten nicht laden. Details in der Konsole."
   },
   "nav": {
     "library": "Bibliothek",
@@ -785,7 +786,10 @@
     "phaseRecords": "Einstellungen und Profile werden exportiert",
     "phaseBooks": "Bücher werden exportiert",
     "phaseImages": "Buchbilder werden exportiert",
-    "phaseFinalizing": "Paket wird fertiggestellt"
+    "phaseFinalizing": "Paket wird fertiggestellt",
+    "httpError": "HTTP-Fehler {status}",
+    "exportWriteTimeout": "Export-Timeout beim Schreiben",
+    "genericError": "Unerwarteter Fehler während der Übertragung"
   },
   "toast": {
     "wordRemoved": "Wort gelöscht",

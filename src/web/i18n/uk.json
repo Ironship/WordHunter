@@ -8,7 +8,8 @@
     "navAriaLabel": "Навігація",
     "unhandledPromise": "Необроблене відхилення Promise: {reason}",
     "startupFailed": "Word Hunter не зміг завершити запуск",
-    "retry": "Повторити"
+    "retry": "Повторити",
+    "startupFailedDetail": "Додаток не зміг завантажити дані. Деталі в консолі."
   },
   "nav": {
     "library": "Бібліотека",
@@ -817,7 +818,10 @@
     "phaseRecords": "Експорт налаштувань і профілів",
     "phaseBooks": "Експорт книг",
     "phaseImages": "Експорт зображень книг",
-    "phaseFinalizing": "Завершення пакета"
+    "phaseFinalizing": "Завершення пакета",
+    "httpError": "Помилка HTTP {status}",
+    "exportWriteTimeout": "Експорт завершився за тайм-аутом під час запису",
+    "genericError": "Сталася несподівана помилка під час передачі"
   },
   "toast": {
     "wordRemoved": "Слово вилучено зі списку.",
