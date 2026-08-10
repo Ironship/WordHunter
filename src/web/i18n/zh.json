@@ -8,7 +8,8 @@
     "jsError": "JS 错误：{msg} 位于 {url}:{line}:{col}\n{stack}",
     "unhandledPromise": "未处理的 Promise：{reason}",
     "startupFailed": "Word Hunter 无法完成启动",
-    "retry": "重试"
+    "retry": "重试",
+    "startupFailedDetail": "应用无法加载数据。详情请查看控制台。"
   },
   "nav": {
     "library": "书库",
@@ -664,7 +665,8 @@
     "copyBtn": "复制翻译",
     "copied": "已复制！",
     "copy": "复制",
-    "copyDone": "已复制到剪贴板。"
+    "copyDone": "已复制到剪贴板。",
+    "errorPairNotConfigured": "未配置翻译语言对。"
   },
   "graphs": {
     "eyebrow": "统计",
@@ -870,7 +872,10 @@
     "phaseRecords": "正在导出设置和档案",
     "phaseBooks": "正在导出书籍",
     "phaseImages": "正在导出书籍图像",
-    "phaseFinalizing": "正在完成数据包"
+    "phaseFinalizing": "正在完成数据包",
+    "httpError": "HTTP {status} 错误",
+    "exportWriteTimeout": "导出在写入时超时",
+    "genericError": "传输过程中发生意外错误"
   },
   "toast": {
     "wordRemoved": "单词已从列表中移除。",
@@ -958,7 +963,9 @@
     "wordPanelItemHidden": "此项目已在单词面板设置中隐藏。",
     "vocabExportFailed": "无法导出词汇。",
     "autoTranslateUnavailable": "自动翻译暂时不可用，将自动重试。",
-    "exportTimedOut": "导出超时。操作耗时过长。"
+    "exportTimedOut": "导出超时。操作耗时过长。",
+    "transferMissingFile": "传输响应未包含已保存的文件。",
+    "androidExportUnavailable": "Android 导出桥不可用。"
   },
   "languages": {
     "pl": "波兰语",

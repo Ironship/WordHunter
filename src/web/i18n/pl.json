@@ -8,7 +8,8 @@
     "jsError": "Błąd JS: {msg} w {url}:{line}:{col}\n{stack}",
     "unhandledPromise": "Nieobsłużony obiekt Promise: {reason}",
     "startupFailed": "Word Hunter nie mógł ukończyć uruchamiania",
-    "retry": "Spróbuj ponownie"
+    "retry": "Spróbuj ponownie",
+    "startupFailedDetail": "Aplikacja nie mogła wczytać danych. Szczegóły w konsoli."
   },
   "nav": {
     "library": "Biblioteka",
@@ -664,7 +665,8 @@
     "copyBtn": "Kopiuj tłumaczenie",
     "copied": "Skopiowano.",
     "copy": "Kopiuj",
-    "copyDone": "Skopiowano do schowka."
+    "copyDone": "Skopiowano do schowka.",
+    "errorPairNotConfigured": "Para języków tłumaczenia nie jest skonfigurowana."
   },
   "graphs": {
     "eyebrow": "Statystyki",
@@ -870,7 +872,10 @@
     "phaseRecords": "Eksportowanie ustawień i profili",
     "phaseBooks": "Eksportowanie książek",
     "phaseImages": "Eksportowanie obrazów książek",
-    "phaseFinalizing": "Finalizowanie paczki"
+    "phaseFinalizing": "Finalizowanie paczki",
+    "httpError": "Błąd HTTP {status}",
+    "exportWriteTimeout": "Eksport przekroczył czas zapisu",
+    "genericError": "Wystąpił nieoczekiwany błąd podczas transferu"
   },
   "toast": {
     "wordRemoved": "Usunięto słowo i wszystkie jego dane.",
@@ -958,7 +963,9 @@
     "wordPanelItemHidden": "Ten element jest ukryty w ustawieniach panelu słowa.",
     "vocabExportFailed": "Nie udało się wyeksportować słownictwa.",
     "autoTranslateUnavailable": "Automatyczne tłumaczenie jest chwilowo niedostępne. Zostanie ponowione automatycznie.",
-    "exportTimedOut": "Eksport przekroczył czas oczekiwania. Operacja trwała zbyt długo."
+    "exportTimedOut": "Eksport przekroczył czas oczekiwania. Operacja trwała zbyt długo.",
+    "transferMissingFile": "Odpowiedź transferu nie zawierała zapisanego pliku.",
+    "androidExportUnavailable": "Mostek eksportu Androida jest niedostępny."
   },
   "languages": {
     "pl": "Polski",

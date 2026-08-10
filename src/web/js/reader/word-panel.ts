@@ -21,7 +21,7 @@ import {
 import { applyReviewGrade } from "../vocabulary/review-card.js";
 import { getLearningColor } from "../reader-colors.js";
 import { isInTextReviewDue } from "../sm2.js";
-import { canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
+import { localizedTranslationError,  canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
 import {
   aiExplanationConfigured,
   aiExplanationLanguagePair,
@@ -266,7 +266,8 @@ function bindContextTranslation(word: string, context: string): void {
       console.warn("Context translation failed", error);
       // Surface the backend reason (e.g. provider throttled, missing key)
       // so transient vs. configuration errors are distinguishable on device.
-      const reason = error instanceof Error && error.message ? ` — ${error.message}` : "";
+      const localized = localizedTranslationError(error);
+      const reason = localized ? ` — ${localized}` : "";
       output.textContent = `${t("translator.error")}${reason}`;
     } finally {
       releaseBusy();

@@ -4,7 +4,7 @@ import { state, saveState } from "../state.js";
 import { showToast } from "../toast.js";
 import { setElementBusy } from "../loading.js";
 import { escapeHtml } from "../utils.js";
-import { activeTranslationProvider, canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
+import { localizedTranslationError,  activeTranslationProvider, canUseTranslationProvider, translateWithRetry } from "../translation-provider.js";
 import { OTHER_PROFILE_ID, TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, resolveProfileTranslationPair } from "../translator-preferences.js";
 import { rekeyActiveVocabForLocale } from "../state/normalize.js";
@@ -323,7 +323,8 @@ async function translateNow(): Promise<void> {
   } catch (error) {
     if (generation !== translateGeneration) return;
     console.error("Translator error", error);
-    const reason = error instanceof Error ? error.message : String(error);
+    const localized = localizedTranslationError(error);
+    const reason = localized ? ` — ${localized}` : "";
     if (els.translatorStatus) {
       els.translatorStatus.textContent = reason ? `${t("translator.error")} — ${reason.slice(0, 120)}` : t("translator.error");
     }
