@@ -99,10 +99,10 @@
     "removeBuiltInTitle": "隐藏内置书籍",
     "sourceGutenberg": "Gutenberg #{id}",
     "sourceGutenbergNoId": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
-    "sourceWikinews": "Wikinews",
+    "sourceWikipedia": "维基百科",
+    "sourceWikinews": "维基新闻",
     "coverAlt": "封面",
-    "sourceWikisource": "Wikisource",
+    "sourceWikisource": "维基文库",
     "shortcut": {}
   },
   "import": {
@@ -401,9 +401,9 @@
     "died": "卒于 {year}",
     "source": "来源",
     "sourceGutenberg": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
-    "sourceWikinews": "Wikinews",
-    "sourceWikisource": "Wikisource",
+    "sourceWikipedia": "维基百科",
+    "sourceWikinews": "维基新闻",
+    "sourceWikisource": "维基文库",
     "shortcut": {}
   },
   "settings": {

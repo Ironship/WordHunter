@@ -102,7 +102,7 @@
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
     "coverAlt": "Okładka",
-    "sourceWikisource": "Wikisource",
+    "sourceWikisource": "Wikiźródła",
     "shortcut": {}
   },
   "import": {
@@ -403,7 +403,7 @@
     "sourceGutenberg": "Gutenberg",
     "sourceWikipedia": "Wikipedia",
     "sourceWikinews": "Wikinews",
-    "sourceWikisource": "Wikisource",
+    "sourceWikisource": "Wikiźródła",
     "shortcut": {}
   },
   "settings": {

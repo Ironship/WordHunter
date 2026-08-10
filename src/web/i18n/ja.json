@@ -83,8 +83,8 @@
     "uniqueWordsLabel": "ユニーク単語",
     "sourceGutenberg": "Gutenberg #{id}",
     "sourceGutenbergNoId": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
-    "sourceWikinews": "Wikinews",
+    "sourceWikipedia": "ウィキペディア",
+    "sourceWikinews": "ウィキニュース",
     "coverAlt": "表紙",
     "levelAny": "任意",
     "sortByKnown": "既知の単語",
@@ -102,7 +102,7 @@
     "archiveTitle": "アーカイブする",
     "unarchiveTitle": "アーカイブから復元",
     "untitled": "無題",
-    "sourceWikisource": "Wikisource",
+    "sourceWikisource": "ウィキソース",
     "shortcut": {}
   },
   "import": {
@@ -401,9 +401,9 @@
     "died": "† {year}年",
     "source": "ソース",
     "sourceGutenberg": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
-    "sourceWikinews": "Wikinews",
-    "sourceWikisource": "Wikisource",
+    "sourceWikipedia": "ウィキペディア",
+    "sourceWikinews": "ウィキニュース",
+    "sourceWikisource": "ウィキソース",
     "shortcut": {}
   },
   "settings": {

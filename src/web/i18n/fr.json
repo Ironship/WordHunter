@@ -83,7 +83,7 @@
     "uniqueWordsLabel": "mots uniques",
     "sourceGutenberg": "Gutenberg #{id}",
     "sourceGutenbergNoId": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
+    "sourceWikipedia": "Wikipédia",
     "sourceWikinews": "Wikinews",
     "coverAlt": "Couverture",
     "levelAny": "N'importe lequel",
@@ -401,7 +401,7 @@
     "died": "† {year}",
     "source": "Source",
     "sourceGutenberg": "Gutenberg",
-    "sourceWikipedia": "Wikipedia",
+    "sourceWikipedia": "Wikipédia",
     "sourceWikinews": "Wikinews",
     "sourceWikisource": "Wikisource",
     "shortcut": {}
