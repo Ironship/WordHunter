@@ -123,7 +123,7 @@ pub fn serve_open_dict(
                 }
             });
         } else {
-            let _ = open::that(target);
+            crate::handlers::open_external_url(&target)?;
         }
     }
     response::no_content(request)
