@@ -8,7 +8,8 @@
     "navAriaLabel": "Navigazione",
     "unhandledPromise": "Promise non gestita: {reason}",
     "startupFailed": "Word Hunter non ha potuto completare l'avvio",
-    "retry": "Riprova"
+    "retry": "Riprova",
+    "startupFailedDetail": "L'app non ha potuto caricare i dati. Dettagli nella console."
   },
   "nav": {
     "library": "Biblioteca",
@@ -785,7 +786,10 @@
     "phaseRecords": "Esportazione impostazioni e profili",
     "phaseBooks": "Esportazione libri",
     "phaseImages": "Esportazione immagini libri",
-    "phaseFinalizing": "Finalizzazione pacchetto"
+    "phaseFinalizing": "Finalizzazione pacchetto",
+    "httpError": "Errore HTTP {status}",
+    "exportWriteTimeout": "Esportazione scaduta durante la scrittura",
+    "genericError": "Si è verificato un errore imprevisto durante il trasferimento"
   },
   "toast": {
     "wordRemoved": "Parola eliminata",
@@ -873,7 +877,9 @@
     "wordPanelItemHidden": "Questo elemento è nascosto nelle impostazioni del pannello parole.",
     "vocabExportFailed": "Impossibile esportare il vocabolario.",
     "autoTranslateUnavailable": "La traduzione automatica è temporaneamente non disponibile. Verrà ritentata automaticamente.",
-    "exportTimedOut": "Esportazione scaduta. L'operazione ha richiesto troppo tempo."
+    "exportTimedOut": "Esportazione scaduta. L'operazione ha richiesto troppo tempo.",
+    "transferMissingFile": "La risposta di trasferimento non includeva il file salvato.",
+    "androidExportUnavailable": "Il bridge di esportazione Android non è disponibile."
   },
   "languages": {
     "pl": "Polacco",
@@ -960,7 +966,8 @@
     "copyBtn": "Copia traduzione",
     "copied": "Copiato!",
     "copy": "Copia",
-    "copyDone": "Copiato negli appunti."
+    "copyDone": "Copiato negli appunti.",
+    "errorPairNotConfigured": "La coppia di lingue di traduzione non è configurata."
   },
   "graphs": {
     "eyebrow": "Statistiche",

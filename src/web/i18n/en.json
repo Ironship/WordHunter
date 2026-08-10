@@ -8,7 +8,8 @@
     "jsError": "JS Error: {msg} at {url}:{line}:{col}\n{stack}",
     "unhandledPromise": "Unhandled Promise: {reason}",
     "startupFailed": "Word Hunter could not finish startup",
-    "retry": "Retry"
+    "retry": "Retry",
+    "startupFailedDetail": "The app could not load its data. Check the console for details."
   },
   "nav": {
     "library": "Library",
@@ -664,7 +665,8 @@
     "copyBtn": "Copy translation",
     "copied": "Copied!",
     "copy": "Copy",
-    "copyDone": "Copied to clipboard."
+    "copyDone": "Copied to clipboard.",
+    "errorPairNotConfigured": "Translation language pair is not configured."
   },
   "graphs": {
     "eyebrow": "Statistics",
@@ -870,7 +872,10 @@
     "phaseRecords": "Exporting settings and profiles",
     "phaseBooks": "Exporting books",
     "phaseImages": "Exporting book images",
-    "phaseFinalizing": "Finalizing package"
+    "phaseFinalizing": "Finalizing package",
+    "httpError": "HTTP {status}",
+    "exportWriteTimeout": "The export timed out while writing",
+    "genericError": "An unexpected error occurred during transfer"
   },
   "toast": {
     "wordRemoved": "Word removed from the list.",
@@ -958,7 +963,9 @@
     "wordPanelItemHidden": "This item is hidden in the word panel settings.",
     "vocabExportFailed": "Could not export vocabulary.",
     "autoTranslateUnavailable": "Automatic translation is temporarily unavailable. It will be retried automatically.",
-    "exportTimedOut": "Export timed out. The operation took too long."
+    "exportTimedOut": "Export timed out. The operation took too long.",
+    "transferMissingFile": "The transfer response did not include the saved file.",
+    "androidExportUnavailable": "Android export bridge is unavailable."
   },
   "languages": {
     "pl": "Polish",

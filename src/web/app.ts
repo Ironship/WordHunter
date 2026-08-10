@@ -32,7 +32,10 @@ function showStartupFailure(error: unknown): void {
   const title = document.createElement("h1");
   title.textContent = t("app.startupFailed");
   const detail = document.createElement("p");
-  detail.textContent = error instanceof Error ? error.message : String(error);
+  // The raw error (e.g. "Store load failed: HTTP 500") belongs in the
+  // console/log, not in the UI — show a localized generic detail instead.
+  console.warn("Startup failed:", error);
+  detail.textContent = t("app.startupFailedDetail");
   const retry = document.createElement("button");
   retry.className = "primary-button";
   retry.type = "button";

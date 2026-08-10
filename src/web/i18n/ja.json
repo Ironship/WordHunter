@@ -8,7 +8,8 @@
     "navAriaLabel": "ナビゲーション",
     "unhandledPromise": "未処理のPromise: {reason}",
     "startupFailed": "Word Hunter を起動できませんでした",
-    "retry": "再試行"
+    "retry": "再試行",
+    "startupFailedDetail": "アプリがデータを読み込めませんでした。詳細はコンソールを確認してください。"
   },
   "nav": {
     "library": "ライブラリ",
@@ -664,7 +665,8 @@
     "copyBtn": "翻訳をコピー",
     "copied": "コピーしました！",
     "copy": "コピー",
-    "copyDone": "クリップボードにコピーしました。"
+    "copyDone": "クリップボードにコピーしました。",
+    "errorPairNotConfigured": "翻訳の言語ペアが設定されていません。"
   },
   "help": {
     "eyebrow": "ヘルプ",
@@ -816,7 +818,10 @@
     "phaseRecords": "設定とプロファイルをエクスポート中",
     "phaseBooks": "書籍をエクスポート中",
     "phaseImages": "書籍画像をエクスポート中",
-    "phaseFinalizing": "パッケージを仕上げ中"
+    "phaseFinalizing": "パッケージを仕上げ中",
+    "httpError": "HTTP {status} エラー",
+    "exportWriteTimeout": "書き込み中にエクスポートがタイムアウトしました",
+    "genericError": "転送中に予期しないエラーが発生しました"
   },
   "toast": {
     "wordRemoved": "単語をリストから削除しました。",
@@ -904,7 +909,9 @@
     "wordPanelItemHidden": "この項目は単語パネルの設定で非表示になっています。",
     "vocabExportFailed": "語彙をエクスポートできませんでした。",
     "autoTranslateUnavailable": "自動翻訳は一時的に利用できません。自動的に再試行されます。",
-    "exportTimedOut": "エクスポートがタイムアウトしました。操作に時間がかかりすぎました。"
+    "exportTimedOut": "エクスポートがタイムアウトしました。操作に時間がかかりすぎました。",
+    "transferMissingFile": "転送レスポンスに保存ファイルが含まれていませんでした。",
+    "androidExportUnavailable": "Android エクスポートブリッジを利用できません。"
   },
   "languages": {
     "pl": "ポーランド語",
