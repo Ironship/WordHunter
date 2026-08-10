@@ -239,7 +239,7 @@ impl Store {
         )?;
 
         self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal);
+        remove_if_exists(journal)?;
         self.invalidate_records_cache();
         Ok(())
     }
