@@ -331,6 +331,22 @@ describe("repository validation wiring", () => {
     assert.match(rustBuild, /frontend_source_hash/);
   });
 
+  it("derives Snap validation from the application version and verifies the release digest", () => {
+    const config = JSON.parse(read("../../src-tauri/tauri.conf.json"));
+    const snapcraft = read("../../snap/snapcraft.yaml");
+    const workflow = read("../../.github/workflows/snap-validation.yml");
+
+    assert.match(snapcraft, new RegExp(`^version: ['\"]${config.version}['\"]$`, "m"));
+    assert.match(
+      snapcraft,
+      new RegExp(`/WordHunter${config.version}/word-hunter_${config.version}_amd64\\.deb`),
+    );
+    assert.match(workflow, /require\('\.\/src-tauri\/tauri\.conf\.json'\)\.version/);
+    assert.match(workflow, /steps\.app_version\.outputs\.version/);
+    assert.match(workflow, /api\.github\.com\/repos\/Ironship\/WordHunter\/releases\/tags/);
+    assert.match(workflow, /asset\?\.digest/);
+  });
+
   it("keeps reviewable docs tracked while generated runtime payloads stay ignored", () => {
     const gitignore = read("../../.gitignore");
     const docs = read("../../docs/release-validation.md");
