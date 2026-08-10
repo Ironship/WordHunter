@@ -44,7 +44,12 @@ jobs:
       - name: Update Arch and install validation tools
         run: |
           set -euo pipefail
-          pacman -Syu --noconfirm --needed \
+          # The pinned base image is ~5 weeks old; a full `pacman -Syu` on shared
+          # runners can take 30-40+ minutes against slow mirrors and has been
+          # observed to exceed the job's effective lifetime. For validation we
+          # only need the tool set, so sync the package database and install the
+          # tools directly instead of upgrading the whole base system.
+          pacman -Sy --noconfirm --disable-download-timeout --needed \
             appstream \
             dbus \
             desktop-file-utils \
