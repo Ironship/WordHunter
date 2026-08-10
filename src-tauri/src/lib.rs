@@ -14,6 +14,7 @@ mod paths;
 mod pdf_ocr;
 #[cfg(not(target_os = "android"))]
 mod pdf_ocr;
+mod pdf_text_layer;
 mod platform;
 #[cfg(target_os = "android")]
 #[path = "platform/android_backend/popup.rs"]
