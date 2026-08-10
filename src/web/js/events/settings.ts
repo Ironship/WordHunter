@@ -9,7 +9,7 @@ import { renderReview } from "../views/vocabulary.js";
 import { renderDiscover } from "../views/discover.js";
 import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
 import { showToast } from "../toast.js";
-import { clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
+import { clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
 import { acknowledgeBackendSnapshot, loadBackendSnapshot } from "../store-bridge.js";
 import { registerUnsavedDialog, showConfirmDialog } from "../dialog-backdrop.js";
@@ -337,7 +337,7 @@ export function bindSettingsEvents() {
 
   if (els.clearWords) els.clearWords.addEventListener("click", clearWords);
   if (els.clearLibrary) els.clearLibrary.addEventListener("click", clearLibrary);
-  if (els.clearState) els.clearState.addEventListener("click", clearLocalState);
+
 
   if (els.resetPrefs) {
     els.resetPrefs.addEventListener("click", async () => {
