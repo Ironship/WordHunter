@@ -28,6 +28,7 @@ mod server;
 mod srs;
 mod store;
 mod subtitles;
+mod template;
 mod tokenizer;
 #[cfg(target_os = "android")]
 #[path = "platform/android_backend/tts.rs"]

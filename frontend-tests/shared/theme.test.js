@@ -252,7 +252,7 @@ describe("named themes", () => {
     assert.ok(popup.indexOf("/theme.css") < popup.indexOf("<style>"));
     assert.doesNotMatch(popup, /--(?:bg|panel|panel-strong|ink|muted|line|shadow):\s*#/);
     assert.match(popup, /--popup-accent:\s*#297a5b/);
-    assert.match(popup, /<script type="module" src="\/translator-popup\.js"><\/script>/);
+    assert.match(popup, /<script type="module" src="\/translator-popup\.js\?v=[0-9a-f]{12}"><\/script>/);
     assert.match(popupRuntime, /dataset\.theme\s*!==\s*"auto"/);
     assert.match(popupRuntime, /media\.addListener\(apply\)/);
     assert.match(popup, /\.primary-button[^}]*color:\s*var\(--popup-accent-ink\)/s);
