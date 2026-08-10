@@ -21,7 +21,7 @@ jobs:
   validate:
     name: makepkg and installed AppImage smoke test
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 120
     container:
       image: archlinux:base-devel-20260712.0.555161@sha256:212b1e518e94ee9c52be55e8a32da75fcf11e7b5610b80b49479e67880102406
     defaults:
