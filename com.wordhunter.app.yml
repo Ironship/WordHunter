@@ -26,18 +26,18 @@ finish-args:
 
 modules:
   # The Rust build refuses a missing or stale dist/web (src-tauri/build.rs),
-  # and dist/ is gitignored, so a clean checkout must build the frontend
-  # inside the sandbox before cargo runs. This module installs the compiled
-  # frontend to /app; the word-hunter module copies it into its source tree.
+  # and dist/ is gitignored. scripts/build-flatpak.sh builds the frontend on
+  # the host (npm run build:frontend) before invoking flatpak-builder, so the
+  # checkout inside the sandbox already contains dist/web; running npm inside
+  # the sandbox is avoided because npm ci crashes there (npm "Exit handler
+  # never called!" after ~70 s, reproducible in CI). This module installs the
+  # host-compiled frontend to /app; the word-hunter module copies it into its
+  # source tree.
   - name: frontend
     only-arches:
       - x86_64
     buildsystem: simple
-    build-options:
-      append-path: /usr/lib/sdk/node22/bin
     build-commands:
-      - npm ci --ignore-scripts --no-audit --no-fund --no-progress < /dev/null
-      - npm run build:frontend
       - install -d /app/share/word-hunter/frontend
       - cp -r dist/web/. /app/share/word-hunter/frontend/
     sources:
