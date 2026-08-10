@@ -1,3 +1,4 @@
+#[cfg(test)]
 use base64::Engine;
 use serde_json::{Value, json};
 use std::{
@@ -63,17 +64,6 @@ impl Drop for FailedImportAssetCleanup<'_> {
             );
         }
     }
-}
-
-pub fn import(
-    payload: Value,
-    store: &Store,
-    app_handle: &AppHandle,
-    jobs: &Mutex<OcrJobState>,
-) -> Result<Value, String> {
-    let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
-    let data = decode_payload(data_url)?;
-    import_decoded(payload, data, store, app_handle, jobs)
 }
 
 pub fn import_bytes(
@@ -723,6 +713,7 @@ pub fn image_ocr_available(app_handle: &AppHandle) -> bool {
 mod tests {
     use std::sync::Mutex;
 
+    #[cfg(test)]
     use base64::Engine;
     use serde_json::json;
 
@@ -947,10 +938,12 @@ mod tests {
     }
 }
 
+#[cfg(test)]
 fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {
     decode_payload_with_limit(data_url, MAX_PDF_BYTES)
 }
 
+#[cfg(test)]
 fn decode_payload_with_limit(data_url: &str, max_pdf_bytes: usize) -> Result<Vec<u8>, String> {
     let encoded = data_url
         .split_once(',')

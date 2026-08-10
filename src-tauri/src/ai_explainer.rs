@@ -85,18 +85,18 @@ fn build_user_content(
          it is, any nuance or idiom it carries here, and give one short example \
          sentence of your own. Stay focused and learner-friendly."
     );
-    if let Some(rect) = rect {
-        if let (Some(x0), Some(y0), Some(x1), Some(y1)) = (
+    if let Some(rect) = rect
+        && let (Some(x0), Some(y0), Some(x1), Some(y1)) = (
             rect.get("x0").and_then(Value::as_f64),
             rect.get("y0").and_then(Value::as_f64),
             rect.get("x1").and_then(Value::as_f64),
             rect.get("y1").and_then(Value::as_f64),
-        ) {
-            prompt.push_str(&format!(
-                "\nThe word is highlighted in the attached page image between \
+        )
+    {
+        prompt.push_str(&format!(
+            "\nThe word is highlighted in the attached page image between \
                  normalized coordinates ({x0:.3}, {y0:.3}) and ({x1:.3}, {y1:.3})."
-            ));
-        }
+        ));
     }
 
     let Some(image) = image else {
