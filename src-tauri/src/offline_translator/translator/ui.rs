@@ -263,6 +263,14 @@ mod tests {
     }
 
     #[test]
+    fn translator_labels_accept_the_shipped_chinese_locale() {
+        let labels = translator_labels("zh");
+
+        assert_eq!(labels.get("title").map(String::as_str), Some("离线翻译器"));
+        assert_eq!(labels.get("targetLabel").map(String::as_str), Some("翻译"));
+    }
+
+    #[test]
     fn popup_theme_parameters_are_bounded() {
         assert_eq!(popup_theme(Some("dark")), "dark");
         assert_eq!(popup_theme(Some("auto")), "auto");
