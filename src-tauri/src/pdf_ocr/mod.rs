@@ -656,23 +656,14 @@ fn find_pdftoppm() -> Result<PdfToPpm, String> {
 }
 
 fn host_library_path() -> String {
-    let mut paths = vec![
-        "/run/host/lib64",
-        "/run/host/usr/lib64",
-        "/run/host/lib",
-        "/run/host/usr/lib",
-        "/run/host/lib/x86_64-linux-gnu",
-        "/run/host/usr/lib/x86_64-linux-gnu",
-    ]
-    .into_iter()
-    .map(str::to_string)
-    .collect::<Vec<_>>();
-    if let Ok(existing) = std::env::var("LD_LIBRARY_PATH")
-        && !existing.trim().is_empty()
+    #[cfg(any(target_os = "linux", test))]
     {
-        paths.push(existing);
+        crate::host_paths::host_library_path_for(Path::new("/run/host"))
     }
-    paths.join(":")
+    #[cfg(not(any(target_os = "linux", test)))]
+    {
+        String::new()
+    }
 }
 
 pub fn cancel(payload: Value, jobs: &Mutex<OcrJobState>) -> Result<(), String> {

@@ -282,6 +282,27 @@ jobs:
       - name: Reinspect Flatpak bundle at the CI boundary
         run: node scripts/inspect-artifact.mjs flatpak outputs/WordHunter.flatpak
 
+      - name: Smoke-test Flatpak bundle under Xvfb
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get install -y --no-install-recommends xvfb
+          flatpak install --user --noninteractive -y outputs/WordHunter.flatpak
+          set +e
+          GDK_DEBUG=nogl \
+          WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+            xvfb-run -a dbus-run-session -- \
+            timeout --signal=TERM --kill-after=5s 20s \
+            flatpak run --user com.wordhunter.app \
+            >"$RUNNER_TEMP/word-hunter-flatpak-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-flatpak-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi
+
       - name: Upload validated Flatpak bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
