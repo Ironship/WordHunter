@@ -48,6 +48,16 @@ const HOST: &str = "127.0.0.1";
 #[cfg(test)]
 pub(crate) static TEST_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+fn app_or_log_error<T, E: std::fmt::Display>(result: Result<T, E>) -> Option<T> {
+    match result {
+        Ok(app) => Some(app),
+        Err(error) => {
+            eprintln!("failed to build Word Hunter: {error}");
+            None
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     if std::env::args().nth(1).as_deref() == Some("--ct2-translate") {
@@ -67,10 +77,13 @@ pub fn run() {
         }));
     }
 
-    let app = builder
-        .setup(platform::setup)
-        .build(tauri::generate_context!())
-        .expect("failed to build Word Hunter");
+    let Some(app) = app_or_log_error(
+        builder
+            .setup(platform::setup)
+            .build(tauri::generate_context!()),
+    ) else {
+        return;
+    };
     app.run(|app_handle, event| {
         #[cfg(not(target_os = "android"))]
         if let tauri::RunEvent::ExitRequested { api, .. } = event
@@ -80,4 +93,15 @@ pub fn run() {
             platform::request_graceful_exit(app_handle);
         }
     });
+}
+
+#[cfg(test)]
+mod startup_tests {
+    use super::app_or_log_error;
+
+    #[test]
+    fn startup_build_errors_return_without_panicking() {
+        assert_eq!(app_or_log_error::<u8, _>(Err("setup failed")), None);
+        assert_eq!(app_or_log_error::<_, &str>(Ok(7)), Some(7));
+    }
 }
