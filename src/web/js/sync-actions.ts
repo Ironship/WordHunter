@@ -367,7 +367,7 @@ function hideExportProgress(): void {
   exportProgressOverlay = null;
 }
 
-async function waitForExportJob(job: string): Promise<boolean> {
+export async function waitForExportJob(job: string): Promise<boolean> {
   showExportProgress();
   const deadline = Date.now() + EXPORT_JOB_DEADLINE_MS;
   try {
