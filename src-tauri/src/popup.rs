@@ -73,10 +73,7 @@ pub fn serve_open_dict(
         // webview: file:/custom-protocol URLs must never be handed
         // out (audit #93). The internal popup legitimately shows
         // third-party https pages (Youglish), so no host restriction.
-        let target = match validated_open_target(&target) {
-            Ok(ok) => ok,
-            Err(err) => return Err(err),
-        };
+        let target = validated_open_target(&target)?;
         let mode = params.get("mode").map(String::as_str).unwrap_or("external");
         let title = params
             .get("title")

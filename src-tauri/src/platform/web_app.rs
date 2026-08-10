@@ -264,6 +264,17 @@ fn boxed_string(err: String) -> Box<dyn std::error::Error> {
     Box::new(std::io::Error::other(err))
 }
 
+fn show_startup_error(message: &str) {
+    #[cfg(not(target_os = "android"))]
+    let _ = rfd::MessageDialog::new()
+        .set_title("Word Hunter could not start")
+        .set_description(message)
+        .set_level(rfd::MessageLevel::Error)
+        .show();
+    #[cfg(target_os = "android")]
+    let _ = message;
+}
+
 #[cfg(test)]
 mod exit_coordinator_tests {
     use std::{
@@ -313,15 +324,4 @@ mod exit_coordinator_tests {
         handle.join().unwrap();
         assert_eq!(calls.load(Ordering::SeqCst), 0);
     }
-}
-
-fn show_startup_error(message: &str) {
-    #[cfg(not(target_os = "android"))]
-    let _ = rfd::MessageDialog::new()
-        .set_title("Word Hunter could not start")
-        .set_description(message)
-        .set_level(rfd::MessageLevel::Error)
-        .show();
-    #[cfg(target_os = "android")]
-    let _ = message;
 }

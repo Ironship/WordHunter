@@ -38,7 +38,7 @@ fn extract_plain_text_pages(
         let mut text = String::new();
         {
             let mut output = PlainTextOutput::new(&mut text);
-            pdf_extract::output_doc_page(&document, &mut output, *page_num)
+            pdf_extract::output_doc_page(document, &mut output, *page_num)
                 .map_err(|error| format!("Could not read PDF page {page_num}: {error}"))?;
         }
         plain_text_by_page.push(text);
