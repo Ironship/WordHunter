@@ -2,7 +2,7 @@
  * Individual chart render functions for the graphs view.
  */
 import { state } from "../state.js";
-import { t as rawT } from "../i18n.js";
+import { getLocale, t as rawT } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
@@ -125,11 +125,11 @@ export function formatVocabProgressDate(time: number, span: number, locale?: Int
   const options: Intl.DateTimeFormatOptions = span >= MS_PER_DAY * 365
     ? { month: "short", year: "numeric" }
     : { month: "short", day: "numeric" };
-  return new Date(time).toLocaleDateString(locale, options);
+  return new Date(time).toLocaleDateString(locale ?? getLocale(), options);
 }
 
 function monthLabel(date: Date): string {
-  return date.toLocaleDateString(undefined, { month: "short" });
+  return date.toLocaleDateString(getLocale(), { month: "short" });
 }
 
 function monthKey(date: Date): string {
@@ -765,7 +765,7 @@ export function renderVocabProgress(_chartEntries?: readonly VocabEntry[], _opti
         }
         const potentialVal = potentialSeries[potentialIdx].val;
         const dateStr = new Date(series[idx].t)
-          .toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+          .toLocaleDateString(getLocale(), { month: "short", day: "numeric", year: "numeric" });
         const level = getCurrentLevel(val, thresholds);
         const nextVal = thresholds.find(t => t > val);
         const toNext = nextVal ? nextVal - val : 0;
