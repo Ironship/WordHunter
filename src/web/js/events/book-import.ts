@@ -92,6 +92,14 @@ const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
  * page loop yields between pages so the spinner keeps painting).
  */
 const MAX_POCKET_PDF_RENDER_PAGES = 300;
+// Render at the screen width (device pixels) so small phones do not
+// allocate 1400px bitmaps, clamped to the native renderer range.
+function pdfRenderWidth(): number {
+  const width = typeof window !== "undefined" && window.devicePixelRatio
+    ? Math.round(window.innerWidth * window.devicePixelRatio)
+    : 1400;
+  return Math.min(2400, Math.max(512, width));
+}
 const MAX_DESKTOP_OCR_IMAGE_BYTES = 32 * 1024 * 1024;
 const MAX_DESKTOP_IMPORT_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_POCKET_IMPORT_FILE_BYTES = 24 * 1024 * 1024;
@@ -212,7 +220,7 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
       updateAndroidPdfProgress(index + 1, limitedPages.length);
       const page = limitedPages[index];
       const rendered = parseAndroidPdfRenderResponse(
-        bridge.renderPdfPage(sessionId, index, 1400),
+        bridge.renderPdfPage(sessionId, index, pdfRenderWidth()),
         t("toast.pdfOcrNoText")
       );
       if (!rendered.dataUrl || !page?.imageName) {
