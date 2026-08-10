@@ -1,4 +1,4 @@
-import { buildDeltaSavePayload, buildSavePayload, saveToLocalStorage, saveWithRetry, saveSyncXhr } from "../api.js";
+import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
 
@@ -148,6 +148,11 @@ export function createAutosave(getState: () => WhAppState) {
       dirtyVocabLangs.clear();
       dirtyTextIds.clear();
       allTextsDirty = false;
+      // A successful backend write covers everything the pending teardown
+      // delta holds (its mutations are still in the live state), so the
+      // pending copy is now redundant — and replaying it on a later boot
+      // could tombstone keys written after it was frozen (issue #137 class).
+      clearPendingDelta();
       saveInFlight = false;
       if (savePending) {
         savePending = false;
