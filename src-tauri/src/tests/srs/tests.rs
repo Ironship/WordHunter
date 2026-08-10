@@ -112,7 +112,8 @@ fn add_days_iso_from_advances_date() {
     let dt = OffsetDateTime::parse("2026-06-16T12:00:00Z", &Rfc3339).unwrap();
     assert_eq!(add_days_iso_from(3, dt), "2026-06-19");
     assert_eq!(add_days_iso_from(0, dt), "2026-06-16");
-    assert_eq!(add_days_iso_from(-5, dt), "2026-06-16");
+    assert_eq!(add_days_iso_from(-5, dt), "2026-06-11");
+    assert_eq!(add_days_iso("2026-06-16", -5), "2026-06-11");
 }
 
 #[test]
