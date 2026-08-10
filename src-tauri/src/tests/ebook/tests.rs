@@ -4,7 +4,7 @@ use base64::Engine;
 use serde_json::json;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
-use super::{epub_href, import, strip_xhtml_to_text};
+use super::{decode_ebook_payload_with_limit, epub_href, import, strip_xhtml_to_text};
 
 #[test]
 fn normalizes_epub_hrefs() {
@@ -19,6 +19,13 @@ fn normalizes_epub_hrefs() {
 #[test]
 fn strips_basic_xhtml() {
     assert_eq!(strip_xhtml_to_text("<p>Hello<br>world</p>"), "Hello\nworld");
+}
+
+#[test]
+fn ebook_payload_enforces_decoded_and_encoded_size_limits() {
+    let encoded = base64::engine::general_purpose::STANDARD.encode(vec![b'x'; 9]);
+    assert!(decode_ebook_payload_with_limit(&encoded, 8).is_err());
+    assert!(decode_ebook_payload_with_limit(&"A".repeat(20), 8).is_err());
 }
 
 #[test]
