@@ -378,14 +378,7 @@ fn import_decoded(
         return Err("PaddleOCR did not find readable text in this PDF".to_string());
     }
 
-    let page_count = output
-        .get("pageCount")
-        .and_then(Value::as_u64)
-        .unwrap_or(pages.len() as u64);
-    let truncated = output
-        .get("truncated")
-        .and_then(Value::as_bool)
-        .unwrap_or(page_count > pages.len() as u64);
+    let (page_count, truncated) = runner_summary(&output)?;
     let ocr_engine = output
         .get("ocrEngine")
         .and_then(Value::as_str)
@@ -722,7 +715,8 @@ mod tests {
     use super::{
         MAX_OCR_IMAGE_BYTES, OcrImageFormat, cancel, decode_payload, decode_payload_with_limit,
         detect_ocr_image_format, extract_text_layer_overlay_pages, image_format_from_content_type,
-        requested_max_pages, runner, runner_image_name, runner_pages, validate_ocr_image,
+        requested_max_pages, runner, runner_image_name, runner_pages, runner_summary,
+        validate_ocr_image,
     };
 
     #[test]
@@ -858,6 +852,28 @@ mod tests {
         assert_eq!(
             runner_image_name(&json!({ "imageName": "" })).unwrap_err(),
             "PaddleOCR page is missing imageName"
+        );
+    }
+
+    #[test]
+    fn runner_result_requires_page_count_and_truncated_keys() {
+        let pages = json!([{ "imageName": "page-1.png", "text": "Hello" }]);
+        assert_eq!(
+            runner_summary(&json!({ "pages": pages.clone(), "truncated": false })).unwrap_err(),
+            "PaddleOCR runner did not return pageCount"
+        );
+        assert_eq!(
+            runner_summary(&json!({ "pages": pages.clone(), "pageCount": 1 })).unwrap_err(),
+            "PaddleOCR runner did not return truncated"
+        );
+        assert_eq!(
+            runner_summary(&json!({
+                "pages": pages,
+                "pageCount": 1,
+                "truncated": false
+            }))
+            .unwrap(),
+            (1, false)
         );
     }
 
@@ -1014,6 +1030,18 @@ fn runner_image_name(page: &Value) -> Result<&str, String> {
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(|| "PaddleOCR page is missing imageName".to_string())
+}
+
+fn runner_summary(output: &Value) -> Result<(u64, bool), String> {
+    let page_count = output
+        .get("pageCount")
+        .and_then(Value::as_u64)
+        .ok_or_else(|| "PaddleOCR runner did not return pageCount".to_string())?;
+    let truncated = output
+        .get("truncated")
+        .and_then(Value::as_bool)
+        .ok_or_else(|| "PaddleOCR runner did not return truncated".to_string())?;
+    Ok((page_count, truncated))
 }
 
 fn extract_page_text(page: &Value) -> String {
