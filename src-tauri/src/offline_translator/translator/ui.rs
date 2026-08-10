@@ -169,28 +169,29 @@ pub fn popup_html(query: &str, template: &[u8]) -> Result<Vec<u8>, String> {
 pub(crate) fn translator_labels(locale: &str) -> std::collections::HashMap<String, String> {
     let mut labels = std::collections::HashMap::from([
         ("title".to_string(), "Offline Translator".to_string()),
-        ("sourceLabel".to_string(), "Tekst zrodlowy".to_string()),
-        ("targetLabel".to_string(), "Tlumaczenie".to_string()),
+        ("sourceLabel".to_string(), "Tekst źródłowy".to_string()),
+        ("targetLabel".to_string(), "Tłumaczenie".to_string()),
         (
             "placeholder".to_string(),
-            "Wpisz slowo lub cale zdanie...".to_string(),
+            "Wpisz słowo lub całe zdanie...".to_string(),
         ),
         (
             "targetPlaceholder".to_string(),
-            "Tlumaczenie pojawi sie tutaj...".to_string(),
+            "Tłumaczenie pojawi się tutaj...".to_string(),
         ),
         (
             "footer".to_string(),
             "Zasilane lokalnie przez translator offline".to_string(),
         ),
-        ("copyBtn".to_string(), "Kopiuj tlumaczenie".to_string()),
+        ("copyBtn".to_string(), "Kopiuj tłumaczenie".to_string()),
         ("copied".to_string(), "Skopiowano!".to_string()),
     ]);
-    let safe_locale = if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja"].contains(&locale) {
-        locale
-    } else {
-        "en"
-    };
+    let safe_locale =
+        if ["pl", "en", "de", "es", "fr", "it", "uk", "ru", "ja", "zh"].contains(&locale) {
+            locale
+        } else {
+            "en"
+        };
     let path = format!("i18n/{safe_locale}.json");
     if let Some(file) = router::WEB_ASSETS.get_file(&path)
         && let Ok(value) = serde_json::from_slice::<Value>(file.contents())
@@ -259,6 +260,14 @@ mod tests {
 
         assert!(html.contains(">Polski</option>"));
         assert!(html.contains("selected"));
+    }
+
+    #[test]
+    fn translator_labels_accept_the_shipped_chinese_locale() {
+        let labels = translator_labels("zh");
+
+        assert_eq!(labels.get("title").map(String::as_str), Some("离线翻译器"));
+        assert_eq!(labels.get("targetLabel").map(String::as_str), Some("翻译"));
     }
 
     #[test]

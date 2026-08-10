@@ -573,6 +573,18 @@ describe("Android Pocket platform", () => {
     assert.equal(document.documentElement.classList.contains("pocket-navigation-open"), false);
   });
 
+  it("localizes the Android offline-translator popup rejection", () => {
+    const backend = readFileSync(
+      new URL("../../src-tauri/src/platform/android_backend/offline_translator.rs", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(backend, /response::parse_query\(query\)/);
+    assert.match(backend, /"zh"/);
+    assert.match(backend, /\/translator\/providerUnavailable/);
+    assert.doesNotMatch(backend, /Offline translator popup is desktop-only/);
+  });
+
   it("declares the Android PDF overlay integration contract", () => {
     const source = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     const backend = readFileSync(new URL("../../src-tauri/src/platform/android_backend/pdf_ocr.rs", import.meta.url), "utf8");
