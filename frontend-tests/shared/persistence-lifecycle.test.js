@@ -123,7 +123,7 @@ async function loadAppHarness({
       hydrateCurrentReaderText
     },
     "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
-    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key, getLocale: () => "en" },
+    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key, getLocale: () => "en", initialLocale: () => "en" },
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
