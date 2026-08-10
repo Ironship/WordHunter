@@ -1100,18 +1100,19 @@ describe("persistence lifecycle", () => {
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
     const bundledApp = readFileSync(new URL("../../dist/web/js/app.bundle.js", import.meta.url), "utf8");
     const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
+    const bootstrapTemplate = readFileSync(new URL("../../src-tauri/templates/bootstrap.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
     assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
-    assert.match(html, /<script type="module" src="js\/app\.bundle\.js"><\/script>/);
+    assert.match(html, /<script type="module" src="js\/app\.bundle\.js\?v=[0-9a-f]{12}"><\/script>/);
     assert.ok(bundledApp.length > app.length);
     const inlineBoot = cssDeclarations(html, String.raw`html\.app-booting,html\.app-booting body`);
     assert.match(inlineBoot, /overflow:\s*hidden/);
     assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
-    assert.match(html, /<script src="boot\.js"><\/script>/);
-    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js"'));
-    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js"'));
+    assert.match(html, /<script src="boot\.js\?v=[0-9a-f]{12}"><\/script>/);
+    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js'));
+    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js'));
     assert.doesNotMatch(boot, /export \{\}/);
     assert.doesNotMatch(boot, /app-font-stylesheet/);
     assert.match(app, /getElementById\("app-font-stylesheet"\)\?\.setAttribute\("rel", "stylesheet"\)/);
@@ -1126,12 +1127,12 @@ describe("persistence lifecycle", () => {
     assert.match(cssDeclarations(styles, String.raw`html\.app-booting \.app-shell`), /visibility:\s*hidden/);
     assert.match(cssDeclarations(styles, String.raw`html\.app-booting body::before`), /background:\s*var\(--boot-bg\)/);
     const bootLogo = cssDeclarations(styles, String.raw`html\.app-booting body::after`);
-    assert.match(bootLogo, /background:\s*url\("favicon\.svg"\)/);
+    assert.match(bootLogo, /background:\s*url\("favicon\.svg\?v=[0-9a-f]{12}"\)/);
     assert.match(bootLogo, /animation:\s*boot-logo-pulse 1\.15s ease-in-out infinite !important/);
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
     assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
     assert.match(handlers, /bootstrap_script\([\s\S]*(Some|None)/);
-    assert.match(handlers, /storeLoadController[\s\S]*12000/);
+    assert.match(bootstrapTemplate, /storeLoadController[\s\S]*12000/);
     assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
     assert.match(boot, /Startup timed out before the application became ready/);
     assert.match(app, /clearTimeout\(window\.wordHunterBootTimeout\)/);

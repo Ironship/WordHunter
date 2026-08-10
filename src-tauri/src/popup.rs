@@ -5,6 +5,7 @@ use url::Url;
 use crate::response;
 
 const INTERNAL_POPUP_LABEL: &str = "internal-popup";
+const POPUP_ESCAPE_TEMPLATE: &str = include_str!("../templates/popup-escape.js");
 
 fn popup_close_url(base_url: &str) -> String {
     format!("{base_url}/__popup/close")
@@ -22,9 +23,11 @@ fn inline_javascript_string(value: &str) -> String {
 
 fn popup_escape_script(base_url: &str) -> String {
     let close_url = inline_javascript_string(&popup_close_url(base_url));
-    format!(
-        "window.addEventListener('keydown',e=>{{if(e.key==='Escape'){{e.preventDefault();e.stopImmediatePropagation();window.location.replace({close_url});}}}},true);"
+    crate::template::render_template(
+        POPUP_ESCAPE_TEMPLATE,
+        &[("__WH_CLOSE_URL_JSON__", close_url.as_str())],
     )
+    .expect("popup escape template placeholder must be present")
 }
 
 /// Reject anything but http(s) targets for the OS/webview open paths.
