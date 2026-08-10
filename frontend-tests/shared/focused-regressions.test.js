@@ -1672,6 +1672,73 @@ describe("focused frontend regressions", () => {
     assert.match(html, /sm2\.showAnswer/);
   });
 
+  it("stops polling an invalid export-progress response at the deadline and removes the overlay", async () => {
+    let removed = false;
+    let fetches = 0;
+    const now = [0, 1, 300_001];
+    class FakeDate extends Date {
+      static now() { return now.shift() ?? 300_001; }
+    }
+    const overlay = {
+      id: "",
+      className: "",
+      innerHTML: "",
+      setAttribute() {},
+      querySelector() { return null; },
+      remove() { removed = true; }
+    };
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: noOp },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key) => key },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    }, {
+      Date: FakeDate,
+      document: {
+        body: { appendChild() {} },
+        createElement: () => overlay
+      },
+      window: { WH_TOKEN: "test-token" },
+      fetch: async () => {
+        fetches += 1;
+        return { ok: true, json: async () => ({ done: false, percent: 0, phase: "words" }) };
+      },
+      setTimeout(resolve) { resolve(); return 1; }
+    });
+
+    await assert.rejects(module.waitForExportJob("job-1"), /toast\.exportTimedOut/);
+    assert.equal(fetches, 1);
+    assert.equal(removed, true);
+  });
+
   it("keeps popup language metadata localized through template placeholders", () => {
     const popup = read("dist/web/templates/translator-popup.html");
     const popupRuntime = read("dist/web/translator-popup.js");

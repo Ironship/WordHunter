@@ -941,7 +941,8 @@
     "addedManyWithSkipped": "{added} Bücher hinzugefügt. {skipped} übersprungen (bereits in der Bibliothek).",
     "wordPanelItemHidden": "Dieses Element ist in den Einstellungen des Wortpanels ausgeblendet.",
     "vocabExportFailed": "Vokabeln konnten nicht exportiert werden.",
-    "autoTranslateUnavailable": "Automatische Übersetzung ist vorübergehend nicht verfügbar. Sie wird automatisch erneut versucht."
+    "autoTranslateUnavailable": "Automatische Übersetzung ist vorübergehend nicht verfügbar. Sie wird automatisch erneut versucht.",
+    "exportTimedOut": "Export-Zeitüberschreitung. Der Vorgang dauerte zu lange."
   },
   "languages": {
     "pl": "Polnisch",

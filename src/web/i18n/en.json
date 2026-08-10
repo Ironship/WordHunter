@@ -1026,7 +1026,8 @@
     "addedManyWithSkipped": "Added {added} books. Skipped {skipped} (already in library).",
     "wordPanelItemHidden": "This item is hidden in the word panel settings.",
     "vocabExportFailed": "Could not export vocabulary.",
-    "autoTranslateUnavailable": "Automatic translation is temporarily unavailable. It will be retried automatically."
+    "autoTranslateUnavailable": "Automatic translation is temporarily unavailable. It will be retried automatically.",
+    "exportTimedOut": "Export timed out. The operation took too long."
   },
   "languages": {
     "pl": "Polish",

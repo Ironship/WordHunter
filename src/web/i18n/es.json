@@ -941,7 +941,8 @@
     "addedManyWithSkipped": "{added} libros añadidos. {skipped} omitidos (ya en la biblioteca).",
     "wordPanelItemHidden": "Este elemento está oculto en los ajustes del panel de palabras.",
     "vocabExportFailed": "No se pudo exportar el vocabulario.",
-    "autoTranslateUnavailable": "La traducción automática no está disponible temporalmente. Se reintentará automáticamente."
+    "autoTranslateUnavailable": "La traducción automática no está disponible temporalmente. Se reintentará automáticamente.",
+    "exportTimedOut": "Tiempo de exportación agotado. La operación tardó demasiado."
   },
   "languages": {
     "pl": "Polaco",
