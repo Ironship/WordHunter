@@ -65,6 +65,14 @@ parts:
       - dbus-session-bus-common
       - gstreamer1.0-plugins-base
       - gstreamer1.0-plugins-good
+      - poppler-utils
+      - calibre
+      # yt-dlp is in the Ubuntu noble universe archive (yt-dlp_*.deb) and
+      # stages a /usr/bin/yt-dlp python script; python3 (already in the
+      # core24 base, listed explicitly for snapcraft's dependency solver)
+      # runs it from the snap's own /usr/lib/python3/dist-packages.
+      - yt-dlp
+      - python3
       - libxdo3
     override-build: |
       craftctl default

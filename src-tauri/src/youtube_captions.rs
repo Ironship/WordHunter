@@ -3,7 +3,8 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::{Command, Output};
 use url::Url;
 
@@ -95,10 +96,10 @@ fn download_caption_text_with_ytdlp(info: &VideoInfo, track: &Value) -> Result<S
     let language = ytdlp_track_language(track)
         .ok_or_else(|| "caption track has no language code".to_string())?;
     let mut errors = Vec::new();
-    for command in ytdlp_commands() {
-        match run_ytdlp(&command, info, track, &language) {
+    for invocation in ytdlp_commands() {
+        match run_ytdlp(&invocation, info, track, &language) {
             Ok(text) => return Ok(text),
-            Err(err) => errors.push(format!("{}: {err}", command.to_string_lossy())),
+            Err(err) => errors.push(format!("{}: {err}", invocation.program.to_string_lossy())),
         }
     }
 
@@ -108,16 +109,37 @@ fn download_caption_text_with_ytdlp(info: &VideoInfo, track: &Value) -> Result<S
     Err(errors.join("; "))
 }
 
+/// A way to invoke yt-dlp: the program to spawn, extra arguments inserted
+/// before the yt-dlp arguments (e.g. the host Python interpreter when the
+/// host yt-dlp is a python script), and environment overrides pointing at
+/// the host's python packages and libraries.
+#[derive(Clone)]
+struct YtdlpInvocation {
+    program: OsString,
+    prefix_args: Vec<OsString>,
+    env: Vec<(OsString, OsString)>,
+}
+
+fn plain_ytdlp(program: OsString) -> YtdlpInvocation {
+    YtdlpInvocation {
+        program,
+        prefix_args: Vec::new(),
+        env: Vec::new(),
+    }
+}
+
 fn run_ytdlp(
-    command: &OsString,
+    invocation: &YtdlpInvocation,
     info: &VideoInfo,
     track: &Value,
     language: &str,
 ) -> Result<String, String> {
     let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
     let output_template = temp.path().join("%(id)s.%(ext)s");
-    let mut process = Command::new(command);
+    let mut process = Command::new(&invocation.program);
     process
+        .args(&invocation.prefix_args)
+        .envs(invocation.env.iter().cloned())
         .arg("--skip-download")
         .arg("--no-playlist")
         .arg("--no-progress")
@@ -182,23 +204,78 @@ fn run_ytdlp(
     Ok(text)
 }
 
-fn ytdlp_commands() -> Vec<OsString> {
+fn ytdlp_commands() -> Vec<YtdlpInvocation> {
     let mut commands = Vec::new();
     if let Some(value) = env::var_os("WORDHUNTER_YTDLP").filter(|value| !value.is_empty()) {
-        commands.push(value);
+        commands.push(plain_ytdlp(value));
     }
     if let Ok(exe) = env::current_exe()
         && let Some(dir) = exe.parent()
     {
         for name in ytdlp_names() {
-            commands.push(dir.join(name).into_os_string());
-            commands.push(dir.join("bin").join(name).into_os_string());
+            commands.push(plain_ytdlp(dir.join(name).into_os_string()));
+            commands.push(plain_ytdlp(dir.join("bin").join(name).into_os_string()));
+        }
+    }
+    // Flatpak exposes the host read-only under /run/host and snapd binds
+    // the host root at /var/lib/snapd/hostfs. The host's yt-dlp is a python
+    // script whose shebang resolves to the sandbox interpreter, so run it
+    // through the host python with the host's dist-packages and libraries
+    // (same pattern as the OCR runner's pdftoppm host fallback).
+    #[cfg(target_os = "linux")]
+    for prefix in [Path::new("/run/host"), Path::new("/var/lib/snapd/hostfs")] {
+        if prefix.join("usr").join("bin").join("yt-dlp").is_file() {
+            commands.extend(host_ytdlp_invocations(prefix));
         }
     }
     for name in ytdlp_names() {
-        commands.push(OsString::from(name));
+        commands.push(plain_ytdlp(OsString::from(name)));
     }
-    dedupe_os_strings(commands)
+    dedupe_invocations(commands)
+}
+
+/// Invocations for a host `yt-dlp` script visible at `prefix/usr/bin`:
+/// first through the host python interpreter with the host's module and
+/// library paths, then the bare script as a last resort.
+#[cfg(any(target_os = "linux", test))]
+fn host_ytdlp_invocations(prefix: &Path) -> Vec<YtdlpInvocation> {
+    let script = prefix.join("usr").join("bin").join("yt-dlp");
+    vec![
+        YtdlpInvocation {
+            program: prefix
+                .join("usr")
+                .join("bin")
+                .join("python3")
+                .into_os_string(),
+            prefix_args: vec![script.clone().into_os_string()],
+            env: host_python_env(prefix),
+        },
+        plain_ytdlp(script.into_os_string()),
+    ]
+}
+
+/// Environment that lets the host python run host python scripts: the
+/// host's dist-packages on PYTHONPATH and the host's libraries on
+/// LD_LIBRARY_PATH, preserving sandbox values.
+#[cfg(any(target_os = "linux", test))]
+fn host_python_env(prefix: &Path) -> Vec<(OsString, OsString)> {
+    vec![
+        (
+            OsString::from("PYTHONPATH"),
+            crate::host_paths::prepend_path_var(
+                "PYTHONPATH",
+                prefix
+                    .join("usr")
+                    .join("lib")
+                    .join("python3")
+                    .join("dist-packages"),
+            ),
+        ),
+        (
+            OsString::from("LD_LIBRARY_PATH"),
+            crate::host_paths::host_library_path_for(prefix).into(),
+        ),
+    ]
 }
 
 fn ytdlp_names() -> &'static [&'static str] {
@@ -209,10 +286,13 @@ fn ytdlp_names() -> &'static [&'static str] {
     }
 }
 
-fn dedupe_os_strings(values: Vec<OsString>) -> Vec<OsString> {
+fn dedupe_invocations(values: Vec<YtdlpInvocation>) -> Vec<YtdlpInvocation> {
     let mut deduped = Vec::new();
     for value in values {
-        if !deduped.iter().any(|existing| existing == &value) {
+        let duplicate = deduped.iter().any(|existing: &YtdlpInvocation| {
+            existing.program == value.program && existing.prefix_args == value.prefix_args
+        });
+        if !duplicate {
             deduped.push(value);
         }
     }
