@@ -20,7 +20,7 @@ pub(crate) fn permit_exit(_app_handle: &tauri::AppHandle) {}
 
 #[cfg(not(target_os = "android"))]
 pub(crate) fn open_path(path: impl AsRef<Path>) {
-    let _ = open::that(path.as_ref());
+    let _ = open::that_detached(path.as_ref());
 }
 
 #[cfg(target_os = "android")]

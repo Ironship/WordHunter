@@ -51,7 +51,7 @@ zip = "2"
 ctranslate2 = { version = "2.1.1", default-features = false, features = ["sentencepiece"] }
 ctranslate2-sys = { version = "0.1.5", features = ["ruy", "crt-dynamic"] }
 edge-tts-rust = "0.1.3"
-open = "5"
+open = { version = "5", features = ["shellexecute-on-windows"] }
 rfd = "0.15"
 
 [target.'cfg(target_os = "linux")'.dependencies]

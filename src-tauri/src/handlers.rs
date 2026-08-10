@@ -14,9 +14,9 @@ use crate::{offline_translator, response, server::ServerState, tts};
 /// the webview, so the embedded server does the opening instead.
 ///
 /// The URL is validated strictly (parseable, http/https scheme, host
-/// present) and opened via the `open` crate (ShellExecuteW / LaunchServices /
-/// xdg-open) — NEVER through `cmd /c start`, whose metacharacter handling
-/// allowed command injection via `& | ^ < >` in the URL.
+/// present) and opened via the `open` crate's detached API. On Windows its
+/// `shellexecute-on-windows` feature calls ShellExecuteExW directly — never
+/// `cmd /c start`, whose quoting allowed command injection through a URL.
 /// Validate an external URL without any side effects: parseable, http/https
 /// scheme, host present, no control characters. Pure — unit-testable.
 fn validate_external_url(url: &str) -> Result<(), String> {
@@ -44,7 +44,7 @@ pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
     }
     #[cfg(not(target_os = "android"))]
     {
-        open::that(url).map_err(|e| format!("could not open the default browser: {e}"))
+        open::that_detached(url).map_err(|e| format!("could not open the default browser: {e}"))
     }
 }
 
@@ -531,7 +531,6 @@ pub(crate) fn choose_data_dir(_state: &ServerState) -> Result<Option<String>, St
 mod window_zoom_tests {
     use serde_json::json;
 
-    use super::open_external_url;
     use super::parse_window_zoom_percent;
     use super::validate_external_url;
     #[cfg(not(target_os = "android"))]
@@ -580,10 +579,14 @@ mod window_zoom_tests {
         assert!(validate_external_url("http://").is_err()); // no host
         assert!(validate_external_url("https://exa\nmple.com").is_err()); // control char
         // Command-injection regression: metacharacters are inert because the
-        // URL is never passed to a shell (open::that/ShellExecuteW). They
-        // must either be rejected or opened verbatim — never executed.
+        // URL is never passed to a shell (open::that_detached/ShellExecuteExW).
+        // They must either be rejected or opened verbatim — never executed.
         assert!(validate_external_url("https://example.com/a&calc.exe").is_ok());
         assert!(validate_external_url("https://example.com/a|cmd").is_ok());
+        assert!(
+            validate_external_url("https://example.com/a%22%20&%20calc.exe%20&%20REM%20%22")
+                .is_ok()
+        );
         assert!(validate_external_url("https://youglish.com/pronounce/klima/german").is_ok());
     }
 

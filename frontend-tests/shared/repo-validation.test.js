@@ -244,6 +244,20 @@ describe("repository validation wiring", () => {
     assert.match(buildScript, /WordHunter-\$\{release_version\}-aarch64\.dmg/);
   });
 
+  it("opens external URLs on Windows without passing them through cmd.exe", () => {
+    const cargo = read("../../src-tauri/Cargo.toml");
+    const handlers = read("../../src-tauri/src/handlers.rs");
+    const rustSources = filesBelow(new URL("../../src-tauri/src/", import.meta.url))
+      .filter((file) => file.pathname.endsWith(".rs"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    assert.match(cargo, /open = \{ version = "5", features = \["shellexecute-on-windows"\] \}/);
+    assert.match(handlers, /open::that_detached\(url\)/);
+    assert.doesNotMatch(rustSources, /open::(?:that|with)\(/);
+    assert.doesNotMatch(rustSources, /open::(?:that|with)_in_background\(/);
+  });
+
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {
     const packageJson = JSON.parse(read("../../package.json"));
     const lockfile = JSON.parse(read("../../package-lock.json"));
