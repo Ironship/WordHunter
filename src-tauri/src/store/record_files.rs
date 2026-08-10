@@ -148,6 +148,13 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
             };
             match read_record_file(&path) {
                 Ok(record) => {
+                    // A recovery backup stands in for a missing primary; it
+                    // must never override a live primary for the same key
+                    // (an orphaned legacy FNV `.bak` from the SHA-256
+                    // migration would otherwise roll fresh content back).
+                    if is_backup && records.contains_key(&record.key) {
+                        continue;
+                    }
                     records.insert(record.key.clone(), record);
                 }
                 Err(error) => {
@@ -166,7 +173,8 @@ pub(crate) fn migrate_legacy_json_records(dir: &Path) -> Result<usize, String> {
     for record in records.values() {
         let yaml = record_path(dir, record);
         let json = yaml.with_extension("json");
-        if !json.exists() {
+        let legacy_json = legacy_record_path(dir, record).with_extension("json");
+        if !json.exists() && !legacy_json.exists() {
             continue;
         }
         write_record_with_backup(dir, record, true)?;
@@ -1215,17 +1223,23 @@ pub(crate) fn merge_missing_text_media_metadata(
 
 fn text_record(dir: &Path, id: &str) -> Result<Option<SyncRecord>, String> {
     let key = format!("text:{id}");
-    let yaml = records_root(dir)
-        .join(kind_dir("text"))
-        .join(format!("{}.yaml", stable_hash(&key)));
-    let path = if yaml.exists() || yaml.with_extension("bak").exists() {
-        yaml
-    } else {
-        yaml.with_extension("json")
-    };
-    if !path.exists() && !path.with_extension("bak").exists() {
-        return Ok(None);
+    let root = records_root(dir).join(kind_dir("text"));
+    let mut path = None;
+    for stem in record_file_stems(&key) {
+        let yaml = root.join(format!("{stem}.yaml"));
+        if yaml.exists() || yaml.with_extension("bak").exists() {
+            path = Some(yaml);
+            break;
+        }
+        let json = yaml.with_extension("json");
+        if json.exists() || json.with_extension("bak").exists() {
+            path = Some(json);
+            break;
+        }
     }
+    let Some(path) = path else {
+        return Ok(None);
+    };
     let record = match read_record_file(&path) {
         Ok(record) if record.key == key => record,
         Ok(_) => return Ok(None),
@@ -1482,27 +1496,69 @@ fn write_record_with_backup(
     keep_backup: bool,
 ) -> Result<(), String> {
     let path = record_path(dir, record);
-    reject_future_record_at_path(&path)?;
+    let result = write_record_to_path(&path, record, keep_backup);
+    if result.is_ok() {
+        // On-disk migration: once the record lives under its SHA-256 name,
+        // drop the legacy FNV-named file so a store never keeps both.
+        remove_legacy_record_file(dir, record)?;
+    }
+    result
+}
+
+fn write_record_to_path(path: &Path, record: &SyncRecord, keep_backup: bool) -> Result<(), String> {
+    reject_future_record_at_path(path)?;
     if record.deleted_at.is_some() {
         let value = record_value(record);
         if path.exists()
-            && parse_record_file(&path)
+            && parse_record_file(path)
                 .map(|existing| records_equal(&existing, record))
                 .unwrap_or(false)
         {
-            return write_record_recovery_backup(&path);
+            return write_record_recovery_backup(path);
         }
-        atomic_yaml(&path, &value, false)?;
-        return write_record_recovery_backup(&path);
+        atomic_yaml(path, &value, false)?;
+        return write_record_recovery_backup(path);
     }
     if path.exists()
-        && read_record_file(&path)
+        && read_record_file(path)
             .map(|existing| records_equal(&existing, record))
             .unwrap_or(false)
     {
         return Ok(());
     }
-    atomic_yaml(&path, &record_value(record), keep_backup)
+    atomic_yaml(path, &record_value(record), keep_backup)
+}
+
+fn legacy_record_path(dir: &Path, record: &SyncRecord) -> PathBuf {
+    records_root(dir)
+        .join(kind_dir(&record.kind))
+        .join(format!("{}.yaml", legacy_stable_hash(&record.key)))
+}
+
+/// Remove every file written under the legacy FNV-1a name for this record
+/// (primary extensions plus the recovery backup). New saves always use the
+/// SHA-256 name, so this completes the migration without breaking reads of
+/// stores that have not been rewritten yet.
+fn remove_legacy_record_file(dir: &Path, record: &SyncRecord) -> Result<(), String> {
+    if legacy_stable_hash(&record.key) == stable_hash(&record.key) {
+        return Ok(());
+    }
+    let record_dir = records_root(dir).join(kind_dir(&record.kind));
+    for extension in ["yaml", "yml", "json"] {
+        let path = record_dir.join(format!("{}.{extension}", legacy_stable_hash(&record.key)));
+        durable::remove_file_if_exists(&path)
+            .map_err(|e| format!("could not remove legacy record {}: {e}", path.display()))?;
+    }
+    // `legacy_record_path` already resolves the record directory from the
+    // base dir; passing the kind-scoped `record_dir` here would join it a
+    // second time and leave the real `<fnv>.bak` orphaned.
+    let backup = legacy_record_path(dir, record).with_extension("bak");
+    durable::remove_file_if_exists(&backup).map_err(|e| {
+        format!(
+            "could not remove legacy record backup {}: {e}",
+            backup.display()
+        )
+    })
 }
 
 fn write_record_recovery_backup(path: &Path) -> Result<(), String> {
@@ -1573,11 +1629,12 @@ fn parse_record_file(path: &Path) -> Result<SyncRecord, String> {
         ));
     }
     let expected_name = stable_hash(&record.key);
+    let legacy_name = legacy_stable_hash(&record.key);
     let actual_name = path
         .file_stem()
         .and_then(|value| value.to_str())
         .unwrap_or_default();
-    if actual_name != expected_name {
+    if actual_name != expected_name && actual_name != legacy_name {
         return Err(format!(
             "record {} has a noncanonical filename",
             path.display()
@@ -1625,33 +1682,36 @@ pub(crate) fn read_existing_record(
     key: &str,
 ) -> Result<Option<SyncRecord>, String> {
     let root = records_root(dir).join(kind_dir(kind));
-    let base = root.join(stable_hash(key));
-    let mut primary: Option<PathBuf> = None;
-    for extension in ["yaml", "yml", "json"] {
-        let candidate = base.with_extension(extension);
-        if candidate.exists() {
-            primary = Some(candidate);
-            break;
-        }
-    }
-    let path = match primary {
-        Some(path) => path,
-        None => {
-            let backup = base.with_extension("bak");
-            if backup.exists() {
-                backup
-            } else {
-                return Ok(None);
+    for stem in record_file_stems(key) {
+        let base = root.join(stem);
+        let mut primary: Option<PathBuf> = None;
+        for extension in ["yaml", "yml", "json"] {
+            let candidate = base.with_extension(extension);
+            if candidate.exists() {
+                primary = Some(candidate);
+                break;
             }
         }
-    };
-    match read_record_file(&path) {
-        Ok(record) => Ok(Some(record)),
-        Err(error) => {
-            eprintln!("{error}");
-            Ok(None)
-        }
+        let path = match primary {
+            Some(path) => path,
+            None => {
+                let backup = base.with_extension("bak");
+                if backup.exists() {
+                    backup
+                } else {
+                    continue;
+                }
+            }
+        };
+        return match read_record_file(&path) {
+            Ok(record) => Ok(Some(record)),
+            Err(error) => {
+                eprintln!("{error}");
+                Ok(None)
+            }
+        };
     }
+    Ok(None)
 }
 
 fn kind_dir(kind: &str) -> &str {
@@ -2036,12 +2096,34 @@ pub(crate) fn record_changed_since_base(record: &SyncRecord, base: &Fingerprints
 }
 
 pub(crate) fn stable_hash(value: &str) -> String {
+    // Full 64-hex SHA-256 digest (no prefix truncation): filename
+    // collisions are cryptographically negligible, unlike the 64-bit
+    // FNV-1a scheme below which older builds wrote to disk.
+    let digest = Sha256::digest(value.as_bytes());
+    digest
+        .iter()
+        .fold(String::with_capacity(64), |mut output, byte| {
+            use std::fmt::Write;
+            let _ = write!(output, "{byte:02x}");
+            output
+        })
+}
+
+/// FNV-1a 64-bit filename scheme written by builds before the SHA-256
+/// migration. Kept so legacy files keep working (dual-read) and get
+/// rewritten under their SHA-256 name on the next save.
+fn legacy_stable_hash(value: &str) -> String {
     let mut hash: u64 = 0xcbf29ce484222325;
     for byte in value.as_bytes() {
         hash ^= u64::from(*byte);
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("{hash:016x}")
+}
+
+/// Every filename stem that may identify a record on disk, newest first.
+fn record_file_stems(key: &str) -> [String; 2] {
+    [stable_hash(key), legacy_stable_hash(key)]
 }
 
 fn legacy_causal_clock(
@@ -2223,16 +2305,18 @@ fn upsert_profile_book(profiles: &mut Map<String, Value>, lang: &str, book: Valu
 #[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
+    use std::path::{Path, PathBuf};
 
     use serde_json::{Value, json};
 
     use super::{
         FORMAT, PAYLOAD_SCHEMA_VERSION, SyncRecord, canonicalize_vocab_records, fingerprints,
-        live_record, load_records, merge_records, merge_vocab_entry_data, merge_vocab_schedule,
-        merge_vocab_status, parse_record, parse_record_file, payload_to_records,
-        prepare_local_records, read_record_file, record_path, records_to_mobile_snapshot_payload,
-        records_to_payload, records_to_snapshot_payload, recovery_status, tombstone_all, value_id,
-        write_record, write_records,
+        kind_dir, live_record, load_records, merge_records, merge_vocab_entry_data,
+        merge_vocab_schedule, merge_vocab_status, parse_record, parse_record_file,
+        payload_to_records, prepare_local_records, read_existing_record, read_record_file,
+        record_path, record_value, records_root, records_to_mobile_snapshot_payload,
+        records_to_payload, records_to_snapshot_payload, recovery_status, stable_hash,
+        text_content, tombstone_all, value_id, write_record, write_records,
     };
 
     fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
@@ -3959,5 +4043,213 @@ mod tests {
 
         assert!(error.contains("newer unsupported record"));
         assert_eq!(std::fs::read(&backup).unwrap(), future);
+    }
+
+    /// FNV-1a 64-bit filename scheme used by builds before the SHA-256
+    /// migration; kept in tests to prove dual-read and on-disk migration.
+    fn fnv1a_name(key: &str) -> String {
+        let mut hash: u64 = 0xcbf29ce484222325;
+        for byte in key.as_bytes() {
+            hash ^= u64::from(*byte);
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        format!("{hash:016x}")
+    }
+
+    fn write_legacy_fnv_record(dir: &Path, record: &SyncRecord) -> PathBuf {
+        let path = records_root(dir)
+            .join(kind_dir(&record.kind))
+            .join(format!("{}.yaml", fnv1a_name(&record.key)));
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, serde_yaml::to_string(&record_value(record)).unwrap()).unwrap();
+        path
+    }
+
+    fn single_pref_record() -> SyncRecord {
+        let records = payload_to_records(
+            &json!({
+                "texts": [],
+                "prefs": { "theme": "dark" },
+                "hiddenBooks": [],
+                "vocab": {}
+            }),
+            "device-a",
+            1,
+        );
+        records.values().next().unwrap().clone()
+    }
+
+    #[test]
+    fn new_record_writes_use_sha256_filenames() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        write_record(dir.path(), &record).unwrap();
+
+        let path = record_path(dir.path(), &record);
+        let name = path.file_stem().unwrap().to_str().unwrap();
+        assert_eq!(
+            name.len(),
+            64,
+            "record filename should be a full SHA-256 hex digest"
+        );
+        assert!(name.chars().all(|c| c.is_ascii_hexdigit()));
+        assert_eq!(name, stable_hash(&record.key));
+        let legacy = records_root(dir.path())
+            .join(kind_dir(&record.kind))
+            .join(format!("{}.yaml", fnv1a_name(&record.key)));
+        assert!(
+            !legacy.exists(),
+            "new writes must not leave FNV-named files"
+        );
+    }
+
+    #[test]
+    fn stable_hash_is_deterministic_sha256() {
+        let first = stable_hash("vocab:de:haus");
+        let second = stable_hash("vocab:de:haus");
+        let other = stable_hash("vocab:de:haus2");
+        assert_eq!(first, second);
+        assert_ne!(first, other);
+        assert_eq!(first.len(), 64);
+        assert!(first.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn load_records_still_reads_legacy_fnv_filenames() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        let legacy = write_legacy_fnv_record(dir.path(), &record);
+
+        let loaded = load_records(dir.path()).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[&record.key].key, record.key);
+        assert_eq!(loaded[&record.key].data, record.data);
+        assert!(legacy.exists());
+    }
+
+    #[test]
+    fn text_and_existing_record_readers_accept_legacy_fnv_filenames() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = SyncRecord {
+            key: "text:doc-1".to_string(),
+            kind: "text".to_string(),
+            data: json!({ "text": "hello" }),
+            updated_at: 1,
+            deleted_at: None,
+            device_id: "device-a".to_string(),
+            causal: causal(&[("device-a", 1)]),
+        };
+        let legacy = write_legacy_fnv_record(dir.path(), &record);
+
+        assert_eq!(
+            text_content(dir.path(), "doc-1").unwrap().as_deref(),
+            Some("hello")
+        );
+        let direct = read_existing_record(dir.path(), "text", &record.key).unwrap();
+        assert_eq!(direct.as_ref().map(|record| &record.key), Some(&record.key));
+        assert!(legacy.exists());
+    }
+
+    #[test]
+    fn write_after_reading_legacy_fnv_record_migrates_to_sha256() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        let legacy = write_legacy_fnv_record(dir.path(), &record);
+
+        let loaded = load_records(dir.path()).unwrap();
+        write_records(dir.path(), &loaded).unwrap();
+
+        let sha_path = record_path(dir.path(), &record);
+        assert!(
+            sha_path.exists(),
+            "rewrite should create the SHA-256-named file"
+        );
+        assert!(
+            !legacy.exists(),
+            "rewrite should remove the legacy FNV-named file"
+        );
+        let reloaded = load_records(dir.path()).unwrap();
+        assert_eq!(reloaded.len(), 1);
+        assert_eq!(reloaded[&record.key].data, record.data);
+    }
+
+    #[test]
+    fn write_record_removes_legacy_fnv_backup_at_its_real_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        let legacy = write_legacy_fnv_record(dir.path(), &record);
+        // durable::write_file_atomic keeps a `<stem>.bak` next to the primary
+        // whenever a save replaces an existing file, so stores that were
+        // written more than once before the migration carry a legacy backup.
+        let legacy_backup = legacy.with_extension("bak");
+        let stale = SyncRecord {
+            data: json!({ "theme": "light" }),
+            ..record.clone()
+        };
+        std::fs::write(
+            &legacy_backup,
+            serde_yaml::to_string(&record_value(&stale)).unwrap(),
+        )
+        .unwrap();
+        assert!(legacy.exists() && legacy_backup.exists());
+
+        write_record(dir.path(), &record).unwrap();
+
+        let sha_path = record_path(dir.path(), &record);
+        assert!(
+            sha_path.exists(),
+            "save should write the SHA-256-named file"
+        );
+        assert!(
+            !legacy.exists(),
+            "save should remove the legacy FNV-named primary"
+        );
+        assert!(
+            !legacy_backup.exists(),
+            "save should also remove the legacy FNV-named backup next to it"
+        );
+        let kind_dir_path = sha_path.parent().unwrap();
+        let remaining = std::fs::read_dir(kind_dir_path).unwrap().count();
+        assert_eq!(
+            remaining, 1,
+            "only the SHA-256-named file should remain in the record directory"
+        );
+    }
+
+    #[test]
+    fn load_records_does_not_promote_orphaned_backup_over_sha_primary() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        // State left behind by the pre-fix migration: the legacy FNV primary
+        // was removed on save, but its backup was orphaned because the
+        // removal looked in the wrong directory. A fresh SHA-256 primary now
+        // holds the newer content under the same key.
+        let sha_path = record_path(dir.path(), &record);
+        std::fs::create_dir_all(sha_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &sha_path,
+            serde_yaml::to_string(&record_value(&record)).unwrap(),
+        )
+        .unwrap();
+        let stale = SyncRecord {
+            data: json!({ "theme": "light" }),
+            ..record.clone()
+        };
+        let orphaned_backup = records_root(dir.path())
+            .join(kind_dir(&record.kind))
+            .join(format!("{}.bak", fnv1a_name(&record.key)));
+        std::fs::write(
+            &orphaned_backup,
+            serde_yaml::to_string(&record_value(&stale)).unwrap(),
+        )
+        .unwrap();
+
+        let loaded = load_records(dir.path()).unwrap();
+
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(
+            loaded[&record.key].data, record.data,
+            "a recovery backup must never override a live primary for the same key"
+        );
     }
 }
