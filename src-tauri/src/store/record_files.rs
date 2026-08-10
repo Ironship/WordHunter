@@ -148,6 +148,13 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
             };
             match read_record_file(&path) {
                 Ok(record) => {
+                    // A recovery backup stands in for a missing primary; it
+                    // must never override a live primary for the same key
+                    // (an orphaned legacy FNV `.bak` from the SHA-256
+                    // migration would otherwise roll fresh content back).
+                    if is_backup && records.contains_key(&record.key) {
+                        continue;
+                    }
                     records.insert(record.key.clone(), record);
                 }
                 Err(error) => {
@@ -1536,13 +1543,16 @@ fn remove_legacy_record_file(dir: &Path, record: &SyncRecord) -> Result<(), Stri
     if legacy_stable_hash(&record.key) == stable_hash(&record.key) {
         return Ok(());
     }
-    let dir = records_root(dir).join(kind_dir(&record.kind));
+    let record_dir = records_root(dir).join(kind_dir(&record.kind));
     for extension in ["yaml", "yml", "json"] {
-        let path = dir.join(format!("{}.{extension}", legacy_stable_hash(&record.key)));
+        let path = record_dir.join(format!("{}.{extension}", legacy_stable_hash(&record.key)));
         durable::remove_file_if_exists(&path)
             .map_err(|e| format!("could not remove legacy record {}: {e}", path.display()))?;
     }
-    let backup = legacy_record_path(&dir, record).with_extension("bak");
+    // `legacy_record_path` already resolves the record directory from the
+    // base dir; passing the kind-scoped `record_dir` here would join it a
+    // second time and leave the real `<fnv>.bak` orphaned.
+    let backup = legacy_record_path(dir, record).with_extension("bak");
     durable::remove_file_if_exists(&backup).map_err(|e| {
         format!(
             "could not remove legacy record backup {}: {e}",
@@ -4161,5 +4171,85 @@ mod tests {
         let reloaded = load_records(dir.path()).unwrap();
         assert_eq!(reloaded.len(), 1);
         assert_eq!(reloaded[&record.key].data, record.data);
+    }
+
+    #[test]
+    fn write_record_removes_legacy_fnv_backup_at_its_real_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        let legacy = write_legacy_fnv_record(dir.path(), &record);
+        // durable::write_file_atomic keeps a `<stem>.bak` next to the primary
+        // whenever a save replaces an existing file, so stores that were
+        // written more than once before the migration carry a legacy backup.
+        let legacy_backup = legacy.with_extension("bak");
+        let stale = SyncRecord {
+            data: json!({ "theme": "light" }),
+            ..record.clone()
+        };
+        std::fs::write(
+            &legacy_backup,
+            serde_yaml::to_string(&record_value(&stale)).unwrap(),
+        )
+        .unwrap();
+        assert!(legacy.exists() && legacy_backup.exists());
+
+        write_record(dir.path(), &record).unwrap();
+
+        let sha_path = record_path(dir.path(), &record);
+        assert!(
+            sha_path.exists(),
+            "save should write the SHA-256-named file"
+        );
+        assert!(
+            !legacy.exists(),
+            "save should remove the legacy FNV-named primary"
+        );
+        assert!(
+            !legacy_backup.exists(),
+            "save should also remove the legacy FNV-named backup next to it"
+        );
+        let kind_dir_path = sha_path.parent().unwrap();
+        let remaining = std::fs::read_dir(kind_dir_path).unwrap().count();
+        assert_eq!(
+            remaining, 1,
+            "only the SHA-256-named file should remain in the record directory"
+        );
+    }
+
+    #[test]
+    fn load_records_does_not_promote_orphaned_backup_over_sha_primary() {
+        let dir = tempfile::tempdir().unwrap();
+        let record = single_pref_record();
+        // State left behind by the pre-fix migration: the legacy FNV primary
+        // was removed on save, but its backup was orphaned because the
+        // removal looked in the wrong directory. A fresh SHA-256 primary now
+        // holds the newer content under the same key.
+        let sha_path = record_path(dir.path(), &record);
+        std::fs::create_dir_all(sha_path.parent().unwrap()).unwrap();
+        std::fs::write(
+            &sha_path,
+            serde_yaml::to_string(&record_value(&record)).unwrap(),
+        )
+        .unwrap();
+        let stale = SyncRecord {
+            data: json!({ "theme": "light" }),
+            ..record.clone()
+        };
+        let orphaned_backup = records_root(dir.path())
+            .join(kind_dir(&record.kind))
+            .join(format!("{}.bak", fnv1a_name(&record.key)));
+        std::fs::write(
+            &orphaned_backup,
+            serde_yaml::to_string(&record_value(&stale)).unwrap(),
+        )
+        .unwrap();
+
+        let loaded = load_records(dir.path()).unwrap();
+
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(
+            loaded[&record.key].data, record.data,
+            "a recovery backup must never override a live primary for the same key"
+        );
     }
 }
