@@ -36,7 +36,7 @@ modules:
     build-options:
       append-path: /usr/lib/sdk/node22/bin
     build-commands:
-      - npm ci --ignore-scripts --no-audit --no-fund
+      - npm ci --ignore-scripts --no-audit --no-fund --no-progress < /dev/null
       - npm run build:frontend
       - install -d /app/share/word-hunter/frontend
       - cp -r dist/web/. /app/share/word-hunter/frontend/
