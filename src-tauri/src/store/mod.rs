@@ -210,6 +210,8 @@ impl Store {
         if let Err(error) = result {
             let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             *inner = previous_inner;
+            drop(inner);
+            self.invalidate_records_cache();
             *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = previous_base_records;
             return Err(error);
         }
@@ -512,12 +514,20 @@ mod tests {
         let target = tempfile::tempdir().unwrap();
         let store = store_at(&source, "local-device");
         store.bulk_save(profile_payload("lokal", "local")).unwrap();
+        // Populate both in-memory record views before relocation. This is the
+        // startup/runtime state that originally made the old directory leak
+        // into the first delta save after moving the data folder.
+        let _ = store.snapshot();
 
         let target_payload = profile_payload("chmura", "cloud");
         let target_records = record_files::payload_to_records(&target_payload, "cloud-device", 1);
         record_files::write_records(target.path(), &target_records).unwrap();
 
         store.relocate(target.path().to_path_buf()).unwrap();
+        assert_eq!(
+            record_files::fingerprints(&store.records_cache_or_load().unwrap()),
+            record_files::fingerprints(&record_files::load_records(target.path()).unwrap())
+        );
         let snapshot = store.snapshot_unacknowledged();
 
         assert_eq!(
