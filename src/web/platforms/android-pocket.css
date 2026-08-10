@@ -303,7 +303,6 @@ html.pocket-mode {
 .pocket-mode .library-layout,
 .pocket-mode .reader-grid,
 .pocket-mode .settings-grid,
-.pocket-mode .help-grid,
 .pocket-mode .discover-grid,
 .pocket-mode .translator-grid {
   display: grid;
@@ -809,7 +808,7 @@ html.pocket-mode {
 }
 
 .pocket-mode .vocab-table td {
-  width: auto !important;
+  width: auto;
   max-width: none;
   padding: 0;
   border: 0;
@@ -1262,7 +1261,7 @@ html.pocket-mode {
 }
 
 .pocket-mode #flashcards-view .word-actions {
-  display: grid !important;
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
 }

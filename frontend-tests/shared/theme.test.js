@@ -197,6 +197,42 @@ describe("named themes", () => {
     assert.doesNotMatch(html, /var\(--(?:text-color-muted|gray-soft)\)/);
   });
 
+  it("keeps live layout selectors intact when dead CSS selectors are removed", () => {
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
+    const pocketStyles = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    assert.match(styles, /\.topbar h1,\s*\.panel h2\s*\{[^}]*margin:\s*0;[^}]*line-height:\s*1\.2/s);
+    assert.match(styles, /\.workspace-grid,\s*\.reader-grid,\s*\.settings-grid\s*\{[^}]*display:\s*grid;[^}]*gap:\s*1rem/s);
+    assert.match(styles, /#settings-view\.active > \.settings-grid\s*\{[^}]*min-height:\s*0/s);
+    assert.match(styles, /\.table-wrap\s*\{[^}]*min-height:\s*0/s);
+    assert.doesNotMatch(styles, /#settings-view\.active > \.settings-grid,\s*\.table-wrap/);
+    assert.match(styles, /\.book-meta\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*gap:\s*0\.4rem/s);
+    assert.match(styles, /\.book-actions\s*\{[^}]*display:\s*flex;[^}]*margin-top:\s*auto/s);
+    assert.doesNotMatch(styles, /\.book-actions,\s*\.primary-button/);
+    for (const deadClass of [
+      "brand-mark", "danger-link", "footer-action", "form-actions", "help-grid", "help-list",
+      "review-forecast", "settings-actions", "tag-row", "toolbar-actions", "user-book-row"
+    ]) {
+      const selector = new RegExp(`\\.${deadClass}(?![\\w-])`);
+      assert.doesNotMatch(styles, selector);
+      assert.doesNotMatch(pocketStyles, selector);
+    }
+  });
+
+  it("keeps the audited CSS scalable and limits important to real cascade boundaries", () => {
+    const styles = readFileSync(new URL("../../src/web/styles.css", import.meta.url), "utf8");
+    const pocketStyles = readFileSync(new URL("../../src/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const themeStyles = readFileSync(new URL("../../src/web/theme.css", import.meta.url), "utf8");
+
+    assert.doesNotMatch(styles, /(?:font-size|--reader-font-size):\s*[0-9.]+px/);
+    assert.match(themeStyles, /--ink-inversed:\s*#(?:fff|ffffff);/i);
+    assert.match(styles, /\.toast-close:hover\s*\{[^}]*color:\s*var\(--ink-inversed\)/s);
+    assert.doesNotMatch(styles, /\.word-token\.tts-current-word\s*\{[^}]*!important/s);
+    assert.doesNotMatch(styles, /:root\.no-token-highlight \.word-token\s*\{[^}]*!important/s);
+    assert.doesNotMatch(pocketStyles, /\.pocket-mode \.vocab-table td\s*\{[^}]*!important/s);
+    assert.ok((styles.match(/!important/g) ?? []).length <= 61);
+    assert.ok((pocketStyles.match(/!important/g) ?? []).length <= 9);
+  });
+
   it("uses distinct themed surfaces for light desktop layouts", () => {
     const themeStyles = readFileSync(new URL("../../dist/web/theme.css", import.meta.url), "utf8");
     const componentStyles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
