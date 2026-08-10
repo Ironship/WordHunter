@@ -692,9 +692,7 @@ pub fn cancel(payload: Value, jobs: &Mutex<OcrJobState>) -> Result<(), String> {
 }
 
 pub fn gpu_status(app_handle: &AppHandle) -> Value {
-    runner::GPU_STATUS
-        .get_or_init(|| runner::probe_gpu_status(app_handle))
-        .clone()
+    runner::cached_gpu_status(app_handle)
 }
 
 pub fn image_ocr_available(app_handle: &AppHandle) -> bool {
@@ -704,6 +702,8 @@ pub fn image_ocr_available(app_handle: &AppHandle) -> bool {
 #[cfg(test)]
 #[allow(clippy::items_after_test_module)]
 mod tests {
+    use std::fs;
+    use std::path::{Path, PathBuf};
     use std::sync::Mutex;
 
     #[cfg(test)]
@@ -918,6 +918,126 @@ mod tests {
             runner::platform_gpu_status_without_runner().unwrap()["status"],
             "unavailable"
         );
+    }
+
+    #[test]
+    fn gpu_status_reprobes_after_failed_probe_and_caches_success() {
+        runner::reset_gpu_status_cache();
+
+        let probe_calls = std::sync::atomic::AtomicUsize::new(0);
+        let probe = || {
+            let call = probe_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            if call == 1 {
+                runner::gpu_status_value("failed")
+            } else {
+                runner::gpu_status_value("unavailable")
+            }
+        };
+
+        assert_eq!(runner::cached_gpu_status_with(probe)["status"], "failed");
+        assert_eq!(
+            runner::cached_gpu_status_with(probe)["status"],
+            "unavailable"
+        );
+        assert_eq!(
+            runner::cached_gpu_status_with(probe)["status"],
+            "unavailable"
+        );
+        assert_eq!(probe_calls.load(std::sync::atomic::Ordering::SeqCst), 2);
+    }
+
+    #[test]
+    fn cpu_fallback_attempt_gets_a_fresh_deadline() {
+        let temp = tempfile::tempdir().unwrap();
+        let invocations = temp.path().join("invocations.txt");
+        let runner = write_deadline_runner(temp.path(), &invocations);
+        let input_path = temp.path().join("input.pdf");
+        let pages_dir = temp.path().join("pages");
+        let json_path = temp.path().join("ocr.json");
+        fs::write(&input_path, b"pdf").unwrap();
+        fs::create_dir_all(&pages_dir).unwrap();
+        let jobs = Mutex::new(OcrJobState::default());
+
+        runner::run_runner(
+            &runner,
+            runner::RunnerJob {
+                input_path: &input_path,
+                pages_dir: &pages_dir,
+                json_path: &json_path,
+                lang: "en",
+                max_pages: 1,
+                work_dir: temp.path(),
+                job_id: "job",
+                jobs: &jobs,
+            },
+        )
+        .unwrap();
+
+        let devices = fs::read_to_string(&invocations).unwrap();
+        assert_eq!(devices.lines().collect::<Vec<_>>(), ["auto", "cpu"]);
+    }
+
+    /// Fake OCR runner whose `auto` attempt fails after ~2s and whose `cpu` attempt
+    /// succeeds after ~2s, recording each requested device into `invocations`.
+    /// With the 3s test-only attempt timeout, a shared deadline would kill the
+    /// `cpu` fallback, while a fresh deadline lets it finish.
+    #[cfg(windows)]
+    fn write_deadline_runner(dir: &Path, invocations: &Path) -> PathBuf {
+        let path = dir.join("fake-runner.cmd");
+        let script = format!(
+            "@echo off\r\n\
+             setlocal\r\n\
+             set device=\r\n\
+             :loop\r\n\
+             if \"%~1\"==\"\" goto :run\r\n\
+             if \"%~1\"==\"--device\" set device=%~2\r\n\
+             shift\r\n\
+             goto :loop\r\n\
+             :run\r\n\
+             >>\"{}\" echo %device%\r\n\
+             if \"%device%\"==\"auto\" (\r\n\
+               ping -n 3 127.0.0.1 >nul\r\n\
+               exit /b 1\r\n\
+             )\r\n\
+             ping -n 3 127.0.0.1 >nul\r\n\
+             exit /b 0",
+            invocations.display()
+        );
+        fs::write(&path, script).unwrap();
+        path
+    }
+
+    #[cfg(not(windows))]
+    fn write_deadline_runner(dir: &Path, invocations: &Path) -> PathBuf {
+        let path = dir.join("fake-runner.sh");
+        let script = format!(
+            "#!/bin/sh\n\
+             set -eu\n\
+             device=\"\"\n\
+             while [ \"$#\" -gt 0 ]; do\n\
+               if [ \"$1\" = --device ]; then\n\
+                 device=\"$2\"\n\
+               fi\n\
+               shift\n\
+             done\n\
+             printf '%s\\n' \"$device\" >> '{}'\n\
+             if [ \"$device\" = auto ]; then\n\
+               sleep 2\n\
+               exit 1\n\
+             fi\n\
+             sleep 2\n\
+             exit 0",
+            invocations.display()
+        );
+        fs::write(&path, script).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = fs::metadata(&path).unwrap().permissions();
+            permissions.set_mode(0o755);
+            fs::set_permissions(&path, permissions).unwrap();
+        }
+        path
     }
 
     fn minimal_text_pdf(text: &str) -> Vec<u8> {

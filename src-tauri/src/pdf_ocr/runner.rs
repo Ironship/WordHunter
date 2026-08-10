@@ -4,7 +4,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Mutex, OnceLock},
+    sync::Mutex,
     thread,
     time::{Duration, Instant},
 };
@@ -15,7 +15,7 @@ use crate::server::OcrJobState;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-pub(crate) static GPU_STATUS: OnceLock<Value> = OnceLock::new();
+pub(crate) static GPU_STATUS: Mutex<Option<Value>> = Mutex::new(None);
 
 pub(crate) fn gpu_status_value(status: &str) -> Value {
     let provider = if status != "ready" {
@@ -107,6 +107,34 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
         .and_then(Value::as_str)
         .unwrap_or("cpu");
     gpu_status_value_with_provider(status, provider)
+}
+
+/// Returns the cached GPU status, probing once on first use. Failed probes are
+/// NOT cached — a subsequent call re-probes, so a transient failure (e.g. the
+/// runner not being installed yet) is retried instead of being remembered
+/// forever. Successful probes ("ready"/"unavailable") are cached.
+pub(crate) fn cached_gpu_status(app_handle: &AppHandle) -> Value {
+    cached_gpu_status_with(|| probe_gpu_status(app_handle))
+}
+
+pub(crate) fn cached_gpu_status_with(probe: impl Fn() -> Value) -> Value {
+    if let Some(cached) = GPU_STATUS.lock().ok().and_then(|state| state.clone()) {
+        return cached;
+    }
+    let status = probe();
+    if status.get("status").and_then(Value::as_str) != Some("failed")
+        && let Ok(mut state) = GPU_STATUS.lock()
+    {
+        *state = Some(status.clone());
+    }
+    status
+}
+
+#[cfg(test)]
+pub(crate) fn reset_gpu_status_cache() {
+    if let Ok(mut state) = GPU_STATUS.lock() {
+        *state = None;
+    }
 }
 
 fn runner_name() -> &'static str {
@@ -227,15 +255,24 @@ pub(crate) struct RunnerJob<'a> {
     pub jobs: &'a Mutex<OcrJobState>,
 }
 
+#[cfg(not(test))]
+const ATTEMPT_TIMEOUT: Duration = Duration::from_secs(60 * 60);
+
+#[cfg(test)]
+const ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
+
+fn attempt_deadline() -> Instant {
+    Instant::now() + ATTEMPT_TIMEOUT
+}
+
 pub(crate) fn run_runner(runner: &Path, job: RunnerJob<'_>) -> Result<(), String> {
-    let deadline = Instant::now() + Duration::from_secs(60 * 60);
-    match run_runner_attempt(runner, &job, "auto", deadline) {
+    match run_runner_attempt(runner, &job, "auto", attempt_deadline()) {
         Ok(()) => Ok(()),
         Err(AttemptError::Fatal(error)) => Err(error),
         Err(AttemptError::Retryable(accelerated_error)) => {
             ensure_not_cancelled(&job)?;
             reset_attempt_output(&job)?;
-            match run_runner_attempt(runner, &job, "cpu", deadline) {
+            match run_runner_attempt(runner, &job, "cpu", attempt_deadline()) {
                 Ok(()) => Ok(()),
                 Err(AttemptError::Fatal(error)) => Err(error),
                 Err(AttemptError::Retryable(cpu_error)) => Err(format!(
