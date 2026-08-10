@@ -317,6 +317,25 @@ fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<(), String>
     Ok(())
 }
 
+/// Test-only store rooted at a temporary directory. `#[cfg(test)]` keeps it
+/// out of production builds; `pub(crate)` lets out-of-module tests (router
+/// HTTP boundary tests) construct an isolated store.
+#[cfg(test)]
+pub(crate) fn test_store(dir: &std::path::Path, device_id: &str) -> Store {
+    std::fs::create_dir_all(dir.join("books")).unwrap();
+    Store {
+        inner: Mutex::new(StoreInner {
+            dir: dir.to_path_buf(),
+            books_dir: dir.join("books"),
+        }),
+        write_lock: Mutex::new(()),
+        base_records: Mutex::new(BTreeMap::new()),
+        records_cache: Mutex::new(None),
+        device_id: device_id.to_string(),
+        startup_instant: std::time::Instant::now(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
