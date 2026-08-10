@@ -24,13 +24,13 @@ slots:
   single-instance:
     interface: dbus
     bus: session
-    name: org.com_wordhunter_app.SingleInstance
+    name: com.wordhunter.app.SingleInstance
 
 plugs:
   single-instance-plug:
     interface: dbus
     bus: session
-    name: org.com_wordhunter_app.SingleInstance
+    name: com.wordhunter.app.SingleInstance
 
 apps:
   word-hunter:
