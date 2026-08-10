@@ -1,9 +1,9 @@
 import { cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { collectFiles, computeBuildInputHash } from "./build-input-hash.mjs";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const sourceDir = join(root, "src", "web");
@@ -82,34 +82,7 @@ const bundledIndex = indexSource.replace(
 if (bundledIndex === indexSource) throw new Error("Could not select the bundled app entrypoint");
 await writeFile(indexOutput, bundledIndex);
 
-async function collectFiles(directory) {
-  const files = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...await collectFiles(path));
-    else files.push(path);
-  }
-  return files;
-}
-
-const buildInputs = [
-  ...await collectFiles(sourceDir),
-  join(root, "tsconfig.json"),
-  join(root, "package-lock.json"),
-  fileURLToPath(import.meta.url)
-].sort((left, right) => {
-  const leftPath = relative(root, left).replaceAll("\\", "/");
-  const rightPath = relative(root, right).replaceAll("\\", "/");
-  return leftPath < rightPath ? -1 : leftPath > rightPath ? 1 : 0;
-});
-const hash = createHash("sha256");
-for (const file of buildInputs) {
-  hash.update(relative(root, file).replaceAll("\\", "/"));
-  hash.update("\0");
-  hash.update(await readFile(file));
-  hash.update("\0");
-}
-const digestHex = hash.digest("hex");
+const digestHex = await computeBuildInputHash();
 await writeFile(join(temporaryDir, ".wordhunter-build.sha256"), `${digestHex}\n`);
 
 // Centralized cache-buster: every local HTML src/href and CSS url() receives
