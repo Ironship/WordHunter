@@ -1,13 +1,13 @@
 use edge_tts_rust::{Boundary, EdgeTtsClient, SpeakOptions, SynthesisResult};
-use std::sync::OnceLock;
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 const MAX_CONCURRENT_SYNTHESIS: usize = 2;
 const SYNTHESIS_TIMEOUT_SECONDS: u64 = 14;
 static ACTIVE_SYNTHESIS: AtomicUsize = AtomicUsize::new(0);
-static RUNTIME: OnceLock<Result<tokio::runtime::Runtime, String>> = OnceLock::new();
-static CLIENT: OnceLock<Result<EdgeTtsClient, String>> = OnceLock::new();
+static RUNTIME: Mutex<Option<tokio::runtime::Handle>> = Mutex::new(None);
+static CLIENT: Mutex<Option<EdgeTtsClient>> = Mutex::new(None);
 
 struct SynthesisPermit;
 
@@ -28,31 +28,42 @@ impl Drop for SynthesisPermit {
     }
 }
 
-fn runtime() -> Result<&'static tokio::runtime::Runtime, String> {
-    RUNTIME
-        .get_or_init(|| {
-            tokio::runtime::Builder::new_multi_thread()
-                .worker_threads(MAX_CONCURRENT_SYNTHESIS)
-                .enable_all()
-                .build()
-                .map_err(|error| error.to_string())
-        })
-        .as_ref()
-        .map_err(Clone::clone)
+/// Returns the cached value when present, otherwise runs `init` and caches
+/// the result. Only successes are cached: a failed `init` is retried on the
+/// next call (unlike `OnceLock::get_or_init`, which would cache the error
+/// forever).
+fn cached_with<T: Clone>(
+    cache: &Mutex<Option<T>>,
+    init: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
+    if let Some(value) = cache.lock().unwrap().as_ref() {
+        return Ok(value.clone());
+    }
+    let built = init()?;
+    let mut guard = cache.lock().unwrap();
+    Ok(guard.get_or_insert(built).clone())
+}
+
+fn runtime() -> Result<tokio::runtime::Handle, String> {
+    cached_with(&RUNTIME, || {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(MAX_CONCURRENT_SYNTHESIS)
+            .enable_all()
+            .build()
+            .map(|runtime| runtime.handle().clone())
+            .map_err(|error| error.to_string())
+    })
 }
 
 fn client() -> Result<EdgeTtsClient, String> {
-    match CLIENT.get_or_init(|| {
+    cached_with(&CLIENT, || {
         EdgeTtsClient::builder()
             // Dropping a timed-out synthesis is not cancellation-safe for pooled sockets.
             .ws_pool_size(0)
             .ws_warmup(false)
             .build()
             .map_err(|error| error.to_string())
-    }) {
-        Ok(client) => Ok(client.clone()),
-        Err(error) => Err(error.clone()),
-    }
+    })
 }
 
 pub fn synthesize(text: &str, lang: &str, rate: &str) -> Result<SynthesisResult, String> {
