@@ -705,6 +705,7 @@ mod tests {
     use std::fs;
     use std::path::{Path, PathBuf};
     use std::sync::Mutex;
+    use std::time::{Duration, Instant};
 
     #[cfg(test)]
     use base64::Engine;
@@ -958,7 +959,29 @@ mod tests {
         fs::create_dir_all(&pages_dir).unwrap();
         let jobs = Mutex::new(OcrJobState::default());
 
-        runner::run_runner(
+        // Scripted clock: reads #1 and #2 return `t0` (the moment the auto
+        // attempt starts); every later read jumps 2 hours ahead. The auto
+        // attempt consumes exactly two reads — its deadline (#1) and the
+        // first loop check (#2), which always fires because the fake runner
+        // process cannot have exited yet — and then fails immediately. The
+        // cpu fallback's reads all see the jumped time: with a fresh
+        // per-attempt deadline its own deadline is computed from the jumped
+        // time, so the loop finishes. With the old shared-deadline code the
+        // cpu fallback inherits the auto deadline (t0 + 3s in tests), the
+        // jumped time is already past it, and the loop kills the attempt with
+        // a fatal timeout -> the test fails.
+        let t0 = Instant::now();
+        let clock_calls = std::sync::atomic::AtomicUsize::new(0);
+        let clock = move || {
+            let call = clock_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            if call <= 2 {
+                t0
+            } else {
+                t0 + Duration::from_secs(7200)
+            }
+        };
+
+        runner::run_runner_with_clock(
             &runner,
             runner::RunnerJob {
                 input_path: &input_path,
@@ -970,6 +993,7 @@ mod tests {
                 job_id: "job",
                 jobs: &jobs,
             },
+            clock,
         )
         .unwrap();
 
@@ -977,10 +1001,11 @@ mod tests {
         assert_eq!(devices.lines().collect::<Vec<_>>(), ["auto", "cpu"]);
     }
 
-    /// Fake OCR runner whose `auto` attempt fails after ~2s and whose `cpu` attempt
-    /// succeeds after ~2s, recording each requested device into `invocations`.
-    /// With the 3s test-only attempt timeout, a shared deadline would kill the
-    /// `cpu` fallback, while a fresh deadline lets it finish.
+    /// Fake OCR runner whose `auto` attempt fails immediately and whose `cpu`
+    /// attempt succeeds after ~1s, recording each requested device into
+    /// `invocations`. Combined with the scripted 2-hour clock jump in
+    /// `cpu_fallback_attempt_gets_a_fresh_deadline`, a shared deadline kills
+    /// the `cpu` fallback while a fresh per-attempt deadline lets it finish.
     #[cfg(windows)]
     fn write_deadline_runner(dir: &Path, invocations: &Path) -> PathBuf {
         let path = dir.join("fake-runner.cmd");
@@ -996,10 +1021,9 @@ mod tests {
              :run\r\n\
              >>\"{}\" echo %device%\r\n\
              if \"%device%\"==\"auto\" (\r\n\
-               ping -n 3 127.0.0.1 >nul\r\n\
                exit /b 1\r\n\
              )\r\n\
-             ping -n 3 127.0.0.1 >nul\r\n\
+             ping -n 2 127.0.0.1 >nul\r\n\
              exit /b 0",
             invocations.display()
         );
@@ -1022,10 +1046,9 @@ mod tests {
              done\n\
              printf '%s\\n' \"$device\" >> '{}'\n\
              if [ \"$device\" = auto ]; then\n\
-               sleep 2\n\
                exit 1\n\
              fi\n\
-             sleep 2\n\
+             sleep 1\n\
              exit 0",
             invocations.display()
         );

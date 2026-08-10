@@ -261,18 +261,28 @@ const ATTEMPT_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 #[cfg(test)]
 const ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
 
-fn attempt_deadline() -> Instant {
-    Instant::now() + ATTEMPT_TIMEOUT
+fn attempt_deadline(now: impl Fn() -> Instant) -> Instant {
+    now() + ATTEMPT_TIMEOUT
 }
 
 pub(crate) fn run_runner(runner: &Path, job: RunnerJob<'_>) -> Result<(), String> {
-    match run_runner_attempt(runner, &job, "auto", attempt_deadline()) {
+    run_runner_with_clock(runner, job, Instant::now)
+}
+
+/// Like [`run_runner`], but with an injectable clock. Tests use this to
+/// simulate a long-running OCR attempt without sleeping for hours.
+pub(crate) fn run_runner_with_clock(
+    runner: &Path,
+    job: RunnerJob<'_>,
+    now: impl Fn() -> Instant,
+) -> Result<(), String> {
+    match run_runner_attempt(runner, &job, "auto", &now, attempt_deadline(&now)) {
         Ok(()) => Ok(()),
         Err(AttemptError::Fatal(error)) => Err(error),
         Err(AttemptError::Retryable(accelerated_error)) => {
             ensure_not_cancelled(&job)?;
             reset_attempt_output(&job)?;
-            match run_runner_attempt(runner, &job, "cpu", attempt_deadline()) {
+            match run_runner_attempt(runner, &job, "cpu", &now, attempt_deadline(&now)) {
                 Ok(()) => Ok(()),
                 Err(AttemptError::Fatal(error)) => Err(error),
                 Err(AttemptError::Retryable(cpu_error)) => Err(format!(
@@ -292,6 +302,7 @@ fn run_runner_attempt(
     runner: &Path,
     job: &RunnerJob<'_>,
     device: &str,
+    now: &dyn Fn() -> Instant,
     deadline: Instant,
 ) -> Result<(), AttemptError> {
     let stdout_path = job.work_dir.join(format!("paddleocr.{device}.stdout.log"));
@@ -357,7 +368,7 @@ fn run_runner_attempt(
                 log_excerpt(&stdout_path, &stderr_path)
             )));
         }
-        if Instant::now() >= deadline {
+        if now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
             return Err(AttemptError::Fatal(
