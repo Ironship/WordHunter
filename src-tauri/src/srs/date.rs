@@ -10,7 +10,7 @@ pub fn today_iso(date: OffsetDateTime) -> String {
 }
 
 pub fn add_days_iso_from(days: i64, from: OffsetDateTime) -> String {
-    let next = from + TimeDuration::days(days.max(0));
+    let next = from + TimeDuration::days(days);
     today_iso(next)
 }
 
@@ -28,7 +28,7 @@ pub(crate) fn add_days_iso(today: &str, days: i64) -> String {
     ) else {
         return today.to_string();
     };
-    let next = date + TimeDuration::days(days.max(0));
+    let next = date + TimeDuration::days(days);
     format!(
         "{:04}-{:02}-{:02}",
         next.year(),
