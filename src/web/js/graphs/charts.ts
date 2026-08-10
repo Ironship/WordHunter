@@ -783,4 +783,4 @@ export function renderVocabProgress(_chartEntries?: readonly VocabEntry[], _opti
   }
 }
 
-export { getCefrThresholds, getKnownWordCount, CEFR_LEVELS, CEFR_THRESHOLDS };
+export { getCefrThresholds };

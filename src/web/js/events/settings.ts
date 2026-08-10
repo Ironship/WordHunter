@@ -431,10 +431,11 @@ export function bindSettingsEvents() {
       renderTranslator();
     });
   }
-  for (const [control, key] of [
+  const languageControls: Array<[HTMLInputElement | null, string]> = [
     [els.prefTranslationSourceLanguage, "translationSourceLanguage"],
     [els.prefTranslationTargetLanguage, "translationTargetLanguage"]
-  ]) {
+  ];
+  for (const [control, key] of languageControls) {
     if (!control) continue;
     control.addEventListener("input", () => control.setCustomValidity(""));
     control.addEventListener("change", async (event: Event) => {
