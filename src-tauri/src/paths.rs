@@ -110,7 +110,7 @@ pub fn device_id(app_name: &str) -> Result<String, String> {
 }
 
 pub fn sanitize_id(id: &str) -> Result<String, String> {
-    if id.contains('/') || id.contains('\\') {
+    if id.contains('/') || id.contains('\\') || id.contains(':') {
         return Err("invalid id".to_string());
     }
     let path = Path::new(id);
