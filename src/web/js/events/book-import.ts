@@ -490,8 +490,20 @@ async function handleYoutubeImport() {
   }
 }
 
-function confirmWholeBookOcr(): Promise<boolean> {
-  const dialog = document.querySelector<HTMLDialogElement>("#ocr-whole-book-confirm") || (() => {
+export function confirmWholeBookOcr(): Promise<boolean> {
+  let dialog = document.querySelector<HTMLDialogElement>("#ocr-whole-book-confirm");
+  if (dialog && (
+    !dialog.querySelector("h2")
+    || !dialog.querySelector("p")
+    || !dialog.querySelector('[data-action="cancel"]')
+    || !dialog.querySelector('[data-action="confirm"]')
+  )) {
+    // A stale/partially-restored dialog must not make the Promise executor
+    // throw before it can settle. Rebuild the complete dialog instead.
+    dialog.remove();
+    dialog = null;
+  }
+  dialog ||= (() => {
     const next = document.createElement("dialog");
     next.id = "ocr-whole-book-confirm";
     next.className = "panel ocr-confirm-dialog";
@@ -508,25 +520,32 @@ function confirmWholeBookOcr(): Promise<boolean> {
     document.body.appendChild(next);
     return next;
   })();
-  dialog.querySelector("h2").textContent = t("import.ocrWholeBookTitle");
-  dialog.querySelector("p").textContent = t("import.ocrWholeBookConfirm");
-  dialog.querySelector('[data-action="cancel"]').textContent = t("import.ocrWholeBookCancel");
-  dialog.querySelector('[data-action="confirm"]').textContent = t("import.ocrWholeBookStart");
+  const heading = dialog.querySelector<HTMLElement>("h2");
+  const copy = dialog.querySelector<HTMLElement>("p");
+  const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
+  const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
+  if (!heading || !copy || !cancelButton || !confirmButton) {
+    dialog.remove();
+    return Promise.resolve(false);
+  }
+  heading.textContent = t("import.ocrWholeBookTitle");
+  copy.textContent = t("import.ocrWholeBookConfirm");
+  cancelButton.textContent = t("import.ocrWholeBookCancel");
+  confirmButton.textContent = t("import.ocrWholeBookStart");
 
   return new Promise<boolean>((resolve) => {
     const finish = (accepted: boolean) => {
-      dialog.close();
+      if (dialog.open) dialog.close();
       dialog.removeEventListener("cancel", cancel);
       dialog.removeEventListener("click", backdrop);
       cancelButton.removeEventListener("click", cancel);
       confirmButton.removeEventListener("click", confirm);
+      dialog.remove();
       resolve(accepted);
     };
     const cancel = (event?: Event) => { event?.preventDefault(); finish(false); };
     const confirm = () => finish(true);
     const backdrop = (event: MouseEvent) => { if (event.target === dialog) cancel(); };
-    const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
-    const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
     dialog.addEventListener("cancel", cancel);
     dialog.addEventListener("click", backdrop);
     cancelButton.addEventListener("click", cancel);
