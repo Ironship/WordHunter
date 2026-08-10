@@ -317,8 +317,19 @@ function androidExpectations() {
   const config = JSON.parse(
     readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
   );
+  // The Android package name is the mobile identifier (tauri.android.conf.json
+  // overrides the desktop one — see the Word.Hunter.Pocket artifact naming),
+  // while versionCode/versionName still derive from the shared app version.
+  let androidConfig = null;
+  try {
+    androidConfig = JSON.parse(
+      readFileSync(new URL("../src-tauri/tauri.android.conf.json", import.meta.url), "utf8"),
+    );
+  } catch {
+    // Fall through to the desktop identifier when the android overlay is absent.
+  }
   return {
-    packageName: config.identifier,
+    packageName: androidConfig?.identifier ?? config.identifier,
     versionName: config.version,
     versionCode: androidVersionCodeFor(config.version),
   };

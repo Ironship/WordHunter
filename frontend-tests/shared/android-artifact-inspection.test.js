@@ -12,7 +12,11 @@ const tauriConfig = JSON.parse(
   readFileSync(new URL("../../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
 );
 
-const releaseBadging = `package: name='com.wordhunter.app' versionCode='1000010' versionName='1.0.10' compileSdkVersion='36' compileSdkVersionCodename='REL' platformBuildVersionName='15' platformBuildVersionCode='35' platformBuildVersionCodename='REL'
+const androidConfig = JSON.parse(
+  readFileSync(new URL("../../src-tauri/tauri.android.conf.json", import.meta.url), "utf8"),
+);
+
+const releaseBadging = `package: name='com.wordhunter.pocket' versionCode='1000010' versionName='1.0.10' compileSdkVersion='36' compileSdkVersionCodename='REL' platformBuildVersionName='15' platformBuildVersionCode='35' platformBuildVersionCodename='REL'
 sdkVersion:'24'
 targetSdkVersion:'36'
 application-label:'Word Hunter'
@@ -62,11 +66,14 @@ describe("Android release artifact assertions", () => {
     assert.equal(tauriConfig.identifier, "com.wordhunter.app");
     assert.equal(tauriConfig.version, "1.0.10");
     assert.equal(androidVersionCodeFor(tauriConfig.version), 1000010);
+    // The Android overlay overrides the package name (Word.Hunter.Pocket);
+    // androidExpectations() must use it, not the desktop identifier.
+    assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
   });
 
   it("parses aapt2 dump badging and flags debuggable APKs", () => {
     assert.deepEqual(parseBadgingPackage(releaseBadging), {
-      name: "com.wordhunter.app",
+      name: "com.wordhunter.pocket",
       versionCode: 1000010,
       versionName: "1.0.10",
     });
