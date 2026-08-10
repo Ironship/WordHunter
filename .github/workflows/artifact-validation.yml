@@ -63,7 +63,6 @@ jobs:
         run: npm run check:frontend
 
       - name: Validate frontend behavior and repository data
-        continue-on-error: true
         run: |
           node scripts/validate-json-i18n.mjs
           node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js
@@ -97,7 +96,7 @@ jobs:
       - name: Install Android SDK and NDK packages
         shell: pwsh
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
           "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set up Rust
