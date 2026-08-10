@@ -576,6 +576,7 @@ describe("Android Pocket platform", () => {
   it("declares the Android PDF overlay integration contract", () => {
     const source = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     const backend = readFileSync(new URL("../../src-tauri/src/platform/android_backend/pdf_ocr.rs", import.meta.url), "utf8");
+    const sharedTextLayer = readFileSync(new URL("../../src-tauri/src/pdf_text_layer.rs", import.meta.url), "utf8");
 
     assert.match(source, /const androidPdfOverlay = isAndroidPlatform\(\);/);
     assert.match(source, /if \(!androidPdfOverlay && !await confirmWholeBookOcr\(\)\)\s*return false;/);
@@ -593,16 +594,17 @@ describe("Android Pocket platform", () => {
     assert.match(source, /pdfOcrPages: hasOverlayPages \? pages : undefined/);
     assert.match(source, /pdfOcrEngine: hasOverlayPages \? ocrEngine : ""/);
     assert.match(backend, /pub fn import_bytes\(/);
-    assert.match(backend, /let \(pages, page_count, truncated\) = extract_overlay_pages\(data, max_pages\)\?/);
+    assert.match(backend, /pdf_text_layer::extract_overlay_pages\(data, max_pages, Some\(MAX_TEXT_LAYER_CHARS\)\)/);
     assert.match(backend, /MAX_TEXT_LAYER_CHARS: usize = 2_000_000/);
     assert.doesNotMatch(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
-    assert.match(backend, /merge_words_using_plain_text\(/);
-    assert.match(backend, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
-    assert.match(backend, /let baseline_y = position\.m32 as f32;/);
-    assert.match(backend, /let y_top = baseline_y - font_height \* 0\.82;/);
-    assert.match(backend, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
-    assert.doesNotMatch(backend, /marker_room/);
+    assert.doesNotMatch(backend, /fn merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
+    assert.match(sharedTextLayer, /let baseline_y = position\.m32 as f32;/);
+    assert.match(sharedTextLayer, /let y_top = baseline_y - font_height \* 0\.82;/);
+    assert.match(sharedTextLayer, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
+    assert.doesNotMatch(sharedTextLayer, /marker_room/);
     assert.match(backend, /"pages": pages/);
-    assert.match(backend, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
+    assert.match(sharedTextLayer, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
   });
 });
