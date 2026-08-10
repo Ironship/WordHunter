@@ -12,43 +12,39 @@ use crate::{offline_translator, response, server::ServerState, tts};
 /// frontend when a top-level window is needed (YouGlish fallback, source
 /// links): plain `window.open` from an async callback is popup-blocked in
 /// the webview, so the embedded server does the opening instead.
-pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
+///
+/// The URL is validated strictly (parseable, http/https scheme, host
+/// present) and opened via the `open` crate's detached API. On Windows its
+/// `shellexecute-on-windows` feature calls ShellExecuteExW directly — never
+/// `cmd /c start`, whose quoting allowed command injection through a URL.
+/// Validate an external URL without any side effects: parseable, http/https
+/// scheme, host present, no control characters. Pure — unit-testable.
+fn validate_external_url(url: &str) -> Result<(), String> {
     let url = url.trim();
-    if url.is_empty() || !(url.starts_with("https://") || url.starts_with("http://")) {
+    if url.is_empty() || url.chars().any(|c| c.is_control()) {
+        return Err("refusing to open an empty or control-character URL".to_string());
+    }
+    let parsed = url::Url::parse(url).map_err(|e| format!("invalid URL: {e}"))?;
+    if !matches!(parsed.scheme(), "http" | "https") {
         return Err("refusing to open a non-http URL".to_string());
     }
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        std::process::Command::new("cmd")
-            .args(["/c", "start", "", url])
-            // CREATE_NO_WINDOW: never flash a console while starting the browser.
-            .creation_flags(0x08000000)
-            .spawn()
-            .map_err(|e| format!("could not open the default browser: {e}"))?;
-        return Ok(());
+    if parsed.host_str().is_none() {
+        return Err("URL is missing a host".to_string());
     }
-    #[cfg(target_os = "macos")]
-    {
-        std::process::Command::new("open")
-            .arg(url)
-            .spawn()
-            .map_err(|e| format!("could not open the default browser: {e}"))?;
-        return Ok(());
-    }
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        std::process::Command::new("xdg-open")
-            .arg(url)
-            .spawn()
-            .map_err(|e| format!("could not open the default browser: {e}"))?;
-        return Ok(());
-    }
+    Ok(())
+}
+
+pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
+    validate_external_url(url)?;
     #[cfg(target_os = "android")]
     {
         // Android opens URLs through the Java bridge (openAndroidUrl), not
         // this endpoint.
         Err("external URLs are opened through the Android bridge".to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        open::that_detached(url).map_err(|e| format!("could not open the default browser: {e}"))
     }
 }
 
@@ -535,8 +531,8 @@ pub(crate) fn choose_data_dir(_state: &ServerState) -> Result<Option<String>, St
 mod window_zoom_tests {
     use serde_json::json;
 
-    use super::open_external_url;
     use super::parse_window_zoom_percent;
+    use super::validate_external_url;
     #[cfg(not(target_os = "android"))]
     use super::{export_sidecar_path, write_export_file};
 
@@ -575,13 +571,23 @@ mod window_zoom_tests {
 
     #[test]
     fn open_external_url_rejects_non_http_and_empty() {
-        assert!(open_external_url("").is_err());
-        assert!(open_external_url("file:///C:/Windows/win.ini").is_err());
-        assert!(open_external_url("javascript:alert(1)").is_err());
-        assert!(open_external_url("not a url").is_err());
-        // Valid https URLs pass validation (on this platform they would
-        // spawn the browser; validation happens before any spawn attempt).
-        assert!(open_external_url("https://youglish.com/pronounce/klima/german").is_ok());
+        // Pure validation — no browser is spawned by these assertions.
+        assert!(validate_external_url("").is_err());
+        assert!(validate_external_url("file:///C:/Windows/win.ini").is_err());
+        assert!(validate_external_url("javascript:alert(1)").is_err());
+        assert!(validate_external_url("not a url").is_err());
+        assert!(validate_external_url("http://").is_err()); // no host
+        assert!(validate_external_url("https://exa\nmple.com").is_err()); // control char
+        // Command-injection regression: metacharacters are inert because the
+        // URL is never passed to a shell (open::that_detached/ShellExecuteExW).
+        // They must either be rejected or opened verbatim — never executed.
+        assert!(validate_external_url("https://example.com/a&calc.exe").is_ok());
+        assert!(validate_external_url("https://example.com/a|cmd").is_ok());
+        assert!(
+            validate_external_url("https://example.com/a%22%20&%20calc.exe%20&%20REM%20%22")
+                .is_ok()
+        );
+        assert!(validate_external_url("https://youglish.com/pronounce/klima/german").is_ok());
     }
 
     #[test]
