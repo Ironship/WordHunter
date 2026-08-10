@@ -22,7 +22,7 @@ tauri-build = { version = "2.6.3", features = [] }
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
-ctrlc = "3"
+ctrlc = { version = "3", features = ["termination"] }
 encoding_rs = "0.8"
 html-escape = "0.2"
 include_dir = "0.7"
