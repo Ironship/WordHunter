@@ -17,9 +17,9 @@ fn maps_all_supported_languages() {
 }
 
 #[test]
-fn defaults_to_english_for_unknown() {
-    assert_eq!(yg_lang_from_code("xx"), "english");
-    assert_eq!(yg_lang_from_code(""), "english");
+fn rejects_unknown_language_codes_instead_of_silently_using_english() {
+    assert!(handle(json!({ "op": "lang", "code": "xx" })).is_err());
+    assert!(handle(json!({ "op": "lang", "code": "" })).is_err());
 }
 
 #[test]

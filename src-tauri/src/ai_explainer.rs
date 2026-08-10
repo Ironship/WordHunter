@@ -239,7 +239,7 @@ pub(crate) fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedR
     })
 }
 
-fn send_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
+pub(crate) fn send_prepared_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
     let mut request = AI_AGENT
         .post(&prepared.endpoint)
         .set("User-Agent", USER_AGENT)
@@ -268,9 +268,14 @@ fn send_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
         })
 }
 
+#[cfg(test)]
 pub fn explain(payload: Value) -> Result<Value, String> {
     let prepared = prepare_request(&payload, false)?;
-    let response = send_request(&prepared)?;
+    let response = send_prepared_request(&prepared)?;
+    parse_explanation_response(response)
+}
+
+pub(crate) fn parse_explanation_response(response: ureq::Response) -> Result<Value, String> {
     let value: Value = response
         .into_json()
         .map_err(|error| format!("AI endpoint returned invalid JSON: {error}"))?;
@@ -291,9 +296,17 @@ pub fn explain(payload: Value) -> Result<Value, String> {
 /// Stream an OpenAI-compatible chat completion (SSE) through to the client.
 /// The upstream response body is forwarded verbatim as `text/event-stream`,
 /// so the webview receives deltas progressively and can render them live.
+#[cfg(test)]
 pub fn explain_stream(payload: Value, client: tiny_http::Request) -> Result<(), String> {
     let prepared = prepare_request(&payload, true)?;
-    let response = send_request(&prepared)?;
+    let response = send_prepared_request(&prepared)?;
+    relay_stream_response(response, client)
+}
+
+pub(crate) fn relay_stream_response(
+    response: ureq::Response,
+    client: tiny_http::Request,
+) -> Result<(), String> {
     let status = response.status();
     if status != 200 {
         let detail = response

@@ -1,3 +1,4 @@
+use super::translate;
 use super::translator::models::clean_translation;
 use super::translator::ui::translator_labels;
 
@@ -17,6 +18,13 @@ fn clean_translation_strips_artifacts_and_normalizes_spaces() {
         "leading and trailing"
     );
     assert_eq!(clean_translation("{A:x} {B:y} {C:z}".to_string()), "");
+}
+
+#[test]
+fn empty_translation_query_is_rejected_without_leaking_model_details() {
+    let error = translate("").unwrap_err();
+    assert!(error.contains("missing text"));
+    assert!(!error.to_ascii_lowercase().contains("model"));
 }
 
 #[test]

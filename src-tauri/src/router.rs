@@ -1,3 +1,4 @@
+use base64::Engine;
 use include_dir::{Dir, include_dir};
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -57,12 +58,104 @@ const MAX_UI_STATE_REQUEST_BODY: usize = 2 * 1024 * 1024;
 const MAX_JSON_REQUEST_BODY: usize = 128 * 1024 * 1024;
 const MAX_LOG_BODY: usize = 8 * 1024;
 
+fn validate_book_image_payload(payload: &Value) -> Result<(), String> {
+    let book_id = payload
+        .get("book_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "book_id required".to_string())?;
+    let img_name = payload
+        .get("img_name")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "img_name required".to_string())?;
+    let data_url = payload
+        .get("base64_data")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "base64_data required".to_string())?;
+    crate::paths::sanitize_id(book_id)?;
+    crate::paths::sanitize_id(img_name)?;
+    let encoded = data_url
+        .split_once(',')
+        .map(|(_, data)| data)
+        .unwrap_or(data_url);
+    base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| "base64_data is invalid".to_string())?;
+    Ok(())
+}
+
 fn request_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a str> {
     request
         .headers()
         .iter()
         .find(|header| header.field.equiv(name))
         .map(|header| header.value.as_str())
+}
+
+fn method_not_allowed(method: &Method, path: &str) -> bool {
+    let allows_get = matches!(
+        path,
+        "/" | "/index.html"
+            | "/__proxy"
+            | "/__store/load"
+            | "/__store/ui_state"
+            | "/__store/data_dir"
+            | "/__store/recovery_status"
+            | "/__store/export_progress"
+            | "/__data"
+            | "/__update/check"
+            | "/__book/text"
+            | "/__book/pdf_pages"
+            | "/__media"
+            | "/__open_dict"
+            | "/__open_external"
+            | "/__popup/close"
+            | "/__argos/status"
+            | "/__ocr/gpu-status"
+            | "/__argos/packages"
+            | "/__argos/translate"
+            | "/__argos/ui"
+            | "/__tts"
+    );
+    let allows_post = matches!(
+        path,
+        "/__log_error"
+            | "/__text/tokenize"
+            | "/__app/close"
+            | "/__window/zoom"
+            | "/__store/save"
+            | "/__store/ui_state"
+            | "/__store/ack_snapshot"
+            | "/__store/choose_data_dir"
+            | "/__store/export_transfer"
+            | "/__store/import_transfer"
+            | "/__store/upsert_text"
+            | "/__store/delete_text"
+            | "/__store/wipe"
+            | "/__book/image"
+            | "/__export/save"
+            | "/__import/ebook"
+            | "/__import/pdf_ocr/raw"
+            | "/__import/image_ocr/raw"
+            | "/__import/ocr/cancel"
+            | "/__import/pdf_ocr/cancel"
+            | "/__argos/install"
+            | "/__srs/review"
+            | "/__translate/external"
+            | "/__ai/explain"
+            | "/__ai/explain_stream"
+            | "/__text/vocab_index"
+            | "/__subtitles/parse"
+            | "/__youtube/captions"
+            | "/__youglish"
+            | "/__update/parse"
+            | "/__srs/ensure"
+            | "/__vocab"
+    );
+    (allows_get || allows_post)
+        && !((allows_get && method == &Method::Get) || (allows_post && method == &Method::Post))
 }
 
 pub(crate) fn valid_request_source(request: &Request, base_url: &str) -> bool {
@@ -145,6 +238,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     let (path, query) = response::split_url(&full_url);
     if !valid_request_source(&request, &state.base_url) {
         return response::error_response(request, 403, "forbidden request source");
+    }
+    if method_not_allowed(request.method(), path) {
+        return response::error_response(request, 405, "method not allowed");
     }
     let Some(request) = authenticate_request(request, path, &state.token)? else {
         return Ok(());
@@ -229,11 +325,14 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         }
         (Method::Get, "/__argos/packages") => match offline_translator::packages() {
             Ok(payload) => response::json_response(request, payload),
-            Err(err) => response::error_response(request, 500, &err),
+            Err(_) => response::error_response(request, 500, "offline package listing failed"),
         },
         (Method::Get, "/__argos/translate") => match offline_translator::translate(&query) {
             Ok(payload) => response::json_response(request, payload),
-            Err(err) => response::error_response(request, 500, &err),
+            Err(err) if err.starts_with("invalid request:") => {
+                response::error_response(request, 400, &err)
+            }
+            Err(_) => response::error_response(request, 500, "offline translation failed"),
         },
         (Method::Get, "/__argos/ui") => handlers::serve_offline_translator_ui(request, &query),
         (Method::Get, "/__tts") => handlers::serve_edge_tts(request, &query),
@@ -371,6 +470,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__book/image" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMAGE_REQUEST_BODY);
+                if let Err(error) = validate_book_image_payload(&payload) {
+                    return response::error_response(request, 400, &error);
+                }
                 match state.store.save_book_image(&payload) {
                     Ok(()) => response::no_content(request),
                     Err(error) => response::error_response(request, 500, &error),
@@ -488,7 +590,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 let payload = read_json_or_400!(request);
                 match offline_translator::install(payload) {
                     Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 500, &err),
+                    Err(_) => {
+                        response::error_response(request, 500, "offline package install failed")
+                    }
                 }
             }
             "/__srs/review" => {
@@ -507,33 +611,33 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__ai/explain" => {
                 let payload = read_json_or_400!(request);
-                match ai_explainer::explain(payload) {
+                let prepared = match ai_explainer::prepare_request(&payload, false) {
+                    Ok(prepared) => prepared,
+                    Err(err) => return response::error_response(request, 400, &err),
+                };
+                let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                    Ok(upstream) => upstream,
+                    Err(err) => return response::error_response(request, 502, &err),
+                };
+                match ai_explainer::parse_explanation_response(upstream) {
                     Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
+                    Err(err) => response::error_response(request, 502, &err),
                 }
             }
             "/__ai/explain_stream" => {
                 let payload = read_json_or_400!(request);
-                // Validate BEFORE consuming the request: if the stream never
-                // starts, the client must still get a clean 400 instead of an
-                // unanswered request (ERR_EMPTY_RESPONSE).
-                if let Err(err) = ai_explainer::prepare_request(&payload, true) {
-                    return response::error_response(request, 400, &err);
-                }
-                let mut pending = Some(request);
-                match ai_explainer::explain_stream(
-                    payload,
-                    pending.take().expect("request present"),
-                ) {
-                    Ok(()) => Ok(()),
-                    Err(err) => match pending {
-                        // The stream never started (validation/upstream error) —
-                        // answer the client normally.
-                        Some(unanswered) => response::error_response(unanswered, 400, &err),
-                        // The response already started streaming; nothing to send.
-                        None => Err(err),
-                    },
-                }
+                let prepared = match ai_explainer::prepare_request(&payload, true) {
+                    Ok(prepared) => prepared,
+                    Err(err) => return response::error_response(request, 400, &err),
+                };
+                // Connect upstream before consuming the tiny_http request. If
+                // the provider is unreachable, the client still receives a
+                // real HTTP error instead of ERR_EMPTY_RESPONSE.
+                let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                    Ok(upstream) => upstream,
+                    Err(err) => return response::error_response(request, 502, &err),
+                };
+                ai_explainer::relay_stream_response(upstream, request)
             }
             "/__text/vocab_index" => {
                 let payload = read_json_or_400!(request);

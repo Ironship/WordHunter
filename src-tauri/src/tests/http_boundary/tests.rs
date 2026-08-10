@@ -5,7 +5,10 @@ use std::time::Duration;
 
 use tiny_http::{Method, Request, Server};
 
-use super::{authenticate_request, dispatch_state_independent_request, valid_request_source};
+use super::{
+    authenticate_request, dispatch_state_independent_request, method_not_allowed,
+    valid_request_source, validate_book_image_payload,
+};
 use crate::{handlers, response};
 
 const TOKEN: &str = "test-token";
@@ -20,6 +23,9 @@ fn handle_boundary_request(request: Request, base_url: &str) -> Result<(), Strin
     let (path, query) = response::split_url(&url);
     if !valid_request_source(&request, base_url) {
         return response::error_response(request, 403, "forbidden request source");
+    }
+    if method_not_allowed(request.method(), path) {
+        return response::error_response(request, 405, "method not allowed");
     }
     let Some(request) = authenticate_request(request, &path, TOKEN)? else {
         return Ok(());
@@ -98,7 +104,10 @@ fn protected_post_requires_the_exact_token() {
 #[test]
 fn method_and_route_selection_are_exact() {
     let wrong_method = send_request("GET", "/__text/tokenize", None, None);
-    assert_eq!(wrong_method.status, 404);
+    assert_eq!(wrong_method.status, 405);
+
+    let wrong_proxy_method = send_request("POST", "/__proxy", None, Some(b"{}"));
+    assert_eq!(wrong_proxy_method.status, 405);
 
     let route_suffix = send_request(
         "POST",
@@ -126,6 +135,19 @@ fn malformed_and_empty_json_bodies_return_http_400() {
     let empty = send_request("POST", "/__text/tokenize", Some(TOKEN), None);
     assert_eq!(empty.status, 400);
     assert_eq!(empty.body, "missing op");
+}
+
+#[test]
+fn book_image_payload_validation_rejects_missing_and_invalid_fields() {
+    assert!(validate_book_image_payload(&serde_json::json!({})).is_err());
+    assert!(
+        validate_book_image_payload(&serde_json::json!({
+            "book_id": "book",
+            "img_name": "../escape.png",
+            "base64_data": "not base64!"
+        }))
+        .is_err()
+    );
 }
 
 #[test]
