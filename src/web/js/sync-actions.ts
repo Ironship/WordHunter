@@ -315,6 +315,8 @@ function waitForAndroidImport(): Promise<string | null> | null {
   });
 }
 
+// A stuck backend job must not pin the export UI forever.
+const EXPORT_JOB_DEADLINE_MS = 5 * 60 * 1000;
 let transferInProgress = false;
 let exportProgressOverlay: HTMLDivElement | null = null;
 
@@ -365,10 +367,14 @@ function hideExportProgress(): void {
   exportProgressOverlay = null;
 }
 
-async function waitForExportJob(job: string): Promise<boolean> {
+export async function waitForExportJob(job: string): Promise<boolean> {
   showExportProgress();
+  const deadline = Date.now() + EXPORT_JOB_DEADLINE_MS;
   try {
     for (;;) {
+      if (Date.now() > deadline) {
+        throw new Error(t("toast.exportTimedOut"));
+      }
       await new Promise((resolve) => setTimeout(resolve, 400));
       const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
         headers: { "X-WH-Token": window.WH_TOKEN || "" },

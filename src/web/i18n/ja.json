@@ -972,7 +972,8 @@
     "addedManyWithSkipped": "{added} 冊の本を追加しました。{skipped} 冊をスキップしました（既にライブラリにあります）。",
     "wordPanelItemHidden": "この項目は単語パネルの設定で非表示になっています。",
     "vocabExportFailed": "語彙をエクスポートできませんでした。",
-    "autoTranslateUnavailable": "自動翻訳は一時的に利用できません。自動的に再試行されます。"
+    "autoTranslateUnavailable": "自動翻訳は一時的に利用できません。自動的に再試行されます。",
+    "exportTimedOut": "エクスポートがタイムアウトしました。操作に時間がかかりすぎました。"
   },
   "languages": {
     "pl": "ポーランド語",
