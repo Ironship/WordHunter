@@ -658,6 +658,10 @@ mod tests {
     use crate::store::{StoreInner, record_files};
 
     fn store_at(dir: &tempfile::TempDir) -> Store {
+        store_with_device(dir, "snapshot-test")
+    }
+
+    fn store_with_device(dir: &tempfile::TempDir, device_id: &str) -> Store {
         std::fs::create_dir_all(dir.path().join("books")).unwrap();
         Store {
             inner: Mutex::new(StoreInner {
@@ -667,12 +671,12 @@ mod tests {
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
             records_cache: Mutex::new(None),
-            device_id: "snapshot-test".to_string(),
+            device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }
     }
 
-    fn payload(word: &str) -> Value {
+    fn payload_with_status(word: &str, status: &str) -> Value {
         json!({
             "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "texts": [],
@@ -685,11 +689,15 @@ mod tests {
                     "hiddenBuiltInBooks": [],
                     "archivedBookIds": [],
                     "vocab": {
-                        word: { "word": word, "translation": "word", "status": "learning" }
+                        word: { "word": word, "translation": "word", "status": status }
                     }
                 }
             }
         })
+    }
+
+    fn payload(word: &str) -> Value {
+        payload_with_status(word, "learning")
     }
 
     #[test]
@@ -887,5 +895,53 @@ mod tests {
         assert!(result.is_err());
         // Nothing was committed: the store stays consistent.
         assert!(record_files::load_records(dir.path()).unwrap().is_empty());
+    }
+
+    /// Bridges the pre-fix `bulk_save -> Result<(), String>` signature so the
+    /// conflict-count assertion below also compiles (and fails at runtime)
+    /// against the base branch, where the count was computed but never
+    /// surfaced. On the fix the identity impl returns the real count.
+    trait ConflictCount {
+        fn conflict_count(self) -> Result<usize, String>;
+    }
+
+    #[allow(dead_code)] // the other impl is the active one on the base branch
+    impl ConflictCount for Result<usize, String> {
+        fn conflict_count(self) -> Result<usize, String> {
+            self
+        }
+    }
+
+    #[allow(dead_code)] // the other impl is the active one on this branch
+    impl ConflictCount for Result<(), String> {
+        fn conflict_count(self) -> Result<usize, String> {
+            self.map(|()| 0)
+        }
+    }
+
+    #[test]
+    fn delta_save_surfaces_one_conflict_when_the_same_record_changed_concurrently() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+
+        // A second device edits the same word while this store still
+        // acknowledges the original content, so the on-disk record diverges
+        // from this store's base.
+        store_with_device(&dir, "other-device")
+            .bulk_save(payload_with_status("Wort", "known"))
+            .unwrap();
+        store.invalidate_records_cache();
+
+        let conflicts = store
+            .bulk_save(delta_payload(
+                "Wort",
+                FULL_KEYS_TWO,
+                profile_with("Wort", "mastered"),
+            ))
+            .conflict_count()
+            .unwrap();
+
+        assert_eq!(conflicts, 1);
     }
 }

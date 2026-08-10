@@ -622,20 +622,24 @@ mod tests {
             startup_instant: std::time::Instant::now(),
         };
         // The marker is written AFTER the store started — it belongs to a
-        // concurrent import and must survive the cleanup sweep. Its mtime is
-        // pinned to the future so the test is deterministic even when the
-        // write lands in the same millisecond as the startup instant.
+        // concurrent import and must survive the cleanup sweep. The short
+        // sleep guarantees the marker's mtime is strictly newer than the
+        // startup instant, so the guard must keep it (mtime > now - uptime).
+        // A wall-clock comparison in whole seconds (the pre-fix guard) cannot
+        // see the difference and sweeps the marker — that is the regression
+        // this test pins.
+        std::thread::sleep(std::time::Duration::from_millis(50));
         std::fs::create_dir_all(books_dir.join("pending/images")).unwrap();
         let marker = books_dir
             .join("pending")
             .join(media_assets::IMPORT_PENDING_MARKER);
         std::fs::write(&marker, b"pending").unwrap();
-        let future = std::time::SystemTime::now() + std::time::Duration::from_secs(1);
+        let written_at = std::time::SystemTime::now();
         std::fs::OpenOptions::new()
             .write(true)
             .open(&marker)
             .unwrap()
-            .set_times(std::fs::FileTimes::new().set_modified(future))
+            .set_times(std::fs::FileTimes::new().set_modified(written_at))
             .unwrap();
 
         store.discard_abandoned_book_imports().unwrap();
