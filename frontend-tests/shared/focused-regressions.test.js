@@ -653,6 +653,20 @@ describe("focused frontend regressions", () => {
     assert.equal(closeCount, 1);
   });
 
+  it("cleans Android PDF progress and bounds per-page saves on every import exit", () => {
+    const bookImport = read("dist/web/js/events/book-import.js");
+    const runPdfImport = bookImport.slice(
+      bookImport.indexOf("async function runPdfImport"),
+      bookImport.indexOf("export function bindBookImportEvents")
+    );
+
+    assert.match(bookImport, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
+    assert.match(
+      runPdfImport,
+      /finally\s*{[\s\S]*?stopAndroidPdfProgress\(\);\s*stopOcrProgress\(\);\s*setImportLoading\(false\);\s*}/
+    );
+  });
+
   it("does not open a writable editor when the synced body refresh fails", async () => {
     let showCount = 0;
     const toasts = [];
