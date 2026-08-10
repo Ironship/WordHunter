@@ -34,6 +34,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
 
+      - name: Read app version
+        run: |
+          set -euo pipefail
+          version="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${version}"
+          printf 'WH_APP_VERSION=%s\n' "${version}" >> "${GITHUB_ENV}"
+
       - name: Update Arch and install validation tools
         run: |
           set -euo pipefail
@@ -68,8 +75,6 @@ jobs:
       - name: Verify the pinned release source
         run: |
           set -euo pipefail
-          export WH_APP_VERSION="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
-          test -n "${WH_APP_VERSION}"
           runuser -u aur-builder -- bash -c \
             "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
 
