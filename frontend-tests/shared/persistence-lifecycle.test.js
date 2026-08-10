@@ -642,6 +642,67 @@ describe("persistence lifecycle", () => {
     assert.equal(durableSaves, 1);
   });
 
+  it("applies a bridge snapshot when the current state's preferences are null", async () => {
+    const currentState = {
+      preferences: null,
+      customTexts: [],
+      discover: null,
+      profiles: {},
+      vocab: {}
+    };
+    const nextState = {
+      preferences: { inTextReviewCompletedGuesses: 1 },
+      customTexts: [],
+      profiles: {},
+      vocab: {}
+    };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      hasPendingChanges: () => false,
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    let loadCount = 0;
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => currentState,
+        createDefaultPreferences: () => ({ inTextReviewCompletedGuesses: 0 }),
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => loadCount++ === 0 ? currentState : nextState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: () => ({}),
+        saveUiStateCache: noOp,
+        UI_STATE_KEYS: []
+      },
+      "./store-bridge.js": { postStoreJson: async () => ({}) },
+      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+      "./constants.js": {
+        OTHER_PROFILE_ID: "other",
+        STATE_SCHEMA_VERSION: 2,
+        IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: null, WH_TOKEN: "test-token" },
+      console
+    });
+
+    assert.doesNotThrow(() => stateModule.applyBridgeSnapshotToState({ schemaVersion: 2, prefs: {} }));
+    assert.equal(stateModule.state.preferences.inTextReviewCompletedGuesses, 1);
+  });
+
   it("drains old UI saves and defers new UI saves around an exclusive import or wipe", async () => {
     const postedPages = [];
     const keepalivePages = [];

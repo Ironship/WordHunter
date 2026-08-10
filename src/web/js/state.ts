@@ -238,8 +238,14 @@ export function applyBridgeSnapshotToState(
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();
+  const previousPreferences = state.preferences && typeof state.preferences === "object"
+    ? state.preferences
+    : createDefaultPreferences();
+  if (!nextState.preferences || typeof nextState.preferences !== "object") {
+    nextState.preferences = createDefaultPreferences();
+  }
   nextState.preferences.inTextReviewCompletedGuesses = Math.max(
-    Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(state.preferences.inTextReviewCompletedGuesses) || 0))),
+    Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(previousPreferences.inTextReviewCompletedGuesses) || 0))),
     nextState.preferences.inTextReviewCompletedGuesses
   );
   if (localUi) restoreLocalUiState(nextState, localUi);
