@@ -846,4 +846,43 @@ mod tests {
         assert_eq!(snapshot["vocab"]["de"]["vocab"]["wort"]["status"], "known");
         assert!(!store2.save_journal_path().exists());
     }
+
+    #[test]
+    fn restore_backup_replaces_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.restore_backup(payload("Wort")).unwrap();
+        let snapshot = store.snapshot();
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
+            "word"
+        );
+        assert!(
+            record_files::load_records(dir.path())
+                .unwrap()
+                .contains_key("vocab:de:wort")
+        );
+    }
+
+    #[test]
+    fn restore_backup_surfaces_journal_cleanup_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        // A directory squatting on the journal path (with the .bak slot also
+        // occupied by a non-empty directory, so the atomic write's rescue
+        // rename cannot displace it) makes the journal write fail;
+        // restore_backup must surface the journal-path error instead of
+        // swallowing it. Pre-af00e7ab code dropped the remove_if_exists
+        // Result — a surviving journal then re-applied the restore payload
+        // at next launch, duplicating the restore (#108).
+        let journal = store.save_journal_path();
+        std::fs::create_dir(&journal).unwrap();
+        let backup = journal.with_extension("bak");
+        std::fs::create_dir(&backup).unwrap();
+        std::fs::write(backup.join("occupied"), b"x").unwrap();
+        let result = store.restore_backup(payload("Wort"));
+        assert!(result.is_err());
+        // Nothing was committed: the store stays consistent.
+        assert!(record_files::load_records(dir.path()).unwrap().is_empty());
+    }
 }
