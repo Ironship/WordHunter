@@ -18,7 +18,7 @@ const MAX_ENTRIES: usize = 100_000;
 const MAX_YAML_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_BOOK_YAML_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_ASSET_BYTES: u64 = 512 * 1024 * 1024;
-const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+pub(crate) const MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_PATH_COMPONENTS: usize = 32;
 const MAX_ASSET_TREE_DEPTH: usize = 16;
 
@@ -284,6 +284,7 @@ impl Store {
             for book_id in &copied_books {
                 media_assets::finalize_imported_book_assets(&root, book_id, self.device_id())?;
             }
+            self.invalidate_records_cache();
             Ok::<(), String>(())
         })();
         if let Err(error) = apply {
@@ -891,6 +892,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }

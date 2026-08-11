@@ -8,6 +8,46 @@ use tiny_http::Request;
 use crate::store::transfer::ExportScope;
 use crate::{offline_translator, response, server::ServerState, tts};
 
+/// Open an http(s) URL in the system default browser. Called from the
+/// frontend when a top-level window is needed (YouGlish fallback, source
+/// links): plain `window.open` from an async callback is popup-blocked in
+/// the webview, so the embedded server does the opening instead.
+///
+/// The URL is validated strictly (parseable, http/https scheme, host
+/// present) and opened via the `open` crate's detached API. On Windows its
+/// `shellexecute-on-windows` feature calls ShellExecuteExW directly — never
+/// `cmd /c start`, whose quoting allowed command injection through a URL.
+/// Validate an external URL without any side effects: parseable, http/https
+/// scheme, host present, no control characters. Pure — unit-testable.
+fn validate_external_url(url: &str) -> Result<(), String> {
+    let url = url.trim();
+    if url.is_empty() || url.chars().any(|c| c.is_control()) {
+        return Err("refusing to open an empty or control-character URL".to_string());
+    }
+    let parsed = url::Url::parse(url).map_err(|e| format!("invalid URL: {e}"))?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err("refusing to open a non-http URL".to_string());
+    }
+    if parsed.host_str().is_none() {
+        return Err("URL is missing a host".to_string());
+    }
+    Ok(())
+}
+
+pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
+    validate_external_url(url)?;
+    #[cfg(target_os = "android")]
+    {
+        // Android opens URLs through the Java bridge (openAndroidUrl), not
+        // this endpoint.
+        Err("external URLs are opened through the Android bridge".to_string())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        open::that_detached(url).map_err(|e| format!("could not open the default browser: {e}"))
+    }
+}
+
 pub(crate) fn parse_window_zoom_percent(payload: &Value) -> Result<f64, String> {
     let percent = payload
         .get("percent")
@@ -73,6 +113,8 @@ fn escape_inline_json(value: &Value) -> String {
         .replace('\u{2029}', "\\u2029")
 }
 
+const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
+
 pub(crate) fn bootstrap_script(
     token: &str,
     snapshot: Option<&Value>,
@@ -82,47 +124,18 @@ pub(crate) fn bootstrap_script(
     let snapshot = snapshot
         .map(escape_inline_json)
         .unwrap_or_else(|| "null".to_string());
-    format!(
-        r#"
-(function() {{
-  window.__qtBridge = true;
-  window.WH_TOKEN = {escaped};
-  window.WH_IMAGE_OCR_AVAILABLE = {image_ocr_available};
-  const origFetch = window.fetch.bind(window);
-  const bridgeSnapshot = {snapshot};
-  if (bridgeSnapshot !== null) {{
-    window.__bridgeState = bridgeSnapshot;
-  }} else {{
-    const storeLoadController = new AbortController();
-    const storeLoadTimeout = setTimeout(function() {{ storeLoadController.abort(); }}, 12000);
-    window.__bridgeStatePromise = origFetch('/__store/load', {{
-      cache: 'no-store',
-      headers: {{
-        'X-WH-Token': {escaped}
-      }},
-      signal: storeLoadController.signal
-    }}).then(function(response) {{
-      if (!response.ok) throw new Error('Store load failed: HTTP ' + response.status);
-      return response.json();
-    }}).catch(function(error) {{
-      if (storeLoadController.signal.aborted) throw new Error('Store load timed out after 12 seconds');
-      throw error;
-    }}).finally(function() {{ clearTimeout(storeLoadTimeout); }});
-  }}
-  window.fetch = function(input, init) {{
-    try {{
-      const url = (typeof input === 'string') ? input : (input && input.url) || '';
-      if (/^https?:\/\/(www\.)?gutenberg\.org\//i.test(url)) {{
-        const proxied = '/__proxy?url=' + encodeURIComponent(url);
-        if (typeof input === 'string') return origFetch(proxied, init);
-        return origFetch(new Request(proxied, input), init);
-      }}
-    }} catch (e) {{}}
-    return origFetch(input, init);
-  }};
-}})();
-"#
+    crate::template::render_template(
+        BOOTSTRAP_TEMPLATE,
+        &[
+            ("__WH_TOKEN_JSON__", escaped.as_str()),
+            (
+                "__WH_IMAGE_OCR_AVAILABLE__",
+                if image_ocr_available { "true" } else { "false" },
+            ),
+            ("__WH_SNAPSHOT_JSON__", snapshot.as_str()),
+        ],
     )
+    .expect("bootstrap template placeholders must be present")
 }
 
 pub(crate) fn serve_static(request: Request, path: &str) -> Result<(), String> {
@@ -160,15 +173,24 @@ pub(crate) fn serve_media(
 ) -> Result<(), String> {
     let book = response::query_value(query, "book").unwrap_or_default();
     let img = response::query_value(query, "img").unwrap_or_default();
-    let file_path = state.store.book_image_path(&book, &img)?;
+    if book.is_empty() || img.is_empty() {
+        return response::error_response(request, 400, "book and img are required");
+    }
+    let file_path = match state.store.book_image_path(&book, &img) {
+        Ok(path) => path,
+        Err(_) => return response::error_response(request, 400, "invalid media path"),
+    };
     let file = match fs::File::open(&file_path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             return response::error_response(request, 404, "not found");
         }
-        Err(error) => return Err(error.to_string()),
+        Err(_) => return response::error_response(request, 500, "could not open media"),
     };
-    let length = file.metadata().map_err(|error| error.to_string())?.len() as usize;
+    let length = match file.metadata() {
+        Ok(metadata) => metadata.len() as usize,
+        Err(_) => return response::error_response(request, 500, "could not read media metadata"),
+    };
     let mime = mime_guess::from_path(&file_path)
         .first_or_octet_stream()
         .essence_str()
@@ -231,11 +253,35 @@ pub(crate) fn save_export(payload: Value) -> Result<bool, String> {
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("export.txt");
+    validate_export_filename(filename)?;
     if let Some(path) = rfd::FileDialog::new().set_file_name(filename).save_file() {
         write_export_file(&path, data)?;
         return Ok(true);
     }
     Ok(false)
+}
+
+/// Rejects export filenames that could escape the save dialog or name a
+/// directory: empty names, path separators, the ".." component, and names
+/// longer than 255 bytes (fix #110 hardening).
+#[cfg(not(target_os = "android"))]
+pub(crate) fn validate_export_filename(filename: &str) -> Result<(), String> {
+    if filename.is_empty() {
+        return Err("export filename is empty".to_string());
+    }
+    if filename.len() > 255 {
+        return Err("export filename is longer than 255 bytes".to_string());
+    }
+    if filename == ".."
+        || filename.contains('/')
+        || filename.contains('\\')
+        || filename.contains('\0')
+    {
+        return Err(
+            "export filename must be a plain file name without path separators".to_string(),
+        );
+    }
+    Ok(())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -305,6 +351,7 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("wordhunter-transfer.zip");
+    validate_export_filename(filename)?;
     let Some(path) = rfd::FileDialog::new()
         .add_filter("WordHunter package", &["zip"])
         .set_file_name(filename)
@@ -406,8 +453,30 @@ pub(crate) fn import_transfer(state: &ServerState, _payload: &Value) -> Result<V
     else {
         return Ok(serde_json::json!({ "imported": false }));
     };
+    validate_import_package(&path, crate::store::transfer::MAX_TOTAL_BYTES)?;
     let summary = state.store.import_transfer(&path)?;
     Ok(serde_json::json!({ "imported": true, "summary": summary }))
+}
+
+/// Rejects picked import files that are not `.zip` archives or exceed the
+/// transfer package size cap (2 GiB, same as transfer.rs MAX_TOTAL_BYTES),
+/// so a giant or foreign file is refused before the archive is opened.
+#[cfg(not(target_os = "android"))]
+pub(crate) fn validate_import_package(path: &Path, max_bytes: u64) -> Result<(), String> {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !extension.eq_ignore_ascii_case("zip") {
+        return Err("import file must be a .zip archive".to_string());
+    }
+    let len = std::fs::metadata(path)
+        .map_err(|error| format!("could not read import file metadata: {error}"))?
+        .len();
+    if len > max_bytes {
+        return Err("import archive exceeds the maximum supported size".to_string());
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "android")]
@@ -492,8 +561,11 @@ mod window_zoom_tests {
     use serde_json::json;
 
     use super::parse_window_zoom_percent;
+    use super::validate_external_url;
     #[cfg(not(target_os = "android"))]
-    use super::{export_sidecar_path, write_export_file};
+    use super::{
+        export_sidecar_path, validate_export_filename, validate_import_package, write_export_file,
+    };
 
     #[test]
     fn accepts_supported_window_zoom_and_rejects_invalid_values() {
@@ -526,6 +598,64 @@ mod window_zoom_tests {
 
         assert!(write_export_file(&target, "new backup").is_err());
         assert_eq!(std::fs::read_to_string(&target).unwrap(), "previous backup");
+    }
+
+    #[test]
+    fn open_external_url_rejects_non_http_and_empty() {
+        // Pure validation — no browser is spawned by these assertions.
+        assert!(validate_external_url("").is_err());
+        assert!(validate_external_url("file:///C:/Windows/win.ini").is_err());
+        assert!(validate_external_url("javascript:alert(1)").is_err());
+        assert!(validate_external_url("not a url").is_err());
+        assert!(validate_external_url("http://").is_err()); // no host
+        assert!(validate_external_url("https://exa\nmple.com").is_err()); // control char
+        // Command-injection regression: metacharacters are inert because the
+        // URL is never passed to a shell (open::that_detached/ShellExecuteExW).
+        // They must either be rejected or opened verbatim — never executed.
+        assert!(validate_external_url("https://example.com/a&calc.exe").is_ok());
+        assert!(validate_external_url("https://example.com/a|cmd").is_ok());
+        assert!(
+            validate_external_url("https://example.com/a%22%20&%20calc.exe%20&%20REM%20%22")
+                .is_ok()
+        );
+        assert!(validate_external_url("https://youglish.com/pronounce/klima/german").is_ok());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn export_filename_validation_rejects_paths_and_empty_names() {
+        assert!(validate_export_filename("export.txt").is_ok());
+        assert!(validate_export_filename("wordhunter-transfer.zip").is_ok());
+        assert!(validate_export_filename("").is_err());
+        assert!(validate_export_filename("..").is_err());
+        assert!(validate_export_filename("a/b.txt").is_err());
+        assert!(validate_export_filename("a\\b.txt").is_err());
+        assert!(validate_export_filename(&"x".repeat(256)).is_err());
+        assert!(validate_export_filename(&"x".repeat(255)).is_ok());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn import_package_validation_requires_zip_and_respects_the_size_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |name: &str| {
+            let path = dir.path().join(name);
+            // Each file is written directly: on Windows, copying a freshly
+            // written file can hit the Defender scan lock (os error 32),
+            // which would make the test flaky.
+            std::fs::write(&path, "not a real zip; the check is extension + size").unwrap();
+            path
+        };
+        let zip = write("backup.zip");
+        assert!(validate_import_package(&zip, 1024).is_ok());
+        let upper = write("BACKUP.ZIP");
+        assert!(validate_import_package(&upper, 1024).is_ok());
+        let txt = write("backup.txt");
+        assert!(validate_import_package(&txt, 1024).is_err());
+        let bare = write("backup");
+        assert!(validate_import_package(&bare, 1024).is_err());
+        assert!(validate_import_package(&zip, 10).is_err());
+        assert!(validate_import_package(&zip, u64::MAX).is_ok());
     }
 
     #[test]

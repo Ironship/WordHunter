@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { t } from "./i18n.js";
 import {
   normalizeTranslationLanguageCode,
   normalizeTranslationProvider,
@@ -26,10 +27,48 @@ export function canUseTranslationProvider(): boolean {
   return true;
 }
 
+// Delay before the single retry of a failed translation request (ms).
+const TRANSLATE_RETRY_DELAY_MS = 1_200;
+
+/**
+ * Translates with a single retry after a short delay. Translation endpoints
+ * (especially the unofficial Google one) throttle intermittently — a bare
+ * failure is usually transient, so callers that need a reliable result
+ * (auto-translate, sentence/context translation, the translator view)
+ * should use this instead of translateText directly.
+ */
+export async function translateWithRetry(text: string, from: string, to: string): Promise<TranslationResult> {
+  try {
+    return await translateText(text, from, to);
+  } catch (error) {
+    console.warn("Translation failed, retrying once", error);
+    await new Promise((resolve) => setTimeout(resolve, TRANSLATE_RETRY_DELAY_MS));
+    return translateText(text, from, to);
+  }
+}
+
+export class TranslationError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/// Map known translation errors to localized strings. Unknown/backend
+/// errors return "" — their detail belongs in the console, not in a
+/// UI string (backend text is English-only today).
+export function localizedTranslationError(error: unknown): string {
+  if (error instanceof TranslationError && error.code === "pair-not-configured") {
+    return t("translator.errorPairNotConfigured");
+  }
+  return "";
+}
+
 export async function translateText(text: string, from: string, to: string): Promise<TranslationResult> {
   const fromCode = normalizeTranslationLanguageCode(from);
   const toCode = normalizeTranslationLanguageCode(to);
-  if (!fromCode || !toCode) throw new Error("Translation language pair is not configured");
+  if (!fromCode || !toCode) throw new TranslationError("pair-not-configured", "Translation language pair is not configured");
   if (fromCode === toCode) return { translated: text, engine: "identity" };
   const provider = activeTranslationProvider();
   if (provider === "offline") {

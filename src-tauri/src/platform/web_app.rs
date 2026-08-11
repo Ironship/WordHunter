@@ -2,6 +2,7 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
+use std::time::Duration;
 
 use tauri::webview::PageLoadEvent;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
@@ -13,10 +14,39 @@ use super::SetupResult;
 
 #[cfg(target_os = "linux")]
 const LINUX_DESKTOP_APP_ID: &str = "com.wordhunter.app";
+const GRACEFUL_EXIT_TIMEOUT: Duration = Duration::from_secs(90);
+const WINDOW_WATCHDOG_DELAY: Duration = Duration::from_secs(20);
 
 #[derive(Default)]
 struct ExitCoordinator {
     permitted: AtomicBool,
+    fallback_started: AtomicBool,
+}
+
+impl ExitCoordinator {
+    fn begin_graceful_exit(&self) -> bool {
+        self.fallback_started
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+}
+
+fn spawn_window_watchdog<F>(
+    page_ready: Arc<AtomicBool>,
+    delay: Duration,
+    show_window: F,
+) -> std::io::Result<std::thread::JoinHandle<()>>
+where
+    F: FnOnce() + Send + 'static,
+{
+    std::thread::Builder::new()
+        .name("window-watchdog".to_string())
+        .spawn(move || {
+            std::thread::sleep(delay);
+            if !page_ready.load(Ordering::Acquire) {
+                show_window();
+            }
+        })
 }
 
 pub(crate) fn exit_is_permitted(app_handle: &tauri::AppHandle) -> bool {
@@ -34,6 +64,17 @@ pub(crate) fn permit_exit(app_handle: &tauri::AppHandle) {
 }
 
 pub(crate) fn request_graceful_exit(app_handle: &tauri::AppHandle) {
+    if app_handle.state::<ExitCoordinator>().begin_graceful_exit() {
+        let fallback_handle = app_handle.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(GRACEFUL_EXIT_TIMEOUT);
+            if !exit_is_permitted(&fallback_handle) {
+                eprintln!("graceful exit timed out; forcing application exit");
+                permit_exit(&fallback_handle);
+                fallback_handle.exit(0);
+            }
+        });
+    }
     let Some(window) = app_handle.get_webview_window("main") else {
         permit_exit(app_handle);
         app_handle.exit(0);
@@ -95,6 +136,26 @@ pub(crate) fn setup_desktop(app: &mut tauri::App) -> SetupResult {
         });
 
     let window = builder.build()?;
+    // If the page never finishes loading (stalled WebKitGTK/compositor on
+    // Linux, dead server), the window was created visible(false) and the app
+    // would run invisibly forever. Force-show it after a grace period.
+    let watchdog_ready = Arc::clone(&page_ready);
+    let watchdog_ready_on_main = Arc::clone(&page_ready);
+    let watchdog_window = window.clone();
+    let watchdog_app_handle = window.app_handle().clone();
+    if let Err(error) = spawn_window_watchdog(watchdog_ready, WINDOW_WATCHDOG_DELAY, move || {
+        let result = watchdog_app_handle.run_on_main_thread(move || {
+            if !watchdog_ready_on_main.load(Ordering::Acquire) {
+                let _ = watchdog_window.show();
+                let _ = watchdog_window.set_focus();
+            }
+        });
+        if let Err(error) = result {
+            eprintln!("window watchdog could not reach the main thread: {error}");
+        }
+    }) {
+        eprintln!("window watchdog could not start: {error}");
+    }
     let close_app_handle = window.app_handle().clone();
     window.on_window_event(move |event| {
         if let WindowEvent::CloseRequested { api, .. } = event
@@ -212,4 +273,55 @@ fn show_startup_error(message: &str) {
         .show();
     #[cfg(target_os = "android")]
     let _ = message;
+}
+
+#[cfg(test)]
+mod exit_coordinator_tests {
+    use std::{
+        sync::{
+            Arc,
+            atomic::{AtomicBool, AtomicUsize, Ordering},
+        },
+        time::Duration,
+    };
+
+    use super::{ExitCoordinator, spawn_window_watchdog};
+
+    #[test]
+    fn graceful_exit_fallback_is_started_only_once() {
+        let coordinator = ExitCoordinator::default();
+        assert!(coordinator.begin_graceful_exit());
+        assert!(!coordinator.begin_graceful_exit());
+    }
+
+    #[test]
+    fn window_watchdog_shows_the_window_when_page_load_stalls() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_in_watchdog = Arc::clone(&calls);
+        let handle = spawn_window_watchdog(
+            Arc::new(AtomicBool::new(false)),
+            Duration::ZERO,
+            move || {
+                calls_in_watchdog.fetch_add(1, Ordering::SeqCst);
+            },
+        )
+        .unwrap();
+
+        handle.join().unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn window_watchdog_does_nothing_after_page_load_finishes() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let calls_in_watchdog = Arc::clone(&calls);
+        let handle =
+            spawn_window_watchdog(Arc::new(AtomicBool::new(true)), Duration::ZERO, move || {
+                calls_in_watchdog.fetch_add(1, Ordering::SeqCst);
+            })
+            .unwrap();
+
+        handle.join().unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+    }
 }

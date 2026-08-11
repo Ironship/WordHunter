@@ -5,6 +5,7 @@ runtime-version: "50"
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node22
 command: word-hunter-rustified
 
 finish-args:
@@ -20,10 +21,48 @@ finish-args:
   - --filesystem=xdg-documents
   - --filesystem=xdg-download
   - --filesystem=host-os:ro
-  - --talk-name=org.com_wordhunter_app.SingleInstance
-  - --own-name=org.com_wordhunter_app.SingleInstance
+  - --talk-name=com.wordhunter.app.SingleInstance
+  - --own-name=com.wordhunter.app.SingleInstance
 
 modules:
+  # The Rust build refuses a missing or stale dist/web (src-tauri/build.rs),
+  # and dist/ is gitignored. scripts/build-flatpak.sh builds the frontend on
+  # the host (npm run build:frontend) before invoking flatpak-builder, so the
+  # checkout inside the sandbox already contains dist/web; running npm inside
+  # the sandbox is avoided because npm ci crashes there (npm "Exit handler
+  # never called!" after ~70 s, reproducible in CI). This module installs the
+  # host-compiled frontend to /app; the word-hunter module copies it into its
+  # source tree.
+  - name: frontend
+    only-arches:
+      - x86_64
+    buildsystem: simple
+    build-commands:
+      - install -d /app/share/word-hunter/frontend
+      - cp -r dist/web/. /app/share/word-hunter/frontend/
+    sources:
+      - type: dir
+        path: .
+        skip:
+          - .flatpak-builder
+          - .git
+          - .worktree
+          - .agents
+          - .codex
+          - .codex-remote-attachments
+          - build
+          - build_work
+          - docs/android
+          - docs/ddia-assessment.md
+          - My_Data
+          - node_modules
+          - output
+          - outputs
+          - scratch
+          - src-tauri/target
+          - src-tauri/ocr-runner/target
+          - TODO
+
   - name: word-hunter
     only-arches:
       - x86_64
@@ -36,6 +75,7 @@ modules:
         CTRANSLATE2_RELEASE: "4.6.0"
         ORT_LIB_LOCATION: /run/build/word-hunter/src-tauri/target/flatpak-onnxruntime
     build-commands:
+      - cp -r /app/share/word-hunter/frontend/. dist/web
       - cargo --offline --locked build --release --manifest-path src-tauri/Cargo.toml
       - cargo --offline --locked build --release --manifest-path src-tauri/ocr-runner/Cargo.toml
       - install -Dm755 src-tauri/target/release/word-hunter-rustified /app/bin/word-hunter-rustified

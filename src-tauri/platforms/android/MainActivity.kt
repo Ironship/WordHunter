@@ -313,7 +313,11 @@ class MainActivity : TauriActivity() {
         Bundle.EMPTY,
         utteranceId ?: System.nanoTime().toString()
       ) == TextToSpeech.SUCCESS
-      if (started) keepScreenOn()
+      if (started) {
+        // The bridge runs on the WebView JS thread; window flag changes
+        // must happen on the UI thread.
+        runOnUiThread { keepScreenOn() }
+      }
       return started
     }
 
@@ -763,7 +767,13 @@ class MainActivity : TauriActivity() {
           .setOnlyAlertOnce(true)
           .setCategory(Notification.CATEGORY_TRANSPORT)
           .setVisibility(Notification.VISIBILITY_PRIVATE)
-          .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+          .addAction(
+            Notification.Action.Builder(
+              android.R.drawable.ic_media_pause,
+              "Stop",
+              stopPendingIntent
+            ).build()
+          )
           .build()
       )
     }

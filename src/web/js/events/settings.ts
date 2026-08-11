@@ -9,14 +9,15 @@ import { renderReview } from "../views/vocabulary.js";
 import { renderDiscover } from "../views/discover.js";
 import { applyPreferences, syncSettingsControls, updatePreferenceValue, resetPreferences, setReaderFontSize, setUiScale } from "../preferences.js";
 import { showToast } from "../toast.js";
-import { clearLocalState, clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
+import { clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../sync-actions.js";
 import { switchLearningLanguage } from "../state.js";
 import { acknowledgeBackendSnapshot, loadBackendSnapshot } from "../store-bridge.js";
-import { registerUnsavedDialog } from "../dialog-backdrop.js";
+import { registerUnsavedDialog, showConfirmDialog } from "../dialog-backdrop.js";
 import { setElementBusy } from "../loading.js";
 import { applyPlatformUi, isAndroidPlatform } from "../platform.js";
 import { OFFLINE_TRANSLATOR_LANGUAGES } from "../constants.js";
 import { normalizeTranslationLanguageCode, normalizeTranslatorTextPreference, resolveProfileTranslationPair } from "../translator-preferences.js";
+import { normalizeAiTextPreference } from "../ai-explainer.js";
 import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import { remapReaderBookmarksForAlgorithm } from "../reader/bookmarks.js";
 
@@ -214,13 +215,15 @@ function updateTranslatorTextPreference(key: string, value: unknown): void {
 
 export function bindSettingsEvents() {
   let argosDownloadRunning = false;
+  let argosSelectionDirty = false;
 
   function isArgosDirty() {
-    return !!els.argosDownloadDialog?.open;
+    return argosSelectionDirty;
   }
 
   async function cancelArgosDownload() {
     if (argosDownloadRunning) return;
+    argosSelectionDirty = false;
     if (els.argosDownloadDialog) els.argosDownloadDialog.close();
     if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
     updatePreferenceValue("offlineTranslator", false);
@@ -274,7 +277,8 @@ export function bindSettingsEvents() {
 
       const response = await fetch("/__store/choose_data_dir", {
         method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({ confirm: true })
       });
       if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();
@@ -334,10 +338,16 @@ export function bindSettingsEvents() {
 
   if (els.clearWords) els.clearWords.addEventListener("click", clearWords);
   if (els.clearLibrary) els.clearLibrary.addEventListener("click", clearLibrary);
-  if (els.clearState) els.clearState.addEventListener("click", clearLocalState);
+
 
   if (els.resetPrefs) {
     els.resetPrefs.addEventListener("click", async () => {
+      const ok = await showConfirmDialog({
+        title: t("dialog.confirmTitle"),
+        message: t("settings.confirmResetMessage"),
+        danger: true
+      });
+      if (!ok) return;
       const generation = ++wordAlgorithmChangeGeneration;
       resetPreferences();
       renderLibrary();
@@ -422,10 +432,11 @@ export function bindSettingsEvents() {
       renderTranslator();
     });
   }
-  for (const [control, key] of [
+  const languageControls: Array<[HTMLInputElement | null, string]> = [
     [els.prefTranslationSourceLanguage, "translationSourceLanguage"],
     [els.prefTranslationTargetLanguage, "translationTargetLanguage"]
-  ]) {
+  ];
+  for (const [control, key] of languageControls) {
     if (!control) continue;
     control.addEventListener("input", () => control.setCustomValidity(""));
     control.addEventListener("change", async (event: Event) => {
@@ -461,6 +472,53 @@ export function bindSettingsEvents() {
       updateTranslatorTextPreference("lmStudioModel", (event.currentTarget as HTMLInputElement).value);
     });
   }
+  if (els.prefAiExplanations) {
+    els.prefAiExplanations.addEventListener("change", (event: Event) => {
+      const target = event.currentTarget as HTMLInputElement;
+      updatePreferenceValue("aiExplanationsEnabled", target.checked);
+      syncSettingsControls();
+      // Keep the word-panel "ai" item in sync with the toggle in both
+      // directions: enabling shows the button, disabling hides it. A
+      // pre-existing mismatch (ai visible but feature off, or vice versa)
+      // must not leave the panel button out of sync with the setting.
+      const items = normalizeSelectedWordPanelItems(state.preferences.selectedWordPanelItems);
+      const aiItem = items.find((item) => item.id === "ai");
+      if (aiItem && aiItem.visible !== target.checked) {
+        aiItem.visible = target.checked;
+        saveSelectedWordPanelItems(items);
+        if (target.checked) showToast(t("settings.aiPanelItemShown"));
+      }
+    });
+  }
+  if (els.prefAiEndpoint) {
+    els.prefAiEndpoint.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationEndpoint", normalizeAiTextPreference("aiExplanationEndpoint", (event.currentTarget as HTMLInputElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiModel) {
+    els.prefAiModel.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationModel", normalizeAiTextPreference("aiExplanationModel", (event.currentTarget as HTMLInputElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiApiKey) {
+    els.prefAiApiKey.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationApiKey", (event.currentTarget as HTMLInputElement).value.trim());
+    });
+  }
+  if (els.prefAiEffort) {
+    els.prefAiEffort.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationEffort", normalizeAiTextPreference("aiExplanationEffort", (event.currentTarget as HTMLSelectElement).value));
+      syncSettingsControls();
+    });
+  }
+  if (els.prefAiAutoTrigger) {
+    els.prefAiAutoTrigger.addEventListener("change", (event: Event) => {
+      updatePreferenceValue("aiExplanationAutoTrigger", (event.currentTarget as HTMLInputElement).checked);
+      syncSettingsControls();
+    });
+  }
   if (els.prefOfflineTranslator) {
     els.prefOfflineTranslator.addEventListener("change", async (event: Event) => {
       const target = event.currentTarget as HTMLInputElement;
@@ -489,7 +547,10 @@ export function bindSettingsEvents() {
             els.argosDownloadConfirm.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
           };
           
-          (els.argosLanguagesList as HTMLElement).querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => checkbox.addEventListener("change", updateBtnText));
+          (els.argosLanguagesList as HTMLElement).querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
+            checkbox.addEventListener("change", updateBtnText);
+            checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
+          });
           updateBtnText();
         }
 
@@ -531,6 +592,7 @@ export function bindSettingsEvents() {
       setElementBusy(els.argosDownloadConfirm, true, { disable: true });
       setElementBusy(els.argosDownloadDialog, true);
       argosDownloadRunning = true;
+      argosSelectionDirty = false;
       if (els.argosDownloadCancel) els.argosDownloadCancel.disabled = true;
       els.argosDownloadConfirm.textContent = t("toast.downloadingWait");
       

@@ -5,6 +5,7 @@ import { els } from "./dom.js";
 import { clamp, escapeAttribute, escapeHtml } from "./utils.js";
 import { getLocale, t } from "./i18n.js";
 import { canUseTranslationProvider } from "./translation-provider.js";
+import { DEFAULT_AI_ENDPOINT, DEFAULT_AI_MODEL, normalizeAiTextPreference } from "./ai-explainer.js";
 import { DEFAULT_LM_STUDIO_ENDPOINT, isDesktopOnlyTranslationProvider, normalizeTranslationProvider, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { normalizeLearningColors } from "./reader-colors.js";
 import { applyTheme, nextTheme, normalizeTheme, type ThemeName } from "./theme.js";
@@ -206,6 +207,7 @@ export function syncSettingsControls() {
   if (els.prefTranslationTargetLanguage) els.prefTranslationTargetLanguage.value = prefs.translationTargetLanguage || translationPair.toCode;
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
+  if (els.prefYouglishMode) els.prefYouglishMode.value = prefs.youglishMode || "internal";
   els.prefFont.value = prefs.readerFont || "serif";
   els.prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
@@ -218,7 +220,7 @@ export function syncSettingsControls() {
     els.readerWordPanelToggle.setAttribute("aria-pressed", String(visible));
     els.readerWordPanelToggle.textContent = t(visible ? "settings.readerWordPanelHideControl" : "settings.readerWordPanelShowControl");
   }
-  if (els.prefWordsPerPage) els.prefWordsPerPage.value = prefs.wordsPerPage || "1000";
+  if (els.prefWordsPerPage) els.prefWordsPerPage.value = String(prefs.wordsPerPage || "1000");
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
@@ -244,7 +246,7 @@ export function syncSettingsControls() {
       input.checked = selectedSet.has(input.value);
     });
   }
-  els.prefFontSize.value = state.readerFontSize || 18;
+  els.prefFontSize.value = String(state.readerFontSize || 18);
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize || 18 });
   if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize || 18);
   if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize || 18}px`;
@@ -282,6 +284,18 @@ export function syncSettingsControls() {
   if (els.prefDeepLApiKeyRow) els.prefDeepLApiKeyRow.hidden = provider !== "deepl";
   if (els.prefLmStudioEndpointRow) els.prefLmStudioEndpointRow.hidden = provider !== "lmstudio";
   if (els.prefLmStudioModelRow) els.prefLmStudioModelRow.hidden = provider !== "lmstudio";
+  const aiEnabled = prefs.aiExplanationsEnabled === true;
+  if (els.prefAiExplanations) els.prefAiExplanations.checked = aiEnabled;
+  if (els.prefAiEndpoint) els.prefAiEndpoint.value = prefs.aiExplanationEndpoint || DEFAULT_AI_ENDPOINT;
+  if (els.prefAiModel) els.prefAiModel.value = prefs.aiExplanationModel || DEFAULT_AI_MODEL;
+  if (els.prefAiApiKey) els.prefAiApiKey.value = prefs.aiExplanationApiKey || "";
+  if (els.prefAiEffort) els.prefAiEffort.value = normalizeAiTextPreference("aiExplanationEffort", prefs.aiExplanationEffort);
+  if (els.prefAiAutoTrigger) els.prefAiAutoTrigger.checked = prefs.aiExplanationAutoTrigger === true;
+  if (els.prefAiEndpointRow) els.prefAiEndpointRow.hidden = !aiEnabled;
+  if (els.prefAiModelRow) els.prefAiModelRow.hidden = !aiEnabled;
+  if (els.prefAiApiKeyRow) els.prefAiApiKeyRow.hidden = !aiEnabled;
+  if (els.prefAiEffortRow) els.prefAiEffortRow.hidden = !aiEnabled;
+  if (els.prefAiAutoTriggerRow) els.prefAiAutoTriggerRow.hidden = !aiEnabled;
   if (els.prefAutoTranslate) els.prefAutoTranslate.checked = prefs.autoTranslateWords === true;
   if (els.prefAutoTranslateRow) {
     const enabled = canUseTranslationProvider();
@@ -340,7 +354,7 @@ export function syncSettingsControls() {
 
 export function updatePreferenceValue(key: string, value: unknown): void {
   state.preferences[key] = value;
-  if (["dictionaryUrl", "dictionaryMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
+  if (["dictionaryUrl", "dictionaryMode", "youglishMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
     const profile = state.profiles?.[state.preferences.learningLanguage];
     if (profile) {
       profile.preferences = profile.preferences || {};
@@ -365,6 +379,7 @@ export function resetPreferences() {
     learningLanguage,
     dictionaryUrl: profilePreferences.dictionaryUrl || getDefaultDictionaryUrl(learningLanguage),
     dictionaryMode: profilePreferences.dictionaryMode || "internal",
+    youglishMode: profilePreferences.youglishMode || "internal",
     translationSourceLanguage: profilePreferences.translationSourceLanguage || "",
     translationTargetLanguage: profilePreferences.translationTargetLanguage || (learningLanguage === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""),
     lastReadTextIds,
@@ -375,6 +390,7 @@ export function resetPreferences() {
       ...(state.profiles[learningLanguage].preferences || {}),
       dictionaryUrl: state.preferences.dictionaryUrl,
       dictionaryMode: state.preferences.dictionaryMode,
+      youglishMode: state.preferences.youglishMode,
       translationSourceLanguage: state.preferences.translationSourceLanguage,
       translationTargetLanguage: state.preferences.translationTargetLanguage,
     };

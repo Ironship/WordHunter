@@ -1,5 +1,5 @@
 // Shared pointer handling for the app's resizable desktop side panels.
-import { state } from "./state.js";
+import { state, saveState } from "./state.js";
 
 interface SidebarResizerOptions {
   preference: "readerSidebarWidth" | "librarySidebarWidth";
@@ -66,6 +66,8 @@ export function bindSidebarResizer(resizer: HTMLElement | null | undefined, {
       document.body.classList.remove("is-resizing-panel");
       window.removeEventListener("pointermove", resize);
       window.removeEventListener("pointerup", stop);
+      // Persist the chosen panel width so it survives restarts.
+      saveState();
     };
     window.addEventListener("pointermove", resize);
     window.addEventListener("pointerup", stop, { once: true });

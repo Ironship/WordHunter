@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { openAndroidUrl } from "./platform.js";
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
 
 interface YouGlishFetchEvent {
@@ -13,7 +14,7 @@ interface YouGlishWidget {
 interface YouGlishWidgetOptions {
   width: number;
   components: number;
-  theme: "dark" | "light";
+  backgroundColor?: string;
   events: {
     onFetchDone(event: YouGlishFetchEvent): void;
     onError(event: unknown): void;
@@ -33,6 +34,7 @@ const youglishWindow = window as YouGlishWindow;
 let youglishWidget: YouGlishWidget | null = null;
 let youglishWidgetTheme: "dark" | "light" | null = null;
 let youglishLastRequest: { word: string; language: string } | null = null;
+let youglishFetchDone = false;
 
 import { showToast } from "./toast.js";
 import { t as rawT } from "./i18n.js";
@@ -41,7 +43,56 @@ import { effectiveLearningLanguage } from "./translator-preferences.js";
 
 let youglishApiReady = false;
 let youglishApiPromise: Promise<void> | null = null;
+const YOUGLISH_API_SCRIPT_URL = "https://youglish.com/public/emb/widget.js";
+const YOUGLISH_API_TIMEOUT_MS = 12000;
 const t = rawT as (key: string, vars?: TranslationVars) => string;
+
+function getYouglishLang(langCode: string): string {
+  const map: Record<string, string> = { en: "english", de: "german", es: "spanish", it: "italian", fr: "french", pl: "polish", ru: "russian", uk: "ukrainian", ja: "japanese", zh: "chinese", la: "latin", grc: "greek" };
+  return map[langCode] || "english";
+}
+
+function youglishPageUrl(word: string): string {
+  const ygLang = getYouglishLang(effectiveLearningLanguage(state.preferences));
+  return `https://youglish.com/pronounce/${encodeURIComponent(word)}/${encodeURIComponent(ygLang)}`;
+}
+
+/**
+ * Open the YouGlish page for the word in a top-level window. Per the
+ * `youglishMode` preference: "internal" uses the app's internal popup (the
+ * same mechanism the dictionary uses), "external" opens the system default
+ * browser through the embedded server (plain window.open from an async
+ * callback is popup-blocked in the webview).
+ */
+function openYouglishSite(word: string): void {
+  const url = youglishPageUrl(word);
+  // Android: route through the native bridge (external browser) — the
+  // internal popup is a silent no-op on Android and /__open_external
+  // is refused there (handlers.rs cfg android).
+  if (openAndroidUrl(url)) return;
+  const mode = state.preferences.youglishMode || "internal";
+  if (mode === "external") {
+    fetch(`/__open_external?url=${encodeURIComponent(url)}`).catch((error) =>
+      console.warn("Failed to open the browser", error)
+    );
+    return;
+  }
+  const popupUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("reader.youglishModalTitle"))}`;
+  fetch(popupUrl).catch((error) => console.warn("Failed to open YouGlish popup", error));
+}
+
+/**
+ * The widget cannot play (YouGlish blocks embedded playback in this
+ * environment). Open the word's page right away — internal popup or the
+ * system browser, per the YouGlish opening preference — and close the modal.
+ */
+function handleYouglishUnavailable(word: string): void {
+  youglishWidget = null;
+  youglishWidgetTheme = null;
+  openYouglishSite(word);
+  showToast(t("reader.youglishOpenedSite"));
+  closeYouGlish();
+}
 
 function initYouglish(): boolean {
   const Widget = youglishWindow.YG?.Widget;
@@ -58,15 +109,24 @@ function initYouglish(): boolean {
   youglishWidget = new Widget("youglish-widget", {
     width: w,
     components: 9,
-    theme,
+    // Documented widget option (data-bkg-color): the old `theme` option the
+    // app passed before is not read by the widget at all.
+    backgroundColor: isDark ? "theme_dark" : "theme_light",
     events: {
       'onFetchDone': (e) => {
+        youglishFetchDone = true;
         if (e && e.totalResult === 0) {
           showToast(t("toast.youglishNoResults"));
         }
       },
       'onError': (_event) => {
-        showToast(t("toast.youglishBlocked"));
+        // YouGlish currently kills embedded playback; a widget that never
+        // produced results is dead — open the working fallback instead of
+        // leaving an empty modal. Once results arrived, errors are
+        // transient and the player keeps working.
+        if (youglishFetchDone) return;
+        const word = youglishLastRequest?.word || "";
+        handleYouglishUnavailable(word);
       }
     }
   });
@@ -78,6 +138,11 @@ youglishWindow.onYouglishAPIReady = () => {
   youglishApiReady = true;
 };
 
+/**
+ * Load the YouGlish widget script exactly once. Never leaves the caller
+ * hanging: a stale/failed script element is removed and rejected (with a
+ * timeout), so the next open retries with a fresh script.
+ */
 function loadYouglishApi(): Promise<void> {
   if (youglishWindow.YG?.Widget) {
     youglishApiReady = true;
@@ -86,13 +151,6 @@ function loadYouglishApi(): Promise<void> {
   if (youglishApiPromise) return youglishApiPromise;
 
   youglishApiPromise = new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>('script[data-youglish-api="true"]');
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", reject, { once: true });
-      return;
-    }
-
     const previousReady = youglishWindow.onYouglishAPIReady;
     youglishWindow.onYouglishAPIReady = () => {
       previousReady?.();
@@ -103,17 +161,38 @@ function loadYouglishApi(): Promise<void> {
     const script = document.createElement("script");
     script.async = true;
     script.charset = "utf-8";
-    script.src = "https://youglish.com/public/emb/widget.js";
+    script.src = YOUGLISH_API_SCRIPT_URL;
     script.dataset.youglishApi = "true";
+    let timer = 0;
+    let settled = false;
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      script.remove();
+      reject(new Error("youglish API unavailable"));
+    };
     script.addEventListener("load", () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
       if (youglishWindow.YG?.Widget) {
         youglishApiReady = true;
         resolve();
+      } else {
+        // The script executed but the API never initialized (blocked or
+        // rewritten response) — drop it so the next open retries fresh.
+        script.remove();
+        reject(new Error("youglish API unavailable"));
       }
     }, { once: true });
-    script.addEventListener("error", reject, { once: true });
+    script.addEventListener("error", fail, { once: true });
+    timer = window.setTimeout(fail, YOUGLISH_API_TIMEOUT_MS);
+    // Remove any stale previous attempt before injecting a fresh script.
+    document.querySelectorAll('script[data-youglish-api="true"]').forEach((el) => el.remove());
     document.head.appendChild(script);
   }).catch((error) => {
+    // Allow a retry on the next open.
     youglishApiPromise = null;
     throw error;
   });
@@ -121,16 +200,12 @@ function loadYouglishApi(): Promise<void> {
   return youglishApiPromise;
 }
 
-function getYouglishLang(langCode: string): string {
-  const map: Record<string, string> = { en: "english", de: "german", es: "spanish", it: "italian", fr: "french", pl: "polish", ru: "russian", uk: "ukrainian", ja: "japanese", zh: "chinese", la: "latin", grc: "greek" };
-  return map[langCode] || "english";
-}
-
 async function fetchYouGlish(word: string): Promise<void> {
   try {
     await loadYouglishApi();
   } catch (error) {
-    showToast(t("toast.youglishBlocked"));
+    console.warn("YouGlish API unavailable", error);
+    handleYouglishUnavailable(word);
     return;
   }
   if (youglishWindow.YG?.Widget) {
@@ -140,7 +215,10 @@ async function fetchYouGlish(word: string): Promise<void> {
   const ygLang = getYouglishLang(effectiveLearningLanguage(state.preferences));
   if (youglishWidget) {
     youglishLastRequest = { word, language: ygLang };
+    youglishFetchDone = false;
     youglishWidget.fetch(word, ygLang);
+  } else {
+    handleYouglishUnavailable(word);
   }
 }
 
@@ -149,13 +227,16 @@ export function openYouGlish(word: string): void {
   const modalBody = document.getElementById("youglish-modal-body");
 
   if (modalBody) {
-    if (document.getElementById("youglish-widget")?.parentNode !== modalBody) {
-      modalBody.innerHTML = '<div id="youglish-widget"></div>';
+    const widgetHost = document.getElementById("youglish-widget");
+    if (widgetHost?.parentNode !== modalBody) {
+      modalBody.innerHTML = `<div id="youglish-widget"></div>`;
       youglishWidget = null;
       youglishWidgetTheme = null;
       if (youglishApiReady) {
         initYouglish();
       }
+    } else if (!youglishWidget && youglishApiReady) {
+      initYouglish();
     }
   }
 

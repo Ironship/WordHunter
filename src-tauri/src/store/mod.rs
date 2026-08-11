@@ -46,6 +46,11 @@ pub struct Store {
     // Global save lock; shard only if saves become a bottleneck.
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
+    // In-memory copy of all record files. Saves re-load the records tree
+    // only once (after startup or after an external mutation); every commit
+    // refreshes it from the merged output. Large stores take seconds to
+    // scan, so this cache is what keeps delta saves fast.
+    records_cache: Mutex<Option<BTreeMap<String, record_files::SyncRecord>>>,
     device_id: String,
     startup_instant: std::time::Instant,
 }
@@ -65,6 +70,7 @@ impl Store {
             inner: Mutex::new(StoreInner { dir, books_dir }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: crate::paths::device_id(app_name)?,
             startup_instant: std::time::Instant::now(),
         };
@@ -94,6 +100,30 @@ impl Store {
         self.write_lock
             .lock()
             .map_err(|_| "save lock is unavailable".to_string())
+    }
+
+    /// Invalidate the in-memory record cache after any direct record write
+    /// (text upsert/delete, wipe, transfer import) that bypasses the bulk
+    /// commit path — the next save then re-reads the records tree once.
+    pub(crate) fn invalidate_records_cache(&self) {
+        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    }
+
+    /// The records tree as an in-memory map, loading it from disk once when
+    /// it is not cached yet.
+    pub(crate) fn records_cache_or_load(
+        &self,
+    ) -> Result<BTreeMap<String, record_files::SyncRecord>, String> {
+        let mut cache = self.records_cache.lock().unwrap_or_else(|e| e.into_inner());
+        if cache.is_none() {
+            *cache = Some(record_files::load_records(&self.dir())?);
+        }
+        Ok(cache.clone().unwrap_or_default())
+    }
+
+    /// Replace the in-memory record cache with the committed state.
+    pub(crate) fn set_records_cache(&self, records: BTreeMap<String, record_files::SyncRecord>) {
+        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = Some(records);
     }
 
     pub fn load_ui_state(&self) -> serde_json::Value {
@@ -180,9 +210,18 @@ impl Store {
         if let Err(error) = result {
             let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             *inner = previous_inner;
+            drop(inner);
+            self.invalidate_records_cache();
             *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = previous_base_records;
             return Err(error);
         }
+        // The data directory changed: the in-memory records cache and the
+        // delta-save base both describe the OLD directory. Stale caches here
+        // made delta saves merge against records from the previous folder
+        // (deleted records resurrected, mis-merges). Drop both; the next
+        // snapshot()/records_snapshot() rebuilds them from the new dir.
+        self.invalidate_records_cache();
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = Default::default();
         Ok(dir)
     }
 }
@@ -210,12 +249,17 @@ fn merge_data_dir(
 ) -> Result<(), String> {
     let source_records = record_files::load_records(from)?;
     let target_records = record_files::load_records(to)?;
+    let full_keys = source_records
+        .keys()
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
     let merged = record_files::merge_records(
         &BTreeMap::new(),
         source_records,
         target_records,
         device_id,
         record_files::now_millis(),
+        &full_keys,
     );
     record_files::write_records(to, &merged.records)?;
     media_assets::merge_book_assets_into(from, to, device_id)?;
@@ -273,6 +317,25 @@ fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<(), String>
     Ok(())
 }
 
+/// Test-only store rooted at a temporary directory. `#[cfg(test)]` keeps it
+/// out of production builds; `pub(crate)` lets out-of-module tests (router
+/// HTTP boundary tests) construct an isolated store.
+#[cfg(test)]
+pub(crate) fn test_store(dir: &std::path::Path, device_id: &str) -> Store {
+    std::fs::create_dir_all(dir.join("books")).unwrap();
+    Store {
+        inner: Mutex::new(StoreInner {
+            dir: dir.to_path_buf(),
+            books_dir: dir.join("books"),
+        }),
+        write_lock: Mutex::new(()),
+        base_records: Mutex::new(BTreeMap::new()),
+        records_cache: Mutex::new(None),
+        device_id: device_id.to_string(),
+        startup_instant: std::time::Instant::now(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -316,6 +379,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }
@@ -469,12 +533,20 @@ mod tests {
         let target = tempfile::tempdir().unwrap();
         let store = store_at(&source, "local-device");
         store.bulk_save(profile_payload("lokal", "local")).unwrap();
+        // Populate both in-memory record views before relocation. This is the
+        // startup/runtime state that originally made the old directory leak
+        // into the first delta save after moving the data folder.
+        let _ = store.snapshot();
 
         let target_payload = profile_payload("chmura", "cloud");
         let target_records = record_files::payload_to_records(&target_payload, "cloud-device", 1);
         record_files::write_records(target.path(), &target_records).unwrap();
 
         store.relocate(target.path().to_path_buf()).unwrap();
+        assert_eq!(
+            record_files::fingerprints(&store.records_cache_or_load().unwrap()),
+            record_files::fingerprints(&record_files::load_records(target.path()).unwrap())
+        );
         let snapshot = store.snapshot_unacknowledged();
 
         assert_eq!(

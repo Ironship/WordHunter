@@ -339,7 +339,9 @@ describe("Android Pocket platform", () => {
     assert.equal(handle.listeners.pointerdown.length, 1);
     assert.equal(listeners.resize.length, 1);
     assert.equal(listeners.orientationchange.length, 1);
-    assert.equal(visualViewportListeners.resize.length, 2);
+    // The sheet binds resize (1) and the keyboard overlap resize (1); the
+    // pinch-zoom re-pin binds its own resize+scroll pair once (guarded).
+    assert.equal(visualViewportListeners.resize.length, 3);
     assert.equal(observedContent.target, wordPanel);
     assert.deepEqual(observedContent.options.attributeFilter, ["hidden"]);
     assert.equal(wordPanel.listeners.load.length, 1);
@@ -573,15 +575,31 @@ describe("Android Pocket platform", () => {
     assert.equal(document.documentElement.classList.contains("pocket-navigation-open"), false);
   });
 
+  it("localizes the Android offline-translator popup rejection", () => {
+    const backend = readFileSync(
+      new URL("../../src-tauri/src/platform/android_backend/offline_translator.rs", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(backend, /response::parse_query\(query\)/);
+    assert.match(backend, /"zh"/);
+    assert.match(backend, /\/translator\/providerUnavailable/);
+    assert.doesNotMatch(backend, /Offline translator popup is desktop-only/);
+  });
+
   it("declares the Android PDF overlay integration contract", () => {
     const source = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
     const backend = readFileSync(new URL("../../src-tauri/src/platform/android_backend/pdf_ocr.rs", import.meta.url), "utf8");
+    const sharedTextLayer = readFileSync(new URL("../../src-tauri/src/pdf_text_layer.rs", import.meta.url), "utf8");
 
     assert.match(source, /const androidPdfOverlay = isAndroidPlatform\(\);/);
     assert.match(source, /if \(!androidPdfOverlay && !await confirmWholeBookOcr\(\)\)\s*return false;/);
     assert.match(source, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
     assert.match(source, /bridge\.beginPdfRender\(sessionId, data\)/);
-    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, 1400\)/);
+    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, pdfRenderWidth\(\)\)/);
+    // The render width follows the screen (device pixels), clamped to the
+    // native 512..2400 range instead of a fixed 1400.
+    assert.match(source, /function pdfRenderWidth\(\)[\s\S]*Math\.min\(2400, Math\.max\(512, width\)\)/);
     assert.match(source, /new FileReader\(\)/);
     assert.match(source, /fetch\(`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);
     assert.match(source, /MAX_POCKET_PDF_BYTES = 32 \* 1024 \* 1024/);
@@ -593,16 +611,65 @@ describe("Android Pocket platform", () => {
     assert.match(source, /pdfOcrPages: hasOverlayPages \? pages : undefined/);
     assert.match(source, /pdfOcrEngine: hasOverlayPages \? ocrEngine : ""/);
     assert.match(backend, /pub fn import_bytes\(/);
-    assert.match(backend, /let \(pages, page_count, truncated\) = extract_overlay_pages\(data, max_pages\)\?/);
+    assert.match(backend, /pdf_text_layer::extract_overlay_pages\(data, max_pages, Some\(MAX_TEXT_LAYER_CHARS\)\)/);
     assert.match(backend, /MAX_TEXT_LAYER_CHARS: usize = 2_000_000/);
     assert.doesNotMatch(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
-    assert.match(backend, /merge_words_using_plain_text\(/);
-    assert.match(backend, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
-    assert.match(backend, /let baseline_y = position\.m32 as f32;/);
-    assert.match(backend, /let y_top = baseline_y - font_height \* 0\.82;/);
-    assert.match(backend, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
-    assert.doesNotMatch(backend, /marker_room/);
+    assert.doesNotMatch(backend, /fn merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /lookup_text\.contains\(&joined\) && !lookup_text\.contains\(&spaced\)/);
+    assert.match(sharedTextLayer, /let baseline_y = position\.m32 as f32;/);
+    assert.match(sharedTextLayer, /let y_top = baseline_y - font_height \* 0\.82;/);
+    assert.match(sharedTextLayer, /bounds_version: TEXT_LAYER_BOUNDS_VERSION/);
+    assert.doesNotMatch(sharedTextLayer, /marker_room/);
     assert.match(backend, /"pages": pages/);
-    assert.match(backend, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
+    assert.match(sharedTextLayer, /image_name: format!\("pdf-page-\{:04\}\.png", page\.page_num\)/);
+  });
+
+  it("re-pins the CSS zoom when the visual viewport rescales after a pinch", async () => {
+    const visualViewportListeners = {};
+    const addListener = (target, type, handler) => {
+      (target[type] ||= []).push(handler);
+    };
+    const root = {
+      dataset: {},
+      classList: createClassList(),
+      style: { zoom: "", setProperty(name, value) { this[name] = value; } }
+    };
+
+    globalThis.window = {
+      location: { search: "?platform=android" },
+      addEventListener() {},
+      visualViewport: {
+        addEventListener(type, handler) { addListener(visualViewportListeners, type, handler); }
+      }
+    };
+    globalThis.HTMLElement = {
+      [Symbol.hasInstance](value) { return value !== null && typeof value === "object"; }
+    };
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { userAgent: "Desktop test" }
+    });
+    globalThis.document = {
+      documentElement: root,
+      addEventListener() {},
+      getElementById() { return null; },
+      querySelector() { return null; },
+      querySelectorAll() { return []; }
+    };
+
+    const { applyPlatformUi } = await import("../../dist/web/js/platform.js");
+    applyPlatformUi();
+    applyPlatformUi();
+
+    // The re-pin listener is bound once even when the UI is applied repeatedly.
+    assert.equal(visualViewportListeners.resize.length, 2);
+    assert.equal(visualViewportListeners.scroll.length, 1);
+
+    // A pinch gesture re-scales the visual viewport under the pinned CSS zoom;
+    // the zoom must be re-pinned to "1" so the layout is not double-scaled.
+    root.style.zoom = "2";
+    for (const handler of visualViewportListeners.resize) handler();
+    assert.equal(root.style.zoom, "1");
   });
 });

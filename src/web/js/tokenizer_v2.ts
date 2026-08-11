@@ -437,7 +437,7 @@ let cachedPhraseIndex: VocabularyPhraseIndex | null = null;
  * phrases is O(vocab) — with 100k entries this used to stall the main thread
  * on every page turn whenever the vocabulary revision changed.
  */
-export function buildVocabularyPhraseIndex(
+function buildVocabularyPhraseIndex(
   vocab: Vocabulary,
   lang = "en",
   revision: number | null = null

@@ -2,7 +2,7 @@ function baseLanguage(language: string): string {
   return String(language || "").toLowerCase().split(/[-_]/)[0];
 }
 
-export function normalizeArticle(value: unknown): string {
+function normalizeArticle(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
@@ -20,7 +20,7 @@ export function formatHeadword(word: string, article?: unknown): string {
     : `${normalizedArticle} ${word}`;
 }
 
-export function splitAttachedArticle(value: string, language: string): { word: string; article: string } | null {
+function splitAttachedArticle(value: string, language: string): { word: string; article: string } | null {
   const lang = baseLanguage(language);
   const prefixes = lang === "fr" ? ["l'"] : lang === "it" ? ["un'", "l'"] : [];
   if (!prefixes.length) return null;

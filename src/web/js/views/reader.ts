@@ -2,6 +2,8 @@
 
 import { bindSidebarResizer } from "../panel-resizer.js";
 import { registerFrontendStateFlusher, state } from "../state.js";
+import { t } from "../i18n.js";
+import { showToast } from "../toast.js";
 
 import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearReaderSelection } from "../reader/selection.js";
 
@@ -52,6 +54,7 @@ export function bindReaderEvents(): void {
       || !(textSelect instanceof HTMLSelectElement)
       || !(wordPanel instanceof HTMLElement)) return;
     bindReaderBookmarkEvents();
+    void import("../reader/find.js").then(({ bindReaderFindEvents }) => bindReaderFindEvents());
 
     let lastWordPanelInteractionAt = 0;
     let pdfWordClickTimer: number | null = null;
@@ -96,8 +99,12 @@ export function bindReaderEvents(): void {
       const actions = await import("../book-actions.js");
       actions.openBook(textSelect.value);
     });
-    els.readerPreviousWord?.addEventListener("click", () => navigateReaderWord(-1));
-    els.readerNextWord?.addEventListener("click", () => navigateReaderWord(1));
+    els.readerPreviousWord?.addEventListener("click", () => {
+      if (!navigateReaderWord(-1)) showToast(t("reader.wordNavPageStart"));
+    });
+    els.readerNextWord?.addEventListener("click", () => {
+      if (!navigateReaderWord(1)) showToast(t("reader.wordNavPageEnd"));
+    });
     let readerScrollSaveTimer: number | null = null;
     registerFrontendStateFlusher(() => {
       clearTimeout(readerScrollSaveTimer);
@@ -369,6 +376,10 @@ export function bindReaderEvents(): void {
         event.stopPropagation();
         if (token.classList.contains("pdf-ocr-word") && event.detail > 0) {
           clearTimeout(pdfWordClickTimer);
+          if (event.detail > 1) {
+            pdfWordClickTimer = null;
+            return;
+          }
           pdfWordClickTimer = setTimeout(() => {
             pdfWordClickTimer = null;
             selectReaderToken(token, { ctrlKey: event.ctrlKey, openPanel: true });

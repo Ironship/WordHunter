@@ -2,6 +2,7 @@ import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, 
 import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
+import { showConfirmDialog } from "./dialog-backdrop.js";
 import { t } from "./i18n.js";
 import { render, ensureCurrentText } from "./render.js";
 import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
@@ -34,7 +35,6 @@ interface VocabularyExportRequest {
   filename: string;
   headerRow: string | undefined;
   lang: string;
-  algorithm: string;
 }
 
 interface VocabularyExportFile {
@@ -186,7 +186,7 @@ function waitForAndroidExport(start: (requestId: string) => boolean): Promise<bo
   });
 }
 
-export function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
+function saveWithAndroidBridge(data: string, filename: string, mime: string): Promise<boolean> | null {
   const bridge = window.WordHunterAndroid;
   if (typeof bridge?.saveExport !== "function") return null;
   return waitForAndroidExport((requestId) => bridge.saveExport(data, filename, mime, requestId));
@@ -208,7 +208,7 @@ async function nativeSave(data: string, filename: string, mime: string): Promise
     const response = await fetch("/__export/save", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: JSON.stringify({ data, filename, mime })
+      body: JSON.stringify({ data, filename, mime, confirm: true })
     });
     if (!response.ok) throw new Error(`export HTTP ${response.status}`);
     const result: unknown = await response.json().catch(() => ({ saved: true }));
@@ -314,6 +314,8 @@ function waitForAndroidImport(): Promise<string | null> | null {
   });
 }
 
+// A stuck backend job must not pin the export UI forever.
+const EXPORT_JOB_DEADLINE_MS = 5 * 60 * 1000;
 let transferInProgress = false;
 let exportProgressOverlay: HTMLDivElement | null = null;
 
@@ -364,10 +366,14 @@ function hideExportProgress(): void {
   exportProgressOverlay = null;
 }
 
-async function waitForExportJob(job: string): Promise<boolean> {
+export async function waitForExportJob(job: string): Promise<boolean> {
   showExportProgress();
+  const deadline = Date.now() + EXPORT_JOB_DEADLINE_MS;
   try {
     for (;;) {
+      if (Date.now() > deadline) {
+        throw new Error(t("toast.exportTimedOut"));
+      }
       await new Promise((resolve) => setTimeout(resolve, 400));
       const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
         headers: { "X-WH-Token": window.WH_TOKEN || "" },
@@ -386,10 +392,30 @@ async function waitForExportJob(job: string): Promise<boolean> {
   }
 }
 
-function transferErrorMessage(error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error || "");
-  const short = message.replace(/\s+/g, " ").trim();
-  return short.length > 160 ? `${short.slice(0, 157)}...` : short;
+export function transferErrorMessage(error: unknown): string {
+  // Errors from other realms (webview bridge, iframes) can fail the
+  // `instanceof Error` check, so fall back to a duck-typed `message` field.
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : String(error || "");
+  // Known internal literals map to localized strings; anything else
+  // (backend/HTTP text) is English-only and stays in the console.
+  if (message.includes("transfer export response is missing a saved file")) return t("toast.transferMissingFile");
+  if (message.includes("Android export bridge is unavailable")) return t("toast.androidExportUnavailable");
+  const http = message.match(/(?:export|import)(?: progress)? HTTP (\d{3})/);
+  if (http) return t("transfer.httpError", { status: http[1] });
+  if (message.includes("android export write timed out")) return t("transfer.exportWriteTimeout");
+  if (message.includes("android export timed out")) return t("transfer.exportWriteTimeout");
+  if (message.includes("android export failed")) return t("transfer.exportWriteTimeout");
+  if (message === t("toast.exportTimedOut")) return message;
+  const trimmed = message.replace(/\s+/g, " ").trim();
+  // Raw backend bodies (e.g. JSON error payloads) must never reach a toast.
+  if (trimmed.startsWith("{")) return t("transfer.genericError");
+  console.warn("Transfer error is not localized; keeping it out of the UI:", error);
+  return "";
 }
 
 export async function exportTransfer(
@@ -409,7 +435,7 @@ export async function exportTransfer(
     const response = await fetch("/__store/export_transfer", {
       method: "POST",
       headers: WH_TOKEN_HEADER,
-      body: JSON.stringify({ scope, filename, requestId })
+      body: JSON.stringify({ scope, filename, requestId, confirm: true })
     });
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
@@ -432,7 +458,8 @@ export async function exportTransfer(
     return true;
   } catch (error) {
     console.warn("transfer export failed", error);
-    if (notify) showToast(`${t("toast.exportFailed")}: ${transferErrorMessage(error)}`, "error");
+    const detail = transferErrorMessage(error);
+    if (notify) showToast(detail ? `${t("toast.exportFailed")}: ${detail}` : t("toast.exportFailed"), "error");
     return false;
   } finally {
     transferInProgress = false;
@@ -456,7 +483,7 @@ export async function importTransfer(): Promise<boolean> {
     const response = await fetch("/__store/import_transfer", {
       method: "POST",
       headers: WH_TOKEN_HEADER,
-      body: JSON.stringify(androidPath ? { path: androidPath } : {})
+      body: JSON.stringify(androidPath ? { path: androidPath, confirm: true } : { confirm: true })
     });
     if (!response.ok) throw new Error((await response.text()).trim() || `import HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
@@ -473,7 +500,8 @@ export async function importTransfer(): Promise<boolean> {
     return true;
   } catch (error) {
     console.warn("transfer import failed", error);
-    showToast(`${t("toast.importFailed")}: ${transferErrorMessage(error)}`, "error");
+    const detail = transferErrorMessage(error);
+    showToast(detail ? `${t("toast.importFailed")}: ${detail}` : t("toast.importFailed"), "error");
     return false;
   } finally {
     transferInProgress = false;
@@ -547,8 +575,7 @@ function exportRequestBase(filename: string, format: VocabularyExportFormat): Vo
     format,
     filename,
     headerRow: format === "anki" ? t("settings.ankiTsvHeader") : undefined,
-    lang: effectiveLearningLanguage(state.preferences),
-    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+    lang: effectiveLearningLanguage(state.preferences)
   };
 }
 
@@ -572,12 +599,12 @@ export async function exportVocabularySelection(format: VocabularyExportFormat):
     showToast(await nativeSave(result.content, result.filename, result.mime) ? t("toast.exportReady") : t("toast.exportCancelled"));
   } catch (error) {
     console.warn("vocab_export failed", error);
-    showToast(t("toast.importFailed"));
+    showToast(t("toast.vocabExportFailed"), "error");
   }
 }
 
 export async function clearWords(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClearWords"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearWords"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
@@ -604,7 +631,7 @@ export async function clearWords(): Promise<void> {
 }
 
 export async function clearLibrary(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClearLibrary"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearLibrary"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
   const lang = state.preferences?.learningLanguage || "de";
@@ -651,7 +678,7 @@ export async function clearLibrary(): Promise<void> {
 }
 
 export async function clearLocalState(): Promise<void> {
-  const confirmed = window.confirm(t("toast.confirmClear"));
+  const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClear"), danger: true });
   if (!confirmed) return;
   if (!await backupBeforeClear()) return;
 
@@ -704,8 +731,7 @@ export async function exportAnkiTsv(): Promise<void> {
     format: "anki",
     filename,
     headerRow: t("settings.ankiTsvHeader"),
-    lang: effectiveLearningLanguage(state.preferences),
-    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+    lang: effectiveLearningLanguage(state.preferences)
   };
   try {
     const result = vocabularyExportFile(await requestVocabExport(payload));
@@ -720,6 +746,7 @@ export async function exportAnkiTsv(): Promise<void> {
     }
   } catch (error) {
     console.warn("anki export failed", error);
+    showToast(t("toast.vocabExportFailed"), "error");
   }
 }
 
@@ -773,7 +800,7 @@ export function importAnkiTsv(event: unknown): void {
   target.value = "";
 }
 
-export function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
+function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
   const rows: AnkiImportRow[] = [];
   let isFirstNonEmptyLine = true;
   for (const line of text.split("\n")) {

@@ -11,13 +11,13 @@
   <icon type="stock">com.wordhunter.app</icon>
   <description>
     <p>
-      Word Hunter is a desktop language-learning workspace for reading real
-      texts, saving vocabulary with context, and reviewing words later.
+      Word Hunter is a language-learning workspace for reading real texts,
+      saving vocabulary with context, and reviewing words later.
     </p>
     <p>
-      It supports imported text, PDFs, EPUB files, subtitles, public-domain
-      book discovery, local vocabulary storage, spaced repetition, text to
-      speech, and optional offline translation models.
+      It supports imported text, PDFs, EPUB files, subtitles, local vocabulary
+      storage, spaced repetition, text to speech, and optional offline
+      translation models.
     </p>
   </description>
   <launchable type="desktop-id">com.wordhunter.app.desktop</launchable>
@@ -37,6 +37,16 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.10" date="2026-08-07">
+      <description>
+        <ul>
+          <li>Contextual AI explanations for words and phrases with streamed answers from OpenAI-compatible services.</li>
+          <li>Reasoning-effort levels, automatic explanations for new words, and explanations appended to word notes.</li>
+          <li>Optional visual context for scanned PDF pages and a local explanation cache.</li>
+          <li>Improved automatic translation reliability and shutdown handling for duplicate durable saves.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.9~rc.7" date="2026-07-31" type="development">
       <description>
         <ul>
@@ -142,9 +152,9 @@
     <release version="1.0.6" date="2026-07-17">
       <description>
         <ul>
-          <li>Keep Reader keyboard focus and playback anchored to the exact word after page and phrase changes.</li>
+          <li>Keep Reader playback anchored to the selected word.</li>
           <li>Delay the first in-text review of newly learned words until the following day.</li>
-          <li>Correct Italian interface copy and normalize built-in reader title headers.</li>
+          <li>Correct Italian interface copy and built-in reader titles.</li>
         </ul>
       </description>
     </release>
@@ -254,82 +264,7 @@
         </ul>
       </description>
     </release>
-    <release version="1.0.4" date="2026-07-12">
-      <description>
-        <ul>
-          <li>Fixed Windows saves and startup recovery failing with access denied while synchronizing backup files.</li>
-          <li>Made Pocket clearly explain when a scanned PDF requires desktop OCR before synchronization.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.0.3" date="2026-07-11">
-      <description>
-        <ul>
-          <li>Fixed the Android Import drawer closing whenever a user tapped one of its controls.</li>
-          <li>Included the OCR reliability, progress animation, synchronized counters, and sentence correction fixes from the withdrawn 1.0.1 and 1.0.2 builds.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.0.2" date="2026-07-11">
-      <description>
-        <ul>
-          <li>Restored the live PaddleOCR progress animation with a clearer document-scanning indicator.</li>
-          <li>Changed quick PDF sentence correction to edit and replace only the selected sentence.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.0.1" date="2026-07-11">
-      <description>
-        <ul>
-          <li>Added automatic CPU recovery when accelerated PDF OCR fails at runtime.</li>
-          <li>Kept library word counters stable while synchronized book text refreshes in the background.</li>
-          <li>Updated release workflows to supported GitHub Actions runtimes and corrected Rust toolchain setup.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="1.0.0" date="2026-07-10">
-      <description>
-        <ul>
-          <li>Established a new compatibility baseline after breaking storage and synchronization changes.</li>
-          <li>Added durable per-record local storage, safer recovery, and deterministic cross-device conflict handling.</li>
-          <li>Added guided Syncthing setup on desktop and staged folder synchronization on Android.</li>
-          <li>Refreshed Windows, Android, and x86_64 Flatpak packaging, validation, and third-party license notices.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.3.6.2" date="2026-07-03">
-      <description>
-        <ul>
-          <li>Added a managed cloud sync coordinator with a Flatpak Google Drive connector through bundled rclone; cloud pulls are staged and validated before merge, and the MVP does not delete remote files.</li>
-          <li>Recovered interrupted Google Drive authorization by clearing partial app-owned rclone remotes and showing a retryable sign-in state.</li>
-          <li>Retried transient Google Drive quota and rate-limit failures while preparing the cloud sync folder.</li>
-          <li>Kept the visible Google Drive connector status stable across local/background sync snapshots instead of falling back to not connected after a successful connection.</li>
-          <li>Removed the separate Discover language selector; book discovery now follows the active learning profile language on desktop and Android.</li>
-          <li>Fixed Discover source selection so switching to Wikipedia, Wikinews, or Wikisource is preserved across Flatpak/background sync snapshots.</li>
-          <li>Improved the Linux/Flatpak GTK titlebar workaround so close and maximize buttons keep receiving clicks in normal window mode.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.3.6.1" date="2026-07-02">
-      <description>
-        <ul>
-          <li>Fixed Flatpak sync folder selection so the chosen folder is stored only after a successful sync and uses XDG config/data locations.</li>
-          <li>Fixed Flatpak/Linux OCR GPU platform detection for more reliable startup diagnostics.</li>
-          <li>Bundled WebGPU/Vulkan OCR acceleration with a safe CPU fallback, PDFium, and PaddleOCR models for scanned PDFs on Linux.</li>
-          <li>Refreshed Windows packaging so installer and portable builds include the required GNU runtime DLLs.</li>
-        </ul>
-      </description>
-    </release>
-    <release version="0.3.6" date="2026-07-02">
-      <description>
-        <ul>
-          <li>Added Linux Flatpak packaging with AppStream metadata and local install helpers.</li>
-          <li>Improved PDF reading with page-background overlays, selectable words, and a clean text mode.</li>
-          <li>Improved Android Pocket PDF rendering with zooming, horizontal panning, and text-layer spacing fixes.</li>
-          <li>Hardened local-first storage, backup, recovery, and sync compatibility paths.</li>
-        </ul>
-      </description>
-    </release>
+
   </releases>
   <content_rating type="oars-1.1" />
 </component>

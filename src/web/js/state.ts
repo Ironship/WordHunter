@@ -1,6 +1,7 @@
 // @ts-check
 
 import { createAutosave } from "./state/autosave.js";
+import { createDefaultPreferences } from "./state/defaults.js";
 import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
@@ -109,7 +110,10 @@ export function flushUiStateSync(): void {
   if (!window.__qtBridge) return;
   if (uiWritesPaused > 0) {
     uiSaveRequestedWhilePaused = true;
-    return;
+    // No early return: the exclusive write pauses STORE writes, but the
+    // UI-state endpoint is separate, idempotent and last-write-wins — an
+    // exit flush must not drop the reader position (the flag alone is
+    // only replayed on the next saveUiState, which never comes on shutdown).
   }
   const payload = { schemaVersion: STATE_SCHEMA_VERSION, ...captureUiState(rawState()) };
   const body = JSON.stringify(payload);
@@ -237,8 +241,14 @@ export function applyBridgeSnapshotToState(
   }
   window.__bridgeState = snapshot;
   const nextState = loadState();
+  const previousPreferences = state.preferences && typeof state.preferences === "object"
+    ? state.preferences
+    : createDefaultPreferences();
+  if (!nextState.preferences || typeof nextState.preferences !== "object") {
+    nextState.preferences = createDefaultPreferences();
+  }
   nextState.preferences.inTextReviewCompletedGuesses = Math.max(
-    Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(state.preferences.inTextReviewCompletedGuesses) || 0))),
+    Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(previousPreferences.inTextReviewCompletedGuesses) || 0))),
     nextState.preferences.inTextReviewCompletedGuesses
   );
   if (localUi) restoreLocalUiState(nextState, localUi);
@@ -261,6 +271,16 @@ function flushPendingSave(): void {
 }
 window.flushPendingSave = flushPendingSave;
 
+function buildPendingDeltaEnvelope() {
+  return autosave.buildPendingDeltaEnvelope();
+}
+window.buildPendingDeltaEnvelope = buildPendingDeltaEnvelope;
+
+function hasPendingChanges(): boolean {
+  return autosave.hasPendingChanges();
+}
+window.hasPendingChanges = hasPendingChanges;
+
 export function resetInitialVocabKeys(): void {
   initialVocabKeys.clear();
   Object.keys(state.vocab || {}).forEach((key) => initialVocabKeys.add(key));
@@ -274,6 +294,7 @@ export function getLastReadTextId(lang = state.preferences?.learningLanguage): s
 
 export function setLastReadTextId(id: string, lang = state.preferences?.learningLanguage): void {
   if (!id || !lang) return;
+  if (!state.preferences || typeof state.preferences !== "object") state.preferences = createDefaultPreferences();
   if (!state.preferences.lastReadTextIds || typeof state.preferences.lastReadTextIds !== "object") state.preferences.lastReadTextIds = {};
   state.preferences.lastReadTextIds[lang] = id;
 }
@@ -293,6 +314,11 @@ export function clearLastReadTextForLanguage(lang = state.preferences?.learningL
 export function replaceState(nextState: WhAppState, { save = true }: { save?: boolean } = {}): void {
   autosave.withoutAutoSave(() => {
     Object.keys(state).forEach((key) => delete state[key]);
+    // A snapshot without a preferences object (legacy/corrupt save) must not
+    // null-deref every later state.preferences.* access.
+    if (!nextState.preferences || typeof nextState.preferences !== "object") {
+      nextState.preferences = createDefaultPreferences();
+    }
     Object.assign(state, nextState);
   });
   resetInitialVocabKeys();
@@ -303,6 +329,7 @@ export function replaceState(nextState: WhAppState, { save = true }: { save?: bo
 }
 
 export function switchLearningLanguage(lang: string): void {
+  if (!state.preferences || typeof state.preferences !== "object") state.preferences = createDefaultPreferences();
   const previousLang = state.preferences?.learningLanguage;
   const previousProfile = state.profiles?.[previousLang];
   if (previousProfile) {

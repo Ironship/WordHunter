@@ -10,7 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { debianVersionForRelease, inspectLinuxTree } from "../../scripts/inspect-artifact.mjs";
+import { DEB_REQUIRED_DEPENDS, debianVersionForRelease, inspectLinuxTree } from "../../scripts/inspect-artifact.mjs";
 
 const linuxConfig = JSON.parse(
   readFileSync(new URL("../../src-tauri/tauri.linux-bundle.conf.json", import.meta.url), "utf8"),
@@ -75,7 +75,7 @@ function createLinuxTree(root, format = "appimage") {
   write(
     root,
     "usr/share/metainfo/com.wordhunter.app.metainfo.xml",
-    '<component type="desktop-application"><id>com.wordhunter.app</id><launchable type="desktop-id">Word Hunter.desktop</launchable></component>',
+    '<component type="desktop-application"><id>com.wordhunter.app</id><launchable type="desktop-id">com.wordhunter.app.desktop</launchable></component>',
   );
   write(root, "usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png");
   if (format === "deb") {
@@ -132,6 +132,33 @@ describe("Linux native artifact inspection", () => {
     assert.match(buildScript, /word-hunter_\$\{release_version\}_amd64\.deb/);
     assert.equal(debianVersionForRelease("1.0.9-rc.7"), "1.0.9~rc.7");
     assert.equal(debianVersionForRelease("1.0.9"), "1.0.9");
+  });
+
+  it("keeps the DEB dependency contract between the bundle config and artifact inspection", () => {
+    const configDepends = linuxConfig.bundle.linux.deb.depends.map((entry) =>
+      entry.replace(/\s*\([^)]*\)\s*$/, ""),
+    );
+    // Anything the DEB config declares must actually be enforced by inspect-artifact.mjs.
+    for (const dependency of configDepends) {
+      assert.ok(
+        DEB_REQUIRED_DEPENDS.includes(dependency),
+        `inspect-artifact.mjs does not validate configured DEB dependency: ${dependency}`,
+      );
+    }
+    // libgtk-3-0 is added implicitly by the Tauri bundler (not listed in the config);
+    // every other inspected dependency must be declared in the config.
+    for (const dependency of DEB_REQUIRED_DEPENDS) {
+      if (dependency === "libgtk-3-0") continue;
+      assert.ok(
+        configDepends.includes(dependency),
+        `DEB dependency inspected by inspect-artifact.mjs but not declared in tauri.linux-bundle.conf.json: ${dependency}`,
+      );
+    }
+    // Regression guard (#134): libxdo3 has zero code usage and was dropped from the DEB.
+    assert.ok(
+      !DEB_REQUIRED_DEPENDS.includes("libxdo3"),
+      "libxdo3 is dead; it must not be required in the DEB",
+    );
   });
 
   it("accepts a complete x86_64 tree and rejects architecture drift", () => {

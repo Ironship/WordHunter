@@ -69,7 +69,10 @@ export async function importCustomText(
 ): Promise<string | null> {
   const cleanTitle = title.trim();
   const cleanText = text.trim();
-  if (!cleanTitle || !cleanText) return null;
+  if (!cleanTitle || !cleanText) {
+    showToast(t("toast.emptyFields"), "error");
+    return null;
+  }
 
   const now = new Date().toISOString();
   const slug = slugify(cleanTitle);

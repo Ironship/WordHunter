@@ -83,7 +83,7 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? (value as unknown[]).filter((item): item is string => typeof item === "string") : [];
 }
 
-export function normalizeReaderBookmarks(value: unknown): Record<string, WhReaderBookmark[]> {
+function normalizeReaderBookmarks(value: unknown): Record<string, WhReaderBookmark[]> {
   const colors = new Set<WhReaderBookmarkColor>(["amber", "red", "green", "blue", "purple"]);
   const result: Record<string, WhReaderBookmark[]> = {};
   for (const [textId, rawBookmarks] of objectEntries(value)) {
@@ -118,7 +118,7 @@ export function normalizeReaderBookmarks(value: unknown): Record<string, WhReade
   return result;
 }
 
-export class UnsupportedStateSchemaError extends Error {
+class UnsupportedStateSchemaError extends Error {
   constructor(source: string, version: unknown) {
     super(`${source} schema version ${version || "missing"} is not supported`);
     this.name = "UnsupportedStateSchemaError";
@@ -396,6 +396,7 @@ export function normalizeState(nextState: WhRecord): WhAppState {
   nextState.preferences.ankiExportStatuses = normalizeAnkiExportStatuses(nextState.preferences.ankiExportStatuses);
   nextState.preferences.readerFocusMode = nextState.preferences.readerFocusMode === true;
   nextState.preferences.readerWordPanelVisible = nextState.preferences.readerWordPanelVisible !== false;
+  nextState.preferences.aiExplanationAutoTrigger = nextState.preferences.aiExplanationAutoTrigger === true;
   nextState.preferences.selectedWordPanelItems = normalizeSelectedWordPanelItems(rawPreferences.selectedWordPanelItems);
   nextState.preferences.touchControls = nextState.preferences.touchControls === true;
   nextState.preferences.inTextReview = nextState.preferences.inTextReview === true;

@@ -1,8 +1,6 @@
 #[cfg(not(target_os = "android"))]
 mod web_app;
 
-use std::path::Path;
-
 #[cfg(target_os = "android")]
 mod android;
 
@@ -17,11 +15,3 @@ pub(crate) use web_app::{
 
 #[cfg(target_os = "android")]
 pub(crate) fn permit_exit(_app_handle: &tauri::AppHandle) {}
-
-#[cfg(not(target_os = "android"))]
-pub(crate) fn open_path(path: impl AsRef<Path>) {
-    let _ = open::that(path.as_ref());
-}
-
-#[cfg(target_os = "android")]
-pub(crate) fn open_path(_path: impl AsRef<Path>) {}

@@ -1,26 +1,5 @@
 use time::{Duration as TimeDuration, OffsetDateTime, format_description::well_known::Rfc3339};
 
-pub fn today_iso(date: OffsetDateTime) -> String {
-    format!(
-        "{:04}-{:02}-{:02}",
-        date.year(),
-        u8::from(date.month()),
-        date.day()
-    )
-}
-
-pub fn add_days_iso_from(days: i64, from: OffsetDateTime) -> String {
-    let next = from + TimeDuration::days(days.max(0));
-    today_iso(next)
-}
-
-pub fn is_due(next_date: Option<&str>, today: &str) -> bool {
-    match next_date {
-        None | Some("") => true,
-        Some(value) => value <= today,
-    }
-}
-
 pub(crate) fn add_days_iso(today: &str, days: i64) -> String {
     let Ok(date) = time::Date::parse(
         today,
@@ -28,7 +7,7 @@ pub(crate) fn add_days_iso(today: &str, days: i64) -> String {
     ) else {
         return today.to_string();
     };
-    let next = date + TimeDuration::days(days.max(0));
+    let next = date + TimeDuration::days(days);
     format!(
         "{:04}-{:02}-{:02}",
         next.year(),

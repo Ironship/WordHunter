@@ -100,6 +100,10 @@ function handleReviewButton(reviewButton: HTMLElement): void {
     const word = reviewButton.dataset.word;
     const container = document.getElementById(`review-image-search-results-${word}`);
     if (container) renderImageSearch(container, word);
+  } else if (reviewButton.dataset.reviewAction === "ai-explain") {
+    void import("../vocabulary/review-ai.js").then(({ runReviewCardAiExplain }) =>
+      runReviewCardAiExplain(reviewButton as HTMLButtonElement, reviewButton.dataset.word || "")
+    );
   } else {
     handleReviewAction(reviewButton.dataset.reviewAction);
   }
@@ -258,6 +262,7 @@ function flushWordFieldSave(): void {
   }
 }
 (window as Window & { flushWordFieldSave?: typeof flushWordFieldSave }).flushWordFieldSave = flushWordFieldSave;
+(window as Window & { scheduleWordFieldSave?: typeof scheduleWordFieldSave }).scheduleWordFieldSave = scheduleWordFieldSave;
 
 function handleWordFieldInput(event: Event): void {
   const field = eventElement(event.target)?.closest<HTMLInputElement | HTMLTextAreaElement>("[data-word-field]");

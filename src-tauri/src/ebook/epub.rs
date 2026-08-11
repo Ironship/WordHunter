@@ -1,5 +1,5 @@
 use base64::Engine;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
 use percent_encoding::percent_decode_str;
@@ -7,6 +7,9 @@ use serde_json::{Value, json};
 use zip::ZipArchive;
 
 use super::text::{clean_imported_ebook_text, decode_epub_text, strip_xhtml_to_text};
+
+/// Maximum number of entries accepted in an EPUB archive.
+const MAX_ENTRIES: usize = 500;
 
 #[derive(Clone, Debug)]
 struct EpubItem {
@@ -18,7 +21,6 @@ struct EpubItem {
 
 pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, String> {
     let mut archive = ZipArchive::new(Cursor::new(data)).map_err(|e| e.to_string())?;
-    const MAX_ENTRIES: usize = 500;
     const MAX_TOTAL_SIZE: u64 = 50_000_000;
     const MAX_FILE_SIZE: u64 = 10_000_000;
 
@@ -38,7 +40,11 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
         return Err("EPUB uncompressed size too large (max 50 MB)".to_string());
     }
 
+    // Entries already read by the main path; the fallback must not re-read them.
+    let mut consumed: HashSet<String> = HashSet::new();
+
     let container = read_zip_text(&mut archive, "META-INF/container.xml", MAX_FILE_SIZE)?;
+    consumed.insert("META-INF/container.xml".to_string());
     let container_doc = roxmltree::Document::parse(&container).map_err(|e| e.to_string())?;
     let rootfile = container_doc
         .descendants()
@@ -51,6 +57,7 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
         .ok_or_else(|| "EPUB rootfile path escapes the archive root".to_string())?;
 
     let opf = read_zip_text(&mut archive, &rootfile, MAX_FILE_SIZE)?;
+    consumed.insert(rootfile.clone());
     let opf_doc = roxmltree::Document::parse(&opf).map_err(|e| e.to_string())?;
     let opf_dir = zip_parent_dir(&rootfile);
     let title = find_xml_text(&opf_doc, "title").unwrap_or_else(|| fallback_title.to_string());
@@ -96,6 +103,7 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
             continue;
         };
         if let Ok(markup) = read_zip_text(&mut archive, &path, MAX_FILE_SIZE) {
+            consumed.insert(path.clone());
             let text = strip_xhtml_to_text(&markup);
             if !text.is_empty() {
                 text_parts.push(text);
@@ -104,7 +112,7 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
     }
 
     if text_parts.is_empty() {
-        text_parts = read_epub_html_fallback(&mut archive, MAX_FILE_SIZE)?;
+        text_parts = read_epub_html_fallback(&mut archive, MAX_FILE_SIZE, &consumed)?;
     }
 
     let cover_data_url =
@@ -125,14 +133,21 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
 fn read_epub_html_fallback(
     archive: &mut ZipArchive<Cursor<&[u8]>>,
     max_file_size: u64,
+    consumed: &HashSet<String>,
 ) -> Result<Vec<String>, String> {
     let mut text_parts = Vec::new();
-    if archive.len() > 500 {
-        return Err("EPUB contains too many files".to_string());
+    if archive.len() > MAX_ENTRIES {
+        return Err(format!(
+            "EPUB contains too many entries (max {MAX_ENTRIES})"
+        ));
     }
 
     for index in 0..archive.len() {
         let mut file = archive.by_index(index).map_err(|e| e.to_string())?;
+        // Skip entries the main path already read (container, OPF, spine files).
+        if consumed.contains(file.name()) {
+            continue;
+        }
         if epub_href("", file.name()).is_none() {
             continue;
         }
@@ -266,4 +281,159 @@ fn cover_data_url(
         "data:{content_type};base64,{}",
         base64::engine::general_purpose::STANDARD.encode(bytes)
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use zip::write::SimpleFileOptions;
+
+    const TEST_MAX_FILE_SIZE: u64 = 10_000_000;
+
+    fn build_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
+        for (name, content) in entries {
+            writer.start_file(*name, options).unwrap();
+            writer.write_all(content).unwrap();
+        }
+        writer.finish().unwrap().into_inner()
+    }
+
+    fn container_xml() -> &'static str {
+        r#"<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>"#
+    }
+
+    fn opf(title: &str, spine: &[(&str, &str)]) -> String {
+        let mut items = String::new();
+        let mut itemrefs = String::new();
+        for (id, href) in spine.iter() {
+            items.push_str(&format!(
+                r#"<item id="{id}" href="{href}" media-type="application/xhtml+xml"/>"#
+            ));
+            itemrefs.push_str(&format!(r#"<itemref idref="{id}"/>"#));
+        }
+        format!(
+            r#"<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>{title}</dc:title>
+    <dc:creator>Test Author</dc:creator>
+  </metadata>
+  <manifest>
+    {items}
+  </manifest>
+  <spine>
+    {itemrefs}
+  </spine>
+</package>"#
+        )
+    }
+
+    #[test]
+    fn parses_valid_epub() {
+        let data = build_zip(&[
+            ("META-INF/container.xml", container_xml().as_bytes()),
+            (
+                "OEBPS/content.opf",
+                opf(
+                    "My Title",
+                    &[("c1", "chapter1.html"), ("c2", "chapter2.html")],
+                )
+                .as_bytes(),
+            ),
+            (
+                "OEBPS/chapter1.html",
+                b"<html><body><p>Hello world</p></body></html>",
+            ),
+            (
+                "OEBPS/chapter2.html",
+                b"<html><body><p>Second chapter</p></body></html>",
+            ),
+        ]);
+        let result = parse_epub(&data, "Fallback Title").unwrap();
+        assert_eq!(result["title"].as_str(), Some("My Title"));
+        assert_eq!(result["author"].as_str(), Some("Test Author"));
+        let text = result["text"].as_str().unwrap();
+        assert!(text.contains("Hello world"));
+        assert!(text.contains("Second chapter"));
+    }
+
+    #[test]
+    fn rejects_archive_with_more_than_max_entries() {
+        let entries: Vec<(String, Vec<u8>)> = (0..=MAX_ENTRIES)
+            .map(|i| (format!("file{i}.txt"), b"x".to_vec()))
+            .collect();
+        let refs: Vec<(&str, &[u8])> = entries
+            .iter()
+            .map(|(name, content)| (name.as_str(), content.as_slice()))
+            .collect();
+        let data = build_zip(&refs);
+        let err = parse_epub(&data, "Fallback Title").unwrap_err();
+        assert_eq!(
+            err,
+            format!("EPUB contains too many entries (max {MAX_ENTRIES})")
+        );
+    }
+
+    #[test]
+    fn fallback_skips_entries_consumed_by_main_path() {
+        let data = build_zip(&[
+            ("a.html", b"<html><body><p>ALPHA</p></body></html>"),
+            ("b.html", b"<html><body><p>BETA</p></body></html>"),
+        ]);
+        let consumed: HashSet<String> = ["a.html".to_string()].into_iter().collect();
+        let mut archive = ZipArchive::new(Cursor::new(data.as_slice())).unwrap();
+        let parts = read_epub_html_fallback(&mut archive, TEST_MAX_FILE_SIZE, &consumed).unwrap();
+        assert_eq!(parts, vec!["BETA".to_string()]);
+    }
+
+    #[test]
+    fn fallback_applies_shared_entry_limit() {
+        let entries: Vec<(String, Vec<u8>)> = (0..=MAX_ENTRIES)
+            .map(|i| (format!("file{i}.html"), b"x".to_vec()))
+            .collect();
+        let refs: Vec<(&str, &[u8])> = entries
+            .iter()
+            .map(|(name, content)| (name.as_str(), content.as_slice()))
+            .collect();
+        let data = build_zip(&refs);
+        let mut archive = ZipArchive::new(Cursor::new(data.as_slice())).unwrap();
+        let err =
+            read_epub_html_fallback(&mut archive, TEST_MAX_FILE_SIZE, &HashSet::new()).unwrap_err();
+        assert_eq!(
+            err,
+            format!("EPUB contains too many entries (max {MAX_ENTRIES})")
+        );
+    }
+
+    #[test]
+    fn falls_back_to_archive_scan_when_spine_yields_no_text() {
+        let data = build_zip(&[
+            ("META-INF/container.xml", container_xml().as_bytes()),
+            (
+                "OEBPS/content.opf",
+                opf("Empty Spine", &[("c1", "chapter1.html")]).as_bytes(),
+            ),
+            (
+                "OEBPS/chapter1.html",
+                b"<html><body><!-- nothing --></body></html>",
+            ),
+            (
+                "OEBPS/chapter2.html",
+                b"<html><body><p>From fallback</p></body></html>",
+            ),
+        ]);
+        let result = parse_epub(&data, "Fallback Title").unwrap();
+        let text = result["text"].as_str().unwrap();
+        assert!(text.contains("From fallback"));
+        assert!(!text.contains("nothing"));
+    }
 }
