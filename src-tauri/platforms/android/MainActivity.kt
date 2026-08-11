@@ -454,10 +454,7 @@ class MainActivity : TauriActivity() {
         val file = File(cacheDir, "wordhunter-pdf-render-$id.pdf")
         var descriptor: ParcelFileDescriptor? = null
         try {
-          FileOutputStream(file).use { output ->
-            writeDecodedDataUrl(dataUrl, output)
-            output.fd.sync()
-          }
+          writeDecodedDataUrl(dataUrl, file)
           descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
           val renderer = PdfRenderer(descriptor)
           synchronized(pdfRenderLock) {
@@ -635,27 +632,30 @@ class MainActivity : TauriActivity() {
     return raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "default" }
   }
 
-  private fun writeDecodedDataUrl(dataUrl: String?, output: FileOutputStream) {
+  private fun writeDecodedDataUrl(dataUrl: String?, output: File) {
     val raw = dataUrl?.substringAfter(',', dataUrl)?.trim()?.takeIf { it.isNotEmpty() }
       ?: error("PDF data is empty.")
     if (raw.length > ANDROID_PDF_MAX_BASE64_ENCODED) {
       error("PDF is too large for Pocket render (max 64 MB).")
     }
     // Decode in chunks straight into the file: a full Java-heap buffer for
-    // large PDFs would OOM on lower-end devices (was a 400 MB single decode).
+    // large PDFs would OOM on lower-end devices (was a single full decode).
     val input = ByteArrayInputStream(raw.toByteArray(Charsets.US_ASCII))
     val decoder = Base64InputStream(input, Base64.DEFAULT)
     val buffer = ByteArray(64 * 1024)
     var decodedTotal = 0L
     try {
-      while (true) {
-        val count = decoder.read(buffer)
-        if (count <= 0) break
-        decodedTotal += count
-        if (decodedTotal > ANDROID_PDF_MAX_BASE64_DECODED) {
-          error("PDF is too large for Pocket render (max 64 MB).")
+      FileOutputStream(output).use { stream ->
+        while (true) {
+          val count = decoder.read(buffer)
+          if (count <= 0) break
+          decodedTotal += count
+          if (decodedTotal > ANDROID_PDF_MAX_BASE64_DECODED) {
+            error("PDF is too large for Pocket render (max 64 MB).")
+          }
+          stream.write(buffer, 0, count)
         }
-        output.write(buffer, 0, count)
+        stream.fd.sync()
       }
     } finally {
       decoder.close()
