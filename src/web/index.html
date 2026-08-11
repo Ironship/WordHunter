@@ -1474,62 +1474,6 @@
     </div>
   </dialog>
 
-  <dialog id="edit-book-dialog" class="panel edit-book-dialog" aria-labelledby="edit-book-title-heading">
-    <div class="panel-header">
-      <h2 id="edit-book-title-heading" data-i18n="editBook.title">Edit book</h2>
-    </div>
-    <div class="settings-body edit-book-body">
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.titleLabel">Title</span>
-        <input id="edit-book-title" type="text" class="input w-100">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.authorLabel">Author</span>
-        <input id="edit-book-author" type="text" class="input w-100">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.tagsLabel">Tags</span>
-        <input id="edit-book-tags" type="text" class="input w-100" data-i18n-attr="placeholder=import.tagsPlaceholder">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.levelLabel">Level</span>
-        <select id="edit-book-level" class="input w-100">
-          <option value="" data-i18n="library.levelAny">Any</option>
-          <option value="A1">A1</option>
-          <option value="A2">A2</option>
-          <option value="B1">B1</option>
-          <option value="B2">B2</option>
-          <option value="C1">C1</option>
-          <option value="C2">C2</option>
-        </select>
-      </label>
-      <div class="setting-row edit-book-field">
-        <span data-i18n="editBook.coverLabel">Cover</span>
-        <div class="edit-book-cover-row">
-          <div id="edit-book-cover-preview" class="edit-book-cover-preview" hidden>
-            <img id="edit-book-cover-img" src="" data-i18n-attr="alt=editBook.coverPreviewAlt" alt="Cover preview">
-            <button id="edit-book-cover-clear" class="edit-book-cover-clear" type="button" data-i18n-attr="title=editBook.deleteCover">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-          <label for="edit-book-cover" class="edit-book-cover-dropzone" id="edit-book-cover-dropzone" data-i18n-attr="title=editBook.changeCover">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-28-muted-m-b-05"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            <span data-i18n="import.coverPasteHint" class="fs-085-muted-center">Click to select or paste</span>
-            <input id="edit-book-cover" type="file" accept="image/*" class="visually-hidden">
-          </label>
-        </div>
-      </div>
-      <label class="setting-row edit-book-field edit-book-text-field">
-        <span data-i18n="editBook.textLabel">Text (You can paste images with Ctrl+V)</span>
-        <textarea id="edit-book-text" class="input" spellcheck="false"></textarea>
-      </label>
-      <div class="edit-book-actions">
-        <button id="edit-book-cancel" class="secondary-button" data-i18n="editBook.cancel">Cancel</button>
-        <button id="edit-book-save" class="primary-button" data-i18n="editBook.save">Save</button>
-      </div>
-    </div>
-  </dialog>
-
   <script type="module" src="app.js"></script>
 </body>
 </html>

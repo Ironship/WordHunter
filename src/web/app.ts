@@ -19,6 +19,7 @@ import { renderAddWordDialog } from "./js/events/word-editor.js";
 import { renderArgosDownloadDialog } from "./js/events/settings.js";
 import { renderUpdateDialog } from "./js/update-checker.js";
 import { renderLanguageOnboardingDialog } from "./js/onboarding.js";
+import { renderEditBookDialog } from "./js/book-actions/edit-modal.js";
 
 detectPlatform();
 
@@ -228,6 +229,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderYouGlishModal();
     renderAddWordDialog();
     renderArgosDownloadDialog();
+    renderEditBookDialog();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();

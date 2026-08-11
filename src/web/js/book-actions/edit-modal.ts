@@ -2,7 +2,6 @@
  * Edit-book modal: module state, dirty tracking, open/cancel/save, image paste.
  */
 import { state } from "../state.js";
-import { els as domElements } from "../dom.js";
 import { showToast as displayToast } from "../toast.js";
 import { bookTexts, findBookById, loadCustomTextContent } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
@@ -13,29 +12,85 @@ import { renderReader } from "../reader/renderer.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "../bridge-commit.js";
 import { upsertStoredText } from "../store-bridge.js";
 
-interface EditBookElements {
-  editBookTitle: HTMLInputElement;
-  editBookAuthor: HTMLInputElement;
-  editBookTags?: HTMLInputElement;
-  editBookLevel?: HTMLSelectElement;
-  editBookText: HTMLTextAreaElement;
-  editBookCoverImg: HTMLImageElement;
-  editBookCoverPreview: HTMLElement;
-  editBookDialog: HTMLDialogElement;
-  editBookCancel?: HTMLButtonElement;
-  editBookSave?: HTMLButtonElement;
+/**
+ * Builds the edit-book dialog markup once (idempotent). Called during app
+ * boot before cacheElements() (app.ts); the edit-book consumers resolve the
+ * elements via getElementById (editBookEl), so boot order guarantees they
+ * exist.
+ */
+export function renderEditBookDialog(): HTMLDialogElement {
+  const existing = document.getElementById("edit-book-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#edit-book-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "edit-book-dialog";
+  dialog.className = "panel edit-book-dialog";
+  dialog.setAttribute("aria-labelledby", "edit-book-title-heading");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <h2 id="edit-book-title-heading" data-i18n="editBook.title">Edit book</h2>
+    </div>
+    <div class="settings-body edit-book-body">
+      <label class="setting-row edit-book-field">
+        <span data-i18n="editBook.titleLabel">Title</span>
+        <input id="edit-book-title" type="text" class="input w-100">
+      </label>
+      <label class="setting-row edit-book-field">
+        <span data-i18n="editBook.authorLabel">Author</span>
+        <input id="edit-book-author" type="text" class="input w-100">
+      </label>
+      <label class="setting-row edit-book-field">
+        <span data-i18n="editBook.tagsLabel">Tags</span>
+        <input id="edit-book-tags" type="text" class="input w-100" data-i18n-attr="placeholder=import.tagsPlaceholder">
+      </label>
+      <label class="setting-row edit-book-field">
+        <span data-i18n="editBook.levelLabel">Level</span>
+        <select id="edit-book-level" class="input w-100">
+          <option value="" data-i18n="library.levelAny">Any</option>
+          <option value="A1">A1</option>
+          <option value="A2">A2</option>
+          <option value="B1">B1</option>
+          <option value="B2">B2</option>
+          <option value="C1">C1</option>
+          <option value="C2">C2</option>
+        </select>
+      </label>
+      <div class="setting-row edit-book-field">
+        <span data-i18n="editBook.coverLabel">Cover</span>
+        <div class="edit-book-cover-row">
+          <div id="edit-book-cover-preview" class="edit-book-cover-preview" hidden>
+            <img id="edit-book-cover-img" src="" data-i18n-attr="alt=editBook.coverPreviewAlt" alt="Cover preview">
+            <button id="edit-book-cover-clear" class="edit-book-cover-clear" type="button" data-i18n-attr="title=editBook.deleteCover">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <label for="edit-book-cover" class="edit-book-cover-dropzone" id="edit-book-cover-dropzone" data-i18n-attr="title=editBook.changeCover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-28-muted-m-b-05"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span data-i18n="import.coverPasteHint" class="fs-085-muted-center">Click to select or paste</span>
+            <input id="edit-book-cover" type="file" accept="image/*" class="visually-hidden">
+          </label>
+        </div>
+      </div>
+      <label class="setting-row edit-book-field edit-book-text-field">
+        <span data-i18n="editBook.textLabel">Text (You can paste images with Ctrl+V)</span>
+        <textarea id="edit-book-text" class="input" spellcheck="false"></textarea>
+      </label>
+      <div class="edit-book-actions">
+        <button id="edit-book-cancel" class="secondary-button" data-i18n="editBook.cancel">Cancel</button>
+        <button id="edit-book-save" class="primary-button" data-i18n="editBook.save">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
 }
 
-interface EditBookOriginalValues {
-  title: string;
-  author: string;
-  tags: string;
-  level: string;
-  text: string;
-  cover: string | null;
+/** Resolves an edit-book dialog element by id (rendered at boot, so present). */
+function editBookEl<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
 }
 
-const els = domElements as EditBookElements;
 const t = translate as (key: string, vars?: WhRecord) => string;
 const showToast = displayToast as (message: string, kind?: string) => void;
 
@@ -46,17 +101,26 @@ let editBookOriginalValues: EditBookOriginalValues | null = null;
 let editBookGeneration = 0;
 let editBookSaveRunning = false;
 
+interface EditBookOriginalValues {
+  title: string;
+  author: string;
+  tags: string;
+  level: string;
+  text: string;
+  cover: string | null;
+}
+
 export function setPendingEditCoverDataUrl(url: string | null): void {
   pendingEditCoverDataUrl = url;
 }
 
 export function isEditBookDirty(): boolean {
   if (!editBookOriginalValues) return false;
-  const title = els.editBookTitle.value;
-  const author = els.editBookAuthor.value;
-  const tags = els.editBookTags?.value || "";
-  const level = els.editBookLevel?.value || "";
-  const text = els.editBookText.value;
+  const title = editBookEl<HTMLInputElement>("edit-book-title")?.value ?? "";
+  const author = editBookEl<HTMLInputElement>("edit-book-author")?.value ?? "";
+  const tags = editBookEl<HTMLInputElement>("edit-book-tags")?.value ?? "";
+  const level = editBookEl<HTMLSelectElement>("edit-book-level")?.value ?? "";
+  const text = editBookEl<HTMLTextAreaElement>("edit-book-text")?.value ?? "";
   return title !== editBookOriginalValues.title
     || author !== editBookOriginalValues.author
     || tags !== editBookOriginalValues.tags
@@ -76,10 +140,19 @@ export async function openEditBookModal(id: string): Promise<void> {
   editingBookId = id;
   editingBookKind = customText ? "custom" : "user";
 
-  els.editBookTitle.value = book.title || "";
-  els.editBookAuthor.value = book.author || "";
-  if (els.editBookTags) els.editBookTags.value = formatTagList(book.tags);
-  if (els.editBookLevel) els.editBookLevel.value = book.level || "";
+  const titleInput = editBookEl<HTMLInputElement>("edit-book-title");
+  const authorInput = editBookEl<HTMLInputElement>("edit-book-author");
+  const tagsInput = editBookEl<HTMLInputElement>("edit-book-tags");
+  const levelSelect = editBookEl<HTMLSelectElement>("edit-book-level");
+  const textArea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+  const coverImg = editBookEl<HTMLImageElement>("edit-book-cover-img");
+  const coverPreview = editBookEl<HTMLElement>("edit-book-cover-preview");
+  const dialog = editBookEl<HTMLDialogElement>("edit-book-dialog");
+
+  if (titleInput) titleInput.value = book.title || "";
+  if (authorInput) authorInput.value = book.author || "";
+  if (tagsInput) tagsInput.value = formatTagList(book.tags);
+  if (levelSelect) levelSelect.value = book.level || "";
 
   let customBody = "";
   if (customText) {
@@ -97,29 +170,31 @@ export async function openEditBookModal(id: string): Promise<void> {
     }
   }
   if (generation !== editBookGeneration || editingBookId !== id) return;
-  els.editBookText.value = customText ? customBody : bookTexts.get(id) || "";
-  els.editBookText.readOnly = editingBookKind !== "custom" || Array.isArray(customText?.pdfOcrPages);
+  if (textArea) {
+    textArea.value = customText ? customBody : bookTexts.get(id) || "";
+    textArea.readOnly = editingBookKind !== "custom" || Array.isArray(customText?.pdfOcrPages);
+  }
 
   const coverUrl = typeof book.coverDataUrl === "string" ? book.coverDataUrl : "";
   pendingEditCoverDataUrl = coverUrl;
   if (pendingEditCoverDataUrl) {
-    els.editBookCoverImg.src = pendingEditCoverDataUrl;
-    els.editBookCoverPreview.hidden = false;
+    if (coverImg) coverImg.src = pendingEditCoverDataUrl;
+    if (coverPreview) coverPreview.hidden = false;
   } else {
-    els.editBookCoverImg.src = "";
-    els.editBookCoverPreview.hidden = true;
+    if (coverImg) coverImg.src = "";
+    if (coverPreview) coverPreview.hidden = true;
   }
 
   editBookOriginalValues = {
-    title: els.editBookTitle.value,
-    author: els.editBookAuthor.value,
-    tags: els.editBookTags?.value || "",
-    level: els.editBookLevel?.value || "",
-    text: els.editBookText.value,
+    title: titleInput?.value ?? "",
+    author: authorInput?.value ?? "",
+    tags: tagsInput?.value || "",
+    level: levelSelect?.value || "",
+    text: textArea?.value ?? "",
     cover: pendingEditCoverDataUrl
   };
 
-  els.editBookDialog.showModal();
+  dialog?.showModal();
 }
 
 export function cancelEditBook(): void {
@@ -129,8 +204,9 @@ export function cancelEditBook(): void {
   pendingEditCoverDataUrl = null;
   editingBookId = null;
   editingBookKind = null;
-  if (els.editBookText) els.editBookText.readOnly = false;
-  els.editBookDialog.close();
+  const textArea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+  if (textArea) textArea.readOnly = false;
+  editBookEl<HTMLDialogElement>("edit-book-dialog")?.close();
 }
 
 export async function saveEditedBook(): Promise<void> {
@@ -139,22 +215,30 @@ export async function saveEditedBook(): Promise<void> {
   const targetBookId = editingBookId;
   const customText = state.customTexts.find(t => t.id === targetBookId);
   const userBook = !customText ? state.userBooks.find((book) => book.id === targetBookId) : null;
-  if (els.editBookCancel) els.editBookCancel.disabled = true;
-  if (els.editBookSave) els.editBookSave.disabled = true;
+  const cancelButton = editBookEl<HTMLButtonElement>("edit-book-cancel");
+  const saveButton = editBookEl<HTMLButtonElement>("edit-book-save");
+  const titleInput = editBookEl<HTMLInputElement>("edit-book-title");
+  const authorInput = editBookEl<HTMLInputElement>("edit-book-author");
+  const tagsInput = editBookEl<HTMLInputElement>("edit-book-tags");
+  const levelSelect = editBookEl<HTMLSelectElement>("edit-book-level");
+  const textArea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+  const dialog = editBookEl<HTMLDialogElement>("edit-book-dialog");
+  if (cancelButton) cancelButton.disabled = true;
+  if (saveButton) saveButton.disabled = true;
   if (!customText && !userBook) {
     editBookSaveRunning = false;
-    if (els.editBookCancel) els.editBookCancel.disabled = false;
-    if (els.editBookSave) els.editBookSave.disabled = false;
+    if (cancelButton) cancelButton.disabled = false;
+    if (saveButton) saveButton.disabled = false;
     return;
   }
 
-  const cleanTitle = els.editBookTitle.value.trim();
-  const cleanText = els.editBookText.value.trim();
+  const cleanTitle = (titleInput?.value ?? "").trim();
+  const cleanText = (textArea?.value ?? "").trim();
   if (!cleanTitle || (customText && !cleanText)) {
     showToast(t("toast.emptyFields"));
     editBookSaveRunning = false;
-    if (els.editBookCancel) els.editBookCancel.disabled = false;
-    if (els.editBookSave) els.editBookSave.disabled = false;
+    if (cancelButton) cancelButton.disabled = false;
+    if (saveButton) saveButton.disabled = false;
     return;
   }
 
@@ -162,10 +246,10 @@ export async function saveEditedBook(): Promise<void> {
     const nextCustomText = {
       ...customText,
       title: cleanTitle,
-      author: els.editBookAuthor.value.trim(),
-      tags: parseTagList(els.editBookTags?.value),
+      author: (authorInput?.value ?? "").trim(),
+      tags: parseTagList(tagsInput?.value),
       coverDataUrl: pendingEditCoverDataUrl,
-      level: els.editBookLevel?.value || "",
+      level: levelSelect?.value || "",
       updatedAt: new Date().toISOString()
     };
     try {
@@ -174,8 +258,8 @@ export async function saveEditedBook(): Promise<void> {
       console.warn("upsert_text failed", e);
       showToast(t("toast.saveUnavailable"), "error");
       editBookSaveRunning = false;
-      if (els.editBookCancel) els.editBookCancel.disabled = false;
-      if (els.editBookSave) els.editBookSave.disabled = false;
+      if (cancelButton) cancelButton.disabled = false;
+      if (saveButton) saveButton.disabled = false;
       return;
     }
     Object.assign(customText, nextCustomText);
@@ -184,10 +268,10 @@ export async function saveEditedBook(): Promise<void> {
   } else if (userBook) {
     Object.assign(userBook, {
       title: cleanTitle,
-      author: els.editBookAuthor.value.trim(),
-      tags: parseTagList(els.editBookTags?.value),
+      author: (authorInput?.value ?? "").trim(),
+      tags: parseTagList(tagsInput?.value),
       coverDataUrl: pendingEditCoverDataUrl,
-      level: els.editBookLevel?.value || "",
+      level: levelSelect?.value || "",
       updatedAt: new Date().toISOString()
     });
   }
@@ -202,8 +286,8 @@ export async function saveEditedBook(): Promise<void> {
     });
     showToast(t("toast.saveUnavailable"), "error");
     editBookSaveRunning = false;
-    if (els.editBookCancel) els.editBookCancel.disabled = false;
-    if (els.editBookSave) els.editBookSave.disabled = false;
+    if (cancelButton) cancelButton.disabled = false;
+    if (saveButton) saveButton.disabled = false;
     return;
   }
   renderLibrary();
@@ -213,13 +297,13 @@ export async function saveEditedBook(): Promise<void> {
   if (state.currentTextId === targetBookId && state.currentView === "reader") renderReader();
   showToast(t("toast.textSaved"));
   editBookOriginalValues = null;
-  if (els.editBookText) els.editBookText.readOnly = false;
-  els.editBookDialog.close();
+  if (textArea) textArea.readOnly = false;
+  dialog?.close();
   editingBookId = null;
   editingBookKind = null;
   editBookSaveRunning = false;
-  if (els.editBookCancel) els.editBookCancel.disabled = false;
-  if (els.editBookSave) els.editBookSave.disabled = false;
+  if (cancelButton) cancelButton.disabled = false;
+  if (saveButton) saveButton.disabled = false;
 }
 
 export async function pasteImageToEditBook(file: File): Promise<void> {
@@ -237,7 +321,8 @@ export async function pasteImageToEditBook(file: File): Promise<void> {
   reader.onload = async () => {
     if (generation !== editBookGeneration || editingBookId !== targetBookId) return;
     const base64Data = typeof reader.result === "string" ? reader.result : "";
-    const textarea = els.editBookText;
+    const textarea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+    if (!textarea) return;
     const startPos = textarea.selectionStart;
     const endPos = textarea.selectionEnd;
     const textToInsert = `\n[IMG:${imgName}]\n`;

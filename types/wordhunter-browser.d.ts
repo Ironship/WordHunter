@@ -359,16 +359,6 @@ interface WhDomCache {
     discoverSort?: HTMLSelectElement | null;
     discoverLevel?: HTMLSelectElement | null;
     discoverSelectAll?: HTMLButtonElement | null;
-    editBookDialog?: HTMLDialogElement | null;
-    editBookTitle?: HTMLInputElement | null;
-    editBookAuthor?: HTMLInputElement | null;
-    editBookTags?: HTMLInputElement | null;
-    editBookLevel?: HTMLSelectElement | null;
-    editBookCoverImg?: HTMLImageElement | null;
-    editBookCover?: HTMLInputElement | null;
-    editBookText?: HTMLTextAreaElement | null;
-    editBookCancel?: HTMLButtonElement | null;
-    editBookSave?: HTMLButtonElement | null;
     bookList?: HTMLElement | null;
     chooseDataDirectory?: HTMLElement | null;
     clearLibrary?: HTMLElement | null;
@@ -381,8 +371,6 @@ interface WhDomCache {
     discoverResults?: HTMLElement | null;
     discoverStatus?: HTMLElement | null;
     discoverToolbar?: HTMLElement | null;
-    editBookCoverClear?: HTMLElement | null;
-    editBookCoverPreview?: HTMLElement | null;
     exportAnkiTsv?: HTMLElement | null;
     exportVocabAnki?: HTMLElement | null;
     exportVocabTxt?: HTMLElement | null;

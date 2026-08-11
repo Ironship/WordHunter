@@ -519,6 +519,20 @@ describe("repository validation wiring", () => {
     "argos-languages-list", // events/settings.ts (renderArgosDownloadDialog)
     "argos-download-cancel", // events/settings.ts (renderArgosDownloadDialog)
     "argos-download-confirm", // events/settings.ts (renderArgosDownloadDialog)
+    "edit-book-dialog", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-title-heading", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-title", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-author", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-tags", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-level", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-preview", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-img", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-clear", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-dropzone", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-text", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cancel", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-save", // book-actions/edit-modal.ts (renderEditBookDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

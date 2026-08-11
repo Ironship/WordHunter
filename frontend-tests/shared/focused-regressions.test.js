@@ -611,21 +611,21 @@ describe("focused frontend regressions", () => {
 
     let closeCount = 0;
     const els = {
-      editBookTitle: { value: "" },
-      editBookAuthor: { value: "" },
-      editBookTags: { value: "" },
-      editBookLevel: { value: "" },
-      editBookText: { value: "", readOnly: false },
-      editBookCoverImg: { src: "" },
-      editBookCoverPreview: { hidden: true },
-      editBookDialog: { showModal() {}, close() { closeCount += 1; } },
-      editBookCancel: { disabled: false },
-      editBookSave: { disabled: false }
+      "edit-book-title": { value: "" },
+      "edit-book-author": { value: "" },
+      "edit-book-tags": { value: "" },
+      "edit-book-level": { value: "" },
+      "edit-book-text": { value: "", readOnly: false },
+      "edit-book-cover-img": { src: "" },
+      "edit-book-cover-preview": { hidden: true },
+      "edit-book-dialog": { showModal() {}, close() { closeCount += 1; } },
+      "edit-book-cancel": { disabled: false },
+      "edit-book-save": { disabled: false }
     };
+    const document = { getElementById: (id) => els[id] ?? null };
     const state = { customTexts: [{ id: "custom-1", title: "Title", text: "Body" }], userBooks: [] };
     const module = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
       "../state.js": { state },
-      "../dom.js": { els },
       "../toast.js": { showToast() {} },
       "../books.js": {
         bookTexts: new Map([["custom-1", "stale body"]]),
@@ -639,10 +639,10 @@ describe("focused frontend regressions", () => {
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
       "../store-bridge.js": { upsertStoredText() {} }
-    }, { window: { __qtBridge: false } });
+    }, { window: { __qtBridge: false }, document });
 
     await module.openEditBookModal("custom-1");
-    assert.equal(els.editBookText.value, "fresh synced body");
+    assert.equal(els["edit-book-text"].value, "fresh synced body");
     module.setPendingEditCoverDataUrl("data:image/png;base64,test");
     assert.equal(module.isEditBookDirty(), true);
 
@@ -650,7 +650,7 @@ describe("focused frontend regressions", () => {
 
     assert.equal(module.pendingEditCoverDataUrl, null);
     assert.equal(module.isEditBookDirty(), false);
-    assert.equal(els.editBookText.readOnly, false);
+    assert.equal(els["edit-book-text"].readOnly, false);
     assert.equal(closeCount, 1);
   });
 
@@ -672,21 +672,21 @@ describe("focused frontend regressions", () => {
     let showCount = 0;
     const toasts = [];
     const els = {
-      editBookTitle: { value: "" },
-      editBookAuthor: { value: "" },
-      editBookTags: { value: "" },
-      editBookLevel: { value: "" },
-      editBookText: { value: "stale body", readOnly: false },
-      editBookCoverImg: { src: "" },
-      editBookCoverPreview: { hidden: true },
-      editBookDialog: { showModal() { showCount += 1; }, close() {} },
-      editBookCancel: { disabled: false },
-      editBookSave: { disabled: false }
+      "edit-book-title": { value: "" },
+      "edit-book-author": { value: "" },
+      "edit-book-tags": { value: "" },
+      "edit-book-level": { value: "" },
+      "edit-book-text": { value: "stale body", readOnly: false },
+      "edit-book-cover-img": { src: "" },
+      "edit-book-cover-preview": { hidden: true },
+      "edit-book-dialog": { showModal() { showCount += 1; }, close() {} },
+      "edit-book-cancel": { disabled: false },
+      "edit-book-save": { disabled: false }
     };
+    const document = { getElementById: (id) => els[id] ?? null };
     const state = { customTexts: [{ id: "custom-1", title: "Title" }], userBooks: [] };
     const module = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
       "../state.js": { state },
-      "../dom.js": { els },
       "../toast.js": { showToast(message) { toasts.push(message); } },
       "../books.js": {
         bookTexts: new Map([["custom-1", "stale body"]]),
@@ -700,7 +700,7 @@ describe("focused frontend regressions", () => {
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
       "../store-bridge.js": { upsertStoredText() {} }
-    }, { window: { __qtBridge: true }, console: { warn() {} } });
+    }, { window: { __qtBridge: true }, document, console: { warn() {} } });
 
     await module.openEditBookModal("custom-1");
 

@@ -438,3 +438,52 @@ describe("argos download dialog renderer (events/settings.ts)", () => {
     assertBootOrder("renderArgosDownloadDialog();", "argos-download-dialog");
   });
 });
+
+describe("edit-book dialog renderer (book-actions/edit-modal.ts)", () => {
+  it("builds the dialog once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderEditBookDialog } = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
+      "../state.js": { state: {} },
+      "../toast.js": { showToast: () => {} },
+      "../books.js": { bookTexts: new Map(), findBookById: () => null, loadCustomTextContent: async () => "" },
+      "../vocab-index-client.js": { invalidateBookId: () => {} },
+      "../utils.js": { formatTagList: () => "", parseTagList: () => [] },
+      "../i18n.js": { t: (key) => key },
+      "../views/library.js": { renderLibrary: () => {} },
+      "../reader/renderer.js": { renderReader: () => {} },
+      "../bridge-commit.js": { reloadBridgeSnapshot: async () => {}, saveStateAndReloadBridge: async () => {} },
+      "../store-bridge.js": { upsertStoredText: async () => {} }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const dialog = renderEditBookDialog();
+    assert.equal(dialog.id, "edit-book-dialog");
+    assert.equal(dialog.className, "panel edit-book-dialog");
+    assert.equal(dialog.attrs["aria-labelledby"], "edit-book-title-heading");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "edit-book-title-heading",
+      "edit-book-title",
+      "edit-book-author",
+      "edit-book-tags",
+      "edit-book-level",
+      "edit-book-cover-preview",
+      "edit-book-cover-img",
+      "edit-book-cover-clear",
+      "edit-book-cover-dropzone",
+      "edit-book-cover",
+      "edit-book-text",
+      "edit-book-cancel",
+      "edit-book-save"
+    ]) {
+      assert.match(dialog.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(dialog.innerHTML, /data-i18n="editBook\.title"/);
+    assert.match(dialog.innerHTML, /data-i18n-attr="placeholder=import\.tagsPlaceholder"/);
+    assert.equal(renderEditBookDialog(), dialog, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderEditBookDialog();", "edit-book-dialog");
+  });
+});
