@@ -136,7 +136,8 @@ describe("Android Pocket bridges", () => {
     assertSourceOrder(shared, "openAndroidUrl(url)", "window.__qtBridge");
     assert.match(app, /openAndroidUrl\(link\.href\)/);
     assert.match(activity, /fun openUrl\(url: String\?\): Boolean/);
-    assert.match(activity, /if \(scheme != "http" && scheme != "https"\) return false/);
+    assert.match(activity, /private val ANDROID_OPEN_URL_ALLOWED_SCHEMES = setOf\("https", "http", "market", "mailto"\)/);
+    assert.match(activity, /runOnUiThread[\s\S]{0,300}startActivity\(intent\)/);
     assert.match(activity, /Intent\(Intent\.ACTION_VIEW, uri\)/);
     assert.match(activity, /intent\.addCategory\(Intent\.CATEGORY_BROWSABLE\)/);
     assert.match(activity, /override fun onRangeStart\(utteranceId: String\?, start: Int, end: Int, frame: Int\)/);
@@ -178,6 +179,41 @@ describe("Android Pocket bridges", () => {
     assert.match(importEvents, /getAndroidPdfRendererBridge\(\)/);
     assert.match(importEvents, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
     assert.match(importEvents, /pending_import: true/);
+  });
+
+  it("caps Android PDF base64 transfer at 64 MB and decodes chunked to the cache file", () => {
+    const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
+    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+
+    assert.match(activity, /private const val ANDROID_PDF_MAX_BASE64_DECODED = 64L \* 1024L \* 1024L/);
+    assert.match(activity, /private fun writeDecodedDataUrl\(dataUrl: String\?, output: File\)/);
+    assert.match(activity, /writeDecodedDataUrl\(dataUrl, file\)/);
+    assert.match(activity, /Base64InputStream\(input, Base64\.DEFAULT\)/);
+    assert.match(activity, /stream\.write\(buffer, 0, count\)/);
+    assert.match(activity, /PDF is too large for Pocket render \(max 64 MB\)/);
+    assert.doesNotMatch(activity, /Base64\.decode\(raw, Base64\.DEFAULT\)/);
+    assert.doesNotMatch(activity, /400 MB/);
+    assert.match(importEvents, /ANDROID_PDF_RENDER_MAX_BASE64_MB/);
+    assert.match(
+      importEvents,
+      /if \(data\.length > ANDROID_PDF_RENDER_MAX_BASE64_ENCODED\)[\s\S]{0,300}bridge\.beginPdfRender\(sessionId, data\)/
+    );
+  });
+
+  it("declares the Android FileProvider capture contract and keeps file_paths.xml synced", () => {
+    const manifest = readFileSync(new URL("../../src-tauri/platforms/android/AndroidManifest.xml", import.meta.url), "utf8");
+    const filePaths = readFileSync(new URL("../../src-tauri/platforms/android/res/xml/file_paths.xml", import.meta.url), "utf8");
+    const build = readFileSync(new URL("../../scripts/build.bat", import.meta.url), "utf8");
+
+    assert.match(manifest, /androidx\.core\.content\.FileProvider/);
+    assert.match(manifest, /android:authorities="\$\{applicationId\}\.fileprovider"/);
+    assert.match(manifest, /android:exported="false"/);
+    assert.match(manifest, /android:grantUriPermissions="true"/);
+    assert.match(manifest, /android:resource="@xml\/file_paths"/);
+    assert.match(filePaths, /<external-files-path name="pocket_camera_photos" path="Pictures\/" \/>/);
+    assert.match(filePaths, /<cache-path name="pocket_cache" path="\." \/>/);
+    assert.match(build, /Copy-Item -LiteralPath \$filePathsSource -Destination \$filePathsTarget -Force/);
+    assert.doesNotMatch(build, /Remove-Item[^\r\n]*file_paths\.xml/);
   });
 
   it("defines the Android create-document export ABI", () => {

@@ -20,6 +20,7 @@ import android.os.ParcelFileDescriptor
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Base64
+import android.util.Base64InputStream
 import android.util.Log
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -27,6 +28,7 @@ import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -46,6 +48,11 @@ private const val ANDROID_EXPORT_WRITE_TIMEOUT_MS = 300000L
 private const val ANDROID_IMPORT_TIMEOUT_MS = 5 * 60 * 1000L
 private const val ANDROID_TRANSFER_MAX_BYTES = 2L * 1024L * 1024L * 1024L
 private const val ANDROID_PDF_MAX_BITMAP_PIXELS = 8_000_000
+// Base64 PDF payloads are decoded in chunks into a cache file; the decoded
+// size is capped so a malicious/huge payload cannot OOM the Java heap.
+private const val ANDROID_PDF_MAX_BASE64_DECODED = 64L * 1024L * 1024L
+private const val ANDROID_PDF_MAX_BASE64_ENCODED = ANDROID_PDF_MAX_BASE64_DECODED * 4L / 3L + 4L
+private val ANDROID_OPEN_URL_ALLOWED_SCHEMES = setOf("https", "http", "market", "mailto")
 private const val ANDROID_DIRECT_EXPORT_MAX_CHARS = 64L * 1024L * 1024L
 private const val MAX_TTS_SPEAK_CHARS = 20_000
 private const val TTS_NOTIFICATION_CHANNEL_ID = "wordhunter-tts"
@@ -430,25 +437,25 @@ class MainActivity : TauriActivity() {
       val target = url?.trim()?.takeIf { it.isNotEmpty() } ?: return false
       val uri = runCatching { Uri.parse(target) }.getOrNull() ?: return false
       val scheme = uri.scheme?.lowercase(Locale.ROOT)
-      if (scheme != "http" && scheme != "https") return false
-      return runCatching {
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        intent.addCategory(Intent.CATEGORY_BROWSABLE)
-        startActivity(intent)
-        true
-      }.getOrDefault(false)
+      if (scheme !in ANDROID_OPEN_URL_ALLOWED_SCHEMES) return false
+      val intent = Intent(Intent.ACTION_VIEW, uri)
+      intent.addCategory(Intent.CATEGORY_BROWSABLE)
+      runOnUiThread {
+        runCatching { startActivity(intent) }
+          .onFailure { error -> Log.w("WordHunter", "Could not open $target: ${error.message}") }
+      }
+      return true
     }
 
     @JavascriptInterface
     fun beginPdfRender(sessionId: String?, dataUrl: String?): String {
       return runCatching {
         val id = safePdfRenderSessionId(sessionId)
-        val data = decodeDataUrl(dataUrl)
         val file = File(cacheDir, "wordhunter-pdf-render-$id.pdf")
         var descriptor: ParcelFileDescriptor? = null
         try {
           FileOutputStream(file).use { output ->
-            output.write(data)
+            writeDecodedDataUrl(dataUrl, output)
             output.fd.sync()
           }
           descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
@@ -628,18 +635,31 @@ class MainActivity : TauriActivity() {
     return raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "default" }
   }
 
-  private fun decodeDataUrl(dataUrl: String?): ByteArray {
+  private fun writeDecodedDataUrl(dataUrl: String?, output: FileOutputStream) {
     val raw = dataUrl?.substringAfter(',', dataUrl)?.trim()?.takeIf { it.isNotEmpty() }
       ?: error("PDF data is empty.")
-    val maxEncodedLength = 400 * 1024 * 1024 * 4 / 3 + 4
-    if (raw.length > maxEncodedLength) {
-      error("PDF is too large for Pocket render (max 400 MB).")
+    if (raw.length > ANDROID_PDF_MAX_BASE64_ENCODED) {
+      error("PDF is too large for Pocket render (max 64 MB).")
     }
-    val data = Base64.decode(raw, Base64.DEFAULT)
-    if (data.size > 400 * 1024 * 1024) {
-      error("PDF is too large for Pocket render (max 400 MB).")
+    // Decode in chunks straight into the file: a full Java-heap buffer for
+    // large PDFs would OOM on lower-end devices (was a 400 MB single decode).
+    val input = ByteArrayInputStream(raw.toByteArray(Charsets.US_ASCII))
+    val decoder = Base64InputStream(input, Base64.DEFAULT)
+    val buffer = ByteArray(64 * 1024)
+    var decodedTotal = 0L
+    try {
+      while (true) {
+        val count = decoder.read(buffer)
+        if (count <= 0) break
+        decodedTotal += count
+        if (decodedTotal > ANDROID_PDF_MAX_BASE64_DECODED) {
+          error("PDF is too large for Pocket render (max 64 MB).")
+        }
+        output.write(buffer, 0, count)
+      }
+    } finally {
+      decoder.close()
     }
-    return data
   }
 
   private fun localeFor(lang: String): Locale {
