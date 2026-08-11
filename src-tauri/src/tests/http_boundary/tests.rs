@@ -203,6 +203,33 @@ fn rejects_dns_rebinding_hosts_and_cross_site_origins() {
 }
 
 #[test]
+fn rejects_null_origin_writes_but_allows_null_origin_reads() {
+    let post = "POST /__store/save HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\nX-WH-Token: {TOKEN}\r\nContent-Length: 0\r\n\r\n";
+    // /__media is token-free by design — it proves the origin allowance itself.
+    let get =
+        "GET /__media?book=x&img=y HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\n\r\n";
+    // The null-origin POST must be rejected up front (403). A null-origin
+    // GET stays allowed — it reaches the handlers (404 here, not 403).
+    for (template, expected_status) in [(post, " 403 "), (get, " 404 ")] {
+        let (port, server) = spawn_boundary_server();
+        let raw = template
+            .replace("{port}", &port.to_string())
+            .replace("{TOKEN}", TOKEN);
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        stream.write_all(raw.as_bytes()).unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        server.join().unwrap();
+        let status_line = response.lines().next().unwrap_or_default();
+        assert!(
+            status_line.contains(expected_status),
+            "unexpected response: {status_line}"
+        );
+    }
+}
+
+#[test]
 fn static_responses_include_security_headers() {
     let (port, server) = spawn_boundary_server();
     let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
