@@ -101,6 +101,13 @@ function detectArticle(context: string, word: string, language: string): Article
 let suggestPrefixIndex = new Map<string, string[]>();
 let lastSuggestPrefixVocab: Record<string, { status?: string }> | null = null;
 
+// In-place vocab mutations (deleteWord, getOrCreateEntry) keep the vocab map
+// reference, so the lazily built prefix index would go stale (dead keys and
+// missed entries). Reset the marker so the next query rebuilds the index.
+export function invalidateSuggestIndex(): void {
+  lastSuggestPrefixVocab = null;
+}
+
 export function getSmartSuggestion(context: string, word: string): SmartSuggestion | null {
   if (!context || !word || word.includes(" ")) return null;
   const language = effectiveLearningLanguage(state.preferences);
@@ -210,7 +217,12 @@ function checkGermanSeparableVerb(context: string, word: string): string | null 
   }
   let isPrefixConsumed = false;
   for (const vocabWord of suggestPrefixIndex.get(lastWord) || []) {
-    if (state.vocab[vocabWord].status === "new") continue;
+    // Entries are deleted in place (deleteWord mutates the vocab map without
+    // replacing its reference), so the index can hold dead keys — skip them
+    // instead of crashing the word panel on a TypeError.
+    const entry = state.vocab[vocabWord];
+    if (!entry) continue;
+    if (entry.status === "new") continue;
     const verbPart = vocabWord.split(" ")[0];
     if (!verbPart) continue;
     const verbRegex = new RegExp(`\\b${verbPart}\\b`, 'i');

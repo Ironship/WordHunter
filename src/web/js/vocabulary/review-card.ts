@@ -415,6 +415,14 @@ export function removeFromSrs(word: string): void {
   renderVocabulary();
 }
 
+// Mutation sites outside this module (deleteWord, setWordStatus, the
+// word-editor dialog) change the queue's inputs without going through
+// gradeReview/removeFromSrs; they must invalidate the memo or the review
+// queue shows phantom/stale entries.
+export function invalidateReviewQueueCache(): void {
+  reviewQueueCache = null;
+}
+
 export function formatSrsMeta(entry: SrsMetaEntry): string {
   const mode = state.preferences?.srsAlgorithm === "fsrs" || entry.srsAlgorithm === "fsrs" ? "fsrs" : "sm2";
   if (mode === "fsrs") {
