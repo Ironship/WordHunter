@@ -83,10 +83,18 @@ jobs:
           runuser -u aur-builder -- bash -c \
             "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
 
+          # The AppImage sha256 lives only in PKGBUILD/.SRCINFO; fetch the
+          # release asset and cross-check it against that single source of
+          # truth instead of duplicating the digest in this workflow.
           asset="${AUR_BUILD_DIR}/WordHunter-${WH_APP_VERSION}-x86_64.AppImage"
-          printf '%s  %s\n' \
-            '309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523' \
-            "${asset}" | sha256sum -c -
+          expected="$(sed -n 's/^[[:space:]]*sha256sums_x86_64 = //p' "${AUR_BUILD_DIR}/.SRCINFO")"
+          test -n "${expected}"
+          actual="$(sha256sum "${asset}" | cut -d' ' -f1)"
+          test "${actual}" = "${expected}" || {
+            printf 'AppImage sha256 %s does not match .SRCINFO (%s).\n' \
+              "${actual}" "${expected}" >&2
+            exit 1
+          }
 
       - name: Build and inspect the Arch package
         run: |

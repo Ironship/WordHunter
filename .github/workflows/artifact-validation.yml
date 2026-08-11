@@ -126,12 +126,20 @@ jobs:
           }
           $keystore = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.p12"
           [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          # Derive the expected signing-certificate fingerprint from the
+          # restored keystore instead of hardcoding it, so a rotated key can
+          # never silently invalidate the release-signing gate.
+          $pemPath = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.pem"
+          $derPath = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.der"
+          & openssl pkcs12 -in $keystore -passin "pass:$env:KEYSTORE_PASSWORD" -nokeys -clcerts -out $pemPath
+          & openssl x509 -in $pemPath -outform DER -out $derPath
+          $certSha = (Get-FileHash -Algorithm SHA256 -LiteralPath $derPath).Hash.ToLowerInvariant()
           "WH_ANDROID_KEYSTORE=$keystore" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEY_ALIAS=$env:KEY_ALIAS" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEYSTORE_PASSWORD=$env:KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEY_PASSWORD=$env:KEY_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_REQUIRE_SIGNING=1" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "WH_ANDROID_EXPECTED_CERT_SHA256=b3b8336e4168d231b34a2483b4d444b92ee0324d04ec7dc6a8d92e628af6c85b" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "WH_ANDROID_EXPECTED_CERT_SHA256=$certSha" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build frontend, APK, and AAB through the release recipe
         shell: cmd

@@ -1,0 +1,21 @@
+# Editor configuration: https://editorconfig.org
+# Git normalizes line endings (core.autocrlf); this file guides editors so
+# files are authored consistently on any platform.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{bat,ps1,cmd}]
+end_of_line = crlf
+
+[*.{js,ts,css,json,yml,yaml,html}]
+indent_style = space
+indent_size = 2
+
+[*.rs]
+indent_style = space
+indent_size = 4

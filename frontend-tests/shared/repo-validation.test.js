@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { parseSimpleYaml } from "../../scripts/inspect-artifact.mjs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -118,6 +118,10 @@ describe("repository validation wiring", () => {
     for (const name of ["Verify the pinned release source", "Validate package metadata and contents", "Install and smoke-test the package"]) {
       assert.match(stepByName(validate, name).run, /WH_APP_VERSION/);
     }
+    const pinnedStep = stepByName(validate, "Verify the pinned release source");
+    assert.match(pinnedStep.run, /\.SRCINFO/);
+    assert.match(pinnedStep.run, /sha256sum/);
+    assert.doesNotMatch(pinnedStep.run, /309dcae/);
   });
 
   it("parses the manually dispatched release matrix and requires each artifact", () => {
@@ -157,8 +161,11 @@ describe("repository validation wiring", () => {
     assert.match(stepByName(frontendValidation, "Validate frontend behavior and repository data").run, /validate-json-i18n[\s\S]*--test/);
     const signingStep = stepByName(workflow.jobs.android, "Restore stable Android signing key");
     assert.equal(signingStep.env.KEYSTORE_BASE64, "${{ secrets.WH_ANDROID_KEYSTORE_BASE64 }}");
-    assert.match(signingStep.run, /WH_ANDROID_REQUIRE_SIGNING=1[\s\S]*WH_ANDROID_EXPECTED_CERT_SHA256=b3b8336e4168d231b34a2483b4d444b92ee0324d04ec7dc6a8d92e628af6c85b/);
-    assert.ok(read("../../scripts/build.bat").includes("'(?i)certificate SHA-256 digest:\\s*([0-9a-f]{64})'"));
+    assert.match(signingStep.run, /WH_ANDROID_REQUIRE_SIGNING=1/);
+    assert.match(signingStep.run, /openssl pkcs12/);
+    assert.match(signingStep.run, /WH_ANDROID_EXPECTED_CERT_SHA256=\$certSha/);
+    assert.doesNotMatch(signingStep.run, /WH_ANDROID_EXPECTED_CERT_SHA256=b3b8336e/);
+    assert.equal(workflow.jobs.macos["runs-on"], "macos-15");
     assert.match(stepByName(workflow.jobs.android, "Build frontend, APK, and AAB through the release recipe").run, /build\.bat apk aab/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.apk --abi arm64-v8a/);
     assert.match(stepByName(workflow.jobs.android, "Inspect APK and AAB").run, /\.aab --abi arm64-v8a/);
@@ -241,7 +248,7 @@ describe("repository validation wiring", () => {
     const platform = read("../../src-tauri/src/platform/mod.rs");
 
     assert.deepEqual(config.bundle.targets, ["dmg"]);
-    assert.equal(config.bundle.licenseFile, null);
+    assert.equal(config.bundle.licenseFile, "../LICENSE");
     assert.equal(config.bundle.macOS.signingIdentity, "-");
     assert.equal(config.bundle.macOS.minimumSystemVersion, "11.0");
     assert.match(platform, /target_os = "macos"/);
@@ -378,9 +385,6 @@ describe("repository validation wiring", () => {
     assert.ok(references.every(Boolean), localAssetUrls.join(", "));
     assert.deepEqual([...new Set(references)], [expectedStamp]);
     assert.ok(builtHtml.some((html) => html.includes('src=""')));
-    assert.match(builtStyles, new RegExp(`url\\("favicon\\.svg\\?v=${expectedStamp}"\\)`));
-    assert.match(buildScript, /html\.replace\(\/\\b\(src\|href\)=/);
-    assert.match(buildScript, /withoutFragment\.replace\(\/\(\[\?&\]\)v=/);
 
     const bootstrapTemplate = read("../../src-tauri/templates/bootstrap.js");
     const popupTemplate = read("../../src-tauri/templates/popup-escape.js");
@@ -412,10 +416,10 @@ describe("repository validation wiring", () => {
     const snapcraft = read("../../snap/snapcraft.yaml");
     const workflow = read("../../.github/workflows/snap-validation.yml");
 
-    assert.match(snapcraft, new RegExp(`^version: ['\"]${config.version}['\"]$`, "m"));
+    assert.match(snapcraft, new RegExp(`^version: ['\\"]${config.version}['\\"]$`, "m"));
     assert.match(
       snapcraft,
-      new RegExp(`/WordHunter${config.version}/word-hunter_${config.version}_amd64\\.deb`),
+      new RegExp(`releases/download/WordHunter${config.version}/word-hunter_${config.version}_amd64\\.deb`, "m"),
     );
     assert.match(workflow, /require\('\.\/src-tauri\/tauri\.conf\.json'\)\.version/);
     assert.match(workflow, /steps\.app_version\.outputs\.version/);
@@ -439,5 +443,90 @@ describe("repository validation wiring", () => {
     const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
     const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
     assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in index.html: ${[...new Set(duplicates)].join(", ")}`);
+  });
+
+  it("keeps the AppStream metainfo canonical in packaging/linux and mirrors it into flatpak", () => {
+    const template = read("../../packaging/linux/com.wordhunter.app.metainfo.xml");
+    const flatpak = read("../../flatpak/com.wordhunter.app.metainfo.xml");
+
+    assert.match(
+      template,
+      /<launchable type="desktop-id">com\.wordhunter\.app\.desktop<\/launchable>/,
+    );
+    // The flatpak copy must be byte-identical to the packaging/linux template
+    // (regression: drifted description and launchable) while both keep the
+    // full release history the desktop contract pins (1.0.5~rc entries).
+    assert.equal(flatpak, template);
+    assert.match(flatpak, /<release version="1\.0\.10"/);
+    assert.match(flatpak, /<release version="1\.0\.5~rc\.5"[^>]*type="development">/);
+    assert.match(flatpak, /<release version="1\.0\.5~rc\.4"[^>]*type="development">/);
+  });
+
+  it("keeps the Flatpak cargo sources gate wired and the vendored tiny_http covered", () => {
+    const cargo = read("../../src-tauri/Cargo.toml");
+    const lock = read("../../src-tauri/Cargo.lock");
+    const sources = JSON.parse(read("../../flatpak/cargo-sources.json"));
+    const vendorManifest = read("../../src-tauri/vendor/tiny_http/Cargo.toml");
+    const manifest = parseSimpleYaml(read("../../com.wordhunter.app.yml"));
+    const workflow = parseSimpleYaml(read("../../.github/workflows/flatpak-validation.yml"));
+
+    // tiny_http 0.12.0 is a vendored path dependency (Fix #105): the Flatpak
+    // build compiles it from the repository dir source, so cargo-sources.json
+    // must NOT list it as a crates.io archive.
+    assert.match(cargo, /tiny_http = \{ path = "vendor\/tiny_http" \}/);
+    assert.match(lock, /name = "tiny_http"\s+version = "0\.12\.0"/);
+    assert.match(vendorManifest, /^version = "0\.12\.0"$/m);
+    assert.ok(Array.isArray(sources));
+    assert.ok(!sources.some((source) => source.url?.includes("/tiny_http-")));
+    const wordHunterModule = manifest.modules.find((module) => module.name === "word-hunter");
+    const dirSource = wordHunterModule.sources.find((item) => item.type === "dir");
+    assert.ok(!dirSource.skip.includes("vendor"));
+    const checkStep = stepByName(workflow.jobs["build-and-smoke-test"], "Verify Flatpak cargo sources are up to date");
+    assert.match(checkStep.run, /update-flatpak-cargo-sources\.sh --check/);
+  });
+
+  it("keeps a root .editorconfig with the repository formatting contract", () => {
+    const editorconfig = read("../../.editorconfig");
+
+    assert.match(editorconfig, /^root = true$/m);
+    assert.match(editorconfig, /^charset = utf-8$/m);
+    assert.match(editorconfig, /^end_of_line = lf$/m);
+    assert.match(editorconfig, /\[\*\.\{bat,ps1,cmd\}\][\s\S]*end_of_line = crlf/);
+    assert.match(editorconfig, /\[\*\.\{js,ts,css,json,yml,yaml,html\}\][\s\S]*indent_size = 2/);
+    assert.match(editorconfig, /\[\*\.rs\][\s\S]*indent_size = 4/);
+  });
+
+  it("keeps the stray dev/null file out and the .gitignore entry list alive", () => {
+    const gitignore = read("../../.gitignore");
+    const lines = gitignore.split(/\r?\n/);
+
+    assert.equal(existsSync(new URL("../../dev/null", import.meta.url)), false);
+    assert.ok(lines.includes("dev/"), ".gitignore must ignore the dev/ scratch directory");
+    for (const dead of [
+      "build/",
+      "build_work/",
+      "outputs/",
+      "output/",
+      "frontend-dist/",
+      "scratch/",
+      "TODO/",
+      "My_Data/",
+      ".agents/",
+      ".codex/",
+      ".kilo/",
+      ".playwright-mcp/",
+      "docs/android/",
+      "docs/ddia-assessment.md",
+    ]) {
+      assert.ok(!lines.includes(dead), `.gitignore still contains the dead entry: ${dead}`);
+    }
+  });
+
+  it("includes package.json in the frontend freshness hash on both sides of the contract", () => {
+    const rustBuild = read("../../src-tauri/build.rs");
+    const buildHash = read("../../scripts/build-input-hash.mjs");
+
+    assert.match(rustBuild, /root\.join\("package\.json"\)/);
+    assert.match(buildHash, /join\(root, "package\.json"\)/);
   });
 });

@@ -28,6 +28,7 @@ export async function buildInputFiles() {
   return [
     ...await collectFiles(sourceDir),
     join(root, "tsconfig.json"),
+    join(root, "package.json"),
     join(root, "package-lock.json"),
     join(root, "scripts", "build-frontend.mjs"),
     fileURLToPath(import.meta.url)

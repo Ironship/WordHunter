@@ -1,7 +1,5 @@
 # Rust/Tauri build files
 .flatpak-builder/
-build/
-build_work/
 src-tauri/target/
 src-tauri/ocr-runner/target/
 src-tauri/ocr-runtime/.cache/
@@ -14,26 +12,15 @@ src-tauri/gen/
 
 # Build output / compiled executables
 node_modules/
-outputs/
-output/
 dist/
-frontend-dist/
 
-# Temporary local helper scripts / experiments
-scratch/
-TODO/
-My_Data/
-
-# Local planning / release assessment notes
-docs/android/
-docs/ddia-assessment.md
+# Local planning / development scratch
+dev/
 
 # Keep screenshots tracked
 !docs/screenshots/
 
 # Local AI/session artifacts
-.agents/
-.codex/
 .codex-remote-attachments/
 
 # Local secrets / signing keys
@@ -49,9 +36,3 @@ docs/ddia-assessment.md
 # Operating system files
 .DS_Store
 Thumbs.db
-
-# Playwright test artifacts
-.playwright-mcp/
-
-# Kilo AI config — generated from kilo.jsonc
-.kilo

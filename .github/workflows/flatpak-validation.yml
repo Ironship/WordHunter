@@ -6,8 +6,12 @@ on:
     paths:
       - com.wordhunter.app.yml
       - flatpak/**
+      - packaging/linux/**
       - scripts/build-flatpak.sh
       - scripts/inspect-artifact.mjs
+      - scripts/update-flatpak-cargo-sources.sh
+      - src-tauri/Cargo.lock
+      - src-tauri/ocr-runner/Cargo.lock
       - src-tauri/tauri.conf.json
       - .github/workflows/flatpak-validation.yml
       - .github/workflows/artifact-validation.yml
@@ -17,8 +21,12 @@ on:
     paths:
       - com.wordhunter.app.yml
       - flatpak/**
+      - packaging/linux/**
       - scripts/build-flatpak.sh
       - scripts/inspect-artifact.mjs
+      - scripts/update-flatpak-cargo-sources.sh
+      - src-tauri/Cargo.lock
+      - src-tauri/ocr-runner/Cargo.lock
       - src-tauri/tauri.conf.json
       - .github/workflows/flatpak-validation.yml
       - .github/workflows/artifact-validation.yml
@@ -39,6 +47,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Verify Flatpak cargo sources are up to date
+        run: ./scripts/update-flatpak-cargo-sources.sh --check
+
+      - name: AppStream metainfo must match the packaging template
+        run: |
+          set -euo pipefail
+          diff -u packaging/linux/com.wordhunter.app.metainfo.xml \
+            flatpak/com.wordhunter.app.metainfo.xml
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e

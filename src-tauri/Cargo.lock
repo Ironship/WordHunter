@@ -6173,7 +6173,6 @@ dependencies = [
  "ctrlc",
  "edge-tts-rust",
  "encoding_rs",
- "gdk",
  "gdkwayland-sys",
  "gtk",
  "html-escape",

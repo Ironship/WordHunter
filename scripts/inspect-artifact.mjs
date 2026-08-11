@@ -624,7 +624,7 @@ export function inspectLinuxTree(root, description = root, options = {}) {
   if (
     !/<component(?:\s|>)/.test(appStreamSource) ||
     !/<id>com\.wordhunter\.app<\/id>/.test(appStreamSource) ||
-    !/<launchable type="desktop-id">Word Hunter\.desktop<\/launchable>/.test(appStreamSource)
+    !/<launchable type="desktop-id">com\.wordhunter\.app\.desktop<\/launchable>/.test(appStreamSource)
   ) {
     fail(`${description}:${appStream} is not Word Hunter AppStream metadata`);
   }

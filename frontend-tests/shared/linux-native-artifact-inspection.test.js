@@ -75,7 +75,7 @@ function createLinuxTree(root, format = "appimage") {
   write(
     root,
     "usr/share/metainfo/com.wordhunter.app.metainfo.xml",
-    '<component type="desktop-application"><id>com.wordhunter.app</id><launchable type="desktop-id">Word Hunter.desktop</launchable></component>',
+    '<component type="desktop-application"><id>com.wordhunter.app</id><launchable type="desktop-id">com.wordhunter.app.desktop</launchable></component>',
   );
   write(root, "usr/share/icons/hicolor/128x128/apps/com.wordhunter.app.png");
   if (format === "deb") {
