@@ -15,8 +15,11 @@ import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
 import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
 import { renderMoveBookDialog } from "./js/events/move-book.js";
+import { renderAddWordDialog } from "./js/events/word-editor.js";
+import { renderArgosDownloadDialog } from "./js/events/settings.js";
 import { renderUpdateDialog } from "./js/update-checker.js";
 import { renderLanguageOnboardingDialog } from "./js/onboarding.js";
+import { renderEditBookDialog } from "./js/book-actions/edit-modal.js";
 
 detectPlatform();
 
@@ -224,6 +227,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderUpdateDialog();
     renderLanguageOnboardingDialog();
     renderYouGlishModal();
+    renderAddWordDialog();
+    renderArgosDownloadDialog();
+    renderEditBookDialog();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();
