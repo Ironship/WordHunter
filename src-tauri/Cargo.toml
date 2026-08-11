@@ -58,6 +58,8 @@ rfd = "0.15"
 [target.'cfg(target_os = "linux")'.dependencies]
 gdkwayland-sys = { version = "0.18", features = ["v3_24_22"] }
 gtk = "0.18"
+# GTK fallback for environments without an XDG desktop portal.
+rfd = { version = "0.15", features = ["gtk3"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2.4.3"

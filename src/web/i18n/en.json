@@ -881,6 +881,7 @@
     "wordRemoved": "Word removed from the list.",
     "wordCopied": "Copied: {word}",
     "copyFailed": "Could not copy the selected word.",
+    "openExternalFailed": "Could not open the link in the browser.",
     "emptyFields": "Fill in the title and text.",
     "bookMoved": "Book moved successfully",
     "textAdded": "Text added to library.",

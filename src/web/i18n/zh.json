@@ -881,6 +881,7 @@
     "wordRemoved": "单词已从列表中移除。",
     "wordCopied": "已复制：{word}",
     "copyFailed": "无法复制所选单词。",
+    "openExternalFailed": "无法在浏览器中打开链接。",
     "emptyFields": "请填写标题和文本。",
     "bookMoved": "书籍移动成功",
     "textAdded": "文本已添加到书库。",

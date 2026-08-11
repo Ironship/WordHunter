@@ -8,6 +8,7 @@ import { getVocabularyRevision, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, calcStatsPcts } from "../utils.js";
 import { t } from "../i18n.js";
+import { showToast } from "../toast.js";
 import { findBookById, getAllBooks, bookTexts } from "../books.js";
 import { renderPlainText } from "./text-renderer.js";
 import { isPdfOcrText, renderPdfOcrReader } from "./pdf-ocr-renderer.js";
@@ -123,9 +124,17 @@ function renderReaderSource(current: WhText): void {
     const sourceLink = els.readerSource.querySelector("a.reader-source-link");
     sourceLink?.addEventListener("click", (event: Event) => {
       event.preventDefault();
-      fetch(`/__open_external?url=${encodeURIComponent(url)}`).catch((error) =>
-        console.warn("Failed to open source link", error)
-      );
+      fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+        .then((res) => {
+          if (!res.ok) {
+            console.warn("Failed to open source link", `HTTP ${res.status}`);
+            showToast(t("toast.openExternalFailed"), "error");
+          }
+        })
+        .catch((error) => {
+          console.warn("Failed to open source link", error);
+          showToast(t("toast.openExternalFailed"), "error");
+        });
     });
   } else {
     els.readerSource.textContent = label;

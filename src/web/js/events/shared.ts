@@ -47,9 +47,17 @@ export async function openDictionary(word: string): Promise<void> {
   } else {
     // Route through the embedded server so the open is never subject to
     // popup blocking (same convention as /__open_external elsewhere).
-    fetch("/__open_external?url=" + encodeURIComponent(url)).catch((error) =>
-      console.warn("Failed to open the dictionary in the browser", error)
-    );
+    fetch("/__open_external?url=" + encodeURIComponent(url))
+      .then((res) => {
+        if (!res.ok) {
+          console.warn("Failed to open the dictionary in the browser", `HTTP ${res.status}`);
+          showToast(t("toast.openExternalFailed"), "error");
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to open the dictionary in the browser", error);
+        showToast(t("toast.openExternalFailed"), "error");
+      });
   }
 }
 

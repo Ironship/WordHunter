@@ -795,6 +795,7 @@
     "wordRemoved": "Palabra eliminada",
     "wordCopied": "Copiado: {word}",
     "copyFailed": "No se pudo copiar la palabra seleccionada.",
+    "openExternalFailed": "No se pudo abrir el enlace en el navegador.",
     "textAdded": "Texto añadido",
     "textRemoved": "Texto eliminado",
     "fetchingTxt": "Descargando {title}...",
