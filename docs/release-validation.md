@@ -147,6 +147,29 @@ update-compatible. Local APK builds fall back to the machine's debug key unless
 `WH_ANDROID_*` variables are supplied. Google Play publication still requires a
 `scripts/build.bat play` run on a trusted Windows release environment.
 
+## Google Play Publication
+
+Play Store publication is manual by decision (issue #144 bullet 5): the
+repository ships no upload automation. `scripts/build.bat play` produces the
+signed release AAB — the protected keystore is restored from `WH_ANDROID_*`
+variables and the APK certificate fingerprint is verified before upload — and
+the upload itself happens in the Google Play Console.
+
+To publish a stable release:
+
+1. Run `scripts/build.bat play` on a trusted Windows release environment with
+   the protected keystore (`WH_ANDROID_KEYSTORE_*`) and signing variables
+   (`WH_ANDROID_REQUIRE_SIGNING=1`) configured.
+2. Compare the certificate fingerprint printed by the build with the one shown
+   for the app's signing key in the Play Console.
+3. Open the Play Console, select the app, and use the Release dashboard to
+   upload the AAB to the desired track.
+4. Fill in the release notes; the `en-US` changelogs and the per-locale listing
+   metadata under `fastlane/metadata/android/` are maintained in the
+   repository and can be copied into the Play Console listing.
+5. Review the rollout and publish. Google Play signing and acceptance remain
+   store-side steps that CI cannot validate.
+
 ## Flatpak Cargo Sources
 
 `flatpak/cargo-sources.json` is generated from both Rust lockfiles. After
