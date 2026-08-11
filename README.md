@@ -216,7 +216,8 @@ problem instead of silently returning an incomplete OCR result.
 Word Hunter Pocket shows the same kind of library in a phone layout. Pocket is
 optimized for reading and review on Android, with a compact card list, large
 touch targets, collapsible search filters, and a side import drawer for lighter
-mobile imports.
+mobile imports. OCR for scanned/image-only PDFs is not available in Pocket —
+import them through the desktop version (local OCR runtime).
 
 "<img width="2537" height="1380" alt="{953014A0-B7A5-4189-9D98-CF6A9BB5C940}" src="https://github.com/user-attachments/assets/765efecf-21ad-4c52-acbe-302689664cad" />
 
