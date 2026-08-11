@@ -28,6 +28,64 @@ type ApplyBridgeSnapshotOptions = {
 
 let wordAlgorithmChangeGeneration = 0;
 
+/**
+ * Builds the offline-model download dialog markup once (idempotent). Called
+ * during app boot before cacheElements() (app.ts); bindSettingsEvents()
+ * resolves the elements via getElementById, so boot order guarantees they
+ * exist.
+ */
+export function renderArgosDownloadDialog(): HTMLDialogElement {
+  const existing = document.getElementById("argos-download-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#argos-download-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "argos-download-dialog";
+  dialog.className = "panel dialog-500";
+  dialog.setAttribute("aria-labelledby", "argos-download-title");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <h2 id="argos-download-title" data-i18n="settings.argosDownloadTitle">Download offline models</h2>
+    </div>
+    <div class="settings-body p-15-g-1">
+      <p class="muted-copy" data-i18n="settings.argosDownloadHint">Downloads local translation packages for the selected languages, including pairs with English and your learning language when available.</p>
+      <div id="argos-languages-list" class="stack-g-05">
+        <label class="status-check justify-start">
+          <input type="checkbox" value="en" checked>
+          <span data-i18n="languages.en">English</span>
+        </label>
+        <label class="status-check justify-start">
+          <input type="checkbox" value="pl" checked>
+          <span data-i18n="languages.pl">Polish</span>
+        </label>
+        <label class="status-check justify-start">
+          <input type="checkbox" value="de">
+          <span data-i18n="languages.de">German</span>
+        </label>
+        <label class="status-check justify-start">
+          <input type="checkbox" value="es">
+          <span data-i18n="languages.es">Spanish</span>
+        </label>
+        <label class="status-check justify-start">
+          <input type="checkbox" value="fr">
+          <span data-i18n="languages.fr">French</span>
+        </label>
+        <label class="status-check justify-start">
+          <input type="checkbox" value="zh">
+          <span data-i18n="languages.zh">Chinese (Simplified)</span>
+        </label>
+      </div>
+      <p data-i18n="settings.argosDownloadWarning" class="error-text">Note: downloading models will take a while. Do not close the app during the process.</p>
+      <div class="justify-end-m-t-1">
+        <button id="argos-download-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
+        <button id="argos-download-confirm" class="primary-button" data-i18n="settings.argosDownloadConfirm">Download</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
 function resetReaderScrollForCurrentText() {
   if (!state.currentTextId) return;
   if (!state.readerScrolls) state.readerScrolls = {};
@@ -224,9 +282,8 @@ export function bindSettingsEvents() {
   async function cancelArgosDownload() {
     if (argosDownloadRunning) return;
     argosSelectionDirty = false;
-    if (els.argosDownloadDialog) els.argosDownloadDialog.close();
+    (document.getElementById("argos-download-dialog") as HTMLDialogElement | null)?.close();
     if (els.prefOfflineTranslator) els.prefOfflineTranslator.checked = false;
-    updatePreferenceValue("offlineTranslator", false);
     if (els.prefArgosAsDictRow) {
       els.prefArgosAsDictRow.style.opacity = "0.5";
       els.prefArgosAsDictRow.style.pointerEvents = "none";
@@ -237,7 +294,7 @@ export function bindSettingsEvents() {
   }
 
   registerUnsavedDialog("argos-download-dialog", isArgosDirty, () => {
-    els.argosDownloadConfirm.click();
+    document.getElementById("argos-download-confirm")?.click();
   }, cancelArgosDownload);
   // Settings
   bindPreferenceControls();
@@ -533,8 +590,9 @@ export function bindSettingsEvents() {
         const { t: translate } = await import("../i18n.js");
         const supported = Array.from(new Set([...OFFLINE_TRANSLATOR_LANGUAGES, pair.fromCode, pair.toCode].filter(Boolean)));
         
-        if (els.argosLanguagesList) {
-          els.argosLanguagesList.innerHTML = supported.map(lang => `
+        const languagesList = document.getElementById("argos-languages-list");
+        if (languagesList) {
+          languagesList.innerHTML = supported.map(lang => `
             <label class="status-check justify-start">
               <input type="checkbox" value="${lang}" ${lang === pair.fromCode || lang === pair.toCode ? "checked" : ""}>
               <span>${translate(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : translate(`languages.${lang}`)} (${lang.toUpperCase()})</span>
@@ -543,20 +601,19 @@ export function bindSettingsEvents() {
           
           // Update button text with size
           const updateBtnText = () => {
-            const count = els.argosLanguagesList.querySelectorAll("input:checked").length;
-            els.argosDownloadConfirm.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
+            const count = languagesList.querySelectorAll("input:checked").length;
+            const confirmButton = document.getElementById("argos-download-confirm");
+            if (confirmButton) confirmButton.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
           };
           
-          (els.argosLanguagesList as HTMLElement).querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
+          languagesList.querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
             checkbox.addEventListener("change", updateBtnText);
             checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
           });
           updateBtnText();
         }
 
-        if (els.argosDownloadDialog) {
-          els.argosDownloadDialog.showModal();
-        }
+        (document.getElementById("argos-download-dialog") as HTMLDialogElement | null)?.showModal();
       } else {
         updatePreferenceValue("offlineTranslator", false);
         if (els.prefArgosAsDictRow) {
@@ -574,13 +631,16 @@ export function bindSettingsEvents() {
     });
   }
 
-  if (els.argosDownloadCancel) {
-    els.argosDownloadCancel.addEventListener("click", cancelArgosDownload);
+  const argosCancelButton = document.getElementById("argos-download-cancel");
+  if (argosCancelButton) {
+    argosCancelButton.addEventListener("click", cancelArgosDownload);
   }
 
-  if (els.argosDownloadConfirm) {
-    els.argosDownloadConfirm.addEventListener("click", async () => {
-      const languagesList = els.argosLanguagesList as HTMLElement;
+  const argosConfirmButton = document.getElementById("argos-download-confirm");
+  if (argosConfirmButton) {
+    argosConfirmButton.addEventListener("click", async () => {
+      const languagesList = document.getElementById("argos-languages-list");
+      if (!(languagesList instanceof HTMLElement)) return;
       const checkedBoxes = Array.from(languagesList.querySelectorAll<HTMLInputElement>("input:checked"));
       const toCodes = checkedBoxes.map(cb => cb.value);
       
@@ -589,12 +649,12 @@ export function bindSettingsEvents() {
         return;
       }
       
-      setElementBusy(els.argosDownloadConfirm, true, { disable: true });
-      setElementBusy(els.argosDownloadDialog, true);
+      setElementBusy(argosConfirmButton, true, { disable: true });
+      setElementBusy(document.getElementById("argos-download-dialog"), true);
       argosDownloadRunning = true;
       argosSelectionDirty = false;
-      if (els.argosDownloadCancel) els.argosDownloadCancel.disabled = true;
-      els.argosDownloadConfirm.textContent = t("toast.downloadingWait");
+      if (argosCancelButton) (argosCancelButton as HTMLButtonElement).disabled = true;
+      argosConfirmButton.textContent = t("toast.downloadingWait");
       
       try {
         const pair = resolveProfileTranslationPair(state.preferences);
@@ -621,7 +681,7 @@ export function bindSettingsEvents() {
           els.prefArgosAsDictRow.style.pointerEvents = "auto";
         }
         syncSettingsControls();
-        if (els.argosDownloadDialog) els.argosDownloadDialog.close();
+        (document.getElementById("argos-download-dialog") as HTMLDialogElement | null)?.close();
         renderTranslator();
         import("../toast.js").then(m => m.showToast(t("toast.modelsDownloaded")));
       } catch (err) {
@@ -638,10 +698,10 @@ export function bindSettingsEvents() {
         renderTranslator();
       } finally {
         argosDownloadRunning = false;
-        if (els.argosDownloadCancel) els.argosDownloadCancel.disabled = false;
-        setElementBusy(els.argosDownloadDialog, false);
-        setElementBusy(els.argosDownloadConfirm, false, { disable: true });
-        els.argosDownloadConfirm.textContent = t("settings.argosDownloadConfirm");
+        if (argosCancelButton) (argosCancelButton as HTMLButtonElement).disabled = false;
+        setElementBusy(document.getElementById("argos-download-dialog"), false);
+        setElementBusy(argosConfirmButton, false, { disable: true });
+        argosConfirmButton.textContent = t("settings.argosDownloadConfirm");
       }
     });
   }

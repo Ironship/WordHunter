@@ -842,11 +842,16 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("defines a scrollable edit-book dialog layout", () => {
-    const dialog = elementById(html, "edit-book-dialog");
-    assert.equal(hasClass(dialog, "edit-book-dialog"), true);
-    elementByClass(dialog, "edit-book-body", "div");
-    elementById(dialog, "edit-book-save");
-    assert.equal(hasClass(elementById(dialog, "edit-book-cover-clear"), "edit-book-cover-clear"), true);
+    // The dialog markup itself is built at boot by renderEditBookDialog()
+    // (port of #127 P1), so its contract lives in the renderer source.
+    assert.doesNotMatch(html, /<dialog id="edit-book-dialog"/);
+    const editModalModule = readFileSync(new URL("../../dist/web/js/book-actions/edit-modal.js", import.meta.url), "utf8");
+    assert.match(editModalModule, /function renderEditBookDialog/);
+    assert.match(editModalModule, /dialog\.id = "edit-book-dialog"/);
+    assert.match(editModalModule, /className = "panel edit-book-dialog"/);
+    assert.match(editModalModule, /class="settings-body edit-book-body"/);
+    assert.match(editModalModule, /id="edit-book-save"/);
+    assert.match(editModalModule, /class="edit-book-cover-clear"/);
     assert.deepEqual(
       { display: cssDeclarations(css, ".edit-book-dialog[open]").display, direction: cssDeclarations(css, ".edit-book-dialog[open]")["flex-direction"] },
       { display: "flex", direction: "column" }

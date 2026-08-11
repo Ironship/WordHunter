@@ -158,10 +158,6 @@ export function cacheElements() {
   els.prefAiAutoTriggerRow = byId("pref-ai-auto-trigger-row");
   els.prefArgosAsDict = byId("pref-argos-as-dict");
   els.prefArgosAsDictRow = byId("pref-argos-as-dict-row");
-  els.argosDownloadDialog = byId("argos-download-dialog");
-  els.argosDownloadConfirm = byId("argos-download-confirm");
-  els.argosDownloadCancel = byId("argos-download-cancel");
-  els.argosLanguagesList = byId("argos-languages-list");
   els.prefDictionaryUrl = byId("pref-dictionary-url");
   els.prefDictionaryMode = byId("pref-dictionary-mode");
   els.prefYouglishMode = byId("pref-youglish-mode");
@@ -203,17 +199,4 @@ export function cacheElements() {
   els.discoverClear = byId("discover-clear");
   els.discoverAddSelected = byId("discover-add-selected");
   els.userBooksList = byId("user-books-list");
-  
-  els.editBookDialog = byId("edit-book-dialog");
-  els.editBookTitle = byId("edit-book-title");
-  els.editBookAuthor = byId("edit-book-author");
-  els.editBookTags = byId("edit-book-tags");
-  els.editBookLevel = byId("edit-book-level");
-  els.editBookCoverPreview = byId("edit-book-cover-preview");
-  els.editBookCoverImg = byId("edit-book-cover-img");
-  els.editBookCoverClear = byId("edit-book-cover-clear");
-  els.editBookCover = byId("edit-book-cover");
-  els.editBookText = byId("edit-book-text");
-  els.editBookCancel = byId("edit-book-cancel");
-  els.editBookSave = byId("edit-book-save");
 }

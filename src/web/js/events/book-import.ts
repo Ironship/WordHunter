@@ -902,15 +902,18 @@ function handleEditCoverFile(file: File | undefined): void {
   if (!file) return;
   if (file.size > 1_500_000) {
     showToast(t("toast.coverTooBig"));
-    if (els.editBookCover) els.editBookCover.value = "";
+    const editCoverInput = document.getElementById("edit-book-cover") as HTMLInputElement | null;
+    if (editCoverInput) editCoverInput.value = "";
     return;
   }
   const reader = new FileReader();
   reader.onload = () => {
     const dataUrl = String(reader.result || "");
     import("../book-actions.js").then(m => m.setPendingEditCoverDataUrl(dataUrl));
-    if (els.editBookCoverImg) els.editBookCoverImg.src = dataUrl;
-    if (els.editBookCoverPreview) els.editBookCoverPreview.hidden = false;
+    const editCoverImg = document.getElementById("edit-book-cover-img") as HTMLImageElement | null;
+    if (editCoverImg) editCoverImg.src = dataUrl;
+    const editCoverPreview = document.getElementById("edit-book-cover-preview");
+    if (editCoverPreview) editCoverPreview.hidden = false;
     const dropzone = document.getElementById("edit-book-cover-dropzone");
     if (dropzone) dropzone.style.display = "none";
   };
@@ -1008,11 +1011,17 @@ function bindImportFormEvents() {
 
 function bindEditBookEvents() {
   registerUnsavedDialog("edit-book-dialog", isEditBookDirty, () => saveEditedBook(), () => cancelEditBook());
-  if (els.editBookCancel) els.editBookCancel.addEventListener("click", () => cancelEditBook());
-  if (els.editBookSave) els.editBookSave.addEventListener("click", () => saveEditedBook());
+  const editBookDialog = document.getElementById("edit-book-dialog") as HTMLDialogElement | null;
+  const editBookCancel = document.getElementById("edit-book-cancel") as HTMLButtonElement | null;
+  const editBookSave = document.getElementById("edit-book-save") as HTMLButtonElement | null;
+  const editBookCoverClear = document.getElementById("edit-book-cover-clear") as HTMLButtonElement | null;
+  const editBookCover = document.getElementById("edit-book-cover") as HTMLInputElement | null;
+  const editBookText = document.getElementById("edit-book-text") as HTMLTextAreaElement | null;
+  if (editBookCancel) editBookCancel.addEventListener("click", () => cancelEditBook());
+  if (editBookSave) editBookSave.addEventListener("click", () => saveEditedBook());
 
-  if (els.editBookDialog) {
-    els.editBookDialog.addEventListener("keydown", (e) => {
+  if (editBookDialog) {
+    editBookDialog.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey && !(e.target instanceof HTMLTextAreaElement)
         && !(e.target instanceof HTMLSelectElement) && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault();
@@ -1021,23 +1030,26 @@ function bindEditBookEvents() {
     });
   }
 
-  if (els.editBookCoverClear) {
-    els.editBookCoverClear.addEventListener("click", () => {
+  if (editBookCoverClear) {
+    editBookCoverClear.addEventListener("click", () => {
       import("../book-actions.js").then(m => m.setPendingEditCoverDataUrl(null));
-      if (els.editBookCoverImg) els.editBookCoverImg.src = "";
-      if (els.editBookCoverPreview) els.editBookCoverPreview.hidden = true;
-      if (els.editBookCover) els.editBookCover.value = "";
+      const coverImg = document.getElementById("edit-book-cover-img") as HTMLImageElement | null;
+      if (coverImg) coverImg.src = "";
+      const coverPreview = document.getElementById("edit-book-cover-preview");
+      if (coverPreview) coverPreview.hidden = true;
+      const coverInput = document.getElementById("edit-book-cover") as HTMLInputElement | null;
+      if (coverInput) coverInput.value = "";
       const dropzone = document.getElementById("edit-book-cover-dropzone");
       if (dropzone) dropzone.style.display = "flex";
     });
   }
 
-  if (els.editBookCover) {
-    els.editBookCover.addEventListener("change", () => handleEditCoverFile(els.editBookCover.files?.[0]));
+  if (editBookCover) {
+    editBookCover.addEventListener("change", () => handleEditCoverFile(editBookCover.files?.[0]));
   }
 
-  if (els.editBookText) {
-    els.editBookText.addEventListener("paste", (e) => {
+  if (editBookText) {
+    editBookText.addEventListener("paste", (e) => {
       const clipboardEvent = e as ClipboardEventWithOriginal;
       const items = (clipboardEvent.clipboardData || clipboardEvent.originalEvent?.clipboardData)?.items;
       if (!items) return;
@@ -1061,7 +1073,7 @@ function bindCoverPasteEvents() {
   document.addEventListener("paste", (e) => {
     if (isTextEditingPasteTarget(e.target)) return;
     const importOpen = state.currentView === "library";
-    const editOpen = els.editBookDialog && els.editBookDialog.open;
+    const editOpen = (document.getElementById("edit-book-dialog") as HTMLDialogElement | null)?.open ?? false;
     if (!importOpen && !editOpen) return;
     const clipboardEvent = e as ClipboardEventWithOriginal;
     const items = (clipboardEvent.clipboardData || clipboardEvent.originalEvent?.clipboardData)?.items;

@@ -21,6 +21,58 @@ type AddWordOriginalValues = {
   status: VocabStatus;
 };
 
+/**
+ * Builds the add/edit-word dialog markup once (idempotent). Called during
+ * app boot before cacheElements() (app.ts); bindWordEditorEvents() resolves
+ * the elements via querySelector, so boot order guarantees they exist.
+ */
+export function renderAddWordDialog(): HTMLDialogElement {
+  const existing = document.getElementById("add-word-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#add-word-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "add-word-dialog";
+  dialog.className = "panel word-editor-dialog dialog-680";
+  dialog.setAttribute("aria-labelledby", "add-word-dialog-title");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <h2 id="add-word-dialog-title" data-i18n="vocab.addWordTitle">Add word</h2>
+    </div>
+    <div class="word-editor-body">
+      <div class="word-editor-grid">
+        <label class="word-editor-field word-editor-word">
+          <span data-i18n="vocab.addWordLabel">Word</span>
+          <input id="add-word-input" type="text" class="input" autocomplete="off" autofocus>
+        </label>
+        <label class="word-editor-field word-editor-article">
+          <span data-i18n="vocab.addArticleLabel">Article (optional)</span>
+          <input id="add-article-input" type="text" class="input" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="word-editor-field word-editor-translation">
+          <span data-i18n="vocab.addTranslationLabel">Translation (optional)</span>
+          <input id="add-translation-input" type="text" class="input" autocomplete="off">
+        </label>
+        <fieldset class="word-editor-status">
+          <legend data-i18n="vocab.status">Status</legend>
+          <div id="add-word-status-buttons" class="status-options"></div>
+        </fieldset>
+        <label class="word-editor-field word-editor-example">
+          <span data-i18n="vocab.addExampleLabel">Example sentence (optional)</span>
+          <textarea id="add-example-input" class="input" rows="4" autocomplete="off" spellcheck="false"></textarea>
+        </label>
+      </div>
+      <div class="word-editor-actions">
+        <button id="add-word-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
+        <button id="add-word-confirm" class="primary-button" data-i18n="vocab.addWordConfirm">Add</button>
+      </div>
+    </div>
+    <input id="add-word-editing" type="hidden" value="">
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
 let addWordStatusButtons: HTMLButtonElement[] = [];
 
 function renderAddWordStatusButtons() {
