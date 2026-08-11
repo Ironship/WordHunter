@@ -20,6 +20,7 @@ import { renderArgosDownloadDialog } from "./js/events/settings.js";
 import { renderUpdateDialog } from "./js/update-checker.js";
 import { renderLanguageOnboardingDialog } from "./js/onboarding.js";
 import { renderEditBookDialog } from "./js/book-actions/edit-modal.js";
+import { renderImportPanel } from "./js/events/book-import.js";
 
 detectPlatform();
 
@@ -231,6 +232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderArgosDownloadDialog();
     renderEditBookDialog();
     renderLibraryPanel();
+    renderImportPanel();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();

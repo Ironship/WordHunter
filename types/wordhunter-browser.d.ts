@@ -317,18 +317,8 @@ declare global {
 interface WhDomCache {
     navItems?: HTMLElement[];
     views?: HTMLElement[];
-    importForm?: HTMLFormElement | null;
-    importYoutubeUrl?: HTMLInputElement | null;
-    importYoutubeLoad?: HTMLButtonElement | null;
-    importYoutubeTrack?: HTMLSelectElement | null;
-    importTitle?: HTMLInputElement | null;
-    importAuthor?: HTMLInputElement | null;
-    importTags?: HTMLInputElement | null;
-    importLevel?: HTMLSelectElement | null;
-    importText?: HTMLTextAreaElement | null;
-    importFile?: HTMLInputElement | null;
-    importCover?: HTMLInputElement | null;
-    importCoverImg?: HTMLImageElement | null;
+
+    levelFilter?: HTMLSelectElement | null;
     textSelect?: HTMLSelectElement | null;
     readerFontSizeSlider?: HTMLInputElement | null;
     translatorFrom?: HTMLSelectElement | null;
@@ -369,12 +359,7 @@ interface WhDomCache {
     exportVocabAnki?: HTMLElement | null;
     exportVocabTxt?: HTMLElement | null;
     importAnkiTsv?: HTMLElement | null;
-    importBooksMode?: HTMLElement | null;
-    importCoverClear?: HTMLElement | null;
-    importCoverPreview?: HTMLElement | null;
-    importModeSelect?: HTMLSelectElement | null;
-    importYoutubeMode?: HTMLElement | null;
-    importYoutubeStatus?: HTMLElement | null;
+
     ocrGpuStatus?: HTMLElement | null;
     overallCount?: HTMLElement | null;
     pageTitle?: HTMLElement | null;
