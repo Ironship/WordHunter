@@ -102,17 +102,13 @@ export function cacheElements() {
   els.prefLocales = [
     byId<HTMLSelectElement>("pref-locale-sidebar"),
     byId<HTMLSelectElement>("pref-locale-settings"),
-    byId<HTMLSelectElement>("pref-locale-onboarding"),
   ].filter(Boolean);
   els.prefLearningLanguages = [
     byId<HTMLSelectElement>("pref-learning-language-sidebar"),
     byId<HTMLSelectElement>("pref-learning-language-settings"),
-    byId<HTMLSelectElement>("pref-learning-language-onboarding"),
   ].filter(Boolean);
   els.prefLocale = els.prefLocales[0] || null;
   els.prefLearningLanguage = els.prefLearningLanguages[0] || null;
-  els.languageOnboardingDialog = byId("language-onboarding-dialog");
-  els.languageOnboardingDone = byId("language-onboarding-done");
   els.prefColorNew = byId("pref-color-new");
   els.prefColorLearning = byId("pref-color-learning");
   els.prefColorKnown = byId("pref-color-known");
@@ -220,7 +216,4 @@ export function cacheElements() {
   els.editBookText = byId("edit-book-text");
   els.editBookCancel = byId("edit-book-cancel");
   els.editBookSave = byId("edit-book-save");
-
-  els.toast = byId("toast");
-  els.toastMessage = byId("toast-message");
 }
