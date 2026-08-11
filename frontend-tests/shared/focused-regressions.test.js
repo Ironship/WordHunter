@@ -766,9 +766,9 @@ describe("focused frontend regressions", () => {
 
   it("keeps Argos cancellation disabled and inert while installation is running", () => {
     const settings = read("dist/web/js/events/settings.js");
-    assert.match(settings, /function cancelArgosDownload\(\) \{[\s\S]*?if \(argosDownloadRunning\)\s*return;[\s\S]*?argosDownloadDialog\)\s*els\.argosDownloadDialog\.close\(\)/);
-    assert.match(settings, /argosDownloadRunning = true;[\s\S]*?argosDownloadCancel\)\s*els\.argosDownloadCancel\.disabled = true/);
-    assert.match(settings, /finally \{[\s\S]*?argosDownloadRunning = false;[\s\S]*?argosDownloadCancel\)\s*els\.argosDownloadCancel\.disabled = false/);
+    assert.match(settings, /function cancelArgosDownload\(\) \{[^]*?if \(argosDownloadRunning\)\s*return;[^]*?getElementById\("argos-download-dialog"\)\?\.close\(\)/);
+    assert.match(settings, /argosDownloadRunning = true;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = true/);
+    assert.match(settings, /finally \{[^]*?argosDownloadRunning = false;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = false/);
   });
 
   it("disables inaccessible Translator navigation and rejects its click handler", async () => {

@@ -158,10 +158,6 @@ export function cacheElements() {
   els.prefAiAutoTriggerRow = byId("pref-ai-auto-trigger-row");
   els.prefArgosAsDict = byId("pref-argos-as-dict");
   els.prefArgosAsDictRow = byId("pref-argos-as-dict-row");
-  els.argosDownloadDialog = byId("argos-download-dialog");
-  els.argosDownloadConfirm = byId("argos-download-confirm");
-  els.argosDownloadCancel = byId("argos-download-cancel");
-  els.argosLanguagesList = byId("argos-languages-list");
   els.prefDictionaryUrl = byId("pref-dictionary-url");
   els.prefDictionaryMode = byId("pref-dictionary-mode");
   els.prefYouglishMode = byId("pref-youglish-mode");

@@ -360,3 +360,81 @@ describe("add-word dialog renderer (events/word-editor.ts)", () => {
     assertBootOrder("renderAddWordDialog();", "add-word-dialog");
   });
 });
+
+describe("argos download dialog renderer (events/settings.ts)", () => {
+  it("builds the dialog once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderArgosDownloadDialog } = await evaluateWithMocks("dist/web/js/events/settings.js", {
+      "../state.js": {
+        applyBridgeSnapshotToState: () => false,
+        flushAllPendingFrontendState: async () => {},
+        getDurableStateRevision: () => 0,
+        runExclusiveStateWrite: async (fn) => fn(),
+        state: {},
+        saveState: async () => {},
+        switchLearningLanguage: () => {}
+      },
+      "../dom.js": { els: {} },
+      "../i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
+      "../render.js": { render: () => {} },
+      "../views/library.js": { renderLibrary: () => {} },
+      "../reader/renderer.js": { getTextById: () => null, renderReader: () => {} },
+      "../reader/word-panel.js": { renderWordPanel: () => {} },
+      "../views/vocabulary.js": { renderReview: () => {} },
+      "../views/discover.js": { renderDiscover: () => {} },
+      "../preferences.js": {
+        applyPreferences: () => {},
+        syncSettingsControls: () => {},
+        updatePreferenceValue: async () => {},
+        resetPreferences: async () => {},
+        setReaderFontSize: () => {},
+        setUiScale: () => {}
+      },
+      "../toast.js": { showToast: () => {} },
+      "../sync-actions.js": {
+        clearWords: async () => {},
+        clearLibrary: async () => {},
+        exportAnkiTsv: async () => {},
+        importAnkiTsv: async () => {},
+        exportTransfer: async () => {},
+        importTransfer: async () => {}
+      },
+      "../store-bridge.js": { acknowledgeBackendSnapshot: () => {}, loadBackendSnapshot: async () => {} },
+      "../dialog-backdrop.js": { registerUnsavedDialog: () => {}, showConfirmDialog: async () => true },
+      "../loading.js": { setElementBusy: () => {} },
+      "../platform.js": { applyPlatformUi: () => {}, isAndroidPlatform: () => false },
+      "../constants.js": { OFFLINE_TRANSLATOR_LANGUAGES: ["en", "pl", "de", "es", "fr", "zh"] },
+      "../translator-preferences.js": {
+        normalizeTranslationLanguageCode: (value) => value,
+        normalizeTranslatorTextPreference: (key, value) => value,
+        resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
+      },
+      "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
+      "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const dialog = renderArgosDownloadDialog();
+    assert.equal(dialog.id, "argos-download-dialog");
+    assert.equal(dialog.className, "panel dialog-500");
+    assert.equal(dialog.attrs["aria-labelledby"], "argos-download-title");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "argos-download-title",
+      "argos-languages-list",
+      "argos-download-cancel",
+      "argos-download-confirm"
+    ]) {
+      assert.match(dialog.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(dialog.innerHTML, /data-i18n="settings\.argosDownloadTitle"/);
+    assert.match(dialog.innerHTML, /data-i18n="settings\.argosDownloadConfirm"/);
+    assert.match(dialog.innerHTML, /data-i18n="languages\.en"/);
+    assert.equal(renderArgosDownloadDialog(), dialog, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderArgosDownloadDialog();", "argos-download-dialog");
+  });
+});

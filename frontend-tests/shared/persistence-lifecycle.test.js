@@ -150,6 +150,7 @@ async function loadAppHarness({
     "./js/reader/bookmarks.js": { renderBookmarksDialog: noOp },
     "./js/events/move-book.js": { renderMoveBookDialog: noOp },
     "./js/events/word-editor.js": { renderAddWordDialog: noOp },
+    "./js/events/settings.js": { renderArgosDownloadDialog: noOp },
     "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
     "./js/platform.js": {
       applyPlatformUi: noOp,

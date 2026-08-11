@@ -514,6 +514,11 @@ describe("repository validation wiring", () => {
     "add-word-cancel", // events/word-editor.ts (renderAddWordDialog)
     "add-word-confirm", // events/word-editor.ts (renderAddWordDialog)
     "add-word-editing", // events/word-editor.ts (renderAddWordDialog)
+    "argos-download-dialog", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-title", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-languages-list", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-cancel", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-confirm", // events/settings.ts (renderArgosDownloadDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

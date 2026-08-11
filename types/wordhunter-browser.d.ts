@@ -353,7 +353,6 @@ interface WhDomCache {
     prefLearningLanguage?: HTMLSelectElement | null;
     prefTheme?: HTMLSelectElement | null;
     prefLearningColors?: HTMLInputElement[];
-    argosDownloadDialog?: HTMLDialogElement | null;
     discoverForm?: HTMLFormElement | null;
     discoverQuery?: HTMLInputElement | null;
     discoverSource?: HTMLSelectElement | null;
@@ -370,9 +369,6 @@ interface WhDomCache {
     editBookText?: HTMLTextAreaElement | null;
     editBookCancel?: HTMLButtonElement | null;
     editBookSave?: HTMLButtonElement | null;
-    argosDownloadCancel?: HTMLButtonElement | null;
-    argosDownloadConfirm?: HTMLElement | null;
-    argosLanguagesList?: HTMLElement | null;
     bookList?: HTMLElement | null;
     chooseDataDirectory?: HTMLElement | null;
     clearLibrary?: HTMLElement | null;
