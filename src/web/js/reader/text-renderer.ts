@@ -64,7 +64,7 @@ export function renderPlainText({ current, tokens, globalWordIndexes, globalChar
     while (i < pageTokens.length && tokensProcessed < CHUNK_SIZE) {
       const part = pageTokens[i];
       if (part.type === "image") {
-        htmlChunk += `<img src="/__media?book=${encodeURIComponent(current.id)}&img=${encodeURIComponent(part.value)}" style="max-width: 100%; height: auto; display: block; margin: 1rem auto; border-radius: 6px;" alt="${escapeHtml(t("reader.imageAlt"))}">`;
+        htmlChunk += `<img src="/__media?book=${encodeURIComponent(current.id)}&img=${encodeURIComponent(part.value)}" alt="${escapeHtml(t("reader.imageAlt"))}" class="img-block-center">`;
         i++;
         tokensProcessed++;
         continue;

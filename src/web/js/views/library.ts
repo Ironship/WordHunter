@@ -348,8 +348,8 @@ export function renderLibrary(): void {
           </div>
           ${blurbLine}
           ${statsBlock}
-          <div class="book-actions" style="display: flex; gap: 0.5rem; align-items: center; width: 100%; flex-wrap: wrap; margin-top: auto;">
-             <button class="primary-button" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}" style="flex: 1; justify-content: center; display: inline-flex; align-items: center; gap: 0.4rem;">
+          <div class="book-actions actions-row">
+             <button class="primary-button action-grow" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}">
               ${icon("play", 16)}
               ${escapeHtml(t("library.read"))}
             </button>

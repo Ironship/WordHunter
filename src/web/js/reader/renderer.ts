@@ -235,7 +235,7 @@ export function renderReader(): void {
     return;
   }
 
-  els.readerText.innerHTML = `<div class="reader-loading" role="status" aria-live="polite" aria-atomic="true" style="padding: 2rem; text-align: center;"><div class="spinner" aria-hidden="true" style="margin: 0 auto 1rem;"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`;
+  els.readerText.innerHTML = `<div class="reader-loading empty-pad" role="status" aria-live="polite" aria-atomic="true"><div class="spinner m-0-auto-1" aria-hidden="true"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`;
 
   setTimeout(() => {
     if (generation !== readerRenderGeneration || state.currentTextId !== current.id) return;

@@ -298,7 +298,7 @@ async function translateNow(): Promise<void> {
   if (provider === "offline" && !hasModelForPair(pair.fromCode, pair.toCode) && pair.fromCode !== pair.toCode) {
     const sizeMb = getPackageSize(pair.fromCode, pair.toCode);
     if (els.translatorStatus) {
-      els.translatorStatus.innerHTML = `${t("translator.noModelFor", { from: languageName(pair.fromCode), to: languageName(pair.toCode) })} <button class="ghost-button" id="translator-download-prompt" style="font-size:0.8rem; padding:0.2rem 0.5rem;">${t("translator.downloadNow")} (${t("translator.sizeMb", { size: Math.round(sizeMb) })})</button>`;
+      els.translatorStatus.innerHTML = `${t("translator.noModelFor", { from: languageName(pair.fromCode), to: languageName(pair.toCode) })} <button class="ghost-button badge-sm" id="translator-download-prompt">${t("translator.downloadNow")} (${t("translator.sizeMb", { size: Math.round(sizeMb) })})</button>`;
       const downloadBtn = document.getElementById("translator-download-prompt");
       if (downloadBtn) {
         downloadBtn.addEventListener("click", () => openDownloadDialog(pair.fromCode, pair.toCode));

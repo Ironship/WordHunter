@@ -535,7 +535,7 @@ export function bindSettingsEvents() {
         
         if (els.argosLanguagesList) {
           els.argosLanguagesList.innerHTML = supported.map(lang => `
-            <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+            <label class="status-check justify-start">
               <input type="checkbox" value="${lang}" ${lang === pair.fromCode || lang === pair.toCode ? "checked" : ""}>
               <span>${translate(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : translate(`languages.${lang}`)} (${lang.toUpperCase()})</span>
             </label>

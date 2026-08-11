@@ -25,12 +25,12 @@
     </button>
     <aside class="sidebar" id="app-navigation" data-i18n-attr="aria-label=app.navAriaLabel" aria-label="Navigation">
       <div class="brand">
-        <div style="width: 100%;">
+        <div class="w-100">
           <strong data-i18n="app.title">Word Hunter</strong>
-          <div class="lang-selectors" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-start;">
-            <div style="position: relative; display: flex; align-items: center;" data-i18n-attr="title=settings.interfaceLanguageTitle">
-              <div id="app-lang-flag" style="display: flex; align-items: center;"></div>
-              <select id="pref-locale-sidebar" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+          <div class="lang-selectors row-start-m-t-05">
+            <div data-i18n-attr="title=settings.interfaceLanguageTitle" class="rel-row">
+              <div id="app-lang-flag" class="row-nogap"></div>
+              <select id="pref-locale-sidebar" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle" class="abs-fill">
                 <option value="pl" data-i18n="languages.pl">Polish</option>
                 <option value="en" data-i18n="languages.en">English</option>
                 <option value="de" data-i18n="languages.de">German</option>
@@ -44,11 +44,11 @@
               </select>
             </div>
             
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--sidebar-muted);"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sidebar"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             
-            <div style="position: relative; display: flex; align-items: center;" data-i18n-attr="title=settings.learningLanguageTitle">
-              <div id="learning-lang-flag" style="display: flex; align-items: center;"></div>
-              <select id="pref-learning-language-sidebar" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+            <div data-i18n-attr="title=settings.learningLanguageTitle" class="rel-row">
+              <div id="learning-lang-flag" class="row-nogap"></div>
+              <select id="pref-learning-language-sidebar" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle" class="abs-fill">
                 <option value="en" data-i18n="languages.en">English</option>
                 <option value="de" data-i18n="languages.de">German</option>
                 <option value="es" data-i18n="languages.es">Spanish</option>
@@ -136,7 +136,7 @@
           <span class="metric-pill metric-new" id="pill-new" data-i18n-attr="title=topbar.newTooltip"></span>
           <span class="metric-pill" id="overall-count" data-i18n-attr="title=topbar.totalTooltip"></span>
           <button class="icon-button" type="button" id="app-reload" aria-label="Reload application" data-i18n-attr="title=app.reload,aria-label=app.reload">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-18"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
           <button class="icon-button" type="button" id="theme-toggle" data-i18n-attr="title=topbar.themeToggle,aria-label=topbar.themeToggle">
             <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 5 5-5 5-5-5 5-5Z" fill="currentColor" opacity=".28"></path><path d="m12 11 5 5-5 5-5-5 5-5Z"></path></svg>
@@ -188,8 +188,8 @@
                 </label>
                 <label class="library-sort-field">
                   <span data-i18n="library.sort">Sort</span>
-                  <div style="display: flex; align-items: center; gap: 0.35rem;">
-                    <select id="library-sort" style="flex: 1;">
+                  <div class="row-tight">
+                    <select id="library-sort" class="flex-1">
                       <option value="title" data-i18n="library.sortByTitle">By title</option>
                       <option value="author" data-i18n="library.sortByAuthor">By author</option>
                       <option value="length" data-i18n="library.sortByLength">By length</option>
@@ -262,17 +262,17 @@
                   <span data-i18n="import.text">Text</span>
                   <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
                 </label>
-                <div class="form-group" style="margin-bottom: 1.5rem; text-align: center;">
-                  <label for="import-cover" class="import-cover-dropzone" id="import-cover-dropzone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: background 0.2s, border-color 0.2s;" data-i18n-attr="title=import.cover">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    <span style="font-size: 0.9rem; color: var(--muted);" data-i18n="import.coverPasteHint">Click to select or paste</span>
+                <div class="form-group m-b-15-center">
+                  <label for="import-cover" class="import-cover-dropzone dropzone" id="import-cover-dropzone" data-i18n-attr="title=import.cover">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-32-muted-m-b-05"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    <span data-i18n="import.coverPasteHint" class="fs-09-muted">Click to select or paste</span>
                     <input id="import-cover" type="file" accept="image/*" class="visually-hidden">
                   </label>
                 </div>
-                <div id="import-cover-preview" class="import-cover-preview" hidden style="margin-bottom: 1.5rem; position: relative; width: max-content;">
-                  <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="Cover preview" style="max-height: 150px; border-radius: 6px; border: 1px solid var(--line);">
-                  <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: var(--red-ink); cursor: pointer;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <div id="import-cover-preview" class="import-cover-preview m-b-15-w-max" hidden>
+                  <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="Cover preview" class="max-h-150">
+                  <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" class="badge-remove">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   </button>
                 </div>
                 <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Add to library</button>
@@ -301,7 +301,7 @@
           <section class="panel reader-panel" aria-labelledby="reader-heading">
             <div class="reader-toolbar">
               <label>
-                <span style="display: flex; align-items: center; gap: 0.5rem;"><span data-i18n="reader.textLabel">Text</span> <span class="shortcut-badge">Ctrl+B</span></span>
+                <span class="row"><span data-i18n="reader.textLabel">Text</span> <span class="shortcut-badge">Ctrl+B</span></span>
                 <select id="text-select"></select>
               </label>
               <div class="toolbar-buttons" role="group" data-i18n-attr="aria-label=reader.controlsLabel">
@@ -321,13 +321,13 @@
                 </div>
                 <button type="button" data-font="up" data-i18n-attr="title=reader.fontUp">A+</button>
                 <button type="button" id="tts-play-text" class="secondary-button" aria-label="Read text" data-i18n-attr="title=reader.ttsPlayTitle,aria-label=reader.ttsPlayTitle">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
                 <button type="button" id="tts-stop-text" class="danger-button" hidden data-i18n-attr="title=reader.ttsStopTitle,aria-label=reader.ttsStopTitle">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><rect x="4" y="4" width="16" height="16"></rect></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><rect x="4" y="4" width="16" height="16"></rect></svg>
                 </button>
                 <button type="button" id="reader-highlight-toggle" class="icon-button" aria-pressed="true" data-i18n-attr="title=settings.highlight,aria-label=settings.highlight">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                 </button>
                 <button type="button" id="reader-bookmarks-button" class="icon-button reader-bookmarks-button" aria-haspopup="dialog" aria-controls="reader-bookmarks-dialog" data-i18n-attr="title=reader.bookmarks,aria-label=reader.bookmarks">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3z"></path></svg>
@@ -405,9 +405,9 @@
             <div class="translator-controls">
               <label>
                 <span data-i18n="translator.from">From language</span>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <img id="translator-from-flag" class="flag-icon" src="" alt="" style="width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none;">
-                  <select id="translator-from" style="flex: 1;"></select>
+                <div class="row">
+                  <img id="translator-from-flag" class="flag-icon cover-thumb" src="" alt="">
+                  <select id="translator-from" class="flex-1"></select>
                 </div>
               </label>
               <button class="icon-button translator-swap" type="button" id="translator-swap" aria-label="Swap languages" data-i18n-attr="title=translator.swap,aria-label=translator.swap">
@@ -415,9 +415,9 @@
               </button>
               <label>
                 <span data-i18n="translator.to">To language</span>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <img id="translator-to-flag" class="flag-icon" src="" alt="" style="width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none;">
-                  <select id="translator-to" style="flex: 1;"></select>
+                <div class="row">
+                  <img id="translator-to-flag" class="flag-icon cover-thumb" src="" alt="">
+                  <select id="translator-to" class="flex-1"></select>
                 </div>
               </label>
             </div>
@@ -428,9 +428,9 @@
               </label>
               <label class="translator-field">
                 <span data-i18n="translator.result">Translation</span>
-                <div style="display: flex; gap: 0.5rem; align-items: stretch; flex: 1; min-height: 0;">
-                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" style="flex: 1;"></textarea>
-                  <button type="button" id="translator-copy" class="secondary-button" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy" style="align-self: flex-end; flex-shrink: 0;">Copy</button>
+                <div class="row-stretch-flex-1">
+                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" class="flex-1"></textarea>
+                  <button type="button" id="translator-copy" class="secondary-button self-end-noshrink" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy">Copy</button>
                 </div>
               </label>
             </div>
@@ -514,13 +514,13 @@
       <section class="view" id="flashcards-view" data-title-key="nav.flashcards">
         <div class="workspace-grid flashcards-layout">
           <aside class="panel review-panel" aria-labelledby="review-heading">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="panel-header row-between">
               <div>
                 <p class="eyebrow" data-i18n="vocab.reviewEyebrow">Review</p>
                 <h2 id="review-heading" data-i18n="vocab.reviewHeading">Flashcard</h2>
               </div>
-              <button class="secondary-button" type="button" id="review-reverse-toggle" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; display: flex; align-items: center; gap: 0.3rem;" data-i18n-attr="title=vocab.reverseTooltip">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <button class="secondary-button chip" type="button" id="review-reverse-toggle" data-i18n-attr="title=vocab.reverseTooltip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 <span id="review-reverse-label" data-i18n="vocab.normalOrder">Foreign → Native</span>
               </button>
             </div>
@@ -618,13 +618,13 @@
 
       <section class="view" id="graphs-view" data-title-key="nav.graphs">
         <div class="workspace-grid graphs-layout">
-          <section class="panel" aria-labelledby="graphs-heading" style="flex: 1;">
+          <section class="panel flex-1" aria-labelledby="graphs-heading">
             <div class="panel-header">
               <div>
                 <p class="eyebrow" data-i18n="graphs.eyebrow">Statistics</p>
                 <h2 id="graphs-heading" data-i18n="graphs.heading">Charts</h2>
               </div>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <div class="row">
                 <label>
                   <span data-i18n="graphs.range">Range</span>
                   <select id="graphs-range">
@@ -940,7 +940,7 @@
               <label class="setting-row toggle-row desktop-only-setting">
                 <span>
                   <span data-i18n="settings.useEdgeTts">Edge Neural TTS (online)</span>
-                  <small data-i18n="settings.useEdgeTtsHint" style="color: var(--muted); font-weight: 400;"></small>
+                  <small data-i18n="settings.useEdgeTtsHint" class="muted-fw-400"></small>
                 </span>
                 <input id="pref-use-edge-tts" type="checkbox" data-pref="useEdgeTts">
               </label>
@@ -1004,14 +1004,14 @@
             </div>
             <div class="settings-body">
               <div id="pref-translation-language-settings" hidden>
-                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <label class="setting-row stack">
                   <span>
                     <span data-i18n="settings.translationSourceLanguage">Translation source language</span>
                     <small data-i18n="settings.translationLanguageHint">Enter a language code such as nl, pt-BR, or eo. The pair is shared by every translation engine in this profile.</small>
                   </span>
                   <input id="pref-translation-source-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationSourceLanguagePlaceholder" class="input">
                 </label>
-                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+                <label class="setting-row stack">
                   <span data-i18n="settings.translationTargetLanguage">Translation target language</span>
                   <input id="pref-translation-target-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationTargetLanguagePlaceholder" class="input">
                 </label>
@@ -1046,26 +1046,26 @@
                   <option value="lmstudio" data-i18n="settings.translationProviderLmStudio">LM Studio</option>
                 </select>
               </label>
-              <label id="pref-deepl-key-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-deepl-key-row" class="setting-row stack" hidden>
                 <span data-i18n="settings.deeplApiKey">DeepL API key</span>
                 <input id="pref-deepl-api-key" type="password" data-i18n-attr="placeholder=settings.deeplApiKeyPlaceholder" class="input">
               </label>
-              <label id="pref-lmstudio-endpoint-row" class="setting-row desktop-only-setting" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-lmstudio-endpoint-row" class="setting-row desktop-only-setting stack" hidden>
                 <span data-i18n="settings.lmStudioEndpoint">LM Studio endpoint</span>
                 <input id="pref-lmstudio-endpoint" type="text" class="input">
               </label>
-              <label id="pref-lmstudio-model-row" class="setting-row desktop-only-setting" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-lmstudio-model-row" class="setting-row desktop-only-setting stack" hidden>
                 <span data-i18n="settings.lmStudioModel">LM Studio model</span>
                 <input id="pref-lmstudio-model" type="text" data-i18n-attr="placeholder=settings.lmStudioModelPlaceholder" class="input">
               </label>
-              <label id="pref-auto-translate-row" class="setting-row toggle-row" style="opacity: 0.5; pointer-events: none; transition: opacity 0.2s;">
+              <label id="pref-auto-translate-row" class="setting-row toggle-row dimmed">
                 <span>
                   <span data-i18n="settings.autoTranslate">Auto-fill translation</span>
                   <small data-i18n="settings.autoTranslateHint">When a saved word has an empty translation, fills it with the selected translation engine. Manual translations stay untouched.</small>
                 </span>
                 <input id="pref-auto-translate" type="checkbox" data-pref="autoTranslateWords">
               </label>
-              <label id="pref-argos-as-dict-row" class="setting-row toggle-row desktop-only-setting" style="opacity: 0.5; pointer-events: none; transition: opacity 0.2s;">
+              <label id="pref-argos-as-dict-row" class="setting-row toggle-row desktop-only-setting dimmed">
                 <span>
                   <span data-i18n="settings.argosAsDict">Dictionary button opens translator</span>
                   <small data-i18n="settings.argosAsDictHint">Makes the dictionary button (M) open the built-in offline translator for the selected word instead of your dictionary URL.</small>
@@ -1086,7 +1086,7 @@
                   <option value="external" data-i18n="settings.dictModeExternal">External browser</option>
                 </select>
               </label>
-              <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label class="setting-row stack">
                 <span data-i18n="settings.dictionaryUrl">Dictionary URL (use {{word}})</span>
                 <input id="pref-dictionary-url" type="text" data-pref="dictionaryUrl" data-i18n-attr="placeholder=settings.dictionaryUrlPlaceholder" placeholder="https://en.wiktionary.org/wiki/{{word}}" class="input">
               </label>
@@ -1108,19 +1108,19 @@
                 </span>
                 <input id="pref-ai-explanations" type="checkbox">
               </label>
-              <label id="pref-ai-endpoint-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-ai-endpoint-row" class="setting-row stack" hidden>
                 <span data-i18n="settings.aiEndpoint">Endpoint (OpenAI-compatible)</span>
                 <input id="pref-ai-endpoint" type="text" class="input">
               </label>
-              <label id="pref-ai-model-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-ai-model-row" class="setting-row stack" hidden>
                 <span data-i18n="settings.aiModel">Model</span>
                 <input id="pref-ai-model" type="text" data-i18n-attr="placeholder=settings.aiModelPlaceholder" class="input">
               </label>
-              <label id="pref-ai-key-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-ai-key-row" class="setting-row stack" hidden>
                 <span data-i18n="settings.aiApiKey">API key</span>
                 <input id="pref-ai-api-key" type="password" data-i18n-attr="placeholder=settings.aiApiKeyPlaceholder" class="input">
               </label>
-              <label id="pref-ai-effort-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
+              <label id="pref-ai-effort-row" class="setting-row stack" hidden>
                 <span>
                   <span data-i18n="settings.aiEffort">Reasoning effort</span>
                   <small data-i18n="settings.aiEffortHint">How much effort the model should put into reasoning. Empty = do not send — the endpoint uses its own default.</small>
@@ -1290,12 +1290,12 @@
               <p class="eyebrow" data-i18n="help.eyebrow">Help</p>
               <h2 id="help-heading" data-i18n="help.heading">Help and shortcuts</h2>
             </div>
-            <div class="settings-body" style="gap: 2rem;">
+            <div class="settings-body gap-2">
               <p class="muted-copy" data-i18n="help.shortcutScope"></p>
               <div>
-                <h3 data-i18n="help.navTitle" style="margin-top: 0;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.navTitle" class="m-t-0"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.navKeys.library"></li>
                     <li data-i18n-html="help.navKeys.reader"></li>
                     <li data-i18n-html="help.navKeys.translator"></li>
@@ -1315,9 +1315,9 @@
               </div>
 
               <div>
-                <h3 data-i18n="help.readerTitle" style="margin-top: 0;"></h3>
-                <div style="line-height: 2; margin-bottom: 1rem;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.readerTitle" class="m-t-0"></h3>
+                <div class="lh-2-m-b-1">
+                  <ul class="m-0">
                     <li data-i18n-html="help.readerKeys.select"></li>
                     <li data-i18n-html="help.readerKeys.font"></li>
                     <li data-i18n-html="help.readerKeys.focus"></li>
@@ -1330,9 +1330,9 @@
                   </ul>
                 </div>
                 
-                <h3 data-i18n="help.focusTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2; margin-bottom: 1rem;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.focusTitle" class="m-t-1"></h3>
+                <div class="lh-2-m-b-1">
+                  <ul class="m-0">
                     <li data-i18n-html="help.focusKeys.prevNext"></li>
                     <li data-i18n-html="help.focusKeys.line"></li>
                     <li data-i18n-html="help.focusKeys.escape"></li>
@@ -1342,9 +1342,9 @@
                   </ul>
                 </div>
                 
-                <h3 data-i18n="help.actionTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.actionTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.actionKeys.merge"></li>
                     <li data-i18n-html="help.actionKeys.smartSuggest"></li>
                     <li data-i18n-html="help.actionKeys.ttsWord"></li>
@@ -1357,9 +1357,9 @@
                     <li data-i18n-html="help.actionKeys.removeStatus"></li>
                   </ul>
                 </div>
-                <h3 data-i18n="help.flashcardsTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.flashcardsTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.flashcardsKeys.flip"></li>
                     <li data-i18n-html="help.flashcardsKeys.prevNext"></li>
                     <li data-i18n-html="help.flashcardsKeys.score"></li>
@@ -1370,9 +1370,9 @@
                     <li data-i18n-html="help.flashcardsKeys.searchImage"></li>
                   </ul>
                 </div>
-                <h3 data-i18n="help.editorTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.editorTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.editorKeys.word"></li>
                     <li data-i18n-html="help.editorKeys.book"></li>
                   </ul>
@@ -1387,10 +1387,10 @@
               <h2 id="help-sm2" data-i18n="help.sm2Title">Spaced Repetition (FSRS / SM-2)</h2>
             </div>
             <div class="settings-body">
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 1rem;" data-i18n-html="help.sm2Body1"></p>
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 1rem;" data-i18n-html="help.sm2BodyFsrs"></p>
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 0.5rem;" data-i18n-html="help.sm2Body2"></p>
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem;">
+              <p data-i18n-html="help.sm2Body1" class="muted-lh-1-6-m-b-1"></p>
+              <p data-i18n-html="help.sm2BodyFsrs" class="muted-lh-1-6-m-b-1"></p>
+              <p data-i18n-html="help.sm2Body2" class="muted-lh-1-6-m-b-05"></p>
+              <ul class="note-list-g-05">
                 <li data-i18n-html="help.sm2Grade02"></li>
                 <li data-i18n-html="help.sm2Grade3"></li>
                 <li data-i18n-html="help.sm2Grade4"></li>
@@ -1405,7 +1405,7 @@
               <h2 id="help-tips" data-i18n="help.tipsTitle">Useful Tips</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 1rem;">
+              <ul class="note-list-g-1">
                 <li data-i18n-html="help.tip1"></li>
                 <li data-i18n-html="help.tip2"></li>
                 <li data-i18n-html="help.tip3"></li>
@@ -1424,7 +1424,7 @@
               <h2 id="help-credits" data-i18n="help.creditsTitle">Open Source, APIs &amp; Model Sources</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.8rem;">
+              <ul class="note-list">
                 <li data-i18n-html="help.creditGutenberg"></li>
                 <li data-i18n-html="help.creditWikipedia"></li>
                 <li data-i18n-html="help.creditYouglish"></li>
@@ -1444,13 +1444,13 @@
               <h2 id="help-contact" data-i18n="help.contactTitle">About the App</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.8rem;">
+              <ul class="note-list">
                 <li data-i18n-html="help.contactGithub"></li>
                 <li data-i18n-html="help.contactDiscussions"></li>
                 <li data-i18n-html="help.contactIssues"></li>
                 <li data-i18n-html="help.contactAuthor"></li>
                 <li data-i18n-html="help.contactLicense"></li>
-                <li data-i18n-html="help.whatsNew" style="color: var(--accent-ink);"></li>
+                <li data-i18n-html="help.whatsNew" class="text-accent-ink"></li>
                 <li data-i18n-html="help.version"></li>
               </ul>
             </div>
@@ -1513,12 +1513,12 @@
     </div>
   </dialog>
 
-  <dialog id="youglish-modal" class="panel" style="max-width: 700px; padding: 0;" aria-labelledby="youglish-modal-title">
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--line);">
-      <h2 id="youglish-modal-title" data-i18n="reader.youglishModalTitle" style="margin: 0; font-size: 1.25rem;">Pronunciation (YouGlish)</h2>
+  <dialog id="youglish-modal" class="panel max-w-700" aria-labelledby="youglish-modal-title">
+    <div class="dialog-header">
+      <h2 id="youglish-modal-title" data-i18n="reader.youglishModalTitle" class="dialog-title">Pronunciation (YouGlish)</h2>
       <button type="button" id="youglish-close" class="icon-button" data-i18n-attr="title=reader.close">×</button>
     </div>
-    <div id="youglish-modal-body" style="padding: 1rem; display: flex; justify-content: center;">
+    <div id="youglish-modal-body" class="flex-center-p-1">
       <div id="youglish-widget"></div>
     </div>
   </dialog>
@@ -1573,10 +1573,10 @@
     <div class="panel-header">
       <h2 id="move-book-title" data-i18n="moveBook.title">Move Book</h2>
     </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
+    <div class="settings-body p-15-g-1">
       <p class="muted-copy" data-i18n="moveBook.hint">Select the target language profile for this book:</p>
       <select id="move-book-select" class="input" data-i18n-attr="aria-label=library.moveBook"></select>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+      <div class="justify-end-m-t-1">
         <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
         <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Move</button>
       </div>
@@ -1602,19 +1602,19 @@
     <div class="settings-body edit-book-body">
       <label class="setting-row edit-book-field">
         <span data-i18n="editBook.titleLabel">Title</span>
-        <input id="edit-book-title" type="text" class="input" style="width: 100%;">
+        <input id="edit-book-title" type="text" class="input w-100">
       </label>
       <label class="setting-row edit-book-field">
         <span data-i18n="editBook.authorLabel">Author</span>
-        <input id="edit-book-author" type="text" class="input" style="width: 100%;">
+        <input id="edit-book-author" type="text" class="input w-100">
       </label>
       <label class="setting-row edit-book-field">
         <span data-i18n="editBook.tagsLabel">Tags</span>
-        <input id="edit-book-tags" type="text" class="input" data-i18n-attr="placeholder=import.tagsPlaceholder" style="width: 100%;">
+        <input id="edit-book-tags" type="text" class="input w-100" data-i18n-attr="placeholder=import.tagsPlaceholder">
       </label>
       <label class="setting-row edit-book-field">
         <span data-i18n="editBook.levelLabel">Level</span>
-        <select id="edit-book-level" class="input" style="width: 100%;">
+        <select id="edit-book-level" class="input w-100">
           <option value="" data-i18n="library.levelAny">Any</option>
           <option value="A1">A1</option>
           <option value="A2">A2</option>
@@ -1630,12 +1630,12 @@
           <div id="edit-book-cover-preview" class="edit-book-cover-preview" hidden>
             <img id="edit-book-cover-img" src="" data-i18n-attr="alt=editBook.coverPreviewAlt" alt="Cover preview">
             <button id="edit-book-cover-clear" class="edit-book-cover-clear" type="button" data-i18n-attr="title=editBook.deleteCover">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
           <label for="edit-book-cover" class="edit-book-cover-dropzone" id="edit-book-cover-dropzone" data-i18n-attr="title=editBook.changeCover">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 28px; height: 28px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            <span style="font-size: 0.85rem; color: var(--muted); text-align: center;" data-i18n="import.coverPasteHint">Click to select or paste</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-28-muted-m-b-05"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span data-i18n="import.coverPasteHint" class="fs-085-muted-center">Click to select or paste</span>
             <input id="edit-book-cover" type="file" accept="image/*" class="visually-hidden">
           </label>
         </div>
@@ -1651,56 +1651,56 @@
     </div>
   </dialog>
 
-  <dialog id="argos-download-dialog" class="panel" style="width: 90vw; max-width: 500px;" aria-labelledby="argos-download-title">
+  <dialog id="argos-download-dialog" class="panel dialog-500" aria-labelledby="argos-download-title">
     <div class="panel-header">
       <h2 id="argos-download-title" data-i18n="settings.argosDownloadTitle">Download offline models</h2>
     </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
+    <div class="settings-body p-15-g-1">
       <p class="muted-copy" data-i18n="settings.argosDownloadHint">Downloads local translation packages for the selected languages, including pairs with English and your learning language when available.</p>
-      <div id="argos-languages-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+      <div id="argos-languages-list" class="stack-g-05">
+        <label class="status-check justify-start">
           <input type="checkbox" value="en" checked>
           <span data-i18n="languages.en">English</span>
         </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+        <label class="status-check justify-start">
           <input type="checkbox" value="pl" checked>
           <span data-i18n="languages.pl">Polish</span>
         </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+        <label class="status-check justify-start">
           <input type="checkbox" value="de">
           <span data-i18n="languages.de">German</span>
         </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+        <label class="status-check justify-start">
           <input type="checkbox" value="es">
           <span data-i18n="languages.es">Spanish</span>
         </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+        <label class="status-check justify-start">
           <input type="checkbox" value="fr">
           <span data-i18n="languages.fr">French</span>
         </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
+        <label class="status-check justify-start">
           <input type="checkbox" value="zh">
           <span data-i18n="languages.zh">Chinese (Simplified)</span>
         </label>
       </div>
-      <p style="color: var(--red); font-size: 0.85rem; margin-top: 1rem;" data-i18n="settings.argosDownloadWarning">Note: downloading models will take a while. Do not close the app during the process.</p>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+      <p data-i18n="settings.argosDownloadWarning" class="error-text">Note: downloading models will take a while. Do not close the app during the process.</p>
+      <div class="justify-end-m-t-1">
         <button id="argos-download-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
         <button id="argos-download-confirm" class="primary-button" data-i18n="settings.argosDownloadConfirm">Download</button>
       </div>
     </div>
   </dialog>
 
-  <dialog id="update-dialog" class="panel" style="width: 90vw; max-width: 500px;" aria-labelledby="update-title">
+  <dialog id="update-dialog" class="panel dialog-500" aria-labelledby="update-title">
     <div class="panel-header">
-      <h2 style="display: flex; align-items: center; gap: 0.5rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; flex-shrink: 0; color: var(--green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+      <h2 class="row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-20-green"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
         <span id="update-title" data-i18n="update.title">Update Available</span>
       </h2>
     </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
-      <p id="update-message" data-i18n="update.message" style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted);">Word Hunter {version} is available! (You have {current})</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
+    <div class="settings-body p-15-g-1">
+      <p id="update-message" data-i18n="update.message" class="m-0-fs-09-lh-15-muted">Word Hunter {version} is available! (You have {current})</p>
+      <div class="justify-end-wrap-m-t-1">
         <button id="update-dismiss" class="ghost-button" data-i18n="update.dismiss">Later</button>
         <button id="update-skip" class="secondary-button" data-i18n="update.skipLabel">Skip this version</button>
         <button id="update-disable" class="secondary-button" data-i18n="update.disableUpdates">Don't remind me again</button>
@@ -1709,7 +1709,7 @@
     </div>
   </dialog>
 
-  <dialog id="add-word-dialog" class="panel word-editor-dialog" style="width: 92vw; max-width: 680px;" aria-labelledby="add-word-dialog-title">
+  <dialog id="add-word-dialog" class="panel word-editor-dialog dialog-680" aria-labelledby="add-word-dialog-title">
     <div class="panel-header">
       <h2 id="add-word-dialog-title" data-i18n="vocab.addWordTitle">Add word</h2>
     </div>
