@@ -501,7 +501,7 @@ class MainActivity : TauriActivity() {
       if (pageIndex < 0 || pageIndex >= session.renderer.pageCount) {
         error("PDF page index is out of range.")
       }
-      session.renderer.openPage(pageIndex).use { page ->
+      return session.renderer.openPage(pageIndex).use { page ->
         val sourceWidth = page.width.coerceAtLeast(1)
         val sourceHeight = page.height.coerceAtLeast(1)
         val targetWidth = renderWidth.coerceIn(512, 2400)
