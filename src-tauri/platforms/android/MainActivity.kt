@@ -194,13 +194,7 @@ class MainActivity : TauriActivity() {
         maybeClearTtsSessionUi()
       }
 
-      @Deprecated("Deprecated in Android API")
-      @Suppress("DEPRECATION")
-      override fun onRangeStart(utteranceId: String?, start: Int, end: Int) {
-        dispatchAndroidTtsResult(utteranceId, "range", start, end)
-      }
-
-      override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int, params: Bundle) {
+      override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
         dispatchAndroidTtsResult(utteranceId, "range", start, end)
       }
     })
