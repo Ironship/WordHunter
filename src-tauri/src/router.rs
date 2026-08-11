@@ -453,6 +453,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 }
             }
             "/__store/wipe" => {
+                let payload = read_json_or_400!(request);
+                let Some(request) = confirm_or_400(request, &payload) else {
+                    return Ok(());
+                };
                 let _ocr_guard = match state.ocr_slot.try_lock() {
                     Ok(guard) => guard,
                     Err(std::sync::TryLockError::WouldBlock) => {
@@ -693,6 +697,22 @@ mod confirm_gate_tests {
         assert!(!confirm_requested(&json!({ "confirm": "true" })));
         assert!(!confirm_requested(&json!({ "confirm": 1 })));
         assert!(confirm_requested(&json!({ "confirm": true })));
+    }
+
+    #[test]
+    fn wipe_route_is_gated_by_confirm_or_400() {
+        // The wipe handler must sit behind the same confirmation gate as the
+        // other destructive store actions (fix #211): a payload without an
+        // explicit `confirm: true` must be rejected with a 400.
+        let source = include_str!("router.rs");
+        let start = source
+            .find("\"/__store/wipe\" => {")
+            .expect("wipe route must exist");
+        let region = &source[start..(start + 800).min(source.len())];
+        assert!(
+            region.contains("confirm_or_400"),
+            "wipe route must be gated by confirm_or_400"
+        );
     }
 }
 
