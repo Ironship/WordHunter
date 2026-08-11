@@ -211,6 +211,18 @@ Encrypted, corrupt, unsupported, or empty PDFs can still be rejected. A damaged
 desktop package with a missing OCR runner or model reports that packaging/runtime
 problem instead of silently returning an incomplete OCR result.
 
+**YouTube captions (optional).** The desktop import panel can load subtitles
+from a YouTube video URL. This uses the open-source [yt-dlp] tool as an
+optional external dependency — Word Hunter does not bundle it. Install Python 3
+with yt-dlp on your PATH, or drop a standalone `yt-dlp` binary (`yt-dlp.exe`
+on Windows) next to the app executable or in its `bin/` subdirectory. The
+`WORDHUNTER_YTDLP` environment variable overrides the yt-dlp binary to use.
+On Flatpak and Snap, the host's yt-dlp is found automatically under
+`/run/host` and `/var/lib/snapd/hostfs`. Caption downloads time out after 120
+seconds, and failures report the yt-dlp exit status.
+
+[yt-dlp]: https://github.com/yt-dlp/yt-dlp
+
 <img src="docs/screenshots/pc-library.png" width="860" alt="Word Hunter desktop library with import panel">
 
 Word Hunter Pocket shows the same kind of library in a phone layout. Pocket is

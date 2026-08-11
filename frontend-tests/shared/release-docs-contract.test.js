@@ -98,3 +98,25 @@ describe("issue #144 release hygiene (bullets 2, 5, 7)", () => {
     assert.match(readme, /local OCR runtime/, "README must name the desktop local OCR runtime");
   });
 });
+
+describe("issue #135 bullet 7: the optional yt-dlp captions dependency is documented", () => {
+  it("README documents yt-dlp as the optional YouTube captions dependency", () => {
+    const readme = read("../../README.md");
+
+    assert.match(
+      readme,
+      /yt-dlp/,
+      "README must document the optional yt-dlp dependency for YouTube captions",
+    );
+  });
+
+  it("README documents the WORDHUNTER_YTDLP override variable", () => {
+    const readme = read("../../README.md");
+
+    assert.match(
+      readme,
+      /WORDHUNTER_YTDLP/,
+      "README must document the WORDHUNTER_YTDLP environment variable override",
+    );
+  });
+});
