@@ -618,3 +618,85 @@ describe("library filter bar renderer (views/library.ts)", () => {
     assertBootOrder("renderLibraryPanel();", "library-filters-toggle", "button");
   });
 });
+
+describe("import panel renderer (events/book-import.ts)", () => {
+  it("builds the panel once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const layoutHost = {
+      children: [],
+      appendChild(child) {
+        document.bodyChildren.push(child);
+        document.registry.set(child.id, child);
+      }
+    };
+    document.querySelector = (selector) => selector === ".workspace-grid.library-layout" ? layoutHost : null;
+    const { renderImportPanel } = await evaluateWithMocks("dist/web/js/events/book-import.js", {
+      "../state.js": { state: {} },
+      "../i18n.js": { t: (key) => key },
+      "../toast.js": { showToast: () => {} },
+      "../platform.js": { isAndroidPlatform: () => false, isImageOcrAvailable: () => true },
+      "../request.js": { fetchWithTimeout: async () => ({ ok: false }) },
+      "../subtitles.js": {
+        decodeImportedTextBytes: () => "",
+        parseImportedTextFile: () => "",
+        titleFromImportedFileName: () => ""
+      },
+      "../book-actions.js": {
+        cancelEditBook: () => {},
+        importCustomText: async () => null,
+        isEditBookDirty: () => false,
+        pasteImageToEditBook: () => {},
+        saveEditedBook: () => {}
+      },
+      "../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
+      "../loading.js": { beginElementBusy: () => () => {}, setElementBusy: () => {} },
+      "../store-bridge.js": { deleteStoredText: async () => {} },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" },
+      "../ocr-image-format.js": { isOcrImageFile: () => false, validatedOcrImageFormat: () => null }
+    }, { document, HTMLElement: HTMLDialogElementInstance });
+
+    const panel = renderImportPanel();
+    assert.equal(panel.id, "import-panel");
+    assert.equal(panel.className, "panel import-panel");
+    assert.equal(panel.attrs["aria-labelledby"], "import-heading");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "import-heading",
+      "library-import-close",
+      "import-mode-select",
+      "import-books-mode",
+      "import-form",
+      "import-file",
+      "import-file-hint",
+      "import-title",
+      "import-author",
+      "import-tags",
+      "import-level",
+      "import-text",
+      "import-cover-dropzone",
+      "import-cover",
+      "import-cover-preview",
+      "import-cover-img",
+      "import-cover-clear",
+      "import-submit",
+      "import-youtube-mode",
+      "youtube-import-heading",
+      "import-youtube-url",
+      "import-youtube-track",
+      "import-youtube-load",
+      "import-youtube-status"
+    ]) {
+      assert.match(panel.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(panel.innerHTML, /data-i18n="import\.heading"/);
+    assert.match(panel.innerHTML, /data-i18n-attr="placeholder=import\.titlePlaceholder"/);
+    assert.match(panel.innerHTML, /data-i18n="import\.youtubeLoad"/);
+    assert.equal(renderImportPanel(), panel, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the panel out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderImportPanel();", "import-panel", "aside");
+    assert.doesNotMatch(read("dist/web/index.html"), /class="panel import-panel"/);
+  });
+});

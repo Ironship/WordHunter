@@ -39,7 +39,6 @@ globalThis.HTMLTextAreaElement = FakeElement;
 
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { bookTexts } = await import("../../dist/web/js/books.js");
-const { els } = await import("../../dist/web/js/dom.js");
 const { importCustomText, updatePdfOcrPageText } = await import("../../dist/web/js/book-actions/custom-text.js");
 const {
   buildPdfDocumentText,
@@ -190,26 +189,37 @@ describe("custom text import", () => {
     globalThis.fetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
     let submitHandler;
     let resetCalled = false;
-    els.importForm = busyElement({
+    // The import panel is rendered by renderImportPanel() at boot (port of
+    // #127 P2), so bindBookImportEvents() resolves the form via the document.
+    const importForm = busyElement({
       addEventListener(type, handler) {
         if (type === "submit") submitHandler = handler;
       },
       reset() { resetCalled = true; }
     });
-    els.importTitle = { value: "Unsaved title" };
-    els.importText = { value: "Unsaved body" };
-    els.importAuthor = { value: "Unsaved author" };
-    els.importTags = { value: "draft" };
-    els.importLevel = { value: "B1" };
+    const importElements = {
+      "import-form": importForm,
+      "import-title": { value: "Unsaved title" },
+      "import-text": { value: "Unsaved body" },
+      "import-author": { value: "Unsaved author" },
+      "import-tags": { value: "draft" },
+      "import-level": { value: "B1" }
+    };
+    const originalGetElementById = document.getElementById;
+    document.getElementById = (id) => importElements[id] ?? null;
     const submitButton = busyElement({ disabled: false });
-    bindBookImportEvents();
+    try {
+      bindBookImportEvents();
 
-    await submitHandler({ preventDefault() {}, submitter: submitButton });
+      await submitHandler({ preventDefault() {}, submitter: submitButton });
 
-    assert.equal(resetCalled, false);
-    assert.equal(els.importTitle.value, "Unsaved title");
-    assert.equal(els.importText.value, "Unsaved body");
-    assert.equal(submitButton.disabled, false);
+      assert.equal(resetCalled, false);
+      assert.equal(importElements["import-title"].value, "Unsaved title");
+      assert.equal(importElements["import-text"].value, "Unsaved body");
+      assert.equal(submitButton.disabled, false);
+    } finally {
+      document.getElementById = originalGetElementById;
+    }
   });
 
   it("stores page-scoped OCR corrections and updates the overlay words", async () => {
