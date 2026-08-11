@@ -11,7 +11,7 @@ import { clearPendingDelta, flushPendingDeltaToLocalStorage, readPendingDelta, s
 import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
-import { refreshYouGlishTheme } from "./js/youglish.js";
+import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
 import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
 import { renderMoveBookDialog } from "./js/events/move-book.js";
@@ -223,6 +223,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderDeleteBookDialog();
     renderUpdateDialog();
     renderLanguageOnboardingDialog();
+    renderYouGlishModal();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();
