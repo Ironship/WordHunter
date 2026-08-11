@@ -156,7 +156,16 @@ describe("Android Pocket packaging", () => {
       elements.filter((node) => node.name === "uses-permission").map((node) => node.attributes["android:name"]),
       ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"],
     );
-    assert.equal(elements.some((node) => /LEANBACK|FileProvider|file_paths/.test(JSON.stringify(node))), false);
+    assert.equal(elements.some((node) => /LEANBACK/.test(JSON.stringify(node))), false);
+    const provider = elements.find((node) => node.name === "provider");
+    assert.equal(provider.attributes["android:name"], "androidx.core.content.FileProvider");
+    assert.equal(provider.attributes["android:authorities"], "${applicationId}.fileprovider");
+    assert.equal(provider.attributes["android:grantUriPermissions"], "true");
+    assert.equal(provider.attributes["android:exported"], "false");
+    assert.equal(
+      descendants(provider).find((node) => node.name === "meta-data").attributes["android:resource"],
+      "@xml/file_paths",
+    );
     const launcher = elements.find(
       (node) => node.name === "category" && node.attributes["android:name"] === "android.intent.category.LAUNCHER",
     );
@@ -195,6 +204,7 @@ describe("Android Pocket packaging", () => {
     assert.match(prepare, /Copy-Item -LiteralPath \$activitySource -Destination \$activityTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$manifestSource -Destination \$manifestTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$networkSecuritySource -Destination \$networkSecurityTarget/);
+    assert.match(prepare, /Copy-Item -LiteralPath \$filePathsSource -Destination \$filePathsTarget/);
     assert.match(prepare, /Set-AndroidGradleVersion/);
     assert.match(prepare, /androidx\.documentfile:documentfile:1\.0\.1/);
     const release = powershellFunction(build, "Build-AndroidReleaseAab");
