@@ -73,8 +73,7 @@ async function loadAppHarness({
   loadLocale = async () => {},
   pendingDelta = null,
   hasPending = false,
-  deltaPayload = "{}",
-  deltaCoverage = { langs: [], texts: [] }
+  deltaEnvelope = { payload: "{}", session: "harness", sequence: 0 }
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -96,8 +95,7 @@ async function loadAppHarness({
     __qtBridge: false,
     flushPendingSave() { calls.push("flush-save"); },
     hasPendingChanges() { return hasPending; },
-    buildPendingDeltaPayload() { calls.push("build-delta"); return deltaPayload; },
-    buildPendingDeltaCoverage() { calls.push("build-coverage"); return deltaCoverage; },
+    buildPendingDeltaEnvelope() { calls.push("build-envelope"); return deltaEnvelope; },
     open() {},
     requestAnimationFrame(callback) {
       assert.equal(this, window);
@@ -141,7 +139,7 @@ async function loadAppHarness({
     "./js/api.js": {
       buildSavePayload: () => "{}",
       saveSyncXhr() { calls.push("keepalive-save"); },
-      flushPendingDeltaToLocalStorage(payload) { calls.push(`pending-flush:${payload}`); },
+      flushPendingDeltaToLocalStorage(delta) { calls.push(`pending-flush:${delta.payload}`); },
       readPendingDelta() { return pendingDelta; },
       clearPendingDelta() { calls.push("clear-pending"); },
       saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
@@ -310,15 +308,17 @@ describe("persistence lifecycle", () => {
     // payload is multi-MB, so the final mutations were silently dropped on
     // every Android activity finish. The flush must go to localStorage
     // synchronously and must not rely on a keepalive fetch.
-    const harness = await loadAppHarness({ hasPending: true, deltaPayload: '{"delta":true,"fullKeys":[]}' });
+    const harness = await loadAppHarness({
+      hasPending: true,
+      deltaEnvelope: { payload: '{"delta":true,"fullKeys":[]}', session: "s1", sequence: 3 }
+    });
     harness.setAndroid(true);
 
     harness.window.emit("pagehide");
 
     assert.deepEqual(harness.calls, [
       "flush-buffers",
-      "build-delta",
-      "build-coverage",
+      "build-envelope",
       'pending-flush:{"delta":true,"fullKeys":[]}'
     ]);
     assert.ok(
@@ -329,7 +329,7 @@ describe("persistence lifecycle", () => {
 
   it("replays a pending Android teardown flush through the normal save path at boot", async () => {
     const harness = await loadAppHarness({
-      pendingDelta: { coverage: { langs: [], texts: [] }, payload: '{"delta":true,"fullKeys":[]}' }
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
     });
 
     await Promise.all(harness.document.emit("DOMContentLoaded"));
@@ -342,27 +342,25 @@ describe("persistence lifecycle", () => {
     assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
   });
 
-  it("clears a stale pending delta once a newer save covers it — but not before", async () => {
+  it("clears a pending delta only when a same-session save built after the freeze supersedes it", async () => {
     // Issue #137 class: a delta frozen at an earlier hidden event must never
     // be replayed after a newer save covered its content — its frozen
     // fullKeys would tombstone keys written in the meantime. But a save whose
-    // payload did NOT cover the pending delta must not clear it either
-    // (that would drop the delta's mutations forever).
+    // payload was built BEFORE the freeze (in-flight at hidden time) or comes
+    // from a different session does NOT contain the delta's mutations and
+    // must not clear it either (that would drop them forever).
     let cleared = 0;
-    let pendingCoverage = { langs: [], texts: [] };
+    let pending = null;
+    let releaseSave;
+    const pendingResponse = new Promise((resolve) => { releaseSave = resolve; });
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
-        async saveWithRetry() { return {}; },
+        saveWithRetry() { return pendingResponse; },
         saveSyncXhr() {},
-        readPendingDelta() {
-          return { coverage: pendingCoverage, payload: "{}" };
-        },
-        coverageCovers(save, pending) {
-          return pending.langs.every((lang) => save.langs.includes(lang));
-        },
+        readPendingDelta() { return pending; },
         clearPendingDelta() { cleared += 1; }
       }
     }, {
@@ -373,42 +371,30 @@ describe("persistence lifecycle", () => {
       console
     });
     const autosave = createAutosave(() => ({ preferences: {}, profiles: {} }));
+    const state = autosave.wrap({ preferences: {}, profiles: {} });
 
-    // Save with empty coverage covers an empty pending delta → cleared.
+    // Case 1 — save built BEFORE the freeze does not cover the delta:
+    // start a save (payload sequence 0), then mutate (sequence 1) and freeze
+    // the delta (sequence 1). The completing save must NOT clear it.
+    const inflight = autosave.saveState();
+    state.profiles.de = { words: {} };
+    const envelope = autosave.buildPendingDeltaEnvelope();
+    pending = envelope;
+    releaseSave({ ok: true });
+    await inflight;
+    assert.equal(cleared, 0, "a save built before the freeze must not clear the delta");
+
+    // Case 2 — a same-session save built after the freeze, carrying records,
+    // covers the delta (even for a mutation in an already-dirty language).
+    state.profiles.de.words.w1 = { status: "learning" };
     await autosave.saveState();
-    assert.equal(cleared, 1, "a covering save supersedes the pending delta");
+    assert.equal(cleared, 1, "a same-session save built after the freeze supersedes the delta");
 
-    // A pending delta covering a language the save did not touch stays.
-    pendingCoverage = { langs: ["de"], texts: [] };
+    // Case 3 — a delta from another session is never cleared by this
+    // session's saves (only the boot replay delivers and clears it).
+    pending = { payload: "{}", session: "other-session", sequence: 0 };
     await autosave.saveState();
-    assert.equal(cleared, 1, "a non-covering save must not clear the pending delta");
-  });
-
-  it("coverageCovers decides whether a save supersedes the pending delta", async () => {
-    const api = await evaluateWithMocks("../../dist/web/js/api.js", {
-      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" },
-      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) }
-    }, {
-      window: { WH_TOKEN: "test-token" },
-      fetch: async () => ({ ok: true, json: async () => ({}) }),
-      localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-      setTimeout,
-      clearTimeout,
-      console
-    });
-
-    const { coverageCovers } = api;
-    const base = { langs: ["de"], texts: [] };
-    // A save covering more than the pending delta supersedes it.
-    assert.equal(coverageCovers({ langs: ["de", "en"], texts: [] }, base), true);
-    // A save missing the pending delta's language does not.
-    assert.equal(coverageCovers({ langs: ["en"], texts: [] }, base), false);
-    // texts: true covers any text list.
-    assert.equal(coverageCovers({ langs: ["de"], texts: true }, { langs: ["de"], texts: ["t1"] }), true);
-    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1"] }, { langs: ["de"], texts: true }), false);
-    // Partial text coverage.
-    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1", "t2"] }, { langs: ["de"], texts: ["t1"] }), true);
-    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1"] }, { langs: ["de"], texts: ["t1", "t2"] }), false);
+    assert.equal(cleared, 1, "a cross-session delta must not be cleared by this session's saves");
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {

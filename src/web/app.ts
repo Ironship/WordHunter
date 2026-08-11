@@ -71,10 +71,7 @@ function flushPendingStateBeforeExit() {
     // localStorage synchronously instead; the next boot replays it through
     // the normal save path (recoverPendingFlush).
     if (typeof window.hasPendingChanges === "function" && window.hasPendingChanges()) {
-      flushPendingDeltaToLocalStorage(
-        window.buildPendingDeltaPayload(),
-        window.buildPendingDeltaCoverage(),
-      );
+      flushPendingDeltaToLocalStorage(window.buildPendingDeltaEnvelope());
     }
     return;
   }

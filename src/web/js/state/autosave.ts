@@ -1,4 +1,4 @@
-import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, coverageCovers, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type DeltaCoverage } from "../api.js";
+import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type PendingDelta } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
 
@@ -45,6 +45,10 @@ export function createAutosave(getState: () => WhAppState) {
   let vocabularyRevision = 0;
   let mutationSequence = 0;
   let saveStartedMutationSequence = 0;
+  // Identity of this autosave session: the pending teardown delta is cleared
+  // by a later save only when both come from the same session (cross-session
+  // deltas are delivered exclusively by the boot replay).
+  const AUTOSAVE_SESSION = `wh-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   let lastMutationAt = 0;
   let lastSaveSucceededAt = 0;
   // Incremental-save dirty tracking: which languages changed vocab (sent in
@@ -149,13 +153,19 @@ export function createAutosave(getState: () => WhAppState) {
       dirtyTextIds.clear();
       allTextsDirty = false;
       // A successful backend write makes the pending teardown delta redundant
-      // — but only when this save's payload actually covered everything the
-      // delta holds. A save that started before the delta was frozen does NOT
-      // cover it; clearing then would drop the delta's mutations forever
-      // (issue #137 class). The guarded clear keeps the stale-delta fix while
-      // preserving the in-flight-save case for the boot replay.
+      // — but only when this save's payload was built AFTER the delta was
+      // frozen in this same session: then its full-per-language snapshots
+      // necessarily contain every mutation the delta holds. A save built
+      // before the freeze (in-flight at hidden time) does NOT cover it, and a
+      // save from a later session never contains its mutations at all —
+      // clearing in either case would drop the delta's mutations forever
+      // (issue #137 class). A surviving cross-session delta is delivered by
+      // the boot replay, which clears it on its own success.
       const pending = readPendingDelta();
-      if (pending !== null && coverageCovers(payloadCoverage, pending.coverage)) {
+      if (pending !== null
+        && pending.session === AUTOSAVE_SESSION
+        && payloadHasRecords
+        && payloadSequence >= pending.sequence) {
         clearPendingDelta();
       }
       saveInFlight = false;
@@ -165,13 +175,14 @@ export function createAutosave(getState: () => WhAppState) {
       }
       return result;
     };
-    // Snapshot the coverage of this payload at build time (not the live dirty
-    // sets — markSucceeded clears them, and the guard needs the coverage of
-    // exactly what this save delivered).
-    const payloadCoverage: DeltaCoverage = {
-      langs: [...dirtyVocabLangs],
-      texts: allTextsDirty ? true : [...dirtyTextIds]
-    };
+    // Snapshot the mutation sequence of this payload at build time — a save
+    // built at sequence N necessarily contains every mutation up to N, which
+    // is the guarantee the pending-delta clear guard relies on.
+    const payloadSequence = mutationSequence;
+    // The save-pending follow-up (a save re-run right after markSucceeded
+    // cleared the dirty sets) builds an EMPTY payload: it carries no records,
+    // so it must not be allowed to clear the pending delta either.
+    const payloadHasRecords = dirtyVocabLangs.size > 0 || dirtyTextIds.size > 0 || allTextsDirty;
     const payload = buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
     savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
       // The backend may reject a delta payload (validation edge or an older
@@ -411,18 +422,14 @@ export function createAutosave(getState: () => WhAppState) {
     // Synchronous serialization of the save delta for the Android teardown
     // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
     // tracking as doSave so the replayed payload merges cleanly on next boot.
-    buildPendingDeltaPayload(): string {
+    buildPendingDeltaEnvelope(): PendingDelta {
       const current = rawState();
-      return JSON.stringify(
-        buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
-      );
-    },
-    // Coverage of the pending delta, stored alongside it so a later save can
-    // decide whether it supersedes the pending copy (see coverageCovers).
-    buildPendingDeltaCoverage(): DeltaCoverage {
       return {
-        langs: [...dirtyVocabLangs],
-        texts: allTextsDirty ? true : [...dirtyTextIds]
+        payload: JSON.stringify(
+          buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
+        ),
+        session: AUTOSAVE_SESSION,
+        sequence: mutationSequence
       };
     },
     hasPendingChanges,

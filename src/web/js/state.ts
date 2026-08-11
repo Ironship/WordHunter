@@ -268,15 +268,10 @@ function flushPendingSave(): void {
 }
 window.flushPendingSave = flushPendingSave;
 
-function buildPendingDeltaPayload(): string {
-  return autosave.buildPendingDeltaPayload();
+function buildPendingDeltaEnvelope() {
+  return autosave.buildPendingDeltaEnvelope();
 }
-window.buildPendingDeltaPayload = buildPendingDeltaPayload;
-
-function buildPendingDeltaCoverage() {
-  return autosave.buildPendingDeltaCoverage();
-}
-window.buildPendingDeltaCoverage = buildPendingDeltaCoverage;
+window.buildPendingDeltaEnvelope = buildPendingDeltaEnvelope;
 
 function hasPendingChanges(): boolean {
   return autosave.hasPendingChanges();
