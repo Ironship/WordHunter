@@ -594,7 +594,21 @@ function Prepare-AndroidProject {
     $nightValuesDir = Join-Path $androidApp "src\main\res\values-night"
     Ensure-Directory $valuesDir
     Ensure-Directory $nightValuesDir
-    $themeXml = @"
+    # Day and night themes must not be byte-identical: the status bar icon
+    # direction has to follow the mode. Day (light background) gets dark
+    # icons (windowLightStatusBar=true), night (dark background) light icons
+    # (windowLightStatusBar=false).
+    $dayThemeXml = @"
+<resources>
+    <style name="Theme.word_hunter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#f7f9f6</item>
+        <item name="android:statusBarColor">#f7f9f6</item>
+        <item name="android:navigationBarColor">#f7f9f6</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+"@
+    $nightThemeXml = @"
 <resources>
     <style name="Theme.word_hunter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">#0d1114</item>
@@ -604,8 +618,8 @@ function Prepare-AndroidProject {
     </style>
 </resources>
 "@
-    Set-Content -LiteralPath (Join-Path $valuesDir "themes.xml") -Value $themeXml -NoNewline
-    Set-Content -LiteralPath (Join-Path $nightValuesDir "themes.xml") -Value $themeXml -NoNewline
+    Set-Content -LiteralPath (Join-Path $valuesDir "themes.xml") -Value $dayThemeXml -NoNewline
+    Set-Content -LiteralPath (Join-Path $nightValuesDir "themes.xml") -Value $nightThemeXml -NoNewline
 
     $gradle = Join-Path $androidApp "build.gradle.kts"
     $gradleText = Get-Content -Raw -LiteralPath $gradle

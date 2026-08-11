@@ -139,7 +139,13 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /if \(scheme != "http" && scheme != "https"\) return false/);
     assert.match(activity, /Intent\(Intent\.ACTION_VIEW, uri\)/);
     assert.match(activity, /intent\.addCategory\(Intent\.CATEGORY_BROWSABLE\)/);
+    // minSdk is 24: API 24-25 engines deliver range callbacks through the
+    // 3-arg onRangeStart(String, int, int) overload only, API 26+ through
+    // the Bundle variant — all three overloads must be overridden so word
+    // highlighting works on every supported API level.
+    assert.match(activity, /override fun onRangeStart\(utteranceId: String\?, start: Int, end: Int\)/);
     assert.match(activity, /override fun onRangeStart\(utteranceId: String\?, start: Int, end: Int, frame: Int\)/);
+    assert.match(activity, /override fun onRangeStart\(utteranceId: String\?, start: Int, end: Int, frame: Int, params: Bundle\)/);
     assert.match(activity, /dispatchAndroidTtsResult\(utteranceId, "range", start, end\)/);
   });
 
