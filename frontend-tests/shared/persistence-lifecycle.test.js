@@ -144,9 +144,11 @@ async function loadAppHarness({
       clearPendingDelta() { calls.push("clear-pending"); },
       saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
     },
-    "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
+    "./js/views/library.js": { bindLibraryEvents: noOp, renderDeleteBookDialog: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
     "./js/youglish.js": { refreshYouGlishTheme: noOp },
+    "./js/reader/bookmarks.js": { renderBookmarksDialog: noOp },
+    "./js/events/move-book.js": { renderMoveBookDialog: noOp },
     "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
     "./js/platform.js": {
       applyPlatformUi: noOp,
@@ -166,7 +168,7 @@ async function loadAppHarness({
     console
   }, {
     "./js/views/reader.js": { bindReaderEvents: noOp },
-    "./js/update-checker.js": { checkForUpdates: noOp }
+    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp }
   });
 
   return {

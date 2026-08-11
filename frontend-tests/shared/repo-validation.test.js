@@ -480,6 +480,23 @@ describe("repository validation wiring", () => {
     "reader-bookmark-cancel-edit", // reader/bookmarks.ts (renderBookmarksDialog)
     "reader-bookmark-list", // reader/bookmarks.ts (renderBookmarksDialog)
     "reader-bookmarks-close", // reader/bookmarks.ts (renderBookmarksDialog)
+    "move-book-dialog", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-title", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-select", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-cancel", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-confirm", // events/move-book.ts (renderMoveBookDialog)
+    "delete-book-dialog", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-title", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-message", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-cancel", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-confirm", // views/library.ts (renderDeleteBookDialog)
+    "update-dialog", // update-checker.ts (renderUpdateDialog)
+    "update-title", // update-checker.ts (renderUpdateDialog)
+    "update-message", // update-checker.ts (renderUpdateDialog)
+    "update-dismiss", // update-checker.ts (renderUpdateDialog)
+    "update-skip", // update-checker.ts (renderUpdateDialog)
+    "update-disable", // update-checker.ts (renderUpdateDialog)
+    "update-open", // update-checker.ts (renderUpdateDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

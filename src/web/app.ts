@@ -8,12 +8,14 @@ import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale, initialLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { clearPendingDelta, flushPendingDeltaToLocalStorage, readPendingDelta, saveWithRetry } from "./js/api.js";
-import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
+import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
 import { refreshYouGlishTheme } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
 import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
+import { renderMoveBookDialog } from "./js/events/move-book.js";
+import { renderUpdateDialog } from "./js/update-checker.js";
 
 detectPlatform();
 
@@ -209,6 +211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // TS-rendered dialogs (port of #127 P1): build them before cacheElements()
     // so every boot-time consumer and the els cache find the elements in DOM.
     renderBookmarksDialog();
+    renderMoveBookDialog();
+    renderDeleteBookDialog();
+    renderUpdateDialog();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();
