@@ -24,5 +24,8 @@
     "stylelint": "16.26.1",
     "stylelint-config-recommended": "17.0.0",
     "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
   }
 }

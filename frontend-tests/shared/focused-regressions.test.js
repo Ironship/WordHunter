@@ -119,19 +119,16 @@ describe("lazy library statistics", () => {
       userBooks: [],
       archivedBookIds: []
     };
+    const libraryElements = {
+      "book-list": bookList,
+      "library-search": { value: "" },
+      "level-filter": { value: "" },
+      "library-sort": { value: "" },
+      "library-archive-filter": { value: "" },
+      "library-sort-reverse": { dataset: {} }
+    };
     const { renderLibrary } = await evaluateWithMocks("dist/web/js/views/library.js", {
       "../state.js": { state, saveUiState() {} },
-      "../dom.js": { els: {
-        bookList,
-        librarySearch: {},
-        levelFilter: {},
-        librarySort: {},
-        librarySortReverse: { dataset: {} },
-        libraryArchiveFilter: {},
-        libraryPanel: null,
-        libraryFiltersToggle: null,
-        librarySidebarResizer: null
-      } },
       "../utils.js": {
         escapeHtml: String,
         escapeAttribute: String,
@@ -166,6 +163,10 @@ describe("lazy library statistics", () => {
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, {
       window: {},
+      document: {
+        getElementById(id) { return libraryElements[id] ?? null; },
+        querySelector() { return null; }
+      },
       requestAnimationFrame: () => 1,
       Intl
     });

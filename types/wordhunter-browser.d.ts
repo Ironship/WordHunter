@@ -317,11 +317,6 @@ declare global {
 interface WhDomCache {
     navItems?: HTMLElement[];
     views?: HTMLElement[];
-    librarySearch?: HTMLInputElement | null;
-    levelFilter?: HTMLSelectElement | null;
-    librarySort?: HTMLSelectElement | null;
-    libraryArchiveFilter?: HTMLSelectElement | null;
-    librarySortReverse?: HTMLButtonElement | null;
     importForm?: HTMLFormElement | null;
     importYoutubeUrl?: HTMLInputElement | null;
     importYoutubeLoad?: HTMLButtonElement | null;
@@ -359,7 +354,6 @@ interface WhDomCache {
     discoverSort?: HTMLSelectElement | null;
     discoverLevel?: HTMLSelectElement | null;
     discoverSelectAll?: HTMLButtonElement | null;
-    bookList?: HTMLElement | null;
     chooseDataDirectory?: HTMLElement | null;
     clearLibrary?: HTMLElement | null;
     clearState?: HTMLElement | null;
@@ -381,9 +375,6 @@ interface WhDomCache {
     importModeSelect?: HTMLSelectElement | null;
     importYoutubeMode?: HTMLElement | null;
     importYoutubeStatus?: HTMLElement | null;
-    libraryFiltersToggle?: HTMLElement | null;
-    libraryPanel?: HTMLElement | null;
-    librarySidebarResizer?: HTMLElement | null;
     ocrGpuStatus?: HTMLElement | null;
     overallCount?: HTMLElement | null;
     pageTitle?: HTMLElement | null;
