@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "放弃对此修正的编辑？",
     "wordNavPageStart": "你已到达本页第一个单词。",
     "wordNavPageEnd": "你已到达本页最后一个单词。",
-    "aiNoteMarker": "AI 解释"
+    "aiNoteMarker": "AI 解释",
+    "findOpen": "在文本中查找…"
   },
   "vocab": {
     "eyebrow": "你的单词",

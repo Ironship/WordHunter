@@ -7,7 +7,7 @@ import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { icon } from "../icons.js";
 import { t } from "../i18n.js";
 import { applyReviewNative, isDue, todayISO } from "../sm2.js";
-import { renderVocabulary } from "./vocab-list.js";
+import { renderVocabulary, invalidateVocabListCache } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playReviewGradeSound, playStatusSound } from "../status-sounds.js";
@@ -371,6 +371,7 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
   else if (quality < 3) status = "learning";
   else if (currentEntry.status === "new") status = "learning";
   setEntryStatus(currentEntry, status, updatedAt);
+  invalidateVocabListCache();
   // A first transition to Learning must not replace the schedule just computed by FSRS/SM-2.
   currentEntry.nextDate = reviewedEntry.nextDate;
   return currentEntry;
@@ -407,6 +408,7 @@ export function removeFromSrs(word: string): void {
   const entry = state.vocab[word];
   if (!entry) return;
   const previousStatus = setEntryStatus(entry, "ignored");
+  invalidateVocabListCache();
   if (previousStatus !== "ignored") playStatusSound("ignored");
   saveState();
   state.reviewIndex = 0;

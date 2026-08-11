@@ -4,6 +4,7 @@ import { showToast } from "../toast.js";
 import { statusIcon } from "../icons.js";
 import { STATUS_ORDER, type VocabStatus } from "../constants.js";
 import { statusLabel, escapeHtml, escapeAttribute } from "../utils.js";
+import { invalidateVocabListCache } from "../vocabulary/vocab-list.js";
 import { getOrCreateEntry, renderVocabulary } from "../views/vocabulary.js";
 import { setEntryStatus } from "../vocabulary/entry-state.js";
 import { playStatusSound } from "../status-sounds.js";
@@ -189,6 +190,7 @@ export function bindWordEditorEvents() {
         entry.examples = (entry.examples || []).slice(1);
       }
       entry.updatedAt = now;
+  invalidateVocabListCache();
     } else {
       const word = addWordInput?.value.trim();
       if (!word) {

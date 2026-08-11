@@ -54,6 +54,7 @@ export function cacheElements() {
   els.readerFindPrev = byId("reader-find-prev");
   els.readerFindNext = byId("reader-find-next");
   els.readerFindClose = byId("reader-find-close");
+  els.readerFindToggle = byId("reader-find-toggle");
   els.readerHighlightToggle = byId("reader-highlight-toggle");
   els.readerWordPanelToggle = byId("reader-word-panel-toggle");
   els.readerPreviousWord = byId("reader-previous-word");
