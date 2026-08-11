@@ -384,6 +384,25 @@ from stable or `-rc.N` SemVer values in `src-tauri/tauri.conf.json`. Stable
 builds sort after every release candidate for the same version; see
 `docs/release-validation.md` before changing the release version scheme.
 
+The Android project under `src-tauri/gen/android/` is committed in a
+version-neutral form: `app/build.gradle.kts` reads `versionCode`/`versionName`
+from `app/tauri.properties`, which the Tauri CLI regenerates on every build
+from `src-tauri/tauri.conf.json` and the pinned `bundle.android.versionCode`
+in `src-tauri/tauri.android.conf.json` (`scripts/android-version.mjs --check`
+verifies the identity and the neutral gradle form). The
+`.template-version` marker pins the Tauri CLI used to generate the committed
+project; `scripts/build.bat` re-initializes `gen/android` when it drifts.
+`scripts/prepare-android.mjs` applies the same overlay as the Windows recipe
+(custom `MainActivity.kt`, manifest, network security config, file paths,
+day/night themes) on Linux/macOS without PowerShell or the Tauri CLI.
+F-Droid-style recipe (after `npm ci && npm run build:frontend` and a cargo
+build of the Android Rust lib):
+
+```bash
+node scripts/prepare-android.mjs
+cd src-tauri/gen/android && ./gradlew assembleRelease -PabiList=arm64-v8a
+```
+
 ### Flatpak
 
 Linux Flatpak packaging is available through `flatpak-builder`:

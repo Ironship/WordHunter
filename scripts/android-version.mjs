@@ -1,23 +1,25 @@
 #!/usr/bin/env node
-// Portable Android version patcher (Linux/macOS/CI/F-Droid): computes the
-// versionCode/versionName from src-tauri/tauri.conf.json with the same
-// formula as scripts/build.bat Get-AndroidVersionInfo and stamps them into
-// gen/android/app/build.gradle.kts — the same file Set-AndroidGradleVersion
-// patches on Windows (scripts/build.bat:550-566). Idempotent.
+// Portable Android version identity + neutral-form enforcement (Linux/macOS/CI/F-Droid).
 //
-// The versionCode formula (see scripts/build.bat Get-AndroidVersionInfo and
-// scripts/inspect-artifact.mjs androidVersionCodeFor) is
-//   1000000 + ((major*1e6 + minor*1e3 + patch) * 100) + releaseOrdinal
-// where releaseOrdinal is 99 for a stable release, the rc number for
-// -rc.N, and 100 for a +1 hotfix. 1.0.10 -> 101001099.
+// The committed src-tauri/gen/android project is VERSION-NEUTRAL: app/build.gradle.kts
+// reads versionCode/versionName from app/tauri.properties through the tauri-cli template
+// indirection (tauriProperties.getProperty(...)) instead of baking literals. The Tauri CLI
+// regenerates app/tauri.properties on every `tauri android build` from the
+// src-tauri/tauri.conf.json version and the pinned
+// src-tauri/tauri.android.conf.json bundle.android.versionCode. This script is the portable
+// companion (issue #209):
+//   * writes app/tauri.properties with the project's bounded-monotonic versionCode formula
+//     (mirror of scripts/build.bat Get-AndroidVersionInfo, shared with
+//     scripts/inspect-artifact.mjs androidVersionCodeFor) — needed wherever the Tauri CLI
+//     never runs (F-Droid / Linux builds of the committed project);
+//   * restores the neutral tauriProperties indirection if literal versionCode/versionName
+//     ever get baked back into build.gradle.kts, and hard-asserts the ndkVersion pin
+//     (issue #144) that the committed file carries;
+//   * --check hard-fails when any of the above is violated.
 //
 // Usage:
-//   node scripts/android-version.mjs            # patch gen/android gradle
+//   node scripts/android-version.mjs            # write tauri.properties + enforce neutral gradle
 //   node scripts/android-version.mjs --check    # verify, fail if stale
-// Run it after the Android project has been generated (`tauri android init`,
-// or any scripts/build.bat android invocation). `--check` is wired into
-// .github/workflows/artifact-validation.yml after the AAB build to verify the
-// on-disk gradle identity independently of Set-AndroidGradleVersion.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -25,63 +27,144 @@ import { androidVersionCodeFor } from "./inspect-artifact.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const gradlePath = join(root, "src-tauri", "gen", "android", "app", "build.gradle.kts");
+const tauriPropertiesPath = join(root, "src-tauri", "gen", "android", "app", "tauri.properties");
 
-// Mirrors scripts/build.bat Get-AndroidVersionInfo's Name derivation:
-// MAJOR.MINOR.PATCH+1 renders as versionName "MAJOR.MINOR.PATCH.1".
+// The NDK pinned by scripts/build.bat Ensure-AndroidNdk and the CI workflows (issue #144).
+export const NDK_VERSION = "27.0.12077973";
+
+// Mirrors scripts/build.bat Get-AndroidVersionInfo. The Tauri CLI writes the raw config
+// version into tauri.properties (versionName is not rewritten anywhere), so `name` is the
+// unmodified version string — the old "+1" -> ".1" rewrite applied to gradle literals only,
+// which the neutral design removes.
 export function androidVersionFor(version) {
   return {
     source: version,
-    name: version.replace("+", "."),
+    name: version,
     code: androidVersionCodeFor(version),
   };
 }
 
-// Mirrors scripts/build.bat Set-AndroidGradleVersion (build.bat:550-566):
-// rewrites the `versionCode = N` / `versionName = "..."` lines and hard-fails
-// when they are absent so a stale template can never silently ship. Returns
-// the input unchanged when the identity is already correct (idempotent).
-export function patchGradleVersion(gradleText, versionInfo) {
-  const codeLine = /^(\s*)versionCode\s*=\s*.+$/m.test(gradleText);
-  const nameLine = /^(\s*)versionName\s*=\s*.+$/m.test(gradleText);
-  if (!codeLine || !nameLine) {
-    throw new Error(
-      "gen/android/app/build.gradle.kts: expected versionCode/versionName lines not found",
-    );
-  }
-  return gradleText
-    .replace(/^(\s*)versionCode\s*=\s*.+$/m, `$1versionCode = ${versionInfo.code}`)
-    .replace(/^(\s*)versionName\s*=\s*.+$/m, `$1versionName = "${versionInfo.name}"`);
+// The version-neutral template indirection (tauri-cli templates/mobile/android/app/build.gradle.kts).
+const NEUTRAL_VERSION_CODE =
+  'versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()';
+const NEUTRAL_VERSION_NAME =
+  'versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")';
+
+const literalCodeLine = /^(\s*)versionCode\s*=\s*\d+\s*$/m;
+const literalNameLine = /^(\s*)versionName\s*=\s*"[^"]*"\s*$/m;
+
+// Restores the neutral form: replaces any baked literal versionCode/versionName lines with
+// the tauriProperties indirection (idempotent). The ndkVersion pin (issue #144) is carried
+// by the committed build.gradle.kts itself and enforced by checkNeutralGradle below — it is
+// never inserted here (a regex insert once merged the namespace and ndkVersion lines,
+// issue #209).
+export function neutralizeGradle(gradleText) {
+  let text = gradleText.replace(literalCodeLine, `$1${NEUTRAL_VERSION_CODE}`);
+  text = text.replace(literalNameLine, `$1${NEUTRAL_VERSION_NAME}`);
+  return text;
 }
 
-function readGradleOrFail() {
-  try {
-    return readFileSync(gradlePath, "utf8");
-  } catch (error) {
+// Hard-fails unless the gradle file is version-neutral and carries the ndkVersion pin.
+export function checkNeutralGradle(gradleText) {
+  if (literalCodeLine.test(gradleText)) {
     throw new Error(
-      `gen/android/app/build.gradle.kts not found (${gradlePath}): run 'tauri android init' or scripts/build.bat once to generate the Android project`,
-      { cause: error },
+      "gen/android/app/build.gradle.kts: literal versionCode must not be baked in (use the tauriProperties indirection)",
     );
+  }
+  if (literalNameLine.test(gradleText)) {
+    throw new Error(
+      "gen/android/app/build.gradle.kts: literal versionName must not be baked in (use the tauriProperties indirection)",
+    );
+  }
+  if (!gradleText.includes(NEUTRAL_VERSION_CODE)) {
+    throw new Error(
+      "gen/android/app/build.gradle.kts: versionCode indirection line not found",
+    );
+  }
+  if (!gradleText.includes(NEUTRAL_VERSION_NAME)) {
+    throw new Error(
+      "gen/android/app/build.gradle.kts: versionName indirection line not found",
+    );
+  }
+  if (!gradleText.includes(`ndkVersion = "${NDK_VERSION}"`)) {
+    throw new Error(
+      `gen/android/app/build.gradle.kts: ndkVersion "${NDK_VERSION}" not found (issue #144 pin)`,
+    );
+  }
+  return true;
+}
+
+// Byte-identical to what the Tauri CLI writes (crates/tauri-cli/src/mobile/android/mod.rs
+// generate_tauri_properties): a header comment, then versionName and versionCode lines.
+export function tauriPropertiesFor(versionInfo) {
+  return [
+    "// THIS IS AN AUTOGENERATED FILE. DO NOT EDIT THIS FILE DIRECTLY.",
+    `tauri.android.versionName=${versionInfo.name}`,
+    `tauri.android.versionCode=${versionInfo.code}`,
+  ].join("\n");
+}
+
+// Hard-fails unless tauri.properties carries the derived identity.
+export function checkTauriProperties(propertiesText, versionInfo) {
+  if (!propertiesText.includes(`tauri.android.versionCode=${versionInfo.code}`)) {
+    throw new Error(
+      `gen/android/app/tauri.properties: expected tauri.android.versionCode=${versionInfo.code} (derived from ${versionInfo.source})`,
+    );
+  }
+  if (!propertiesText.includes(`tauri.android.versionName=${versionInfo.name}`)) {
+    throw new Error(
+      `gen/android/app/tauri.properties: expected tauri.android.versionName=${versionInfo.name}`,
+    );
+  }
+  return true;
+}
+
+function readTextOrFail(path, hint) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    throw new Error(`${path} not found: ${hint}`, { cause: error });
   }
 }
 
 function main() {
-  const config = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+  const config = JSON.parse(
+    readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"),
+  );
   const versionInfo = androidVersionFor(String(config.version));
-  const gradleText = readGradleOrFail();
-  const patched = patchGradleVersion(gradleText, versionInfo);
+  const gradleText = readTextOrFail(
+    gradlePath,
+    "the committed src-tauri/gen/android project is missing (restore it from git, or run scripts/prepare-android.mjs)",
+  );
   if (process.argv.includes("--check")) {
-    if (patched !== gradleText) {
-      throw new Error(
-        `gen/android/app/build.gradle.kts is out of date: expected versionCode=${versionInfo.code} versionName="${versionInfo.name}"`,
-      );
-    }
-    console.log(
-      `android version identity OK: versionCode=${versionInfo.code} versionName=${versionInfo.name}`,
+    checkNeutralGradle(gradleText);
+    const propertiesText = readTextOrFail(
+      tauriPropertiesPath,
+      "the Tauri CLI writes it on every android build; on F-Droid/Linux run `node scripts/android-version.mjs` first",
     );
-  } else {
-    writeFileSync(gradlePath, patched);
-    console.log(`android versionCode=${versionInfo.code} versionName=${versionInfo.name} -> ${gradlePath}`);
+    checkTauriProperties(propertiesText, versionInfo);
+    console.log(
+      `android version identity OK: versionCode=${versionInfo.code} versionName=${versionInfo.name}, gradle neutral, ndkVersion=${NDK_VERSION}`,
+    );
+    return;
   }
+  const neutralized = neutralizeGradle(gradleText);
+  if (neutralized !== gradleText) {
+    writeFileSync(gradlePath, neutralized);
+  }
+  const propertiesText = tauriPropertiesFor(versionInfo);
+  let currentProperties = null;
+  try {
+    currentProperties = readFileSync(tauriPropertiesPath, "utf8");
+  } catch {
+    // first run on a fresh clone
+  }
+  if (currentProperties !== propertiesText) {
+    writeFileSync(tauriPropertiesPath, propertiesText);
+  }
+  console.log(
+    `android versionCode=${versionInfo.code} versionName=${versionInfo.name} -> ${tauriPropertiesPath}`,
+  );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

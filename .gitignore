@@ -7,7 +7,8 @@ src-tauri/ocr-runtime/bin/*
 !src-tauri/ocr-runtime/bin/.gitkeep
 src-tauri/ocr-runtime/models/*
 !src-tauri/ocr-runtime/models/.gitkeep
-src-tauri/gen/
+src-tauri/gen/*
+!src-tauri/gen/android/
 *.spec
 
 # Build output / compiled executables
