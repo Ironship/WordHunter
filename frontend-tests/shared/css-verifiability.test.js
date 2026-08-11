@@ -52,6 +52,27 @@ const Z_INDEX_WHITELIST = new Set(["0", "1", "2", "3", "4", "5", "10", "50", "10
    pocket-only-control rules, 2026-08). */
 const DUP_GROUP_PIN = 48;
 
+/* T5: stylesheet size budget — pins the SOURCE file sizes (not dist/), which
+   is what the #129 P3 audit measured. Pins = audit baseline + ~2% headroom.
+   Last growth: styles.css and android-pocket.css grew in #215 (2026-08, P0-P2
+   inline-style sweep); theme.css last changed in #173. The audit's
+   "pocket-reader.css" (6371 B) is theme.css — no such file exists on main. */
+const CSS_SIZE_PIN = new Map([
+  ["src/web/styles.css", 109300],
+  ["src/web/platforms/android-pocket.css", 32200],
+  ["src/web/theme.css", 6500]
+]);
+
+/* T6: var(--x, #hex) fallbacks are a conscious decision — exactly 5 in
+   styles.css. Audit lines 853, 885, 887, 2777, 2827 (pre-#219/#220 base);
+   now at 868, 900, 902, 2792, 2842. Adding a 6th fallback requires updating
+   this pin and the #129 audit together. */
+const VAR_HEX_FALLBACK_PIN = new Map([
+  ["var(--accent, #4a6cf7)", 3],
+  ["var(--accent, #4f7cff)", 1],
+  ["var(--bg, #0d1114)", 1]
+]);
+
 describe("T1 — stylelint gate pins", () => {
   const pkg = JSON.parse(read("package.json"));
 
@@ -249,5 +270,35 @@ describe("T4 — stylesheet duplication", () => {
     }
     assert.ok(groups <= DUP_GROUP_PIN,
       `identical-declaration groups ${groups} exceed pin ${DUP_GROUP_PIN} (largest: ${largest} rules)`);
+  });
+});
+
+describe("T5 — stylesheet size budget", () => {
+  for (const [file, pin] of CSS_SIZE_PIN) {
+    it(`keeps ${file} within the pinned size budget`, () => {
+      const { size } = statSync(join(ROOT, file));
+      assert.ok(size <= pin,
+        `${file} is ${size} B — exceeds pin ${pin} B (audit baseline + ~2%); ` +
+        `bump the pin deliberately after a reviewed, justified growth`);
+    });
+  }
+});
+
+describe("T6 — var() hex fallback budget", () => {
+  it("keeps var(--x, #hex) fallbacks in styles.css at the pinned 5", () => {
+    const found = [];
+    read("src/web/styles.css").split("\n").forEach((line, i) => {
+      for (const m of line.matchAll(/var\(--[a-z0-9-]+,\s*#[0-9a-fA-F]{3,8}\)/g)) {
+        found.push({ line: i + 1, expr: m[0] });
+      }
+    });
+    const byExpr = new Map();
+    for (const { expr } of found) byExpr.set(expr, (byExpr.get(expr) ?? 0) + 1);
+    const actual = [...byExpr].sort((a, b) => a[0].localeCompare(b[0]));
+    const pinned = [...VAR_HEX_FALLBACK_PIN].sort((a, b) => a[0].localeCompare(b[0]));
+    assert.deepEqual(actual, pinned,
+      `var() hex fallback counts drifted — now ${found.length} at lines ` +
+      `${found.map((f) => f.line).join(", ")} (${found.map((f) => f.expr).join(" | ")}); ` +
+      `every new fallback is a conscious decision: update the pin and the #129 audit`);
   });
 });
