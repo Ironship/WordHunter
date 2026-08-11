@@ -80,9 +80,16 @@ test("mutation sites invalidate the suggest index and the review-queue memo", ()
   assert.match(vocabActions, /export function deleteWord[\s\S]*?invalidateSuggestIndex\(\);[\s\S]*?invalidateReviewQueueCache\(\);/);
   // setWordStatus: queue depends on statuses -> memo invalidated.
   assert.match(vocabActions, /export function setWordStatus[\s\S]*?invalidateReviewQueueCache\(\);/);
+  // selectWord + autoLearnOnClick: fresh entry -> learning feeds the queue.
+  assert.match(vocabActions, /autoLearnOnClick[\s\S]*?setEntryStatus\(entry, "learning"\)[\s\S]*?invalidateReviewQueueCache\(\);/);
   // getOrCreateEntry: in-place add -> suggest index invalidated.
   assert.match(vocabularyView, /export function getOrCreateEntry[\s\S]*?invalidateSuggestIndex\(\);/);
-  // Word-editor dialog: status edits bypass gradeReview/removeFromSrs.
-  assert.match(wordEditor, /invalidateReviewQueueCache\(\);/);
-  assert.match(wordEditor, /invalidateSuggestIndex\(\);/);
+  // Word-editor dialog: status edits bypass gradeReview/removeFromSrs —
+  // BOTH branches (edit and add) invalidate both caches.
+  assert.match(wordEditor, /invalidateReviewQueueCache\(\);/g);
+  assert.match(wordEditor, /invalidateSuggestIndex\(\);/g);
+  assert.ok(
+    (wordEditor.match(/invalidateReviewQueueCache\(\);/g) || []).length >= 2,
+    "edit and add branches both invalidate the queue memo"
+  );
 });

@@ -126,6 +126,9 @@ export function selectWord(
     setEntryStatus(entry, "learning");
     playStatusSound("learning");
     statusChanged = true;
+    // autoLearnOnClick feeds the review queue (status + nextDate are memo
+    // inputs) — invalidate so the new word shows up in the queue.
+    invalidateReviewQueueCache();
   }
   if (getDurableStateRevision() !== durableRevision) saveState();
   else saveUiState();

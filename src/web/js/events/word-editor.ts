@@ -198,6 +198,10 @@ export function bindWordEditorEvents() {
       const entry = getOrCreateEntry(word);
       const previousStatus = setEntryStatus(entry, selectedStatus, now);
       if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
+      // The add branch also feeds the review queue (status + nextDate are
+      // memo inputs) — invalidate like the edit branch above.
+      invalidateReviewQueueCache();
+      invalidateSuggestIndex();
       const article = addArticleInput?.value.trim();
       if (article) entry.article = article;
       const translation = addTranslationInput?.value.trim();
