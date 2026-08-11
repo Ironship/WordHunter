@@ -133,7 +133,8 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
   }
 
   // F5 — reload the application (mirrors the UI reload button).
-  if (key === "f5" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey) {
+  if (key === "f5" && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey
+      && !inField) {
     event.preventDefault();
     window.location.reload();
     return;
@@ -141,6 +142,7 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
 
   // Ctrl+F — find in the reader text.
   if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && key === "f" && state.currentView === "reader") {
+    event.preventDefault();
     void import("../reader/find.js").then(({ toggleReaderFind }) => toggleReaderFind());
     return;
   }
