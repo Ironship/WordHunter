@@ -24,6 +24,19 @@ describe("manual transfer tab", () => {
     assert.match(actions, /\/__store\/import_transfer/);
   });
 
+  it("sends an explicit confirmation with every native file action (fix #110)", () => {
+    // The backend refuses to open native file dialogs unless the payload
+    // carries confirm: true (the import call covers both its branches).
+    assert.match(actions, /JSON\.stringify\(\{ data, filename, mime, confirm: true \}\)/);
+    assert.match(actions, /JSON\.stringify\(\{ scope, filename, requestId, confirm: true \}\)/);
+    assert.match(actions, /JSON\.stringify\(androidPath \? \{ path: androidPath, confirm: true \} : \{ confirm: true \}\)/);
+    const settings = readFileSync(
+      new URL("../../dist/web/js/events/settings.js", import.meta.url),
+      "utf8"
+    );
+    assert.match(settings, /JSON\.stringify\(\{ confirm: true \}\)/);
+  });
+
   it("stores timestamps in YAML and packages book assets with path validation", () => {
     assert.match(transfer, /manifest\.yaml/);
     assert.match(transfer, /words\/.*\.yaml/);

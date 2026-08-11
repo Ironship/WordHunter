@@ -253,11 +253,35 @@ pub(crate) fn save_export(payload: Value) -> Result<bool, String> {
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("export.txt");
+    validate_export_filename(filename)?;
     if let Some(path) = rfd::FileDialog::new().set_file_name(filename).save_file() {
         write_export_file(&path, data)?;
         return Ok(true);
     }
     Ok(false)
+}
+
+/// Rejects export filenames that could escape the save dialog or name a
+/// directory: empty names, path separators, the ".." component, and names
+/// longer than 255 bytes (fix #110 hardening).
+#[cfg(not(target_os = "android"))]
+pub(crate) fn validate_export_filename(filename: &str) -> Result<(), String> {
+    if filename.is_empty() {
+        return Err("export filename is empty".to_string());
+    }
+    if filename.len() > 255 {
+        return Err("export filename is longer than 255 bytes".to_string());
+    }
+    if filename == ".."
+        || filename.contains('/')
+        || filename.contains('\\')
+        || filename.contains('\0')
+    {
+        return Err(
+            "export filename must be a plain file name without path separators".to_string(),
+        );
+    }
+    Ok(())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -327,6 +351,7 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("wordhunter-transfer.zip");
+    validate_export_filename(filename)?;
     let Some(path) = rfd::FileDialog::new()
         .add_filter("WordHunter package", &["zip"])
         .set_file_name(filename)
@@ -428,8 +453,30 @@ pub(crate) fn import_transfer(state: &ServerState, _payload: &Value) -> Result<V
     else {
         return Ok(serde_json::json!({ "imported": false }));
     };
+    validate_import_package(&path, crate::store::transfer::MAX_TOTAL_BYTES)?;
     let summary = state.store.import_transfer(&path)?;
     Ok(serde_json::json!({ "imported": true, "summary": summary }))
+}
+
+/// Rejects picked import files that are not `.zip` archives or exceed the
+/// transfer package size cap (2 GiB, same as transfer.rs MAX_TOTAL_BYTES),
+/// so a giant or foreign file is refused before the archive is opened.
+#[cfg(not(target_os = "android"))]
+pub(crate) fn validate_import_package(path: &Path, max_bytes: u64) -> Result<(), String> {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    if !extension.eq_ignore_ascii_case("zip") {
+        return Err("import file must be a .zip archive".to_string());
+    }
+    let len = std::fs::metadata(path)
+        .map_err(|error| format!("could not read import file metadata: {error}"))?
+        .len();
+    if len > max_bytes {
+        return Err("import archive exceeds the maximum supported size".to_string());
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "android")]
@@ -516,7 +563,9 @@ mod window_zoom_tests {
     use super::parse_window_zoom_percent;
     use super::validate_external_url;
     #[cfg(not(target_os = "android"))]
-    use super::{export_sidecar_path, write_export_file};
+    use super::{
+        export_sidecar_path, validate_export_filename, validate_import_package, write_export_file,
+    };
 
     #[test]
     fn accepts_supported_window_zoom_and_rejects_invalid_values() {
@@ -570,6 +619,43 @@ mod window_zoom_tests {
                 .is_ok()
         );
         assert!(validate_external_url("https://youglish.com/pronounce/klima/german").is_ok());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn export_filename_validation_rejects_paths_and_empty_names() {
+        assert!(validate_export_filename("export.txt").is_ok());
+        assert!(validate_export_filename("wordhunter-transfer.zip").is_ok());
+        assert!(validate_export_filename("").is_err());
+        assert!(validate_export_filename("..").is_err());
+        assert!(validate_export_filename("a/b.txt").is_err());
+        assert!(validate_export_filename("a\\b.txt").is_err());
+        assert!(validate_export_filename(&"x".repeat(256)).is_err());
+        assert!(validate_export_filename(&"x".repeat(255)).is_ok());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "android"))]
+    fn import_package_validation_requires_zip_and_respects_the_size_limit() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |name: &str| {
+            let path = dir.path().join(name);
+            // Each file is written directly: on Windows, copying a freshly
+            // written file can hit the Defender scan lock (os error 32),
+            // which would make the test flaky.
+            std::fs::write(&path, "not a real zip; the check is extension + size").unwrap();
+            path
+        };
+        let zip = write("backup.zip");
+        assert!(validate_import_package(&zip, 1024).is_ok());
+        let upper = write("BACKUP.ZIP");
+        assert!(validate_import_package(&upper, 1024).is_ok());
+        let txt = write("backup.txt");
+        assert!(validate_import_package(&txt, 1024).is_err());
+        let bare = write("backup");
+        assert!(validate_import_package(&bare, 1024).is_err());
+        assert!(validate_import_package(&zip, 10).is_err());
+        assert!(validate_import_package(&zip, u64::MAX).is_ok());
     }
 
     #[test]
