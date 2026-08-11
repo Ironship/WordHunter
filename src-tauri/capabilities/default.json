@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the main window (brownfield app: no Tauri commands; the UI talks to the embedded HTTP server only).",
+  "windows": ["main", "internal-popup"],
+  "permissions": ["core:default", "core:window:default"]
+}
