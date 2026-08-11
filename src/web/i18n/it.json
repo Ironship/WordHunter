@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Scartare le modifiche a questa correzione?",
     "wordNavPageStart": "Sei alla prima parola di questa pagina.",
     "wordNavPageEnd": "Sei all'ultima parola di questa pagina.",
-    "aiNoteMarker": "Spiegazione IA"
+    "aiNoteMarker": "Spiegazione IA",
+    "findOpen": "Cerca nel testo…"
   },
   "vocab": {
     "eyebrow": "Le tue parole",

@@ -347,6 +347,15 @@ html.pocket-mode {
   display: none;
 }
 
+/* Pocket-only reader controls: hidden on desktop, shown in pocket mode. */
+.pocket-only-control {
+  display: none;
+}
+
+.pocket-mode .pocket-only-control {
+  display: inline-flex;
+}
+
 .pocket-mode .desktop-help-shortcuts {
   display: none;
 }

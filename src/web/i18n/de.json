@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Ihre Änderungen an dieser Korrektur verwerfen?",
     "wordNavPageStart": "Sie sind beim ersten Wort dieser Seite.",
     "wordNavPageEnd": "Sie sind beim letzten Wort dieser Seite.",
-    "aiNoteMarker": "KI-Erklärung"
+    "aiNoteMarker": "KI-Erklärung",
+    "findOpen": "Im Text suchen…"
   },
   "vocab": {
     "eyebrow": "Deine Worte",
