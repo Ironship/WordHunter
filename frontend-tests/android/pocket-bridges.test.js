@@ -140,6 +140,10 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /runOnUiThread[\s\S]{0,300}startActivity\(intent\)/);
     assert.match(activity, /Intent\(Intent\.ACTION_VIEW, uri\)/);
     assert.match(activity, /intent\.addCategory\(Intent\.CATEGORY_BROWSABLE\)/);
+    // minSdk raised to 26 (bullet 5, "raise minSdk" alternative): the API-24/25
+    // overloads (2-arg onRangeStart + the Bundle variant) were removed from
+    // the modern compile SDK, so the 4-arg (API 26+) is the only overridable
+    // signature; Android 7.0/7.1 (API 24-25) is dropped.
     assert.match(activity, /override fun onRangeStart\(utteranceId: String\?, start: Int, end: Int, frame: Int\)/);
     assert.match(activity, /dispatchAndroidTtsResult\(utteranceId, "range", start, end\)/);
   });

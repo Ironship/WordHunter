@@ -13,7 +13,7 @@ const gradleTemplate = `android {
 
     defaultConfig {
         applicationId = "com.wordhunter.pocket"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 36
         versionCode = 100000909
         versionName = "1.0.9-rc.9"
