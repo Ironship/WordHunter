@@ -447,8 +447,8 @@ describe("repository validation wiring", () => {
     }
   });
 
-  // Ids created at runtime by TypeScript (audited; the P1 dialog port of #127
-  // will move the remaining runtime-built dialogs into static HTML). Any id
+  // Ids created at runtime by TypeScript (audited; #127 P1 ports the static
+  // dialogs into TS renderers that run before cacheElements()). Any id
   // referenced from TS but absent here must exist in src/web/index.html.
   const TS_CREATED_IDS = new Set([
     "graph-due", // graphs/charts.ts (canvas)
@@ -473,6 +473,30 @@ describe("repository validation wiring", () => {
     "ocr-progress-text", // events/book-import.ts (innerHTML)
     "ocr-whole-book-confirm", // events/book-import.ts (dialog.id)
     "pocket-pdf-scan-warning", // events/book-import.ts (dialog.id)
+    "reader-bookmarks-dialog", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-form", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-label", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-submit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-cancel-edit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-list", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmarks-close", // reader/bookmarks.ts (renderBookmarksDialog)
+    "move-book-dialog", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-title", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-select", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-cancel", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-confirm", // events/move-book.ts (renderMoveBookDialog)
+    "delete-book-dialog", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-title", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-message", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-cancel", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-confirm", // views/library.ts (renderDeleteBookDialog)
+    "update-dialog", // update-checker.ts (renderUpdateDialog)
+    "update-title", // update-checker.ts (renderUpdateDialog)
+    "update-message", // update-checker.ts (renderUpdateDialog)
+    "update-dismiss", // update-checker.ts (renderUpdateDialog)
+    "update-skip", // update-checker.ts (renderUpdateDialog)
+    "update-disable", // update-checker.ts (renderUpdateDialog)
+    "update-open", // update-checker.ts (renderUpdateDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

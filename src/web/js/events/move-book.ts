@@ -69,3 +69,35 @@ export function bindMoveBookEvents() {
     if (event.target === dialog && !moveRunning) dialog.close();
   });
 }
+
+/**
+ * Builds the move-book dialog markup once (idempotent). Called during app
+ * boot before cacheElements() so every consumer finds the elements in the
+ * DOM; data-i18n / data-i18n-attr attributes are applied by the boot-time
+ * applyTranslations() pass (see app.ts).
+ */
+export function renderMoveBookDialog(): HTMLDialogElement {
+  const existing = document.getElementById("move-book-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#move-book-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "move-book-dialog";
+  dialog.className = "panel";
+  dialog.setAttribute("aria-labelledby", "move-book-title");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <h2 id="move-book-title" data-i18n="moveBook.title">Move Book</h2>
+    </div>
+    <div class="settings-body p-15-g-1">
+      <p class="muted-copy" data-i18n="moveBook.hint">Select the target language profile for this book:</p>
+      <select id="move-book-select" class="input" data-i18n-attr="aria-label=library.moveBook"></select>
+      <div class="justify-end-m-t-1">
+        <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
+        <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Move</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
