@@ -575,6 +575,8 @@ function Prepare-AndroidProject {
     $manifestTarget = Join-Path $androidApp "src\main\AndroidManifest.xml"
     $networkSecuritySource = Join-Path $Root "src-tauri\platforms\android\network_security_config.xml"
     $networkSecurityTarget = Join-Path $androidApp "src\main\res\xml\network_security_config.xml"
+    $filePathsSource = Join-Path $Root "src-tauri\platforms\android\res\xml\file_paths.xml"
+    $filePathsTarget = Join-Path $androidApp "src\main\res\xml\file_paths.xml"
     if (-not (Test-Path -LiteralPath $activitySource)) {
         Fail "Android MainActivity source was not found: $activitySource"
     }
@@ -584,12 +586,16 @@ function Prepare-AndroidProject {
     if (-not (Test-Path -LiteralPath $networkSecuritySource)) {
         Fail "Android network security config was not found: $networkSecuritySource"
     }
+    if (-not (Test-Path -LiteralPath $filePathsSource)) {
+        Fail "Android file paths config was not found: $filePathsSource"
+    }
     Copy-Item -LiteralPath $activitySource -Destination $activityTarget -Force
     Copy-Item -LiteralPath $manifestSource -Destination $manifestTarget -Force
     Ensure-Directory (Split-Path -Parent $networkSecurityTarget)
     Copy-Item -LiteralPath $networkSecuritySource -Destination $networkSecurityTarget -Force
+    Ensure-Directory (Split-Path -Parent $filePathsTarget)
+    Copy-Item -LiteralPath $filePathsSource -Destination $filePathsTarget -Force
     Remove-Item -LiteralPath (Join-Path $androidApp "src\main\assets\ocr-runtime") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $androidApp "src\main\res\xml\file_paths.xml") -Force -ErrorAction SilentlyContinue
     $valuesDir = Join-Path $androidApp "src\main\res\values"
     $nightValuesDir = Join-Path $androidApp "src\main\res\values-night"
     Ensure-Directory $valuesDir

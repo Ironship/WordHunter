@@ -85,6 +85,12 @@ let youtubeTracks: YoutubeTrack[] = [];
 let youtubeTracksUrl = "";
 const MAX_DESKTOP_PDF_BYTES = 256 * 1024 * 1024;
 const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
+// The native Pocket bridge rejects base64 payloads above this cap BEFORE any
+// decode (see ANDROID_PDF_MAX_BASE64_DECODED in MainActivity.kt), so a huge
+// string is never materialized on the Java heap. Guard here as well, before
+// the payload crosses the bridge at all.
+const ANDROID_PDF_RENDER_MAX_BASE64_MB = 64;
+const ANDROID_PDF_RENDER_MAX_BASE64_ENCODED = ANDROID_PDF_RENDER_MAX_BASE64_MB * 1024 * 1024 * 4 / 3 + 4;
 /**
  * Rendering each PDF page synchronously on the JavaBridge stalls the JS
  * renderer ~100–500 ms per page. A 2000-page book would freeze the UI for
@@ -150,6 +156,7 @@ function safeImportErrorMessage(error: unknown): string {
     t("toast.pdfOcrRequiresApp"),
     t("toast.pdfTooLarge", { mb: Math.floor(MAX_POCKET_PDF_BYTES / (1024 * 1024)) }),
     t("toast.pdfTooLarge", { mb: Math.floor(MAX_DESKTOP_PDF_BYTES / (1024 * 1024)) }),
+    t("toast.pdfTooLarge", { mb: ANDROID_PDF_RENDER_MAX_BASE64_MB }),
     t("toast.pdfOcrNoText"),
     t("toast.imageOcrRequiresApp"),
     t("toast.imageOcrNoText"),
@@ -206,6 +213,9 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
   if (!bridge) throw new Error(t("toast.pdfOcrRequiresApp"));
 
   const limitedPages = pages.slice(0, MAX_POCKET_PDF_RENDER_PAGES);
+  if (data.length > ANDROID_PDF_RENDER_MAX_BASE64_ENCODED) {
+    throw new Error(t("toast.pdfTooLarge", { mb: ANDROID_PDF_RENDER_MAX_BASE64_MB }));
+  }
   const sessionId = `wh-pdf-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   parseAndroidPdfRenderResponse(
     bridge.beginPdfRender(sessionId, data),
