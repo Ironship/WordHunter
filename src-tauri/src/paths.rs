@@ -10,10 +10,33 @@ fn env_path(name: &str) -> Option<PathBuf> {
     })
 }
 
+// APPDATA is a Windows concept; on Linux it is at best a Wine/Proton
+// artifact and must never win over the XDG base directories (issue #135,
+// bullet 1). config_dir() and default_data_dir() both route their APPDATA
+// lookup through this single gate, so no per-call-site cfg is needed.
+#[cfg(windows)]
 fn appdata_dir() -> Option<PathBuf> {
     env_path("APPDATA")
 }
 
+#[cfg(not(windows))]
+fn appdata_dir() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(unix)]
+fn home_dir_path() -> Option<PathBuf> {
+    env_path("HOME").or_else(|| {
+        // Scrubbed environments (containers, service managers) may omit
+        // $HOME; fall back to the passwd database via getpwuid with no
+        // extra dependencies (issue #135, bullet 2). On unix
+        // std::env::home_dir() checks $HOME first, then getpwuid.
+        #[allow(deprecated)]
+        std::env::home_dir()
+    })
+}
+
+#[cfg(not(unix))]
 fn home_dir_path() -> Option<PathBuf> {
     env_path("HOME")
 }
@@ -62,6 +85,40 @@ fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
         .ok_or_else(|| "could not locate user data directory".to_string())
 }
 
+/// How to treat a stored data-dir pointer whose metadata could not be
+/// obtained.
+#[derive(Debug)]
+enum DataDirPointer {
+    /// The pointer is a real directory — keep using it.
+    Use,
+    /// The pointer is gone (deleted, moved, or on a detached drive) — clear
+    /// it and fall back to the default data folder.
+    Clear,
+}
+
+/// Classify a stored data-dir pointer from its metadata result so that a
+/// permission error under confinement (flatpak/snap without filesystem
+/// access) is never mistaken for a missing directory (issue #135, bullet 5).
+fn classify_data_pointer(
+    dir: &Path,
+    metadata: Result<std::fs::Metadata, std::io::Error>,
+) -> Result<DataDirPointer, String> {
+    match metadata {
+        Ok(metadata) if metadata.is_dir() => Ok(DataDirPointer::Use),
+        Ok(_) => Ok(DataDirPointer::Clear),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(DataDirPointer::Clear),
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => Err(format!(
+            "data directory {} is not readable (permission denied); if the app is confined by \
+             flatpak or snap, grant filesystem access, e.g. `flatpak override \
+             --filesystem=home com.wordhunter.app` or `snap connect word-hunter:home`",
+            dir.display()
+        )),
+        // Any other error keeps the historical behavior: fall back to the
+        // default data folder.
+        Err(_) => Ok(DataDirPointer::Clear),
+    }
+}
+
 pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
     let default = default_data_dir(app_name)?;
     let dir = match read_config_file(app_name, "data-dir")? {
@@ -69,16 +126,20 @@ pub fn data_dir(app_name: &str) -> Result<PathBuf, String> {
             let dir = PathBuf::from(value.trim());
             if dir.as_os_str().is_empty() {
                 default
-            } else if dir.is_dir() {
-                dir
             } else {
-                // The user-chosen folder no longer exists (it was deleted,
-                // moved, or sits on a detached drive). Falling back to the
-                // default data folder keeps the app launchable, and the stale
-                // pointer is cleared so the next start does not hit the same
-                // dead end. The user can re-select a folder in Settings.
-                let _ = write_config_file(app_name, "data-dir", &[]);
-                default
+                match classify_data_pointer(&dir, std::fs::metadata(&dir))? {
+                    DataDirPointer::Use => dir,
+                    DataDirPointer::Clear => {
+                        // The user-chosen folder no longer exists (it was
+                        // deleted, moved, or sits on a detached drive).
+                        // Falling back to the default data folder keeps the
+                        // app launchable, and the stale pointer is cleared
+                        // so the next start does not hit the same dead end.
+                        // The user can re-select a folder in Settings.
+                        let _ = write_config_file(app_name, "data-dir", &[]);
+                        default
+                    }
+                }
             }
         }
         None => default,

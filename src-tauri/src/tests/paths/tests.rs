@@ -1,5 +1,8 @@
+#[cfg(unix)]
+use super::config_dir;
 use super::{data_dir, device_id, read_config_file, sanitize_id, write_config_file};
 use std::ffi::OsString;
+use std::path::Path;
 
 struct EnvGuard {
     key: &'static str,
@@ -205,18 +208,19 @@ fn config_reads_fallback_to_home_config_when_xdg_config_home_is_unset() {
     );
 }
 
+#[cfg(unix)]
 #[test]
-fn config_reads_fail_without_appdata_xdg_config_home_or_home() {
+fn config_resolves_real_home_when_home_is_unset() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
-    let xdg_data = tempfile::tempdir().unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
     let _home = EnvGuard::unset("HOME");
     let _xdg_config = EnvGuard::unset("XDG_CONFIG_HOME");
-    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
 
-    let error = read_config_file("WordHunter", "device-id").unwrap_err();
-
-    assert!(error.contains("could not locate user config directory"));
+    // $HOME is gone, so the passwd entry (getpwuid) must supply the home
+    // directory (issue #135, bullet 2).
+    #[allow(deprecated)]
+    let expected = std::env::home_dir().expect("getpwuid must resolve a home");
+    assert_eq!(config_dir().unwrap(), expected.join(".config"));
 }
 
 #[test]
@@ -235,8 +239,9 @@ fn data_dir_fallbacks_to_home_local_share_when_xdg_data_home_is_unset() {
     assert!(dir.is_dir());
 }
 
+#[cfg(unix)]
 #[test]
-fn data_dir_fails_without_appdata_xdg_data_home_or_home() {
+fn data_dir_resolves_real_home_local_share_when_home_is_unset() {
     let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
     let xdg_config = tempfile::tempdir().unwrap();
     let _appdata = EnvGuard::unset("APPDATA");
@@ -244,9 +249,14 @@ fn data_dir_fails_without_appdata_xdg_data_home_or_home() {
     let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
     let _xdg_data = EnvGuard::unset("XDG_DATA_HOME");
 
-    let error = data_dir("WordHunter").unwrap_err();
+    let dir = data_dir("WordHunter").unwrap();
 
-    assert!(error.contains("could not locate user data directory"));
+    // $HOME is gone, so the passwd entry (getpwuid) must supply the home
+    // directory (issue #135, bullet 2).
+    #[allow(deprecated)]
+    let expected = std::env::home_dir().expect("getpwuid must resolve a home");
+    assert_eq!(dir, expected.join(".local/share/WordHunter"));
+    assert!(dir.is_dir());
 }
 
 #[test]
@@ -273,4 +283,61 @@ fn writes_device_id_to_xdg_config_home() {
             .join(".config/WordHunter-device-id.txt")
             .exists()
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn data_dir_ignores_appdata_on_unix_and_uses_xdg_data_home() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+    let home = tempfile::tempdir().unwrap();
+    let appdata = tempfile::tempdir().unwrap();
+    let xdg_config = tempfile::tempdir().unwrap();
+    let xdg_data = tempfile::tempdir().unwrap();
+    let _appdata = EnvGuard::set("APPDATA", appdata.path());
+    let _home = EnvGuard::set("HOME", home.path());
+    let _xdg_config = EnvGuard::set("XDG_CONFIG_HOME", xdg_config.path());
+    let _xdg_data = EnvGuard::set("XDG_DATA_HOME", xdg_data.path());
+
+    let dir = data_dir("WordHunter").unwrap();
+
+    // APPDATA is a Wine/Proton artifact on Linux and must not win over the
+    // XDG base directories (issue #135, bullet 1).
+    assert_eq!(dir, xdg_data.path().join("WordHunter"));
+    assert!(dir.is_dir());
+    assert_ne!(dir, appdata.path().join("WordHunter"));
+}
+
+#[test]
+fn data_dir_pointer_permission_denied_is_not_cleared() {
+    let _lock = crate::TEST_ENV_LOCK.lock().unwrap();
+
+    // A stored pointer that exists but is unreadable under confinement
+    // (flatpak/snap without filesystem access) must not be treated like a
+    // missing directory and must not be silently cleared (issue #135,
+    // bullet 5).
+    let denied = std::io::Error::from(std::io::ErrorKind::PermissionDenied);
+    let error = super::classify_data_pointer(Path::new("/x"), Err(denied)).unwrap_err();
+    assert!(error.contains("permission denied"));
+    assert!(error.contains("flatpak override"));
+    assert!(error.contains("snap connect"));
+
+    // NotFound keeps the historical behavior: the pointer is cleared and the
+    // app falls back to the default data folder.
+    let missing = std::io::Error::from(std::io::ErrorKind::NotFound);
+    assert!(matches!(
+        super::classify_data_pointer(Path::new("/x"), Err(missing)).unwrap(),
+        super::DataDirPointer::Clear
+    ));
+
+    // A real directory keeps being used; a real missing path is cleared.
+    let existing = tempfile::tempdir().unwrap();
+    assert!(matches!(
+        super::classify_data_pointer(existing.path(), std::fs::metadata(existing.path())).unwrap(),
+        super::DataDirPointer::Use
+    ));
+    let gone = existing.path().join("gone");
+    assert!(matches!(
+        super::classify_data_pointer(&gone, std::fs::metadata(&gone)).unwrap(),
+        super::DataDirPointer::Clear
+    ));
 }
