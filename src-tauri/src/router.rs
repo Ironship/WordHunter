@@ -253,7 +253,7 @@ fn confirm_or_400(request: Request, payload: &Value) -> Option<Request> {
     if confirm_requested(payload) {
         Some(request)
     } else {
-        response::error_response(request, 400, "user confirmation required");
+        let _ = response::error_response(request, 400, "user confirmation required");
         None
     }
 }
