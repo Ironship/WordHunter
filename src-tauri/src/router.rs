@@ -244,7 +244,10 @@ fn dispatch_state_independent_request(
 /// be unlocked by a missing, false, null, or non-boolean `confirm` value —
 /// the frontend sends it only after the user initiated the action in the UI.
 pub(crate) fn confirm_requested(payload: &Value) -> bool {
-    payload.get("confirm").and_then(Value::as_bool).unwrap_or(false)
+    payload
+        .get("confirm")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
 }
 
 /// Consumes `request` with a 400 response when the payload does not carry
