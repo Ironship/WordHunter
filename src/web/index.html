@@ -1526,78 +1526,6 @@
     </div>
   </dialog>
 
-  <dialog id="reader-bookmarks-dialog" class="panel reader-bookmarks-dialog" aria-labelledby="reader-bookmarks-title">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow" data-i18n="reader.bookmarks">Bookmarks</p>
-        <h2 id="reader-bookmarks-title" data-i18n="reader.bookmarksTitle">Bookmarks in this book</h2>
-      </div>
-      <button type="button" id="reader-bookmarks-close" class="icon-button" data-i18n-attr="title=reader.close,aria-label=reader.close">×</button>
-    </div>
-    <div class="reader-bookmarks-dialog-body">
-      <form id="reader-bookmark-form" class="reader-bookmark-form">
-        <label for="reader-bookmark-label" data-i18n="reader.bookmarkLabel">Label or comment</label>
-        <input id="reader-bookmark-label" type="text" maxlength="160" autocomplete="off" data-i18n-attr="placeholder=reader.bookmarkPlaceholder">
-        <fieldset class="reader-bookmark-color-field">
-          <legend data-i18n="reader.bookmarkColor">Color</legend>
-          <div class="reader-bookmark-colors">
-            <label class="reader-bookmark-color" data-bookmark-color="amber">
-              <input type="radio" name="reader-bookmark-color" value="amber" data-i18n-attr="title=reader.bookmarkColorAmber,aria-label=reader.bookmarkColorAmber" checked>
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="red">
-              <input type="radio" name="reader-bookmark-color" value="red" data-i18n-attr="title=reader.bookmarkColorRed,aria-label=reader.bookmarkColorRed">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="green">
-              <input type="radio" name="reader-bookmark-color" value="green" data-i18n-attr="title=reader.bookmarkColorGreen,aria-label=reader.bookmarkColorGreen">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="blue">
-              <input type="radio" name="reader-bookmark-color" value="blue" data-i18n-attr="title=reader.bookmarkColorBlue,aria-label=reader.bookmarkColorBlue">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="purple">
-              <input type="radio" name="reader-bookmark-color" value="purple" data-i18n-attr="title=reader.bookmarkColorPurple,aria-label=reader.bookmarkColorPurple">
-              <span aria-hidden="true"></span>
-            </label>
-          </div>
-        </fieldset>
-        <div class="reader-bookmark-form-actions">
-          <button type="button" id="reader-bookmark-cancel-edit" class="secondary-button" data-i18n="reader.bookmarkCancelEdit" hidden>Cancel editing</button>
-          <button type="submit" id="reader-bookmark-submit" class="primary-button" data-i18n="reader.bookmarkAdd">Add here</button>
-        </div>
-      </form>
-      <div id="reader-bookmark-list" class="reader-bookmark-list" aria-live="polite"></div>
-    </div>
-  </dialog>
-
-  <dialog id="move-book-dialog" class="panel" aria-labelledby="move-book-title">
-    <div class="panel-header">
-      <h2 id="move-book-title" data-i18n="moveBook.title">Move Book</h2>
-    </div>
-    <div class="settings-body p-15-g-1">
-      <p class="muted-copy" data-i18n="moveBook.hint">Select the target language profile for this book:</p>
-      <select id="move-book-select" class="input" data-i18n-attr="aria-label=library.moveBook"></select>
-      <div class="justify-end-m-t-1">
-        <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
-        <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Move</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="delete-book-dialog" class="panel confirmation-dialog" aria-labelledby="delete-book-title">
-    <div class="panel-header"><h2 id="delete-book-title"></h2></div>
-    <div class="confirmation-dialog-body">
-      <p id="delete-book-message" class="muted-copy"></p>
-      <div class="confirmation-dialog-actions">
-        <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Cancel</button>
-        <button id="delete-book-confirm" type="button" class="danger-button" data-i18n="library.removeConfirmButton"></button>
-      </div>
-    </div>
-  </dialog>
-
-
   <dialog id="edit-book-dialog" class="panel edit-book-dialog" aria-labelledby="edit-book-title-heading">
     <div class="panel-header">
       <h2 id="edit-book-title-heading" data-i18n="editBook.title">Edit book</h2>
@@ -1690,24 +1618,6 @@
       <div class="justify-end-m-t-1">
         <button id="argos-download-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
         <button id="argos-download-confirm" class="primary-button" data-i18n="settings.argosDownloadConfirm">Download</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="update-dialog" class="panel dialog-500" aria-labelledby="update-title">
-    <div class="panel-header">
-      <h2 class="row">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-20-green"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-        <span id="update-title" data-i18n="update.title">Update Available</span>
-      </h2>
-    </div>
-    <div class="settings-body p-15-g-1">
-      <p id="update-message" data-i18n="update.message" class="m-0-fs-09-lh-15-muted">Word Hunter {version} is available! (You have {current})</p>
-      <div class="justify-end-wrap-m-t-1">
-        <button id="update-dismiss" class="ghost-button" data-i18n="update.dismiss">Later</button>
-        <button id="update-skip" class="secondary-button" data-i18n="update.skipLabel">Skip this version</button>
-        <button id="update-disable" class="secondary-button" data-i18n="update.disableUpdates">Don't remind me again</button>
-        <button id="update-open" class="primary-button" data-i18n="update.openReleases">See what's new</button>
       </div>
     </div>
   </dialog>

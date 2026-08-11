@@ -519,3 +519,32 @@ export function bindLibraryEvents(): void {
     if (control.dataset.action === "edit-custom") actions.openEditBookModal(id);
   });
 }
+
+/**
+ * Builds the delete-book confirmation dialog markup once (idempotent).
+ * Called during app boot before cacheElements() so every consumer finds
+ * the elements in the DOM; data-i18n attributes are applied by the
+ * boot-time applyTranslations() pass (see app.ts).
+ */
+export function renderDeleteBookDialog(): HTMLDialogElement {
+  const existing = document.getElementById("delete-book-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#delete-book-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "delete-book-dialog";
+  dialog.className = "panel confirmation-dialog";
+  dialog.setAttribute("aria-labelledby", "delete-book-title");
+  dialog.innerHTML = `
+    <div class="panel-header"><h2 id="delete-book-title"></h2></div>
+    <div class="confirmation-dialog-body">
+      <p id="delete-book-message" class="muted-copy"></p>
+      <div class="confirmation-dialog-actions">
+        <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Cancel</button>
+        <button id="delete-book-confirm" type="button" class="danger-button" data-i18n="library.removeConfirmButton"></button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
