@@ -1032,6 +1032,7 @@ describe("desktop PDF reader contracts", () => {
 
   it("statically routes a missing desktop OCR runner to text-layer import", () => {
     const backend = readFileSync(new URL("../../src-tauri/src/pdf_ocr/mod.rs", import.meta.url), "utf8");
+    const sharedTextLayer = readFileSync(new URL("../../src-tauri/src/pdf_text_layer.rs", import.meta.url), "utf8");
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
     const response = readFileSync(new URL("../../src-tauri/src/response.rs", import.meta.url), "utf8");
     const server = readFileSync(new URL("../../src-tauri/src/server.rs", import.meta.url), "utf8");
@@ -1040,10 +1041,12 @@ describe("desktop PDF reader contracts", () => {
     assert.match(tomlSection(cargoToml, "dependencies"), /pdf-extract = "0\.12"/);
     assert.match(flatpakManifest, /--filesystem=host-os:ro/);
     assert.match(backend, /let result = import_text_layer_pdf\(/);
-    assert.match(backend, /pdf_extract::output_doc_page\(&document, &mut output, page_num\)/);
+    assert.match(backend, /pdf_text_layer::extract_overlay_pages\(data, max_pages, None\)/);
     assert.doesNotMatch(backend, /pdf_extract::extract_text_from_mem_by_pages\(data\)/);
-    assert.match(backend, /merge_words_using_plain_text\(/);
-    assert.match(backend, /const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2"/);
+    assert.doesNotMatch(backend, /fn merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /pdf_extract::output_doc_page\(&document, &mut output, page_num\)/);
+    assert.match(sharedTextLayer, /merge_words_using_plain_text\(/);
+    assert.match(sharedTextLayer, /const TEXT_LAYER_BOUNDS_VERSION: &str = "text-glyph-v2"/);
     assert.match(backend, /render_text_layer_page_images\([\s\S]*context\.store,[\s\S]*context\.asset_book_id,[\s\S]*&pages,[\s\S]*context\.job_id,[\s\S]*context\.jobs/);
     assert.match(backend, /PathBuf::from\("\/run\/host\/usr\/bin\/pdftoppm"\)/);
     assert.match(backend, /save_book_import_image_bytes\(book_id, image_name, &image_bytes\)/);

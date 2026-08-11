@@ -29,8 +29,10 @@ fn frontend_source_hash(manifest_dir: &Path) -> String {
     collect_files(&source_dir, &mut files);
     files.extend([
         root.join("tsconfig.json"),
+        root.join("package.json"),
         root.join("package-lock.json"),
         root.join("scripts/build-frontend.mjs"),
+        root.join("scripts/build-input-hash.mjs"),
     ]);
     files.sort_by_key(|path| {
         path.strip_prefix(root)
@@ -76,5 +78,6 @@ fn main() {
     println!("cargo:rerun-if-changed=../tsconfig.json");
     println!("cargo:rerun-if-changed=../package-lock.json");
     println!("cargo:rerun-if-changed=../scripts/build-frontend.mjs");
+    println!("cargo:rerun-if-changed=../scripts/build-input-hash.mjs");
     tauri_build::build()
 }

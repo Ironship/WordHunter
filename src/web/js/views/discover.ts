@@ -3,6 +3,8 @@ import { state, saveState } from "../state.js";
 import { els as domElements } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t as translate, getLocale } from "../i18n.js";
+import { showToast } from "../toast.js";
+import { showConfirmDialog } from "../dialog-backdrop.js";
 import { searchGutendex } from "../discover/gutendex.js";
 import { searchMediaWiki } from "../discover/mediawiki.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
@@ -17,6 +19,7 @@ interface DiscoverElements {
   discoverPagination: HTMLElement;
   discoverToolbar: HTMLElement;
   discoverStatus: HTMLElement;
+  discoverAddSelected: HTMLButtonElement;
 }
 
 interface DiscoverSearchResult {
@@ -55,6 +58,7 @@ const t = translate as (key: string, vars?: Record<string, string | number | boo
 
 let lastResults: DiscoverBook[] = [];
 const selected = new Set<string>();
+let addingSelected = false;
 let searchRunId = 0;
 let activeSearchController: AbortController | null = null;
 let _cachedPrev: boolean | null = null;
@@ -154,8 +158,13 @@ export async function runDiscoverSearch(): Promise<void> {
   }
 }
 
+export function updateAddSelectedDisabled(): void {
+  els.discoverAddSelected.disabled = addingSelected || selected.size === 0;
+}
+
 function renderResults(data?: DiscoverSearchResult): void {
   if (!els.discoverResults) return;
+  updateAddSelectedDisabled();
   if (!lastResults.length) {
     els.discoverResults.innerHTML = state.discover.query
       ? `<div class="empty-row">${escapeHtml(t("discover.noResults"))}</div>`
@@ -294,12 +303,22 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
   }
 
   async function addSelected(): Promise<{ added: number; selected: number }> {
-    const total = selected.size;
-    let added = 0;
-    for (const id of [...selected]) {
-      if (await addOne(id, { silent: true })) added++;
+    if (selected.size === 0) {
+      showToast(t("toast.addedNone"));
+      return { added: 0, selected: 0 };
     }
-    return { added, selected: total };
+    addingSelected = true;
+    try {
+      const total = selected.size;
+      let added = 0;
+      for (const id of [...selected]) {
+        if (await addOne(id, { silent: true })) added++;
+      }
+      return { added, selected: total };
+    } finally {
+      addingSelected = false;
+      updateAddSelectedDisabled();
+    }
   }
 
   function toggleAll(checked: boolean): void {
@@ -335,12 +354,23 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
     renderResults();
   }
 
-  function onUserBooksClick(event: Event): unknown {
+  async function onUserBooksClick(event: Event): Promise<void> {
     if (!(event.target instanceof Element)) return;
     const openButton = event.target.closest<HTMLButtonElement>("[data-open-book]");
-    if (openButton) return onOpen?.(openButton.dataset.openBook);
+    if (openButton) {
+      onOpen?.(openButton.dataset.openBook);
+      return;
+    }
     const removeButton = event.target.closest<HTMLButtonElement>("[data-remove-book]");
-    if (removeButton) onRemove?.(removeButton.dataset.removeBook);
+    if (!removeButton) return;
+    const id = removeButton.dataset.removeBook;
+    const book = (state.userBooks || []).find((entry) => entry.id === id);
+    const confirmed = await showConfirmDialog({
+      title: t("library.removeConfirmTitle"),
+      message: t("library.removeConfirmMessage", { title: book?.title || "" }),
+      danger: true
+    });
+    if (confirmed) onRemove?.(id);
   }
 
   return {
@@ -356,6 +386,7 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
     renderResults,
     renderPagination,
     addSelected,
+    updateAddSelectedDisabled,
     toggleAll,
     onResultsClick,
     onResultsChange,

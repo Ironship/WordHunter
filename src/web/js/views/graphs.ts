@@ -30,6 +30,30 @@ const GRAPH_CONTAINERS: GraphContainer[] = [
 ];
 
 let graphRenderToken = 0;
+let graphsAiBound = false;
+
+/**
+ * "Explain with AI" button for the graphs view: visible only when the AI is
+ * configured; streams a conclusions summary into the section below the
+ * charts. Loaded dynamically so test harnesses that mock graphs.js do not
+ * need an ai-explainer import map entry.
+ */
+function bindGraphsAiButton(): void {
+  const button = document.getElementById("graphs-ai-explain") as HTMLButtonElement | null;
+  // Some test harnesses mock `document` without querySelector.
+  const output = typeof document.querySelector === "function"
+    ? document.querySelector<HTMLElement>("[data-graphs-ai-explanation]")
+    : null;
+  if (!button || !output) return;
+  if (graphsAiBound) return;
+  graphsAiBound = true;
+  void import("../ai-explainer.js").then(({ aiExplanationConfigured }) => {
+    button.hidden = !aiExplanationConfigured();
+    button.addEventListener("click", () => {
+      void import("../graphs/ai-summary.js").then(({ runGraphsAiExplain }) => runGraphsAiExplain(button, output));
+    });
+  });
+}
 
 function graphSignature(containers: readonly GraphContainer[]): string {
   return containers.map((c) => `${c.id}:${c.wide ? "wide" : "normal"}`).join("|");
@@ -59,6 +83,7 @@ function revealGraphCanvas(id: string, index: number): void {
 
 export function renderGraphs() {
   const renderToken = ++graphRenderToken;
+  bindGraphsAiButton();
   const _chartEntries = Object.values(state.vocab) as VocabEntry[];
   updateColors();
   const el = document.getElementById("graphs-canvas-area");

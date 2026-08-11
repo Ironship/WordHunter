@@ -78,10 +78,12 @@ jobs:
               }
             '
           })"
+          export WH_APP_VERSION="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${WH_APP_VERSION}"
           printf '%s\n' "${metadata}" | jq .
           printf '%s\n' "${metadata}" | jq -e '
             .pname == "wordhunter" and
-            .version == "1.0.8" and
+            .version == $ENV.WH_APP_VERSION and
             .binaryNativeCode == true and
             .license == "AGPL-3.0-or-later" and
             .mainProgram == "wordhunter" and

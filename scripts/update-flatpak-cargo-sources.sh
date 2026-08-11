@@ -29,6 +29,11 @@ generate_sources() {
   if command -v uv >/dev/null 2>&1; then
     uv run "$generator" "$lockfile" -o "$output"
   else
+    # The generator declares aiohttp/tomlkit/pyyaml as PEP 723 deps; on bare
+    # runners (CI, minimal containers) install them when missing.
+    if ! python3 -c "import aiohttp, tomlkit, yaml" >/dev/null 2>&1; then
+      python3 -m pip install --quiet aiohttp tomlkit pyyaml
+    fi
     python3 "$generator" "$lockfile" -o "$output"
   fi
 }

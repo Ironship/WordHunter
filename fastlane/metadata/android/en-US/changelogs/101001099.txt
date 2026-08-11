@@ -1,0 +1,8 @@
+Release 1.0.10 — what's new:
+- Faster saves: delta snapshots and journaled writes
+- YouTube import with caption language picker
+- Reader search (Ctrl+F) and new shortcut hints
+- AI explanations for words and graph summaries
+- Youglish fallback that opens the site in your browser
+- Faster, safer PDF imports and background OCR
+- Stability and translation fixes across the board

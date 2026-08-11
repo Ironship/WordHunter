@@ -1,3 +1,26 @@
-THIRD-PARTY-LICENSES.html -whitespace linguist-generated=true
-OCR-THIRD-PARTY-LICENSES.html -whitespace linguist-generated=true
-frontend-tests/** linguist-detectable=false
+# Line-ending normalization: LF everywhere except Windows shell scripts.
+# Keep in sync with the root .editorconfig contract.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets must never be normalized or diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.crate binary
+*.zip binary
+*.aab binary
+*.apk binary
+*.p12 binary
+*.keystore binary
+*.jks binary

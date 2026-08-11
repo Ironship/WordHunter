@@ -1,6 +1,8 @@
 import { state } from "../../state.js";
+import { t } from "../../i18n.js";
 import { clearReaderSelection, extendReaderSelection } from "../../reader/selection.js";
 import { speakWord } from "../../tts.js";
+import { showToast } from "../../toast.js";
 import { setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
 import { openYouGlish } from "../../youglish.js";
@@ -54,6 +56,8 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   const isSpace = key === " " || key === "spacebar" || event.code === "Space";
   if (isSpace && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
     if (isAndroidPlatform()) return false;
+    const activeButton = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    if (activeButton && !activeButton.classList.contains("word-token")) return false;
     const play = document.getElementById("tts-play-text") as HTMLButtonElement | null;
     const stop = document.getElementById("tts-stop-text") as HTMLButtonElement | null;
     const control = stop && !stop.hidden ? stop : play;
@@ -70,6 +74,18 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     if (!Number.isInteger(wordIndex) || wordIndex < 0) return false;
     event.preventDefault();
     toggleReaderBookmarkAtCurrentWord(wordIndex);
+    return true;
+  }
+
+  if (key === "f3" && plainKey) {
+    // F3 / Shift+F3 — next / previous find match (standard browser find keys).
+    event.preventDefault();
+    void import("../../reader/find.js").then(({ findNextMatch, findPrevMatch }) => {
+      const handled = event.shiftKey ? findPrevMatch() : findNextMatch();
+      if (!handled) {
+        void import("../../reader/find.js").then(({ toggleReaderFind }) => toggleReaderFind());
+      }
+    });
     return true;
   }
 
@@ -96,7 +112,14 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     const index = window.lastActiveToken instanceof HTMLButtonElement
       ? tokens.indexOf(window.lastActiveToken)
       : -1;
-    import("../../vocab-actions.js").then((actions) => {
+    import("../../dialog-backdrop.js").then(async ({ showConfirmDialog }) => {
+      const ok = await showConfirmDialog({
+        title: t("dialog.confirmTitle"),
+        message: t("vocab.confirmDeleteWord"),
+        danger: true
+      });
+      if (!ok) return;
+      const actions = await import("../../vocab-actions.js");
       actions.deleteWord(state.selectedWord);
       if (index !== -1 && index + 1 < tokens.length) selectReaderToken(tokens[index + 1], false);
     });
@@ -177,7 +200,8 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     }
     if (plainKey && activeToken instanceof HTMLButtonElement && activeToken.classList.contains("word-token")) {
       event.preventDefault();
-      navigateReaderWord(key === "arrowleft" ? -1 : 1);
+      const navigated = navigateReaderWord(key === "arrowleft" ? -1 : 1);
+      if (!navigated) showToast(t(key === "arrowleft" ? "reader.wordNavPageStart" : "reader.wordNavPageEnd"));
       return true;
     }
   }
@@ -234,7 +258,9 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   }
   if (key === "i" && plainKey) {
     event.preventDefault();
-    document.querySelector<HTMLButtonElement>(`[data-action="search-image"][data-word="${CSS.escape(state.selectedWord)}"]`)?.click();
+    const imageButton = document.querySelector<HTMLButtonElement>(`[data-action="search-image"][data-word="${CSS.escape(state.selectedWord)}"]`);
+    if (!imageButton) showToast(t("toast.wordPanelItemHidden"));
+    else imageButton.click();
     return true;
   }
   if (plainKey && (key === "m" || key === "y")) {
@@ -244,6 +270,8 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     return true;
   }
   if (isSpace && plainKey) {
+    const activeButton = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+    if (activeButton && !activeButton.classList.contains("word-token")) return false;
     event.preventDefault();
     speakWord(getSelectedReaderActionText(true));
     return true;

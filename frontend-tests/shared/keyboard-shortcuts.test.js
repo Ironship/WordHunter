@@ -78,6 +78,16 @@ function resetState(view = "reader") {
 }
 
 describe("keyboard shortcut dispatch", () => {
+  it("keeps the translator Ctrl+E badge outside the translated label", () => {
+    const html = readFileSync(new URL("../../src/web/index.html", import.meta.url), "utf8");
+    const button = html.match(/<button[^>]+id="translator-ai-explain"[^>]*>([^]*?)<\/button>/)?.[0] || "";
+
+    assert.notEqual(button, "");
+    assert.doesNotMatch(button.match(/^<button[^>]*>/)?.[0] || "", /data-i18n=/);
+    assert.match(button, /<span data-i18n="reader\.aiExplain">[^<]+<\/span>/);
+    assert.match(button, /<span class="shortcut-badge">Ctrl\+E<\/span>/);
+  });
+
   it("routes Ctrl+1..4 to the active image results before Reader grading", () => {
     resetState("reader");
     let selected = 0;

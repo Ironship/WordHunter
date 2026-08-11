@@ -12,6 +12,7 @@ const {
   getCefrThresholds,
   getCurrentLevel
 } = await import("../../dist/web/js/graphs/charts.js");
+const { loadLocale } = await import("../../dist/web/js/i18n.js");
 
 describe("vocabulary CEFR progress", () => {
   it("uses language-specific thresholds", () => {
@@ -47,6 +48,15 @@ describe("vocabulary CEFR progress", () => {
     const span = 900 * 24 * 60 * 60 * 1000;
 
     assert.equal(formatVocabProgressDate(Date.parse("2024-01-05T00:00:00.000Z"), span, "en-US"), "Jan 2024");
+  });
+
+  it("uses the selected app locale when no explicit graph locale is supplied", async () => {
+    globalThis.document = { documentElement: { lang: "" } };
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({}) });
+    await loadLocale("es");
+    const span = 900 * 24 * 60 * 60 * 1000;
+
+    assert.equal(formatVocabProgressDate(Date.parse("2024-01-05T00:00:00.000Z"), span), "ene 2024");
   });
 
   it("keeps old cards in all-time added-over-time bins", () => {

@@ -70,6 +70,19 @@ export function applyPlatformUi(): void {
 
   document.documentElement.style.setProperty("--ui-scale", "1");
   document.documentElement.style.zoom = "1";
+  // A pinch re-scales the visual viewport under the pinned CSS zoom;
+  // re-pin the zoom whenever the viewport scale changes so the layout
+  // does not end up double-scaled after the gesture.
+  if (typeof window.visualViewport === "object" && window.visualViewport !== null) {
+    if (document.documentElement.dataset.pocketZoomPinBound !== "true") {
+      document.documentElement.dataset.pocketZoomPinBound = "true";
+      const rePinZoom = () => {
+        document.documentElement.style.zoom = "1";
+      };
+      window.visualViewport.addEventListener("resize", rePinZoom);
+      window.visualViewport.addEventListener("scroll", rePinZoom);
+    }
+  }
   bindPocketNavigationDrawer();
   bindPocketImportDrawer();
   bindPocketKeyboardOverlap();

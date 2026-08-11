@@ -1,4 +1,3 @@
-import { STATE_SCHEMA_VERSION } from "./constants.js";
 import { fetchWithTimeout } from "./request.js";
 
 export const VOCAB_INDEX_CACHE_VERSION = 4;
@@ -279,7 +278,7 @@ async function fetchVocabIndex({ text, vocab, lang, algorithm, book }: VocabInde
       "Content-Type": "application/json",
       "X-WH-Token": window.WH_TOKEN || ""
     },
-    body: JSON.stringify({ schemaVersion: STATE_SCHEMA_VERSION, text, vocab: compactVocab, lang, algorithm, book })
+    body: JSON.stringify({ text, vocab: compactVocab, lang, algorithm })
   }, 30_000);
   if (!response.ok) throw new Error(`vocab_index HTTP ${response.status}`);
   const data: unknown = await response.json();

@@ -1,4 +1,4 @@
-use tauri::{Manager, WebviewWindowBuilder};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::{APP_NAME, server, store::Store};
 
@@ -19,16 +19,36 @@ pub(crate) fn setup(app: &mut tauri::App) -> SetupResult {
     });
     let token = server::make_token();
     let app_handle = app.handle().clone();
-    server::start_server_on_port(store, token, app_handle, ANDROID_SERVER_PORT)
-        .map_err(boxed_string)?;
-    eprintln!("WordHunter Android setup: backend ready on 127.0.0.1:{ANDROID_SERVER_PORT}");
-    let window_config = app
+    // The fixed port can be taken (stale process, second instance); fall
+    // back to the next ports instead of failing the whole app.
+    let mut port = ANDROID_SERVER_PORT;
+    let actual_port = loop {
+        match server::start_server_on_port(store.clone(), token.clone(), app_handle.clone(), port) {
+            Ok(bound) => break bound,
+            Err(error) if port < ANDROID_SERVER_PORT + 10 => {
+                eprintln!(
+                    "WordHunter Android setup: port {port} unavailable ({error}), trying next"
+                );
+                port += 1;
+            }
+            Err(error) => return Err(boxed_string(error)),
+        }
+    };
+    eprintln!("WordHunter Android setup: backend ready on 127.0.0.1:{actual_port}");
+    let mut window_config = app
         .config()
         .app
         .windows
         .first()
-        .ok_or_else(|| boxed_string("Android window config is missing".to_string()))?;
-    WebviewWindowBuilder::from_config(app.handle(), window_config)?.build()?;
+        .ok_or_else(|| boxed_string("Android window config is missing".to_string()))?
+        .clone();
+    // The config URL embeds the default port; point the webview at the
+    // port that was actually bound.
+    window_config.url = WebviewUrl::External(
+        url::Url::parse(&format!("http://127.0.0.1:{actual_port}/index.html"))
+            .map_err(|error| boxed_string(error.to_string()))?,
+    );
+    WebviewWindowBuilder::from_config(app.handle(), &window_config)?.build()?;
     Ok(())
 }
 

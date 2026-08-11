@@ -307,6 +307,8 @@ describe("render performance guards", () => {
       }
     }
     const { bindReaderEvents } = await evaluateWithMocks("../../dist/web/js/views/reader.js", {
+      "../i18n.js": { t: (key) => key },
+      "../toast.js": { showToast() {} },
       "../panel-resizer.js": { bindSidebarResizer: noOp },
       "../state.js": {
         registerFrontendStateFlusher(callback) { frontendFlusher = callback; },
@@ -321,6 +323,7 @@ describe("render performance guards", () => {
         rememberReaderScrollPosition(options) { rememberCalls.push(options); }
       },
       "../reader/bookmarks.js": { bindReaderBookmarkEvents: noOp },
+      "../reader/find.js": { bindReaderFindEvents: noOp },
       "../platform.js": { refreshPocketWordPanelSheet: noOp },
       "../reader/word-navigation.js": { navigateReaderWord: noOp },
       "../reader/renderer.js": {

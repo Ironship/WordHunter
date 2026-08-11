@@ -29,7 +29,8 @@
       "deb": {
         "depends": [
           "libc6 (>= 2.35)",
-          "libxdo3",
+          "libwebkit2gtk-4.1-0",
+          "poppler-utils",
           "gstreamer1.0-plugins-base",
           "gstreamer1.0-plugins-good"
         ],

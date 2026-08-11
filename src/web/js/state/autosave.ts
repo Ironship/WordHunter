@@ -1,4 +1,4 @@
-import { buildSavePayload, saveToLocalStorage, saveWithRetry, saveSyncXhr } from "../api.js";
+import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type PendingDelta } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
 
@@ -43,8 +43,24 @@ export function createAutosave(getState: () => WhAppState) {
   let rejectQueuedSave: ((reason?: any) => void) | null;
   let durableStateRevision = 0;
   let vocabularyRevision = 0;
+  let mutationSequence = 0;
+  let saveStartedMutationSequence = 0;
+  // Identity of this autosave session: the pending teardown delta is cleared
+  // by a later save only when both come from the same session (cross-session
+  // deltas are delivered exclusively by the boot replay).
+  const AUTOSAVE_SESSION = `wh-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   let lastMutationAt = 0;
   let lastSaveSucceededAt = 0;
+  // Incremental-save dirty tracking: which languages changed vocab (sent in
+  // full per language, because the backend tombstones anything omitted from
+  // the payload unless it is declared in fullKeys), and whether custom texts
+  // changed (texts are large; sent only on change).
+  const dirtyVocabLangs = new Set<string>();
+  const dirtyTextIds = new Set<string>();
+  let allTextsDirty = false;
+  const rootProfiles = new WeakSet<object>();
+  type DirtyContext = { kind: "vocab" | "word" | "profile" | "books" | "texts" | "text"; lang?: string };
+  const dirtyContexts = new WeakMap<object, DirtyContext>();
 
   function hasPendingChanges(): boolean {
     return lastMutationAt > lastSaveSucceededAt
@@ -77,6 +93,7 @@ export function createAutosave(getState: () => WhAppState) {
 
   function scheduleSave(delayMs = 200): void {
     lastMutationAt = Date.now();
+    mutationSequence += 1;
     if (suspendAutoSave > 0) return;
     if (exclusiveWriteActive) {
       savePending = true;
@@ -110,18 +127,77 @@ export function createAutosave(getState: () => WhAppState) {
         return Promise.reject(error);
       }
     }
+    if (window.__bridgeState === null) {
+      // The backend snapshot has not been applied yet: on Android it is
+      // fetched asynchronously after boot. Sending a delta/full payload now
+      // would tombstone the store with an effectively empty state. Buffer
+      // locally; once the snapshot lands, markDurableStateReplaced flags
+      // everything dirty and the next save pushes the full state through.
+      // (In tests __bridgeState is undefined, which deliberately bypasses
+      // this guard; at runtime the bootstrap always sets it to null first.)
+      try {
+        saveToLocalStorage(current);
+        lastSaveSucceededAt = Date.now();
+        return Promise.resolve();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }
     saveInFlight = true;
-    savePromise = saveWithRetry(JSON.stringify(buildSavePayload(current)), 3).then((result) => {
+    saveStartedMutationSequence = mutationSequence;
+    const markSucceeded = (result: SaveResult): SaveResult => {
       applyBackendSaveStatus(result);
       retryDelayMs = 0;
       lastSaveSucceededAt = Date.now();
+      dirtyVocabLangs.clear();
+      dirtyTextIds.clear();
+      allTextsDirty = false;
+      // A successful backend write makes the pending teardown delta redundant
+      // — but only when this save's payload was built AFTER the delta was
+      // frozen in this same session: then its full-per-language snapshots
+      // necessarily contain every mutation the delta holds. A save built
+      // before the freeze (in-flight at hidden time) does NOT cover it, and a
+      // save from a later session never contains its mutations at all —
+      // clearing in either case would drop the delta's mutations forever
+      // (issue #137 class). A surviving cross-session delta is delivered by
+      // the boot replay, which clears it on its own success.
+      const pending = readPendingDelta();
+      if (pending !== null
+        && pending.session === AUTOSAVE_SESSION
+        && payloadHasRecords
+        && payloadSequence >= pending.sequence) {
+        clearPendingDelta();
+      }
       saveInFlight = false;
       if (savePending) {
         savePending = false;
         return doSave();
       }
       return result;
-    }).catch((error) => {
+    };
+    // Snapshot the mutation sequence of this payload at build time — a save
+    // built at sequence N necessarily contains every mutation up to N, which
+    // is the guarantee the pending-delta clear guard relies on.
+    const payloadSequence = mutationSequence;
+    // The save-pending follow-up (a save re-run right after markSucceeded
+    // cleared the dirty sets) builds an EMPTY payload: it carries no records,
+    // so it must not be allowed to clear the pending delta either.
+    const payloadHasRecords = dirtyVocabLangs.size > 0 || dirtyTextIds.size > 0 || allTextsDirty;
+    const payload = buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
+    savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
+      // The backend may reject a delta payload (validation edge or an older
+      // server build). Retry once with a full snapshot — but only for an
+      // HTTP 4xx rejection, never for network failures. A delta rejection
+      // must never silently drop changes.
+      const status = (error as Error & { status?: number })?.status ?? 0;
+      if (status >= 400 && status < 500) {
+        try {
+          const fullResult = await saveWithRetry(JSON.stringify(buildSavePayload(current)), 3);
+          return markSucceeded(fullResult);
+        } catch (fallbackError) {
+          // fall through to the standard error path
+        }
+      }
       saveInFlight = false;
       console.error("bridge save failed after retries", error);
       savePending = false;
@@ -147,7 +223,7 @@ export function createAutosave(getState: () => WhAppState) {
       return queuedSavePromise;
     }
     if (saveInFlight) {
-      savePending = true;
+      if (mutationSequence > saveStartedMutationSequence) savePending = true;
       return savePromise;
     }
     return doSave();
@@ -223,7 +299,26 @@ export function createAutosave(getState: () => WhAppState) {
             || (object === rootTarget && BRIDGE_UI_ROOT_KEYS.has(prop));
           if (prop === "vocab") vocabularyMaps.add(value);
           else if (vocabularyMaps.has(object)) vocabularyEntries.add(value);
-          return proxyCache.get(value) || wrap(value, childIsBridgeUi);
+          const wrapped = proxyCache.get(value) || wrap(value, childIsBridgeUi);
+          // Register the child's dirty-tracking context so mutations can be
+          // attributed to a language (vocab) or to the texts store.
+          // NOTE: contexts are keyed by the RAW child target (not the proxy):
+          // proxy traps receive the target as their first argument, so the
+          // lookups in the traps must match target keys.
+          if (object === rootTarget && prop === "profiles") {
+            rootProfiles.add(value);
+          } else if (rootProfiles.has(object)) {
+            dirtyContexts.set(value, { kind: "profile", lang: String(prop) });
+          } else {
+            const ctx = dirtyContexts.get(object);
+            if (ctx?.kind === "profile" && prop === "vocab") dirtyContexts.set(value, { kind: "vocab", lang: ctx.lang });
+            else if (ctx?.kind === "profile" && prop === "userBooks") dirtyContexts.set(value, { kind: "books", lang: ctx.lang });
+            else if (ctx?.kind === "profile" && prop === "customTexts") dirtyContexts.set(value, { kind: "texts", lang: ctx.lang });
+            else if (ctx?.kind === "profile") dirtyContexts.set(value, { kind: "profile", lang: ctx.lang });
+            else if (ctx?.kind === "vocab") dirtyContexts.set(value, { kind: "word", lang: ctx.lang });
+            else if (ctx?.kind === "texts") dirtyContexts.set(value, { kind: "text" });
+          }
+          return wrapped;
         }
         return value;
       },
@@ -231,7 +326,26 @@ export function createAutosave(getState: () => WhAppState) {
         const oldValue = Reflect.get(object, prop, receiver);
         const rawValue = unwrapProxy(value);
         const result = Reflect.set(object, prop, rawValue, receiver);
-        if (oldValue !== rawValue) recordVocabularyMutation(object, prop);
+        if (oldValue !== rawValue) {
+          recordVocabularyMutation(object, prop);
+          const ctx = dirtyContexts.get(object);
+          if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
+            if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (ctx?.kind === "text") {
+            const id = (object as WhRecord).id;
+            if (typeof id === "string" && id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
+          } else if (ctx?.kind === "texts") {
+            // Array mutation (push/splice/index write): the changed element
+            // carries the id, or fall back to marking all texts dirty.
+            const candidate = rawValue !== undefined && rawValue !== null && typeof rawValue === "object" ? rawValue : oldValue;
+            const id = candidate && typeof (candidate as WhRecord).id === "string" ? String((candidate as WhRecord).id) : "";
+            if (id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
+          } else if (object === rootTarget && prop === "customTexts") {
+            allTextsDirty = true;
+          }
+        }
         if (oldValue !== rawValue
           && !(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
           && !isUiMutation(object, prop)) {
@@ -242,8 +356,21 @@ export function createAutosave(getState: () => WhAppState) {
       },
       deleteProperty(object, prop) {
         if (prop in object) {
+          const removed = Reflect.get(object, prop);
           Reflect.deleteProperty(object, prop);
           recordVocabularyMutation(object, prop);
+          const ctx = dirtyContexts.get(object);
+          if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
+            if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (ctx?.kind === "text") {
+            const id = (object as WhRecord).id;
+            if (typeof id === "string" && id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
+          } else if (ctx?.kind === "texts") {
+            const id = removed && typeof (removed as WhRecord).id === "string" ? String((removed as WhRecord).id) : "";
+            if (id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
+          }
           if (!(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
             && !isUiMutation(object, prop)) {
             if (suspendAutoSave === 0) durableStateRevision += 1;
@@ -270,6 +397,9 @@ export function createAutosave(getState: () => WhAppState) {
     markDurableStateReplaced() {
       durableStateRevision += 1;
       vocabularyRevision += 1;
+      const current = rawState();
+      for (const lang of Object.keys(current.profiles || {})) dirtyVocabLangs.add(lang);
+      allTextsDirty = true;
     },
     flushPendingSave() {
       clearTimeout(saveTimer);
@@ -285,8 +415,22 @@ export function createAutosave(getState: () => WhAppState) {
       if (!hasPendingChanges()) return;
       const current = rawState();
       syncProfilePreferences();
-      if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
+      if (window.__qtBridge && window.__bridgeState === null) saveToLocalStorage(current);
+      else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
+    },
+    // Synchronous serialization of the save delta for the Android teardown
+    // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
+    // tracking as doSave so the replayed payload merges cleanly on next boot.
+    buildPendingDeltaEnvelope(): PendingDelta {
+      const current = rawState();
+      return {
+        payload: JSON.stringify(
+          buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
+        ),
+        session: AUTOSAVE_SESSION,
+        sequence: mutationSequence
+      };
     },
     hasPendingChanges,
     withoutAutoSave<T>(callback: () => T): T {

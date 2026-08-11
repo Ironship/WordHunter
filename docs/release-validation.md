@@ -123,8 +123,11 @@ Android builds derive `versionName` and `versionCode` from
 
 - `versionName` keeps the complete version, including `-rc.N`.
 - The base is `MAJOR * 1000000 + MINOR * 1000 + PATCH`.
-- RC `versionCode` is `base * 100 + N`, where `N` is 1 through 98.
-- Stable `versionCode` is `base * 100 + 99`, so the final build supersedes
+- Generation 1 adds a permanent `1000000` migration offset. This keeps builds
+  monotonic after 1.0.10-rc.1/rc.2 were accidentally emitted with stable
+  `1.0.10` metadata and `versionCode 100001099`.
+- RC `versionCode` is `1000000 + base * 100 + N`, where `N` is 1 through 98.
+- Stable `versionCode` is `1000000 + base * 100 + 99`, so the final build supersedes
   every release candidate for the same version.
 
 Keep `MINOR` and `PATCH` below 1000. The build rejects values outside Android's

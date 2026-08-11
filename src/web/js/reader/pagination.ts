@@ -109,7 +109,7 @@ export function paginationHtml(textId: string, currentPage: number, totalPages: 
         <kbd style="font-size:0.6rem; padding: 1px 3px; margin-left: 4px;">${escapeHtml(tFn("reader.keyPageUp"))}</kbd>
       </button>
       <span class="page-jump">
-        <input type="number" id="page-jump-input" class="page-jump-input" min="1" max="${totalPages}" value="${currentPage}" aria-label="${tFn("reader.pageJumpLabel")}">
+        <input type="number" id="page-jump-input" class="page-jump-input" min="1" max="${totalPages}" value="${currentPage}" aria-label="${escapeAttribute(tFn("reader.pageJumpLabel"))}">
         <span class="page-jump-total">/&thinsp;${totalPages}</span>
       </span>
       <button class="secondary-button" id="btn-next-page" ${currentPage >= totalPages ? "disabled" : ""} title="${escapeAttribute(tFn("reader.nextPageTitle"))}">

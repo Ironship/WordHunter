@@ -47,6 +47,13 @@ export function handleFlashcardKeys(event: KeyboardEvent, key: string): boolean 
     return true;
   }
 
+  if (key === "e" && exactCtrl) {
+    event.preventDefault();
+    const button = document.querySelector<HTMLButtonElement>('#review-card [data-review-action="ai-explain"]');
+    button?.click();
+    return true;
+  }
+
   const grade = plainKey && (/^[1-5]$/.test(key) ? key : event.code?.match(/(?:Digit|Numpad)([1-5])/)?.[1]);
   const button = grade && document.querySelector<HTMLButtonElement>(`[data-sm2-grade="${grade}"]`);
   if (button && !button.disabled) {

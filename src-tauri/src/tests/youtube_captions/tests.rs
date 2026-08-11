@@ -91,3 +91,130 @@ fn find_subtitle_file_finds_ytdlp_vtt_output() {
     std::fs::write(&path, "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi\n").unwrap();
     assert_eq!(find_subtitle_file(temp.path()).unwrap(), Some(path));
 }
+
+#[test]
+fn host_ytdlp_invocations_run_the_script_through_host_python() {
+    use std::collections::HashMap;
+
+    let invocations = host_ytdlp_invocations(Path::new("/run/host"));
+    assert_eq!(invocations.len(), 2);
+
+    let wrapped = &invocations[0];
+    assert_eq!(
+        wrapped.program,
+        Path::new("/run/host")
+            .join("usr")
+            .join("bin")
+            .join("python3")
+            .into_os_string()
+    );
+    assert_eq!(
+        wrapped.prefix_args,
+        vec![
+            Path::new("/run/host")
+                .join("usr")
+                .join("bin")
+                .join("yt-dlp")
+                .into_os_string()
+        ]
+    );
+    let env: HashMap<_, _> = wrapped
+        .env
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.to_string_lossy().into_owned(),
+                value.to_string_lossy().into_owned(),
+            )
+        })
+        .collect();
+    assert!(
+        env["PYTHONPATH"]
+            .replace('\\', "/")
+            .starts_with("/run/host/usr/lib/python3/dist-packages"),
+        "PYTHONPATH was {}",
+        env["PYTHONPATH"]
+    );
+    assert!(
+        env["LD_LIBRARY_PATH"]
+            .replace('\\', "/")
+            .contains("/run/host/usr/lib/x86_64-linux-gnu"),
+        "LD_LIBRARY_PATH was {}",
+        env["LD_LIBRARY_PATH"]
+    );
+
+    let bare = &invocations[1];
+    assert_eq!(
+        bare.program,
+        Path::new("/run/host")
+            .join("usr")
+            .join("bin")
+            .join("yt-dlp")
+            .into_os_string()
+    );
+    assert!(bare.prefix_args.is_empty());
+    assert!(bare.env.is_empty());
+}
+
+#[test]
+fn host_ytdlp_invocations_support_the_snap_hostfs_prefix() {
+    use std::collections::HashMap;
+
+    let invocations = host_ytdlp_invocations(Path::new("/var/lib/snapd/hostfs"));
+    let wrapped = &invocations[0];
+    assert_eq!(
+        wrapped.program,
+        Path::new("/var/lib/snapd/hostfs")
+            .join("usr")
+            .join("bin")
+            .join("python3")
+            .into_os_string()
+    );
+    let env: HashMap<_, _> = wrapped
+        .env
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.to_string_lossy().into_owned(),
+                value.to_string_lossy().into_owned(),
+            )
+        })
+        .collect();
+    assert!(
+        env["PYTHONPATH"]
+            .replace('\\', "/")
+            .starts_with("/var/lib/snapd/hostfs/usr/lib/python3/dist-packages"),
+        "PYTHONPATH was {}",
+        env["PYTHONPATH"]
+    );
+    assert!(
+        env["LD_LIBRARY_PATH"]
+            .replace('\\', "/")
+            .contains("/var/lib/snapd/hostfs/usr/lib/x86_64-linux-gnu"),
+        "LD_LIBRARY_PATH was {}",
+        env["LD_LIBRARY_PATH"]
+    );
+}
+
+#[test]
+fn ytdlp_commands_dedupe_keeps_wrapped_and_bare_host_candidates() {
+    let wrapped = YtdlpInvocation {
+        program: OsString::from("/run/host/usr/bin/python3"),
+        prefix_args: vec![OsString::from("/run/host/usr/bin/yt-dlp")],
+        env: Vec::new(),
+    };
+    let bare = YtdlpInvocation {
+        program: OsString::from("/run/host/usr/bin/yt-dlp"),
+        prefix_args: Vec::new(),
+        env: Vec::new(),
+    };
+    let deduped = dedupe_invocations(vec![
+        plain_ytdlp(OsString::from("yt-dlp")),
+        wrapped.clone(),
+        bare.clone(),
+        plain_ytdlp(OsString::from("yt-dlp")),
+    ]);
+    assert_eq!(deduped.len(), 3);
+    assert!(deduped.iter().any(|item| item.program == wrapped.program));
+    assert!(deduped.iter().any(|item| item.program == bare.program));
+}

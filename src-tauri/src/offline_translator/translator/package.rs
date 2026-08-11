@@ -123,7 +123,7 @@ fn install_package(pkg: &ModelPackageInfo) -> Result<bool, String> {
             pkg.from_code, pkg.to_code
         )
     })?;
-    let response = crate::http::agent()
+    let response = crate::http::download_agent()
         .get(link)
         .set("User-Agent", crate::proxy::USER_AGENT)
         .call()
@@ -174,14 +174,16 @@ fn extract_package(data: &[u8], target: &Path) -> Result<(), String> {
         let mut output = fs::File::create(&destination).map_err(|e| e.to_string())?;
         std::io::copy(&mut file, &mut output).map_err(|e| e.to_string())?;
     }
-    let mut entries = fs::read_dir(staging.path())
+    let entries = fs::read_dir(staging.path())
         .map_err(|e| e.to_string())?
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
-    if entries.len() != 1 || !entries[0].path().is_dir() {
-        return Err("model package must contain exactly one top-level directory".to_string());
-    }
-    let package = entries.pop().unwrap().path();
+    let package = match entries.as_slice() {
+        [entry] if entry.path().is_dir() => entry.path(),
+        _ => {
+            return Err("model package must contain exactly one top-level directory".to_string());
+        }
+    };
     let name = package
         .file_name()
         .ok_or_else(|| "invalid model package directory".to_string())?;

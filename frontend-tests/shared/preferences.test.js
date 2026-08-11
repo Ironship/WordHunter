@@ -158,6 +158,7 @@ describe("preferences settings summary", () => {
       { id: "note", visible: false },
       { id: "image", visible: false },
       { id: "context", visible: true },
+      { id: "ai", visible: false },
       { id: "copy", visible: false },
       { id: "edit", visible: true }
     ]);
@@ -190,8 +191,8 @@ describe("preferences settings summary", () => {
       { id: "note", visible: false },
       { id: "status", visible: true }
     ]);
-    assert.equal(restored.preferences.selectedWordPanelItems.length, 13);
-    assert.deepEqual(new Set(restored.preferences.selectedWordPanelItems.map((item) => item.id)).size, 13);
+    assert.equal(restored.preferences.selectedWordPanelItems.length, 14);
+    assert.deepEqual(new Set(restored.preferences.selectedWordPanelItems.map((item) => item.id)).size, 14);
 
     const malformed = createDefaultState();
     malformed.preferences.selectedWordPanelItems = { id: "note", visible: false };

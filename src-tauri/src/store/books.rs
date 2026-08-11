@@ -22,21 +22,27 @@ impl Store {
                     continue;
                 }
                 // A marker created after startup belongs to a concurrent import.
+                // (The previous guard compared a wall-clock mtime against uptime +
+                // epoch-now, which can never hold — every fresh marker was dropped.)
                 if marker
                     .metadata()
                     .ok()
                     .and_then(|meta| meta.modified().ok())
                     .is_some_and(|modified| {
-                        modified
+                        // Millis, not seconds: startup and the marker often land in
+                        // the same second, where a seconds comparison is useless.
+                        let since_epoch = modified
                             .duration_since(std::time::UNIX_EPOCH)
-                            .is_ok_and(|since_epoch| {
-                                since_epoch.as_secs()
-                                    > self.startup_instant.elapsed().as_secs()
-                                        + std::time::UNIX_EPOCH
-                                            .elapsed()
-                                            .map(|d| d.as_secs())
-                                            .unwrap_or(0)
-                            })
+                            .map(|d| d.as_millis())
+                            .unwrap_or(0);
+                        let now = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis())
+                            .unwrap_or(0);
+                        // Wall-clock time when this process started.
+                        let started_at =
+                            now.saturating_sub(self.startup_instant.elapsed().as_millis());
+                        since_epoch > started_at
                     })
                 {
                     continue;
@@ -120,6 +126,7 @@ impl Store {
         validate_pdf_page_assets(&dir, id, &metadata)?;
         record_files::upsert_text_record(&dir, &metadata, self.device_id())?;
         self.complete_pending_book_import(&dir, id)?;
+        self.invalidate_records_cache();
         Ok(())
     }
 
@@ -146,6 +153,7 @@ impl Store {
         let path = inner.books_dir.join(&safe_id);
         record_files::delete_text_record(&inner.dir, id, self.device_id())?;
         media_assets::tombstone_book_assets(&inner.dir, &safe_id, self.device_id())?;
+        self.invalidate_records_cache();
         if path.exists() {
             std::fs::remove_dir_all(path).map_err(|e| e.to_string())?;
             durable::sync_parent(&inner.books_dir)?;
@@ -377,11 +385,10 @@ impl Store {
 }
 
 fn existing_text_data(dir: &std::path::Path, id: &str) -> Result<Value, String> {
-    let records = record_files::load_records(dir)?;
-    match records
-        .get(&format!("text:{id}"))
-        .filter(|record| record.deleted_at.is_none())
-    {
+    // Single-record read instead of a full records scan (large stores take
+    // seconds to scan; the text record lives at a stable per-key path).
+    let existing = record_files::read_existing_record(dir, "text", &format!("text:{id}"))?;
+    match existing.filter(|record| record.deleted_at.is_none()) {
         Some(record) if record.data.is_object() => Ok(record.data.clone()),
         Some(_) => Err("stored text record is not an object".to_string()),
         None => Ok(Value::Object(Map::new())),
@@ -433,6 +440,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -472,6 +480,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -499,6 +508,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -529,6 +539,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -583,6 +594,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -591,6 +603,54 @@ mod tests {
 
         assert!(!dir.path().join("ocr-import-staging").exists());
         assert!(!books_dir.join("pending").exists());
+    }
+
+    #[test]
+    fn concurrent_import_marker_created_after_startup_is_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        let books_dir = dir.path().join("books");
+        std::fs::create_dir_all(&books_dir).unwrap();
+        let store = Store {
+            inner: Mutex::new(StoreInner {
+                dir: dir.path().to_path_buf(),
+                books_dir: books_dir.clone(),
+            }),
+            write_lock: Mutex::new(()),
+            base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
+            device_id: "test-device".to_string(),
+            startup_instant: std::time::Instant::now(),
+        };
+        // The marker is written AFTER the store started — it belongs to a
+        // concurrent import and must survive the cleanup sweep. The short
+        // sleep guarantees the marker's mtime is strictly newer than the
+        // startup instant, so the guard must keep it (mtime > now - uptime).
+        // A wall-clock comparison in whole seconds (the pre-fix guard) cannot
+        // see the difference and sweeps the marker — that is the regression
+        // this test pins.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        std::fs::create_dir_all(books_dir.join("pending/images")).unwrap();
+        let marker = books_dir
+            .join("pending")
+            .join(media_assets::IMPORT_PENDING_MARKER);
+        std::fs::write(&marker, b"pending").unwrap();
+        let written_at = std::time::SystemTime::now();
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&marker)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(written_at))
+            .unwrap();
+
+        store.discard_abandoned_book_imports().unwrap();
+
+        assert!(books_dir.join("pending").exists());
+        assert!(
+            books_dir
+                .join("pending")
+                .join(media_assets::IMPORT_PENDING_MARKER)
+                .exists()
+        );
     }
 
     #[test]
@@ -611,6 +671,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };
@@ -630,6 +691,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: "test-device".to_string(),
             startup_instant: std::time::Instant::now(),
         };

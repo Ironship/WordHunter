@@ -20,6 +20,7 @@ export const SELECTED_WORD_PANEL_ITEM_IDS: readonly WhSelectedWordPanelItemId[] 
   "note",
   "image",
   "context",
+  "ai",
   "copy",
   "edit"
 ];
@@ -36,6 +37,7 @@ export const DEFAULT_SELECTED_WORD_PANEL_ITEMS: readonly WhSelectedWordPanelItem
   { id: "note", visible: false },
   { id: "image", visible: false },
   { id: "context", visible: true },
+  { id: "ai", visible: false },
   { id: "copy", visible: false },
   { id: "edit", visible: true }
 ];

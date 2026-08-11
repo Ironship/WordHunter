@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
-const { STATE_SCHEMA_VERSION } = await import("../../dist/web/js/constants.js");
 const { getCachedTextStats, getCachedUniqueWordCount } = await import("../../dist/web/js/stats-cache.js");
 const { computeSignature, invalidateBookId, requestVocabIndex, VOCAB_INDEX_CACHE_VERSION } = await import("../../dist/web/js/vocab-index-client.js");
 const { getTextStats } = await import("../../dist/web/js/tokenizer_v2.js");
@@ -34,7 +33,10 @@ describe("cached unique word count", () => {
     await requestVocabIndex({ book, text: "one two", vocab: {}, lang: "en", algorithm: "modern" });
     assert.equal(getCachedUniqueWordCount(book, "one two", "en", "modern"), 2);
     assert.equal(requests, 1);
-    assert.equal(requestBody.schemaVersion, STATE_SCHEMA_VERSION);
+    // The payload contract (Fix #114): the backend ignores schemaVersion and
+    // book — the client must not send them.
+    assert.equal(requestBody.schemaVersion, undefined);
+    assert.equal(requestBody.book, undefined);
     assert.match(computeSignature(book, "one two", "en", "modern"), new RegExp(`^vocab-index-v${VOCAB_INDEX_CACHE_VERSION}\\|`));
   });
 

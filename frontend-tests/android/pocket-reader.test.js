@@ -32,6 +32,7 @@ describe("Android Pocket reader", () => {
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };
+    globalThis.document = { addEventListener() {}, getElementById: () => null, querySelector: () => null };
     const { countWordTokens, computeIndexedPageSlice, computeTotalPages } = await import("../../dist/web/js/reader/pagination.js");
     const tokens = [
       { type: "word", value: "One" },

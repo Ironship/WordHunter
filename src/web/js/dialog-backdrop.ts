@@ -108,6 +108,87 @@ function showUnsavedConfirm(onSave?: DialogAction, onDiscard?: DialogAction): vo
   dialog.showModal();
 }
 
+export interface ConfirmDialogOptions {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  /** Renders the confirm button with the danger style (destructive actions). */
+  danger?: boolean;
+}
+
+/**
+ * Generic two-button confirmation dialog (Cancel / Confirm) built on a native <dialog>.
+ * Resolves with true only when the user confirms; Escape, backdrop click and Cancel
+ * all resolve with false. Reuses the app's i18n keys (dialog.*) by default.
+ */
+export function showConfirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
+  const dialog = document.createElement("dialog");
+  dialog.className = "panel confirmation-dialog";
+  dialog.style.width = "90vw";
+  dialog.style.maxWidth = "420px";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  const h2 = document.createElement("h2");
+  h2.textContent = options.title;
+  header.appendChild(h2);
+
+  const body = document.createElement("div");
+  body.className = "confirmation-dialog-body";
+  const copy = document.createElement("div");
+  copy.className = "confirmation-dialog-copy";
+  const msg = document.createElement("p");
+  msg.className = "muted-copy";
+  msg.style.margin = "0";
+  msg.textContent = options.message;
+  copy.appendChild(msg);
+
+  const actions = document.createElement("div");
+  actions.className = "confirmation-dialog-actions";
+
+  const btnCancel = document.createElement("button");
+  btnCancel.type = "button";
+  btnCancel.className = "secondary-button";
+  btnCancel.textContent = options.cancelLabel ?? t("dialog.cancel");
+
+  const btnConfirm = document.createElement("button");
+  btnConfirm.type = "button";
+  btnConfirm.className = options.danger ? "danger-button" : "primary-button";
+  btnConfirm.textContent = options.confirmLabel ?? t("dialog.confirm");
+
+  actions.appendChild(btnCancel);
+  actions.appendChild(btnConfirm);
+  body.appendChild(copy);
+  body.appendChild(actions);
+  dialog.appendChild(header);
+  dialog.appendChild(body);
+  document.body.appendChild(dialog);
+
+  return new Promise<boolean>((resolve) => {
+    const cleanup = (value: boolean) => {
+      dialog.removeEventListener("cancel", handleCancel);
+      btnCancel.removeEventListener("click", handleCancelClick);
+      btnConfirm.removeEventListener("click", handleConfirm);
+      dialog.removeEventListener("click", handleBackdrop);
+      dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    const handleCancel = () => cleanup(false);
+    const handleCancelClick = () => cleanup(false);
+    const handleConfirm = () => cleanup(true);
+    const handleBackdrop = (e: MouseEvent) => {
+      if (e.target === dialog) cleanup(false);
+    };
+    dialog.addEventListener("cancel", handleCancel);
+    btnCancel.addEventListener("click", handleCancelClick);
+    btnConfirm.addEventListener("click", handleConfirm);
+    dialog.addEventListener("click", handleBackdrop);
+    dialog.showModal();
+  });
+}
+
 export function registerUnsavedDialog(
   dialogId: string,
   checkDirty: () => boolean,

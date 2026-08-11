@@ -285,7 +285,7 @@ export function removeReaderBookmark(id: string): boolean {
   return true;
 }
 
-export async function jumpToReaderBookmark(id: string): Promise<boolean> {
+async function jumpToReaderBookmark(id: string): Promise<boolean> {
   const textId = state.currentTextId;
   const bookmark = getReaderBookmarks(textId).find((item) => item.id === id);
   if (!textId || !bookmark) return false;

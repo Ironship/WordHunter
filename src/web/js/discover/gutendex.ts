@@ -98,7 +98,9 @@ export async function searchGutendex(
   return {
     results,
     count: typeof data.count === "number" ? data.count : results.length,
-    next: (data.next ?? false) as boolean,
-    previous: (data.previous ?? false) as boolean
+    // Year sorts reorder only the current page — paging would produce a
+    // wrong cross-page order and duplicates. Disable the pager instead.
+    next: clientYearSort ? false : ((data.next ?? false) as boolean),
+    previous: clientYearSort ? false : ((data.previous ?? false) as boolean)
   };
 }

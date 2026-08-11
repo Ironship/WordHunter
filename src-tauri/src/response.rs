@@ -106,6 +106,23 @@ pub fn respond_reader<R: Read>(
     request.respond(response).map_err(|error| error.to_string())
 }
 
+/// Stream an unknown-length body (chunked transfer encoding) to the client.
+/// Used for SSE responses that are produced incrementally.
+pub fn stream_response<R: Read + Send + 'static>(
+    request: Request,
+    content_type: &str,
+    reader: R,
+) -> Result<(), String> {
+    let response = Response::new(
+        StatusCode(200),
+        standard_headers(content_type, false)?,
+        reader,
+        None,
+        None,
+    );
+    request.respond(response).map_err(|error| error.to_string())
+}
+
 fn standard_headers(content_type: &str, cache: bool) -> Result<Vec<Header>, String> {
     [
         ("Content-Type", content_type),

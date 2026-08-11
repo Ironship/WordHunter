@@ -241,7 +241,7 @@ export function setGraphsLoading(visible: boolean): void {
   setElementBusy(document.getElementById("graphs-view"), visible);
 }
 
-export function activityDateForHeatmap(entry: VocabEntry): string {
+function activityDateForHeatmap(entry: VocabEntry): string {
   return entry?.lastReviewedAt || entry?.addedAt || "";
 }
 

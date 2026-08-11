@@ -5,6 +5,14 @@ import vm from "node:vm";
 
 const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
+/**
+ * Flush pending microtasks + one macrotask. The AI explain flow awaits only
+ * already-resolved promises (mocked deps, no timers/IO), so a single macrotask
+ * is guaranteed to run after the whole chain — but this contract is implicit:
+ * adding timers/debounces to the flow would make these waits flaky.
+ */
+const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function classList(initial = []) {
   const values = new Set(initial);
   return {
@@ -21,7 +29,7 @@ function classList(initial = []) {
 
 function eventTarget(extra = {}) {
   const listeners = new Map();
-  return {
+  const target = {
     addEventListener(type, listener) {
       const handlers = listeners.get(type) || [];
       handlers.push(listener);
@@ -34,8 +42,12 @@ function eventTarget(extra = {}) {
       }
       return result;
     },
+    click() {
+      return target.dispatch("click", { stopPropagation() {} });
+    },
     ...extra
   };
+  return target;
 }
 
 function deferred() {
@@ -641,6 +653,20 @@ describe("focused frontend regressions", () => {
     assert.equal(closeCount, 1);
   });
 
+  it("cleans Android PDF progress and bounds per-page saves on every import exit", () => {
+    const bookImport = read("dist/web/js/events/book-import.js");
+    const runPdfImport = bookImport.slice(
+      bookImport.indexOf("async function runPdfImport"),
+      bookImport.indexOf("export function bindBookImportEvents")
+    );
+
+    assert.match(bookImport, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
+    assert.match(
+      runPdfImport,
+      /finally\s*{[\s\S]*?stopAndroidPdfProgress\(\);\s*stopOcrProgress\(\);\s*setImportLoading\(false\);\s*}/
+    );
+  });
+
   it("does not open a writable editor when the synced body refresh fails", async () => {
     let showCount = 0;
     const toasts = [];
@@ -794,12 +820,19 @@ describe("focused frontend regressions", () => {
       "../translation-provider.js": {
         activeTranslationProvider() { return "offline"; },
         canUseTranslationProvider() { return false; },
-        translateText() { return Promise.resolve({ translated: "" }); }
+        translateText() { return Promise.resolve({ translated: "" }); },
+        translateWithRetry() { return Promise.resolve({ translated: "" }); },
+        localizedTranslationError() { return ""; }
       },
       "../constants.js": { OTHER_PROFILE_ID: "other", TRANSLATOR_LANGUAGES: ["de", "en"] },
       "../translator-preferences.js": {
         normalizeTranslationLanguageCode: (value) => value,
         resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en", configured: true }; }
+      },
+      "../ai-explainer.js": {
+        aiExplanationConfigured: () => false,
+        explainWord: async () => ({ explanation: "", cached: false }),
+        formatAiExplanation: (text) => String(text ?? "")
       }
     }, {
       document: { getElementById() { return null; } },
@@ -945,6 +978,9 @@ describe("focused frontend regressions", () => {
 
     const module = await evaluateWithMocks("dist/web/js/events/keyboard/reader-keys.js", {
       "../../state.js": { state },
+      "../../i18n.js": { t: (key) => key },
+      "../../toast.js": { showToast() {} },
+      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
       "../../vocab-actions.js": { setWordStatus() {} },
@@ -1037,6 +1073,9 @@ describe("focused frontend regressions", () => {
     }
     const module = await evaluateWithMocks("dist/web/js/events/keyboard/reader-keys.js", {
       "../../state.js": { state },
+      "../../i18n.js": { t: (key) => key },
+      "../../toast.js": { showToast() {} },
+      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
       "../../vocab-actions.js": { setWordStatus() {} },
@@ -1160,6 +1199,430 @@ describe("focused frontend regressions", () => {
     assert.notStrictEqual(panels.at(-1), detached);
   });
 
+  it("appends a finished AI explanation to the word note through updateWordField", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "To jest **bold** i *kursywa*.", cached: false }),
+      updateWordField: (word, field, value) => {
+        writes.push([word, field, value]);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "To jest **bold** i *kursywa*.",
+      "the inline output still renders the explanation"
+    );
+    assert.deepEqual(writes, [["an", "note", "reader.aiNoteMarker:\nTo jest **bold** i *kursywa*."]]);
+
+    // A second identical explanation is not appended twice
+    writes.length = 0;
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.deepEqual(writes, [], "identical explanations must not duplicate the note");
+  });
+
+  it("preserves an existing user note and appends the AI explanation to it", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "Moja własna notatka o tym słowie.", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "Wyjaśnienie.", cached: false }),
+      updateWordField: (word, field, value) => {
+        writes.push([word, field, value]);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.deepEqual(
+      writes,
+      [["an", "note", "Moja własna notatka o tym słowie.\n\nreader.aiNoteMarker:\nWyjaśnienie."]],
+      "the existing note must be preserved and the explanation appended after it"
+    );
+  });
+
+  it("does not persist AI explanations for transient phrase ranges", async () => {
+    const writes = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "kommen an",
+      selectedWordIndex: 0,
+      vocab: {},
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getReaderSelectionText() { return "kommen an"; },
+      getSentenceForWord() { return "Wir kommen an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => ({ explanation: "Wyjaśnienie frazy.", cached: false }),
+      updateWordField: (word, field, value) => writes.push([word, field, value])
+    });
+    module.renderWordPanel({ id: "text-1", text: "Wir kommen an." });
+
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+
+    assert.equal(wordPanel.current.output.innerHTML, "Wyjaśnienie frazy.", "inline output still shows the explanation");
+    assert.deepEqual(writes, [], "transient ranges must not create dictionary entries");
+  });
+
+  it("auto-triggers an AI explanation for a word that never had one", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => {
+        calls.push("explain");
+        return { explanation: "Auto wyjaśnienie.", cached: false };
+      },
+      hasWordExplanation: (word) => calls.some((c) => c === "explain" && word === "an"),
+      markWordExplained: (word) => calls.push(`marked:${word}`),
+      updateWordField: (word, field, value) => {
+        calls.push(`write:${field}`);
+        state.vocab[word][field] = value;
+      }
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.ok(calls.includes("explain"), "the explanation must be requested automatically");
+    assert.ok(calls.includes("write:note"), "the note append must run");
+    assert.equal(state.vocab.an.note, "reader.aiNoteMarker:\nAuto wyjaśnienie.");
+    assert.ok(calls.includes("marked:an"), "the word must be remembered as explained");
+  });
+
+  it("does not auto-trigger when the setting is off", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: false
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.deepEqual(calls, [], "no automatic explanation without the setting");
+  });
+
+  it("does not auto-trigger for a word that already has an explanation", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        const button = eventTarget();
+        const output = { hidden: true, textContent: "", innerHTML: "" };
+        this.current = { button, output };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "już było", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => true,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+
+    assert.deepEqual(calls, [], "an already-explained word must not be auto-explained again");
+  });
+
+  it("does not auto-trigger while an explanation is already in flight (panel re-render)", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    let releaseFirst;
+    const gate = new Promise((resolve) => { releaseFirst = resolve; });
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); await gate; return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => false,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    // The first render auto-triggers; a re-render while it is pending must not
+    // start a second request.
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+    assert.equal(calls.filter((call) => call === "explain").length, 1, "exactly one explain request while in flight");
+    releaseFirst();
+    await flushAsync();
+    assert.deepEqual(calls, ["explain", "write:note"], "the pending explanation still completes and persists");
+  });
+
+  it("never auto-triggers for transient phrase ranges", async () => {
+    const calls = [];
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: {},
+      preferences: {
+        selectedWordPanelItems: [{ id: "ai", visible: true }],
+        aiExplanationAutoTrigger: true
+      }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "komme an"; },
+      getReaderSelectionText() { return "komme an"; },
+      aiExplanationConfigured: () => true,
+      explainWord: async () => { calls.push("explain"); return { explanation: "x", cached: false }; },
+      hasWordExplanation: () => false,
+      updateWordField: (word, field, value) => calls.push(`write:${field}`)
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    await flushAsync();
+    assert.deepEqual(calls, [], "transient phrase ranges must never auto-trigger an AI explanation");
+  });
+
+  it("streams AI explanations through the markdown renderer (no raw ** markers)", async () => {
+    const wordPanel = {
+      rendered: "",
+      current: null,
+      set innerHTML(value) {
+        this.rendered = value;
+        this.current = { button: eventTarget(), output: { hidden: true, textContent: "", innerHTML: "" } };
+      },
+      get innerHTML() { return this.rendered; },
+      querySelector(selector) {
+        if (selector === "[data-ai-explain]") return this.current?.button || null;
+        if (selector === "[data-ai-explanation]") return this.current?.output || null;
+        return null;
+      },
+      querySelectorAll() { return []; }
+    };
+    const state = {
+      selectedWord: "an",
+      selectedWordIndex: 0,
+      vocab: { an: { status: "new", translation: "", note: "", examples: ["Ich komme an."] } },
+      preferences: { selectedWordPanelItems: [{ id: "ai", visible: true }] }
+    };
+    const module = await evaluateWordPanel({
+      state,
+      wordPanel,
+      getSentenceForWord() { return "Ich komme an."; },
+      aiExplanationConfigured: () => true,
+      explainWord: async (_request, onDelta) => {
+        onDelta("To jest **pogrubienie** i *kursywa*.");
+        // Let the streamed state be observable before the final result lands.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        return { explanation: "final", cached: false };
+      },
+      formatAiExplanation: (text) => `FMT:${text}`
+    });
+    module.renderWordPanel({ id: "text-1", text: "Ich komme an." });
+    wordPanel.current.button.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "FMT:To jest **pogrubienie** i *kursywa*.",
+      "stream deltas must be rendered through formatAiExplanation, not as raw text"
+    );
+    await flushAsync();
+    assert.equal(
+      wordPanel.current.output.innerHTML,
+      "FMT:final",
+      "the final formatted explanation still replaces the streamed preview"
+    );
+  });
+
   it("retires the in-text review explanation after three completed guesses", async () => {
     let html = "";
     let answerButton = null;
@@ -1224,6 +1687,218 @@ describe("focused frontend regressions", () => {
     assert.match(html, /sm2\.showAnswer/);
   });
 
+  it("stops polling an invalid export-progress response at the deadline and removes the overlay", async () => {
+    let removed = false;
+    let fetches = 0;
+    const now = [0, 1, 300_001];
+    class FakeDate extends Date {
+      static now() { return now.shift() ?? 300_001; }
+    }
+    const overlay = {
+      id: "",
+      className: "",
+      innerHTML: "",
+      setAttribute() {},
+      querySelector() { return null; },
+      remove() { removed = true; }
+    };
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: noOp },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key) => key },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    }, {
+      Date: FakeDate,
+      document: {
+        body: { appendChild() {} },
+        createElement: () => overlay
+      },
+      window: { WH_TOKEN: "test-token" },
+      fetch: async () => {
+        fetches += 1;
+        return { ok: true, json: async () => ({ done: false, percent: 0, phase: "words" }) };
+      },
+      setTimeout(resolve) { resolve(); return 1; }
+    });
+
+    await assert.rejects(module.waitForExportJob("job-1"), /toast\.exportTimedOut/);
+    assert.equal(fetches, 1);
+    assert.equal(removed, true);
+  });
+
+  it("localizes known translation errors and hides unknown backend text in the word panel", async () => {
+    const provider = await evaluateWithMocks("dist/web/js/translation-provider.js", {
+      "./state.js": { state: { preferences: {} } },
+      "./i18n.js": { t: (key) => key },
+      "./translator-preferences.js": {
+        normalizeTranslationLanguageCode: (value) => value,
+        normalizeTranslationProvider: (value) => value,
+        resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en", configured: true }; }
+      }
+    });
+
+    const makePanel = () => {
+      const button = eventTarget();
+      const output = { hidden: true, textContent: "" };
+      return {
+        dataset: {},
+        classList: classList(),
+        parentElement: { classList: classList() },
+        innerHTML: "",
+        querySelector(selector) {
+          if (selector === "[data-translate-context]") return button;
+          if (selector === "[data-context-translation]") return output;
+          return null;
+        },
+        querySelectorAll() { return []; }
+      };
+    };
+    const baseState = {
+      selectedWord: "laufen",
+      readerSelectionRange: null,
+      vocab: {
+        laufen: { status: "new", translation: "", note: "", imageUrl: "", examples: ["Der Hund läuft."] }
+      },
+      preferences: { selectedWordPanelItems: [{ id: "translation", visible: true }] }
+    };
+    const providerMock = (translateWithRetry) => ({
+      canUseTranslationProvider() { return true; },
+      translateText: translateWithRetry,
+      translateWithRetry,
+      localizedTranslationError: provider.localizedTranslationError
+    });
+
+    // Known code: TranslationError("pair-not-configured") -> localized key.
+    const knownPanel = makePanel();
+    const knownModule = await evaluateWordPanel({
+      state: baseState,
+      wordPanel: knownPanel,
+      getSentenceForWord() { return "Der Hund läuft."; },
+      translateText: async () => { throw new provider.TranslationError("pair-not-configured", "Translation language pair is not configured"); },
+      translationProvider: providerMock(async () => { throw new provider.TranslationError("pair-not-configured", "Translation language pair is not configured"); })
+    });
+    knownModule.renderWordPanel({ id: "text-1", text: "Der Hund läuft." });
+    const knownButton = knownPanel.querySelector("[data-translate-context]");
+    assert.ok(knownButton, "context-translate button must render for words with an example sentence");
+    knownButton.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(
+      knownPanel.querySelector("[data-context-translation]").textContent,
+      "translator.error — translator.errorPairNotConfigured"
+    );
+
+    // Unknown backend errors: the raw message must stay out of the panel.
+    const unknownPanel = makePanel();
+    const unknownModule = await evaluateWordPanel({
+      state: baseState,
+      wordPanel: unknownPanel,
+      getSentenceForWord() { return "Der Hund läuft."; },
+      translateText: async () => { throw new Error("Backend error: HTTP 500"); },
+      translationProvider: providerMock(async () => { throw new Error("Backend error: HTTP 500"); })
+    });
+    unknownModule.renderWordPanel({ id: "text-1", text: "Der Hund läuft." });
+    unknownPanel.querySelector("[data-translate-context]").dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(unknownPanel.querySelector("[data-context-translation]").textContent, "translator.error");
+    assert.doesNotMatch(unknownPanel.querySelector("[data-context-translation]").textContent, /HTTP 500/);
+  });
+
+  it("maps transfer error literals to localized keys and hides unknown/backend text", async () => {
+    const toasts = [];
+    const fetchBodies = [];
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: (message, kind) => toasts.push({ message, kind }) },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key) },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    }, {
+      document: { body: { appendChild() {} }, createElement: () => ({}) },
+      window: { WH_TOKEN: "test-token" },
+      fetch: async (_url, options) => {
+        fetchBodies.push(String(options?.body ?? ""));
+        return { ok: false, status: 500, text: async () => "" };
+      }
+    });
+
+    assert.equal(module.transferErrorMessage(new Error("export HTTP 500")), 'transfer.httpError:{"status":"500"}');
+    assert.equal(module.transferErrorMessage(new Error("import HTTP 404")), 'transfer.httpError:{"status":"404"}');
+    assert.equal(module.transferErrorMessage(new Error("export progress HTTP 503")), 'transfer.httpError:{"status":"503"}');
+    assert.equal(module.transferErrorMessage(new Error("android export write timed out")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error("android export timed out")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error("android export failed")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error('{"error":"storage locked"}')), "transfer.genericError");
+    assert.equal(module.transferErrorMessage(new Error("transfer export response is missing a saved file")), "toast.transferMissingFile");
+    assert.equal(module.transferErrorMessage(new Error("Android export bridge is unavailable")), "toast.androidExportUnavailable");
+    assert.equal(module.transferErrorMessage(new Error("Some raw backend text")), "");
+    assert.equal(module.transferErrorMessage("not an error"), "");
+
+    const exported = await module.exportTransfer("vocabulary", "wordhunter-words", true);
+    assert.equal(exported, false);
+    assert.equal(toasts.length, 1);
+    assert.match(toasts[0].message, /transfer\.httpError/);
+    assert.doesNotMatch(toasts[0].message, /export HTTP 500/);
+    // Native file actions must be explicitly confirmed (fix #110): the
+    // backend refuses to open a dialog unless the body carries confirm:true.
+    assert.equal(fetchBodies.length, 1);
+    assert.equal(JSON.parse(fetchBodies[0]).confirm, true);
+  });
+
   it("keeps popup language metadata localized through template placeholders", () => {
     const popup = read("dist/web/templates/translator-popup.html");
     const popupRuntime = read("dist/web/translator-popup.js");
@@ -1250,14 +1925,28 @@ describe("focused frontend regressions", () => {
 async function evaluateWordPanel({
   state,
   wordPanel,
-  getReaderSelectionText,
+  getReaderSelectionText = () => "",
+  getReaderWordTokens = () => [],
   getSentenceForWord,
   translateText = async () => ({ translated: "" }),
   beginElementBusy = () => () => {},
   applyReviewGrade = () => null,
   isInTextReviewDue = () => false,
-  saveState = () => {}
+  saveState = () => {},
+  aiExplanationConfigured = () => false,
+  explainWord = async () => ({ explanation: "", cached: false }),
+  hasWordExplanation = () => false,
+  markWordExplained = () => {},
+  formatAiExplanation = (text) => String(text ?? ""),
+  updateWordField = () => {},
+  translationProvider = null
 }) {
+  const providerMock = translationProvider || {
+    canUseTranslationProvider() { return true; },
+    translateText,
+    translateWithRetry: translateText,
+    localizedTranslationError() { return ""; }
+  };
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
     "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
     "./session.js": {
@@ -1282,8 +1971,9 @@ async function evaluateWordPanel({
         return state.vocab[word] || { status: "new", translation: "", note: "", imageUrl: "", examples: [] };
       }
     },
+    "../vocab-actions.js": { updateWordField },
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
-    "./selection.js": { getReaderSelectionText },
+    "./selection.js": { getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {
       articleOptionsForLanguage() { return []; },
       getSmartSuggestion() { return null; },
@@ -1297,13 +1987,26 @@ async function evaluateWordPanel({
     "../vocabulary/review-card.js": { applyReviewGrade },
     "../reader-colors.js": { getLearningColor() { return ""; } },
     "../sm2.js": { isInTextReviewDue },
-    "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText },
+    "../translation-provider.js": providerMock,
     "../loading.js": { beginElementBusy },
     "../translator-preferences.js": {
       effectiveLearningLanguage() { return "de"; },
       resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en" }; }
     },
     "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+    "../ai-explainer.js": {
+      aiExplanationConfigured,
+      aiExplanationLanguagePair: () => ({ from: "de", to: "en" }),
+      collectPdfOcrImageContext: async () => null,
+      formatAiExplanation,
+      explainWord,
+      hasWordExplanation,
+      markWordExplained
+    },
     "../status-sounds.js": { playReviewGradeSound() {} }
+  }, {
+    document: { querySelector() { return null; } },
+    window: {},
+    CSS: { escape: (value) => String(value) }
   });
 }

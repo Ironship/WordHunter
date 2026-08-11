@@ -18,10 +18,30 @@ use std::os::windows::process::CommandExt;
 /// Public translate endpoint — parses the query string and runs CT2 with pivot fallback.
 pub fn translate(query: &str) -> Result<Value, String> {
     let params = crate::response::parse_query(query);
+    let text = params
+        .get("text")
+        .map(String::as_str)
+        .unwrap_or_default()
+        .trim();
+    if text.is_empty() {
+        return Err("invalid request: missing text".to_string());
+    }
+    let from = params
+        .get("from")
+        .map(String::as_str)
+        .unwrap_or_default()
+        .trim();
+    if from.is_empty() {
+        return Err("invalid request: missing source language".to_string());
+    }
+    let to = params.get("to").map(String::as_str).unwrap_or("pl").trim();
+    if to.is_empty() {
+        return Err("invalid request: missing target language".to_string());
+    }
     let input = json!({
-        "text": params.get("text").cloned().unwrap_or_default(),
-        "from": params.get("from").cloned().unwrap_or_default(),
-        "to": params.get("to").cloned().unwrap_or_else(|| "pl".to_string()),
+        "text": text,
+        "from": from,
+        "to": to,
     });
     let translated = native_ct2_translate_with_pivot(&input)?;
     Ok(json!({ "translated": translated, "engine": "ctranslate2" }))

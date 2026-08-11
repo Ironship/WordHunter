@@ -15,6 +15,17 @@ export function getLocale() {
   return currentLocale;
 }
 
+/**
+ * First-launch locale (issue #135): the saved preference wins, else the
+ * browser/OS language (matched against the shipped locales by `loadLocale`),
+ * else Polish — the app's default locale when the system locale is unknown.
+ */
+export function initialLocale(savedLocale?: string, navigatorLanguage?: string): string {
+  if (savedLocale) return savedLocale;
+  const nav = (navigatorLanguage || "").split("-")[0];
+  return nav || "pl";
+}
+
 export async function loadLocale(locale: string) {
   const code = SUPPORTED.includes(locale) ? locale : FALLBACK;
   try {

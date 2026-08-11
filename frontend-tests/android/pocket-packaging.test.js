@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inspectAndroid } from "../../scripts/inspect-artifact.mjs";
+import { inspectAndroidZipList } from "../../scripts/inspect-artifact.mjs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -123,7 +123,9 @@ describe("Android Pocket packaging", () => {
     assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
     assert.equal(androidConfig.app.windows.length, 1);
     assert.equal(androidConfig.app.windows[0].create, false);
-    assert.equal(androidConfig.app.windows[0].url, "http://127.0.0.1:38619/index.html");
+    // The webview URL is decided at runtime (android.rs overrides it with the
+    // actually-bound port); the config must not pin a URL or port.
+    assert.equal(Object.hasOwn(androidConfig.app.windows[0], "url"), false);
     assert.equal(JSON.stringify(androidConfig).includes("ocr-runtime"), false);
     assert.equal(JSON.stringify(baseConfig).includes("ocr-runtime"), false);
     for (const resource of [
@@ -173,7 +175,8 @@ describe("Android Pocket packaging", () => {
     const releaseOrdinal = rcText ? Number(rcText) : (hotfixText ? 100 : 99);
     assert.ok(releaseOrdinal >= 1 && releaseOrdinal <= 100);
     if (hotfixText) assert.equal(hotfixText, "1");
-    const versionCode = (baseCode * 100) + releaseOrdinal;
+    const versionCodeGenerationOffset = 1_000_000;
+    const versionCode = versionCodeGenerationOffset + (baseCode * 100) + releaseOrdinal;
     assert.ok(Number.isSafeInteger(versionCode));
     assert.ok(versionCode > 0 && versionCode <= 2_100_000_000);
     assert.ok(versionCode < ((major + 1) * 100_000_000));
@@ -181,7 +184,8 @@ describe("Android Pocket packaging", () => {
     const versionRecipe = powershellFunction(build, "Get-AndroidVersionInfo");
     assert.match(versionRecipe, /\$minor -gt 999 -or \$patch -gt 999/);
     assert.match(versionRecipe, /\(\$major \* 1000000\) \+ \(\$minor \* 1000\) \+ \$patch/);
-    assert.match(versionRecipe, /\$code = \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
+    assert.match(versionRecipe, /\$versionCodeGenerationOffset = 1000000/);
+    assert.match(versionRecipe, /\$code = \$versionCodeGenerationOffset \+ \(\$baseCode \* 100\) \+ \$releaseOrdinal/);
     assert.match(versionRecipe, /release-candidate ordinal must be between 1 and 98/);
     assert.match(versionRecipe, /four-part hotfix version must end in \+1/);
     assert.match(versionRecipe, /\$releaseOrdinal = 100/);
@@ -201,13 +205,13 @@ describe("Android Pocket packaging", () => {
   it("validates AAB file lists and rejects the wrong native architecture", () => {
     const directory = mkdtempSync(join(tmpdir(), "wordhunter-android-test-"));
     try {
-      const valid = join(directory, "valid.aab");
+      const valid = join(directory, "Word.Hunter.Pocket.release.aab");
       writeStoredZip(valid, androidFixture());
-      assert.doesNotThrow(() => inspectAndroid(valid, "arm64-v8a"));
+      assert.doesNotThrow(() => inspectAndroidZipList(valid, "arm64-v8a"));
 
-      const invalid = join(directory, "wrong-abi.aab");
+      const invalid = join(directory, "Word.Hunter.Pocket.release.aab");
       writeStoredZip(invalid, androidFixture("x86_64"));
-      assert.throws(() => inspectAndroid(invalid, "arm64-v8a"), /expected only arm64-v8a/);
+      assert.throws(() => inspectAndroidZipList(invalid, "arm64-v8a"), /expected only arm64-v8a/);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

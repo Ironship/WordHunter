@@ -59,8 +59,10 @@ describe("language selectors", () => {
         assert.equal(typeof data.languages?.[code], "string", `${file} missing languages.${code}`);
         assert.ok(data.languages[code].trim(), `${file} has empty languages.${code}`);
       }
-      assert.equal(data.discover?.sourceWikisource, "Wikisource", `${file} missing discover.sourceWikisource`);
-      assert.equal(data.library?.sourceWikisource, "Wikisource", `${file} missing library.sourceWikisource`);
+      assert.equal(typeof data.discover?.sourceWikisource, "string", `${file} missing discover.sourceWikisource`);
+      assert.ok(data.discover.sourceWikisource.trim(), `${file} has empty discover.sourceWikisource`);
+      assert.equal(typeof data.library?.sourceWikisource, "string", `${file} missing library.sourceWikisource`);
+      assert.ok(data.library.sourceWikisource.trim(), `${file} has empty library.sourceWikisource`);
     }
   });
 

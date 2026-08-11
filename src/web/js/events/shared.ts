@@ -1,6 +1,6 @@
 // Shared helpers used by both events.js barrel and navigation.js submodule.
 import { state } from "../state.js";
-import { t } from "../i18n.js";
+import { getLocale, t } from "../i18n.js";
 import { getReaderSelectionText } from "../reader/selection.js";
 import { showToast } from "../toast.js";
 import { isAndroidPlatform, openAndroidUrl } from "../platform.js";
@@ -28,7 +28,7 @@ export async function openDictionary(word: string): Promise<void> {
       return;
     }
     const theme = resolveTheme(state.preferences.theme, document.documentElement.dataset.theme === "dark");
-    const locale = state.preferences.locale || "pl";
+    const locale = getLocale();
     const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme.mode}&family=${theme.family}&locale=${locale}`;
     const dictUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("translator.argosTitle"))}`;
     fetch(dictUrl).catch(e => console.warn("Failed to open offline translator UI", e));
@@ -45,7 +45,11 @@ export async function openDictionary(word: string): Promise<void> {
     fetch("/__open_dict?url=" + encodeURIComponent(url) + "&mode=" + encodeURIComponent(mode))
       .catch(e => console.warn("Failed to open dictionary", e));
   } else {
-    window.open(url, "_blank");
+    // Route through the embedded server so the open is never subject to
+    // popup blocking (same convention as /__open_external elsewhere).
+    fetch("/__open_external?url=" + encodeURIComponent(url)).catch((error) =>
+      console.warn("Failed to open the dictionary in the browser", error)
+    );
   }
 }
 

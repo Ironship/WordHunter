@@ -63,7 +63,6 @@ jobs:
         run: npm run check:frontend
 
       - name: Validate frontend behavior and repository data
-        continue-on-error: true
         run: |
           node scripts/validate-json-i18n.mjs
           node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js
@@ -97,7 +96,7 @@ jobs:
       - name: Install Android SDK and NDK packages
         shell: pwsh
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
           "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set up Rust
@@ -107,6 +106,9 @@ jobs:
 
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@889dc537cf3672c0c060560c9ead940a2b8b7077
 
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
@@ -124,12 +126,20 @@ jobs:
           }
           $keystore = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.p12"
           [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          # Derive the expected signing-certificate fingerprint from the
+          # restored keystore instead of hardcoding it, so a rotated key can
+          # never silently invalidate the release-signing gate.
+          $pemPath = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.pem"
+          $derPath = Join-Path $env:RUNNER_TEMP "wordhunter-pocket-release.der"
+          & openssl pkcs12 -in $keystore -passin "pass:$env:KEYSTORE_PASSWORD" -nokeys -clcerts -out $pemPath
+          & openssl x509 -in $pemPath -outform DER -out $derPath
+          $certSha = (Get-FileHash -Algorithm SHA256 -LiteralPath $derPath).Hash.ToLowerInvariant()
           "WH_ANDROID_KEYSTORE=$keystore" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEY_ALIAS=$env:KEY_ALIAS" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEYSTORE_PASSWORD=$env:KEYSTORE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_KEY_PASSWORD=$env:KEY_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Append
           "WH_ANDROID_REQUIRE_SIGNING=1" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "WH_ANDROID_EXPECTED_CERT_SHA256=b3b8336e4168d231b34a2483b4d444b92ee0324d04ec7dc6a8d92e628af6c85b" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "WH_ANDROID_EXPECTED_CERT_SHA256=$certSha" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Build frontend, APK, and AAB through the release recipe
         shell: cmd
@@ -137,15 +147,18 @@ jobs:
 
       - name: Inspect APK and AAB
         run: |
-          node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.debug.apk --abi arm64-v8a
+          node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.apk --abi arm64-v8a
           node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.aab --abi arm64-v8a
+
+      - name: Verify on-disk gradle version identity
+        run: node scripts/android-version.mjs --check
 
       - name: Upload validated Android artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: validated-android
           path: |
-            outputs/Word.Hunter.Pocket.debug.apk
+            outputs/Word.Hunter.Pocket.release.apk
             outputs/Word.Hunter.Pocket.release.aab
           if-no-files-found: error
 
@@ -279,6 +292,27 @@ jobs:
 
       - name: Reinspect Flatpak bundle at the CI boundary
         run: node scripts/inspect-artifact.mjs flatpak outputs/WordHunter.flatpak
+
+      - name: Smoke-test Flatpak bundle under Xvfb
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get install -y --no-install-recommends xvfb
+          flatpak install --user --noninteractive -y outputs/WordHunter.flatpak
+          set +e
+          GDK_DEBUG=nogl \
+          WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+            xvfb-run -a dbus-run-session -- \
+            timeout --signal=TERM --kill-after=5s 20s \
+            flatpak run --user com.wordhunter.app \
+            >"$RUNNER_TEMP/word-hunter-flatpak-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-flatpak-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi
 
       - name: Upload validated Flatpak bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -523,7 +557,7 @@ jobs:
           MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           for asset in \
-            Word.Hunter.Pocket.debug.apk \
+            Word.Hunter.Pocket.release.apk \
             Word.Hunter.Pocket.release.aab \
             Word.Hunter.portable.zip \
             Word.Hunter.Setup.exe \
@@ -557,7 +591,7 @@ jobs:
           MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
           gh release upload "$RELEASE_TAG" \
-            release-assets/Word.Hunter.Pocket.debug.apk \
+            release-assets/Word.Hunter.Pocket.release.apk \
             release-assets/Word.Hunter.Pocket.release.aab \
             release-assets/Word.Hunter.portable.zip \
             release-assets/Word.Hunter.Setup.exe \

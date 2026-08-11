@@ -50,6 +50,24 @@ pub(crate) fn decode_epub_text(data: &[u8]) -> String {
     data.iter().map(|byte| char::from(*byte)).collect()
 }
 
+pub(crate) fn clean_imported_ebook_text(text: &str) -> String {
+    let text = text.replace("\r\n", "\n").replace('\r', "\n");
+    let text = TRAILING_SPACE.replace_all(&text, "\n");
+    MULTI_NEWLINE.replace_all(&text, "\n\n").trim().to_string()
+}
+
+pub(crate) fn strip_xhtml_to_text(markup: &str) -> String {
+    let text = XHTML_SKIP_TAGS.replace_all(markup, "");
+    let text = XHTML_BLOCK_TAGS.replace_all(&text, "\u{E000}");
+    let text = XHTML_TAGS.replace_all(&text, "");
+    let text = html_escape::decode_html_entities(&text);
+    let text = XHTML_WHITESPACE.replace_all(text.as_ref(), " ");
+    XHTML_BOUNDARIES
+        .replace_all(text.as_ref(), "\n")
+        .trim()
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::decode_epub_text;
@@ -75,22 +93,4 @@ mod tests {
 
         assert!(decode_epub_text(&bytes).contains("café"));
     }
-}
-
-pub(crate) fn clean_imported_ebook_text(text: &str) -> String {
-    let text = text.replace("\r\n", "\n").replace('\r', "\n");
-    let text = TRAILING_SPACE.replace_all(&text, "\n");
-    MULTI_NEWLINE.replace_all(&text, "\n\n").trim().to_string()
-}
-
-pub(crate) fn strip_xhtml_to_text(markup: &str) -> String {
-    let text = XHTML_SKIP_TAGS.replace_all(markup, "");
-    let text = XHTML_BLOCK_TAGS.replace_all(&text, "\u{E000}");
-    let text = XHTML_TAGS.replace_all(&text, "");
-    let text = html_escape::decode_html_entities(&text);
-    let text = XHTML_WHITESPACE.replace_all(text.as_ref(), " ");
-    XHTML_BOUNDARIES
-        .replace_all(text.as_ref(), "\n")
-        .trim()
-        .to_string()
 }

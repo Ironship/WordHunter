@@ -10,7 +10,7 @@ export interface ResolvedTheme {
 }
 
 export const DEFAULT_THEME: ThemeName = "familiar";
-export const THEME_ORDER: readonly ThemeName[] = ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"];
+const THEME_ORDER: readonly ThemeName[] = ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"];
 
 const THEME_ALIASES = new Map<string, ThemeName>([
   ["auto", "classic-auto"],

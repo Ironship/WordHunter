@@ -43,6 +43,16 @@ function statusSoundContext() {
     || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextConstructor) return null;
   audioContext = new AudioContextConstructor();
+  // Autoplay policy: an AudioContext created outside a user gesture starts
+  // suspended and drops the first tone. Resume it on the first gesture so
+  // feedback sounds are never silently lost.
+  if (audioContext.state === "suspended") {
+    const resume = () => {
+      void audioContext?.resume().catch(() => {});
+    };
+    window.addEventListener("pointerdown", resume, { once: true });
+    window.addEventListener("keydown", resume, { once: true });
+  }
   return audioContext;
 }
 
