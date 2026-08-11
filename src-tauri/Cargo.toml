@@ -56,7 +56,6 @@ open = { version = "5", features = ["shellexecute-on-windows"] }
 rfd = "0.15"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gdk = "0.18"
 gdkwayland-sys = { version = "0.18", features = ["v3_24_22"] }
 gtk = "0.18"
 
