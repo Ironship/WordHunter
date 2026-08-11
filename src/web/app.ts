@@ -7,6 +7,7 @@ import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
 import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale, initialLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
+import { clearPendingDelta, flushPendingDeltaToLocalStorage, readPendingDelta, saveWithRetry } from "./js/api.js";
 import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
@@ -64,10 +65,35 @@ function flushPendingStateBeforeExit() {
   flushFrontendStateBuffers();
   flushUiStateSync();
   if (isAndroidPlatform()) {
-    saveState();
+    // The webview is being torn down: keepalive fetches are capped at 64 KiB
+    // while the real save payload is multi-MB, so the final mutations could
+    // never reach the backend (issue #137). Persist the save delta to
+    // localStorage synchronously instead; the next boot replays it through
+    // the normal save path (recoverPendingFlush).
+    if (typeof window.hasPendingChanges === "function" && window.hasPendingChanges()) {
+      flushPendingDeltaToLocalStorage(window.buildPendingDeltaEnvelope());
+    }
     return;
   }
   if (typeof window.flushPendingSave === "function") window.flushPendingSave();
+}
+
+// Replay a pending Android teardown flush into the backend once the boot
+// snapshot has been applied (or after the load failed — the delta in
+// localStorage may then be the only copy of the last mutations).
+function recoverPendingFlush(): void {
+  const pending = readPendingDelta();
+  if (pending === null) return;
+  const replay = () => {
+    saveWithRetry(pending.payload, 3)
+      .then(() => clearPendingDelta())
+      .catch((error) => console.error("pending-flush replay failed; will retry next boot", error));
+  };
+  if (window.__bridgeStatePromise) {
+    void window.__bridgeStatePromise.then(replay, replay);
+  } else {
+    replay();
+  }
 }
 
 window.addEventListener("beforeunload", flushPendingStateBeforeExit);
@@ -181,6 +207,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     cacheElements();
     startBridgeStateLoad();
+    recoverPendingFlush();
     await Promise.all([
       applyPreferences(),
       loadLocale(initialLocale(state.preferences?.locale, typeof navigator !== "undefined" ? navigator.language : "")),
