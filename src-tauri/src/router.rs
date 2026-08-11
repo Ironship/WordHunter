@@ -8,7 +8,7 @@ use crate::{
     ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy,
     response,
     server::{ActiveOcrJob, ServerState},
-    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youtube_captions,
+    srs, update, vocab_export, vocab_index, youtube_captions,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
@@ -100,11 +100,7 @@ fn method_not_allowed(method: &Method, path: &str) -> bool {
         "/" | "/index.html"
             | "/__proxy"
             | "/__store/load"
-            | "/__store/ui_state"
-            | "/__store/data_dir"
-            | "/__store/recovery_status"
             | "/__store/export_progress"
-            | "/__data"
             | "/__update/check"
             | "/__book/text"
             | "/__book/pdf_pages"
@@ -122,7 +118,6 @@ fn method_not_allowed(method: &Method, path: &str) -> bool {
     let allows_post = matches!(
         path,
         "/__log_error"
-            | "/__text/tokenize"
             | "/__app/close"
             | "/__window/zoom"
             | "/__store/save"
@@ -147,10 +142,7 @@ fn method_not_allowed(method: &Method, path: &str) -> bool {
             | "/__ai/explain"
             | "/__ai/explain_stream"
             | "/__text/vocab_index"
-            | "/__subtitles/parse"
             | "/__youtube/captions"
-            | "/__update/parse"
-            | "/__srs/ensure"
             | "/__vocab"
     );
     (allows_get || allows_post)
@@ -202,36 +194,13 @@ fn sensitive_get_path(path: &str) -> bool {
 }
 
 fn dispatch_state_independent_request(
-    mut request: Request,
+    request: Request,
     path: &str,
     query: &str,
 ) -> Result<Option<Request>, String> {
     match (request.method(), path) {
         (&Method::Get, "/__proxy") => {
             proxy::serve_proxy(request, query)?;
-            Ok(None)
-        }
-        (&Method::Post, "/__text/tokenize") => {
-            let payload = match response::read_json_limited(&mut request, MAX_JSON_REQUEST_BODY) {
-                Ok(payload) => payload,
-                Err(error) => {
-                    let status = if error.contains("too large") {
-                        413
-                    } else {
-                        400
-                    };
-                    response::error_response(
-                        request,
-                        status,
-                        &format!("invalid JSON body: {error}"),
-                    )?;
-                    return Ok(None);
-                }
-            };
-            match tokenizer::handle(payload) {
-                Ok(payload) => response::json_response(request, payload)?,
-                Err(error) => response::error_response(request, 400, &error)?,
-            }
             Ok(None)
         }
         _ => Ok(Some(request)),
@@ -292,25 +261,12 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             response::json_response(request, snapshot)
         }
-        (Method::Get, "/__store/ui_state") => {
-            response::json_response(request, state.store.load_ui_state())
-        }
-        (Method::Get, "/__store/data_dir") => {
-            response::json_response(request, json!({ "path": state.store.dir() }))
-        }
-        (Method::Get, "/__store/recovery_status") => {
-            response::json_response(request, state.store.recovery_status())
-        }
         #[cfg(not(target_os = "android"))]
         (Method::Get, "/__store/export_progress") => {
             match handlers::export_progress(&state, query) {
                 Ok(result) => response::json_response(request, result),
                 Err(error) => response::error_response(request, 404, &error),
             }
-        }
-        (Method::Get, "/__data") => {
-            crate::platform::open_path(state.store.dir());
-            response::no_content(request)
         }
         (Method::Get, "/__update/check") => response::json_response(
             request,
@@ -398,11 +354,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             "/__store/save" => {
                 let payload = read_json_or_400!(request);
                 let query = response::parse_query(query);
-                let result = if query.get("restore").map(String::as_str) == Some("1") {
-                    state.store.restore_backup(payload)
-                } else {
-                    state.store.bulk_save(payload)
-                };
+                let result = state.store.bulk_save(payload);
                 match result {
                     Ok(conflicts) => {
                         if query.get("snapshot").map(String::as_str) == Some("1") {
@@ -698,30 +650,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     Err(err) => response::error_response(request, 400, &err),
                 }
             }
-            "/__subtitles/parse" => {
-                let payload = read_json_or_400!(request);
-                match subtitles::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
             "/__youtube/captions" => {
                 let payload = read_json_or_400!(request);
                 match youtube_captions::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__update/parse" => {
-                let payload = read_json_or_400!(request);
-                match update::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__srs/ensure" => {
-                let payload = read_json_or_400!(request);
-                match srs::handle_ensure(payload) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 400, &err),
                 }

@@ -86,24 +86,25 @@ fn send_request(
 
 #[test]
 fn protected_post_requires_the_exact_token() {
-    let body = br#"{"op":"tokenize","text":"Hello!","algorithm":"classic"}"#;
+    let body = br#"{"schemaVersion":2,"texts":[],"prefs":{},"hiddenBooks":[],"vocab":{}}"#;
 
-    let missing = send_request("POST", "/__text/tokenize", None, Some(body));
+    let missing = send_request("POST", "/__store/save", None, Some(body));
     assert_eq!(missing.status, 403);
     assert_eq!(missing.body, "forbidden");
 
-    let incorrect = send_request("POST", "/__text/tokenize", Some("wrong"), Some(body));
+    let incorrect = send_request("POST", "/__store/save", Some("wrong"), Some(body));
     assert_eq!(incorrect.status, 403);
 
-    let accepted = send_request("POST", "/__text/tokenize", Some(TOKEN), Some(body));
-    assert_eq!(accepted.status, 200);
-    let payload: serde_json::Value = serde_json::from_str(&accepted.body).unwrap();
-    assert_eq!(payload["tokens"][0]["value"], "Hello");
+    // The boundary harness does not implement /__store/save, so a
+    // token-valid request passes authentication and falls through to
+    // the unknown-POST 404 instead of being rejected as 403.
+    let accepted = send_request("POST", "/__store/save", Some(TOKEN), Some(body));
+    assert_eq!(accepted.status, 404);
 }
 
 #[test]
 fn method_and_route_selection_are_exact() {
-    let wrong_method = send_request("GET", "/__text/tokenize", None, None);
+    let wrong_method = send_request("GET", "/__store/save", None, None);
     assert_eq!(wrong_method.status, 405);
 
     let wrong_proxy_method = send_request("POST", "/__proxy", None, Some(b"{}"));
@@ -111,9 +112,9 @@ fn method_and_route_selection_are_exact() {
 
     let route_suffix = send_request(
         "POST",
-        "/__text/tokenize/extra",
+        "/__store/save/extra",
         Some(TOKEN),
-        Some(br#"{"op":"tokenize","text":"Hello"}"#),
+        Some(br#"{"schemaVersion":2,"texts":[],"prefs":{},"hiddenBooks":[],"vocab":{}}"#),
     );
     assert_eq!(route_suffix.status, 404);
 
@@ -124,17 +125,43 @@ fn method_and_route_selection_are_exact() {
         None,
     );
     assert_eq!(proxy_suffix.status, 404);
+
+    // Routes deleted by fix #114 must be gone from the HTTP surface.
+    // /__subtitles/parse never reached this harness even on main, so the
+    // assertion locks the removal in; /__text/tokenize WAS dispatched by
+    // dispatch_state_independent_request on main (400 for an empty op) and
+    // must now fall through to the unknown-POST 404.
+    let removed_subtitles = send_request("POST", "/__subtitles/parse", Some(TOKEN), Some(b"{}"));
+    assert_eq!(removed_subtitles.status, 404);
+
+    let removed_tokenizer = send_request("POST", "/__text/tokenize", Some(TOKEN), Some(b"{}"));
+    assert_eq!(removed_tokenizer.status, 404);
 }
 
 #[test]
 fn malformed_and_empty_json_bodies_return_http_400() {
-    let malformed = send_request("POST", "/__text/tokenize", Some(TOKEN), Some(b"{"));
+    // /__text/tokenize (the only JSON-reading route the plain boundary
+    // harness used to dispatch) is gone since #114, so the malformed-body
+    // contract is exercised through the /__store/save boundary harness.
+    let dir = tempfile::tempdir().unwrap();
+    let malformed = send_store_request(
+        crate::store::test_store(dir.path(), "boundary-test"),
+        "POST",
+        "/__store/save",
+        Some(b"{"),
+    );
     assert_eq!(malformed.status, 400);
     assert!(malformed.body.contains("invalid JSON body"));
 
-    let empty = send_request("POST", "/__text/tokenize", Some(TOKEN), None);
+    let dir = tempfile::tempdir().unwrap();
+    let empty = send_store_request(
+        crate::store::test_store(dir.path(), "boundary-test"),
+        "POST",
+        "/__store/save",
+        None,
+    );
     assert_eq!(empty.status, 400);
-    assert_eq!(empty.body, "missing op");
+    assert!(empty.body.contains("invalid JSON body"));
 }
 
 #[test]
@@ -181,7 +208,7 @@ fn rejects_dns_rebinding_hosts_and_cross_site_origins() {
         let (port, server) = spawn_boundary_server();
         let raw = if request.is_empty() {
             format!(
-                "POST /__text/tokenize HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: https://attacker.example\r\nSec-Fetch-Site: cross-site\r\nX-WH-Token: {TOKEN}\r\nContent-Length: 0\r\n\r\n"
+                "POST /__store/save HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: https://attacker.example\r\nSec-Fetch-Site: cross-site\r\nX-WH-Token: {TOKEN}\r\nContent-Length: 0\r\n\r\n"
             )
         } else {
             request
@@ -395,10 +422,14 @@ fn handle_store_save_boundary_request(
     let Some(mut request) = authenticate_request(request, path, TOKEN)? else {
         return Ok(());
     };
-    let payload: serde_json::Value = serde_json::from_slice(
+    let payload: serde_json::Value = match serde_json::from_slice(
         &response::read_body_limited(&mut request, 4 * 1024 * 1024).map_err(|e| e.to_string())?,
-    )
-    .map_err(|e| format!("invalid JSON body: {e}"))?;
+    ) {
+        Ok(payload) => payload,
+        Err(error) => {
+            return response::error_response(request, 400, &format!("invalid JSON body: {error}"));
+        }
+    };
     let conflicts = store.bulk_save(payload).conflict_count()?;
     let query = response::parse_query(query);
     if query.get("snapshot").map(String::as_str) == Some("1") {
