@@ -70,7 +70,10 @@ async function loadAppHarness({
   hydrateActiveLibraryTexts = async () => {},
   hydrateCurrentReaderText = async () => true,
   loadBooksCatalog = async () => {},
-  loadLocale = async () => {}
+  loadLocale = async () => {},
+  pendingDelta = null,
+  hasPending = false,
+  deltaEnvelope = { payload: "{}", session: "harness", sequence: 0 }
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -91,6 +94,8 @@ async function loadAppHarness({
   const window = fakeEventTarget({
     __qtBridge: false,
     flushPendingSave() { calls.push("flush-save"); },
+    hasPendingChanges() { return hasPending; },
+    buildPendingDeltaEnvelope() { calls.push("build-envelope"); return deltaEnvelope; },
     open() {},
     requestAnimationFrame(callback) {
       assert.equal(this, window);
@@ -130,6 +135,14 @@ async function loadAppHarness({
       flushUiStateSync: noOp,
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
+    },
+    "./js/api.js": {
+      buildSavePayload: () => "{}",
+      saveSyncXhr() { calls.push("keepalive-save"); },
+      flushPendingDeltaToLocalStorage(delta) { calls.push(`pending-flush:${delta.payload}`); },
+      readPendingDelta() { return pendingDelta; },
+      clearPendingDelta() { calls.push("clear-pending"); },
+      saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
@@ -225,7 +238,10 @@ describe("persistence lifecycle", () => {
           if (attempts === 1) await blockedSave;
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -285,6 +301,100 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls.splice(0), []);
     harness.document.emit("visibilitychange");
     assert.deepEqual(harness.calls.splice(0), []);
+  });
+
+  it("persists the Android teardown flush to localStorage instead of a keepalive fetch", async () => {
+    // Issue #137: keepalive fetches are capped at 64 KiB while the real save
+    // payload is multi-MB, so the final mutations were silently dropped on
+    // every Android activity finish. The flush must go to localStorage
+    // synchronously and must not rely on a keepalive fetch.
+    const harness = await loadAppHarness({
+      hasPending: true,
+      deltaEnvelope: { payload: '{"delta":true,"fullKeys":[]}', session: "s1", sequence: 3 }
+    });
+    harness.setAndroid(true);
+
+    harness.window.emit("pagehide");
+
+    assert.deepEqual(harness.calls, [
+      "flush-buffers",
+      "build-envelope",
+      'pending-flush:{"delta":true,"fullKeys":[]}'
+    ]);
+    assert.ok(
+      !harness.calls.includes("keepalive-save"),
+      "the multi-MB payload must not go through a keepalive fetch"
+    );
+  });
+
+  it("replays a pending Android teardown flush through the normal save path at boot", async () => {
+    const harness = await loadAppHarness({
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+    });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(
+      harness.calls.includes('replay:{"delta":true,"fullKeys":[]}'),
+      "the pending delta is replayed through the normal save path"
+    );
+    assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
+  });
+
+  it("clears a pending delta only when a same-session save built after the freeze supersedes it", async () => {
+    // Issue #137 class: a delta frozen at an earlier hidden event must never
+    // be replayed after a newer save covered its content — its frozen
+    // fullKeys would tombstone keys written in the meantime. But a save whose
+    // payload was built BEFORE the freeze (in-flight at hidden time) or comes
+    // from a different session does NOT contain the delta's mutations and
+    // must not clear it either (that would drop them forever).
+    let cleared = 0;
+    let pending = null;
+    let releaseSave;
+    const pendingResponse = new Promise((resolve) => { releaseSave = resolve; });
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage() {},
+        saveWithRetry() { return pendingResponse; },
+        saveSyncXhr() {},
+        readPendingDelta() { return pending; },
+        clearPendingDelta() { cleared += 1; }
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: {}, dispatchEvent() {} },
+      CustomEvent: class CustomEvent {},
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => ({ preferences: {}, profiles: {} }));
+    const state = autosave.wrap({ preferences: {}, profiles: {} });
+
+    // Case 1 — save built BEFORE the freeze does not cover the delta:
+    // start a save (payload sequence 0), then mutate (sequence 1) and freeze
+    // the delta (sequence 1). The completing save must NOT clear it.
+    const inflight = autosave.saveState();
+    state.profiles.de = { words: {} };
+    const envelope = autosave.buildPendingDeltaEnvelope();
+    pending = envelope;
+    releaseSave({ ok: true });
+    await inflight;
+    assert.equal(cleared, 0, "a save built before the freeze must not clear the delta");
+
+    // Case 2 — a same-session save built after the freeze, carrying records,
+    // covers the delta (even for a mutation in an already-dirty language).
+    state.profiles.de.words.w1 = { status: "learning" };
+    await autosave.saveState();
+    assert.equal(cleared, 1, "a same-session save built after the freeze supersedes the delta");
+
+    // Case 3 — a delta from another session is never cleared by this
+    // session's saves (only the boot replay delivers and clears it).
+    pending = { payload: "{}", session: "other-session", sequence: 0 };
+    await autosave.saveState();
+    assert.equal(cleared, 1, "a cross-session delta must not be cleared by this session's saves");
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {
@@ -362,7 +472,10 @@ describe("persistence lifecycle", () => {
           saveAttempts++;
           throw new Error("filesystem unavailable");
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window,
@@ -404,7 +517,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: false },
@@ -430,7 +546,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() { throw new DOMException("quota", "QuotaExceededError"); },
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: false },
@@ -462,7 +581,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true },
@@ -494,7 +616,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true },
@@ -521,7 +646,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, __bridgeState: null },
@@ -547,7 +675,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, __bridgeState: {} },
@@ -1029,7 +1160,10 @@ describe("persistence lifecycle", () => {
           savedThemes.push(JSON.parse(body).preferences.theme);
           return {};
         },
-        saveSyncXhr() { synchronousWrites += 1; }
+        saveSyncXhr() { synchronousWrites += 1; },
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1070,7 +1204,10 @@ describe("persistence lifecycle", () => {
           if (attempts > 1) throw new Error("post-import save failed");
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1465,7 +1602,10 @@ describe("persistence lifecycle", () => {
           }
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1494,7 +1634,10 @@ describe("persistence lifecycle", () => {
           attempts += 1;
           throw new TypeError("Failed to fetch");
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },

@@ -118,6 +118,58 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
   }
 }
 
+// Android teardown flush: the keepalive fetch is capped at 64 KiB while the
+// real state is multi-MB, so the final mutations were silently dropped on
+// every activity finish (issue #137). Instead the exit flush persists the
+// save *delta* (a few MB at most, well inside the localStorage quota) under a
+// dedicated key; the next boot replays it through the normal save path.
+// The envelope carries the mutation *sequence* of the session that froze the
+// delta, so a later save can decide whether it truly supersedes the pending
+// delta (payload built at sequence >= the delta's sequence covers its
+// content) before clearing it. A delta from a previous session is cleared
+// only by a successful replay — a fresh session's saves never contain its
+// mutations.
+const PENDING_FLUSH_KEY = "wordhunter.pendingFlush.v1";
+
+export interface PendingDelta {
+  payload: string;
+  /** Autosave session that froze this delta (module-load id). */
+  session: string;
+  /** Mutation sequence of that session at freeze time. */
+  sequence: number;
+}
+
+export function flushPendingDeltaToLocalStorage(delta: PendingDelta): void {
+  try {
+    localStorage.setItem(PENDING_FLUSH_KEY, JSON.stringify(delta));
+  } catch (e) {
+    console.error("pending-flush localStorage write failed", e);
+  }
+}
+
+/** Peek at a pending flush left by a previous teardown (null when absent). */
+export function readPendingDelta(): PendingDelta | null {
+  try {
+    const raw = localStorage.getItem(PENDING_FLUSH_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as PendingDelta;
+    if (typeof parsed?.payload !== "string") return null;
+    return parsed;
+  } catch (e) {
+    console.error("pending-flush localStorage read failed", e);
+    return null;
+  }
+}
+
+/** Drop the pending flush once it has been replayed into the backend. */
+export function clearPendingDelta(): void {
+  try {
+    localStorage.removeItem(PENDING_FLUSH_KEY);
+  } catch (e) {
+    console.error("pending-flush localStorage clear failed", e);
+  }
+}
+
 /** POST the payload to the backend bridge with retry. */
 export async function saveWithRetry(body: string, maxRetries: number): Promise<WhBridgeSaveResult> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

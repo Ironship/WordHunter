@@ -268,6 +268,16 @@ function flushPendingSave(): void {
 }
 window.flushPendingSave = flushPendingSave;
 
+function buildPendingDeltaEnvelope() {
+  return autosave.buildPendingDeltaEnvelope();
+}
+window.buildPendingDeltaEnvelope = buildPendingDeltaEnvelope;
+
+function hasPendingChanges(): boolean {
+  return autosave.hasPendingChanges();
+}
+window.hasPendingChanges = hasPendingChanges;
+
 export function resetInitialVocabKeys(): void {
   initialVocabKeys.clear();
   Object.keys(state.vocab || {}).forEach((key) => initialVocabKeys.add(key));
