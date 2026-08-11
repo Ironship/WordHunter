@@ -190,14 +190,14 @@ export function syncSettingsControls() {
   const appFlagKey = setFlagImages("locale", locale, APP_LOCALES, "pl");
   const appFlagEl = document.getElementById("app-lang-flag");
   if (appFlagEl) {
-    appFlagEl.innerHTML = `<img src="flags/${appFlagKey}.svg" alt="${escapeHtml(t(`languages.${appFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    appFlagEl.innerHTML = `<img src="flags/${appFlagKey}.svg" alt="${escapeHtml(t(`languages.${appFlagKey}`))}" class="cover-thumb-block">`;
   }
 
   const lang = state.preferences.learningLanguage || "en";
   const learnFlagKey = setFlagImages("learning", lang, LEARNING_LANGUAGES, "en");
   const learnFlagEl = document.getElementById("learning-lang-flag");
   if (learnFlagEl) {
-    learnFlagEl.innerHTML = `<img src="flags/${learnFlagKey}.svg" alt="${escapeHtml(t(`languages.${learnFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    learnFlagEl.innerHTML = `<img src="flags/${learnFlagKey}.svg" alt="${escapeHtml(t(`languages.${learnFlagKey}`))}" class="cover-thumb-block">`;
   }
 
   const prefs: Partial<WhPreferences> = state.preferences || {};
