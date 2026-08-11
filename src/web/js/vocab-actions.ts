@@ -9,6 +9,8 @@ import { renderShell } from "./views/shell.js";
 import { getOrCreateEntry, renderVocabulary, renderReview, hideReviewAnswer, toggleReviewAnswer } from "./views/vocabulary.js";
 import { renderLibrary } from "./views/library.js";
 import { speakWord } from "./tts.js";
+import { invalidateSuggestIndex } from "./reader/smart-suggest.js";
+import { invalidateReviewQueueCache } from "./vocabulary/review-card.js";
 import { canUseTranslationProvider, translateWithRetry } from "./translation-provider.js";
 import { setEntryStatus } from "./vocabulary/entry-state.js";
 import { playStatusSound } from "./status-sounds.js";
@@ -124,6 +126,9 @@ export function selectWord(
     setEntryStatus(entry, "learning");
     playStatusSound("learning");
     statusChanged = true;
+    // autoLearnOnClick feeds the review queue (status + nextDate are memo
+    // inputs) — invalidate so the new word shows up in the queue.
+    invalidateReviewQueueCache();
   }
   if (getDurableStateRevision() !== durableRevision) saveState();
   else saveUiState();
@@ -192,6 +197,9 @@ export function setWordStatus(word: string, status: string): void {
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
   setEntryStatus(entry, status);
   if (previousStatus !== status) playStatusSound(status);
+  // The review queue depends on word statuses; the memo must not survive a
+  // status change made outside gradeReview/removeFromSrs.
+  invalidateReviewQueueCache();
   saveState();
   renderShell();
   updateWordStatusInReader(word, status);
@@ -235,6 +243,10 @@ export function updateWordField(word: string, field: string, value: unknown): vo
 export function deleteWord(word: string): void {
   word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   delete state.vocab[word];
+  // In-place mutations keep the vocab reference, so the lazily built suggest
+  // index and the review-queue memo would go stale (dead keys / phantoms).
+  invalidateSuggestIndex();
+  invalidateReviewQueueCache();
   failedAutoTranslations.delete(word);
   initialVocabKeys.delete(word);
   if (state.selectedWord === word) state.selectedWord = null;
