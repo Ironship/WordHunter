@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Отменить внесённые исправления?",
     "wordNavPageStart": "Вы на первом слове этой страницы.",
     "wordNavPageEnd": "Вы на последнем слове этой страницы.",
-    "aiNoteMarker": "Объяснение ИИ"
+    "aiNoteMarker": "Объяснение ИИ",
+    "findOpen": "Найти в тексте…"
   },
   "vocab": {
     "eyebrow": "Ваши слова",

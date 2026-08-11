@@ -166,7 +166,8 @@ describe("Android Pocket platform", () => {
 
     assert.equal(document.documentElement.dataset.platform, "android");
     assert.equal(document.documentElement.classList.contains("pocket-mode"), true);
-    assert.equal(importFile.attrs.accept.includes(".txt"), true);
+    assert.equal(importFile.attrs.accept.includes(".txt"), false);
+    assert.equal(importFile.attrs.accept.includes("text/plain"), true);
   });
 
   it("marks desktop-only settings and controls in their own elements", () => {
@@ -241,11 +242,12 @@ describe("Android Pocket platform", () => {
 
     assert.equal(document.documentElement.style.zoom, "1");
     assert.equal(document.documentElement.style["--ui-scale"], "1");
-    assert.equal(importFile.attrs.accept.includes(".pdf"), true);
+    assert.equal(importFile.attrs.accept.includes(".pdf"), false);
     assert.equal(importFile.attrs.accept.includes("application/pdf"), true);
-    assert.equal(importFile.attrs.accept.includes(".epub"), true);
+    assert.equal(importFile.attrs.accept.includes(".epub"), false);
     assert.equal(importFile.attrs.accept.includes(".mobi"), false);
-    assert.equal(importFile.attrs.accept.includes(".txt"), true);
+    assert.equal(importFile.attrs.accept.includes(".txt"), false);
+    assert.equal(importFile.attrs.accept.includes("text/plain"), true);
     assert.equal(importHint.innerHTML, "import.mobileFileHint");
     assert.equal(providerOptions.find((option) => option.value === "offline").disabled, true);
     assert.equal(providerOptions.find((option) => option.value === "lmstudio").hidden, true);

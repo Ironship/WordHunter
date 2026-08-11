@@ -203,7 +203,8 @@ async function globalActionsHarness(options = {}) {
       clearReaderSelection() {
         calls.push(["clear", state.selectedWord]);
         state.selectedWord = null;
-      }
+      },
+      bindTouchPhraseSelection() {}
     },
     "../views/vocabulary.js": { gradeReview() {}, loadMoreVocab() {}, removeFromSrs() {} },
     "../vocab-actions.js": {

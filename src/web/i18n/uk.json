@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Скасувати внесені виправлення?",
     "wordNavPageStart": "Ви на першому слові цієї сторінки.",
     "wordNavPageEnd": "Ви на останньому слові цієї сторінки.",
-    "aiNoteMarker": "Пояснення ШІ"
+    "aiNoteMarker": "Пояснення ШІ",
+    "findOpen": "Знайти в тексті…"
   },
   "vocab": {
     "eyebrow": "Ваші слова",

@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "この修正への編集を破棄しますか？",
     "wordNavPageStart": "このページの最初の単語です。",
     "wordNavPageEnd": "このページの最後の単語です。",
-    "aiNoteMarker": "AIによる説明"
+    "aiNoteMarker": "AIによる説明",
+    "findOpen": "テキストを検索…"
   },
   "vocab": {
     "eyebrow": "あなたの単語",

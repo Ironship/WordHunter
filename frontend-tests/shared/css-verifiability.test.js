@@ -48,8 +48,9 @@ const TS_STYLE_PROP_PIN = 65;
 const Z_INDEX_WHITELIST = new Set(["0", "1", "2", "3", "4", "5", "10", "50", "100", "1000"]);
 
 /* T4: identical-declaration groups (>=2 rules sharing one declaration block)
-   budget — baseline 47 (post-utility-sweep baseline, 2026-08). */
-const DUP_GROUP_PIN = 47;
+   budget — baseline 48 (post-utility-sweep baseline; +1 from the #142
+   pocket-only-control rules, 2026-08). */
+const DUP_GROUP_PIN = 48;
 
 describe("T1 — stylelint gate pins", () => {
   const pkg = JSON.parse(read("package.json"));

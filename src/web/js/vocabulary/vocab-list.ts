@@ -18,6 +18,32 @@ export let vocabRenderCount = 50;
 export let filteredVocabEntries: VocabListEntry[] = [];
 export const sessionAddedWords = new Set<string>();
 
+/**
+ * Sorted base list cache: mapping + sorting (the expensive part of every
+ * render) is skipped when neither the vocab reference nor the key count
+ * changed since the last render. Explicit invalidation is called from every
+ * updatedAt-touching mutation site (see invalidateVocabListCache callers).
+ */
+let cachedVocabBase: { source: WhVocabulary; keyCount: number; entries: VocabListEntry[] } | null = null;
+
+export function invalidateVocabListCache(): void {
+  cachedVocabBase = null;
+}
+
+function getVocabBase(): VocabListEntry[] {
+  const source = state.vocab;
+  if (cachedVocabBase
+    && cachedVocabBase.source === source
+    && cachedVocabBase.keyCount === Object.keys(source).length) {
+    return cachedVocabBase.entries;
+  }
+  const entries = Object.entries(source)
+    .map(([key, entry]): VocabListEntry => ({ ...entry, key, word: entry.word || key }))
+    .sort((first, second) => (second.updatedAt || "").localeCompare(first.updatedAt || ""));
+  cachedVocabBase = { source, keyCount: entries.length, entries };
+  return entries;
+}
+
 function getSelectedVocabStatuses(): WhVocabStatus[] {
   if (!Array.isArray(state.filters.vocabStatuses)) {
     state.filters.vocabStatuses = VOCAB_STATUS_FILTERS.filter(isVocabStatus);
@@ -69,8 +95,7 @@ export function renderVocabulary(resetLimit = true): void {
   const canonicalQuery = normalizeVocabularyWord(state.filters.vocabQuery || "", vocabularyLanguage);
   if (canonicalQuery && !queryVariants.includes(canonicalQuery)) queryVariants.push(canonicalQuery);
   const statusFilters = new Set(getSelectedVocabStatuses());
-  filteredVocabEntries = Object.entries(state.vocab)
-    .map(([key, entry]): VocabListEntry => ({ ...entry, key, word: entry.word || key }))
+  filteredVocabEntries = getVocabBase()
     .filter((entry) => {
       const matchesStatus = statusFilters.has(entry.status);
       const haystackText = `${formatHeadword(entry.word, entry.article)} ${entry.word} ${normalizeVocabularyWord(entry.word, vocabularyLanguage)} ${entry.translation || ""} ${entry.note || ""}`;
@@ -82,8 +107,7 @@ export function renderVocabulary(resetLimit = true): void {
         vocabularyLanguage
       );
       return matchesStatus && matchesQuery && matchesText;
-    })
-    .sort((first, second) => (second.updatedAt || "").localeCompare(first.updatedAt || ""));
+    });
 
   if (!filteredVocabEntries.length) {
     els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(t("vocab.empty"))}</td></tr>`;

@@ -481,6 +481,7 @@ interface WhDomCache {
     progressBar?: HTMLElement | null;
     progressBarLearning?: HTMLElement | null;
     readerFindClose?: HTMLElement | null;
+    readerFindToggle?: HTMLElement | null;
     readerFindCount?: HTMLElement | null;
     readerFindInput?: HTMLInputElement | null;
     readerFindNext?: HTMLElement | null;

@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Odrzucić wprowadzone poprawki?",
     "wordNavPageStart": "Jesteś na pierwszym słowie tej strony.",
     "wordNavPageEnd": "Jesteś na ostatnim słowie tej strony.",
-    "aiNoteMarker": "Wyjaśnienie AI"
+    "aiNoteMarker": "Wyjaśnienie AI",
+    "findOpen": "Znajdź w tekście…"
   },
   "vocab": {
     "eyebrow": "Twoje słowa",

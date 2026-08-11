@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "Discard your edits to this correction?",
     "wordNavPageStart": "You are at the first word of this page.",
     "wordNavPageEnd": "You are at the last word of this page.",
-    "aiNoteMarker": "AI explanation"
+    "aiNoteMarker": "AI explanation",
+    "findOpen": "Find in text…"
   },
   "vocab": {
     "eyebrow": "Your words",
