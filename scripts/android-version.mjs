@@ -1,35 +1,89 @@
 #!/usr/bin/env node
 // Portable Android version patcher (Linux/macOS/CI/F-Droid): computes the
-// versionCode from tauri.conf.json with the same formula as scripts/build.bat
-// (versionCode = 1_000_000 + base*100 + releaseOrdinal) and stamps it plus
-// versionName into the generated AndroidManifest.xml. Idempotent.
+// versionCode/versionName from src-tauri/tauri.conf.json with the same
+// formula as scripts/build.bat Get-AndroidVersionInfo and stamps them into
+// gen/android/app/build.gradle.kts — the same file Set-AndroidGradleVersion
+// patches on Windows (scripts/build.bat:550-566). Idempotent.
+//
+// The versionCode formula (see scripts/build.bat Get-AndroidVersionInfo and
+// scripts/inspect-artifact.mjs androidVersionCodeFor) is
+//   1000000 + ((major*1e6 + minor*1e3 + patch) * 100) + releaseOrdinal
+// where releaseOrdinal is 99 for a stable release, the rc number for
+// -rc.N, and 100 for a +1 hotfix. 1.0.10 -> 101001099.
+//
+// Usage:
+//   node scripts/android-version.mjs            # patch gen/android gradle
+//   node scripts/android-version.mjs --check    # verify, fail if stale
+// Run it after the Android project has been generated (`tauri android init`,
+// or any scripts/build.bat android invocation). `--check` is wired into
+// .github/workflows/artifact-validation.yml after the AAB build to verify the
+// on-disk gradle identity independently of Set-AndroidGradleVersion.
 import { readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { androidVersionCodeFor } from "./inspect-artifact.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const manifestPath = join(root, "src-tauri", "gen", "android", "app", "src", "main", "AndroidManifest.xml");
+const gradlePath = join(root, "src-tauri", "gen", "android", "app", "build.gradle.kts");
 
-const config = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
-const version = String(config.version ?? "").split("+")[0];
-const [major, minor, patch] = version.split(".").map((part) => Number.parseInt(part, 10));
-if (!Number.isInteger(major) || !Number.isInteger(minor) || !Number.isInteger(patch) || minor >= 1000 || patch >= 1000) {
-  throw new Error(`Invalid version for the Android versionCode formula: ${version}`);
-}
-const releaseOrdinal = Number.parseInt(process.env.WH_ANDROID_RELEASE_ORDINAL || "0", 10) || 0;
-// Same formula as scripts/build.bat: baseCode = major*1e6 + minor*1e3 + patch.
-const baseCode = major * 1_000_000 + minor * 1_000 + patch;
-const versionCode = 1_000_000 + baseCode * 100 + releaseOrdinal;
-if (versionCode < 1 || versionCode > 2_100_000_000) {
-  throw new Error(`versionCode out of range: ${versionCode}`);
+// Mirrors scripts/build.bat Get-AndroidVersionInfo's Name derivation:
+// MAJOR.MINOR.PATCH+1 renders as versionName "MAJOR.MINOR.PATCH.1".
+export function androidVersionFor(version) {
+  return {
+    source: version,
+    name: version.replace("+", "."),
+    code: androidVersionCodeFor(version),
+  };
 }
 
-const manifest = readFileSync(manifestPath, "utf8");
-const patched = manifest
-  .replace(/(android:versionCode=")\d+(")/, `$1${versionCode}$2`)
-  .replace(/(android:versionName=")[^"]*(")/, `$1${version}$2`);
-if (patched === manifest) {
-  throw new Error("AndroidManifest.xml: expected versionCode/versionName attributes not found");
+// Mirrors scripts/build.bat Set-AndroidGradleVersion (build.bat:550-566):
+// rewrites the `versionCode = N` / `versionName = "..."` lines and hard-fails
+// when they are absent so a stale template can never silently ship. Returns
+// the input unchanged when the identity is already correct (idempotent).
+export function patchGradleVersion(gradleText, versionInfo) {
+  const codeLine = /^(\s*)versionCode\s*=\s*.+$/m.test(gradleText);
+  const nameLine = /^(\s*)versionName\s*=\s*.+$/m.test(gradleText);
+  if (!codeLine || !nameLine) {
+    throw new Error(
+      "gen/android/app/build.gradle.kts: expected versionCode/versionName lines not found",
+    );
+  }
+  return gradleText
+    .replace(/^(\s*)versionCode\s*=\s*.+$/m, `$1versionCode = ${versionInfo.code}`)
+    .replace(/^(\s*)versionName\s*=\s*.+$/m, `$1versionName = "${versionInfo.name}"`);
 }
-writeFileSync(manifestPath, patched);
-console.log(`android versionCode=${versionCode} versionName=${version} -> ${manifestPath}`);
+
+function readGradleOrFail() {
+  try {
+    return readFileSync(gradlePath, "utf8");
+  } catch (error) {
+    throw new Error(
+      `gen/android/app/build.gradle.kts not found (${gradlePath}): run 'tauri android init' or scripts/build.bat once to generate the Android project`,
+      { cause: error },
+    );
+  }
+}
+
+function main() {
+  const config = JSON.parse(readFileSync(join(root, "src-tauri", "tauri.conf.json"), "utf8"));
+  const versionInfo = androidVersionFor(String(config.version));
+  const gradleText = readGradleOrFail();
+  const patched = patchGradleVersion(gradleText, versionInfo);
+  if (process.argv.includes("--check")) {
+    if (patched !== gradleText) {
+      throw new Error(
+        `gen/android/app/build.gradle.kts is out of date: expected versionCode=${versionInfo.code} versionName="${versionInfo.name}"`,
+      );
+    }
+    console.log(
+      `android version identity OK: versionCode=${versionInfo.code} versionName=${versionInfo.name}`,
+    );
+  } else {
+    writeFileSync(gradlePath, patched);
+    console.log(`android versionCode=${versionInfo.code} versionName=${versionInfo.name} -> ${gradlePath}`);
+  }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main();
+}

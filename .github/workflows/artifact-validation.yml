@@ -142,6 +142,9 @@ jobs:
           node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.apk --abi arm64-v8a
           node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.aab --abi arm64-v8a
 
+      - name: Verify on-disk gradle version identity
+        run: node scripts/android-version.mjs --check
+
       - name: Upload validated Android artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
