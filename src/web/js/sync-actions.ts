@@ -35,7 +35,6 @@ interface VocabularyExportRequest {
   filename: string;
   headerRow: string | undefined;
   lang: string;
-  algorithm: string;
 }
 
 interface VocabularyExportFile {
@@ -576,8 +575,7 @@ function exportRequestBase(filename: string, format: VocabularyExportFormat): Vo
     format,
     filename,
     headerRow: format === "anki" ? t("settings.ankiTsvHeader") : undefined,
-    lang: effectiveLearningLanguage(state.preferences),
-    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+    lang: effectiveLearningLanguage(state.preferences)
   };
 }
 
@@ -733,8 +731,7 @@ export async function exportAnkiTsv(): Promise<void> {
     format: "anki",
     filename,
     headerRow: t("settings.ankiTsvHeader"),
-    lang: effectiveLearningLanguage(state.preferences),
-    algorithm: state.preferences?.wordDetectionAlgorithm || "modern"
+    lang: effectiveLearningLanguage(state.preferences)
   };
   try {
     const result = vocabularyExportFile(await requestVocabExport(payload));

@@ -119,3 +119,56 @@ describe("dead-code contract (#116)", () => {
     assert.doesNotMatch(js, /export\s*\{[^}]*CEFR_THRESHOLDS/, "dist must not export CEFR_THRESHOLDS");
   });
 });
+
+describe("dead backend surface contract (#114)", () => {
+  it("sync-actions.ts no longer sends algorithm in the /__vocab export payload", () => {
+    const sync = read("src/web/js/sync-actions.ts");
+    assert.doesNotMatch(
+      sync,
+      /algorithm:\s*string;/,
+      "VocabularyExportRequest must not declare algorithm (removed by #114)",
+    );
+    assert.doesNotMatch(
+      sync,
+      /algorithm:\s*state\.preferences/,
+      "export payload construction must not set algorithm (removed by #114)",
+    );
+  });
+
+  it("vocab-index-client.ts no longer sends book/schemaVersion in the /__text/vocab_index body", () => {
+    const vi = read("src/web/js/vocab-index-client.ts");
+    assert.doesNotMatch(
+      vi,
+      /STATE_SCHEMA_VERSION/,
+      "the STATE_SCHEMA_VERSION import must stay removed (schemaVersion is not sent by #114)",
+    );
+    const bodyLine = vi.split("\n").find((line) => line.includes("JSON.stringify({"));
+    assert.ok(bodyLine, "the vocab_index fetch body line must exist");
+    assert.doesNotMatch(
+      bodyLine,
+      /\b(book|schemaVersion)\b/,
+      "the vocab_index fetch body must not carry book or schemaVersion (removed by #114)",
+    );
+  });
+
+  it("removed #114 backend routes are not referenced anywhere in src/web", () => {
+    const removedRoutes = [
+      "/__subtitles/parse",
+      "/__text/tokenize",
+      "/__update/parse",
+      "/__srs/ensure",
+      "/__store/data_dir",
+      "/__store/recovery_status",
+      "/__data",
+    ];
+    for (const route of removedRoutes) {
+      for (const file of sourceFiles(path.join(ROOT, "src/web/js"))) {
+        const source = readFileSync(file, "utf8");
+        assert.ok(
+          !source.includes(route),
+          `${path.relative(ROOT, file)} must not reference removed route ${route}`,
+        );
+      }
+    }
+  });
+});
