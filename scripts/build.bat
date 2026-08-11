@@ -387,16 +387,16 @@ function Ensure-AndroidNdk([string]$Sdk) {
         return $env:NDK_HOME
     }
 
+    $pinnedNdk = "27.0.12077973"
     $ndkRoot = Join-Path $Sdk "ndk"
     $ndk = Get-ChildItem -LiteralPath $ndkRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
+        Where-Object Name -eq $pinnedNdk
     if (-not $ndk) {
         Fail @"
-Android NDK was not found.
+Android NDK $pinnedNdk was not found.
 
-Install it with Android sdkmanager, for example:
-  sdkmanager `"ndk;27.0.12077973`"
+Install exactly this version with Android sdkmanager, for example:
+  sdkmanager `"ndk;$pinnedNdk`"
 "@
     }
 

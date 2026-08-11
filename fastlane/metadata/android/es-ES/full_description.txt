@@ -1,0 +1,19 @@
+Word Hunter Pocket es un lector y espacio de aprendizaje de vocabulario para
+Android.
+
+Importa texto, archivos EPUB, subtítulos y PDF con capa de texto. Las palabras
+seleccionadas al leer pueden guardarse con su traducción y contexto, y
+repasarse con tarjetas y repetición espaciada.
+
+Los libros, el vocabulario, los ajustes y el progreso se almacenan localmente.
+Exporta e importa paquetes ZIP para moverlos entre Pocket y Word Hunter en el
+ordenador.
+
+No se requiere cuenta. Funciones opcionales como el descubrimiento de libros de
+dominio público, diccionarios en línea, proveedores de traducción, búsqueda de
+imágenes en Wikipedia, subtítulos de YouTube y ejemplos de pronunciación de
+YouGlish contactan con servicios de terceros cuando se usan.
+
+Los PDF escaneados requieren OCR en la versión de escritorio antes de exportar
+un paquete completo a Pocket. El paquete incluye las imágenes de página
+renderizadas con el libro.
