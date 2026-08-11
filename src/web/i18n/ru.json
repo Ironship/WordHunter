@@ -828,6 +828,7 @@
     "wordRemoved": "Слово удалено",
     "wordCopied": "Скопировано: {word}",
     "copyFailed": "Не удалось скопировать выбранное слово.",
+    "openExternalFailed": "Не удалось открыть ссылку в браузере.",
     "textAdded": "Текст добавлен",
     "textRemoved": "Текст удален",
     "fetchingTxt": "Скачивание {title}...",

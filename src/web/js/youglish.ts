@@ -72,9 +72,17 @@ function openYouglishSite(word: string): void {
   if (openAndroidUrl(url)) return;
   const mode = state.preferences.youglishMode || "internal";
   if (mode === "external") {
-    fetch(`/__open_external?url=${encodeURIComponent(url)}`).catch((error) =>
-      console.warn("Failed to open the browser", error)
-    );
+    fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+      .then((res) => {
+        if (!res.ok) {
+          console.warn("Failed to open the browser", `HTTP ${res.status}`);
+          showToast(t("toast.openExternalFailed"), "error");
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to open the browser", error);
+        showToast(t("toast.openExternalFailed"), "error");
+      });
     return;
   }
   const popupUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("reader.youglishModalTitle"))}`;

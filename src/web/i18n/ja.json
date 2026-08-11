@@ -828,6 +828,7 @@
     "wordRemoved": "単語をリストから削除しました。",
     "wordCopied": "コピーしました: {word}",
     "copyFailed": "選択した単語をコピーできませんでした。",
+    "openExternalFailed": "リンクをブラウザーで開けませんでした。",
     "bookMoved": "本の移動に成功しました",
     "textAdded": "テキストをライブラリに追加しました。",
     "textRemoved": "テキストを削除しました。",

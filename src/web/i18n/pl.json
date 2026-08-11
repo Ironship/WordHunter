@@ -882,6 +882,7 @@
     "wordRemoved": "Usunięto słowo i wszystkie jego dane.",
     "wordCopied": "Skopiowano słowo: {word}",
     "copyFailed": "Nie udało się skopiować wybranego słowa.",
+    "openExternalFailed": "Nie udało się otworzyć odnośnika w przeglądarce.",
     "emptyFields": "Uzupełnij tytuł i tekst.",
     "textAdded": "Dodano tekst do Biblioteki.",
     "textRemoved": "Usunięto tekst.",

@@ -42,10 +42,80 @@ pub(crate) fn open_external_url(url: &str) -> Result<(), String> {
         // this endpoint.
         Err("external URLs are opened through the Android bridge".to_string())
     }
-    #[cfg(not(target_os = "android"))]
+    #[cfg(target_os = "linux")]
+    {
+        open_on_linux(url)
+    }
+    #[cfg(not(any(target_os = "android", target_os = "linux")))]
     {
         open::that_detached(url).map_err(|e| format!("could not open the default browser: {e}"))
     }
+}
+
+/// Linux: open `url` with a portal-aware opener and report the outcome.
+///
+/// The `open` crate's detached API never reads the opener's exit status (a
+/// missing or broken xdg-open looks like a success), and its blocking API
+/// waits indefinitely when a portal stalls. So the opener is spawned here
+/// directly — same candidate list and order as the `open` crate on unix
+/// (xdg-open, gio open, gnome-open, kde-open) — and reaped with a bounded
+/// wait: the first candidate that spawns decides; a non-zero exit status or
+/// a 5 second deadline is an Err, never a silent success.
+#[cfg(target_os = "linux")]
+fn open_on_linux(url: &str) -> Result<(), String> {
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    const OPEN_DEADLINE: Duration = Duration::from_secs(5);
+    let candidates: [(&str, &[&str]); 4] = [
+        ("xdg-open", &[url]),
+        ("gio", &["open", url]),
+        ("gnome-open", &[url]),
+        ("kde-open", &[url]),
+    ];
+    let mut last_error = "no portal opener found on PATH".to_string();
+    for (program, args) in candidates {
+        let mut child = match Command::new(program)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(error) => {
+                last_error = format!("{program}: {error}");
+                continue;
+            }
+        };
+        let deadline = Instant::now() + OPEN_DEADLINE;
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break status,
+                Ok(None) => {
+                    if Instant::now() >= deadline {
+                        let _ = child.kill();
+                        let _ = child.wait();
+                        return Err(format!(
+                            "{program} did not finish within {} seconds",
+                            OPEN_DEADLINE.as_secs()
+                        ));
+                    }
+                    std::thread::sleep(Duration::from_millis(50));
+                }
+                Err(error) => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(format!("could not wait for {program}: {error}"));
+                }
+            }
+        };
+        if status.success() {
+            return Ok(());
+        }
+        last_error = format!("{program} exited with {status}");
+    }
+    Err(format!("could not open the default browser: {last_error}"))
 }
 
 pub(crate) fn parse_window_zoom_percent(payload: &Value) -> Result<f64, String> {
