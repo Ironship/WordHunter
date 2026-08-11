@@ -170,7 +170,15 @@ pub(crate) fn valid_request_source(request: &Request, base_url: &str) -> bool {
     {
         return false;
     }
-    request_header(request, "Origin").is_none_or(|origin| origin == base_url || origin == "null")
+    // A same-origin fetch carries no Origin header; the app's own pages
+    // never send "null". file:///data: embeds and sandboxed frames do —
+    // they may issue read-only GETs, but never authenticated writes.
+    match request_header(request, "Origin") {
+        None => true,
+        Some(origin) if origin == base_url => true,
+        Some("null") => request.method() != &Method::Post,
+        Some(_) => false,
+    }
 }
 
 fn authenticate_request(
