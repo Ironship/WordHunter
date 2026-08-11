@@ -123,20 +123,39 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
 // every activity finish (issue #137). Instead the exit flush persists the
 // save *delta* (a few MB at most, well inside the localStorage quota) under a
 // dedicated key; the next boot replays it through the normal save path.
+// The envelope stores the delta's *coverage* (which languages and texts it
+// carries) so a later successful save can decide whether it truly supersedes
+// the pending delta before clearing it.
 const PENDING_FLUSH_KEY = "wordhunter.pendingFlush.v1";
 
-export function flushPendingDeltaToLocalStorage(payload: string): void {
+export interface DeltaCoverage {
+  langs: string[];
+  /** `true` means every text is covered. */
+  texts: true | string[];
+}
+
+export interface PendingDelta {
+  coverage: DeltaCoverage;
+  payload: string;
+}
+
+export function flushPendingDeltaToLocalStorage(payload: string, coverage: DeltaCoverage): void {
+  const envelope: PendingDelta = { coverage, payload };
   try {
-    localStorage.setItem(PENDING_FLUSH_KEY, payload);
+    localStorage.setItem(PENDING_FLUSH_KEY, JSON.stringify(envelope));
   } catch (e) {
     console.error("pending-flush localStorage write failed", e);
   }
 }
 
 /** Peek at a pending flush left by a previous teardown (null when absent). */
-export function readPendingDelta(): string | null {
+export function readPendingDelta(): PendingDelta | null {
   try {
-    return localStorage.getItem(PENDING_FLUSH_KEY);
+    const raw = localStorage.getItem(PENDING_FLUSH_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as PendingDelta;
+    if (typeof parsed?.payload !== "string") return null;
+    return parsed;
   } catch (e) {
     console.error("pending-flush localStorage read failed", e);
     return null;
@@ -150,6 +169,21 @@ export function clearPendingDelta(): void {
   } catch (e) {
     console.error("pending-flush localStorage clear failed", e);
   }
+}
+
+/**
+ * True when the coverage of a completed save includes everything the pending
+ * delta holds — only then may the pending delta be cleared (its mutations
+ * reached the backend with this save). A save whose payload was built before
+ * the delta was frozen does not cover it.
+ */
+export function coverageCovers(save: DeltaCoverage, pending: DeltaCoverage): boolean {
+  if (!pending.langs.every((lang) => save.langs.includes(lang))) return false;
+  if (pending.texts === true) return save.texts === true;
+  if (save.texts === true) return true;
+  const saveTexts: string[] = save.texts;
+  const pendingTexts: string[] = pending.texts;
+  return pendingTexts.every((id) => saveTexts.includes(id));
 }
 
 /** POST the payload to the backend bridge with retry. */

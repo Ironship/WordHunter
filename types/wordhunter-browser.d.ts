@@ -526,6 +526,7 @@ interface WhDomCache {
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;
     buildPendingDeltaPayload?: () => string;
+    buildPendingDeltaCoverage?: () => { langs: string[]; texts: true | string[] };
     hasPendingChanges?: () => boolean;
     flushAllPendingFrontendState?: () => Promise<void>;
     requestWordHunterClose?: () => void;

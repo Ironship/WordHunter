@@ -273,6 +273,11 @@ function buildPendingDeltaPayload(): string {
 }
 window.buildPendingDeltaPayload = buildPendingDeltaPayload;
 
+function buildPendingDeltaCoverage() {
+  return autosave.buildPendingDeltaCoverage();
+}
+window.buildPendingDeltaCoverage = buildPendingDeltaCoverage;
+
 function hasPendingChanges(): boolean {
   return autosave.hasPendingChanges();
 }

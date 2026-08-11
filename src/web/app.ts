@@ -71,7 +71,10 @@ function flushPendingStateBeforeExit() {
     // localStorage synchronously instead; the next boot replays it through
     // the normal save path (recoverPendingFlush).
     if (typeof window.hasPendingChanges === "function" && window.hasPendingChanges()) {
-      flushPendingDeltaToLocalStorage(window.buildPendingDeltaPayload());
+      flushPendingDeltaToLocalStorage(
+        window.buildPendingDeltaPayload(),
+        window.buildPendingDeltaCoverage(),
+      );
     }
     return;
   }
@@ -85,7 +88,7 @@ function recoverPendingFlush(): void {
   const pending = readPendingDelta();
   if (pending === null) return;
   const replay = () => {
-    saveWithRetry(pending, 3)
+    saveWithRetry(pending.payload, 3)
       .then(() => clearPendingDelta())
       .catch((error) => console.error("pending-flush replay failed; will retry next boot", error));
   };

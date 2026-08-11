@@ -73,7 +73,8 @@ async function loadAppHarness({
   loadLocale = async () => {},
   pendingDelta = null,
   hasPending = false,
-  deltaPayload = "{}"
+  deltaPayload = "{}",
+  deltaCoverage = { langs: [], texts: [] }
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -96,6 +97,7 @@ async function loadAppHarness({
     flushPendingSave() { calls.push("flush-save"); },
     hasPendingChanges() { return hasPending; },
     buildPendingDeltaPayload() { calls.push("build-delta"); return deltaPayload; },
+    buildPendingDeltaCoverage() { calls.push("build-coverage"); return deltaCoverage; },
     open() {},
     requestAnimationFrame(callback) {
       assert.equal(this, window);
@@ -239,6 +241,8 @@ describe("persistence lifecycle", () => {
           return {};
         },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -314,6 +318,7 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls, [
       "flush-buffers",
       "build-delta",
+      "build-coverage",
       'pending-flush:{"delta":true,"fullKeys":[]}'
     ]);
     assert.ok(
@@ -323,7 +328,9 @@ describe("persistence lifecycle", () => {
   });
 
   it("replays a pending Android teardown flush through the normal save path at boot", async () => {
-    const harness = await loadAppHarness({ pendingDelta: '{"delta":true,"fullKeys":[]}' });
+    const harness = await loadAppHarness({
+      pendingDelta: { coverage: { langs: [], texts: [] }, payload: '{"delta":true,"fullKeys":[]}' }
+    });
 
     await Promise.all(harness.document.emit("DOMContentLoaded"));
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -335,11 +342,14 @@ describe("persistence lifecycle", () => {
     assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
   });
 
-  it("clears a stale pending delta once a newer save reaches the backend", async () => {
+  it("clears a stale pending delta once a newer save covers it — but not before", async () => {
     // Issue #137 class: a delta frozen at an earlier hidden event must never
-    // be replayed after a newer save succeeded — its frozen fullKeys would
-    // tombstone keys written in the meantime.
+    // be replayed after a newer save covered its content — its frozen
+    // fullKeys would tombstone keys written in the meantime. But a save whose
+    // payload did NOT cover the pending delta must not clear it either
+    // (that would drop the delta's mutations forever).
     let cleared = 0;
+    let pendingCoverage = { langs: [], texts: [] };
     const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
       "../api.js": {
         buildSavePayload: (state) => state,
@@ -347,6 +357,12 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {},
+        readPendingDelta() {
+          return { coverage: pendingCoverage, payload: "{}" };
+        },
+        coverageCovers(save, pending) {
+          return pending.langs.every((lang) => save.langs.includes(lang));
+        },
         clearPendingDelta() { cleared += 1; }
       }
     }, {
@@ -358,9 +374,41 @@ describe("persistence lifecycle", () => {
     });
     const autosave = createAutosave(() => ({ preferences: {}, profiles: {} }));
 
+    // Save with empty coverage covers an empty pending delta → cleared.
     await autosave.saveState();
+    assert.equal(cleared, 1, "a covering save supersedes the pending delta");
 
-    assert.equal(cleared, 1, "a successful backend save supersedes the pending delta");
+    // A pending delta covering a language the save did not touch stays.
+    pendingCoverage = { langs: ["de"], texts: [] };
+    await autosave.saveState();
+    assert.equal(cleared, 1, "a non-covering save must not clear the pending delta");
+  });
+
+  it("coverageCovers decides whether a save supersedes the pending delta", async () => {
+    const api = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" },
+      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) }
+    }, {
+      window: { WH_TOKEN: "test-token" },
+      fetch: async () => ({ ok: true, json: async () => ({}) }),
+      localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+      setTimeout,
+      clearTimeout,
+      console
+    });
+
+    const { coverageCovers } = api;
+    const base = { langs: ["de"], texts: [] };
+    // A save covering more than the pending delta supersedes it.
+    assert.equal(coverageCovers({ langs: ["de", "en"], texts: [] }, base), true);
+    // A save missing the pending delta's language does not.
+    assert.equal(coverageCovers({ langs: ["en"], texts: [] }, base), false);
+    // texts: true covers any text list.
+    assert.equal(coverageCovers({ langs: ["de"], texts: true }, { langs: ["de"], texts: ["t1"] }), true);
+    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1"] }, { langs: ["de"], texts: true }), false);
+    // Partial text coverage.
+    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1", "t2"] }, { langs: ["de"], texts: ["t1"] }), true);
+    assert.equal(coverageCovers({ langs: ["de"], texts: ["t1"] }, { langs: ["de"], texts: ["t1", "t2"] }), false);
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {
@@ -439,6 +487,8 @@ describe("persistence lifecycle", () => {
           throw new Error("filesystem unavailable");
         },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -482,6 +532,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -509,6 +561,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage() { throw new DOMException("quota", "QuotaExceededError"); },
         async saveWithRetry() { return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -542,6 +596,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -575,6 +631,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -603,6 +661,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -630,6 +690,8 @@ describe("persistence lifecycle", () => {
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -1113,6 +1175,8 @@ describe("persistence lifecycle", () => {
           return {};
         },
         saveSyncXhr() { synchronousWrites += 1; },
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -1155,6 +1219,8 @@ describe("persistence lifecycle", () => {
           return {};
         },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -1551,6 +1617,8 @@ describe("persistence lifecycle", () => {
           return {};
         },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {
@@ -1581,6 +1649,8 @@ describe("persistence lifecycle", () => {
           throw new TypeError("Failed to fetch");
         },
         saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
         clearPendingDelta() {}
       }
     }, {

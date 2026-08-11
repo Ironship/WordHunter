@@ -1,4 +1,4 @@
-import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr } from "../api.js";
+import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, coverageCovers, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type DeltaCoverage } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
 
@@ -148,17 +148,29 @@ export function createAutosave(getState: () => WhAppState) {
       dirtyVocabLangs.clear();
       dirtyTextIds.clear();
       allTextsDirty = false;
-      // A successful backend write covers everything the pending teardown
-      // delta holds (its mutations are still in the live state), so the
-      // pending copy is now redundant — and replaying it on a later boot
-      // could tombstone keys written after it was frozen (issue #137 class).
-      clearPendingDelta();
+      // A successful backend write makes the pending teardown delta redundant
+      // — but only when this save's payload actually covered everything the
+      // delta holds. A save that started before the delta was frozen does NOT
+      // cover it; clearing then would drop the delta's mutations forever
+      // (issue #137 class). The guarded clear keeps the stale-delta fix while
+      // preserving the in-flight-save case for the boot replay.
+      const pending = readPendingDelta();
+      if (pending !== null && coverageCovers(payloadCoverage, pending.coverage)) {
+        clearPendingDelta();
+      }
       saveInFlight = false;
       if (savePending) {
         savePending = false;
         return doSave();
       }
       return result;
+    };
+    // Snapshot the coverage of this payload at build time (not the live dirty
+    // sets — markSucceeded clears them, and the guard needs the coverage of
+    // exactly what this save delivered).
+    const payloadCoverage: DeltaCoverage = {
+      langs: [...dirtyVocabLangs],
+      texts: allTextsDirty ? true : [...dirtyTextIds]
     };
     const payload = buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
     savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
@@ -404,6 +416,14 @@ export function createAutosave(getState: () => WhAppState) {
       return JSON.stringify(
         buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
       );
+    },
+    // Coverage of the pending delta, stored alongside it so a later save can
+    // decide whether it supersedes the pending copy (see coverageCovers).
+    buildPendingDeltaCoverage(): DeltaCoverage {
+      return {
+        langs: [...dirtyVocabLangs],
+        texts: allTextsDirty ? true : [...dirtyTextIds]
+      };
     },
     hasPendingChanges,
     withoutAutoSave<T>(callback: () => T): T {
