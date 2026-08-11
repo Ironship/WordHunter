@@ -17,25 +17,6 @@ export function cacheElements() {
   els.translatorNavItem = document.querySelector<HTMLElement>('[data-view="translator"]');
   els.views = [...document.querySelectorAll<HTMLElement>(".view")];
 
-  els.importForm = byId("import-form");
-  els.importModeSelect = byId("import-mode-select");
-  els.importBooksMode = byId("import-books-mode");
-  els.importYoutubeMode = byId("import-youtube-mode");
-  els.importYoutubeUrl = byId("import-youtube-url");
-  els.importYoutubeLoad = byId("import-youtube-load");
-  els.importYoutubeTrack = byId("import-youtube-track");
-  els.importYoutubeStatus = byId("import-youtube-status");
-  els.importTitle = byId("import-title");
-  els.importAuthor = byId("import-author");
-  els.importTags = byId("import-tags");
-  els.importLevel = byId("import-level");
-  els.importText = byId("import-text");
-  els.importFile = byId("import-file");
-  els.importCover = byId("import-cover");
-  els.importCoverPreview = byId("import-cover-preview");
-  els.importCoverImg = byId("import-cover-img");
-  els.importCoverClear = byId("import-cover-clear");
-
   els.textSelect = byId("text-select");
   els.readerHeading = byId("reader-heading");
   els.readerSource = byId("reader-source");

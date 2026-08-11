@@ -1,5 +1,4 @@
 import { state } from "../state.js";
-import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { isAndroidPlatform, isImageOcrAvailable } from "../platform.js";
@@ -113,19 +112,129 @@ const MAX_SERIALIZED_IMPORT_TEXT_BYTES = 96 * 1024 * 1024;
 const POCKET_PDF_SCAN_ERROR = "PDF_TEXT_LAYER_EMPTY";
 let ocrImportRunning = false;
 
+/** Typed document lookup (import panel markup is TS-rendered since #127 P2). */
+function el<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
+/**
+ * Builds the library import panel (port of #127 P2: the static <aside> moved
+ * from index.html into this renderer). Idempotent; appends into the library
+ * workspace grid so the panel keeps its grid column position.
+ */
+export function renderImportPanel(): HTMLElement {
+  const existing = document.getElementById("import-panel");
+  if (existing) return existing;
+  const host = document.querySelector(".workspace-grid.library-layout");
+  if (!host) throw new TypeError("Missing library workspace grid for import panel");
+  const panel = document.createElement("aside");
+  panel.id = "import-panel";
+  panel.className = "panel import-panel";
+  panel.setAttribute("aria-labelledby", "import-heading");
+  panel.innerHTML = `
+    <div class="panel-header stacked">
+      <p class="eyebrow" data-i18n="import.eyebrow">Custom text</p>
+      <h2 id="import-heading" data-i18n="import.heading">Import</h2>
+      <button type="button" id="library-import-close" class="icon-button pocket-drawer-close" data-i18n-attr="title=reader.close,aria-label=reader.close" aria-label="Close">×</button>
+    </div>
+    <div class="import-mode-row">
+      <label for="import-mode-select">
+        <span data-i18n="import.modeLabel">Import type</span>
+        <select id="import-mode-select" class="input">
+          <option value="books" data-i18n="import.modeBooks">Import books / texts</option>
+          <option value="youtube" data-i18n="import.modeYoutube">Import YouTube subtitles</option>
+        </select>
+      </label>
+    </div>
+    <div id="import-books-mode">
+      <form id="import-form" class="import-form">
+        <label class="file-button">
+          <span data-i18n="import.fileLabel">Import books / texts</span>
+          <input id="import-file" type="file" accept=".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
+        </label>
+        <p class="muted-copy" id="import-file-hint" data-i18n-html="import.desktopOcrUnavailableFileHint"></p>
+        <label>
+          <span data-i18n="import.title">Title</span>
+          <input id="import-title" type="text" data-i18n-attr="placeholder=import.titlePlaceholder" required>
+        </label>
+        <label>
+          <span data-i18n="import.author">Author (optional)</span>
+          <input id="import-author" type="text" data-i18n-attr="placeholder=import.authorPlaceholder">
+        </label>
+        <label>
+          <span data-i18n="import.tags">Tags (optional)</span>
+          <input id="import-tags" type="text" data-i18n-attr="placeholder=import.tagsPlaceholder">
+        </label>
+        <label>
+          <span data-i18n="import.level">Level (optional)</span>
+          <select id="import-level">
+            <option value="" data-i18n="library.levelAny">Any</option>
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+          </select>
+        </label>
+        <label>
+          <span data-i18n="import.text">Text</span>
+          <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
+        </label>
+        <div class="form-group m-b-15-center">
+          <label for="import-cover" class="import-cover-dropzone dropzone" id="import-cover-dropzone" data-i18n-attr="title=import.cover">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-32-muted-m-b-05"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            <span data-i18n="import.coverPasteHint" class="fs-09-muted">Click to select or paste</span>
+            <input id="import-cover" type="file" accept="image/*" class="visually-hidden">
+          </label>
+        </div>
+        <div id="import-cover-preview" class="import-cover-preview m-b-15-w-max" hidden>
+          <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="Cover preview" class="max-h-150">
+          <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" class="badge-remove">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Add to library</button>
+      </form>
+    </div>
+    <div id="import-youtube-mode" hidden>
+      <section class="youtube-import-section" aria-labelledby="youtube-import-heading">
+        <h3 id="youtube-import-heading" data-i18n="import.youtubeHeading">YouTube subtitles</h3>
+        <label>
+          <span data-i18n="import.youtubeUrl">YouTube URL</span>
+          <input id="import-youtube-url" type="url" data-i18n-attr="placeholder=import.youtubePlaceholder">
+        </label>
+        <div class="youtube-import-actions">
+          <select id="import-youtube-track" hidden data-i18n-attr="aria-label=import.youtubeTrack"></select>
+          <button class="secondary-button" type="button" id="import-youtube-load" data-i18n="import.youtubeLoad">Load subtitles</button>
+        </div>
+        <p class="muted-copy" id="import-youtube-status" aria-live="polite"></p>
+      </section>
+    </div>
+  `;
+  host.appendChild(panel);
+  return panel;
+}
+
+
 function resetCoverPreview() {
   pendingCoverDataUrl = "";
-  if (els.importCoverImg) els.importCoverImg.src = "";
-  if (els.importCoverPreview) els.importCoverPreview.hidden = true;
-  if (els.importCover) els.importCover.value = "";
+  const coverImg = el<HTMLImageElement>("import-cover-img");
+  if (coverImg) coverImg.src = "";
+  const coverPreview = el<HTMLElement>("import-cover-preview");
+  if (coverPreview) coverPreview.hidden = true;
+  const cover = el<HTMLInputElement>("import-cover");
+  if (cover) cover.value = "";
   const dropzone = document.getElementById("import-cover-dropzone");
   if (dropzone) dropzone.style.display = "flex";
 }
 
 function setImportCoverPreview(dataUrl: string): void {
   pendingCoverDataUrl = dataUrl || "";
-  if (els.importCoverImg) els.importCoverImg.src = pendingCoverDataUrl;
-  if (els.importCoverPreview) els.importCoverPreview.hidden = !pendingCoverDataUrl;
+  const coverImg = el<HTMLImageElement>("import-cover-img");
+  if (coverImg) coverImg.src = pendingCoverDataUrl;
+  const coverPreview = el<HTMLElement>("import-cover-preview");
+  if (coverPreview) coverPreview.hidden = !pendingCoverDataUrl;
   const dropzone = document.getElementById("import-cover-dropzone");
   if (dropzone) dropzone.style.display = pendingCoverDataUrl ? "none" : "flex";
 }
@@ -396,23 +505,33 @@ function stopOcrProgress() {
 }
 
 function setYoutubeImportLoading(loading: boolean, statusKey = "import.youtubeLoading"): void {
-  if (els.importYoutubeLoad) {
-    setElementBusy(els.importYoutubeLoad, loading, { disable: true });
-    els.importYoutubeLoad.textContent = t(loading ? statusKey : (youtubeTracks.length ? "import.youtubeImportSelected" : "import.youtubeLoad"));
+  const importYoutubeLoad = el<HTMLButtonElement>("import-youtube-load");
+  if (importYoutubeLoad) {
+    setElementBusy(importYoutubeLoad, loading, { disable: true });
+    importYoutubeLoad.textContent = t(loading ? statusKey : (youtubeTracks.length ? "import.youtubeImportSelected" : "import.youtubeLoad"));
   }
-  if (loading && els.importYoutubeStatus) els.importYoutubeStatus.textContent = t(statusKey);
+  if (loading) {
+    const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+    if (importYoutubeStatus) importYoutubeStatus.textContent = t(statusKey);
+  }
 }
 
 function resetYoutubeTracks(clearUrl = false) {
   youtubeTracks = [];
   youtubeTracksUrl = "";
-  if (clearUrl && els.importYoutubeUrl) els.importYoutubeUrl.value = "";
-  if (els.importYoutubeTrack) {
-    els.importYoutubeTrack.innerHTML = "";
-    els.importYoutubeTrack.hidden = true;
+  if (clearUrl) {
+    const importYoutubeUrl = el<HTMLInputElement>("import-youtube-url");
+    if (importYoutubeUrl) importYoutubeUrl.value = "";
   }
-  if (els.importYoutubeLoad) els.importYoutubeLoad.textContent = t("import.youtubeLoad");
-  if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = "";
+  const importYoutubeTrack = el<HTMLSelectElement>("import-youtube-track");
+  if (importYoutubeTrack) {
+    importYoutubeTrack.innerHTML = "";
+    importYoutubeTrack.hidden = true;
+  }
+  const importYoutubeLoad = el<HTMLButtonElement>("import-youtube-load");
+  if (importYoutubeLoad) importYoutubeLoad.textContent = t("import.youtubeLoad");
+  const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+  if (importYoutubeStatus) importYoutubeStatus.textContent = "";
 }
 
 async function youtubeCaptionsRequest(payload: YoutubeCaptionsPayload): Promise<YoutubeCaptionsResponse> {
@@ -441,18 +560,22 @@ async function loadYoutubeTracks(url: string): Promise<YoutubeTrack | null> {
   youtubeTracksUrl = url;
   if (!youtubeTracks.length) {
     resetYoutubeTracks(false);
-    if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeNoTracks");
+    const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+    if (importYoutubeStatus) importYoutubeStatus.textContent = t("import.youtubeNoTracks");
     return null;
   }
-  if (els.importYoutubeTrack) {
-    els.importYoutubeTrack.replaceChildren(
+  const importYoutubeTrack = el<HTMLSelectElement>("import-youtube-track");
+  if (importYoutubeTrack) {
+    importYoutubeTrack.replaceChildren(
       ...youtubeTracks.map((track) => new Option(youtubeTrackLabel(track), String(track.index)))
     );
-    els.importYoutubeTrack.hidden = youtubeTracks.length < 2;
+    importYoutubeTrack.hidden = youtubeTracks.length < 2;
   }
-  if (els.importYoutubeLoad) els.importYoutubeLoad.textContent = t("import.youtubeImportSelected");
+  const importYoutubeLoad = el<HTMLButtonElement>("import-youtube-load");
+  if (importYoutubeLoad) importYoutubeLoad.textContent = t("import.youtubeImportSelected");
   if (youtubeTracks.length > 1) {
-    if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeChooseTrack", { count: youtubeTracks.length });
+    const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+    if (importYoutubeStatus) importYoutubeStatus.textContent = t("import.youtubeChooseTrack", { count: youtubeTracks.length });
     return null;
   }
   return youtubeTracks[0];
@@ -462,28 +585,36 @@ async function importYoutubeTrack(url: string, trackIndex: string | number): Pro
   setYoutubeImportLoading(true, "import.youtubeImporting");
   const data = await youtubeCaptionsRequest({ op: "download", url, track_index: Number(trackIndex) });
   if (!data.text) throw new Error(t("import.youtubeNoText"));
-  els.importText.value = data.text;
-  if (!els.importTitle.value.trim()) els.importTitle.value = data.title || t("import.youtubeImportedTitle");
-  if (els.importAuthor && !els.importAuthor.value.trim()) els.importAuthor.value = data.author || "";
+  const importText = el<HTMLTextAreaElement>("import-text");
+  if (importText) importText.value = data.text;
+  const importTitle = el<HTMLInputElement>("import-title");
+  if (importTitle && !importTitle.value.trim()) importTitle.value = data.title || t("import.youtubeImportedTitle");
+  const importAuthor = el<HTMLInputElement>("import-author");
+  if (importAuthor && !importAuthor.value.trim()) importAuthor.value = data.author || "";
   setImportCoverPreview(data.thumbnailUrl || "");
   pendingImportMeta = {
     source: t("import.youtubeSource"),
     sourceUrl: data.sourceUrl || url,
     textUrl: data.sourceUrl || url
   };
-  if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeLoaded");
+  const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+  if (importYoutubeStatus) importYoutubeStatus.textContent = t("import.youtubeLoaded");
   showToast(t("toast.youtubeCaptionsLoaded"));
   // The captions are now in the books form — switch back so the user can
   // review and submit the import.
-  if (els.importModeSelect) els.importModeSelect.value = "books";
-  if (els.importBooksMode) els.importBooksMode.hidden = false;
-  if (els.importYoutubeMode) els.importYoutubeMode.hidden = true;
+  const importModeSelect = el<HTMLSelectElement>("import-mode-select");
+  if (importModeSelect) importModeSelect.value = "books";
+  const importBooksMode = el<HTMLElement>("import-books-mode");
+  if (importBooksMode) importBooksMode.hidden = false;
+  const importYoutubeMode = el<HTMLElement>("import-youtube-mode");
+  if (importYoutubeMode) importYoutubeMode.hidden = true;
 }
 
 async function handleYoutubeImport() {
-  const url = els.importYoutubeUrl?.value.trim();
+  const url = el<HTMLInputElement>("import-youtube-url")?.value.trim();
   if (!url) {
-    if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeMissingUrl");
+    const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+    if (importYoutubeStatus) importYoutubeStatus.textContent = t("import.youtubeMissingUrl");
     return;
   }
   try {
@@ -493,7 +624,7 @@ async function handleYoutubeImport() {
       await importYoutubeTrack(url, onlyTrack.index);
       return;
     }
-    const selectedIndex = els.importYoutubeTrack?.value || youtubeTracks[0]?.index;
+    const selectedIndex = el<HTMLSelectElement>("import-youtube-track")?.value || youtubeTracks[0]?.index;
     await importYoutubeTrack(url, selectedIndex);
   } catch (error) {
     console.warn(error);
@@ -501,7 +632,8 @@ async function handleYoutubeImport() {
     const message = error instanceof Error && error.message.trim()
       ? safeImportErrorMessage(error)
       : t("import.youtubeError");
-    if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = message;
+    const importYoutubeStatus = el<HTMLElement>("import-youtube-status");
+    if (importYoutubeStatus) importYoutubeStatus.textContent = message;
     showToast(t("toast.youtubeCaptionsError"));
   } finally {
     setYoutubeImportLoading(false);
@@ -864,9 +996,12 @@ async function loadImportFile(file: File): Promise<boolean | void> {
     if (new TextEncoder().encode(JSON.stringify(ebook.text)).byteLength > MAX_SERIALIZED_IMPORT_TEXT_BYTES) {
       throw new Error(t("toast.importFileTooLarge", { mb: Math.floor(maxImportBytes / (1024 * 1024)) }));
     }
-    els.importText.value = ebook.text;
-    if (!els.importTitle.value.trim()) els.importTitle.value = ebook.title || titleFromImportedFileName(file.name);
-    if (els.importAuthor && !els.importAuthor.value.trim()) els.importAuthor.value = ebook.author || "";
+    const importText = el<HTMLTextAreaElement>("import-text");
+    if (importText) importText.value = ebook.text;
+    const importTitle = el<HTMLInputElement>("import-title");
+    if (importTitle && !importTitle.value.trim()) importTitle.value = ebook.title || titleFromImportedFileName(file.name);
+    const importAuthor = el<HTMLInputElement>("import-author");
+    if (importAuthor && !importAuthor.value.trim()) importAuthor.value = ebook.author || "";
     setImportCoverPreview(ebook.coverDataUrl || "");
     return;
   }
@@ -880,9 +1015,11 @@ async function loadImportFile(file: File): Promise<boolean | void> {
   if (new TextEncoder().encode(JSON.stringify(text)).byteLength > MAX_SERIALIZED_IMPORT_TEXT_BYTES) {
     throw new Error(t("toast.importFileTooLarge", { mb: Math.floor(maxImportBytes / (1024 * 1024)) }));
   }
-  els.importText.value = text;
-  if (!els.importTitle.value.trim()) {
-    els.importTitle.value = titleFromImportedFileName(file.name);
+  const importText = el<HTMLTextAreaElement>("import-text");
+  if (importText) importText.value = text;
+  const importTitle = el<HTMLInputElement>("import-title");
+  if (importTitle && !importTitle.value.trim()) {
+    importTitle.value = titleFromImportedFileName(file.name);
   }
 }
 
@@ -890,7 +1027,8 @@ function handleImportCoverFile(file: File | undefined): void {
   if (!file) return;
   if (file.size > 1_500_000) {
     showToast(t("toast.coverTooBig"));
-    if (els.importCover) els.importCover.value = "";
+    const importCover = el<HTMLInputElement>("import-cover");
+    if (importCover) importCover.value = "";
     return;
   }
   const reader = new FileReader();
@@ -921,24 +1059,29 @@ function handleEditCoverFile(file: File | undefined): void {
 }
 
 function bindImportFormEvents() {
-  if (els.importModeSelect) {
-    els.importModeSelect.addEventListener("change", () => {
-      const mode = els.importModeSelect.value;
-      if (els.importBooksMode) els.importBooksMode.hidden = mode !== "books";
-      if (els.importYoutubeMode) els.importYoutubeMode.hidden = mode !== "youtube";
+  const importModeSelect = el<HTMLSelectElement>("import-mode-select");
+  if (importModeSelect) {
+    importModeSelect.addEventListener("change", () => {
+      const mode = importModeSelect.value;
+      const importBooksMode = el<HTMLElement>("import-books-mode");
+      if (importBooksMode) importBooksMode.hidden = mode !== "books";
+      const importYoutubeMode = el<HTMLElement>("import-youtube-mode");
+      if (importYoutubeMode) importYoutubeMode.hidden = mode !== "youtube";
     });
   }
 
-  if (els.importYoutubeLoad) {
-    els.importYoutubeLoad.addEventListener("click", () => handleYoutubeImport());
+  const importYoutubeLoad = el<HTMLButtonElement>("import-youtube-load");
+  if (importYoutubeLoad) {
+    importYoutubeLoad.addEventListener("click", () => handleYoutubeImport());
   }
 
-  if (els.importYoutubeUrl) {
-    els.importYoutubeUrl.addEventListener("input", () => {
+  const importYoutubeUrl = el<HTMLInputElement>("import-youtube-url");
+  if (importYoutubeUrl) {
+    importYoutubeUrl.addEventListener("input", () => {
       clearPendingImportMeta();
       resetYoutubeTracks(false);
     });
-    els.importYoutubeUrl.addEventListener("keydown", (event) => {
+    importYoutubeUrl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
         handleYoutubeImport();
@@ -946,11 +1089,12 @@ function bindImportFormEvents() {
     });
   }
 
-  if (els.importFile) {
-    els.importFile.addEventListener("change", async () => {
-      const file = els.importFile.files?.[0];
+  const importFile = el<HTMLInputElement>("import-file");
+  if (importFile) {
+    importFile.addEventListener("change", async () => {
+      const file = importFile.files?.[0];
       if (!file) return;
-      const releaseBusy = beginElementBusy(els.importFile.closest?.(".file-button"));
+      const releaseBusy = beginElementBusy(importFile.closest?.(".file-button"));
       try {
         if (await loadImportFile(file) !== false) showToast(t("toast.fileLoaded", { name: file.name }));
       } catch (err) {
@@ -962,51 +1106,63 @@ function bindImportFormEvents() {
     });
   }
 
-  if (els.importCover) {
-    els.importCover.addEventListener("change", () => handleImportCoverFile(els.importCover.files?.[0]));
+  const importCover = el<HTMLInputElement>("import-cover");
+  if (importCover) {
+    importCover.addEventListener("change", () => handleImportCoverFile(importCover.files?.[0]));
   }
 
-  if (els.importCoverClear) {
-    els.importCoverClear.addEventListener("click", () => {
+  const importCoverClear = el<HTMLButtonElement>("import-cover-clear");
+  if (importCoverClear) {
+    importCoverClear.addEventListener("click", () => {
       pendingCoverDataUrl = null;
-      if (els.importCoverImg) els.importCoverImg.src = "";
-      if (els.importCoverPreview) els.importCoverPreview.hidden = true;
-      if (els.importCover) els.importCover.value = "";
+      const coverImg = el<HTMLImageElement>("import-cover-img");
+      if (coverImg) coverImg.src = "";
+      const coverPreview = el<HTMLElement>("import-cover-preview");
+      if (coverPreview) coverPreview.hidden = true;
+      const coverInput = el<HTMLInputElement>("import-cover");
+      if (coverInput) coverInput.value = "";
       const dropzone = document.getElementById("import-cover-dropzone");
       if (dropzone) dropzone.style.display = "flex";
     });
   }
 
-  els.importForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const submitButton = event.submitter instanceof HTMLButtonElement
-      ? event.submitter
-      : document.querySelector<HTMLButtonElement>("#import-submit");
-    if (submitButton?.disabled) return;
-    const releaseButton = beginElementBusy(submitButton, { disable: true });
-    const releaseForm = beginElementBusy(els.importForm);
-    const meta: ImportMeta = {
-      ...pendingImportMeta,
-      author: els.importAuthor?.value || pendingImportMeta.author,
-      tags: els.importTags?.value,
-      coverDataUrl: pendingCoverDataUrl
-    };
-    const levelVal = els.importLevel?.value;
-    if (levelVal) meta.level = levelVal;
-    try {
-      const importedId = await importCustomText(els.importTitle.value, els.importText.value, meta);
-      if (!importedId) return;
-      els.importForm.reset();
-      clearPendingImportMeta();
-      resetYoutubeTracks(true);
-      resetCoverPreview();
-    } catch (e) {
-      console.error("import custom text failed", e);
-    } finally {
-      releaseForm();
-      releaseButton();
-    }
-  });
+  const importForm = el<HTMLFormElement>("import-form");
+  if (importForm) {
+    importForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submitButton = event.submitter instanceof HTMLButtonElement
+        ? event.submitter
+        : document.querySelector<HTMLButtonElement>("#import-submit");
+      if (submitButton?.disabled) return;
+      const releaseButton = beginElementBusy(submitButton, { disable: true });
+      const releaseForm = beginElementBusy(importForm);
+      const meta: ImportMeta = {
+        ...pendingImportMeta,
+        author: el<HTMLInputElement>("import-author")?.value || pendingImportMeta.author,
+        tags: el<HTMLInputElement>("import-tags")?.value,
+        coverDataUrl: pendingCoverDataUrl
+      };
+      const levelVal = el<HTMLSelectElement>("import-level")?.value;
+      if (levelVal) meta.level = levelVal;
+      try {
+        const importedId = await importCustomText(
+          el<HTMLInputElement>("import-title")?.value || "",
+          el<HTMLTextAreaElement>("import-text")?.value || "",
+          meta
+        );
+        if (!importedId) return;
+        importForm.reset();
+        clearPendingImportMeta();
+        resetYoutubeTracks(true);
+        resetCoverPreview();
+      } catch (e) {
+        console.error("import custom text failed", e);
+      } finally {
+        releaseForm();
+        releaseButton();
+      }
+    });
+  }
 }
 
 function bindEditBookEvents() {
