@@ -209,6 +209,10 @@ class MainActivity : TauriActivity() {
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    // Persist the incoming intent: the TTS-stop notification targets a
+    // singleTask activity, and a cold start after the process was trimmed
+    // must still see the stop request.
+    setIntent(intent)
     if (!intent.getBooleanExtra(EXTRA_TTS_STOP, false)) return
     intent.removeExtra(EXTRA_TTS_STOP)
     runOnUiThread {
@@ -562,10 +566,22 @@ class MainActivity : TauriActivity() {
     requestId: String?
   ): Boolean {
     val id = normalizeBridgeRequestId(requestId, "android-export")
+    // Pre-check the payload before the SAF picker opens: the write-phase
+    // cap alone only surfaces after the user already chose a destination.
+    if (data != null && data.length > ANDROID_DIRECT_EXPORT_MAX_CHARS) {
+      dispatchAndroidExportResult(id, success = false, error = "Export is too large for direct Android write.", cancelled = false, status = "error")
+      return true
+    }
+    if (sourcePath != null && File(sourcePath).length() > ANDROID_TRANSFER_MAX_BYTES) {
+      dispatchAndroidExportResult(id, success = false, error = "WordHunter package is too large.", cancelled = false, status = "error")
+      return true
+    }
     synchronized(bridgeLock) {
       if (pendingExport != null) {
-        dispatchAndroidExportResult(id, success = false, error = "Android export is already running.", cancelled = false, status = "busy")
-        return true
+        // Busy: reject synchronously so the JS fast-path in
+        // waitForAndroidExport() resolves immediately instead of waiting
+        // for a terminal event that never comes.
+        return false
       }
       // No picker timeout is armed here: the SAF picker may stay foreground
       // for minutes, and a stale timeout would silently drop the destination

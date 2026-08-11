@@ -120,7 +120,7 @@ describe("Android Pocket packaging", () => {
     const networkSecurity = parseXml(networkSecuritySource);
 
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
-    assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
+    assert.equal(androidConfig.bundle.android.minSdkVersion, 26);
     assert.equal(androidConfig.app.windows.length, 1);
     assert.equal(androidConfig.app.windows[0].create, false);
     // The webview URL is decided at runtime (android.rs overrides it with the
