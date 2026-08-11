@@ -7,6 +7,8 @@ import { statusLabel, escapeHtml, escapeAttribute } from "../utils.js";
 import { getOrCreateEntry, renderVocabulary } from "../views/vocabulary.js";
 import { setEntryStatus } from "../vocabulary/entry-state.js";
 import { playStatusSound } from "../status-sounds.js";
+import { invalidateReviewQueueCache } from "../vocabulary/review-card.js";
+import { invalidateSuggestIndex } from "../reader/smart-suggest.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { VOCAB_STATUS_FILTERS } from "./vocab-status.js";
 
@@ -176,6 +178,10 @@ export function bindWordEditorEvents() {
       }
       const previousStatus = setEntryStatus(entry, selectedStatus, now);
       if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
+      // Dialog status edits bypass gradeReview/removeFromSrs — the queue memo
+      // and the suggest index must not survive them.
+      invalidateReviewQueueCache();
+      invalidateSuggestIndex();
       const example = addExampleInput?.value.trim();
       if (example) {
         entry.examples = [example, ...(entry.examples || []).filter(e => e !== example)].slice(0, 3);
@@ -192,6 +198,10 @@ export function bindWordEditorEvents() {
       const entry = getOrCreateEntry(word);
       const previousStatus = setEntryStatus(entry, selectedStatus, now);
       if (previousStatus !== selectedStatus) playStatusSound(selectedStatus);
+      // The add branch also feeds the review queue (status + nextDate are
+      // memo inputs) — invalidate like the edit branch above.
+      invalidateReviewQueueCache();
+      invalidateSuggestIndex();
       const article = addArticleInput?.value.trim();
       if (article) entry.article = article;
       const translation = addTranslationInput?.value.trim();

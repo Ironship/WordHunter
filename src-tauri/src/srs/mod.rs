@@ -12,16 +12,34 @@ use self::sm2::calculate_sm2;
 pub use self::date::{add_days_iso_from, is_due, today_iso};
 
 pub fn review(payload: Value) -> Result<Value, String> {
+    // Reject garbage: a review without a quality grade or without an entry
+    // must not fabricate plausible scheduling data (success-on-garbage).
+    if payload.get("quality").and_then(Value::as_f64).is_none() {
+        return Err("srs review requires a quality grade".to_string());
+    }
+    if payload.get("entry").is_none() || payload.get("entry") == Some(&Value::Null) {
+        return Err("srs review requires an entry".to_string());
+    }
     let quality = payload
         .get("quality")
         .and_then(Value::as_f64)
         .unwrap_or(0.0);
+    if !quality.is_finite() || !(0.0..=5.0).contains(&quality) {
+        return Err("srs quality must be between 0 and 5".to_string());
+    }
     let entry = payload.get("entry").unwrap_or(&Value::Null);
+    if !entry.is_object() {
+        return Err("srs review entry must be an object".to_string());
+    }
     let algorithm = payload
         .get("algorithm")
         .and_then(Value::as_str)
         .unwrap_or("sm2");
-    let mode = if algorithm == "fsrs" { "fsrs" } else { "sm2" };
+    let mode = match algorithm {
+        "sm2" => "sm2",
+        "fsrs" => "fsrs",
+        _ => return Err("unsupported srs algorithm".to_string()),
+    };
     let now_iso = payload
         .get("now")
         .and_then(Value::as_str)

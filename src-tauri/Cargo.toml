@@ -22,6 +22,7 @@ tauri-build = { version = "2.6.3", features = [] }
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
+ctrlc = { version = "3", features = ["termination"] }
 encoding_rs = "0.8"
 html-escape = "0.2"
 include_dir = "0.7"
@@ -39,7 +40,7 @@ socket2 = { version = "0.6", features = ["all"] }
 tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
-tiny_http = "0.12"
+tiny_http = { path = "vendor/tiny_http" }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
@@ -51,7 +52,7 @@ zip = "2"
 ctranslate2 = { version = "2.1.1", default-features = false, features = ["sentencepiece"] }
 ctranslate2-sys = { version = "0.1.5", features = ["ruy", "crt-dynamic"] }
 edge-tts-rust = "0.1.3"
-open = "5"
+open = { version = "5", features = ["shellexecute-on-windows"] }
 rfd = "0.15"
 
 [target.'cfg(target_os = "linux")'.dependencies]

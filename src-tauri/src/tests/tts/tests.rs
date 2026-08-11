@@ -1,4 +1,52 @@
-use super::{SynthesisPermit, rate_for, voice_for};
+use super::{SynthesisPermit, cached_with, rate_for, runtime, voice_for};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
+
+#[test]
+fn runtime_stays_alive_after_initialization() {
+    // C15 regression: caching only a Handle drops the Runtime, so the next
+    // block_on panics with "A Tokio 1.x context was found, but it is being
+    // shutdown."
+    runtime()
+        .expect("runtime init should succeed")
+        .block_on(async { tokio::time::sleep(Duration::from_millis(1)).await });
+}
+
+#[test]
+fn failed_init_is_not_cached_and_the_next_call_retries() {
+    let cache: Mutex<Option<u32>> = Mutex::new(None);
+    let calls = AtomicUsize::new(0);
+    let init_fail = || {
+        calls.fetch_add(1, Ordering::Relaxed);
+        Err::<u32, _>("temporary failure".to_string())
+    };
+    let init_ok = || {
+        calls.fetch_add(1, Ordering::Relaxed);
+        Ok(7)
+    };
+    assert_eq!(
+        cached_with(&cache, init_fail),
+        Err("temporary failure".to_string())
+    );
+    // The failure must NOT be cached: the next call runs `init` again.
+    assert_eq!(cached_with(&cache, init_ok), Ok(7));
+    assert_eq!(calls.load(Ordering::Relaxed), 2);
+}
+
+#[test]
+fn successful_init_is_cached_across_calls() {
+    let cache: Mutex<Option<u32>> = Mutex::new(None);
+    let calls = AtomicUsize::new(0);
+    let init = || {
+        calls.fetch_add(1, Ordering::Relaxed);
+        Ok(7)
+    };
+    assert_eq!(cached_with(&cache, init), Ok(7));
+    assert_eq!(cached_with(&cache, || Ok(9)), Ok(7));
+    assert_eq!(cached_with(&cache, || Ok(9)), Ok(7));
+    assert_eq!(calls.load(Ordering::Relaxed), 1);
+}
 
 #[test]
 fn maps_only_supported_rate_presets() {

@@ -1,4 +1,5 @@
 import { state } from "./state.js";
+import { t } from "./i18n.js";
 import {
   normalizeTranslationLanguageCode,
   normalizeTranslationProvider,
@@ -46,10 +47,28 @@ export async function translateWithRetry(text: string, from: string, to: string)
   }
 }
 
+export class TranslationError extends Error {
+  code: string;
+  constructor(code: string, message: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/// Map known translation errors to localized strings. Unknown/backend
+/// errors return "" — their detail belongs in the console, not in a
+/// UI string (backend text is English-only today).
+export function localizedTranslationError(error: unknown): string {
+  if (error instanceof TranslationError && error.code === "pair-not-configured") {
+    return t("translator.errorPairNotConfigured");
+  }
+  return "";
+}
+
 export async function translateText(text: string, from: string, to: string): Promise<TranslationResult> {
   const fromCode = normalizeTranslationLanguageCode(from);
   const toCode = normalizeTranslationLanguageCode(to);
-  if (!fromCode || !toCode) throw new Error("Translation language pair is not configured");
+  if (!fromCode || !toCode) throw new TranslationError("pair-not-configured", "Translation language pair is not configured");
   if (fromCode === toCode) return { translated: text, engine: "identity" };
   const provider = activeTranslationProvider();
   if (provider === "offline") {

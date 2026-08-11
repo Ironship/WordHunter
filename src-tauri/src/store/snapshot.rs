@@ -56,7 +56,7 @@ impl Store {
                 .map_err(|e| format!("could not read interrupted save journal: {e}"))?;
             let journal_value: Value = match serde_json::from_slice(&payload) {
                 Ok(value) => value,
-                Err(error) => {
+                Err(_error) => {
                     quarantine_journal(path)?;
                     continue;
                 }
@@ -69,7 +69,7 @@ impl Store {
             let (payload, base, saved_at) = match decode_save_journal(&journal_value, current_base)
             {
                 Ok(journal) => journal,
-                Err(error) => {
+                Err(_error) => {
                     quarantine_journal(path)?;
                     continue;
                 }
@@ -181,7 +181,7 @@ impl Store {
         snapshot
     }
 
-    pub fn bulk_save(&self, payload: Value) -> Result<(), String> {
+    pub fn bulk_save(&self, payload: Value) -> Result<usize, String> {
         let _guard = self.lock_writes()?;
         match self.recover_pending_operations()? {
             PendingRecovery::None => {}
@@ -212,11 +212,12 @@ impl Store {
             false,
         )?;
 
-        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal)
+        let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        remove_if_exists(journal)?;
+        Ok(conflicts)
     }
 
-    pub fn restore_backup(&self, payload: Value) -> Result<(), String> {
+    pub fn restore_backup(&self, payload: Value) -> Result<usize, String> {
         let _guard = self.lock_writes()?;
         if self.recover_pending_wipe()? {
             self.base_records
@@ -238,8 +239,12 @@ impl Store {
             false,
         )?;
 
-        self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
-        remove_if_exists(journal)
+        let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        // The journal cleanup must not fail silently: a leftover journal
+        // re-applies the restore payload at the next launch.
+        remove_if_exists(journal)?;
+        self.invalidate_records_cache();
+        Ok(conflicts)
     }
 
     fn commit_bulk_save_with_context(
@@ -247,7 +252,7 @@ impl Store {
         payload: &Value,
         base: &record_files::Fingerprints,
         now: u128,
-    ) -> Result<(), String> {
+    ) -> Result<usize, String> {
         validate_snapshot_payload_schema(payload)?;
         let effective = if payload.get("delta").and_then(Value::as_bool) == Some(true) {
             // Incremental save: changed records live under "records", shaped
@@ -261,16 +266,29 @@ impl Store {
         };
         let mut incoming = record_files::payload_to_records(&effective, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
-        let current = record_files::load_records(&self.dir())?;
+        // The merge needs the current on-disk records; use the in-memory
+        // cache (refreshed after every commit) instead of re-scanning the
+        // whole records tree on every save.
+        let current = self.records_cache_or_load()?;
         record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let full_keys = full_keys_from_payload(payload, &incoming)?;
         let merged =
             record_files::merge_records(base, incoming, current, self.device_id(), now, &full_keys);
-        record_files::write_records(&self.dir(), &merged.records)?;
+        // Write only the records that actually changed since the last
+        // acknowledged base; unchanged keys already hold identical content
+        // on disk. This avoids re-opening hundreds of record files per save.
+        let changed: BTreeMap<String, crate::store::record_files::SyncRecord> = merged
+            .records
+            .iter()
+            .filter(|(_, record)| record_files::record_changed_since_base(record, base))
+            .map(|(key, record)| (key.clone(), record.clone()))
+            .collect();
+        record_files::write_records(&self.dir(), &changed)?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
-        Ok(())
+        self.set_records_cache(merged.records);
+        Ok(merged.conflicts.len())
     }
 
     pub fn recovery_status(&self) -> Value {
@@ -289,6 +307,7 @@ impl Store {
     fn records_snapshot(&self) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
+        self.set_records_cache(records.clone());
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             record_files::fingerprints(&records);
         if records.is_empty() {
@@ -305,6 +324,7 @@ impl Store {
         self.cleanup_after_wipe()?;
         self.discard_abandoned_book_imports()?;
         remove_if_exists(self.wipe_journal_path())?;
+        self.invalidate_records_cache();
         Ok(())
     }
 
@@ -638,6 +658,10 @@ mod tests {
     use crate::store::{StoreInner, record_files};
 
     fn store_at(dir: &tempfile::TempDir) -> Store {
+        store_with_device(dir, "snapshot-test")
+    }
+
+    fn store_with_device(dir: &tempfile::TempDir, device_id: &str) -> Store {
         std::fs::create_dir_all(dir.path().join("books")).unwrap();
         Store {
             inner: Mutex::new(StoreInner {
@@ -646,12 +670,13 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
-            device_id: "snapshot-test".to_string(),
+            records_cache: Mutex::new(None),
+            device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }
     }
 
-    fn payload(word: &str) -> Value {
+    fn payload_with_status(word: &str, status: &str) -> Value {
         json!({
             "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "texts": [],
@@ -664,11 +689,15 @@ mod tests {
                     "hiddenBuiltInBooks": [],
                     "archivedBookIds": [],
                     "vocab": {
-                        word: { "word": word, "translation": "word", "status": "learning" }
+                        word: { "word": word, "translation": "word", "status": status }
                     }
                 }
             }
         })
+    }
+
+    fn payload(word: &str) -> Value {
+        payload_with_status(word, "learning")
     }
 
     #[test]
@@ -709,7 +738,7 @@ mod tests {
         );
     }
 
-    fn delta_payload(word: &str, full_keys: &[&str], vocab: Value) -> Value {
+    fn delta_payload(_word: &str, full_keys: &[&str], vocab: Value) -> Value {
         json!({
             "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
             "delta": true,
@@ -827,5 +856,92 @@ mod tests {
         let snapshot = store2.snapshot();
         assert_eq!(snapshot["vocab"]["de"]["vocab"]["wort"]["status"], "known");
         assert!(!store2.save_journal_path().exists());
+    }
+
+    #[test]
+    fn restore_backup_replaces_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.restore_backup(payload("Wort")).unwrap();
+        let snapshot = store.snapshot();
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
+            "word"
+        );
+        assert!(
+            record_files::load_records(dir.path())
+                .unwrap()
+                .contains_key("vocab:de:wort")
+        );
+    }
+
+    #[test]
+    fn restore_backup_surfaces_journal_cleanup_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        // A directory squatting on the journal path (with the .bak slot also
+        // occupied by a non-empty directory, so the atomic write's rescue
+        // rename cannot displace it) makes the journal write fail;
+        // restore_backup must surface the journal-path error instead of
+        // swallowing it. Pre-af00e7ab code dropped the remove_if_exists
+        // Result — a surviving journal then re-applied the restore payload
+        // at next launch, duplicating the restore (#108).
+        let journal = store.save_journal_path();
+        std::fs::create_dir(&journal).unwrap();
+        let backup = journal.with_extension("bak");
+        std::fs::create_dir(&backup).unwrap();
+        std::fs::write(backup.join("occupied"), b"x").unwrap();
+        let result = store.restore_backup(payload("Wort"));
+        assert!(result.is_err());
+        // Nothing was committed: the store stays consistent.
+        assert!(record_files::load_records(dir.path()).unwrap().is_empty());
+    }
+
+    /// Bridges the pre-fix `bulk_save -> Result<(), String>` signature so the
+    /// conflict-count assertion below also compiles (and fails at runtime)
+    /// against the base branch, where the count was computed but never
+    /// surfaced. On the fix the identity impl returns the real count.
+    trait ConflictCount {
+        fn conflict_count(self) -> Result<usize, String>;
+    }
+
+    #[allow(dead_code)] // the other impl is the active one on the base branch
+    impl ConflictCount for Result<usize, String> {
+        fn conflict_count(self) -> Result<usize, String> {
+            self
+        }
+    }
+
+    #[allow(dead_code)] // the other impl is the active one on this branch
+    impl ConflictCount for Result<(), String> {
+        fn conflict_count(self) -> Result<usize, String> {
+            self.map(|()| 0)
+        }
+    }
+
+    #[test]
+    fn delta_save_surfaces_one_conflict_when_the_same_record_changed_concurrently() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+
+        // A second device edits the same word while this store still
+        // acknowledges the original content, so the on-disk record diverges
+        // from this store's base.
+        store_with_device(&dir, "other-device")
+            .bulk_save(payload_with_status("Wort", "known"))
+            .unwrap();
+        store.invalidate_records_cache();
+
+        let conflicts = store
+            .bulk_save(delta_payload(
+                "Wort",
+                FULL_KEYS_TWO,
+                profile_with("Wort", "mastered"),
+            ))
+            .conflict_count()
+            .unwrap();
+
+        assert_eq!(conflicts, 1);
     }
 }

@@ -70,7 +70,10 @@ async function loadAppHarness({
   hydrateActiveLibraryTexts = async () => {},
   hydrateCurrentReaderText = async () => true,
   loadBooksCatalog = async () => {},
-  loadLocale = async () => {}
+  loadLocale = async () => {},
+  pendingDelta = null,
+  hasPending = false,
+  deltaEnvelope = { payload: "{}", session: "harness", sequence: 0 }
 } = {}) {
   const calls = [];
   const animationFrames = [];
@@ -91,6 +94,8 @@ async function loadAppHarness({
   const window = fakeEventTarget({
     __qtBridge: false,
     flushPendingSave() { calls.push("flush-save"); },
+    hasPendingChanges() { return hasPending; },
+    buildPendingDeltaEnvelope() { calls.push("build-envelope"); return deltaEnvelope; },
     open() {},
     requestAnimationFrame(callback) {
       assert.equal(this, window);
@@ -123,13 +128,21 @@ async function loadAppHarness({
       hydrateCurrentReaderText
     },
     "./js/render.js": { render: () => calls.push("render"), ensureCurrentText: noOp },
-    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key, getLocale: () => "en" },
+    "./js/i18n.js": { loadLocale, applyTranslations: noOp, t: (key) => key, getLocale: () => "en", initialLocale: () => "en" },
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
       flushUiStateSync: noOp,
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
+    },
+    "./js/api.js": {
+      buildSavePayload: () => "{}",
+      saveSyncXhr() { calls.push("keepalive-save"); },
+      flushPendingDeltaToLocalStorage(delta) { calls.push(`pending-flush:${delta.payload}`); },
+      readPendingDelta() { return pendingDelta; },
+      clearPendingDelta() { calls.push("clear-pending"); },
+      saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
@@ -225,7 +238,10 @@ describe("persistence lifecycle", () => {
           if (attempts === 1) await blockedSave;
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -285,6 +301,100 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls.splice(0), []);
     harness.document.emit("visibilitychange");
     assert.deepEqual(harness.calls.splice(0), []);
+  });
+
+  it("persists the Android teardown flush to localStorage instead of a keepalive fetch", async () => {
+    // Issue #137: keepalive fetches are capped at 64 KiB while the real save
+    // payload is multi-MB, so the final mutations were silently dropped on
+    // every Android activity finish. The flush must go to localStorage
+    // synchronously and must not rely on a keepalive fetch.
+    const harness = await loadAppHarness({
+      hasPending: true,
+      deltaEnvelope: { payload: '{"delta":true,"fullKeys":[]}', session: "s1", sequence: 3 }
+    });
+    harness.setAndroid(true);
+
+    harness.window.emit("pagehide");
+
+    assert.deepEqual(harness.calls, [
+      "flush-buffers",
+      "build-envelope",
+      'pending-flush:{"delta":true,"fullKeys":[]}'
+    ]);
+    assert.ok(
+      !harness.calls.includes("keepalive-save"),
+      "the multi-MB payload must not go through a keepalive fetch"
+    );
+  });
+
+  it("replays a pending Android teardown flush through the normal save path at boot", async () => {
+    const harness = await loadAppHarness({
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+    });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(
+      harness.calls.includes('replay:{"delta":true,"fullKeys":[]}'),
+      "the pending delta is replayed through the normal save path"
+    );
+    assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
+  });
+
+  it("clears a pending delta only when a same-session save built after the freeze supersedes it", async () => {
+    // Issue #137 class: a delta frozen at an earlier hidden event must never
+    // be replayed after a newer save covered its content — its frozen
+    // fullKeys would tombstone keys written in the meantime. But a save whose
+    // payload was built BEFORE the freeze (in-flight at hidden time) or comes
+    // from a different session does NOT contain the delta's mutations and
+    // must not clear it either (that would drop them forever).
+    let cleared = 0;
+    let pending = null;
+    let releaseSave;
+    const pendingResponse = new Promise((resolve) => { releaseSave = resolve; });
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage() {},
+        saveWithRetry() { return pendingResponse; },
+        saveSyncXhr() {},
+        readPendingDelta() { return pending; },
+        clearPendingDelta() { cleared += 1; }
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: {}, dispatchEvent() {} },
+      CustomEvent: class CustomEvent {},
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => ({ preferences: {}, profiles: {} }));
+    const state = autosave.wrap({ preferences: {}, profiles: {} });
+
+    // Case 1 — save built BEFORE the freeze does not cover the delta:
+    // start a save (payload sequence 0), then mutate (sequence 1) and freeze
+    // the delta (sequence 1). The completing save must NOT clear it.
+    const inflight = autosave.saveState();
+    state.profiles.de = { words: {} };
+    const envelope = autosave.buildPendingDeltaEnvelope();
+    pending = envelope;
+    releaseSave({ ok: true });
+    await inflight;
+    assert.equal(cleared, 0, "a save built before the freeze must not clear the delta");
+
+    // Case 2 — a same-session save built after the freeze, carrying records,
+    // covers the delta (even for a mutation in an already-dirty language).
+    state.profiles.de.words.w1 = { status: "learning" };
+    await autosave.saveState();
+    assert.equal(cleared, 1, "a same-session save built after the freeze supersedes the delta");
+
+    // Case 3 — a delta from another session is never cleared by this
+    // session's saves (only the boot replay delivers and clears it).
+    pending = { payload: "{}", session: "other-session", sequence: 0 };
+    await autosave.saveState();
+    assert.equal(cleared, 1, "a cross-session delta must not be cleared by this session's saves");
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {
@@ -362,7 +472,10 @@ describe("persistence lifecycle", () => {
           saveAttempts++;
           throw new Error("filesystem unavailable");
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window,
@@ -404,7 +517,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: false },
@@ -430,7 +546,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() { throw new DOMException("quota", "QuotaExceededError"); },
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: false },
@@ -462,7 +581,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true },
@@ -494,7 +616,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage() {},
         async saveWithRetry() { return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true },
@@ -521,7 +646,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, __bridgeState: null },
@@ -547,7 +675,10 @@ describe("persistence lifecycle", () => {
         buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
         saveToLocalStorage: (payload) => { localStorageSaves.push(payload); },
         async saveWithRetry(body) { backendSaves.push(body); return {}; },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, __bridgeState: {} },
@@ -590,6 +721,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -641,6 +773,67 @@ describe("persistence lifecycle", () => {
     assert.equal(durableSaves, 1);
   });
 
+  it("applies a bridge snapshot when the current state's preferences are null", async () => {
+    const currentState = {
+      preferences: null,
+      customTexts: [],
+      discover: null,
+      profiles: {},
+      vocab: {}
+    };
+    const nextState = {
+      preferences: { inTextReviewCompletedGuesses: 1 },
+      customTexts: [],
+      profiles: {},
+      vocab: {}
+    };
+    const autosave = {
+      wrap: (value) => value,
+      saveState: () => Promise.resolve(),
+      getDurableStateRevision: () => 0,
+      runExclusiveWrite: (callback) => callback(),
+      markDurableStateReplaced() {},
+      flushPendingSave() {},
+      hasPendingChanges: () => false,
+      withoutAutoSave: (callback) => callback()
+    };
+    const noOp = () => {};
+    let loadCount = 0;
+    const stateModule = await evaluateWithMocks("../../dist/web/js/state.js", {
+      "./state/autosave.js": { createAutosave: () => autosave },
+      "./state/defaults.js": {
+        createDefaultState: () => currentState,
+        createDefaultPreferences: () => ({ inTextReviewCompletedGuesses: 0 }),
+        getDefaultDictionaryUrl: () => "",
+        normalizeAnkiExportStatuses: noOp,
+        normalizeVocabStatusFilters: noOp
+      },
+      "./state/normalize.js": {
+        assertSupportedStateSchemaVersion: noOp,
+        loadState: () => loadCount++ === 0 ? currentState : nextState,
+        normalizeState: (value) => value
+      },
+      "./state/ui-cache.js": {
+        captureUiState: () => ({}),
+        saveUiStateCache: noOp,
+        UI_STATE_KEYS: []
+      },
+      "./store-bridge.js": { postStoreJson: async () => ({}) },
+      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+      "./constants.js": {
+        OTHER_PROFILE_ID: "other",
+        STATE_SCHEMA_VERSION: 2,
+        IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeState: null, WH_TOKEN: "test-token" },
+      console
+    });
+
+    assert.doesNotThrow(() => stateModule.applyBridgeSnapshotToState({ schemaVersion: 2, prefs: {} }));
+    assert.equal(stateModule.state.preferences.inTextReviewCompletedGuesses, 1);
+  });
+
   it("drains old UI saves and defers new UI saves around an exclusive import or wipe", async () => {
     const postedPages = [];
     const keepalivePages = [];
@@ -664,6 +857,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -740,6 +934,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -812,6 +1007,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -862,6 +1058,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -915,6 +1112,7 @@ describe("persistence lifecycle", () => {
       "./state/autosave.js": { createAutosave: () => autosave },
       "./state/defaults.js": {
         createDefaultState: () => rawState,
+        createDefaultPreferences: () => ({}),
         getDefaultDictionaryUrl: () => "",
         normalizeAnkiExportStatuses: noOp,
         normalizeVocabStatusFilters: noOp
@@ -962,7 +1160,10 @@ describe("persistence lifecycle", () => {
           savedThemes.push(JSON.parse(body).preferences.theme);
           return {};
         },
-        saveSyncXhr() { synchronousWrites += 1; }
+        saveSyncXhr() { synchronousWrites += 1; },
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1003,7 +1204,10 @@ describe("persistence lifecycle", () => {
           if (attempts > 1) throw new Error("post-import save failed");
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1033,18 +1237,19 @@ describe("persistence lifecycle", () => {
     const app = readFileSync(new URL("../../dist/web/app.js", import.meta.url), "utf8");
     const bundledApp = readFileSync(new URL("../../dist/web/js/app.bundle.js", import.meta.url), "utf8");
     const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
+    const bootstrapTemplate = readFileSync(new URL("../../src-tauri/templates/bootstrap.js", import.meta.url), "utf8");
 
     assert.ok(html.includes('class="app-booting"'));
     assert.ok(html.includes('<meta name="theme-color" content="#00395d">'));
-    assert.match(html, /<script type="module" src="js\/app\.bundle\.js"><\/script>/);
+    assert.match(html, /<script type="module" src="js\/app\.bundle\.js\?v=[0-9a-f]{12}"><\/script>/);
     assert.ok(bundledApp.length > app.length);
     const inlineBoot = cssDeclarations(html, String.raw`html\.app-booting,html\.app-booting body`);
     assert.match(inlineBoot, /overflow:\s*hidden/);
     assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
-    assert.match(html, /<script src="boot\.js"><\/script>/);
-    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js"'));
-    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js"'));
+    assert.match(html, /<script src="boot\.js\?v=[0-9a-f]{12}"><\/script>/);
+    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js'));
+    assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js'));
     assert.doesNotMatch(boot, /export \{\}/);
     assert.doesNotMatch(boot, /app-font-stylesheet/);
     assert.match(app, /getElementById\("app-font-stylesheet"\)\?\.setAttribute\("rel", "stylesheet"\)/);
@@ -1059,12 +1264,12 @@ describe("persistence lifecycle", () => {
     assert.match(cssDeclarations(styles, String.raw`html\.app-booting \.app-shell`), /visibility:\s*hidden/);
     assert.match(cssDeclarations(styles, String.raw`html\.app-booting body::before`), /background:\s*var\(--boot-bg\)/);
     const bootLogo = cssDeclarations(styles, String.raw`html\.app-booting body::after`);
-    assert.match(bootLogo, /background:\s*url\("favicon\.svg"\)/);
+    assert.match(bootLogo, /background:\s*url\("favicon\.svg\?v=[0-9a-f]{12}"\)/);
     assert.match(bootLogo, /animation:\s*boot-logo-pulse 1\.15s ease-in-out infinite !important/);
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
     assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
     assert.match(handlers, /bootstrap_script\([\s\S]*(Some|None)/);
-    assert.match(handlers, /storeLoadController[\s\S]*12000/);
+    assert.match(bootstrapTemplate, /storeLoadController[\s\S]*12000/);
     assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
     assert.match(boot, /Startup timed out before the application became ready/);
     assert.match(app, /clearTimeout\(window\.wordHunterBootTimeout\)/);
@@ -1397,7 +1602,10 @@ describe("persistence lifecycle", () => {
           }
           return {};
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1426,7 +1634,10 @@ describe("persistence lifecycle", () => {
           attempts += 1;
           throw new TypeError("Failed to fetch");
         },
-        saveSyncXhr() {}
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
       }
     }, {
       window: { __qtBridge: true, dispatchEvent() {} },
@@ -1438,5 +1649,87 @@ describe("persistence lifecycle", () => {
     const autosave = createAutosave(() => rawState);
     await assert.rejects(autosave.saveState(), /Failed to fetch/);
     assert.equal(attempts, 1, "network errors must not trigger the full-snapshot fallback");
+  });
+
+  it("tracks per-text and per-language mutations through the proxy into delta payloads", async () => {
+    // End-to-end regression guard: real api.js payload builders wired to the
+    // real proxy-based dirty tracking. Guards against the proxy-vs-target
+    // keying bug that silently emptied texts/vocab in every delta payload
+    // (mutations were never attributed to a language or text id).
+    const bodies = [];
+    const realApi = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" }
+    }, {
+      window: { __qtBridge: true, WH_TOKEN: "tok" },
+      localStorage: { getItem() { return null; }, setItem() {} },
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {}, warn() {} },
+      fetch: async (url, options) => {
+        if (String(url).includes("/__store/save")) bodies.push(JSON.parse(options.body));
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+    });
+
+    const rawState = {
+      preferences: { learningLanguage: "de", locale: "en" },
+      hiddenBuiltInBooks: [],
+      profiles: {
+        de: {
+          vocab: { hallo: { status: "new" } },
+          customTexts: [{ id: "text-1", title: "Alt", text: "Hallo Welt." }],
+          userBooks: [],
+          hiddenBuiltInBooks: [],
+          archivedBookIds: [],
+          preferences: {}
+        }
+      },
+      customTexts: [],
+      userBooks: [],
+      archivedBookIds: []
+    };
+    // normalize.ts aliases the root texts array to the active profile's array.
+    rawState.customTexts = rawState.profiles.de.customTexts;
+
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": realApi
+    }, {
+      window: {
+        __qtBridge: true,
+        __bridgeState: { revision: 0 },
+        WH_TOKEN: "tok",
+        dispatchEvent() {}
+      },
+      CustomEvent,
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console: { error() {}, warn() {} },
+      fetch: async (url, options) => {
+        if (String(url).includes("/__store/save")) bodies.push(JSON.parse(options.body));
+        return { ok: true, status: 200, json: async () => ({}) };
+      }
+    });
+
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+
+    // Vocab mutation through the proxy
+    state.profiles.de.vocab.hallo.status = "learning";
+    // Text mutation through the proxy (same array as the root customTexts)
+    const book = state.profiles.de.customTexts.find((text) => text.id === "text-1");
+    book.text = "Hallo verändert.";
+    book.title = "Neu";
+
+    await autosave.saveState();
+
+    assert.equal(bodies.length, 1, "one delta save");
+    const delta = bodies[0];
+    assert.equal(delta.delta, true);
+    assert.deepEqual(Object.keys(delta.records.vocab), ["de"], "only the mutated language is sent");
+    assert.equal(delta.records.vocab.de.vocab.hallo.status, "learning");
+    assert.deepEqual(delta.records.texts.map((text) => text.id), ["text-1"], "only the mutated text is sent");
+    assert.equal(delta.records.texts[0].text, "Hallo verändert.");
+    assert.ok(delta.fullKeys.includes("text:text-1"), "fullKeys declares the text key");
+    assert.ok(delta.fullKeys.length > 5, "fullKeys still declares the whole key set");
   });
 });

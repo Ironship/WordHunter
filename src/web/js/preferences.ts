@@ -207,6 +207,7 @@ export function syncSettingsControls() {
   if (els.prefTranslationTargetLanguage) els.prefTranslationTargetLanguage.value = prefs.translationTargetLanguage || translationPair.toCode;
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
+  if (els.prefYouglishMode) els.prefYouglishMode.value = prefs.youglishMode || "internal";
   els.prefFont.value = prefs.readerFont || "serif";
   els.prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
@@ -219,7 +220,7 @@ export function syncSettingsControls() {
     els.readerWordPanelToggle.setAttribute("aria-pressed", String(visible));
     els.readerWordPanelToggle.textContent = t(visible ? "settings.readerWordPanelHideControl" : "settings.readerWordPanelShowControl");
   }
-  if (els.prefWordsPerPage) els.prefWordsPerPage.value = prefs.wordsPerPage || "1000";
+  if (els.prefWordsPerPage) els.prefWordsPerPage.value = String(prefs.wordsPerPage || "1000");
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
@@ -245,7 +246,7 @@ export function syncSettingsControls() {
       input.checked = selectedSet.has(input.value);
     });
   }
-  els.prefFontSize.value = state.readerFontSize || 18;
+  els.prefFontSize.value = String(state.readerFontSize || 18);
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize || 18 });
   if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize || 18);
   if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize || 18}px`;
@@ -353,7 +354,7 @@ export function syncSettingsControls() {
 
 export function updatePreferenceValue(key: string, value: unknown): void {
   state.preferences[key] = value;
-  if (["dictionaryUrl", "dictionaryMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
+  if (["dictionaryUrl", "dictionaryMode", "youglishMode", "translationSourceLanguage", "translationTargetLanguage"].includes(key)) {
     const profile = state.profiles?.[state.preferences.learningLanguage];
     if (profile) {
       profile.preferences = profile.preferences || {};
@@ -378,6 +379,7 @@ export function resetPreferences() {
     learningLanguage,
     dictionaryUrl: profilePreferences.dictionaryUrl || getDefaultDictionaryUrl(learningLanguage),
     dictionaryMode: profilePreferences.dictionaryMode || "internal",
+    youglishMode: profilePreferences.youglishMode || "internal",
     translationSourceLanguage: profilePreferences.translationSourceLanguage || "",
     translationTargetLanguage: profilePreferences.translationTargetLanguage || (learningLanguage === OTHER_PROFILE_ID ? state.preferences.locale || "en" : ""),
     lastReadTextIds,
@@ -388,6 +390,7 @@ export function resetPreferences() {
       ...(state.profiles[learningLanguage].preferences || {}),
       dictionaryUrl: state.preferences.dictionaryUrl,
       dictionaryMode: state.preferences.dictionaryMode,
+      youglishMode: state.preferences.youglishMode,
       translationSourceLanguage: state.preferences.translationSourceLanguage,
       translationTargetLanguage: state.preferences.translationTargetLanguage,
     };

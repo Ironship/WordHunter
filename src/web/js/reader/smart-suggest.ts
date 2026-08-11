@@ -97,6 +97,17 @@ function detectArticle(context: string, word: string, language: string): Article
   return null;
 }
 
+// Lazily built index: trailing word -> multi-word vocab keys (non-new status).
+let suggestPrefixIndex = new Map<string, string[]>();
+let lastSuggestPrefixVocab: Record<string, { status?: string }> | null = null;
+
+// In-place vocab mutations (deleteWord, getOrCreateEntry) keep the vocab map
+// reference, so the lazily built prefix index would go stale (dead keys and
+// missed entries). Reset the marker so the next query rebuilds the index.
+export function invalidateSuggestIndex(): void {
+  lastSuggestPrefixVocab = null;
+}
+
 export function getSmartSuggestion(context: string, word: string): SmartSuggestion | null {
   if (!context || !word || word.includes(" ")) return null;
   const language = effectiveLearningLanguage(state.preferences);
@@ -135,7 +146,7 @@ export function renderSmartSuggestionHtml(suggestion: SmartSuggestion | null): s
   `;
 }
 
-export function getSmartSuggestionHtml(context: string, word: string): string {
+function getSmartSuggestionHtml(context: string, word: string): string {
   return renderSmartSuggestionHtml(getSmartSuggestion(context, word));
 }
 function checkGermanSeparableVerb(context: string, word: string): string | null {
@@ -185,17 +196,39 @@ function checkGermanSeparableVerb(context: string, word: string): string | null 
     return null;
   }
 
-  // Check if prefix has already been consumed by another word in this sentence
+  // Check if prefix has already been consumed by another word in this sentence.
+  // The vocab can be ~90k entries; an index keyed by the trailing word is
+  // rebuilt only when the vocab object changes (not per word-panel render).
+  if (state.vocab !== lastSuggestPrefixVocab) {
+    // No status filter here: grades mutate entries in place, so the
+    // status is checked at query time (only the tiny bucket is scanned).
+    const index = new Map<string, string[]>();
+    for (const vocabWord in state.vocab) {
+      const space = vocabWord.lastIndexOf(" ");
+      if (space <= 0) continue;
+      const tail = vocabWord.slice(space + 1).toLowerCase();
+      if (!tail) continue;
+      const bucket = index.get(tail);
+      if (bucket) bucket.push(vocabWord);
+      else index.set(tail, [vocabWord]);
+    }
+    suggestPrefixIndex = index;
+    lastSuggestPrefixVocab = state.vocab;
+  }
   let isPrefixConsumed = false;
-  for (const vocabWord in state.vocab) {
-    if (vocabWord.toLowerCase().endsWith(" " + lastWord) && state.vocab[vocabWord].status !== "new") {
-      const verbPart = vocabWord.split(" ")[0];
-      if (!verbPart) continue;
-      const verbRegex = new RegExp(`\\b${verbPart}\\b`, 'i');
-      if (verbRegex.test(context)) {
-        isPrefixConsumed = true;
-        break;
-      }
+  for (const vocabWord of suggestPrefixIndex.get(lastWord) || []) {
+    // Entries are deleted in place (deleteWord mutates the vocab map without
+    // replacing its reference), so the index can hold dead keys — skip them
+    // instead of crashing the word panel on a TypeError.
+    const entry = state.vocab[vocabWord];
+    if (!entry) continue;
+    if (entry.status === "new") continue;
+    const verbPart = vocabWord.split(" ")[0];
+    if (!verbPart) continue;
+    const verbRegex = new RegExp(`\\b${verbPart}\\b`, 'i');
+    if (verbRegex.test(context)) {
+      isPrefixConsumed = true;
+      break;
     }
   }
 

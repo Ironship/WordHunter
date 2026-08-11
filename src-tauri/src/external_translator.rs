@@ -11,11 +11,19 @@ pub fn translate(payload: Value) -> Result<Value, String> {
         .get("provider")
         .and_then(Value::as_str)
         .unwrap_or_default();
+    // Reject garbage payloads: {} must not produce a fake 200 with an
+    // empty translation.
+    if provider.is_empty() {
+        return Err("translation requires a provider".to_string());
+    }
     let text = payload
         .get("text")
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
+    if text.is_empty() {
+        return Err("translation requires a non-empty text".to_string());
+    }
     let from = payload
         .get("from")
         .and_then(Value::as_str)
@@ -23,10 +31,7 @@ pub fn translate(payload: Value) -> Result<Value, String> {
     let to = payload.get("to").and_then(Value::as_str).unwrap_or("pl");
     let key = payload.get("key").and_then(Value::as_str).unwrap_or("");
 
-    if text.is_empty() {
-        return Ok(json!({ "translated": "", "engine": provider }));
-    }
-    if text.len() > MAX_TEXT_LEN {
+    if text.chars().count() > MAX_TEXT_LEN {
         return Err("text too long".to_string());
     }
 
@@ -219,8 +224,10 @@ fn is_local_lmstudio_url(url: &Url) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{deepl_lang, google_lang, is_local_lmstudio_url};
+    use serde_json::json;
     use url::Url;
+
+    use super::{deepl_lang, google_lang, is_local_lmstudio_url, translate};
 
     #[test]
     fn deepl_uses_target_specific_english_code() {
@@ -249,5 +256,22 @@ mod tests {
         assert!(!is_local_lmstudio_url(
             &Url::parse("https://example.com/v1/chat/completions").unwrap()
         ));
+    }
+
+    #[test]
+    fn text_limit_counts_unicode_characters_instead_of_utf8_bytes() {
+        let accepted = translate(json!({
+            "provider": "unsupported",
+            "text": "ż".repeat(5_000),
+        }))
+        .unwrap_err();
+        assert_eq!(accepted, "unknown translation provider");
+
+        let rejected = translate(json!({
+            "provider": "unsupported",
+            "text": "ż".repeat(5_001),
+        }))
+        .unwrap_err();
+        assert_eq!(rejected, "text too long");
     }
 }

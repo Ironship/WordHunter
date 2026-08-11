@@ -5,7 +5,10 @@ use std::time::Duration;
 
 use tiny_http::{Method, Request, Server};
 
-use super::{authenticate_request, dispatch_state_independent_request, valid_request_source};
+use super::{
+    authenticate_request, dispatch_state_independent_request, method_not_allowed,
+    valid_request_source, validate_book_image_payload,
+};
 use crate::{handlers, response};
 
 const TOKEN: &str = "test-token";
@@ -21,14 +24,17 @@ fn handle_boundary_request(request: Request, base_url: &str) -> Result<(), Strin
     if !valid_request_source(&request, base_url) {
         return response::error_response(request, 403, "forbidden request source");
     }
-    let Some(request) = authenticate_request(request, &path, TOKEN)? else {
+    if method_not_allowed(request.method(), path) {
+        return response::error_response(request, 405, "method not allowed");
+    }
+    let Some(request) = authenticate_request(request, path, TOKEN)? else {
         return Ok(());
     };
-    let Some(request) = dispatch_state_independent_request(request, &path, &query)? else {
+    let Some(request) = dispatch_state_independent_request(request, path, query)? else {
         return Ok(());
     };
     if request.method() == &Method::Get {
-        handlers::serve_static(request, &path)
+        handlers::serve_static(request, path)
     } else {
         response::error_response(request, 404, "not found")
     }
@@ -98,7 +104,10 @@ fn protected_post_requires_the_exact_token() {
 #[test]
 fn method_and_route_selection_are_exact() {
     let wrong_method = send_request("GET", "/__text/tokenize", None, None);
-    assert_eq!(wrong_method.status, 404);
+    assert_eq!(wrong_method.status, 405);
+
+    let wrong_proxy_method = send_request("POST", "/__proxy", None, Some(b"{}"));
+    assert_eq!(wrong_proxy_method.status, 405);
 
     let route_suffix = send_request(
         "POST",
@@ -126,6 +135,19 @@ fn malformed_and_empty_json_bodies_return_http_400() {
     let empty = send_request("POST", "/__text/tokenize", Some(TOKEN), None);
     assert_eq!(empty.status, 400);
     assert_eq!(empty.body, "missing op");
+}
+
+#[test]
+fn book_image_payload_validation_rejects_missing_and_invalid_fields() {
+    assert!(validate_book_image_payload(&serde_json::json!({})).is_err());
+    assert!(
+        validate_book_image_payload(&serde_json::json!({
+            "book_id": "book",
+            "img_name": "../escape.png",
+            "base64_data": "not base64!"
+        }))
+        .is_err()
+    );
 }
 
 #[test]
@@ -176,6 +198,33 @@ fn rejects_dns_rebinding_hosts_and_cross_site_origins() {
                 .next()
                 .unwrap_or_default()
                 .contains(" 403 ")
+        );
+    }
+}
+
+#[test]
+fn rejects_null_origin_writes_but_allows_null_origin_reads() {
+    let post = "POST /__store/save HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\nX-WH-Token: {TOKEN}\r\nContent-Length: 0\r\n\r\n";
+    // /__media is token-free by design — it proves the origin allowance itself.
+    let get =
+        "GET /__media?book=x&img=y HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\n\r\n";
+    // The null-origin POST must be rejected up front (403). A null-origin
+    // GET stays allowed — it reaches the handlers (404 here, not 403).
+    for (template, expected_status) in [(post, " 403 "), (get, " 404 ")] {
+        let (port, server) = spawn_boundary_server();
+        let raw = template
+            .replace("{port}", &port.to_string())
+            .replace("{TOKEN}", TOKEN);
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        stream.write_all(raw.as_bytes()).unwrap();
+        stream.shutdown(Shutdown::Write).unwrap();
+        let mut response = String::new();
+        stream.read_to_string(&mut response).unwrap();
+        server.join().unwrap();
+        let status_line = response.lines().next().unwrap_or_default();
+        assert!(
+            status_line.contains(expected_status),
+            "unexpected response: {status_line}"
         );
     }
 }
@@ -238,4 +287,223 @@ fn bootstrap_starts_snapshot_loading_when_state_is_not_inlined() {
 
     assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
     assert!(!script.contains("window.__bridgeState = null"));
+}
+
+// --- /__store/save conflict surfacing (fix #108) ---------------------------
+//
+// The response shaping below mirrors router.rs exactly as the fix defines it
+// (conflicts > 0 -> 200 {"conflicts": n}; snapshot=1 -> 200 with "snapshot"
+// and "conflicts"; otherwise 204). It is replicated here — instead of calling
+// the router directly — so the same test file compiles and runs against the
+// pre-fix base branch, where the conflict count was computed by the merge but
+// never surfaced anywhere in the HTTP response. On the base branch the bridge
+// below yields 0 conflicts, so every conflicts-aware assertion fails at
+// runtime; on the fix branch it yields the real count and they pass.
+
+/// Bridges the pre-fix `bulk_save -> Result<(), String>` signature. On the
+/// fix the identity impl returns the real conflict count; on the base branch
+/// the count is unobservable, so the save surfaces as conflict-free.
+trait ConflictCount {
+    fn conflict_count(self) -> Result<usize, String>;
+}
+
+#[allow(dead_code)] // the other impl is the active one on the base branch
+impl ConflictCount for Result<usize, String> {
+    fn conflict_count(self) -> Result<usize, String> {
+        self
+    }
+}
+
+#[allow(dead_code)] // the other impl is the active one on this branch
+impl ConflictCount for Result<(), String> {
+    fn conflict_count(self) -> Result<usize, String> {
+        self.map(|()| 0)
+    }
+}
+
+fn full_payload(word: &str, status: &str) -> String {
+    serde_json::json!({
+        "schemaVersion": 2,
+        "texts": [],
+        "prefs": { "learningLanguage": "de" },
+        "hiddenBooks": [],
+        "vocab": {
+            "de": {
+                "preferences": {},
+                "userBooks": [],
+                "hiddenBuiltInBooks": [],
+                "archivedBookIds": [],
+                "vocab": {
+                    word: { "word": word, "translation": "word", "status": status }
+                }
+            }
+        }
+    })
+    .to_string()
+}
+
+fn conflicting_delta_payload(word: &str, status: &str) -> String {
+    serde_json::json!({
+        "schemaVersion": 2,
+        "delta": true,
+        "fullKeys": ["profile:de", "vocab:de:wort", "pref:learningLanguage"],
+        "records": {
+            "vocab": {
+                "de": {
+                    "preferences": {},
+                    "userBooks": [],
+                    "hiddenBuiltInBooks": [],
+                    "archivedBookIds": [],
+                    "vocab": {
+                        word: { "word": word, "translation": "word", "status": status }
+                    }
+                }
+            }
+        }
+    })
+    .to_string()
+}
+
+/// A store whose on-disk records diverge from its acknowledged base: another
+/// device (a second store over the same directory) edits the same word after
+/// the first save, exactly like the snapshot.rs unit test does.
+fn store_with_concurrent_edit(dir: &tempfile::TempDir) -> crate::store::Store {
+    let store = crate::store::test_store(dir.path(), "boundary-test");
+    store
+        .bulk_save(serde_json::from_str(&full_payload("Wort", "learning")).unwrap())
+        .unwrap();
+    crate::store::test_store(dir.path(), "other-device")
+        .bulk_save(serde_json::from_str(&full_payload("Wort", "known")).unwrap())
+        .unwrap();
+    store.invalidate_records_cache();
+    store
+}
+
+fn handle_store_save_boundary_request(
+    request: Request,
+    store: &crate::store::Store,
+    base_url: &str,
+) -> Result<(), String> {
+    let url = request.url().to_string();
+    let (path, query) = response::split_url(&url);
+    if !valid_request_source(&request, base_url) {
+        return response::error_response(request, 403, "forbidden request source");
+    }
+    if method_not_allowed(request.method(), path) {
+        return response::error_response(request, 405, "method not allowed");
+    }
+    let Some(mut request) = authenticate_request(request, path, TOKEN)? else {
+        return Ok(());
+    };
+    let payload: serde_json::Value = serde_json::from_slice(
+        &response::read_body_limited(&mut request, 4 * 1024 * 1024).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("invalid JSON body: {e}"))?;
+    let conflicts = store.bulk_save(payload).conflict_count()?;
+    let query = response::parse_query(query);
+    if query.get("snapshot").map(String::as_str) == Some("1") {
+        response::json_response(
+            request,
+            serde_json::json!({
+                "snapshot": store.snapshot_unacknowledged(),
+                "conflicts": conflicts
+            }),
+        )
+    } else if conflicts > 0 {
+        response::json_response(request, serde_json::json!({ "conflicts": conflicts }))
+    } else {
+        response::no_content(request)
+    }
+}
+
+fn spawn_store_boundary_server(store: crate::store::Store) -> (u16, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let server = Server::from_listener(listener, None).unwrap();
+    let base_url = format!("http://127.0.0.1:{port}");
+    let handle = thread::spawn(move || {
+        let request = server
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap()
+            .expect("test request was not received");
+        handle_store_save_boundary_request(request, &store, &base_url).unwrap();
+    });
+    (port, handle)
+}
+
+fn send_store_request(
+    store: crate::store::Store,
+    method: &str,
+    path: &str,
+    body: Option<&[u8]>,
+) -> TestResponse {
+    let (port, server) = spawn_store_boundary_server(store);
+    let agent = ureq::AgentBuilder::new()
+        .timeout(Duration::from_secs(5))
+        .build();
+    let mut request = agent.request(method, &format!("http://127.0.0.1:{port}{path}"));
+    request = request.set("X-WH-Token", TOKEN);
+    let result = match body {
+        Some(body) => request.send_bytes(body),
+        None => request.call(),
+    };
+    let response = match result {
+        Ok(response) => response,
+        Err(ureq::Error::Status(_, response)) => response,
+        Err(error) => panic!("request failed without an HTTP response: {error}"),
+    };
+    let status = response.status();
+    let body = response.into_string().unwrap();
+    server.join().unwrap();
+    TestResponse { status, body }
+}
+
+#[test]
+fn store_save_with_conflicts_returns_200_and_the_conflict_count() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = store_with_concurrent_edit(&dir);
+
+    let response = send_store_request(
+        store,
+        "POST",
+        "/__store/save",
+        Some(conflicting_delta_payload("Wort", "mastered").as_bytes()),
+    );
+
+    assert_eq!(response.status, 200);
+    assert_eq!(response.body, r#"{"conflicts":1}"#);
+}
+
+#[test]
+fn store_save_with_snapshot_flag_includes_snapshot_and_conflicts() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = store_with_concurrent_edit(&dir);
+
+    let response = send_store_request(
+        store,
+        "POST",
+        "/__store/save?snapshot=1",
+        Some(conflicting_delta_payload("Wort", "mastered").as_bytes()),
+    );
+
+    assert_eq!(response.status, 200);
+    let payload: serde_json::Value = serde_json::from_str(&response.body).unwrap();
+    assert!(payload.get("snapshot").is_some(), "missing snapshot key");
+    assert_eq!(payload["conflicts"], 1);
+}
+
+#[test]
+fn store_save_without_conflicts_returns_204() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::store::test_store(dir.path(), "boundary-test");
+
+    let response = send_store_request(
+        store,
+        "POST",
+        "/__store/save",
+        Some(full_payload("Wort", "learning").as_bytes()),
+    );
+
+    assert_eq!(response.status, 204);
+    assert!(response.body.is_empty());
 }

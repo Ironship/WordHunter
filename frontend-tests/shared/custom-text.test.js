@@ -48,7 +48,7 @@ const {
   reconcilePdfPageWords,
   replacePdfTextRange
 } = await import("../../dist/web/js/reader/pdf-page-text.js");
-const { bindBookImportEvents } = await import("../../dist/web/js/events/book-import.js");
+const { bindBookImportEvents, confirmWholeBookOcr } = await import("../../dist/web/js/events/book-import.js");
 const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
 const { mapPdfOverlayWordIndexes, mapPdfOverlayWordPositions } = await import("../../dist/web/js/reader/pdf-ocr-renderer.js");
 const { upsertStoredText } = await import("../../dist/web/js/store-bridge.js");
@@ -84,6 +84,63 @@ describe("custom text import", () => {
     assert.equal(state.customTexts.find((text) => text.id === secondId).text, "SECOND BODY");
     assert.equal(bookTexts.get(firstId), "FIRST BODY");
     assert.equal(bookTexts.get(secondId), "SECOND BODY");
+  });
+
+  it("replaces a stale OCR confirmation dialog and always settles", async () => {
+    let staleRemoved = false;
+    const staleDialog = {
+      querySelector() { return null; },
+      remove() { staleRemoved = true; }
+    };
+    const listeners = new Map();
+    const button = () => ({
+      textContent: "",
+      addEventListener(type, handler) { listeners.set(this, handler); },
+      removeEventListener() { listeners.delete(this); }
+    });
+    const cancelButton = button();
+    const confirmButton = button();
+    const heading = { textContent: "" };
+    const copy = { textContent: "" };
+    let dialogRemoved = false;
+    const dialog = {
+      id: "",
+      className: "",
+      open: false,
+      setAttribute() {},
+      set innerHTML(_value) {},
+      querySelector(selector) {
+        if (selector === "h2") return heading;
+        if (selector === "p") return copy;
+        if (selector === '[data-action="cancel"]') return cancelButton;
+        if (selector === '[data-action="confirm"]') return confirmButton;
+        return null;
+      },
+      addEventListener(type, handler) { listeners.set(type, handler); },
+      removeEventListener(type) { listeners.delete(type); },
+      showModal() { this.open = true; },
+      close() { this.open = false; },
+      remove() { dialogRemoved = true; }
+    };
+    const originalQuerySelector = document.querySelector;
+    const originalCreateElement = document.createElement;
+    const originalBody = document.body;
+    document.querySelector = (selector) => selector === "#ocr-whole-book-confirm" ? staleDialog : null;
+    document.createElement = () => dialog;
+    document.body = { appendChild() {} };
+
+    try {
+      const confirmation = confirmWholeBookOcr();
+      assert.equal(staleRemoved, true);
+      assert.equal(dialog.open, true);
+      listeners.get(confirmButton)();
+      assert.equal(await confirmation, true);
+      assert.equal(dialogRemoved, true);
+    } finally {
+      document.querySelector = originalQuerySelector;
+      document.createElement = originalCreateElement;
+      document.body = originalBody;
+    }
   });
 
   it("keeps existing PDF OCR overlay metadata when an update has no pages", async () => {

@@ -4,6 +4,7 @@ import { getSentenceForWord, resolveVocabularyKey } from "../tokenizer_v2.js";
 import { ensureSM2Fields, SM2_DEFAULTS, FSRS_DEFAULTS, todayISO } from "../sm2.js";
 import { sessionAddedWords } from "../vocabulary/vocab-list.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { invalidateSuggestIndex } from "../reader/smart-suggest.js";
 
 // Module-level state: answer visibility for review
 export let reviewAnswerVisible: boolean = false;
@@ -26,6 +27,10 @@ export function getOrCreateEntry(
   const displayWord = String(word || "").trim().normalize("NFC");
   const key = resolveVocabularyKey(displayWord, state.vocab, effectiveLearningLanguage(state.preferences));
   if (!Object.hasOwn(state.vocab, key)) {
+    // In-place add keeps the vocab reference — the lazily built suggest index
+    // would miss the new key until the end of the session (duplicate
+    // suggestions), so invalidate it.
+    invalidateSuggestIndex();
     const createdAt = new Date().toISOString();
     state.vocab[key] = {
       word: displayWord,

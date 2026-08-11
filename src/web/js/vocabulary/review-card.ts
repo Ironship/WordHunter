@@ -109,17 +109,38 @@ export function resetReviewPresentation(): void {
   lastAutoSpokenPresentation = "";
 }
 
+// The queue rebuild (filter + sort over the whole vocab) is the hot path on
+// every grade; memoize it and invalidate explicitly on mutations.
+let reviewQueueCache: {
+  vocabRef: Record<string, WhVocabEntry>;
+  today: string;
+  autoAddLearningOnly: boolean;
+  entries: ReviewQueueEntry[];
+} | null = null;
+
 export function renderReview(transition?: ReviewTransitionDirection): void {
   if (!els.reviewCard) return;
   const today = todayISO();
-  const srsEntries: ReviewQueueEntry[] = Object.entries(state.vocab)
-    .filter(([, entry]) => {
-      if (entry.status === "ignored" || entry.status === "known") return false;
-      if (state.preferences?.autoAddLearningOnly && entry.status === "new") return false;
-      return true;
-    })
-    .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
-    .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+  const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
+  let srsEntries: ReviewQueueEntry[];
+  if (
+    reviewQueueCache &&
+    reviewQueueCache.vocabRef === state.vocab &&
+    reviewQueueCache.today === today &&
+    reviewQueueCache.autoAddLearningOnly === autoAddLearningOnly
+  ) {
+    srsEntries = reviewQueueCache.entries;
+  } else {
+    srsEntries = Object.entries(state.vocab)
+      .filter(([, entry]) => {
+        if (entry.status === "ignored" || entry.status === "known") return false;
+        if (autoAddLearningOnly && entry.status === "new") return false;
+        return true;
+      })
+      .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
+    reviewQueueCache = { vocabRef: state.vocab, today, autoAddLearningOnly, entries: srsEntries };
+  }
   const reviewWords = buildReviewQueue(srsEntries, today);
 
   // A new review session starts whenever the queue goes from empty to non-empty
@@ -272,6 +293,10 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         ${icon("video", 16)}
         <span class="shortcut-badge">Y</span>
       </button>
+      <button class="secondary-button" type="button" data-review-action="ai-explain" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.aiExplain"))}" aria-label="${escapeAttribute(t("reader.aiExplain"))}">
+        ${icon("sparkles", 16)}
+        <span class="shortcut-badge">Ctrl+E</span>
+      </button>
       <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.key)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">
         ${icon("eye", 16)}
         ${escapeHtml(reviewAnswerVisible ? t("vocab.reviewHide") : t("vocab.reviewShow"))}
@@ -294,6 +319,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
       <p class="muted-copy sm2-prompt">${escapeHtml(t("sm2.prompt"))}</p>
       <div class="sm2-grades">${ratingButtons}</div>
     ` : ""}
+    <p class="ai-explanation review-ai-explanation" data-review-ai-explanation role="status" aria-live="polite" hidden></p>
     <p class="muted-copy">${reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
   maybeAutoSpeakCard(card, today, isReverse);
@@ -365,6 +391,7 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
     playReviewGradeSound(quality);
     const { hideReviewAnswer } = await import("../views/vocabulary.js");
     hideReviewAnswer();
+    reviewQueueCache = null;
     renderReview();
   } finally {
     reviewGradePending = false;
@@ -383,8 +410,17 @@ export function removeFromSrs(word: string): void {
   if (previousStatus !== "ignored") playStatusSound("ignored");
   saveState();
   state.reviewIndex = 0;
+  reviewQueueCache = null;
   renderReview();
   renderVocabulary();
+}
+
+// Mutation sites outside this module (deleteWord, setWordStatus, the
+// word-editor dialog) change the queue's inputs without going through
+// gradeReview/removeFromSrs; they must invalidate the memo or the review
+// queue shows phantom/stale entries.
+export function invalidateReviewQueueCache(): void {
+  reviewQueueCache = null;
 }
 
 export function formatSrsMeta(entry: SrsMetaEntry): string {

@@ -108,6 +108,18 @@ describe("repository validation wiring", () => {
     assert.doesNotMatch(prCommands, /build-flatpak|build\.bat all|tauri build/);
   });
 
+  it("persists the derived AUR app version for every later workflow step", () => {
+    const workflow = parseSimpleYaml(read("../../.github/workflows/aur-validation.yml"));
+    const validate = workflow.jobs.validate;
+    const versionStep = stepByName(validate, "Read app version");
+
+    assert.match(versionStep.run, /tauri\.conf\.json/);
+    assert.match(versionStep.run, /WH_APP_VERSION=.*GITHUB_ENV/);
+    for (const name of ["Verify the pinned release source", "Validate package metadata and contents", "Install and smoke-test the package"]) {
+      assert.match(stepByName(validate, name).run, /WH_APP_VERSION/);
+    }
+  });
+
   it("parses the manually dispatched release matrix and requires each artifact", () => {
     const workflow = parseSimpleYaml(read("../../.github/workflows/artifact-validation.yml"));
 
@@ -244,6 +256,36 @@ describe("repository validation wiring", () => {
     assert.match(buildScript, /WordHunter-\$\{release_version\}-aarch64\.dmg/);
   });
 
+  it("keeps the Android webview URL out of the config (the runtime override is the single source of truth)", () => {
+    const source = read("../../src-tauri/tauri.android.conf.json");
+    const androidConfig = JSON.parse(source);
+    const android = read("../../src-tauri/src/platform/android.rs");
+
+    // The window must stay declared (android.rs builds it from this config),
+    // but the URL is decided at runtime: the backend binds a port with a
+    // fallback range and android.rs overrides the window URL before building.
+    assert.equal(androidConfig.app.windows.length, 1);
+    assert.equal(androidConfig.app.windows[0].create, false);
+    assert.doesNotMatch(source, /"url"\s*:/);
+    assert.doesNotMatch(source, /127\.0\.0\.1:\d+|localhost:\d+|3861\d/);
+    assert.match(android, /ANDROID_SERVER_PORT/);
+    assert.match(android, /WebviewUrl::External/);
+  });
+
+  it("opens external URLs on Windows without passing them through cmd.exe", () => {
+    const cargo = read("../../src-tauri/Cargo.toml");
+    const handlers = read("../../src-tauri/src/handlers.rs");
+    const rustSources = filesBelow(new URL("../../src-tauri/src/", import.meta.url))
+      .filter((file) => file.pathname.endsWith(".rs"))
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+
+    assert.match(cargo, /open = \{ version = "5", features = \["shellexecute-on-windows"\] \}/);
+    assert.match(handlers, /open::that_detached\(url\)/);
+    assert.doesNotMatch(rustSources, /open::(?:that|with)\(/);
+    assert.doesNotMatch(rustSources, /open::(?:that|with)_in_background\(/);
+  });
+
   it("keeps the TypeScript build pinned, explicit, and outside source assets", () => {
     const packageJson = JSON.parse(read("../../package.json"));
     const lockfile = JSON.parse(read("../../package-lock.json"));
@@ -317,14 +359,85 @@ describe("repository validation wiring", () => {
     assert.match(rustBuild, /frontend_source_hash/);
   });
 
+  it("validates HTML and derives every cache stamp and inline script from reviewed templates", () => {
+    const packageJson = JSON.parse(read("../../package.json"));
+    const buildScript = read("../../scripts/build-frontend.mjs");
+    const buildHash = read("../../dist/web/.wordhunter-build.sha256").trim();
+    const expectedStamp = buildHash.slice(0, 12);
+    const builtHtml = [read("../../dist/web/index.html"), read("../../dist/web/templates/translator-popup.html")];
+    const builtStyles = read("../../dist/web/styles.css");
+    const localAssetUrls = builtHtml
+      .flatMap((html) => [...html.matchAll(/\b(?:src|href)="([^"]+)"/gi)].map((match) => match[1]))
+      .filter((url) => url.trim() !== "" && !/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url));
+    const references = localAssetUrls.map((url) => new URLSearchParams(url.split("?", 2)[1] || "").get("v"));
+
+    assert.equal(packageJson.scripts["lint:html"], "html-validate \"src/web/**/*.html\"");
+    assert.match(packageJson.scripts["check:frontend"], /npm run lint:html/);
+    assert.match(read("../../.htmlvalidate.json"), /html-validate:recommended/);
+    assert.ok(references.length > 4, localAssetUrls.join(", "));
+    assert.ok(references.every(Boolean), localAssetUrls.join(", "));
+    assert.deepEqual([...new Set(references)], [expectedStamp]);
+    assert.ok(builtHtml.some((html) => html.includes('src=""')));
+    assert.match(builtStyles, new RegExp(`url\\("favicon\\.svg\\?v=${expectedStamp}"\\)`));
+    assert.match(buildScript, /html\.replace\(\/\\b\(src\|href\)=/);
+    assert.match(buildScript, /withoutFragment\.replace\(\/\(\[\?&\]\)v=/);
+
+    const bootstrapTemplate = read("../../src-tauri/templates/bootstrap.js");
+    const popupTemplate = read("../../src-tauri/templates/popup-escape.js");
+    const handlers = read("../../src-tauri/src/handlers.rs");
+    const popup = read("../../src-tauri/src/popup.rs");
+    assert.match(bootstrapTemplate, /__WH_TOKEN_JSON__/);
+    assert.match(bootstrapTemplate, /__WH_SNAPSHOT_JSON__/);
+    assert.match(popupTemplate, /__WH_CLOSE_URL_JSON__/);
+    assert.match(handlers, /include_str!\("\.\.\/templates\/bootstrap\.js"\)/);
+    assert.match(popup, /include_str!\("\.\.\/templates\/popup-escape\.js"\)/);
+    assert.doesNotMatch(handlers, /window\.__qtBridge|window\.fetch = function/);
+    assert.doesNotMatch(popup, /window\.addEventListener/);
+  });
+
+  it("uses a real HTML parser that rejects malformed markup", async () => {
+    const { HtmlValidate } = await import("html-validate");
+    const validator = new HtmlValidate();
+    const report = await validator.validateString(
+      '<!DOCTYPE html><html><body><div id="same"><span></div><div id="same"></div></body></html>',
+      "malformed.html",
+    );
+    const ruleIds = report.results.flatMap((result) => result.messages.map((message) => message.ruleId));
+    assert.equal(report.valid, false);
+    assert.ok(ruleIds.includes("close-order") || ruleIds.includes("no-dup-id"), ruleIds.join(", "));
+  });
+
+  it("derives Snap validation from the application version and verifies the release digest", () => {
+    const config = JSON.parse(read("../../src-tauri/tauri.conf.json"));
+    const snapcraft = read("../../snap/snapcraft.yaml");
+    const workflow = read("../../.github/workflows/snap-validation.yml");
+
+    assert.match(snapcraft, new RegExp(`^version: ['\"]${config.version}['\"]$`, "m"));
+    assert.match(
+      snapcraft,
+      new RegExp(`/WordHunter${config.version}/word-hunter_${config.version}_amd64\\.deb`),
+    );
+    assert.match(workflow, /require\('\.\/src-tauri\/tauri\.conf\.json'\)\.version/);
+    assert.match(workflow, /steps\.app_version\.outputs\.version/);
+    assert.match(workflow, /api\.github\.com\/repos\/Ironship\/WordHunter\/releases\/tags/);
+    assert.match(workflow, /asset\?\.digest/);
+  });
+
   it("keeps reviewable docs tracked while generated runtime payloads stay ignored", () => {
     const gitignore = read("../../.gitignore");
     const docs = read("../../docs/release-validation.md");
 
     assert.doesNotMatch(gitignore, /^docs\/\*\.md$/m);
-    assert.doesNotMatch(gitignore, /^docs\/\*\*\/\*\.md$/m);
+    assert.doesNotMatch(gitignore, /^docs\/\*\/\*\.md$/m);
     assert.doesNotMatch(gitignore, /^src-tauri\/ocr-runner\/Cargo\.lock$/m);
     assert.match(docs, /WORDHUNTER_VALIDATE_CLIPPY=0/);
     assert.match(docs, /artifact-validation\.yml/);
+  });
+
+  it("keeps every id in index.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
+    const html = read("../../src/web/index.html");
+    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+    assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in index.html: ${[...new Set(duplicates)].join(", ")}`);
   });
 });

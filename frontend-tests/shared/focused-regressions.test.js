@@ -653,6 +653,20 @@ describe("focused frontend regressions", () => {
     assert.equal(closeCount, 1);
   });
 
+  it("cleans Android PDF progress and bounds per-page saves on every import exit", () => {
+    const bookImport = read("dist/web/js/events/book-import.js");
+    const runPdfImport = bookImport.slice(
+      bookImport.indexOf("async function runPdfImport"),
+      bookImport.indexOf("export function bindBookImportEvents")
+    );
+
+    assert.match(bookImport, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
+    assert.match(
+      runPdfImport,
+      /finally\s*{[\s\S]*?stopAndroidPdfProgress\(\);\s*stopOcrProgress\(\);\s*setImportLoading\(false\);\s*}/
+    );
+  });
+
   it("does not open a writable editor when the synced body refresh fails", async () => {
     let showCount = 0;
     const toasts = [];
@@ -807,7 +821,8 @@ describe("focused frontend regressions", () => {
         activeTranslationProvider() { return "offline"; },
         canUseTranslationProvider() { return false; },
         translateText() { return Promise.resolve({ translated: "" }); },
-        translateWithRetry() { return Promise.resolve({ translated: "" }); }
+        translateWithRetry() { return Promise.resolve({ translated: "" }); },
+        localizedTranslationError() { return ""; }
       },
       "../constants.js": { OTHER_PROFILE_ID: "other", TRANSLATOR_LANGUAGES: ["de", "en"] },
       "../translator-preferences.js": {
@@ -1672,6 +1687,210 @@ describe("focused frontend regressions", () => {
     assert.match(html, /sm2\.showAnswer/);
   });
 
+  it("stops polling an invalid export-progress response at the deadline and removes the overlay", async () => {
+    let removed = false;
+    let fetches = 0;
+    const now = [0, 1, 300_001];
+    class FakeDate extends Date {
+      static now() { return now.shift() ?? 300_001; }
+    }
+    const overlay = {
+      id: "",
+      className: "",
+      innerHTML: "",
+      setAttribute() {},
+      querySelector() { return null; },
+      remove() { removed = true; }
+    };
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: noOp },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key) => key },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    }, {
+      Date: FakeDate,
+      document: {
+        body: { appendChild() {} },
+        createElement: () => overlay
+      },
+      window: { WH_TOKEN: "test-token" },
+      fetch: async () => {
+        fetches += 1;
+        return { ok: true, json: async () => ({ done: false, percent: 0, phase: "words" }) };
+      },
+      setTimeout(resolve) { resolve(); return 1; }
+    });
+
+    await assert.rejects(module.waitForExportJob("job-1"), /toast\.exportTimedOut/);
+    assert.equal(fetches, 1);
+    assert.equal(removed, true);
+  });
+
+  it("localizes known translation errors and hides unknown backend text in the word panel", async () => {
+    const provider = await evaluateWithMocks("dist/web/js/translation-provider.js", {
+      "./state.js": { state: { preferences: {} } },
+      "./i18n.js": { t: (key) => key },
+      "./translator-preferences.js": {
+        normalizeTranslationLanguageCode: (value) => value,
+        normalizeTranslationProvider: (value) => value,
+        resolveProfileTranslationPair() { return { fromCode: "de", toCode: "en", configured: true }; }
+      }
+    });
+
+    const makePanel = () => {
+      const button = eventTarget();
+      const output = { hidden: true, textContent: "" };
+      return {
+        dataset: {},
+        classList: classList(),
+        parentElement: { classList: classList() },
+        innerHTML: "",
+        querySelector(selector) {
+          if (selector === "[data-translate-context]") return button;
+          if (selector === "[data-context-translation]") return output;
+          return null;
+        },
+        querySelectorAll() { return []; }
+      };
+    };
+    const baseState = {
+      selectedWord: "laufen",
+      readerSelectionRange: null,
+      vocab: {
+        laufen: { status: "new", translation: "", note: "", imageUrl: "", examples: ["Der Hund läuft."] }
+      },
+      preferences: { selectedWordPanelItems: [{ id: "translation", visible: true }] }
+    };
+    const providerMock = (translateWithRetry) => ({
+      canUseTranslationProvider() { return true; },
+      translateText: translateWithRetry,
+      translateWithRetry,
+      localizedTranslationError: provider.localizedTranslationError
+    });
+
+    // Known code: TranslationError("pair-not-configured") -> localized key.
+    const knownPanel = makePanel();
+    const knownModule = await evaluateWordPanel({
+      state: baseState,
+      wordPanel: knownPanel,
+      getSentenceForWord() { return "Der Hund läuft."; },
+      translateText: async () => { throw new provider.TranslationError("pair-not-configured", "Translation language pair is not configured"); },
+      translationProvider: providerMock(async () => { throw new provider.TranslationError("pair-not-configured", "Translation language pair is not configured"); })
+    });
+    knownModule.renderWordPanel({ id: "text-1", text: "Der Hund läuft." });
+    const knownButton = knownPanel.querySelector("[data-translate-context]");
+    assert.ok(knownButton, "context-translate button must render for words with an example sentence");
+    knownButton.dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(
+      knownPanel.querySelector("[data-context-translation]").textContent,
+      "translator.error — translator.errorPairNotConfigured"
+    );
+
+    // Unknown backend errors: the raw message must stay out of the panel.
+    const unknownPanel = makePanel();
+    const unknownModule = await evaluateWordPanel({
+      state: baseState,
+      wordPanel: unknownPanel,
+      getSentenceForWord() { return "Der Hund läuft."; },
+      translateText: async () => { throw new Error("Backend error: HTTP 500"); },
+      translationProvider: providerMock(async () => { throw new Error("Backend error: HTTP 500"); })
+    });
+    unknownModule.renderWordPanel({ id: "text-1", text: "Der Hund läuft." });
+    unknownPanel.querySelector("[data-translate-context]").dispatch("click", { stopPropagation() {} });
+    await flushAsync();
+    assert.equal(unknownPanel.querySelector("[data-context-translation]").textContent, "translator.error");
+    assert.doesNotMatch(unknownPanel.querySelector("[data-context-translation]").textContent, /HTTP 500/);
+  });
+
+  it("maps transfer error literals to localized keys and hides unknown/backend text", async () => {
+    const toasts = [];
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: (message, kind) => toasts.push({ message, kind }) },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key) },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    }, {
+      document: { body: { appendChild() {} }, createElement: () => ({}) },
+      window: { WH_TOKEN: "test-token" },
+      fetch: async () => ({ ok: false, status: 500, text: async () => "" })
+    });
+
+    assert.equal(module.transferErrorMessage(new Error("export HTTP 500")), 'transfer.httpError:{"status":"500"}');
+    assert.equal(module.transferErrorMessage(new Error("import HTTP 404")), 'transfer.httpError:{"status":"404"}');
+    assert.equal(module.transferErrorMessage(new Error("export progress HTTP 503")), 'transfer.httpError:{"status":"503"}');
+    assert.equal(module.transferErrorMessage(new Error("android export write timed out")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error("android export timed out")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error("android export failed")), "transfer.exportWriteTimeout");
+    assert.equal(module.transferErrorMessage(new Error('{"error":"storage locked"}')), "transfer.genericError");
+    assert.equal(module.transferErrorMessage(new Error("transfer export response is missing a saved file")), "toast.transferMissingFile");
+    assert.equal(module.transferErrorMessage(new Error("Android export bridge is unavailable")), "toast.androidExportUnavailable");
+    assert.equal(module.transferErrorMessage(new Error("Some raw backend text")), "");
+    assert.equal(module.transferErrorMessage("not an error"), "");
+
+    const exported = await module.exportTransfer("vocabulary", "wordhunter-words", true);
+    assert.equal(exported, false);
+    assert.equal(toasts.length, 1);
+    assert.match(toasts[0].message, /transfer\.httpError/);
+    assert.doesNotMatch(toasts[0].message, /export HTTP 500/);
+  });
+
   it("keeps popup language metadata localized through template placeholders", () => {
     const popup = read("dist/web/templates/translator-popup.html");
     const popupRuntime = read("dist/web/translator-popup.js");
@@ -1711,8 +1930,15 @@ async function evaluateWordPanel({
   hasWordExplanation = () => false,
   markWordExplained = () => {},
   formatAiExplanation = (text) => String(text ?? ""),
-  updateWordField = () => {}
+  updateWordField = () => {},
+  translationProvider = null
 }) {
+  const providerMock = translationProvider || {
+    canUseTranslationProvider() { return true; },
+    translateText,
+    translateWithRetry: translateText,
+    localizedTranslationError() { return ""; }
+  };
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
     "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
     "./session.js": {
@@ -1753,7 +1979,7 @@ async function evaluateWordPanel({
     "../vocabulary/review-card.js": { applyReviewGrade },
     "../reader-colors.js": { getLearningColor() { return ""; } },
     "../sm2.js": { isInTextReviewDue },
-    "../translation-provider.js": { canUseTranslationProvider() { return true; }, translateText, translateWithRetry: translateText },
+    "../translation-provider.js": providerMock,
     "../loading.js": { beginElementBusy },
     "../translator-preferences.js": {
       effectiveLearningLanguage() { return "de"; },

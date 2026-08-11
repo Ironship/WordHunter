@@ -1,3 +1,4 @@
+use base64::Engine;
 use include_dir::{Dir, include_dir};
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -7,7 +8,7 @@ use crate::{
     ai_explainer, ebook, external_translator, handlers, offline_translator, pdf_ocr, popup, proxy,
     response,
     server::{ActiveOcrJob, ServerState},
-    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youglish, youtube_captions,
+    srs, subtitles, tokenizer, update, vocab_export, vocab_index, youtube_captions,
 };
 
 pub(crate) static WEB_ASSETS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/../dist/web");
@@ -57,12 +58,103 @@ const MAX_UI_STATE_REQUEST_BODY: usize = 2 * 1024 * 1024;
 const MAX_JSON_REQUEST_BODY: usize = 128 * 1024 * 1024;
 const MAX_LOG_BODY: usize = 8 * 1024;
 
+fn validate_book_image_payload(payload: &Value) -> Result<(), String> {
+    let book_id = payload
+        .get("book_id")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "book_id required".to_string())?;
+    let img_name = payload
+        .get("img_name")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "img_name required".to_string())?;
+    let data_url = payload
+        .get("base64_data")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "base64_data required".to_string())?;
+    crate::paths::sanitize_id(book_id)?;
+    crate::paths::sanitize_id(img_name)?;
+    let encoded = data_url
+        .split_once(',')
+        .map(|(_, data)| data)
+        .unwrap_or(data_url);
+    base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|_| "base64_data is invalid".to_string())?;
+    Ok(())
+}
+
 fn request_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a str> {
     request
         .headers()
         .iter()
         .find(|header| header.field.equiv(name))
         .map(|header| header.value.as_str())
+}
+
+fn method_not_allowed(method: &Method, path: &str) -> bool {
+    let allows_get = matches!(
+        path,
+        "/" | "/index.html"
+            | "/__proxy"
+            | "/__store/load"
+            | "/__store/ui_state"
+            | "/__store/data_dir"
+            | "/__store/recovery_status"
+            | "/__store/export_progress"
+            | "/__data"
+            | "/__update/check"
+            | "/__book/text"
+            | "/__book/pdf_pages"
+            | "/__media"
+            | "/__open_dict"
+            | "/__open_external"
+            | "/__popup/close"
+            | "/__argos/status"
+            | "/__ocr/gpu-status"
+            | "/__argos/packages"
+            | "/__argos/translate"
+            | "/__argos/ui"
+            | "/__tts"
+    );
+    let allows_post = matches!(
+        path,
+        "/__log_error"
+            | "/__text/tokenize"
+            | "/__app/close"
+            | "/__window/zoom"
+            | "/__store/save"
+            | "/__store/ui_state"
+            | "/__store/ack_snapshot"
+            | "/__store/choose_data_dir"
+            | "/__store/export_transfer"
+            | "/__store/import_transfer"
+            | "/__store/upsert_text"
+            | "/__store/delete_text"
+            | "/__store/wipe"
+            | "/__book/image"
+            | "/__export/save"
+            | "/__import/ebook"
+            | "/__import/pdf_ocr/raw"
+            | "/__import/image_ocr/raw"
+            | "/__import/ocr/cancel"
+            | "/__import/pdf_ocr/cancel"
+            | "/__argos/install"
+            | "/__srs/review"
+            | "/__translate/external"
+            | "/__ai/explain"
+            | "/__ai/explain_stream"
+            | "/__text/vocab_index"
+            | "/__subtitles/parse"
+            | "/__youtube/captions"
+            | "/__update/parse"
+            | "/__srs/ensure"
+            | "/__vocab"
+    );
+    (allows_get || allows_post)
+        && !((allows_get && method == &Method::Get) || (allows_post && method == &Method::Post))
 }
 
 pub(crate) fn valid_request_source(request: &Request, base_url: &str) -> bool {
@@ -78,7 +170,15 @@ pub(crate) fn valid_request_source(request: &Request, base_url: &str) -> bool {
     {
         return false;
     }
-    request_header(request, "Origin").is_none_or(|origin| origin == base_url || origin == "null")
+    // A same-origin fetch carries no Origin header; the app's own pages
+    // never send "null". file:///data: embeds and sandboxed frames do —
+    // they may issue read-only GETs, but never authenticated writes.
+    match request_header(request, "Origin") {
+        None => true,
+        Some(origin) if origin == base_url => true,
+        Some("null") => request.method() != &Method::Post,
+        Some(_) => false,
+    }
 }
 
 fn authenticate_request(
@@ -146,6 +246,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     if !valid_request_source(&request, &state.base_url) {
         return response::error_response(request, 403, "forbidden request source");
     }
+    if method_not_allowed(request.method(), path) {
+        return response::error_response(request, 405, "method not allowed");
+    }
     let Some(request) = authenticate_request(request, path, &state.token)? else {
         return Ok(());
     };
@@ -191,24 +294,34 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             update::check(proxy::USER_AGENT, crate::APP_VERSION),
         ),
         (Method::Get, "/__book/text") => {
-            let params = response::parse_query(&query);
+            let params = response::parse_query(query);
             let id = params.get("id").cloned().unwrap_or_default();
-            response::json_response(
-                request,
-                json!({ "text": state.store.get_text_content(&id)? }),
-            )
+            match state.store.get_text_content(&id) {
+                Ok(text) => response::json_response(request, json!({ "text": text })),
+                Err(error) => response::error_response(request, 404, &error),
+            }
         }
         (Method::Get, "/__book/pdf_pages") => {
-            let params = response::parse_query(&query);
+            let params = response::parse_query(query);
             let id = params.get("id").cloned().unwrap_or_default();
-            response::json_response(
-                request,
-                json!({ "pages": state.store.get_pdf_ocr_pages(&id)? }),
-            )
+            match state.store.get_pdf_ocr_pages(&id) {
+                Ok(pages) => response::json_response(request, json!({ "pages": pages })),
+                Err(error) => response::error_response(request, 404, &error),
+            }
         }
-        (Method::Get, "/__media") => handlers::serve_media(request, &state, &query),
+        (Method::Get, "/__media") => handlers::serve_media(request, &state, query),
         (Method::Get, "/__open_dict") => {
-            popup::serve_open_dict(request, &state.base_url, &state.app_handle, &query)
+            popup::serve_open_dict(request, &state.base_url, &state.app_handle, query)
+        }
+        (Method::Get, "/__open_external") => {
+            let url = response::parse_query(query)
+                .get("url")
+                .cloned()
+                .unwrap_or_default();
+            match handlers::open_external_url(&url) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
         }
         (Method::Get, "/__popup/close") => popup::serve_close_popup(request, &state.app_handle),
         (Method::Get, "/__argos/status") => {
@@ -219,15 +332,18 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         }
         (Method::Get, "/__argos/packages") => match offline_translator::packages() {
             Ok(payload) => response::json_response(request, payload),
-            Err(err) => response::error_response(request, 500, &err),
+            Err(_) => response::error_response(request, 500, "offline package listing failed"),
         },
-        (Method::Get, "/__argos/translate") => match offline_translator::translate(&query) {
+        (Method::Get, "/__argos/translate") => match offline_translator::translate(query) {
             Ok(payload) => response::json_response(request, payload),
-            Err(err) => response::error_response(request, 500, &err),
+            Err(err) if err.starts_with("invalid request:") => {
+                response::error_response(request, 400, &err)
+            }
+            Err(_) => response::error_response(request, 500, "offline translation failed"),
         },
-        (Method::Get, "/__argos/ui") => handlers::serve_offline_translator_ui(request, &query),
-        (Method::Get, "/__tts") => handlers::serve_edge_tts(request, &query),
-        (Method::Get, _) => handlers::serve_static(request, &path),
+        (Method::Get, "/__argos/ui") => handlers::serve_offline_translator_ui(request, query),
+        (Method::Get, "/__tts") => handlers::serve_edge_tts(request, query),
+        (Method::Get, _) => handlers::serve_static(request, path),
         (Method::Post, "/__log_error") => {
             let body = match response::read_body_limited(&mut request, MAX_LOG_BODY) {
                 Ok(body) => body,
@@ -265,17 +381,34 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     state.store.bulk_save(payload)
                 };
                 match result {
-                    Ok(()) => {
+                    Ok(conflicts) => {
                         if query.get("snapshot").map(String::as_str) == Some("1") {
                             response::json_response(
                                 request,
-                                json!({ "snapshot": state.store.snapshot_unacknowledged() }),
+                                json!({
+                                    "snapshot": state.store.snapshot_unacknowledged(),
+                                    "conflicts": conflicts
+                                }),
                             )
+                        } else if conflicts > 0 {
+                            // Concurrent-edit conflicts were resolved (kept one side);
+                            // surface the count so clients can warn the user.
+                            response::json_response(request, json!({ "conflicts": conflicts }))
                         } else {
                             response::no_content(request)
                         }
                     }
-                    Err(error) => response::error_response(request, 500, &error),
+                    Err(error) => {
+                        // Schema/validation failures are client errors: the
+                        // frontend's saveWithRetry treats 4xx as "send a full
+                        // snapshot" while 5xx would retry the broken payload.
+                        let code = if error.contains("schemaVersion") {
+                            400
+                        } else {
+                            500
+                        };
+                        response::error_response(request, code, &error)
+                    }
                 }
             }
             "/__store/ui_state" => {
@@ -316,8 +449,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__store/upsert_text" => {
                 let payload = read_json_or_400!(request);
-                state.store.upsert_text(&payload)?;
-                response::no_content(request)
+                match state.store.upsert_text(&payload) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__store/delete_text" => {
                 let payload = read_json_or_400!(request);
@@ -325,8 +460,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     .get("id")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
-                state.store.delete_text(id)?;
-                response::no_content(request)
+                match state.store.delete_text(id) {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__store/wipe" => {
                 let _ocr_guard = match state.ocr_slot.try_lock() {
@@ -340,11 +477,16 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                state.store.wipe()?;
-                response::no_content(request)
+                match state.store.wipe() {
+                    Ok(()) => response::no_content(request),
+                    Err(error) => response::error_response(request, 500, &error),
+                }
             }
             "/__book/image" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMAGE_REQUEST_BODY);
+                if let Err(error) = validate_book_image_payload(&payload) {
+                    return response::error_response(request, 400, &error);
+                }
                 match state.store.save_book_image(&payload) {
                     Ok(()) => response::no_content(request),
                     Err(error) => response::error_response(request, 500, &error),
@@ -352,8 +494,10 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__export/save" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                let saved = handlers::save_export(payload)?;
-                response::json_response(request, json!({ "saved": saved }))
+                match handlers::save_export(payload) {
+                    Ok(saved) => response::json_response(request, json!({ "saved": saved })),
+                    Err(error) => response::error_response(request, 400, &error),
+                }
             }
             "/__import/ebook" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
@@ -374,7 +518,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                let params = response::parse_query(&query);
+                let params = response::parse_query(query);
                 let job_id = params.get("job_id").cloned().unwrap_or_default();
                 let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
                     Ok(guard) => guard,
@@ -418,7 +562,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     }
                     Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
                 };
-                let params = response::parse_query(&query);
+                let params = response::parse_query(query);
                 let job_id = params.get("job_id").cloned().unwrap_or_default();
                 let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
                     Ok(guard) => guard,
@@ -460,7 +604,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 let payload = read_json_or_400!(request);
                 match offline_translator::install(payload) {
                     Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 500, &err),
+                    Err(_) => {
+                        response::error_response(request, 500, "offline package install failed")
+                    }
                 }
             }
             "/__srs/review" => {
@@ -479,27 +625,33 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__ai/explain" => {
                 let payload = read_json_or_400!(request);
-                match ai_explainer::explain(payload) {
+                let prepared = match ai_explainer::prepare_request(&payload, false) {
+                    Ok(prepared) => prepared,
+                    Err(err) => return response::error_response(request, 400, &err),
+                };
+                let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                    Ok(upstream) => upstream,
+                    Err(err) => return response::error_response(request, 502, &err),
+                };
+                match ai_explainer::parse_explanation_response(upstream) {
                     Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
+                    Err(err) => response::error_response(request, 502, &err),
                 }
             }
             "/__ai/explain_stream" => {
                 let payload = read_json_or_400!(request);
-                let mut pending = Some(request);
-                match ai_explainer::explain_stream(
-                    payload,
-                    pending.take().expect("request present"),
-                ) {
-                    Ok(()) => Ok(()),
-                    Err(err) => match pending {
-                        // The stream never started (validation/upstream error) —
-                        // answer the client normally.
-                        Some(unanswered) => response::error_response(unanswered, 400, &err),
-                        // The response already started streaming; nothing to send.
-                        None => Err(err),
-                    },
-                }
+                let prepared = match ai_explainer::prepare_request(&payload, true) {
+                    Ok(prepared) => prepared,
+                    Err(err) => return response::error_response(request, 400, &err),
+                };
+                // Connect upstream before consuming the tiny_http request. If
+                // the provider is unreachable, the client still receives a
+                // real HTTP error instead of ERR_EMPTY_RESPONSE.
+                let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                    Ok(upstream) => upstream,
+                    Err(err) => return response::error_response(request, 502, &err),
+                };
+                ai_explainer::relay_stream_response(upstream, request)
             }
             "/__text/vocab_index" => {
                 let payload = read_json_or_400!(request);
@@ -518,13 +670,6 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             "/__youtube/captions" => {
                 let payload = read_json_or_400!(request);
                 match youtube_captions::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__youglish" => {
-                let payload = read_json_or_400!(request);
-                match youglish::handle(payload) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 400, &err),
                 }
@@ -552,7 +697,14 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             _ => response::error_response(request, 404, "not found"),
         },
-        _ => response::error_response(request, 404, "not found"),
+        _ => {
+            // Known route prefix with an unsupported method — 405, not 404.
+            if path.starts_with("/__") {
+                response::error_response(request, 405, "method not allowed")
+            } else {
+                response::error_response(request, 404, "not found")
+            }
+        }
     }
 }
 

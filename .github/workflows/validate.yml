@@ -7,6 +7,7 @@ on:
       - main
       - "feat/**"
       - "release/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -100,7 +101,7 @@ jobs:
       - name: Install Android SDK and NDK packages
         shell: pwsh
         run: |
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.0.12077973"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
           "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set up Rust
@@ -111,6 +112,9 @@ jobs:
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4
 
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@889dc537cf3672c0c060560c9ead940a2b8b7077
+
       - name: Install pinned Tauri CLI
         run: cargo install tauri-cli --version 2.11.4 --locked
 
@@ -119,12 +123,12 @@ jobs:
         run: scripts\build.bat apk
 
       - name: Inspect Android debug APK
-        run: node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.debug.apk --abi arm64-v8a
+        run: node scripts/inspect-artifact.mjs android outputs/Word.Hunter.Pocket.release.apk --abi arm64-v8a
 
       - name: Upload Android debug APK artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Word.Hunter.Pocket.debug.apk
-          path: outputs/Word.Hunter.Pocket.debug.apk
+          name: Word.Hunter.Pocket.release.apk
+          path: outputs/Word.Hunter.Pocket.release.apk
           if-no-files-found: error
           retention-days: 30

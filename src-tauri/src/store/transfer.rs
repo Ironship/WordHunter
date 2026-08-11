@@ -284,6 +284,7 @@ impl Store {
             for book_id in &copied_books {
                 media_assets::finalize_imported_book_assets(&root, book_id, self.device_id())?;
             }
+            self.invalidate_records_cache();
             Ok::<(), String>(())
         })();
         if let Err(error) = apply {
@@ -891,6 +892,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
         }

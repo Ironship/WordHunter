@@ -107,6 +107,31 @@ export function setReaderLoading(book: ReaderLoadingBook): void {
   renderReader();
 }
 
+/**
+ * Reader source line: shows author/source label and, when the book carries a
+ * source URL (e.g. a YouTube import), a small external link so the user can
+ * jump back to the original video/page.
+ */
+function renderReaderSource(current: WhText): void {
+  if (!els.readerSource) return;
+  const label = current.author || current.source || t("reader.localSource");
+  const url = (current as WhRecord).sourceUrl || (current as WhRecord).textUrl || "";
+  if (url) {
+    els.readerSource.innerHTML = `${escapeHtml(label)} <a class="reader-source-link" href="${escapeHtml(url)}" data-reader-source-link rel="noreferrer" title="${escapeHtml(url)}" aria-label="${escapeHtml(t("reader.openSource"))}">↗</a>`;
+    // Plain target=_blank navigation is popup-blocked in the webview, so
+    // the embedded server opens the system browser instead.
+    const sourceLink = els.readerSource.querySelector("a.reader-source-link");
+    sourceLink?.addEventListener("click", (event: Event) => {
+      event.preventDefault();
+      fetch(`/__open_external?url=${encodeURIComponent(url)}`).catch((error) =>
+        console.warn("Failed to open source link", error)
+      );
+    });
+  } else {
+    els.readerSource.textContent = label;
+  }
+}
+
 export function clearReaderLoading(): void {
   loadingBook = null;
 }
@@ -187,7 +212,7 @@ export function renderReader(): void {
   syncTextSelect(textOptions, current.id);
 
   els.readerHeading.textContent = current.title;
-  els.readerSource.textContent = current.author || current.source || t("reader.localSource");
+  renderReaderSource(current);
   renderReaderBookmarks(current.id);
   els.readerText.style.fontSize = "";
   els.readerText.classList.toggle("pdf-ocr-reader", isPdfOcrText(current));

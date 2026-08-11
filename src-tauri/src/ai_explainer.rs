@@ -85,18 +85,18 @@ fn build_user_content(
          it is, any nuance or idiom it carries here, and give one short example \
          sentence of your own. Stay focused and learner-friendly."
     );
-    if let Some(rect) = rect {
-        if let (Some(x0), Some(y0), Some(x1), Some(y1)) = (
+    if let Some(rect) = rect
+        && let (Some(x0), Some(y0), Some(x1), Some(y1)) = (
             rect.get("x0").and_then(Value::as_f64),
             rect.get("y0").and_then(Value::as_f64),
             rect.get("x1").and_then(Value::as_f64),
             rect.get("y1").and_then(Value::as_f64),
-        ) {
-            prompt.push_str(&format!(
-                "\nThe word is highlighted in the attached page image between \
+        )
+    {
+        prompt.push_str(&format!(
+            "\nThe word is highlighted in the attached page image between \
                  normalized coordinates ({x0:.3}, {y0:.3}) and ({x1:.3}, {y1:.3})."
-            ));
-        }
+        ));
     }
 
     let Some(image) = image else {
@@ -108,13 +108,13 @@ fn build_user_content(
     ])
 }
 
-struct PreparedRequest {
+pub(crate) struct PreparedRequest {
     endpoint: String,
     api_key: String,
     body: Value,
 }
 
-fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, String> {
+pub(crate) fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, String> {
     let word = payload
         .get("word")
         .and_then(Value::as_str)
@@ -148,6 +148,11 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         .and_then(Value::as_str)
         .unwrap_or_default()
         .trim();
+    let kind = payload
+        .get("kind")
+        .and_then(Value::as_str)
+        .unwrap_or("explain")
+        .trim();
 
     if word.is_empty() {
         return Err("word is missing".to_string());
@@ -166,20 +171,39 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
         validate_image(image)?;
     }
 
-    let system = format!(
+    let mut system = format!(
         "You are an expert language-learning assistant. Explain the requested \
          word or phrase exactly as it is used in the given context, in simple \
          language a learner can understand. Always reply in {to}. Keep the \
          explanation under 120 words and never repeat the prompt instructions."
     );
-    let user = build_user_content(
-        word,
-        context,
-        from,
-        to,
-        (!image.is_empty()).then_some(image),
-        rect,
-    );
+    let user = if kind == "stats" {
+        // The stats mode analyzes the learner's NUMBERS, not a word: the
+        // "word" field is just a label. A word-explanation system prompt
+        // would make the model explain the label instead of the data.
+        system = format!(
+            "You are a language-learning analytics assistant. The user provides \
+             their vocabulary-learning statistics as plain text. Analyze the \
+             NUMBERS and trends: overall progress, strengths, weaknesses, \
+             workload outlook (due/overdue), interval health, what the data \
+             suggests about future results, and 2-3 concrete recommendations. \
+             Always reply in {to}. Keep it under 200 words. Do NOT explain what \
+             the words \"statistics\" or \"summary\" mean — analyze the data."
+        );
+        json!(format!(
+            "Vocabulary learning statistics for {word}:\n{context}\n\n\
+             Analyze this data and write conclusions and an outlook."
+        ))
+    } else {
+        build_user_content(
+            word,
+            context,
+            from,
+            to,
+            (!image.is_empty()).then_some(image),
+            rect,
+        )
+    };
 
     let body = json!({
         "model": model,
@@ -215,7 +239,7 @@ fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, Str
     })
 }
 
-fn send_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
+pub(crate) fn send_prepared_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
     let mut request = AI_AGENT
         .post(&prepared.endpoint)
         .set("User-Agent", USER_AGENT)
@@ -244,9 +268,14 @@ fn send_request(prepared: &PreparedRequest) -> Result<ureq::Response, String> {
         })
 }
 
+#[cfg(test)]
 pub fn explain(payload: Value) -> Result<Value, String> {
     let prepared = prepare_request(&payload, false)?;
-    let response = send_request(&prepared)?;
+    let response = send_prepared_request(&prepared)?;
+    parse_explanation_response(response)
+}
+
+pub(crate) fn parse_explanation_response(response: ureq::Response) -> Result<Value, String> {
     let value: Value = response
         .into_json()
         .map_err(|error| format!("AI endpoint returned invalid JSON: {error}"))?;
@@ -267,9 +296,17 @@ pub fn explain(payload: Value) -> Result<Value, String> {
 /// Stream an OpenAI-compatible chat completion (SSE) through to the client.
 /// The upstream response body is forwarded verbatim as `text/event-stream`,
 /// so the webview receives deltas progressively and can render them live.
+#[cfg(test)]
 pub fn explain_stream(payload: Value, client: tiny_http::Request) -> Result<(), String> {
     let prepared = prepare_request(&payload, true)?;
-    let response = send_request(&prepared)?;
+    let response = send_prepared_request(&prepared)?;
+    relay_stream_response(response, client)
+}
+
+pub(crate) fn relay_stream_response(
+    response: ureq::Response,
+    client: tiny_http::Request,
+) -> Result<(), String> {
     let status = response.status();
     if status != 200 {
         let detail = response
@@ -463,6 +500,62 @@ mod tests {
         let value = result.expect("explain should succeed against the mock server");
         assert_eq!(value["engine"], "ai");
         assert!(value["explanation"].as_str().unwrap().contains("czasownik"));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn stats_mode_swaps_the_system_prompt_to_analyze_data() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let request = read_http_request(&mut stream);
+            let body = r#"{
+                "id": "chatcmpl-stats",
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "Masz 12 zaległych powtórek."
+                    },
+                    "finish_reason": "stop"
+                }]
+            }"#;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+            // The stats mode must ask for DATA analysis, not word meaning.
+            assert!(
+                request.contains("analytics assistant"),
+                "stats system prompt must analyze data: {request}"
+            );
+            assert!(
+                request.contains("Total vocabulary entries: 120"),
+                "the data itself must be in the user content: {request}"
+            );
+            assert!(
+                !request.contains("Explain the word or phrase"),
+                "the word-explanation prompt must not be used for stats: {request}"
+            );
+        });
+
+        let endpoint = format!("http://{address}/v1/chat/completions");
+        let result = explain(json!({
+            "word": "your learning statistics",
+            "context": "Total vocabulary entries: 120\nReviews due today: 3",
+            "from": "en",
+            "to": "pl",
+            "endpoint": endpoint,
+            "apiKey": "test-key-123",
+            "model": "local-vision",
+            "kind": "stats"
+        }));
+        let value = result.expect("stats explain should succeed against the mock server");
+        assert!(value["explanation"].as_str().unwrap().contains("zaległych"));
         server.join().unwrap();
     }
 

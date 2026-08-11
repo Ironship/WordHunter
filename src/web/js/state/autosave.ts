@@ -1,4 +1,4 @@
-import { buildDeltaSavePayload, buildSavePayload, saveToLocalStorage, saveWithRetry, saveSyncXhr } from "../api.js";
+import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type PendingDelta } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
 
@@ -45,6 +45,10 @@ export function createAutosave(getState: () => WhAppState) {
   let vocabularyRevision = 0;
   let mutationSequence = 0;
   let saveStartedMutationSequence = 0;
+  // Identity of this autosave session: the pending teardown delta is cleared
+  // by a later save only when both come from the same session (cross-session
+  // deltas are delivered exclusively by the boot replay).
+  const AUTOSAVE_SESSION = `wh-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   let lastMutationAt = 0;
   let lastSaveSucceededAt = 0;
   // Incremental-save dirty tracking: which languages changed vocab (sent in
@@ -52,9 +56,10 @@ export function createAutosave(getState: () => WhAppState) {
   // the payload unless it is declared in fullKeys), and whether custom texts
   // changed (texts are large; sent only on change).
   const dirtyVocabLangs = new Set<string>();
-  let dirtyTexts = false;
+  const dirtyTextIds = new Set<string>();
+  let allTextsDirty = false;
   const rootProfiles = new WeakSet<object>();
-  type DirtyContext = { kind: "vocab" | "word" | "profile" | "books" | "texts"; lang?: string };
+  type DirtyContext = { kind: "vocab" | "word" | "profile" | "books" | "texts" | "text"; lang?: string };
   const dirtyContexts = new WeakMap<object, DirtyContext>();
 
   function hasPendingChanges(): boolean {
@@ -145,7 +150,24 @@ export function createAutosave(getState: () => WhAppState) {
       retryDelayMs = 0;
       lastSaveSucceededAt = Date.now();
       dirtyVocabLangs.clear();
-      dirtyTexts = false;
+      dirtyTextIds.clear();
+      allTextsDirty = false;
+      // A successful backend write makes the pending teardown delta redundant
+      // — but only when this save's payload was built AFTER the delta was
+      // frozen in this same session: then its full-per-language snapshots
+      // necessarily contain every mutation the delta holds. A save built
+      // before the freeze (in-flight at hidden time) does NOT cover it, and a
+      // save from a later session never contains its mutations at all —
+      // clearing in either case would drop the delta's mutations forever
+      // (issue #137 class). A surviving cross-session delta is delivered by
+      // the boot replay, which clears it on its own success.
+      const pending = readPendingDelta();
+      if (pending !== null
+        && pending.session === AUTOSAVE_SESSION
+        && payloadHasRecords
+        && payloadSequence >= pending.sequence) {
+        clearPendingDelta();
+      }
       saveInFlight = false;
       if (savePending) {
         savePending = false;
@@ -153,7 +175,15 @@ export function createAutosave(getState: () => WhAppState) {
       }
       return result;
     };
-    const payload = buildDeltaSavePayload(current, dirtyVocabLangs, dirtyTexts);
+    // Snapshot the mutation sequence of this payload at build time — a save
+    // built at sequence N necessarily contains every mutation up to N, which
+    // is the guarantee the pending-delta clear guard relies on.
+    const payloadSequence = mutationSequence;
+    // The save-pending follow-up (a save re-run right after markSucceeded
+    // cleared the dirty sets) builds an EMPTY payload: it carries no records,
+    // so it must not be allowed to clear the pending delta either.
+    const payloadHasRecords = dirtyVocabLangs.size > 0 || dirtyTextIds.size > 0 || allTextsDirty;
+    const payload = buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
     savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
       // The backend may reject a delta payload (validation edge or an older
       // server build). Retry once with a full snapshot — but only for an
@@ -272,17 +302,21 @@ export function createAutosave(getState: () => WhAppState) {
           const wrapped = proxyCache.get(value) || wrap(value, childIsBridgeUi);
           // Register the child's dirty-tracking context so mutations can be
           // attributed to a language (vocab) or to the texts store.
+          // NOTE: contexts are keyed by the RAW child target (not the proxy):
+          // proxy traps receive the target as their first argument, so the
+          // lookups in the traps must match target keys.
           if (object === rootTarget && prop === "profiles") {
-            rootProfiles.add(wrapped);
+            rootProfiles.add(value);
           } else if (rootProfiles.has(object)) {
-            dirtyContexts.set(wrapped, { kind: "profile", lang: String(prop) });
+            dirtyContexts.set(value, { kind: "profile", lang: String(prop) });
           } else {
             const ctx = dirtyContexts.get(object);
-            if (ctx?.kind === "profile" && prop === "vocab") dirtyContexts.set(wrapped, { kind: "vocab", lang: ctx.lang });
-            else if (ctx?.kind === "profile" && prop === "userBooks") dirtyContexts.set(wrapped, { kind: "books", lang: ctx.lang });
-            else if (ctx?.kind === "profile" && prop === "customTexts") dirtyContexts.set(wrapped, { kind: "texts", lang: ctx.lang });
-            else if (ctx?.kind === "profile") dirtyContexts.set(wrapped, { kind: "profile", lang: ctx.lang });
-            else if (ctx?.kind === "vocab") dirtyContexts.set(wrapped, { kind: "word", lang: ctx.lang });
+            if (ctx?.kind === "profile" && prop === "vocab") dirtyContexts.set(value, { kind: "vocab", lang: ctx.lang });
+            else if (ctx?.kind === "profile" && prop === "userBooks") dirtyContexts.set(value, { kind: "books", lang: ctx.lang });
+            else if (ctx?.kind === "profile" && prop === "customTexts") dirtyContexts.set(value, { kind: "texts", lang: ctx.lang });
+            else if (ctx?.kind === "profile") dirtyContexts.set(value, { kind: "profile", lang: ctx.lang });
+            else if (ctx?.kind === "vocab") dirtyContexts.set(value, { kind: "word", lang: ctx.lang });
+            else if (ctx?.kind === "texts") dirtyContexts.set(value, { kind: "text" });
           }
           return wrapped;
         }
@@ -297,10 +331,19 @@ export function createAutosave(getState: () => WhAppState) {
           const ctx = dirtyContexts.get(object);
           if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
             if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (ctx?.kind === "text") {
+            const id = (object as WhRecord).id;
+            if (typeof id === "string" && id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
           } else if (ctx?.kind === "texts") {
-            dirtyTexts = true;
+            // Array mutation (push/splice/index write): the changed element
+            // carries the id, or fall back to marking all texts dirty.
+            const candidate = rawValue !== undefined && rawValue !== null && typeof rawValue === "object" ? rawValue : oldValue;
+            const id = candidate && typeof (candidate as WhRecord).id === "string" ? String((candidate as WhRecord).id) : "";
+            if (id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
           } else if (object === rootTarget && prop === "customTexts") {
-            dirtyTexts = true;
+            allTextsDirty = true;
           }
         }
         if (oldValue !== rawValue
@@ -313,13 +356,20 @@ export function createAutosave(getState: () => WhAppState) {
       },
       deleteProperty(object, prop) {
         if (prop in object) {
+          const removed = Reflect.get(object, prop);
           Reflect.deleteProperty(object, prop);
           recordVocabularyMutation(object, prop);
           const ctx = dirtyContexts.get(object);
           if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
             if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (ctx?.kind === "text") {
+            const id = (object as WhRecord).id;
+            if (typeof id === "string" && id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
           } else if (ctx?.kind === "texts") {
-            dirtyTexts = true;
+            const id = removed && typeof (removed as WhRecord).id === "string" ? String((removed as WhRecord).id) : "";
+            if (id) dirtyTextIds.add(id);
+            else allTextsDirty = true;
           }
           if (!(object === rootTarget && TRANSIENT_ROOT_KEYS.has(prop))
             && !isUiMutation(object, prop)) {
@@ -349,7 +399,7 @@ export function createAutosave(getState: () => WhAppState) {
       vocabularyRevision += 1;
       const current = rawState();
       for (const lang of Object.keys(current.profiles || {})) dirtyVocabLangs.add(lang);
-      dirtyTexts = true;
+      allTextsDirty = true;
     },
     flushPendingSave() {
       clearTimeout(saveTimer);
@@ -368,6 +418,19 @@ export function createAutosave(getState: () => WhAppState) {
       if (window.__qtBridge && window.__bridgeState === null) saveToLocalStorage(current);
       else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
+    },
+    // Synchronous serialization of the save delta for the Android teardown
+    // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
+    // tracking as doSave so the replayed payload merges cleanly on next boot.
+    buildPendingDeltaEnvelope(): PendingDelta {
+      const current = rawState();
+      return {
+        payload: JSON.stringify(
+          buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
+        ),
+        session: AUTOSAVE_SESSION,
+        sequence: mutationSequence
+      };
     },
     hasPendingChanges,
     withoutAutoSave<T>(callback: () => T): T {

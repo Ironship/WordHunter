@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inspectAndroid } from "../../scripts/inspect-artifact.mjs";
+import { inspectAndroidZipList } from "../../scripts/inspect-artifact.mjs";
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 
@@ -123,7 +123,9 @@ describe("Android Pocket packaging", () => {
     assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
     assert.equal(androidConfig.app.windows.length, 1);
     assert.equal(androidConfig.app.windows[0].create, false);
-    assert.equal(androidConfig.app.windows[0].url, "http://127.0.0.1:38619/index.html");
+    // The webview URL is decided at runtime (android.rs overrides it with the
+    // actually-bound port); the config must not pin a URL or port.
+    assert.equal(Object.hasOwn(androidConfig.app.windows[0], "url"), false);
     assert.equal(JSON.stringify(androidConfig).includes("ocr-runtime"), false);
     assert.equal(JSON.stringify(baseConfig).includes("ocr-runtime"), false);
     for (const resource of [
@@ -203,13 +205,13 @@ describe("Android Pocket packaging", () => {
   it("validates AAB file lists and rejects the wrong native architecture", () => {
     const directory = mkdtempSync(join(tmpdir(), "wordhunter-android-test-"));
     try {
-      const valid = join(directory, "valid.aab");
+      const valid = join(directory, "Word.Hunter.Pocket.release.aab");
       writeStoredZip(valid, androidFixture());
-      assert.doesNotThrow(() => inspectAndroid(valid, "arm64-v8a"));
+      assert.doesNotThrow(() => inspectAndroidZipList(valid, "arm64-v8a"));
 
-      const invalid = join(directory, "wrong-abi.aab");
+      const invalid = join(directory, "Word.Hunter.Pocket.release.aab");
       writeStoredZip(invalid, androidFixture("x86_64"));
-      assert.throws(() => inspectAndroid(invalid, "arm64-v8a"), /expected only arm64-v8a/);
+      assert.throws(() => inspectAndroidZipList(invalid, "arm64-v8a"), /expected only arm64-v8a/);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

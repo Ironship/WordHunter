@@ -3,6 +3,7 @@ import { els } from "../dom.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { isAndroidPlatform, isImageOcrAvailable } from "../platform.js";
+import { fetchWithTimeout } from "../request.js";
 import { decodeImportedTextBytes, parseImportedTextFile, titleFromImportedFileName } from "../subtitles.js";
 import {
   cancelEditBook,
@@ -91,6 +92,14 @@ const MAX_POCKET_PDF_BYTES = 32 * 1024 * 1024;
  * page loop yields between pages so the spinner keeps painting).
  */
 const MAX_POCKET_PDF_RENDER_PAGES = 300;
+// Render at the screen width (device pixels) so small phones do not
+// allocate 1400px bitmaps, clamped to the native renderer range.
+function pdfRenderWidth(): number {
+  const width = typeof window !== "undefined" && window.devicePixelRatio
+    ? Math.round(window.innerWidth * window.devicePixelRatio)
+    : 1400;
+  return Math.min(2400, Math.max(512, width));
+}
 const MAX_DESKTOP_OCR_IMAGE_BYTES = 32 * 1024 * 1024;
 const MAX_DESKTOP_IMPORT_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_POCKET_IMPORT_FILE_BYTES = 24 * 1024 * 1024;
@@ -211,13 +220,13 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
       updateAndroidPdfProgress(index + 1, limitedPages.length);
       const page = limitedPages[index];
       const rendered = parseAndroidPdfRenderResponse(
-        bridge.renderPdfPage(sessionId, index, 1400),
+        bridge.renderPdfPage(sessionId, index, pdfRenderWidth()),
         t("toast.pdfOcrNoText")
       );
       if (!rendered.dataUrl || !page?.imageName) {
         throw new Error(t("toast.pdfOcrNoText"));
       }
-      const response = await fetch("/__book/image", {
+      const response = await fetchWithTimeout("/__book/image", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
         body: JSON.stringify({
@@ -226,7 +235,7 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
           base64_data: rendered.dataUrl,
           pending_import: true
         })
-      });
+      }, 30_000);
       if (!response.ok) {
         const message = await response.text().catch(() => "");
         throw new Error(message || `HTTP ${response.status}`);
@@ -454,6 +463,11 @@ async function importYoutubeTrack(url: string, trackIndex: string | number): Pro
   };
   if (els.importYoutubeStatus) els.importYoutubeStatus.textContent = t("import.youtubeLoaded");
   showToast(t("toast.youtubeCaptionsLoaded"));
+  // The captions are now in the books form — switch back so the user can
+  // review and submit the import.
+  if (els.importModeSelect) els.importModeSelect.value = "books";
+  if (els.importBooksMode) els.importBooksMode.hidden = false;
+  if (els.importYoutubeMode) els.importYoutubeMode.hidden = true;
 }
 
 async function handleYoutubeImport() {
@@ -484,8 +498,20 @@ async function handleYoutubeImport() {
   }
 }
 
-function confirmWholeBookOcr(): Promise<boolean> {
-  const dialog = document.querySelector<HTMLDialogElement>("#ocr-whole-book-confirm") || (() => {
+export function confirmWholeBookOcr(): Promise<boolean> {
+  let dialog = document.querySelector<HTMLDialogElement>("#ocr-whole-book-confirm");
+  if (dialog && (
+    !dialog.querySelector("h2")
+    || !dialog.querySelector("p")
+    || !dialog.querySelector('[data-action="cancel"]')
+    || !dialog.querySelector('[data-action="confirm"]')
+  )) {
+    // A stale/partially-restored dialog must not make the Promise executor
+    // throw before it can settle. Rebuild the complete dialog instead.
+    dialog.remove();
+    dialog = null;
+  }
+  dialog ||= (() => {
     const next = document.createElement("dialog");
     next.id = "ocr-whole-book-confirm";
     next.className = "panel ocr-confirm-dialog";
@@ -502,25 +528,32 @@ function confirmWholeBookOcr(): Promise<boolean> {
     document.body.appendChild(next);
     return next;
   })();
-  dialog.querySelector("h2").textContent = t("import.ocrWholeBookTitle");
-  dialog.querySelector("p").textContent = t("import.ocrWholeBookConfirm");
-  dialog.querySelector('[data-action="cancel"]').textContent = t("import.ocrWholeBookCancel");
-  dialog.querySelector('[data-action="confirm"]').textContent = t("import.ocrWholeBookStart");
+  const heading = dialog.querySelector<HTMLElement>("h2");
+  const copy = dialog.querySelector<HTMLElement>("p");
+  const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
+  const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
+  if (!heading || !copy || !cancelButton || !confirmButton) {
+    dialog.remove();
+    return Promise.resolve(false);
+  }
+  heading.textContent = t("import.ocrWholeBookTitle");
+  copy.textContent = t("import.ocrWholeBookConfirm");
+  cancelButton.textContent = t("import.ocrWholeBookCancel");
+  confirmButton.textContent = t("import.ocrWholeBookStart");
 
   return new Promise<boolean>((resolve) => {
     const finish = (accepted: boolean) => {
-      dialog.close();
+      if (dialog.open) dialog.close();
       dialog.removeEventListener("cancel", cancel);
       dialog.removeEventListener("click", backdrop);
       cancelButton.removeEventListener("click", cancel);
       confirmButton.removeEventListener("click", confirm);
+      dialog.remove();
       resolve(accepted);
     };
     const cancel = (event?: Event) => { event?.preventDefault(); finish(false); };
     const confirm = () => finish(true);
     const backdrop = (event: MouseEvent) => { if (event.target === dialog) cancel(); };
-    const cancelButton = dialog.querySelector<HTMLButtonElement>('[data-action="cancel"]');
-    const confirmButton = dialog.querySelector<HTMLButtonElement>('[data-action="confirm"]');
     dialog.addEventListener("cancel", cancel);
     dialog.addEventListener("click", backdrop);
     cancelButton.addEventListener("click", cancel);
@@ -681,6 +714,9 @@ async function runPdfImport(file: File): Promise<boolean> {
     }
     throw error;
   } finally {
+    // The render loop can throw (bridge error, cancel, network) — the
+    // progress interval must never outlive the import (timer leak).
+    stopAndroidPdfProgress();
     stopOcrProgress();
     setImportLoading(false);
   }
@@ -872,6 +908,14 @@ function handleEditCoverFile(file: File | undefined): void {
 }
 
 function bindImportFormEvents() {
+  if (els.importModeSelect) {
+    els.importModeSelect.addEventListener("change", () => {
+      const mode = els.importModeSelect.value;
+      if (els.importBooksMode) els.importBooksMode.hidden = mode !== "books";
+      if (els.importYoutubeMode) els.importYoutubeMode.hidden = mode !== "youtube";
+    });
+  }
+
   if (els.importYoutubeLoad) {
     els.importYoutubeLoad.addEventListener("click", () => handleYoutubeImport());
   }

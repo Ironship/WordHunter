@@ -77,6 +77,18 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     return true;
   }
 
+  if (key === "f3" && plainKey) {
+    // F3 / Shift+F3 — next / previous find match (standard browser find keys).
+    event.preventDefault();
+    void import("../../reader/find.js").then(({ findNextMatch, findPrevMatch }) => {
+      const handled = event.shiftKey ? findPrevMatch() : findNextMatch();
+      if (!handled) {
+        void import("../../reader/find.js").then(({ toggleReaderFind }) => toggleReaderFind());
+      }
+    });
+    return true;
+  }
+
   if (key === "f6" && plainKey) {
     if (isAndroidPlatform()) return false;
     if (!toggleReaderPaneFocus()) return false;

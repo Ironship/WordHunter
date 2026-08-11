@@ -60,11 +60,16 @@ export function buildFullKeys(rawState: WhSaveStateInput): string[] {
  * vocab profiles for languages with mutations, and texts only when they
  * changed — plus fullKeys declaring every key still held. Saves ~99% of the
  * payload size compared to a full snapshot on every autosave tick.
+ *
+ * `dirtyTexts` is a set of the ids of the text records that changed (the
+ * backend merges per key, untouched keys survive via fullKeys). `true`
+ * means "everything is dirty" (full replace / restore) and sends all
+ * texts; `false` sends none.
  */
 export function buildDeltaSavePayload(
   rawState: WhSaveStateInput,
   dirtyVocabLangs: ReadonlySet<string>,
-  dirtyTexts: boolean
+  dirtyTexts: ReadonlySet<string> | boolean
 ): WhDeltaSavePayload {
   const full = buildSavePayload(rawState);
   const vocab: Record<string, WhRecord> = {};
@@ -73,13 +78,20 @@ export function buildDeltaSavePayload(
     const { customTexts: _customTexts, ...withoutTexts } = profile || {};
     vocab[lang] = toPlain(withoutTexts) as WhRecord;
   }
+  let texts: WhText[] = [];
+  if (dirtyTexts === true) {
+    texts = full.texts;
+  } else if (dirtyTexts && typeof (dirtyTexts as ReadonlySet<string>).has === "function" && (dirtyTexts as ReadonlySet<string>).size > 0) {
+    // Realm-safe set check (vm-context Sets fail `instanceof Set` in tests).
+    texts = full.texts.filter((text) => dirtyTexts.has(String(text?.id)));
+  }
   return {
     schemaVersion: STATE_SCHEMA_VERSION,
     delta: true,
     fullKeys: buildFullKeys(rawState),
     records: {
       schemaVersion: STATE_SCHEMA_VERSION,
-      texts: dirtyTexts ? full.texts : [],
+      texts,
       prefs: full.prefs,
       hiddenBooks: full.hiddenBooks,
       vocab
@@ -103,6 +115,58 @@ export function saveToLocalStorage(rawState: WhSaveStateInput): void {
   } catch (e) {
     console.error("localStorage save failed", e);
     throw e;
+  }
+}
+
+// Android teardown flush: the keepalive fetch is capped at 64 KiB while the
+// real state is multi-MB, so the final mutations were silently dropped on
+// every activity finish (issue #137). Instead the exit flush persists the
+// save *delta* (a few MB at most, well inside the localStorage quota) under a
+// dedicated key; the next boot replays it through the normal save path.
+// The envelope carries the mutation *sequence* of the session that froze the
+// delta, so a later save can decide whether it truly supersedes the pending
+// delta (payload built at sequence >= the delta's sequence covers its
+// content) before clearing it. A delta from a previous session is cleared
+// only by a successful replay — a fresh session's saves never contain its
+// mutations.
+const PENDING_FLUSH_KEY = "wordhunter.pendingFlush.v1";
+
+export interface PendingDelta {
+  payload: string;
+  /** Autosave session that froze this delta (module-load id). */
+  session: string;
+  /** Mutation sequence of that session at freeze time. */
+  sequence: number;
+}
+
+export function flushPendingDeltaToLocalStorage(delta: PendingDelta): void {
+  try {
+    localStorage.setItem(PENDING_FLUSH_KEY, JSON.stringify(delta));
+  } catch (e) {
+    console.error("pending-flush localStorage write failed", e);
+  }
+}
+
+/** Peek at a pending flush left by a previous teardown (null when absent). */
+export function readPendingDelta(): PendingDelta | null {
+  try {
+    const raw = localStorage.getItem(PENDING_FLUSH_KEY);
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as PendingDelta;
+    if (typeof parsed?.payload !== "string") return null;
+    return parsed;
+  } catch (e) {
+    console.error("pending-flush localStorage read failed", e);
+    return null;
+  }
+}
+
+/** Drop the pending flush once it has been replayed into the backend. */
+export function clearPendingDelta(): void {
+  try {
+    localStorage.removeItem(PENDING_FLUSH_KEY);
+  } catch (e) {
+    console.error("pending-flush localStorage clear failed", e);
   }
 }
 

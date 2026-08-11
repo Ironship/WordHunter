@@ -20,7 +20,7 @@ $PortableDir = Join-Path $Outputs "Word.Hunter.portable"
 $OutputPortable = Join-Path $PortableDir "Word.Hunter.portable.exe"
 $OutputPortableZip = Join-Path $Outputs "Word.Hunter.portable.zip"
 $OutputInstaller = Join-Path $Outputs "Word.Hunter.Setup.exe"
-$OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.debug.apk"
+$OutputAndroidDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.release.apk"
 $OutputAndroidEmulatorDebugApk = Join-Path $Outputs "Word.Hunter.Pocket.emulator.debug.apk"
 $OutputAndroidReleaseAab = Join-Path $Outputs "Word.Hunter.Pocket.release.aab"
 $RequiredTauriCliVersion = "2.11.4"
@@ -788,15 +788,23 @@ function Build-OcrRuntime {
     Invoke-External "powershell.exe" @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $OcrRuntimeScript)
 }
 
-function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $OutputAndroidDebugApk) {
-    Write-Step "Building Android debug APK"
+function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $OutputAndroidDebugApk, [switch]$Debug) {
+    if ($Debug) {
+        Write-Step "Building Android debug APK"
+    } else {
+        Write-Step "Building Android release APK"
+    }
     Ensure-FrontendBuild
     Ensure-Directory $Outputs
     Ensure-AndroidToolchain (Get-AndroidRustTarget $Target)
     Ensure-AndroidProject
     Prepare-AndroidProject
 
-    Invoke-External "cargo.exe" @("tauri", "android", "build", "--debug", "--apk", "--target", $Target)
+    if ($Debug) {
+        Invoke-External "cargo.exe" @("tauri", "android", "build", "--debug", "--apk", "--target", $Target)
+    } else {
+        Invoke-External "cargo.exe" @("tauri", "android", "build", "--apk", "--target", $Target)
+    }
 
     $apkRoot = Join-Path $Root "src-tauri\gen\android\app\build\outputs\apk"
     $apk = Get-ChildItem -LiteralPath $apkRoot -Recurse -Filter "*.apk" -File -ErrorAction SilentlyContinue |
@@ -813,7 +821,15 @@ function Build-AndroidApk([string]$Target = "aarch64", [string]$OutputApk = $Out
 }
 
 function Build-AndroidEmulatorApk {
-    Build-AndroidApk "x86_64" $OutputAndroidEmulatorDebugApk
+    # The emulator APK intentionally stays a --debug build (issue #138 does
+    # not cover it: it is a local developer artifact, never built in CI and
+    # never shipped). A release APK would be unsigned out of the box (the
+    # Tauri Android release buildType has no signingConfig) and `adb install`
+    # would refuse it with INSTALL_PARSE_FAILED_NO_CERTIFICATES; debug builds
+    # are automatically signed with the local Android debug key, so
+    # `build.bat apk-emulator` keeps working without the production
+    # WH_ANDROID_* keystore. The shipped release APK keeps --debug removed.
+    Build-AndroidApk "x86_64" $OutputAndroidEmulatorDebugApk -Debug
 }
 
 function Get-AndroidSigningConfig {
@@ -935,6 +951,25 @@ Set these environment variables and retry:
     Copy-Item -LiteralPath $signedAab -Destination $OutputAab -Force
     Remove-Item -LiteralPath $signedAab -Force -ErrorAction SilentlyContinue
     Invoke-External "jarsigner.exe" @("-verify", "-certs", $OutputAab)
+
+    # Issue #138: jarsigner -verify -certs proves the AAB is signed, but a
+    # wrong upload key would still pass. Match the signer certificate SHA-256
+    # against WH_ANDROID_EXPECTED_CERT_SHA256 (the same constant the APK path
+    # enforces) via keytool -printcert -jarfile.
+    $keytool = Join-Path (Split-Path (Get-Command jarsigner.exe).Source) "keytool.exe"
+    if (-not (Test-Path -LiteralPath $keytool)) {
+        Fail "keytool.exe was not found next to jarsigner.exe. Install a full JDK, not only a JRE."
+    }
+    $certOutput = & $keytool -printcert -jarfile $OutputAab 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "keytool -printcert -jarfile failed with exit code $LASTEXITCODE."
+    }
+    $certOutput | Write-Host
+    $aabActual = ([regex]::Match(($certOutput -join "`n"), '(?i)SHA256:\s*([0-9a-f]{2}(?::[0-9a-f]{2}){31})')).Groups[1].Value.Replace(":", "").ToLowerInvariant()
+    $aabExpected = ([string]$env:WH_ANDROID_EXPECTED_CERT_SHA256).Replace(":", "").Trim().ToLowerInvariant()
+    if ($aabExpected -and $aabActual -ne $aabExpected) {
+        Fail "Android AAB signer mismatch: expected $aabExpected, got $aabActual."
+    }
     Write-Host ""
     Write-Host "Done: $OutputAab" -ForegroundColor Green
     Write-Host "Signed with Android upload key alias: $($signing.Alias)" -ForegroundColor Green
@@ -993,7 +1028,7 @@ function Show-Usage {
     Write-Host "  .\scripts\build.bat all          build portable ZIP and Setup installer"
     Write-Host "  .\scripts\build.bat installer    build outputs\Word.Hunter.Setup.exe"
     Write-Host "  .\scripts\build.bat portable     build outputs\Word.Hunter.portable.zip"
-    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.debug.apk; signs if WH_ANDROID_* env vars are set"
+    Write-Host "  .\scripts\build.bat apk          build outputs\Word.Hunter.Pocket.release.apk; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat apk-emulator build outputs\Word.Hunter.Pocket.emulator.debug.apk"
     Write-Host "  .\scripts\build.bat aab          build outputs\Word.Hunter.Pocket.release.aab; signs if WH_ANDROID_* env vars are set"
     Write-Host "  .\scripts\build.bat play         build signed Google Play AAB; requires WH_ANDROID_* env vars"
