@@ -110,8 +110,11 @@ describe("grammatical article suggestions", () => {
     const editor = readFileSync(new URL("../../dist/web/js/events/word-editor.js", import.meta.url), "utf8");
     const reader = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
 
-    assert.match(html, /id="add-article-input"[^>]*type="text"/);
-    assert.match(html, /data-i18n="vocab\.addArticleLabel"/);
+    // The Add/Edit word dialog markup is built at boot by renderAddWordDialog()
+    // (port of #127 P1 part 2), so its contract lives in the renderer source.
+    assert.doesNotMatch(html, /id="add-article-input"/);
+    assert.match(editor, /id="add-article-input"[^>]*type="text"/);
+    assert.match(editor, /data-i18n="vocab\.addArticleLabel"/);
     assert.match(editor, /addArticleInput/);
     assert.match(editor, /delete entry\.article/);
     assert.match(reader, /data-suggest-article/);

@@ -312,3 +312,51 @@ describe("language-onboarding dialog renderer (onboarding.ts)", () => {
     assertBootOrder("renderLanguageOnboardingDialog();", "language-onboarding-dialog");
   });
 });
+describe("add-word dialog renderer (events/word-editor.ts)", () => {
+  it("builds the dialog once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderAddWordDialog } = await evaluateWithMocks("dist/web/js/events/word-editor.js", {
+      "../state.js": { state: {}, saveState: async () => {} },
+      "../i18n.js": tIdentity,
+      "../toast.js": { showToast: () => {} },
+      "../icons.js": { statusIcon: () => "" },
+      "../constants.js": { STATUS_ORDER: ["new", "learning", "known", "ignored"] },
+      "../utils.js": { statusLabel: (status) => status, escapeHtml: (value) => value, escapeAttribute: (value) => value },
+      "../vocabulary/vocab-list.js": { invalidateVocabListCache: () => {} },
+      "../views/vocabulary.js": { getOrCreateEntry: () => ({}), renderVocabulary: () => {} },
+      "../vocabulary/entry-state.js": { setEntryStatus: () => "new" },
+      "../status-sounds.js": { playStatusSound: () => {} },
+      "../vocabulary/review-card.js": { invalidateReviewQueueCache: () => {} },
+      "../reader/smart-suggest.js": { invalidateSuggestIndex: () => {} },
+      "../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
+      "./vocab-status.js": { VOCAB_STATUS_FILTERS: [] }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const dialog = renderAddWordDialog();
+    assert.equal(dialog.id, "add-word-dialog");
+    assert.equal(dialog.className, "panel word-editor-dialog dialog-680");
+    assert.equal(dialog.attrs["aria-labelledby"], "add-word-dialog-title");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "add-word-dialog-title",
+      "add-word-input",
+      "add-article-input",
+      "add-translation-input",
+      "add-word-status-buttons",
+      "add-example-input",
+      "add-word-cancel",
+      "add-word-confirm",
+      "add-word-editing"
+    ]) {
+      assert.match(dialog.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(dialog.innerHTML, /data-i18n="vocab\.addWordTitle"/);
+    assert.match(dialog.innerHTML, /data-i18n="vocab\.addWordConfirm"/);
+    assert.equal(renderAddWordDialog(), dialog, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderAddWordDialog();", "add-word-dialog");
+  });
+});

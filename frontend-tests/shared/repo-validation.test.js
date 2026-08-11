@@ -504,6 +504,16 @@ describe("repository validation wiring", () => {
     "language-onboarding-done", // onboarding.ts (renderLanguageOnboardingDialog)
     "pref-locale-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
     "pref-learning-language-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
+    "add-word-dialog", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-dialog-title", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-article-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-translation-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-status-buttons", // events/word-editor.ts (renderAddWordDialog)
+    "add-example-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-cancel", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-confirm", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-editing", // events/word-editor.ts (renderAddWordDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {
