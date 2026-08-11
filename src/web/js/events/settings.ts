@@ -28,6 +28,31 @@ type ApplyBridgeSnapshotOptions = {
 
 let wordAlgorithmChangeGeneration = 0;
 
+function byId<T extends HTMLElement = HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
+function localeSelects(): HTMLSelectElement[] {
+  return [
+    byId<HTMLSelectElement>("pref-locale-sidebar"),
+    byId<HTMLSelectElement>("pref-locale-settings"),
+    byId<HTMLSelectElement>("pref-locale-onboarding"),
+  ].filter((control): control is HTMLSelectElement => control !== null);
+}
+
+function learningLanguageSelects(): HTMLSelectElement[] {
+  return [
+    byId<HTMLSelectElement>("pref-learning-language-sidebar"),
+    byId<HTMLSelectElement>("pref-learning-language-settings"),
+    byId<HTMLSelectElement>("pref-learning-language-onboarding"),
+  ].filter((control): control is HTMLSelectElement => control !== null);
+}
+
+function learningColorInputs(): HTMLInputElement[] {
+  return Array.from(document.querySelectorAll<HTMLInputElement>("[data-learning-color]"));
+}
+
+
 /**
  * Builds the offline-model download dialog markup once (idempotent). Called
  * during app boot before cacheElements() (app.ts); bindSettingsEvents()
@@ -91,6 +116,337 @@ function resetReaderScrollForCurrentText() {
   if (!state.readerScrolls) state.readerScrolls = {};
   state.readerScrolls[state.currentTextId] = { wordIndex: null, scrollTop: 0, readerPage: 1 };
 }
+
+
+/**
+ * Builds the Settings view shell and the phase-1 general panels (Appearance,
+ * Flashcards, AI explanations, Local data) once (idempotent). Called during
+ * app boot before cacheElements() (app.ts); every consumer resolves the
+ * elements via getElementById after boot, so boot order guarantees they
+ * exist. The Reader and Translator & Dictionary panels stay static in
+ * index.html for phase 2 of the #127 P3 port.
+ */
+export function renderSettingsView(): HTMLElement {
+  const existing = document.getElementById("settings-view");
+  if (existing instanceof HTMLElement) return existing;
+  if (existing) throw new TypeError("#settings-view must be an element");
+
+  const view = document.createElement("section");
+  view.id = "settings-view";
+  view.className = "view";
+  view.setAttribute("data-title-key", "nav.settings");
+  view.innerHTML = `
+        <div class="settings-grid">
+          <section class="panel" aria-labelledby="appearance-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.appearanceEyebrow">Appearance</p>
+              <h2 id="appearance-heading" data-i18n="settings.appearanceHeading">Theme and interface</h2>
+            </div>
+            <div class="settings-body">
+              <p class="settings-subheading" data-i18n="settings.groupLanguage">Language and interface</p>
+              <label class="setting-row">
+                <span>
+                  <span data-i18n="settings.theme">Theme</span>
+                  <small data-i18n="settings.themeHint">The theme is shared by all learning languages. Familiar themes stay dark on desktop and follow the system mode on Pocket.</small>
+                </span>
+                <select id="pref-theme" data-pref="theme">
+                  <option value="familiar" data-i18n="settings.themeFamiliar">Familiar (cool blue)</option>
+                  <option value="alternative-familiar" data-i18n="settings.themeAlternativeFamiliar">Alternative familiar (aubergine and orange)</option>
+                  <option value="classic-auto" data-i18n="settings.themeClassicAuto">Word Hunter Classic (system)</option>
+                  <option value="classic-light" data-i18n="settings.themeClassicLight">Word Hunter Classic (light)</option>
+                  <option value="classic-dark" data-i18n="settings.themeClassicDark">Word Hunter Classic (dark)</option>
+                </select>
+              </label>
+              <label class="setting-row language-setting-row">
+                <span class="language-setting-title" data-i18n="settings.interfaceLanguageTitle">App interface language</span>
+                <span class="language-select-wrap">
+                  <img class="language-select-flag" data-language-flag="locale" src="flags/en.svg" alt="" aria-hidden="true">
+                  <select id="pref-locale-settings" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle">
+                    <option value="pl" data-i18n="languages.pl">Polish</option>
+                    <option value="en" data-i18n="languages.en">English</option>
+                    <option value="de" data-i18n="languages.de">German</option>
+                    <option value="es" data-i18n="languages.es">Spanish</option>
+                    <option value="fr" data-i18n="languages.fr">French</option>
+                    <option value="it" data-i18n="languages.it">Italian</option>
+                    <option value="uk" data-i18n="languages.uk">Українська</option>
+                    <option value="ru" data-i18n="languages.ru">Muscovite State</option>
+                    <option value="ja" data-i18n="languages.ja">Japanese</option>
+                    <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
+                  </select>
+                </span>
+              </label>
+              <label class="setting-row language-setting-row">
+                <span class="language-setting-title" data-i18n="settings.learningLanguageTitle">Learning language (profile)</span>
+                <span class="language-select-wrap">
+                  <img class="language-select-flag" data-language-flag="learning" src="flags/de.svg" alt="" aria-hidden="true">
+                  <select id="pref-learning-language-settings" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle">
+                    <option value="en" data-i18n="languages.en">English</option>
+                    <option value="de" data-i18n="languages.de">German</option>
+                    <option value="es" data-i18n="languages.es">Spanish</option>
+                    <option value="it" data-i18n="languages.it">Italian</option>
+                    <option value="fr" data-i18n="languages.fr">French</option>
+                    <option value="pl" data-i18n="languages.pl">Polish</option>
+                    <option value="uk" data-i18n="languages.uk">Українська</option>
+                    <option value="ru" data-i18n="languages.ru">Muscovite State</option>
+                    <option value="ja" data-i18n="languages.ja">Japanese</option>
+                    <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
+                    <option value="la" data-i18n="languages.la">Latin</option>
+                    <option value="grc" data-i18n="languages.grc">Ancient Greek</option>
+                    <option value="other" data-i18n="languages.other">Other</option>
+                  </select>
+                </span>
+              </label>
+              <div class="setting-row pocket-only-setting">
+                <span>
+                  <span data-i18n="nav.help">Help</span>
+                  <small data-i18n="help.tipsTitle">Useful Tips</small>
+                </span>
+                <button class="secondary-button" type="button" data-open-view="help" data-i18n="nav.help">Help</button>
+              </div>
+              <label class="setting-row desktop-only-setting">
+                <span id="pref-ui-scale-label"></span>
+                <input id="pref-ui-scale" type="range" min="80" max="150" step="5" aria-labelledby="pref-ui-scale-label">
+              </label>
+              <label class="setting-row toggle-row desktop-only-setting">
+                <span>
+                  <span data-i18n="settings.touchControls">Larger controls</span>
+                  <small data-i18n="settings.touchControlsHint">On desktop, makes buttons and spacing roomier for touch screens, laptops, and tablets.</small>
+                </span>
+                <input id="pref-touch-controls" type="checkbox" data-pref="touchControls">
+              </label>
+              <p class="settings-subheading" data-i18n="settings.groupLearningDisplay">Learning display</p>
+              <label class="setting-row">
+                <span data-i18n="settings.reviewGraphType">Flashcard chart</span>
+                <select id="pref-review-graph-type">
+                  <option value="heatmap" data-i18n="settings.reviewGraphHeatmap">Heatmap</option>
+                  <option value="dueForecast" data-i18n="settings.reviewGraphDue">Due forecast (21 days)</option>
+                  <option value="intervals" data-i18n="settings.reviewGraphIntervals">Intervals</option>
+                  <option value="easeDistribution" data-i18n="settings.reviewGraphEase">Ease (EF)</option>
+                  <option value="repetitions" data-i18n="settings.reviewGraphReps">Repetitions</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span data-i18n="settings.statusColors">Status colors</span>
+                <div class="color-pickers-group">
+                  <input type="color" id="pref-color-new" class="color-picker-lg" data-i18n-attr="title=vocab.statusNew,aria-label=vocab.statusNew">
+                  <input type="color" id="pref-color-learning" class="color-picker-lg" data-i18n-attr="title=vocab.statusLearning,aria-label=vocab.statusLearning">
+                  <input type="color" id="pref-color-known" class="color-picker-lg" data-i18n-attr="title=vocab.statusKnown,aria-label=vocab.statusKnown">
+                  <input type="color" id="pref-color-ignored" class="color-picker-lg" data-i18n-attr="title=vocab.statusIgnored,aria-label=vocab.statusIgnored">
+                </div>
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.dynamicLearningColors">Learning word color by SRS level</span>
+                  <small data-i18n="settings.dynamicLearningColorsHint">Level 1 starts orange and level 5 ends green. Adjust the colors below.</small>
+                </span>
+                <input id="pref-dynamic-learning-colors" type="checkbox">
+              </label>
+              <div class="setting-row" id="pref-learning-colors-row" hidden>
+                <span data-i18n="settings.learningColorPalette">Learning color palette (levels 1–5)</span>
+                <div class="color-pickers-group">
+                  <input type="color" class="color-picker-lg" data-learning-color="0">
+                  <input type="color" class="color-picker-lg" data-learning-color="1">
+                  <input type="color" class="color-picker-lg" data-learning-color="2">
+                  <input type="color" class="color-picker-lg" data-learning-color="3">
+                  <input type="color" class="color-picker-lg" data-learning-color="4">
+                </div>
+              </div>
+
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.cardStats">Stats on book cards</span>
+                  <small data-i18n="settings.cardStatsHint">Shows each book's reading progress and vocabulary count in the Library cards.</small>
+                </span>
+                <input id="pref-card-stats" type="checkbox">
+              </label>
+              <label class="setting-row" id="pref-card-stats-mode-row">
+                <span>
+                  <span data-i18n="settings.cardStatsMode">Book statistics values</span>
+                  <small data-i18n="settings.cardStatsModeHint">Show percentages, exact occurrence counts, or both.</small>
+                </span>
+                <select id="pref-card-stats-mode">
+                  <option value="percentages" data-i18n="settings.cardStatsModePercentages">Percentages</option>
+                  <option value="counts" data-i18n="settings.cardStatsModeCounts">Counts</option>
+                  <option value="both" data-i18n="settings.cardStatsModeBoth">Percentages and counts</option>
+                </select>
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.covers">Book Covers</span>
+                  <small data-i18n="settings.coversHint">Shows book cover thumbnails when Gutenberg metadata provides one; books without covers stay text-only.</small>
+                </span>
+                <input id="pref-covers" type="checkbox">
+              </label>
+              <div class="setting-row desktop-only-setting">
+                <span data-i18n="settings.ocrGpuAcceleration">OCR acceleration</span>
+                <output id="ocr-gpu-status" aria-live="polite" data-i18n="settings.ocrGpuChecking">Checking…</output>
+              </div>
+            </div>
+          </section>
+
+
+          <!-- Phase 2 (#127 P3): Reader and Translator & Dictionary panels stay
+               static in index.html until renderSettingsView() covers them. -->
+          <section class="panel" aria-labelledby="flashcard-prefs-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.flashcardEyebrow">Flashcards</p>
+              <h2 id="flashcard-prefs-heading" data-i18n="settings.flashcardHeading">Reviews and algorithm</h2>
+            </div>
+            <div class="settings-body">
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.autoAddLearningOnly">Flashcards: only 'Learning' words</span>
+                  <small data-i18n="settings.autoAddLearningOnlyHint">Only Learning words enter the review queue. New words stay out until you mark them Learning.</small>
+                </span>
+                <input id="pref-auto-add-learning" type="checkbox" data-pref="autoAddLearningOnly">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.autoTtsOnFlashcardOpen">Read new flashcards automatically</span>
+                  <small data-i18n="settings.autoTtsOnFlashcardOpenHint">Plays pronunciation when you move to another word in Flashcards.</small>
+                </span>
+                <input id="pref-auto-tts-on-flashcard-open" type="checkbox" data-pref="autoTtsOnFlashcardOpen">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.inTextReview">Reviews while reading</span>
+                  <small data-i18n="settings.inTextReviewHint">For Learning words, guess the translation first, then rate your recall from 1 to 5. (Reader review becomes available no sooner than the following day after first learning the word.)</small>
+                </span>
+                <input id="pref-in-text-review" type="checkbox">
+              </label>
+              <label class="setting-row">
+                <span>
+                  <span data-i18n="settings.srsAlgorithm">Flashcard algorithm</span>
+                  <small data-i18n="settings.srsAlgorithmHint">SM-2 schedules from your last grade and ease factor. FSRS estimates stability and difficulty from review history, so due dates can change more aggressively.</small>
+                </span>
+                <select id="pref-srs-algorithm">
+                  <option value="sm2" data-i18n="settings.srsAlgorithmSm2">SM-2 (classic)</option>
+                  <option value="fsrs" data-i18n="settings.srsAlgorithmFsrs">FSRS (optional)</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span>
+                  <span data-i18n="settings.removalBehavior">Word removal behavior</span>
+                  <small data-i18n="settings.removalBehaviorHint">Ignore keeps the entry and hides it from learning. Delete removes it completely, so the word appears as New again.</small>
+                </span>
+                <select id="pref-removal-behavior" data-pref="removalBehavior">
+                  <option value="ignored" data-i18n="settings.removalBehaviorIgnored">Ignore (keep translation)</option>
+                  <option value="delete" data-i18n="settings.removalBehaviorDelete">Delete (reset as 'new')</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+
+          <!-- Phase 2 (#127 P3): Translator & Dictionary panel stays
+               static in index.html until renderSettingsView() covers them. -->
+          <section class="panel" aria-labelledby="ai-prefs-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.aiEyebrow">AI explanations</p>
+              <h2 id="ai-prefs-heading" data-i18n="settings.aiHeading">AI explanations of words and phrases</h2>
+            </div>
+            <div class="settings-body">
+              <p class="settings-subheading" data-i18n="settings.groupAi">Language assistant</p>
+              <p class="muted-copy" data-i18n="settings.aiHint">Explains the selected word or phrase based on the sentence it appears in. Works with any OpenAI-compatible server — local (LM Studio, llama.cpp, Ollama) or remote (e.g. opencode.ai, OpenAI, DeepSeek).</p>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.aiExplanations">Enable AI explanations</span>
+                  <small data-i18n="settings.aiExplanationsHint">Adds an “Explain” button to the word panel. The API key is stored locally and sent only to the endpoint you choose.</small>
+                </span>
+                <input id="pref-ai-explanations" type="checkbox">
+              </label>
+              <label id="pref-ai-endpoint-row" class="setting-row stack" hidden>
+                <span data-i18n="settings.aiEndpoint">Endpoint (OpenAI-compatible)</span>
+                <input id="pref-ai-endpoint" type="text" class="input">
+              </label>
+              <label id="pref-ai-model-row" class="setting-row stack" hidden>
+                <span data-i18n="settings.aiModel">Model</span>
+                <input id="pref-ai-model" type="text" data-i18n-attr="placeholder=settings.aiModelPlaceholder" class="input">
+              </label>
+              <label id="pref-ai-key-row" class="setting-row stack" hidden>
+                <span data-i18n="settings.aiApiKey">API key</span>
+                <input id="pref-ai-api-key" type="password" data-i18n-attr="placeholder=settings.aiApiKeyPlaceholder" class="input">
+              </label>
+              <label id="pref-ai-effort-row" class="setting-row stack" hidden>
+                <span>
+                  <span data-i18n="settings.aiEffort">Reasoning effort</span>
+                  <small data-i18n="settings.aiEffortHint">How much effort the model should put into reasoning. Empty = do not send — the endpoint uses its own default.</small>
+                </span>
+                <select id="pref-ai-effort" class="input">
+                  <option value="" data-i18n="settings.aiEffortAuto">Automatic (do not send)</option>
+                  <option value="minimal" data-i18n="settings.aiEffortMinimal">Minimal</option>
+                  <option value="low" data-i18n="settings.aiEffortLow">Low</option>
+                  <option value="medium" data-i18n="settings.aiEffortMedium">Medium</option>
+                  <option value="high" data-i18n="settings.aiEffortHigh">High</option>
+                  <option value="max" data-i18n="settings.aiEffortMax">Maximum</option>
+                </select>
+              </label>
+              <label id="pref-ai-auto-trigger-row" class="setting-row toggle-row" hidden>
+                <span>
+                  <span data-i18n="settings.aiAutoTrigger">Explain new words automatically</span>
+                  <small data-i18n="settings.aiAutoTriggerHint">When a word without an AI explanation is opened, the explanation is fetched automatically and appended to the word's note.</small>
+                </span>
+                <input id="pref-ai-auto-trigger" type="checkbox">
+              </label>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="data-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.dataEyebrow">Local data</p>
+              <h2 id="data-heading" data-i18n="settings.dataHeading">Import and export</h2>
+            </div>
+            <div class="settings-body">
+              <p class="settings-subheading" data-i18n="settings.groupLocalData">Data on this device</p>
+              <p class="muted-copy" id="storage-summary"></p>
+              <p class="muted-copy" id="data-directory"></p>
+              <div class="data-actions compact-actions desktop-only-setting">
+                <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Choose local data folder</button>
+              </div>
+              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
+                <div id="recovery-status-list" class="recovery-status-list"></div>
+              </div>
+              <p class="settings-subheading" data-i18n="settings.groupBackup">Backup and import</p>
+              <div class="data-actions">
+                <section class="data-action-row desktop-only-setting">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="update.checkTitle">App updates</h3>
+                    <p data-i18n="update.checkHint">Manually check whether a newer version of Word Hunter is available.</p>
+                  </div>
+                  <div class="data-action-buttons">
+                    <button class="secondary-button" type="button" id="check-updates" data-i18n="update.checkButton">Check for updates</button>
+                  </div>
+                </section>
+                <section class="data-action-row">
+                  <div class="data-action-copy">
+                    <h3 data-i18n="settings.resetTitle">Restore settings</h3>
+                    <p data-i18n="settings.resetHint">Resets theme, reader, dictionary, TTS, and other preferences to defaults. It does not delete words or texts.</p>
+                  </div>
+                  <div class="data-action-buttons">
+                    <button class="secondary-button" type="button" id="reset-prefs" data-i18n="settings.resetPrefs">Reset Preferences</button>
+                  </div>
+                </section>
+
+              </div>
+            </div>
+          </section>
+
+        </div>
+  `;
+  // Phase 2 (#127 P3): the Reader and Translator panels stay static in
+  // index.html (no shell) and are moved into the settings grid at boot so
+  // the shell + phase-1 markup lives only in this renderer.
+  const grid = view.querySelector(".settings-grid");
+  if (grid) {
+    const readerPanel = document.getElementById("reader-prefs-panel");
+    if (readerPanel) grid.appendChild(readerPanel);
+    const translatorPanel = document.getElementById("translator-prefs-panel");
+    if (translatorPanel) grid.appendChild(translatorPanel);
+  }
+  document.body.appendChild(view);
+  return view;
+}
+
 
 function confirmDataFolderChange(): Promise<boolean> {
   const message = t("settings.dataFolderConfirm");
@@ -321,12 +677,12 @@ export function bindSettingsEvents() {
     }
   });
 
-  if (els.chooseDataDirectory) els.chooseDataDirectory.addEventListener("click", async () => {
+  if (byId<HTMLElement>("choose-data-directory")) byId<HTMLElement>("choose-data-directory").addEventListener("click", async () => {
     if (isAndroidPlatform()) {
       showToast(t("settings.androidDataFolderFixed"));
       return;
     }
-    setElementBusy(els.chooseDataDirectory, true, { disable: true });
+    setElementBusy(byId<HTMLElement>("choose-data-directory"), true, { disable: true });
     try {
       if (!await confirmDataFolderChange()) return;
       await flushAllPendingFrontendState();
@@ -353,7 +709,7 @@ export function bindSettingsEvents() {
       console.error(error);
       showToast(t("settings.dataFolderChangeFailed"), "error");
     } finally {
-      setElementBusy(els.chooseDataDirectory, false, { disable: true });
+      setElementBusy(byId<HTMLElement>("choose-data-directory"), false, { disable: true });
     }
   });
 
@@ -397,8 +753,8 @@ export function bindSettingsEvents() {
   if (els.clearLibrary) els.clearLibrary.addEventListener("click", clearLibrary);
 
 
-  if (els.resetPrefs) {
-    els.resetPrefs.addEventListener("click", async () => {
+  if (byId<HTMLElement>("reset-prefs")) {
+    byId<HTMLElement>("reset-prefs").addEventListener("click", async () => {
       const ok = await showConfirmDialog({
         title: t("dialog.confirmTitle"),
         message: t("settings.confirmResetMessage"),
@@ -416,7 +772,7 @@ export function bindSettingsEvents() {
     });
   }
 
-  els.prefLocales?.forEach((control) => {
+  localeSelects().forEach((control) => {
     control.addEventListener("change", async () => {
       const value = control.value;
       state.preferences.locale = value;
@@ -430,7 +786,7 @@ export function bindSettingsEvents() {
       showToast(t("toast.languageChanged", { name: t(`languages.${value}`) }));
     });
   });
-  els.prefLearningLanguages?.forEach((control) => {
+  learningLanguageSelects().forEach((control) => {
     control.addEventListener("change", () => {
       switchLearningLanguage(control.value);
       applyPreferences();
@@ -463,19 +819,19 @@ export function bindSettingsEvents() {
     applyPreferences();
     render();
   });
-  if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.addEventListener("change", (event: Event) => {
+  if (byId<HTMLSelectElement>("pref-srs-algorithm")) byId<HTMLSelectElement>("pref-srs-algorithm").addEventListener("change", (event: Event) => {
     const target = event.currentTarget as HTMLSelectElement;
     state.preferences.srsAlgorithm = target.value === "sm2" ? "sm2" : "fsrs";
     saveState();
     applyPreferences();
     renderReview();
   });
-  if (els.prefInTextReview) els.prefInTextReview.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-in-text-review")) byId<HTMLInputElement>("pref-in-text-review").addEventListener("change", (event: Event) => {
     const target = event.currentTarget as HTMLInputElement;
     updatePreferenceValue("inTextReview", target.checked);
     renderReader();
   });
-  if (els.prefReviewGraphType) els.prefReviewGraphType.addEventListener("change", (event: Event) => {
+  if (byId<HTMLSelectElement>("pref-review-graph-type")) byId<HTMLSelectElement>("pref-review-graph-type").addEventListener("change", (event: Event) => {
     const target = event.currentTarget as HTMLSelectElement;
     updatePreferenceValue("reviewGraphType", target.value);
     import("../views/vocabulary.js").then(m => m.renderReview());
@@ -529,8 +885,8 @@ export function bindSettingsEvents() {
       updateTranslatorTextPreference("lmStudioModel", (event.currentTarget as HTMLInputElement).value);
     });
   }
-  if (els.prefAiExplanations) {
-    els.prefAiExplanations.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ai-explanations")) {
+    byId<HTMLInputElement>("pref-ai-explanations").addEventListener("change", (event: Event) => {
       const target = event.currentTarget as HTMLInputElement;
       updatePreferenceValue("aiExplanationsEnabled", target.checked);
       syncSettingsControls();
@@ -547,31 +903,31 @@ export function bindSettingsEvents() {
       }
     });
   }
-  if (els.prefAiEndpoint) {
-    els.prefAiEndpoint.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ai-endpoint")) {
+    byId<HTMLInputElement>("pref-ai-endpoint").addEventListener("change", (event: Event) => {
       updatePreferenceValue("aiExplanationEndpoint", normalizeAiTextPreference("aiExplanationEndpoint", (event.currentTarget as HTMLInputElement).value));
       syncSettingsControls();
     });
   }
-  if (els.prefAiModel) {
-    els.prefAiModel.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ai-model")) {
+    byId<HTMLInputElement>("pref-ai-model").addEventListener("change", (event: Event) => {
       updatePreferenceValue("aiExplanationModel", normalizeAiTextPreference("aiExplanationModel", (event.currentTarget as HTMLInputElement).value));
       syncSettingsControls();
     });
   }
-  if (els.prefAiApiKey) {
-    els.prefAiApiKey.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ai-api-key")) {
+    byId<HTMLInputElement>("pref-ai-api-key").addEventListener("change", (event: Event) => {
       updatePreferenceValue("aiExplanationApiKey", (event.currentTarget as HTMLInputElement).value.trim());
     });
   }
-  if (els.prefAiEffort) {
-    els.prefAiEffort.addEventListener("change", (event: Event) => {
+  if (byId<HTMLSelectElement>("pref-ai-effort")) {
+    byId<HTMLSelectElement>("pref-ai-effort").addEventListener("change", (event: Event) => {
       updatePreferenceValue("aiExplanationEffort", normalizeAiTextPreference("aiExplanationEffort", (event.currentTarget as HTMLSelectElement).value));
       syncSettingsControls();
     });
   }
-  if (els.prefAiAutoTrigger) {
-    els.prefAiAutoTrigger.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ai-auto-trigger")) {
+    byId<HTMLInputElement>("pref-ai-auto-trigger").addEventListener("change", (event: Event) => {
       updatePreferenceValue("aiExplanationAutoTrigger", (event.currentTarget as HTMLInputElement).checked);
       syncSettingsControls();
     });
@@ -706,41 +1062,41 @@ export function bindSettingsEvents() {
     });
   }
 
-  els.prefCardStats.addEventListener("change", () => {
-    updatePreferenceValue("showCardStats", els.prefCardStats.checked);
+  byId<HTMLInputElement>("pref-card-stats").addEventListener("change", () => {
+    updatePreferenceValue("showCardStats", byId<HTMLInputElement>("pref-card-stats").checked);
     syncSettingsControls();
     renderLibrary();
   });
-  if (els.prefCardStatsMode) {
-    els.prefCardStatsMode.addEventListener("change", () => {
-      updatePreferenceValue("cardStatsMode", els.prefCardStatsMode.value);
+  if (byId<HTMLInputElement>("pref-card-stats-mode")) {
+    byId<HTMLInputElement>("pref-card-stats-mode").addEventListener("change", () => {
+      updatePreferenceValue("cardStatsMode", byId<HTMLInputElement>("pref-card-stats-mode").value);
       renderLibrary();
     });
   }
-  if (els.prefCovers) {
-    els.prefCovers.addEventListener("change", () => { updatePreferenceValue("showCovers", els.prefCovers.checked); renderLibrary(); renderDiscover(); });
+  if (byId<HTMLInputElement>("pref-covers")) {
+    byId<HTMLInputElement>("pref-covers").addEventListener("change", () => { updatePreferenceValue("showCovers", byId<HTMLInputElement>("pref-covers").checked); renderLibrary(); renderDiscover(); });
   }
   
-  if (els.prefColorNew) els.prefColorNew.addEventListener("input", (event: Event) => updatePreferenceValue("colorNew", (event.currentTarget as HTMLInputElement).value));
-  if (els.prefColorLearning) els.prefColorLearning.addEventListener("input", (event: Event) => updatePreferenceValue("colorLearning", (event.currentTarget as HTMLInputElement).value));
-  if (els.prefColorKnown) els.prefColorKnown.addEventListener("input", (event: Event) => updatePreferenceValue("colorKnown", (event.currentTarget as HTMLInputElement).value));
-  if (els.prefColorIgnored) els.prefColorIgnored.addEventListener("input", (event: Event) => updatePreferenceValue("colorIgnored", (event.currentTarget as HTMLInputElement).value));
-  if (els.prefDynamicLearningColors) els.prefDynamicLearningColors.addEventListener("change", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-color-new")) byId<HTMLInputElement>("pref-color-new").addEventListener("input", (event: Event) => updatePreferenceValue("colorNew", (event.currentTarget as HTMLInputElement).value));
+  if (byId<HTMLInputElement>("pref-color-learning")) byId<HTMLInputElement>("pref-color-learning").addEventListener("input", (event: Event) => updatePreferenceValue("colorLearning", (event.currentTarget as HTMLInputElement).value));
+  if (byId<HTMLInputElement>("pref-color-known")) byId<HTMLInputElement>("pref-color-known").addEventListener("input", (event: Event) => updatePreferenceValue("colorKnown", (event.currentTarget as HTMLInputElement).value));
+  if (byId<HTMLInputElement>("pref-color-ignored")) byId<HTMLInputElement>("pref-color-ignored").addEventListener("input", (event: Event) => updatePreferenceValue("colorIgnored", (event.currentTarget as HTMLInputElement).value));
+  if (byId<HTMLInputElement>("pref-dynamic-learning-colors")) byId<HTMLInputElement>("pref-dynamic-learning-colors").addEventListener("change", (event: Event) => {
     updatePreferenceValue("dynamicLearningColors", (event.currentTarget as HTMLInputElement).checked);
     syncSettingsControls();
     renderReader();
   });
-  if (els.prefLearningColors?.length) {
-    els.prefLearningColors.forEach((input) => input.addEventListener("input", () => {
-      updatePreferenceValue("learningColors", els.prefLearningColors.map((color) => color.value));
+  if (learningColorInputs().length) {
+    learningColorInputs().forEach((input) => input.addEventListener("input", () => {
+      updatePreferenceValue("learningColors", learningColorInputs().map((color) => color.value));
       renderReader();
     }));
   }
   
   els.prefFontSize.addEventListener("input", (event: Event) => setReaderFontSize((event.currentTarget as HTMLInputElement).value));
 
-  if (els.prefUiScale) {
-    els.prefUiScale.addEventListener("input", (event: Event) => {
+  if (byId<HTMLInputElement>("pref-ui-scale")) {
+    byId<HTMLInputElement>("pref-ui-scale").addEventListener("input", (event: Event) => {
       setUiScale((event.currentTarget as HTMLInputElement).value);
     });
   }

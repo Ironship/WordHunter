@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
 const css = ["theme.css", "styles.css"]
   .map((file) => readFileSync(new URL(`../../dist/web/${file}`, import.meta.url), "utf8"))
   .join("\n");
@@ -206,6 +207,8 @@ globalThis.document = {
 globalThis.requestAnimationFrame = (callback) => callback();
 
 const { els } = await import("../../dist/web/js/dom.js");
+const { installSettingsFixture } = await import("../shared/settings-fixture.js");
+installSettingsFixture(globalThis.document, els);
 const { bookTexts } = await import("../../dist/web/js/books.js");
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../dist/web/js/preferences.js");
@@ -343,7 +346,15 @@ describe("desktop reader behavior", () => {
     });
 
     const before = { textContent: "sehr", dataset: { wordIndex: "86", charOffset: "505" } };
-    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const selected = {
+      textContent: "genau",
+      dataset: { wordIndex: "87", charOffset: "510" },
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      removeAttribute() {},
+      hasAttribute() { return false; },
+      setAttribute() {},
+      closest() { return null; }
+    };
     const after = { textContent: "hier", dataset: { wordIndex: "88", charOffset: "516" } };
     const originalGetElementById = document.getElementById;
     document.getElementById = (id) => id === "reader-text"
@@ -376,7 +387,15 @@ describe("desktop reader behavior", () => {
       readerScrolls: { book: { readerPage: 2, scrollTop: 275, wordIndex: 61 } },
       preferences: { readerBookmarks: {} }
     });
-    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const selected = {
+      textContent: "genau",
+      dataset: { wordIndex: "87", charOffset: "510" },
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      removeAttribute() {},
+      hasAttribute() { return false; },
+      setAttribute() {},
+      closest() { return null; }
+    };
     const readerText = {
       scrollTop: 275,
       querySelector: (selector) => selector.includes('data-word-index="87"') ? selected : null,
@@ -708,12 +727,15 @@ describe("desktop reader markup and style contracts", () => {
       ["pref-touch-controls", "touchControls"],
       ["pref-tts-word-highlight", "ttsWordHighlight"]
     ]) {
-      const input = elementById(html, id);
+      // pref-touch-controls lives in the Appearance panel built by
+      // renderSettingsView() (#127 P3); the Reader-panel ids stay static.
+      const source = id === "pref-touch-controls" ? settingsSource : html;
+      const input = elementById(source, id);
       assert.equal(attribute(openingTag(input), "data-pref"), preference);
     }
     assert.equal(hasClass(containingElementById(html, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
     assert.equal(hasClass(containingElementById(html, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
-    assert.equal(hasClass(containingElementById(html, "label", "pref-touch-controls"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-touch-controls"), "desktop-only-setting"), true);
 
     const panelToggle = elementById(html, "reader-word-panel-toggle");
     assert.equal(hasClass(panelToggle, "desktop-only-control"), true);
@@ -791,8 +813,10 @@ describe("desktop reader markup and style contracts", () => {
     elementById(html, "help-view");
     elementById(html, "pref-locale-sidebar");
     elementById(html, "pref-learning-language-sidebar");
-    elementByAttribute(html, "data-language-flag", "locale", "img");
-    elementByAttribute(html, "data-language-flag", "learning", "img");
+    // The language-flag images live in the Appearance panel built by
+    // renderSettingsView() (#127 P3).
+    elementByAttribute(settingsSource, "data-language-flag", "locale", "img");
+    elementByAttribute(settingsSource, "data-language-flag", "learning", "img");
   });
 
   it("keeps long navigation labels separate from shortcut badges", () => {
@@ -835,12 +859,20 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("keeps Settings and Export as separate structural sections", () => {
-    const settingsSection = elementById(html, "settings-view");
+    // The settings shell + phase-1 panels are built by renderSettingsView()
+    // (#127 P3); the Reader/Translator panels stay static (reader-prefs-panel,
+    // translator-prefs-panel). groupReader/groupTts live in the static panels.
+    assert.match(settingsSource, /view\.id = "settings-view"/);
+    assert.match(settingsSource, /view\.setAttribute\("data-title-key", "nav\.settings"\)/);
     const exportSection = elementById(html, "export-view");
-    for (const key of ["groupLanguage", "groupLearningDisplay", "groupReader", "groupTts", "groupLocalData", "groupBackup"]) {
-      elementByAttribute(settingsSection, "data-i18n", `settings.${key}`);
+    for (const key of ["groupLanguage", "groupLearningDisplay", "groupLocalData", "groupBackup"]) {
+      assert.match(settingsSource, new RegExp(`data-i18n="settings\.${key}"`));
     }
-    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "export-transfer-all"), null);
+    for (const key of ["groupReader", "groupTts"]) {
+      elementByAttribute(html, "data-i18n", `settings.${key}`);
+    }
+    // The renderer's shell must not contain the Export transfer actions.
+    assert.doesNotMatch(settingsSource, /id="export-transfer-all"/);
     assert.equal(attribute(openingTag(exportSection), "data-title-key"), "nav.export");
     elementByAttribute(exportSection, "data-i18n", "transfer.heading");
     assert.equal(cssDeclarations(css, ".settings-subheading")["text-transform"], "uppercase");

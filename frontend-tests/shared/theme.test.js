@@ -178,15 +178,18 @@ describe("named themes", () => {
 
   it("wires the Settings selector to all themes and themed control colors", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     assert.match(html, /<link rel="stylesheet" href="theme\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="styles\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="platforms\/android-pocket\.css[^>]*>/);
     assert.ok(html.indexOf("theme.css") < html.indexOf("styles.css"));
     assert.ok(html.indexOf("styles.css") < html.indexOf("platforms/android-pocket.css"));
-    assert.match(html, /id="pref-theme" data-pref="theme"/);
+    // The Settings view is built at boot by renderSettingsView() (port of
+    // #127 P3) — the theme selector lives in the renderer source.
+    assert.match(settingsSource, /id="pref-theme" data-pref="theme"/);
     for (const theme of ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"]) {
-      assert.match(html, new RegExp(`option value="${theme}"`));
+      assert.match(settingsSource, new RegExp(`option value="${theme}"`));
     }
     assert.match(styles, /\.primary-button\s*\{[^}]*background:\s*var\(--control-accent\)/s);
     assert.match(styles, /input\[type="checkbox"\]:checked\s*\{[^}]*background:\s*var\(--control-accent\)/s);

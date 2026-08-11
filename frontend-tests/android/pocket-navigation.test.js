@@ -77,13 +77,16 @@ function elementSource(html, tagName) {
   return html.slice(open.index, end);
 }
 
+const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+
 describe("Android Pocket navigation", () => {
   it("declares settings and onboarding language controls", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const onboarding = readFileSync(new URL("../../dist/web/js/onboarding.js", import.meta.url), "utf8");
 
-    openingTagByAttribute(html, "select", "id", "pref-locale-settings");
-    openingTagByAttribute(html, "select", "id", "pref-learning-language-settings");
+    // The settings view is built at boot by renderSettingsView() (#127 P3).
+    openingTagByAttribute(settingsSource, "select", "id", "pref-locale-settings");
+    openingTagByAttribute(settingsSource, "select", "id", "pref-learning-language-settings");
     // The onboarding dialog is built at boot by renderLanguageOnboardingDialog()
     // (port of #127 P1) — its contract lives in the renderer source.
     assert.match(onboarding, /dialog\.id = "language-onboarding-dialog"/);
@@ -112,8 +115,8 @@ describe("Android Pocket navigation", () => {
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     const navigation = readFileSync(new URL("../../dist/web/js/events/navigation.js", import.meta.url), "utf8");
-    const helpButton = openingTagByAttribute(html, "button", "data-open-view", "help");
-    const helpRow = ancestorOpeningTag(html, helpButton, "div");
+    const helpButton = openingTagByAttribute(settingsSource, "button", "data-open-view", "help");
+    const helpRow = ancestorOpeningTag(settingsSource, helpButton, "div");
 
     assert.ok((helpRow.attributes.class || "").split(/\s+/).includes("pocket-only-setting"));
     assert.equal(declarationBlock(styles, ".pocket-only-setting").display, "none");
