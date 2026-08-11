@@ -1833,6 +1833,7 @@ describe("focused frontend regressions", () => {
 
   it("maps transfer error literals to localized keys and hides unknown/backend text", async () => {
     const toasts = [];
+    const fetchBodies = [];
     const noOp = () => {};
     const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
       "./state.js": {
@@ -1869,7 +1870,10 @@ describe("focused frontend regressions", () => {
     }, {
       document: { body: { appendChild() {} }, createElement: () => ({}) },
       window: { WH_TOKEN: "test-token" },
-      fetch: async () => ({ ok: false, status: 500, text: async () => "" })
+      fetch: async (_url, options) => {
+        fetchBodies.push(String(options?.body ?? ""));
+        return { ok: false, status: 500, text: async () => "" };
+      }
     });
 
     assert.equal(module.transferErrorMessage(new Error("export HTTP 500")), 'transfer.httpError:{"status":"500"}');
@@ -1889,6 +1893,10 @@ describe("focused frontend regressions", () => {
     assert.equal(toasts.length, 1);
     assert.match(toasts[0].message, /transfer\.httpError/);
     assert.doesNotMatch(toasts[0].message, /export HTTP 500/);
+    // Native file actions must be explicitly confirmed (fix #110): the
+    // backend refuses to open a dialog unless the body carries confirm:true.
+    assert.equal(fetchBodies.length, 1);
+    assert.equal(JSON.parse(fetchBodies[0]).confirm, true);
   });
 
   it("keeps popup language metadata localized through template placeholders", () => {

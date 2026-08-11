@@ -277,7 +277,8 @@ export function bindSettingsEvents() {
 
       const response = await fetch("/__store/choose_data_dir", {
         method: "POST",
-        headers: { "X-WH-Token": window.WH_TOKEN || "" }
+        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+        body: JSON.stringify({ confirm: true })
       });
       if (!response.ok) throw new Error((await response.text()).trim());
       const result = await response.json();

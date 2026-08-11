@@ -209,7 +209,7 @@ async function nativeSave(data: string, filename: string, mime: string): Promise
     const response = await fetch("/__export/save", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: JSON.stringify({ data, filename, mime })
+      body: JSON.stringify({ data, filename, mime, confirm: true })
     });
     if (!response.ok) throw new Error(`export HTTP ${response.status}`);
     const result: unknown = await response.json().catch(() => ({ saved: true }));
@@ -436,7 +436,7 @@ export async function exportTransfer(
     const response = await fetch("/__store/export_transfer", {
       method: "POST",
       headers: WH_TOKEN_HEADER,
-      body: JSON.stringify({ scope, filename, requestId })
+      body: JSON.stringify({ scope, filename, requestId, confirm: true })
     });
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
@@ -484,7 +484,7 @@ export async function importTransfer(): Promise<boolean> {
     const response = await fetch("/__store/import_transfer", {
       method: "POST",
       headers: WH_TOKEN_HEADER,
-      body: JSON.stringify(androidPath ? { path: androidPath } : {})
+      body: JSON.stringify(androidPath ? { path: androidPath, confirm: true } : { confirm: true })
     });
     if (!response.ok) throw new Error((await response.text()).trim() || `import HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
