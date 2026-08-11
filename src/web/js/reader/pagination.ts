@@ -106,14 +106,14 @@ export function paginationHtml(textId: string, currentPage: number, totalPages: 
     <div class="pagination-controls">
       <button class="secondary-button" id="btn-prev-page" ${currentPage <= 1 ? "disabled" : ""} title="${escapeAttribute(tFn("reader.prevPageTitle"))}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        <kbd style="font-size:0.6rem; padding: 1px 3px; margin-left: 4px;">${escapeHtml(tFn("reader.keyPageUp"))}</kbd>
+        <kbd class="page-badge">${escapeHtml(tFn("reader.keyPageUp"))}</kbd>
       </button>
       <span class="page-jump">
         <input type="number" id="page-jump-input" class="page-jump-input" min="1" max="${totalPages}" value="${currentPage}" aria-label="${escapeAttribute(tFn("reader.pageJumpLabel"))}">
         <span class="page-jump-total">/&thinsp;${totalPages}</span>
       </span>
       <button class="secondary-button" id="btn-next-page" ${currentPage >= totalPages ? "disabled" : ""} title="${escapeAttribute(tFn("reader.nextPageTitle"))}">
-        <kbd style="font-size:0.6rem; padding: 1px 3px; margin-right: 4px;">${escapeHtml(tFn("reader.keyPageDown"))}</kbd>
+        <kbd class="page-badge-r">${escapeHtml(tFn("reader.keyPageDown"))}</kbd>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
       </button>
     </div>

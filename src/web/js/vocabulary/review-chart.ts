@@ -60,7 +60,7 @@ export function renderReviewChart(srsEntries: readonly ReviewEntry[], today: str
       tooltip: (isoDate, count) => `${isoDate} · ${t("vocab.cardCount", { count })}`
     });
   } else {
-    reviewEls.reviewChart.innerHTML = `<div class="review-chart-frame"><canvas id="review-chart-canvas" class="chart-reveal" style="width:100%;height:160px;display:block;"></canvas></div>`;
+    reviewEls.reviewChart.innerHTML = `<div class="review-chart-frame"><canvas id="review-chart-canvas" class="chart-reveal chart-placeholder"></canvas></div>`;
     requestAnimationFrame(() => {
       const c = document.getElementById("review-chart-canvas") as HTMLCanvasElement | null;
       if (!c) return;

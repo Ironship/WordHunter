@@ -117,9 +117,9 @@ describe("Android Pocket layout", () => {
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
     assertDeclarations(css, ".pocket-mode .view.active", { animation: "none !important" });
-    assertDeclarations(css, ".pocket-mode .import-panel", { "z-index": "80", visibility: "hidden", "pointer-events": "none" });
+    assertDeclarations(css, ".pocket-mode .import-panel", { "z-index": "var(--z-pocket-sidebar)", visibility: "hidden", "pointer-events": "none" });
     assertDeclarations(css, ".pocket-mode.pocket-import-open .import-panel", { visibility: "visible", "pointer-events": "auto" });
-    assertDeclarations(css, ".pocket-mode.pocket-import-open body::after", { "z-index": "75" });
+    assertDeclarations(css, ".pocket-mode.pocket-import-open body::after", { "z-index": "var(--z-pocket-scrim)" });
     assertDeclarations(css, ".pocket-mode .pocket-import-toggle", { position: "fixed", right: "0" });
     assert.match(declarationBlock(css, ".pocket-mode .pocket-import-toggle::before").mask, /M15%2018l-6-6%206-6/);
     assertDeclarations(css, '.pocket-mode[data-view="library"] .pocket-import-toggle', { display: "inline-flex" });
@@ -146,7 +146,7 @@ describe("Android Pocket layout", () => {
   it("defines the hidden and open Pocket navigation drawer", () => {
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
 
-    assertDeclarations(css, ".pocket-mode .sidebar", { "z-index": "80", visibility: "hidden", "pointer-events": "none" });
+    assertDeclarations(css, ".pocket-mode .sidebar", { "z-index": "var(--z-pocket-sidebar)", visibility: "hidden", "pointer-events": "none" });
     assertDeclarations(css, ".pocket-mode.pocket-navigation-open .sidebar", { visibility: "visible", "pointer-events": "auto" });
     assertDeclarations(css, ".pocket-mode .pocket-navigation-toggle", { position: "fixed", display: "inline-flex", bottom: "calc(0.35rem + var(--pocket-navbar-safe-bottom))", background: "var(--sidebar-bg)" });
     assertDeclarations(css, '.pocket-mode[data-view="reader"] #pocket-navigation-toggle', { display: "none" });
