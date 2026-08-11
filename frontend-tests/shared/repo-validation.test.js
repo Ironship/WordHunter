@@ -438,11 +438,65 @@ describe("repository validation wiring", () => {
     assert.match(docs, /artifact-validation\.yml/);
   });
 
-  it("keeps every id in index.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
-    const html = read("../../src/web/index.html");
-    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
-    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-    assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in index.html: ${[...new Set(duplicates)].join(", ")}`);
+  it("keeps every id in index.html and translator-popup.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
+    for (const path of ["../../src/web/index.html", "../../src/web/templates/translator-popup.html"]) {
+      const html = read(path);
+      const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+      assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in ${path}: ${[...new Set(duplicates)].join(", ")}`);
+    }
+  });
+
+  // Ids created at runtime by TypeScript (audited; the P1 dialog port of #127
+  // will move the remaining runtime-built dialogs into static HTML). Any id
+  // referenced from TS but absent here must exist in src/web/index.html.
+  const TS_CREATED_IDS = new Set([
+    "graph-due", // graphs/charts.ts (canvas)
+    "graph-status", // graphs/charts.ts (canvas)
+    "vocab-progress", // graphs container id (views/graphs.ts)
+    "graphs-loading", // graphs/helpers.ts (busy overlay)
+    "import-loading", // events/book-import.ts (busy overlay)
+    "unsaved-confirm-dialog", // dialog-backdrop.ts
+    "youglish-widget-in-modal", // youglish modal widget host
+    "graph-vocab-progress", // graphs/charts.ts (canvas)
+    "page-jump-input", // reader/pagination.ts (page-jump bar)
+    "review-chart-canvas", // vocabulary/review-chart.ts (innerHTML)
+    "review-heatmap", // vocabulary/review-chart.ts (innerHTML)
+    "review-session-summary-done", // vocabulary/review-card.ts (innerHTML)
+    "translator-download-prompt", // views/translator.ts (innerHTML)
+    "data-folder-confirm-dialog", // events/settings.ts (dialog.id)
+    "export-progress-eta", // sync-actions.ts (innerHTML)
+    "export-progress-fill", // sync-actions.ts (innerHTML)
+    "export-progress-text", // sync-actions.ts (innerHTML)
+    "ocr-cancel", // events/book-import.ts (innerHTML)
+    "ocr-progress-eta", // events/book-import.ts (innerHTML)
+    "ocr-progress-text", // events/book-import.ts (innerHTML)
+    "ocr-whole-book-confirm", // events/book-import.ts (dialog.id)
+    "pocket-pdf-scan-warning", // events/book-import.ts (dialog.id)
+  ]);
+
+  it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {
+    const domSource = read("../../src/web/js/dom.ts");
+    const htmlIds = new Set([...read("../../src/web/index.html").matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+    const byIdTargets = [...domSource.matchAll(/byId(?:<[^>]+>)?\("([^"]+)"\)/g)].map((match) => match[1]);
+    const missing = [...new Set(byIdTargets.filter((id) => !htmlIds.has(id) && !TS_CREATED_IDS.has(id)))];
+    assert.deepEqual(missing, [], `byId target(s) missing from index.html and allowlist: ${missing.join(", ")}`);
+  });
+
+  it("keeps every getElementById / querySelector('#id') literal in src/web/js present in index.html or on the audited TS-created allowlist", () => {
+    const htmlIds = new Set([...read("../../src/web/index.html").matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+    const missing = new Set();
+    const tsSources = filesBelow(new URL("../../src/web/js/", import.meta.url)).filter((file) => file.pathname.endsWith(".ts"));
+    for (const file of tsSources) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/getElementById\("([^"]+)"\)/g)) {
+        if (!htmlIds.has(match[1]) && !TS_CREATED_IDS.has(match[1])) missing.add(match[1]);
+      }
+      for (const match of source.matchAll(/querySelector(?:All)?(?:<[^>]+>)?\(\s*["']#([A-Za-z0-9_-]+)["']\)/g)) {
+        if (!htmlIds.has(match[1]) && !TS_CREATED_IDS.has(match[1])) missing.add(match[1]);
+      }
+    }
+    assert.deepEqual([...missing].sort(), [], `id literal(s) missing from index.html and allowlist: ${[...missing].sort().join(", ")}`);
   });
 
   it("keeps the AppStream metainfo canonical in packaging/linux and mirrors it into flatpak", () => {

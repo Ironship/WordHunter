@@ -95,7 +95,6 @@ export function cacheElements() {
   els.ankiExportStatusFilters = [...document.querySelectorAll<HTMLInputElement>("[data-anki-export-status]")];
   els.clearWords = byId("clear-words");
   els.clearLibrary = byId("clear-library");
-  els.clearState = byId("clear-state");
   els.resetPrefs = byId("reset-prefs");
   els.prefRemovalBehavior = byId("pref-removal-behavior");
   els.prefTheme = byId("pref-theme");
