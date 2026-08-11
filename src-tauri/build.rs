@@ -29,6 +29,7 @@ fn frontend_source_hash(manifest_dir: &Path) -> String {
     collect_files(&source_dir, &mut files);
     files.extend([
         root.join("tsconfig.json"),
+        root.join("package.json"),
         root.join("package-lock.json"),
         root.join("scripts/build-frontend.mjs"),
         root.join("scripts/build-input-hash.mjs"),
