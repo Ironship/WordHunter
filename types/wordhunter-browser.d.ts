@@ -505,8 +505,6 @@ interface WhDomCache {
     reviewUpcoming?: HTMLElement | null;
     storageSummary?: HTMLElement | null;
     themeToggle?: HTMLElement | null;
-    toast?: HTMLElement | null;
-    toastMessage?: HTMLElement | null;
     trackingSummary?: HTMLElement | null;
     translatorAiExplain?: HTMLElement | null;
     translatorAiResult?: HTMLElement | null;

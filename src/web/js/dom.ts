@@ -220,7 +220,4 @@ export function cacheElements() {
   els.editBookText = byId("edit-book-text");
   els.editBookCancel = byId("edit-book-cancel");
   els.editBookSave = byId("edit-book-save");
-
-  els.toast = byId("toast");
-  els.toastMessage = byId("toast-message");
 }

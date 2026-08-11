@@ -117,7 +117,7 @@ async function loadAppHarness({
 
   await evaluateWithMocks("../../dist/web/app.js", {
     "./js/dom.js": { cacheElements: noOp, els: {} },
-    "./js/toast.js": { showToast: noOp },
+    "./js/toast.js": { showToast: noOp, renderToast: noOp },
     "./js/events.js": { bindEvents: noOp },
     "./js/preferences.js": { applyPreferences, setSyncStatus: noOp, syncSettingsControls: noOp },
     "./js/books.js": {

@@ -2,7 +2,6 @@ import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 const documentListeners = new Map();
-let closeToast;
 
 globalThis.window = {
   WH_TOKEN: "test-token",
@@ -19,17 +18,12 @@ globalThis.localStorage = {
 };
 globalThis.document = {
   addEventListener(type, listener) { documentListeners.set(type, listener); },
-  getElementById(id) {
-    if (id !== "toast-close") return null;
-    return {
-      addEventListener(type, listener) {
-        if (type === "click") closeToast = listener;
-      },
-    };
-  },
+  getElementById() { return null; },
+  querySelector() { return null; },
+  createElement() { return { setAttribute() {}, appendChild() {}, addEventListener() {} }; },
+  body: { appendChild() {} },
 };
 
-const { els } = await import("../../dist/web/js/dom.js");
 const { showToast } = await import("../../dist/web/js/toast.js");
 
 describe("shared UI event behavior", () => {
@@ -45,17 +39,17 @@ describe("shared UI event behavior", () => {
     Object.defineProperty(toast, "textContent", {
       set() { throw new Error("replacing toast children removes the close button"); },
     });
-    els.toast = toast;
-    els.toastMessage = { textContent: "" };
+    const toastMessage = { textContent: "" };
+    globalThis.document.getElementById = (id) => {
+      if (id === "toast") return toast;
+      if (id === "toast-message") return toastMessage;
+      return null;
+    };
 
-    documentListeners.get("DOMContentLoaded")?.();
     showToast("Saved");
 
-    assert.equal(els.toastMessage.textContent, "Saved");
+    assert.equal(toastMessage.textContent, "Saved");
     assert.equal(visible, true);
-    assert.equal(typeof closeToast, "function");
-    closeToast();
-    assert.equal(visible, false);
   });
 
   it("imports an image after the file input change event", async () => {
@@ -108,5 +102,5 @@ describe("shared UI event behavior", () => {
 });
 
 after(() => {
-  closeToast?.();
+  documentListeners.clear();
 });

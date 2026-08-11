@@ -1,6 +1,6 @@
 // Punkt wejścia aplikacji. Składa moduły, nie zawiera logiki domenowej.
 import { cacheElements, els } from "./js/dom.js";
-import { showToast } from "./js/toast.js";
+import { renderToast, showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
@@ -210,6 +210,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     // TS-rendered dialogs (port of #127 P1): build them before cacheElements()
     // so every boot-time consumer and the els cache find the elements in DOM.
+    renderToast();
     renderBookmarksDialog();
     renderMoveBookDialog();
     renderDeleteBookDialog();
