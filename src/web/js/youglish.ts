@@ -269,21 +269,43 @@ export function refreshYouGlishTheme(): void {
   }
 }
 
-// Bind close events
-document.addEventListener("DOMContentLoaded", () => {
-  const closeBtn = document.getElementById("youglish-close");
-  const modal = document.getElementById("youglish-modal") as HTMLDialogElement | null;
+/**
+ * Builds the YouGlish modal markup once (idempotent) and binds its close
+ * surface (close button, backdrop click, cancel, close). Called during app
+ * boot before cacheElements() (app.ts); openYouGlish/closeYouGlish resolve
+ * the elements via getElementById, so the old DOMContentLoaded pass is gone.
+ */
+export function renderYouGlishModal(): HTMLDialogElement {
+  const existing = document.getElementById("youglish-modal");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#youglish-modal must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "youglish-modal";
+  dialog.className = "panel max-w-700";
+  dialog.setAttribute("aria-labelledby", "youglish-modal-title");
+  dialog.innerHTML = `
+    <div class="dialog-header">
+      <h2 id="youglish-modal-title" data-i18n="reader.youglishModalTitle" class="dialog-title">Pronunciation (YouGlish)</h2>
+      <button type="button" id="youglish-close" class="icon-button" data-i18n-attr="title=reader.close">×</button>
+    </div>
+    <div id="youglish-modal-body" class="flex-center-p-1">
+      <div id="youglish-widget"></div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+
+  const closeBtn = dialog.querySelector<HTMLButtonElement>("#youglish-close");
   if (closeBtn) closeBtn.addEventListener("click", closeYouGlish);
-  if (modal) {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeYouGlish();
-    });
-    modal.addEventListener("cancel", (event) => {
-      event.preventDefault();
-      closeYouGlish();
-    });
-    modal.addEventListener("close", () => {
-      if (youglishWidget) youglishWidget.pause();
-    });
-  }
-});
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) closeYouGlish();
+  });
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeYouGlish();
+  });
+  dialog.addEventListener("close", () => {
+    if (youglishWidget) youglishWidget.pause();
+  });
+  return dialog;
+}

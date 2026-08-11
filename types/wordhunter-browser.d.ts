@@ -353,7 +353,6 @@ interface WhDomCache {
     prefLearningLanguage?: HTMLSelectElement | null;
     prefTheme?: HTMLSelectElement | null;
     prefLearningColors?: HTMLInputElement[];
-    languageOnboardingDialog?: HTMLDialogElement | null;
     argosDownloadDialog?: HTMLDialogElement | null;
     discoverForm?: HTMLFormElement | null;
     discoverQuery?: HTMLInputElement | null;
@@ -398,7 +397,6 @@ interface WhDomCache {
     importModeSelect?: HTMLSelectElement | null;
     importYoutubeMode?: HTMLElement | null;
     importYoutubeStatus?: HTMLElement | null;
-    languageOnboardingDone?: HTMLElement | null;
     libraryFiltersToggle?: HTMLElement | null;
     libraryPanel?: HTMLElement | null;
     librarySidebarResizer?: HTMLElement | null;
@@ -505,8 +503,6 @@ interface WhDomCache {
     reviewUpcoming?: HTMLElement | null;
     storageSummary?: HTMLElement | null;
     themeToggle?: HTMLElement | null;
-    toast?: HTMLElement | null;
-    toastMessage?: HTMLElement | null;
     trackingSummary?: HTMLElement | null;
     translatorAiExplain?: HTMLElement | null;
     translatorAiResult?: HTMLElement | null;

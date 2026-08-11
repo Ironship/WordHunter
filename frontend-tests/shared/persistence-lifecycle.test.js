@@ -117,7 +117,7 @@ async function loadAppHarness({
 
   await evaluateWithMocks("../../dist/web/app.js", {
     "./js/dom.js": { cacheElements: noOp, els: {} },
-    "./js/toast.js": { showToast: noOp },
+    "./js/toast.js": { showToast: noOp, renderToast: noOp },
     "./js/events.js": { bindEvents: noOp },
     "./js/preferences.js": { applyPreferences, setSyncStatus: noOp, syncSettingsControls: noOp },
     "./js/books.js": {
@@ -168,7 +168,9 @@ async function loadAppHarness({
     console
   }, {
     "./js/views/reader.js": { bindReaderEvents: noOp },
-    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp }
+    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp },
+    "./js/onboarding.js": { renderLanguageOnboardingDialog: noOp },
+    "./js/youglish.js": { renderYouGlishModal: noOp, openYouGlish: noOp, closeYouGlish: noOp, refreshYouGlishTheme: noOp }
   });
 
   return {

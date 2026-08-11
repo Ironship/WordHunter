@@ -497,6 +497,13 @@ describe("repository validation wiring", () => {
     "update-skip", // update-checker.ts (renderUpdateDialog)
     "update-disable", // update-checker.ts (renderUpdateDialog)
     "update-open", // update-checker.ts (renderUpdateDialog)
+    "toast", // toast.ts (renderToast)
+    "toast-message", // toast.ts (renderToast)
+    "language-onboarding-dialog", // onboarding.ts (renderLanguageOnboardingDialog)
+    "language-onboarding-title", // onboarding.ts (renderLanguageOnboardingDialog)
+    "language-onboarding-done", // onboarding.ts (renderLanguageOnboardingDialog)
+    "pref-locale-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
+    "pref-learning-language-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

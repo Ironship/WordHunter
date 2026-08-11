@@ -57,9 +57,18 @@ function fakeDocument() {
     id: "",
     className: "",
     innerHTML: "",
+    textContent: "",
+    type: "",
+    children: [],
+    listeners: {},
     attrs: {},
     setAttribute(name, value) { this.attrs[name] = String(value); },
-    appendChild() {}
+    appendChild(child) { this.children.push(child); },
+    addEventListener(type, listener) { (this.listeners[type] ??= []).push(listener); },
+    querySelector(selector) {
+      const id = selector.replace(/^#/, "");
+      return this.children.find((child) => child.id === id) ?? null;
+    }
   });
   return {
     registry,
@@ -76,10 +85,10 @@ const HTMLDialogElementInstance = {
 
 const tIdentity = { t: (key) => key };
 
-function assertBootOrder(rendererCall, dialogId) {
+function assertBootOrder(rendererCall, elementId, tag = "dialog") {
   const html = read("dist/web/index.html");
   const app = read("dist/web/app.js");
-  assert.doesNotMatch(html, new RegExp(`<dialog id="${dialogId}"`));
+  assert.doesNotMatch(html, new RegExp(`<${tag} id="${elementId}"`));
   const renderAt = app.indexOf(rendererCall);
   const cacheAt = app.indexOf("cacheElements();");
   assert.ok(renderAt >= 0, `${rendererCall} must be called in app boot`);
@@ -238,5 +247,68 @@ describe("update dialog renderer (update-checker.ts)", () => {
 
   it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
     assertBootOrder("renderUpdateDialog();", "update-dialog");
+  });
+});
+
+describe("toast renderer (toast.ts)", () => {
+  it("builds the toast once with the audited ids, i18n attributes and close binding", async () => {
+    const document = fakeDocument();
+    const { renderToast } = await evaluateWithMocks("dist/web/js/toast.js", {}, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const toast = renderToast();
+    assert.equal(toast.id, "toast");
+    assert.equal(toast.className, "toast");
+    assert.equal(toast.attrs["role"], "status");
+    assert.equal(document.bodyChildren.length, 1);
+    assert.equal(toast.children.length, 2);
+    assert.equal(toast.children[0].id, "toast-message");
+    const close = toast.children[1];
+    assert.equal(close.id, "toast-close");
+    assert.equal(close.className, "toast-close");
+    assert.equal(close.attrs["data-i18n-attr"], "aria-label=reader.close");
+    assert.equal(typeof close.listeners.click?.[0], "function", "close button must hide the toast");
+    assert.equal(renderToast(), toast, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the toast out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderToast();", "toast", "div");
+  });
+});
+
+describe("language-onboarding dialog renderer (onboarding.ts)", () => {
+  it("builds the dialog once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderLanguageOnboardingDialog } = await evaluateWithMocks("dist/web/js/onboarding.js", {
+      "./state.js": { state: { preferences: { locale: "en", learningLanguage: "de" } }, saveState: async () => {}, switchLearningLanguage: () => {} },
+      "./i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
+      "./render.js": { render: () => {} },
+      "./preferences.js": { applyPreferences: () => {}, syncSettingsControls: () => {} },
+      "./platform.js": { applyPlatformUi: () => {} },
+      "./toast.js": { showToast: () => {} }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const dialog = renderLanguageOnboardingDialog();
+    assert.equal(dialog.id, "language-onboarding-dialog");
+    assert.equal(dialog.className, "panel language-onboarding-dialog");
+    assert.equal(dialog.attrs["aria-labelledby"], "language-onboarding-title");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "language-onboarding-title",
+      "language-onboarding-done",
+      "pref-locale-onboarding",
+      "pref-learning-language-onboarding"
+    ]) {
+      assert.match(dialog.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(dialog.innerHTML, /data-i18n="onboarding\.languageHeading"/);
+    assert.match(dialog.innerHTML, /data-i18n-attr="aria-label=settings\.interfaceLanguageTitle"/);
+    assert.equal((dialog.innerHTML.match(/<option value="/g) || []).length, 23);
+    assert.equal(renderLanguageOnboardingDialog(), dialog, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderLanguageOnboardingDialog();", "language-onboarding-dialog");
   });
 });
