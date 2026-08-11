@@ -17,14 +17,6 @@ export function cacheElements() {
   els.translatorNavItem = document.querySelector<HTMLElement>('[data-view="translator"]');
   els.views = [...document.querySelectorAll<HTMLElement>(".view")];
 
-  els.bookList = byId("book-list");
-  els.libraryPanel = document.querySelector<HTMLElement>(".library-panel");
-  els.libraryFiltersToggle = byId("library-filters-toggle");
-  els.librarySearch = byId("library-search");
-  els.levelFilter = byId("level-filter");
-  els.librarySort = byId("library-sort");
-  els.librarySortReverse = byId("library-sort-reverse");
-  els.libraryArchiveFilter = byId("library-archive-filter");
   els.importForm = byId("import-form");
   els.importModeSelect = byId("import-mode-select");
   els.importBooksMode = byId("import-books-mode");
@@ -43,7 +35,6 @@ export function cacheElements() {
   els.importCoverPreview = byId("import-cover-preview");
   els.importCoverImg = byId("import-cover-img");
   els.importCoverClear = byId("import-cover-clear");
-  els.librarySidebarResizer = byId("library-sidebar-resizer");
 
   els.textSelect = byId("text-select");
   els.readerHeading = byId("reader-heading");

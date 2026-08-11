@@ -806,7 +806,10 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("statically suppresses Pocket drawer controls outside Pocket mode", () => {
-    assert.equal(hasClass(elementById(html, "library-import-toggle"), "pocket-import-toggle"), true);
+    const libraryModule = readFileSync(new URL("../../dist/web/js/views/library.js", import.meta.url), "utf8");
+    // library-import-toggle is TS-rendered (renderLibraryPanel, #127 P2): its
+    // pocket marker class lives in the renderer source, not in static HTML.
+    assert.match(libraryModule, /id="library-import-toggle" class="secondary-button pocket-import-toggle"/);
     assert.equal(hasClass(elementById(html, "library-import-close"), "pocket-drawer-close"), true);
     assert.equal(hasClass(elementById(html, "pocket-navigation-toggle"), "pocket-navigation-toggle"), true);
     assert.equal(hasClass(elementById(html, "reader-pocket-navigation-toggle"), "pocket-reader-navigation-toggle"), true);

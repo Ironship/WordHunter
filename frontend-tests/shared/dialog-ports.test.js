@@ -79,6 +79,63 @@ function fakeDocument() {
   };
 }
 
+
+/** Minimal recording DOM for the library panel renderer: #library-view with
+ *  a workspace grid holding a static import panel; insertBefore/appendChild
+ *  tracking preserves section -> resizer -> import-panel order. */
+function fakeLibraryDocument() {
+  const registry = new Map();
+  const makeElement = (tagName = "div") => ({
+    tagName,
+    isDialog: true,
+    id: "",
+    className: "",
+    innerHTML: "",
+    textContent: "",
+    type: "",
+    children: [],
+    listeners: {},
+    attrs: {},
+    setAttribute(name, value) { this.attrs[name] = String(value); },
+    appendChild(child) { this.children.push(child); registry.set(child.id, child); },
+    insertBefore(child, before) {
+      const idx = this.children.indexOf(before);
+      if (idx === -1) this.children.push(child);
+      else this.children.splice(idx, 0, child);
+      registry.set(child.id, child);
+    },
+    addEventListener(type, listener) { (this.listeners[type] ??= []).push(listener); },
+    querySelector(selector) {
+      if (selector.startsWith(".")) {
+        return this.children.find((child) => child.className && child.className.split(" ").includes(selector.slice(1))) ?? null;
+      }
+      return this.children.find((child) => child.id === selector.slice(1)) ?? null;
+    }
+  });
+  const view = makeElement("section");
+  view.id = "library-view";
+  const grid = makeElement("div");
+  grid.className = "workspace-grid library-layout";
+  const importPanel = makeElement("aside");
+  importPanel.className = "panel import-panel";
+  grid.children.push(importPanel);
+  view.children.push(grid);
+  registry.set("library-view", view);
+  return {
+    registry,
+    gridChildren: grid.children,
+    getElementById(id) { return registry.get(id) ?? null; },
+    querySelector(selector) {
+      if (selector === ".library-panel") {
+        return [...registry.values()].find((element) => element.className && element.className.split(" ").includes("library-panel")) ?? null;
+      }
+      return registry.get(selector.slice(1)) ?? null;
+    },
+    createElement(tagName) { return makeElement(tagName); },
+    body: { appendChild(element) { registry.set(element.id, element); } }
+  };
+}
+
 const HTMLDialogElementInstance = {
   [Symbol.hasInstance](value) { return value?.isDialog === true; }
 };
@@ -485,5 +542,79 @@ describe("edit-book dialog renderer (book-actions/edit-modal.ts)", () => {
 
   it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
     assertBootOrder("renderEditBookDialog();", "edit-book-dialog");
+  });
+});
+
+describe("library filter bar renderer (views/library.ts)", () => {
+  it("builds the library panel once with the audited ids and i18n attributes", async () => {
+    const document = fakeLibraryDocument();
+    const { renderLibraryPanel } = await evaluateWithMocks("dist/web/js/views/library.js", {
+      "../state.js": { state: {}, saveUiState: async () => {} },
+      "../utils.js": {
+        escapeHtml: (value) => value,
+        escapeAttribute: (value) => value,
+        parseTagList: () => [],
+        calcRoundedStatsPcts: () => ({}),
+        calcStatsPcts: () => ({})
+      },
+      "../icons.js": { icon: () => "", renderCardStat: () => "", renderCardCount: () => "" },
+      "../tokenizer_v2.js": { normalizeSearchVariants: (value) => value },
+      "../books.js": {
+        findBookById: () => undefined,
+        getAllBooks: () => [],
+        bookTexts: new Map(),
+        getLibraryContentGeneration: () => 0,
+        hydrateActiveLibraryTexts: async () => {},
+        isBookTextCacheStale: () => false,
+        loadBookText: async () => "",
+        loadCustomTextContent: async () => ""
+      },
+      "../stats-cache.js": {
+        getCachedBookTextStats: () => null,
+        getCachedTextStats: () => null,
+        prepareTextStats: async () => null
+      },
+      "../i18n.js": { t: (key) => key, getLocale: () => "en" },
+      "../panel-resizer.js": { bindSidebarResizer: () => {} },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const section = renderLibraryPanel();
+    assert.equal(section.tagName, "section");
+    assert.equal(section.className, "panel library-panel library-filters-collapsed");
+    assert.equal(section.attrs["aria-labelledby"], "library-heading");
+    for (const id of [
+      "library-heading",
+      "library-filters-toggle",
+      "library-filters",
+      "library-search",
+      "level-filter",
+      "library-archive-filter",
+      "library-sort",
+      "library-sort-reverse",
+      "library-import-toggle",
+      "book-list"
+    ]) {
+      assert.match(section.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(section.innerHTML, /data-i18n="library\.search"/);
+    assert.match(section.innerHTML, /data-i18n-attr="placeholder=library\.searchPlaceholder"/);
+    assert.match(section.innerHTML, /data-i18n-attr="title=library\.showFilters,aria-label=library\.showFilters"/);
+    assert.match(section.innerHTML, /aria-controls="library-filters"/);
+    const resizer = document.registry.get("library-sidebar-resizer");
+    assert.ok(resizer, "sidebar resizer must be rendered");
+    assert.equal(resizer.className, "panel-sidebar-resizer");
+    assert.equal(resizer.attrs["role"], "separator");
+    assert.equal(resizer.attrs["aria-orientation"], "vertical");
+    assert.equal(resizer.attrs["data-i18n-attr"], "aria-label=library.resizeImportPanel");
+    assert.equal(document.gridChildren.length, 3, "section + resizer must be inserted before the import panel");
+    assert.equal(document.gridChildren[0], section);
+    assert.equal(document.gridChildren[1], resizer);
+    assert.equal(renderLibraryPanel(), section, "render must be idempotent");
+    assert.equal(document.gridChildren.length, 3);
+  });
+
+  it("keeps the filter bar out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderLibraryPanel();", "library-filters-toggle", "button");
   });
 });
