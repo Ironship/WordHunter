@@ -13,6 +13,7 @@ import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
 import { refreshYouGlishTheme } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
+import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
 
 detectPlatform();
 
@@ -205,6 +206,9 @@ function showLanguageOnboardingIfNeeded() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    // TS-rendered dialogs (port of #127 P1): build them before cacheElements()
+    // so every boot-time consumer and the els cache find the elements in DOM.
+    renderBookmarksDialog();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();

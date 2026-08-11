@@ -683,8 +683,13 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(attribute(openingTag(button), "aria-haspopup"), "dialog");
     assert.equal(attribute(openingTag(button), "aria-controls"), "reader-bookmarks-dialog");
     assert.ok(containingElementById(html, "section", "reader-bookmark-tabs"));
-    assert.ok(elementById(html, "reader-bookmarks-dialog"));
-    assert.equal((html.match(/name="reader-bookmark-color"/g) || []).length, 5);
+    // The dialog markup itself is built at boot by renderBookmarksDialog()
+    // (port of #127 P1), so its contract lives in the renderer source.
+    assert.doesNotMatch(html, /<dialog id="reader-bookmarks-dialog"/);
+    const bookmarksModule = readFileSync(new URL("../../dist/web/js/reader/bookmarks.js", import.meta.url), "utf8");
+    assert.match(bookmarksModule, /function renderBookmarksDialog/);
+    assert.match(bookmarksModule, /id="reader-bookmarks-dialog"/);
+    assert.equal((bookmarksModule.match(/name="reader-bookmark-color"/g) || []).length, 5);
     assert.equal(cssDeclarations(css, ".reader-bookmark-tabs").position, "absolute");
     assert.equal(cssDeclarations(css, "button.reader-bookmark-tab")["pointer-events"], "auto");
     assert.equal(cssDeclarations(css, ".word-token.reader-inline-bookmark").position, "relative");

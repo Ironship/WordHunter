@@ -447,8 +447,8 @@ describe("repository validation wiring", () => {
     }
   });
 
-  // Ids created at runtime by TypeScript (audited; the P1 dialog port of #127
-  // will move the remaining runtime-built dialogs into static HTML). Any id
+  // Ids created at runtime by TypeScript (audited; #127 P1 ports the static
+  // dialogs into TS renderers that run before cacheElements()). Any id
   // referenced from TS but absent here must exist in src/web/index.html.
   const TS_CREATED_IDS = new Set([
     "graph-due", // graphs/charts.ts (canvas)
@@ -473,6 +473,13 @@ describe("repository validation wiring", () => {
     "ocr-progress-text", // events/book-import.ts (innerHTML)
     "ocr-whole-book-confirm", // events/book-import.ts (dialog.id)
     "pocket-pdf-scan-warning", // events/book-import.ts (dialog.id)
+    "reader-bookmarks-dialog", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-form", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-label", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-submit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-cancel-edit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-list", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmarks-close", // reader/bookmarks.ts (renderBookmarksDialog)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {

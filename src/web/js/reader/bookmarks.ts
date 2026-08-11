@@ -416,6 +416,70 @@ function editBookmark(id: string): void {
   input.select();
 }
 
+/**
+ * Builds the bookmarks dialog markup once (idempotent). Called during app
+ * boot before cacheElements() so every consumer finds the elements in the
+ * DOM; data-i18n / data-i18n-attr attributes are applied by the boot-time
+ * applyTranslations() pass (see app.ts).
+ */
+export function renderBookmarksDialog(): HTMLDialogElement {
+  const existing = document.getElementById("reader-bookmarks-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#reader-bookmarks-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "reader-bookmarks-dialog";
+  dialog.className = "panel reader-bookmarks-dialog";
+  dialog.setAttribute("aria-labelledby", "reader-bookmarks-title");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <div>
+        <p class="eyebrow" data-i18n="reader.bookmarks">Bookmarks</p>
+        <h2 id="reader-bookmarks-title" data-i18n="reader.bookmarksTitle">Bookmarks in this book</h2>
+      </div>
+      <button type="button" id="reader-bookmarks-close" class="icon-button" data-i18n-attr="title=reader.close,aria-label=reader.close">×</button>
+    </div>
+    <div class="reader-bookmarks-dialog-body">
+      <form id="reader-bookmark-form" class="reader-bookmark-form">
+        <label for="reader-bookmark-label" data-i18n="reader.bookmarkLabel">Label or comment</label>
+        <input id="reader-bookmark-label" type="text" maxlength="160" autocomplete="off" data-i18n-attr="placeholder=reader.bookmarkPlaceholder">
+        <fieldset class="reader-bookmark-color-field">
+          <legend data-i18n="reader.bookmarkColor">Color</legend>
+          <div class="reader-bookmark-colors">
+            <label class="reader-bookmark-color" data-bookmark-color="amber">
+              <input type="radio" name="reader-bookmark-color" value="amber" data-i18n-attr="title=reader.bookmarkColorAmber,aria-label=reader.bookmarkColorAmber" checked>
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="red">
+              <input type="radio" name="reader-bookmark-color" value="red" data-i18n-attr="title=reader.bookmarkColorRed,aria-label=reader.bookmarkColorRed">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="green">
+              <input type="radio" name="reader-bookmark-color" value="green" data-i18n-attr="title=reader.bookmarkColorGreen,aria-label=reader.bookmarkColorGreen">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="blue">
+              <input type="radio" name="reader-bookmark-color" value="blue" data-i18n-attr="title=reader.bookmarkColorBlue,aria-label=reader.bookmarkColorBlue">
+              <span aria-hidden="true"></span>
+            </label>
+            <label class="reader-bookmark-color" data-bookmark-color="purple">
+              <input type="radio" name="reader-bookmark-color" value="purple" data-i18n-attr="title=reader.bookmarkColorPurple,aria-label=reader.bookmarkColorPurple">
+              <span aria-hidden="true"></span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="reader-bookmark-form-actions">
+          <button type="button" id="reader-bookmark-cancel-edit" class="secondary-button" data-i18n="reader.bookmarkCancelEdit" hidden>Cancel editing</button>
+          <button type="submit" id="reader-bookmark-submit" class="primary-button" data-i18n="reader.bookmarkAdd">Add here</button>
+        </div>
+      </form>
+      <div id="reader-bookmark-list" class="reader-bookmark-list" aria-live="polite"></div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
 function openBookmarksDialog(): void {
   if (!state.currentTextId) return;
   pendingPosition = captureCurrentBookmarkPosition();
