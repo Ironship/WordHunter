@@ -238,6 +238,26 @@ fn dispatch_state_independent_request(
     }
 }
 
+/// Returns true only when the payload carries an explicit `confirm: true`.
+///
+/// Native file dialogs and destructive store actions (fix #110) must never
+/// be unlocked by a missing, false, null, or non-boolean `confirm` value —
+/// the frontend sends it only after the user initiated the action in the UI.
+pub(crate) fn confirm_requested(payload: &Value) -> bool {
+    payload.get("confirm").and_then(Value::as_bool).unwrap_or(false)
+}
+
+/// Consumes `request` with a 400 response when the payload does not carry
+/// `confirm: true`; otherwise returns the request for the handler to use.
+fn confirm_or_400(request: Request, payload: &Value) -> Option<Request> {
+    if confirm_requested(payload) {
+        Some(request)
+    } else {
+        response::error_response(request, 400, "user confirmation required");
+        None
+    }
+}
+
 /// Main request dispatcher.
 pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), String> {
     let method = request.method().clone();
@@ -425,16 +445,25 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     Err(error) => response::error_response(request, 400, &error),
                 }
             }
-            "/__store/choose_data_dir" => match handlers::choose_data_dir(&state) {
-                Ok(Some(path)) => response::json_response(
-                    request,
-                    json!({ "path": path, "snapshot": state.store.snapshot_unacknowledged() }),
-                ),
-                Ok(None) => response::json_response(request, json!({ "path": null })),
-                Err(err) => response::error_response(request, 500, &err),
-            },
+            "/__store/choose_data_dir" => {
+                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+                let Some(request) = confirm_or_400(request, &payload) else {
+                    return Ok(());
+                };
+                match handlers::choose_data_dir(&state) {
+                    Ok(Some(path)) => response::json_response(
+                        request,
+                        json!({ "path": path, "snapshot": state.store.snapshot_unacknowledged() }),
+                    ),
+                    Ok(None) => response::json_response(request, json!({ "path": null })),
+                    Err(err) => response::error_response(request, 500, &err),
+                }
+            }
             "/__store/export_transfer" => {
                 let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+                let Some(request) = confirm_or_400(request, &payload) else {
+                    return Ok(());
+                };
                 match handlers::export_transfer(&state, &payload) {
                     Ok(result) => response::json_response(request, result),
                     Err(error) => response::error_response(request, 500, &error),
@@ -442,6 +471,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__store/import_transfer" => {
                 let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+                let Some(request) = confirm_or_400(request, &payload) else {
+                    return Ok(());
+                };
                 match handlers::import_transfer(&state, &payload) {
                     Ok(result) => response::json_response(request, result),
                     Err(error) => response::error_response(request, 422, &error),
@@ -494,6 +526,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             }
             "/__export/save" => {
                 let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
+                let Some(request) = confirm_or_400(request, &payload) else {
+                    return Ok(());
+                };
                 match handlers::save_export(payload) {
                     Ok(saved) => response::json_response(request, json!({ "saved": saved })),
                     Err(error) => response::error_response(request, 400, &error),
@@ -705,6 +740,25 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 response::error_response(request, 404, "not found")
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod confirm_gate_tests {
+    use serde_json::json;
+
+    use super::confirm_requested;
+
+    #[test]
+    fn confirm_requested_requires_an_explicit_boolean_true() {
+        // Missing, false, null, and non-boolean values must never unlock a
+        // native file dialog or a destructive store action (fix #110).
+        assert!(!confirm_requested(&json!({})));
+        assert!(!confirm_requested(&json!({ "confirm": false })));
+        assert!(!confirm_requested(&json!({ "confirm": null })));
+        assert!(!confirm_requested(&json!({ "confirm": "true" })));
+        assert!(!confirm_requested(&json!({ "confirm": 1 })));
+        assert!(confirm_requested(&json!({ "confirm": true })));
     }
 }
 
