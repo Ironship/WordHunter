@@ -172,7 +172,7 @@ describe("Android Pocket packaging", () => {
     assert.ok(launcher, "Android manifest has no launcher activity");
   });
 
-  it("derives a bounded monotonic version code and patches the generated project", () => {
+  it("derives a bounded monotonic version code and verifies the neutral generated project", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const build = read("../../scripts/build.bat");
     const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)(?:(?:-rc\.(\d+))|(?:\+(\d+)))?$/);
@@ -205,8 +205,13 @@ describe("Android Pocket packaging", () => {
     assert.match(prepare, /Copy-Item -LiteralPath \$manifestSource -Destination \$manifestTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$networkSecuritySource -Destination \$networkSecurityTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$filePathsSource -Destination \$filePathsTarget/);
-    assert.match(prepare, /Set-AndroidGradleVersion/);
-    assert.match(prepare, /androidx\.documentfile:documentfile:1\.0\.1/);
+    assert.match(prepare, /bundle\.android\.versionCode -ne \$versionInfo\.Code/, "config identity assert replaces literal stamping");
+    assert.match(prepare, /android-version\.mjs", "--check"/, "portable neutral-form check");
+    assert.doesNotMatch(prepare, /Set-AndroidGradleVersion/, "literal stamping removed");
+    assert.doesNotMatch(prepare, /documentfile/, "unused dependency injection removed");
+    const ensure = powershellFunction(build, "Ensure-AndroidProject");
+    assert.match(ensure, /\.template-version/, "template-version marker gate");
+    assert.match(ensure, /Remove-Item -LiteralPath \$androidDir -Recurse -Force/, "stale gen/android re-init");
     const release = powershellFunction(build, "Build-AndroidReleaseAab");
     assert.match(release, /"android", "build", "--aab", "--target", \$Target/);
     assert.match(powershellFunction(build, "Copy-OrSignAndroidAab"), /jarsigner\.exe/);
