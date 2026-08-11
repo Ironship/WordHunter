@@ -275,3 +275,40 @@ describe("toast renderer (toast.ts)", () => {
     assertBootOrder("renderToast();", "toast", "div");
   });
 });
+
+describe("language-onboarding dialog renderer (onboarding.ts)", () => {
+  it("builds the dialog once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderLanguageOnboardingDialog } = await evaluateWithMocks("dist/web/js/onboarding.js", {
+      "./state.js": { state: { preferences: { locale: "en", learningLanguage: "de" } }, saveState: async () => {}, switchLearningLanguage: () => {} },
+      "./i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
+      "./render.js": { render: () => {} },
+      "./preferences.js": { applyPreferences: () => {}, syncSettingsControls: () => {} },
+      "./platform.js": { applyPlatformUi: () => {} },
+      "./toast.js": { showToast: () => {} }
+    }, { document, HTMLDialogElement: HTMLDialogElementInstance });
+
+    const dialog = renderLanguageOnboardingDialog();
+    assert.equal(dialog.id, "language-onboarding-dialog");
+    assert.equal(dialog.className, "panel language-onboarding-dialog");
+    assert.equal(dialog.attrs["aria-labelledby"], "language-onboarding-title");
+    assert.equal(document.bodyChildren.length, 1);
+    for (const id of [
+      "language-onboarding-title",
+      "language-onboarding-done",
+      "pref-locale-onboarding",
+      "pref-learning-language-onboarding"
+    ]) {
+      assert.match(dialog.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(dialog.innerHTML, /data-i18n="onboarding\.languageHeading"/);
+    assert.match(dialog.innerHTML, /data-i18n-attr="aria-label=settings\.interfaceLanguageTitle"/);
+    assert.equal((dialog.innerHTML.match(/<option value="/g) || []).length, 23);
+    assert.equal(renderLanguageOnboardingDialog(), dialog, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the dialog out of static HTML and renders it before cacheElements", () => {
+    assertBootOrder("renderLanguageOnboardingDialog();", "language-onboarding-dialog");
+  });
+});

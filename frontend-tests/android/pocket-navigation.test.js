@@ -80,12 +80,15 @@ function elementSource(html, tagName) {
 describe("Android Pocket navigation", () => {
   it("declares settings and onboarding language controls", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const onboarding = readFileSync(new URL("../../dist/web/js/onboarding.js", import.meta.url), "utf8");
 
     openingTagByAttribute(html, "select", "id", "pref-locale-settings");
     openingTagByAttribute(html, "select", "id", "pref-learning-language-settings");
-    openingTagByAttribute(html, "dialog", "id", "language-onboarding-dialog");
-    openingTagByAttribute(html, "select", "id", "pref-locale-onboarding");
-    openingTagByAttribute(html, "img", "data-language-flag", "learning");
+    // The onboarding dialog is built at boot by renderLanguageOnboardingDialog()
+    // (port of #127 P1) — its contract lives in the renderer source.
+    assert.match(onboarding, /dialog\.id = "language-onboarding-dialog"/);
+    openingTagByAttribute(onboarding, "select", "id", "pref-locale-onboarding");
+    openingTagByAttribute(onboarding, "img", "data-language-flag", "learning");
   });
 
   it("includes Discover and Export in the Pocket navigation drawer", () => {

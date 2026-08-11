@@ -168,7 +168,8 @@ async function loadAppHarness({
     console
   }, {
     "./js/views/reader.js": { bindReaderEvents: noOp },
-    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp }
+    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp },
+    "./js/onboarding.js": { renderLanguageOnboardingDialog: noOp }
   });
 
   return {
