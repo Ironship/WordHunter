@@ -8,7 +8,7 @@ import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale, initialLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { clearPendingDelta, flushPendingDeltaToLocalStorage, readPendingDelta, saveWithRetry } from "./js/api.js";
-import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary } from "./js/views/library.js";
+import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary, renderLibraryPanel } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
 import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
@@ -230,6 +230,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderAddWordDialog();
     renderArgosDownloadDialog();
     renderEditBookDialog();
+    renderLibraryPanel();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();
