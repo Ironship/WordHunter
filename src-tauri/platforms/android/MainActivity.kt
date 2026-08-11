@@ -512,12 +512,13 @@ class MainActivity : TauriActivity() {
           error("PDF page dimensions are too large to render safely.")
         }
         val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        var payload: String
         try {
           bitmap.eraseColor(Color.WHITE)
           page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
           val bytes = ByteArrayOutputStream()
           bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
-          JSONObject()
+          payload = JSONObject()
             .put("success", true)
             .put("width", targetWidth)
             .put("height", targetHeight)
@@ -526,6 +527,7 @@ class MainActivity : TauriActivity() {
         } finally {
           bitmap.recycle()
         }
+        payload
       }
     }
 
