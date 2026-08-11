@@ -33,11 +33,12 @@ export async function postStoreJson(
   return readOptionalJson(response);
 }
 
-export async function postStoreCommand(path: string): Promise<WhRecord> {
+export async function postStoreCommand(path: string, payload?: WhRecord): Promise<WhRecord> {
   if (!window.__qtBridge) return {};
   const response = await fetchWithTimeout(path, {
     method: "POST",
-    headers: TOKEN_HEADERS()
+    headers: payload ? JSON_HEADERS() : TOKEN_HEADERS(),
+    body: payload ? JSON.stringify(payload) : undefined
   });
   if (!response.ok) throw new Error(`${path} HTTP ${response.status}`);
   return readOptionalJson(response);
