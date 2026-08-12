@@ -76,46 +76,54 @@ export function cacheElements() {
   ].filter(Boolean);
   els.prefLocale = els.prefLocales[0] || null;
   els.prefLearningLanguage = els.prefLearningLanguages[0] || null;
-  els.prefFont = byId("pref-font");
-  els.prefLineHeight = byId("pref-line-height");
-  els.prefWordsPerPage = byId("pref-words-per-page");
-  els.prefWordAlgorithm = byId("pref-word-algorithm");
-  els.prefFontSize = byId("pref-font-size");
-  els.prefFontSizeLabel = byId("pref-font-size-label");
-  els.prefHighlight = byId("pref-highlight");
-  els.prefHideKnown = byId("pref-hide-known");
-  els.prefInTextReview = byId("pref-in-text-review");
-  els.prefAutoLearn = byId("pref-auto-learn");
-  els.prefAutoTranslate = byId("pref-auto-translate");
-  els.prefAutoTranslateRow = byId("pref-auto-translate-row");
-  els.prefOfflineTranslator = byId("pref-offline-translator");
-  els.prefTranslationProvider = byId("pref-translation-provider");
-  els.prefTranslationLanguageSettings = byId("pref-translation-language-settings");
-  els.prefTranslationSourceLanguage = byId("pref-translation-source-language");
-  els.prefTranslationTargetLanguage = byId("pref-translation-target-language");
-  els.prefDeepLApiKey = byId("pref-deepl-api-key");
-  els.prefDeepLApiKeyRow = byId("pref-deepl-key-row");
-  els.prefLmStudioEndpoint = byId("pref-lmstudio-endpoint");
-  els.prefLmStudioEndpointRow = byId("pref-lmstudio-endpoint-row");
-  els.prefLmStudioModel = byId("pref-lmstudio-model");
-  els.prefLmStudioModelRow = byId("pref-lmstudio-model-row");
-  els.prefArgosAsDict = byId("pref-argos-as-dict");
-  els.prefArgosAsDictRow = byId("pref-argos-as-dict-row");
-  els.prefDictionaryUrl = byId("pref-dictionary-url");
-  els.prefDictionaryMode = byId("pref-dictionary-mode");
-  els.prefYouglishMode = byId("pref-youglish-mode");
-  els.prefTextAlign = byId("pref-text-align");
-  els.prefMaxWidth = byId("pref-max-width");
-  els.prefReaderFocusMode = byId("pref-reader-focus-mode");
-  els.prefReaderWordPanelVisible = byId("pref-reader-word-panel-visible");
-  els.prefSelectedWordPanelItems = document.getElementById("pref-selected-word-panel-items");
-  els.prefTtsRate = byId("pref-tts-rate");
-  els.prefAutoTtsOnWordFocus = byId("pref-auto-tts-on-word-focus");
-  els.prefTtsWordHighlight = byId("pref-tts-word-highlight");
-  els.prefStatusSoundsEnabled = byId("pref-status-sounds-enabled");
-  els.prefStatusSoundVolume = byId("pref-status-sound-volume");
-  els.prefStatusSoundVolumeLabel = byId("pref-status-sound-volume-label");
-  els.prefUseEdgeTts = byId("pref-use-edge-tts");
+  // Settings controls are TS-rendered (#127 P3): resolve lazily so
+  // consumers work whether the renderer ran yet or not.
+  function lazySettingsEl(key: keyof WhDomCache, id: string): void {
+    Object.defineProperty(els, key, {
+      get: () => document.getElementById(id),
+      configurable: true
+    });
+  }
+  lazySettingsEl("prefFont", "pref-font");
+  lazySettingsEl("prefLineHeight", "pref-line-height");
+  lazySettingsEl("prefWordsPerPage", "pref-words-per-page");
+  lazySettingsEl("prefWordAlgorithm", "pref-word-algorithm");
+  lazySettingsEl("prefFontSize", "pref-font-size");
+  lazySettingsEl("prefFontSizeLabel", "pref-font-size-label");
+  lazySettingsEl("prefHighlight", "pref-highlight");
+  lazySettingsEl("prefHideKnown", "pref-hide-known");
+  lazySettingsEl("prefInTextReview", "pref-in-text-review");
+  lazySettingsEl("prefAutoLearn", "pref-auto-learn");
+  lazySettingsEl("prefAutoTranslate", "pref-auto-translate");
+  lazySettingsEl("prefAutoTranslateRow", "pref-auto-translate-row");
+  lazySettingsEl("prefOfflineTranslator", "pref-offline-translator");
+  lazySettingsEl("prefTranslationProvider", "pref-translation-provider");
+  lazySettingsEl("prefTranslationLanguageSettings", "pref-translation-language-settings");
+  lazySettingsEl("prefTranslationSourceLanguage", "pref-translation-source-language");
+  lazySettingsEl("prefTranslationTargetLanguage", "pref-translation-target-language");
+  lazySettingsEl("prefDeepLApiKey", "pref-deepl-api-key");
+  lazySettingsEl("prefDeepLApiKeyRow", "pref-deepl-key-row");
+  lazySettingsEl("prefLmStudioEndpoint", "pref-lmstudio-endpoint");
+  lazySettingsEl("prefLmStudioEndpointRow", "pref-lmstudio-endpoint-row");
+  lazySettingsEl("prefLmStudioModel", "pref-lmstudio-model");
+  lazySettingsEl("prefLmStudioModelRow", "pref-lmstudio-model-row");
+  lazySettingsEl("prefArgosAsDict", "pref-argos-as-dict");
+  lazySettingsEl("prefArgosAsDictRow", "pref-argos-as-dict-row");
+  lazySettingsEl("prefDictionaryUrl", "pref-dictionary-url");
+  lazySettingsEl("prefDictionaryMode", "pref-dictionary-mode");
+  lazySettingsEl("prefYouglishMode", "pref-youglish-mode");
+  lazySettingsEl("prefTextAlign", "pref-text-align");
+  lazySettingsEl("prefMaxWidth", "pref-max-width");
+  lazySettingsEl("prefReaderFocusMode", "pref-reader-focus-mode");
+  lazySettingsEl("prefReaderWordPanelVisible", "pref-reader-word-panel-visible");
+  lazySettingsEl("prefSelectedWordPanelItems", "pref-selected-word-panel-items");
+  lazySettingsEl("prefTtsRate", "pref-tts-rate");
+  lazySettingsEl("prefAutoTtsOnWordFocus", "pref-auto-tts-on-word-focus");
+  lazySettingsEl("prefTtsWordHighlight", "pref-tts-word-highlight");
+  lazySettingsEl("prefStatusSoundsEnabled", "pref-status-sounds-enabled");
+  lazySettingsEl("prefStatusSoundVolume", "pref-status-sound-volume");
+  lazySettingsEl("prefStatusSoundVolumeLabel", "pref-status-sound-volume-label");
+  lazySettingsEl("prefUseEdgeTts", "pref-use-edge-tts");
 
 
   els.discoverForm = byId("discover-form");
