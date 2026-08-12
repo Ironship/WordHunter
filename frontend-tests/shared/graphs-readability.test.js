@@ -37,7 +37,8 @@ async function loadHelpers() {
     "../state.js": { state: { vocab: {} } },
     "../i18n.js": { t: (key) => key },
     "../loading.js": { setElementBusy: () => {} },
-    "../views/heatmap.js": { renderContributionHeatmap: () => {} }
+    "../views/heatmap.js": { renderContributionHeatmap: () => {} },
+    "../sm2.js": { todayISO: () => "2026-08-12" }
   };
   for (const [specifier, values] of Object.entries(imports)) {
     modules.set(specifier, createMock(specifier, values));
