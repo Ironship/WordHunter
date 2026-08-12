@@ -54,6 +54,7 @@ function fakeDocument() {
   const bodyChildren = [];
   const makeElement = () => ({
     isDialog: true,
+    isElement: true,
     id: "",
     className: "",
     innerHTML: "",
@@ -141,6 +142,10 @@ const HTMLDialogElementInstance = {
 };
 
 const tIdentity = { t: (key) => key };
+
+const HTMLElementInstance = {
+  [Symbol.hasInstance](value) { return value?.isElement === true; }
+};
 
 function assertBootOrder(rendererCall, elementId, tag = "dialog") {
   const html = read("dist/web/index.html");
@@ -698,5 +703,136 @@ describe("import panel renderer (events/book-import.ts)", () => {
   it("keeps the panel out of static HTML and renders it before cacheElements", () => {
     assertBootOrder("renderImportPanel();", "import-panel", "aside");
     assert.doesNotMatch(read("dist/web/index.html"), /class="panel import-panel"/);
+  });
+});
+
+describe("settings view renderer (events/settings.ts)", () => {
+  it("builds the settings view once with the audited ids and i18n attributes", async () => {
+    const document = fakeDocument();
+    const { renderSettingsView } = await evaluateWithMocks("dist/web/js/events/settings.js", {
+      "../state.js": {
+        applyBridgeSnapshotToState: () => false,
+        flushAllPendingFrontendState: async () => {},
+        getDurableStateRevision: () => 0,
+        runExclusiveStateWrite: async (fn) => fn(),
+        state: {},
+        saveState: async () => {},
+        switchLearningLanguage: () => {}
+      },
+      "../dom.js": { els: {} },
+      "../i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
+      "../render.js": { render: () => {} },
+      "../views/library.js": { renderLibrary: () => {} },
+      "../reader/renderer.js": { getTextById: () => null, renderReader: () => {} },
+      "../reader/word-panel.js": { renderWordPanel: () => {} },
+      "../views/vocabulary.js": { renderReview: () => {} },
+      "../views/discover.js": { renderDiscover: () => {} },
+      "../preferences.js": {
+        applyPreferences: () => {},
+        syncSettingsControls: () => {},
+        updatePreferenceValue: async () => {},
+        resetPreferences: async () => {},
+        setReaderFontSize: () => {},
+        setUiScale: () => {}
+      },
+      "../toast.js": { showToast: () => {} },
+      "../sync-actions.js": {
+        clearWords: async () => {},
+        clearLibrary: async () => {},
+        exportAnkiTsv: async () => {},
+        importAnkiTsv: async () => {},
+        exportTransfer: async () => {},
+        importTransfer: async () => {}
+      },
+      "../store-bridge.js": { acknowledgeBackendSnapshot: () => {}, loadBackendSnapshot: async () => {} },
+      "../dialog-backdrop.js": { registerUnsavedDialog: () => {}, showConfirmDialog: async () => true },
+      "../loading.js": { setElementBusy: () => {} },
+      "../platform.js": { applyPlatformUi: () => {}, isAndroidPlatform: () => false },
+      "../constants.js": { OFFLINE_TRANSLATOR_LANGUAGES: ["en", "pl", "de", "es", "fr", "zh"] },
+      "../translator-preferences.js": {
+        normalizeTranslationLanguageCode: (value) => value,
+        normalizeTranslatorTextPreference: (key, value) => value,
+        resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
+      },
+      "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
+      "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
+      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
+    }, { document, HTMLElement: HTMLElementInstance });
+
+    const view = renderSettingsView();
+    assert.equal(view.id, "settings-view");
+    assert.equal(view.className, "view");
+    assert.equal(view.attrs["data-title-key"], "nav.settings");
+    assert.equal(document.bodyChildren.length, 1);
+    // Shell + phase-1 general panels: Appearance, Flashcards, AI, Local data
+    // (Reader and Translator & Dictionary panels stay static for phase 2).
+    for (const id of [
+      "appearance-heading",
+      "pref-theme",
+      "pref-locale-settings",
+      "pref-learning-language-settings",
+      "pref-ui-scale-label",
+      "pref-ui-scale",
+      "pref-touch-controls",
+      "pref-review-graph-type",
+      "pref-color-new",
+      "pref-color-learning",
+      "pref-color-known",
+      "pref-color-ignored",
+      "pref-dynamic-learning-colors",
+      "pref-learning-colors-row",
+      "pref-card-stats",
+      "pref-card-stats-mode-row",
+      "pref-card-stats-mode",
+      "pref-covers",
+      "ocr-gpu-status",
+      "flashcard-prefs-heading",
+      "pref-auto-add-learning",
+      "pref-auto-tts-on-flashcard-open",
+      "pref-in-text-review",
+      "pref-srs-algorithm",
+      "pref-removal-behavior",
+      "ai-prefs-heading",
+      "pref-ai-explanations",
+      "pref-ai-endpoint-row",
+      "pref-ai-endpoint",
+      "pref-ai-model-row",
+      "pref-ai-model",
+      "pref-ai-key-row",
+      "pref-ai-api-key",
+      "pref-ai-effort-row",
+      "pref-ai-effort",
+      "pref-ai-auto-trigger-row",
+      "pref-ai-auto-trigger",
+      "data-heading",
+      "storage-summary",
+      "data-directory",
+      "choose-data-directory",
+      "recovery-status-panel",
+      "recovery-status-list",
+      "check-updates",
+      "reset-prefs"
+    ]) {
+      assert.match(view.innerHTML, new RegExp(`id="${id}"`), `missing #${id}`);
+    }
+    assert.match(view.innerHTML, /data-i18n="settings\.appearanceHeading"/);
+    assert.match(view.innerHTML, /data-i18n-attr="aria-label=settings\.interfaceLanguageTitle"/);
+    assert.match(view.innerHTML, /data-i18n="settings\.groupLocalData"/);
+    assert.match(view.innerHTML, /data-i18n="settings\.resetPrefs"/);
+    assert.doesNotMatch(view.innerHTML, /id="pref-offline-translator"/, "offline translator stays static for phase 2");
+    assert.doesNotMatch(view.innerHTML, /id="pref-font"/, "reader panel stays static for phase 2");
+    assert.equal(renderSettingsView(), view, "render must be idempotent");
+    assert.equal(document.bodyChildren.length, 1);
+  });
+
+  it("keeps the settings view out of static HTML and renders it before cacheElements", () => {
+    const html = read("dist/web/index.html");
+    const app = read("dist/web/app.js");
+    assert.doesNotMatch(html, /<section class="view" id="settings-view"/);
+    const renderAt = app.indexOf("renderSettingsView();");
+    const cacheAt = app.indexOf("cacheElements();");
+    assert.ok(renderAt >= 0, "renderSettingsView() must be called in app boot");
+    assert.ok(cacheAt >= 0, "cacheElements() must exist in app boot");
+    assert.ok(renderAt < cacheAt, "renderSettingsView() must run before cacheElements()");
   });
 });

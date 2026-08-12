@@ -567,6 +567,10 @@ describe("repository validation wiring", () => {
     "import-submit", // events/book-import.ts (renderImportPanel)
     "import-file-hint", // platform.ts (applyPlatformUi)
     "library-import-close", // platform.ts (bindPocketImportDrawer)
+    "settings-view", // events/settings.ts (renderSettingsView)
+    "pref-in-text-review", // events/settings.ts (renderSettingsView)
+    "check-updates", // events/settings.ts (renderSettingsView)
+    "ocr-gpu-status", // events/settings.ts (renderSettingsView)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {
