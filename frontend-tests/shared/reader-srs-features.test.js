@@ -401,11 +401,25 @@ describe("in-text SRS grading", () => {
     });
   }
 
-  it("promotes a repeatedly recalled word through the shared rule", async () => {
+  it("keeps a word in learning until its interval reaches maturity", async () => {
     state.preferences.srsAlgorithm = "sm2";
     setActiveVocab({ wort: { status: "learning", repetition: 1, interval: 1, efactor: 2.5 } });
     const entry = await applyReviewGrade("wort", 4);
     assert.equal(entry.repetition, 2);
+    // The card's new interval is ~3 days — far from the 21-day maturity
+    // threshold, so it must NOT graduate to "known" yet. Graduating after
+    // two good reviews starved the review queue (no future reviews → no
+    // mature cards → degenerate ease/forecast charts).
+    assert.equal(entry.status, "learning");
+    assert.ok(!entry.knownAt);
+  });
+
+  it("graduates a word to known once its interval reaches 21 days", async () => {
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 3, interval: 15, efactor: 2.5 } });
+    const entry = await applyReviewGrade("wort", 4);
+    // SM2: nextInterval = round(15 * 2.5) = 38 >= 21 → mature → known.
+    assert.ok((entry.interval ?? 0) >= 21);
     assert.equal(entry.status, "known");
     assert.equal(entry.knownAt, entry.updatedAt);
   });
