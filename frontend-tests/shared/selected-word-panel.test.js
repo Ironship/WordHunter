@@ -29,9 +29,10 @@ describe("selected-word panel", () => {
 
     assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);
     assert.ok(html.indexOf('id="pocket-word-panel-sheet-handle"') < html.indexOf('id="word-panel"'));
-    assert.match(html, /<details class="word-panel-items-setting">[\s\S]*<summary id="word-panel-items-heading"/);
-    assert.match(html, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
-    assert.match(dom, /prefSelectedWordPanelItems = document\.getElementById\("pref-selected-word-panel-items"\)/);
+    // The word-panel items settings live in the settings renderer (#127 P3).
+    assert.match(settings, /<details class="word-panel-items-setting">[\s\S]*<summary id="word-panel-items-heading"/);
+    assert.match(settings, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
+    assert.match(dom, /lazySettingsEl\("prefSelectedWordPanelItems", "pref-selected-word-panel-items"\)/);
     assert.match(preferences, /data-word-panel-item-visible/);
     assert.match(preferences, /data-word-panel-item-move/);
     assert.match(preferences, /index === 0 \? "disabled"/);

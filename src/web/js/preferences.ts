@@ -233,8 +233,10 @@ export function syncSettingsControls() {
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
   if (els.prefYouglishMode) els.prefYouglishMode.value = prefs.youglishMode || "internal";
-  els.prefFont.value = prefs.readerFont || "serif";
-  els.prefLineHeight.value = prefs.readerLineHeight || "normal";
+  const prefFont = byId<HTMLSelectElement>("pref-font");
+  if (prefFont) prefFont.value = prefs.readerFont || "serif";
+  const prefLineHeight = byId<HTMLSelectElement>("pref-line-height");
+  if (prefLineHeight) prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
   if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "wide";
   if (els.prefReaderFocusMode) els.prefReaderFocusMode.checked = prefs.readerFocusMode === true;
@@ -271,7 +273,8 @@ export function syncSettingsControls() {
       input.checked = selectedSet.has(input.value);
     });
   }
-  els.prefFontSize.value = String(state.readerFontSize || 18);
+  const prefFontSize = byId<HTMLInputElement>("pref-font-size");
+  if (prefFontSize) prefFontSize.value = String(state.readerFontSize || 18);
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize || 18 });
   if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize || 18);
   if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize || 18}px`;
@@ -279,7 +282,8 @@ export function syncSettingsControls() {
   if (byId<HTMLInputElement>("pref-ui-scale")) byId<HTMLInputElement>("pref-ui-scale").value = String(uiScale);
   if (byId<HTMLInputElement>("pref-ui-scale-label")) byId<HTMLInputElement>("pref-ui-scale-label").textContent = t("settings.uiScale", { n: uiScale });
   if (byId<HTMLInputElement>("pref-touch-controls")) byId<HTMLInputElement>("pref-touch-controls").checked = prefs.touchControls === true;
-  els.prefHighlight.checked = prefs.highlightTokens !== false;
+  const prefHighlight = byId<HTMLInputElement>("pref-highlight");
+  if (prefHighlight) prefHighlight.checked = prefs.highlightTokens !== false;
   if (els.readerHighlightToggle) els.readerHighlightToggle.setAttribute("aria-pressed", String(prefs.highlightTokens !== false));
   if (els.prefHideKnown) els.prefHideKnown.checked = prefs.hideKnownIgnored === true;
   if (byId<HTMLInputElement>("pref-in-text-review")) byId<HTMLInputElement>("pref-in-text-review").checked = prefs.inTextReview === true;
@@ -294,7 +298,8 @@ export function syncSettingsControls() {
   }
   if (byId<HTMLElement>("pref-learning-colors-row")) byId<HTMLElement>("pref-learning-colors-row").hidden = prefs.dynamicLearningColors !== true;
   if (byId<HTMLSelectElement>("pref-review-graph-type")) byId<HTMLSelectElement>("pref-review-graph-type").value = prefs.reviewGraphType || "heatmap";
-  els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
+  const prefAutoLearn = byId<HTMLInputElement>("pref-auto-learn");
+  if (prefAutoLearn) prefAutoLearn.checked = prefs.autoLearnOnClick === true;
   if (byId<HTMLInputElement>("pref-auto-add-learning")) byId<HTMLInputElement>("pref-auto-add-learning").checked = prefs.autoAddLearningOnly === true;
   let provider = normalizeTranslationProvider(prefs.translationProvider);
   if (isAndroidPlatform() && isDesktopOnlyTranslationProvider(provider)) {

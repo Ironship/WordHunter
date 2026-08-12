@@ -764,8 +764,8 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.equal(view.className, "view");
     assert.equal(view.attrs["data-title-key"], "nav.settings");
     assert.equal(document.bodyChildren.length, 1);
-    // Shell + phase-1 general panels: Appearance, Flashcards, AI, Local data
-    // (Reader and Translator & Dictionary panels stay static for phase 2).
+    // Shell + all settings panels built by renderSettingsView(): Appearance,
+    // Flashcards, Reader, Translator & Dictionary, AI, Local data (#127 P3).
     for (const id of [
       "appearance-heading",
       "pref-theme",
@@ -792,6 +792,50 @@ describe("settings view renderer (events/settings.ts)", () => {
       "pref-in-text-review",
       "pref-srs-algorithm",
       "pref-removal-behavior",
+      "reader-prefs-heading",
+      "pref-font",
+      "pref-line-height",
+      "pref-text-align",
+      "pref-max-width",
+      "pref-reader-focus-mode",
+      "pref-reader-word-panel-visible",
+      "word-panel-items-heading",
+      "word-panel-items-hint",
+      "pref-selected-word-panel-items",
+      "pref-words-per-page",
+      "pref-word-algorithm",
+      "pref-font-size-label",
+      "pref-font-size",
+      "pref-highlight",
+      "pref-hide-known",
+      "pref-auto-learn",
+      "pref-status-sounds-enabled",
+      "pref-status-sound-volume-label",
+      "pref-status-sound-volume",
+      "pref-tts-rate",
+      "pref-auto-tts-on-word-focus",
+      "pref-tts-word-highlight",
+      "pref-use-edge-tts",
+      "translator-prefs-heading",
+      "pref-translation-language-settings",
+      "pref-translation-source-language",
+      "pref-translation-target-language",
+      "translation-language-codes",
+      "pref-offline-translator",
+      "pref-translation-provider",
+      "pref-deepl-key-row",
+      "pref-deepl-api-key",
+      "pref-lmstudio-endpoint-row",
+      "pref-lmstudio-endpoint",
+      "pref-lmstudio-model-row",
+      "pref-lmstudio-model",
+      "pref-auto-translate-row",
+      "pref-auto-translate",
+      "pref-argos-as-dict-row",
+      "pref-argos-as-dict",
+      "pref-dictionary-mode",
+      "pref-youglish-mode",
+      "pref-dictionary-url",
       "ai-prefs-heading",
       "pref-ai-explanations",
       "pref-ai-endpoint-row",
@@ -819,8 +863,10 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.match(view.innerHTML, /data-i18n-attr="aria-label=settings\.interfaceLanguageTitle"/);
     assert.match(view.innerHTML, /data-i18n="settings\.groupLocalData"/);
     assert.match(view.innerHTML, /data-i18n="settings\.resetPrefs"/);
-    assert.doesNotMatch(view.innerHTML, /id="pref-offline-translator"/, "offline translator stays static for phase 2");
-    assert.doesNotMatch(view.innerHTML, /id="pref-font"/, "reader panel stays static for phase 2");
+    assert.match(view.innerHTML, /data-i18n="settings\.readerEyebrow"/);
+    assert.match(view.innerHTML, /data-i18n="settings\.translatorEyebrow"/);
+    assert.match(view.innerHTML, /id="pref-offline-translator"/);
+    assert.match(view.innerHTML, /id="pref-font"/);
     assert.equal(renderSettingsView(), view, "render must be idempotent");
     assert.equal(document.bodyChildren.length, 1);
   });

@@ -287,6 +287,156 @@ export function renderSettingsView(): HTMLElement {
 
           <!-- Phase 2 (#127 P3): Reader and Translator & Dictionary panels stay
                static in index.html until renderSettingsView() covers them. -->
+          <section class="panel" aria-labelledby="reader-prefs-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.readerEyebrow">Reader</p>
+              <h2 id="reader-prefs-heading" data-i18n="settings.readerHeading">Typography and behaviour</h2>
+            </div>
+            <div class="settings-body">
+              <p class="settings-subheading" data-i18n="settings.groupReader">Reader layout</p>
+              <label class="setting-row">
+                <span data-i18n="settings.font">Reader font</span>
+                <select id="pref-font" data-pref="readerFont">
+                  <option value="serif" data-i18n="settings.fontSerif">Serif (Georgia)</option>
+                  <option value="sans" data-i18n="settings.fontSans">Sans-serif (Segoe UI)</option>
+                  <option value="mono" data-i18n="settings.fontMono">Monospace (mono)</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span data-i18n="settings.lineHeight">Line height</span>
+                <select id="pref-line-height" data-pref="readerLineHeight">
+                  <option value="compact" data-i18n="settings.lineCompact">Compact</option>
+                  <option value="normal" data-i18n="settings.lineNormal">Normal</option>
+                  <option value="loose" data-i18n="settings.lineLoose">Loose</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span data-i18n="settings.textAlign">Text alignment</span>
+                <select id="pref-text-align" data-pref="readerTextAlign">
+                  <option value="left" data-i18n="settings.alignLeft">Left</option>
+                  <option value="justify" data-i18n="settings.alignJustify">Justified</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span data-i18n="settings.maxWidth">Page width</span>
+                <select id="pref-max-width" data-pref="readerMaxWidth">
+                  <option value="narrow" data-i18n="settings.widthNarrow">Narrow</option>
+                  <option value="medium" data-i18n="settings.widthMedium">Medium</option>
+                  <option value="wide" data-i18n="settings.widthWide">Wide</option>
+                  <option value="full" data-i18n="settings.widthFull">Full width</option>
+                </select>
+              </label>
+              <label class="setting-row toggle-row desktop-only-setting">
+                <span>
+                  <span data-i18n="settings.readerFocusMode">Reader focus mode</span>
+                  <small data-i18n="settings.readerFocusModeHint">On desktop, hides the top bar, book metadata, and shortcut hints to leave more room for text.</small>
+                </span>
+                <input id="pref-reader-focus-mode" type="checkbox" data-pref="readerFocusMode">
+              </label>
+              <label class="setting-row toggle-row desktop-only-setting">
+                <span>
+                  <span data-i18n="settings.readerWordPanelVisible">Word panel</span>
+                  <small data-i18n="settings.readerWordPanelVisibleHint">Lets you hide the right panel and read at full width when you do not need it.</small>
+                </span>
+                <input id="pref-reader-word-panel-visible" type="checkbox" data-pref="readerWordPanelVisible">
+              </label>
+              <details class="word-panel-items-setting">
+                <summary id="word-panel-items-heading" class="settings-subheading" data-i18n="settings.wordPanelItemsHeading"></summary>
+                <div class="word-panel-items-setting-body">
+                  <p id="word-panel-items-hint" class="muted-copy" data-i18n="settings.wordPanelItemsHint"></p>
+                  <ol id="pref-selected-word-panel-items" class="word-panel-item-list" aria-labelledby="word-panel-items-heading" aria-describedby="word-panel-items-hint"></ol>
+                </div>
+              </details>
+              <label class="setting-row">
+                <span data-i18n="settings.wordsPerPage">Words per page</span>
+                <select id="pref-words-per-page">
+                  <option value="500">500</option>
+                  <option value="1000">1000</option>
+                  <option value="2000">2000</option>
+                  <option value="5000">5000</option>
+                  <option value="999999" data-i18n="settings.wordsAll">All</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span>
+                  <span data-i18n="settings.wordAlgorithm">Word recognition</span>
+                  <small data-i18n="settings.wordAlgorithmHint">New detects languages without spaces and short subtitle lines better, for example Japanese or Chinese. Classic splits only letter runs, so it can be more predictable for simple texts.</small>
+                </span>
+                <select id="pref-word-algorithm">
+                  <option value="modern" data-i18n="settings.wordAlgorithmModern">New (default)</option>
+                  <option value="classic" data-i18n="settings.wordAlgorithmClassic">Classic</option>
+                </select>
+              </label>
+              <label class="setting-row">
+                <span id="pref-font-size-label"></span>
+                <input id="pref-font-size" type="range" min="14" max="28" step="1" aria-labelledby="pref-font-size-label">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.highlight">Highlight word status in text</span>
+                  <small data-i18n="settings.highlightHint">Underlines saved words in the reader using their learning-status colors. Turn off for plain text.</small>
+                </span>
+                <input id="pref-highlight" type="checkbox" data-pref="highlightTokens">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.hideKnownIgnored">Hide known and ignored</span>
+                  <small data-i18n="settings.hideKnownIgnoredHint">Leaves known and ignored words unmarked, so only words that still need attention stand out.</small>
+                </span>
+                <input id="pref-hide-known" type="checkbox" data-pref="hideKnownIgnored">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.autoLearn">Auto-mark as “Learning”</span>
+                  <small data-i18n="settings.autoLearnHint">First click on an unknown word immediately saves it as Learning instead of leaving it New.</small>
+                </span>
+                <input id="pref-auto-learn" type="checkbox" data-pref="autoLearnOnClick">
+              </label>
+              <p class="settings-subheading" data-i18n="settings.groupFeedbackSounds">Feedback sounds</p>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.statusSounds">Feedback sounds</span>
+                  <small data-i18n="settings.statusSoundsHint">Plays a short sound after rating a flashcard or changing a word status.</small>
+                </span>
+                <input id="pref-status-sounds-enabled" type="checkbox" data-pref="statusSoundsEnabled">
+              </label>
+              <label class="setting-row">
+                <span id="pref-status-sound-volume-label" data-i18n="settings.statusSoundVolume">Feedback sound volume: {n}%</span>
+                <input id="pref-status-sound-volume" type="range" min="0" max="100" step="5" data-pref="statusSoundVolume" aria-labelledby="pref-status-sound-volume-label">
+              </label>
+              <p class="settings-subheading" data-i18n="settings.groupTts">Text to speech</p>
+              <label class="setting-row">
+                <span data-i18n="settings.ttsRate">TTS Speech Rate</span>
+                <select id="pref-tts-rate" data-pref="ttsRate">
+                  <option value="slow" data-i18n="settings.rateSlow">Slow</option>
+                  <option value="normal" data-i18n="settings.rateNormal">Normal</option>
+                  <option value="fast" data-i18n="settings.rateFast">Fast</option>
+                </select>
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.autoTtsOnWordFocus">Read word on focus</span>
+                  <small data-i18n="settings.autoTtsOnWordFocusHint">Plays pronunciation whenever word focus changes by click or keyboard navigation.</small>
+                </span>
+                <input id="pref-auto-tts-on-word-focus" type="checkbox" data-pref="autoTtsOnWordFocus">
+              </label>
+              <label class="setting-row toggle-row">
+                <span>
+                  <span data-i18n="settings.ttsWordHighlight">Highlight spoken word</span>
+                  <small data-i18n="settings.ttsWordHighlightHint">Shows a yellow outline on the word currently being read when the TTS engine reports word timing.</small>
+                </span>
+                <input id="pref-tts-word-highlight" type="checkbox" data-pref="ttsWordHighlight">
+              </label>
+              <label class="setting-row toggle-row desktop-only-setting">
+                <span>
+                  <span data-i18n="settings.useEdgeTts">Edge Neural TTS (online)</span>
+                  <small data-i18n="settings.useEdgeTtsHint" class="muted-fw-400"></small>
+                </span>
+                <input id="pref-use-edge-tts" type="checkbox" data-pref="useEdgeTts">
+              </label>
+            </div>
+          </section>
+
           <section class="panel" aria-labelledby="flashcard-prefs-heading">
             <div class="panel-header stacked">
               <p class="eyebrow" data-i18n="settings.flashcardEyebrow">Flashcards</p>
@@ -340,6 +490,102 @@ export function renderSettingsView(): HTMLElement {
 
           <!-- Phase 2 (#127 P3): Translator & Dictionary panel stays
                static in index.html until renderSettingsView() covers them. -->
+          <section class="panel" aria-labelledby="translator-prefs-heading">
+            <div class="panel-header stacked">
+              <p class="eyebrow" data-i18n="settings.translatorEyebrow">Translator &amp; Dictionary</p>
+              <h2 id="translator-prefs-heading" data-i18n="settings.translatorHeading">Translations and links</h2>
+            </div>
+            <div class="settings-body">
+              <div id="pref-translation-language-settings" hidden>
+                <label class="setting-row stack">
+                  <span>
+                    <span data-i18n="settings.translationSourceLanguage">Translation source language</span>
+                    <small data-i18n="settings.translationLanguageHint">Enter a language code such as nl, pt-BR, or eo. The pair is shared by every translation engine in this profile.</small>
+                  </span>
+                  <input id="pref-translation-source-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationSourceLanguagePlaceholder" class="input">
+                </label>
+                <label class="setting-row stack">
+                  <span data-i18n="settings.translationTargetLanguage">Translation target language</span>
+                  <input id="pref-translation-target-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationTargetLanguagePlaceholder" class="input">
+                </label>
+                <datalist id="translation-language-codes">
+                  <option value="de"></option>
+                  <option value="en"></option>
+                  <option value="es"></option>
+                  <option value="fr"></option>
+                  <option value="it"></option>
+                  <option value="ja"></option>
+                  <option value="pl"></option>
+                  <option value="ru"></option>
+                  <option value="uk"></option>
+                  <option value="zh"></option>
+                  <option value="la"></option>
+                  <option value="grc"></option>
+                </datalist>
+              </div>
+              <label class="setting-row toggle-row desktop-only-setting">
+                <span>
+                  <span data-i18n="settings.offlineTranslator">Advanced offline translator</span>
+                  <small data-i18n="settings.offlineTranslatorHint">Enables local CTranslate2 translation for words and full sentences. Works offline after downloading language packs (~100-200MB each).</small>
+                </span>
+                <input id="pref-offline-translator" type="checkbox">
+              </label>
+              <label class="setting-row">
+                <span data-i18n="settings.translationProvider">Translation engine</span>
+                <select id="pref-translation-provider">
+                  <option value="offline" data-i18n="settings.translationProviderOffline">Offline CTranslate2</option>
+                  <option value="deepl" data-i18n="settings.translationProviderDeepL">DeepL</option>
+                  <option value="google" data-i18n="settings.translationProviderGoogle">Google Translate</option>
+                  <option value="lmstudio" data-i18n="settings.translationProviderLmStudio">LM Studio</option>
+                </select>
+              </label>
+              <label id="pref-deepl-key-row" class="setting-row stack" hidden>
+                <span data-i18n="settings.deeplApiKey">DeepL API key</span>
+                <input id="pref-deepl-api-key" type="password" data-i18n-attr="placeholder=settings.deeplApiKeyPlaceholder" class="input">
+              </label>
+              <label id="pref-lmstudio-endpoint-row" class="setting-row desktop-only-setting stack" hidden>
+                <span data-i18n="settings.lmStudioEndpoint">LM Studio endpoint</span>
+                <input id="pref-lmstudio-endpoint" type="text" class="input">
+              </label>
+              <label id="pref-lmstudio-model-row" class="setting-row desktop-only-setting stack" hidden>
+                <span data-i18n="settings.lmStudioModel">LM Studio model</span>
+                <input id="pref-lmstudio-model" type="text" data-i18n-attr="placeholder=settings.lmStudioModelPlaceholder" class="input">
+              </label>
+              <label id="pref-auto-translate-row" class="setting-row toggle-row dimmed">
+                <span>
+                  <span data-i18n="settings.autoTranslate">Auto-fill translation</span>
+                  <small data-i18n="settings.autoTranslateHint">When a saved word has an empty translation, fills it with the selected translation engine. Manual translations stay untouched.</small>
+                </span>
+                <input id="pref-auto-translate" type="checkbox" data-pref="autoTranslateWords">
+              </label>
+              <label id="pref-argos-as-dict-row" class="setting-row toggle-row desktop-only-setting dimmed">
+                <span>
+                  <span data-i18n="settings.argosAsDict">Dictionary button opens translator</span>
+                  <small data-i18n="settings.argosAsDictHint">Makes the dictionary button (M) open the built-in offline translator for the selected word instead of your dictionary URL.</small>
+                </span>
+                <input id="pref-argos-as-dict" type="checkbox" data-pref="argosAsDict">
+              </label>
+              <label class="setting-row desktop-only-setting">
+                <span data-i18n="settings.dictionaryMode">Open Dictionary in</span>
+                <select id="pref-dictionary-mode" data-pref="dictionaryMode">
+                  <option value="internal" data-i18n="settings.dictModeInternal">Internal window</option>
+                  <option value="external" data-i18n="settings.dictModeExternal">External browser</option>
+                </select>
+              </label>
+              <label class="setting-row desktop-only-setting">
+                <span data-i18n="settings.youglishMode">Opening YouGlish</span>
+                <select id="pref-youglish-mode" data-pref="youglishMode">
+                  <option value="internal" data-i18n="settings.dictModeInternal">Internal window</option>
+                  <option value="external" data-i18n="settings.dictModeExternal">External browser</option>
+                </select>
+              </label>
+              <label class="setting-row stack">
+                <span data-i18n="settings.dictionaryUrl">Dictionary URL (use {{word}})</span>
+                <input id="pref-dictionary-url" type="text" data-pref="dictionaryUrl" data-i18n-attr="placeholder=settings.dictionaryUrlPlaceholder" placeholder="https://en.wiktionary.org/wiki/{{word}}" class="input">
+              </label>
+            </div>
+          </section>
+
           <section class="panel" aria-labelledby="ai-prefs-heading">
             <div class="panel-header stacked">
               <p class="eyebrow" data-i18n="settings.aiEyebrow">AI explanations</p>
@@ -433,16 +679,6 @@ export function renderSettingsView(): HTMLElement {
 
         </div>
   `;
-  // Phase 2 (#127 P3): the Reader and Translator panels stay static in
-  // index.html (no shell) and are moved into the settings grid at boot so
-  // the shell + phase-1 markup lives only in this renderer.
-  const grid = view.querySelector(".settings-grid");
-  if (grid) {
-    const readerPanel = document.getElementById("reader-prefs-panel");
-    if (readerPanel) grid.appendChild(readerPanel);
-    const translatorPanel = document.getElementById("translator-prefs-panel");
-    if (translatorPanel) grid.appendChild(translatorPanel);
-  }
   document.body.appendChild(view);
   return view;
 }
@@ -1093,7 +1329,7 @@ export function bindSettingsEvents() {
     }));
   }
   
-  els.prefFontSize.addEventListener("input", (event: Event) => setReaderFontSize((event.currentTarget as HTMLInputElement).value));
+  byId<HTMLInputElement>("pref-font-size")?.addEventListener("input", (event: Event) => setReaderFontSize((event.currentTarget as HTMLInputElement).value));
 
   if (byId<HTMLInputElement>("pref-ui-scale")) {
     byId<HTMLInputElement>("pref-ui-scale").addEventListener("input", (event: Event) => {

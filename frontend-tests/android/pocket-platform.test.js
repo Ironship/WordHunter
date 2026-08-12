@@ -174,23 +174,18 @@ describe("Android Pocket platform", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    // Settings controls built by renderSettingsView() (#127 P3) live in the
-    // renderer source; the Reader/Translator/Export markup stays static.
+    // All settings controls are built by renderSettingsView() (#127 P3):
+    // phase-1 panels + the Reader and Translator & Dictionary panels.
     const rendererSettingParents = [
       ["pref-ui-scale", "label"],
       ["pref-touch-controls", "label"],
-      ["check-updates", "section"]
-    ];
-    const staticSettingParents = [
+      ["check-updates", "section"],
       ["pref-use-edge-tts", "label"],
       ["pref-offline-translator", "label"]
     ];
 
     for (const [id, parentTag] of rendererSettingParents) {
       assert.ok(classTokens(ancestorOpeningTag(settingsSource, id, parentTag)).has("desktop-only-setting"), `${id} ${parentTag}`);
-    }
-    for (const [id, parentTag] of staticSettingParents) {
-      assert.ok(classTokens(ancestorOpeningTag(html, id, parentTag)).has("desktop-only-setting"), `${id} ${parentTag}`);
     }
     for (const id of ["reader-word-panel-toggle", "choose-data-directory"]) {
       assert.ok(classTokens(openingTagById(id === "choose-data-directory" ? settingsSource : html, id)).has("desktop-only-control"), id);

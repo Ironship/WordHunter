@@ -727,14 +727,13 @@ describe("desktop reader markup and style contracts", () => {
       ["pref-touch-controls", "touchControls"],
       ["pref-tts-word-highlight", "ttsWordHighlight"]
     ]) {
-      // pref-touch-controls lives in the Appearance panel built by
-      // renderSettingsView() (#127 P3); the Reader-panel ids stay static.
-      const source = id === "pref-touch-controls" ? settingsSource : html;
-      const input = elementById(source, id);
+      // All four controls live in the settings view built by
+      // renderSettingsView() (#127 P3).
+      const input = elementById(settingsSource, id);
       assert.equal(attribute(openingTag(input), "data-pref"), preference);
     }
-    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
-    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
     assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-touch-controls"), "desktop-only-setting"), true);
 
     const panelToggle = elementById(html, "reader-word-panel-toggle");
@@ -859,17 +858,13 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("keeps Settings and Export as separate structural sections", () => {
-    // The settings shell + phase-1 panels are built by renderSettingsView()
-    // (#127 P3); the Reader/Translator panels stay static (reader-prefs-panel,
-    // translator-prefs-panel). groupReader/groupTts live in the static panels.
+    // The settings shell + all six panels are built by renderSettingsView()
+    // (#127 P3); groupReader/groupTts live in the ported Reader panel.
     assert.match(settingsSource, /view\.id = "settings-view"/);
     assert.match(settingsSource, /view\.setAttribute\("data-title-key", "nav\.settings"\)/);
     const exportSection = elementById(html, "export-view");
-    for (const key of ["groupLanguage", "groupLearningDisplay", "groupLocalData", "groupBackup"]) {
+    for (const key of ["groupLanguage", "groupLearningDisplay", "groupLocalData", "groupBackup", "groupReader", "groupTts"]) {
       assert.match(settingsSource, new RegExp(`data-i18n="settings\.${key}"`));
-    }
-    for (const key of ["groupReader", "groupTts"]) {
-      elementByAttribute(html, "data-i18n", `settings.${key}`);
     }
     // The renderer's shell must not contain the Export transfer actions.
     assert.doesNotMatch(settingsSource, /id="export-transfer-all"/);
