@@ -571,6 +571,7 @@ describe("repository validation wiring", () => {
     "pref-in-text-review", // events/settings.ts (renderSettingsView)
     "check-updates", // events/settings.ts (renderSettingsView)
     "ocr-gpu-status", // events/settings.ts (renderSettingsView)
+    "pref-translation-provider", // platform.ts (getElementById literal)
   ]);
 
   it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {
