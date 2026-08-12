@@ -368,6 +368,13 @@ function findAapt2() {
     fail(`No Android build-tools directory found below ${sdkRoot}`);
   }
   if (versions.length === 0) fail(`No Android build-tools versions found below ${buildTools}`);
+  // Prefer the version the release workflow pins via ANDROID_BUILD_TOOLS:
+  // newer runner images preinstall newer build-tools whose aapt2 regressed
+  // AAB manifest parsing, so picking the highest version is not safe.
+  const pinned = process.env.ANDROID_BUILD_TOOLS;
+  if (pinned && versions.includes(pinned)) {
+    return join(buildTools, pinned, process.platform === "win32" ? "aapt2.exe" : "aapt2");
+  }
   versions.sort((a, b) => {
     const left = a.split(".").map(Number);
     const right = b.split(".").map(Number);
