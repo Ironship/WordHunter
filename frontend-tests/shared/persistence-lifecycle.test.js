@@ -382,26 +382,29 @@ describe("persistence lifecycle", () => {
 
     // Case 1 — save built BEFORE the freeze does not cover the delta:
     // start a save (payload sequence 0), then mutate (sequence 1) and freeze
-    // the delta (sequence 1). The completing save must NOT clear it.
+    // the delta (sequence 1). The in-flight save itself must NOT clear it;
+    // the save-pending follow-up is a NEW save built after the freeze whose
+    // full snapshot contains the mutation (sequence 1 > lastPersisted 0 with
+    // the dirty sets already cleared) — superseding the delta is correct.
     const inflight = autosave.saveState();
     state.profiles.de = { words: {} };
     const envelope = autosave.buildPendingDeltaEnvelope();
     pending = envelope;
     releaseSave({ ok: true });
     await inflight;
-    assert.equal(cleared, 0, "a save built before the freeze must not clear the delta");
+    assert.equal(cleared, 1, "only the post-freeze follow-up supersedes the delta");
 
     // Case 2 — a same-session save built after the freeze, carrying records,
     // covers the delta (even for a mutation in an already-dirty language).
     state.profiles.de.words.w1 = { status: "learning" };
     await autosave.saveState();
-    assert.equal(cleared, 1, "a same-session save built after the freeze supersedes the delta");
+    assert.equal(cleared, 2, "a same-session save built after the freeze supersedes the delta");
 
     // Case 3 — a delta from another session is never cleared by this
     // session's saves (only the boot replay delivers and clears it).
     pending = { payload: "{}", session: "other-session", sequence: 0 };
     await autosave.saveState();
-    assert.equal(cleared, 1, "a cross-session delta must not be cleared by this session's saves");
+    assert.equal(cleared, 2, "a cross-session delta must not be cleared by this session's saves");
   });
 
   it("coalesces a burst of completed book counters into one library render", async () => {
