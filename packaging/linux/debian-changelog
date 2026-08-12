@@ -1,3 +1,11 @@
+word-hunter (1.0.11-rc.1) unstable; urgency=medium
+
+  * Android reliability: TTS word highlighting on modern Android, day/night themes, export no longer stalls on a busy database, faster startup after background restarts.
+  * Youglish opens through the native Android bridge.
+  * Settings and dialogs rendered by TypeScript components (no duplicated static markup).
+
+ -- Word Hunter <release@wordhunter.app>  Wed, 12 Aug 2026 10:00:00 +0200
+
 word-hunter (1.0.10) unstable; urgency=medium
 
   * Contextual AI explanations for words and phrases (streamed, OpenAI-compatible services).
