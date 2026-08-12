@@ -124,7 +124,10 @@ with open(output_path, "w", encoding="utf-8") as f:
 PY
 
 if [[ "$mode" == "check" ]]; then
-  if ! diff -u flatpak/cargo-sources.json "$merged_sources"; then
+  # Normalize line endings before comparing: on Windows the generator writes
+  # CRLF while the committed file is LF (repo .gitattributes) — an EOL-only
+  # difference must not fail the drift check.
+  if ! diff -u flatpak/cargo-sources.json <(tr -d '\r' < "$merged_sources"); then
     echo
     echo "flatpak/cargo-sources.json is out of date." >&2
     echo "Run ./scripts/update-flatpak-cargo-sources.sh and commit the result." >&2

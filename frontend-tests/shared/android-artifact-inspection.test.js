@@ -64,8 +64,8 @@ describe("Android release artifact assertions", () => {
 
   it("pins the tauri.conf.json contract the APK/AAB assertions rely on", () => {
     assert.equal(tauriConfig.identifier, "com.wordhunter.app");
-    assert.equal(tauriConfig.version, "1.0.10");
-    assert.equal(androidVersionCodeFor(tauriConfig.version), 101001099);
+    assert.equal(tauriConfig.version, "1.0.11-rc.1");
+    assert.equal(androidVersionCodeFor(tauriConfig.version), 101001101);
     // The Android overlay overrides the package name (Word.Hunter.Pocket);
     // androidExpectations() must use it, not the desktop identifier.
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
