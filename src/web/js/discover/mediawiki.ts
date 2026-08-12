@@ -2,6 +2,7 @@
  * Wikipedia / Wikinews API client for the Discover view.
  */
 import { t as translate } from "../i18n.js";
+import { fetchDiscover } from "./fetch-discover.js";
 
 const t = translate as (key: string, vars?: WhRecord) => string;
 
@@ -78,7 +79,7 @@ export async function searchMediaWiki(
     apiUrl = `${baseUrl}?action=query&generator=random&grnnamespace=0&grnlimit=10&prop=pageimages|extracts&exintro=1&explaintext=1&pithumbsize=300&format=json&origin=*`;
   }
 
-  const response = await fetch(apiUrl, { signal });
+  const response = await fetchDiscover(apiUrl, signal);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const rawData: unknown = await response.json();
   const data = asRecord(rawData) || {};
