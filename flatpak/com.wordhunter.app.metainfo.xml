@@ -37,7 +37,7 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="1.0.11-rc.2" date="2026-08-12">
+    <release version="1.0.11" date="2026-08-12">
       <description>
         <ul>
           <li>Android reliability: TTS word highlighting works on modern Android versions, day/night themes follow the system, exporting no longer stalls on a busy database, and the app starts faster after background restarts.</li>
