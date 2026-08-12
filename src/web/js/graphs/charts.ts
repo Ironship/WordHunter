@@ -8,7 +8,7 @@ import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
-  buildEaseFactorBins
+  buildEaseFactorBins, countReviewsByWeekday
 } from "./helpers.js";
 import { countMatureYoung } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
@@ -456,13 +456,7 @@ export function renderDayOfWeek(_chartEntries?: readonly VocabEntry[], _options?
   const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const W = ctx.w, H = ctx.h;
   const dayNames = DAY_KEYS.map((key) => t(`graphs.${key}`));
-  const counts = new Array(7).fill(0);
-  let total = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || !e.addedAt && !e.lastReviewedAt) continue;
-    const d = new Date(e.lastReviewedAt || e.addedAt);
-    counts[d.getDay()]++; total++;
-  }
+  const { counts, total } = countReviewsByWeekday(_chartEntries || stateVocabEntries());
   const maxVal = Math.max(1, ...counts);
   const pad = { top: 48, right: 28, bottom: 54, left: 50 };
   const pw = W - pad.left - pad.right;

@@ -84,6 +84,20 @@ export function countMatureYoung(entries: readonly VocabEntry[]): { young: numbe
   return { young, mature };
 }
 
+// Review activity per weekday — counts cards by their lastReviewedAt LOCAL
+// weekday only. Cards never reviewed must not count (they used to fall back
+// to addedAt, faking "review activity" — 583/640 entries in the user's data).
+export function countReviewsByWeekday(entries: readonly VocabEntry[]): { counts: number[]; total: number } {
+  const counts = new Array(7).fill(0);
+  let total = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || !e.lastReviewedAt) continue;
+    counts[new Date(e.lastReviewedAt).getDay()]++;
+    total++;
+  }
+  return { counts, total };
+}
+
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
 // Theme colors (initialized by updateColors)
