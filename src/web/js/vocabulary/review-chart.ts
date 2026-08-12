@@ -5,9 +5,11 @@
  * Colors and the no-grid bar-chart variant are shared with the Graphs view via
  * graphs/helpers.js so the palette and basic canvas drawing stay in one place.
  *
- * diffDays is kept local (UTC-midnight parsing) rather than reusing
- * graphs/helpers.js::daysBetween (local-midnight parsing): the two disagree
- * around DST transitions and across host time zones.
+ * Both diffDays (local to this file) and graphs/helpers.js::daysBetween parse
+ * "YYYY-MM-DD" date-only strings at UTC midnight per ECMA-262, so the two
+ * produce identical day differences. The real date consistency rule is the
+ * "today" SOURCE: review cards use local todayISO() (sm2.js), so the charts
+ * must use the same local today — see renderDueForecast/renderStatsSummary.
  */
 import { state } from "../state.js";
 import { els } from "../dom.js";
