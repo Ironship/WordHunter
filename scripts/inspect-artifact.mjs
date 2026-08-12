@@ -427,7 +427,7 @@ export function parseAxmlManifest(bytes) {
 //   XmlAttribute { ...; int32 resource_id = 5; TypedValue typed_value = 6; }
 //   TypedValue { int32 type = 1; int32 value = 2; string string_value = 3; }
 export function parseProtoManifest(bytes) {
-  const found = { versionCode: null, versionName: null, debuggable: false };
+  const found = { versionCode: null, versionName: null, debuggable: false, attrs: [] };
 
   function varint(at) {
     let value = 0;
@@ -489,6 +489,7 @@ export function parseProtoManifest(bytes) {
           else if (f4 === 6) typedValue = { s: s4, e: e4 };
         });
         if (resourceId === null || !typedValue) return;
+        found.attrs.push({ resourceId });
         if (resourceId === 0x0101021b) {
           fields(typedValue.s, typedValue.e, (f5, s5) => { if (f5 === 2) found.versionCode = varint(s5).value; });
         } else if (resourceId === 0x0101021c) {
@@ -630,11 +631,20 @@ export function inspectAndroid(path, abi) {
     if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
       const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
       if (protoEntry) {
-        manifest = parseProtoManifest(zipEntryBytes(archive, protoEntry));
+        const protoBytes = zipEntryBytes(archive, protoEntry);
+        manifest = parseProtoManifest(protoBytes);
+        if (manifest.versionCode === null && manifest.versionName === null) {
+          // Some bundletool versions store the base/ manifest as binary AXML.
+          manifest = parseAxmlManifest(protoBytes);
+        }
       }
     }
     if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
-      fail(`${path}: could not determine the version identity from the AAB manifest`);
+      const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
+      const protoDiag = protoEntry
+        ? parseProtoManifest(zipEntryBytes(archive, protoEntry)).attrs.map((a) => "0x" + a.resourceId.toString(16)).join(",")
+        : "no base/manifest entry";
+      fail(`${path}: could not determine the version identity from the AAB manifest (proto attrs: ${protoDiag})`);
     }
     if (manifest.versionCode !== expected.versionCode) {
       fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
