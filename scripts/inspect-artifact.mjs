@@ -616,19 +616,25 @@ export function inspectAndroid(path, abi) {
   const aapt2 = findAapt2();
   if (isAab) {
     const archive = readZipArchive(path);
+    // AGP-produced AABs keep the manifest only as protobuf under base/; the
+    // root text/AXML copy exists on older bundletool versions. Try every
+    // representation before failing.
+    let manifest = null;
     const manifestXml = readZipEntryText(archive, "manifest/AndroidManifest.xml");
-    if (manifestXml === null) fail(`${path}: missing manifest/AndroidManifest.xml`);
-    const textManifest = parseTextManifest(manifestXml);
-    let manifest = textManifest;
-    if (textManifest.versionCode === null && textManifest.versionName === null) {
-      manifest = parseAxmlManifest(Buffer.from(manifestXml, "utf8"));
+    if (manifestXml !== null) {
+      manifest = parseTextManifest(manifestXml);
+      if (manifest.versionCode === null && manifest.versionName === null) {
+        manifest = parseAxmlManifest(Buffer.from(manifestXml, "utf8"));
+      }
     }
-    if (manifest.versionCode === null && manifest.versionName === null) {
-      // AGP-produced AABs keep the manifest only as protobuf under base/.
+    if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
       const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
       if (protoEntry) {
         manifest = parseProtoManifest(zipEntryBytes(archive, protoEntry));
       }
+    }
+    if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
+      fail(`${path}: could not determine the version identity from the AAB manifest`);
     }
     if (manifest.versionCode !== expected.versionCode) {
       fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
