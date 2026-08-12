@@ -210,7 +210,7 @@ describe("Android release artifact assertions", () => {
       ld(5, attribute(0x0101021c, typed(0x10, 0, "1.0.11-rc.1"))),
       ld(5, attribute(0x0101000f, typed(0x12, 0))),
     ]);
-    const node = ld(3, element);
+    const node = ld(5, element); // XmlNode.element = field 5 in the AAPT2 schema
     const manifest = ld(1, node);
     const parsed = parseProtoManifest(manifest);
     assert.equal(parsed.versionCode, 101001101);
