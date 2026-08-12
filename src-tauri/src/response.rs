@@ -139,7 +139,7 @@ fn standard_headers(content_type: &str, cache: bool) -> Result<Vec<Header>, Stri
         ("X-Frame-Options", "DENY"),
         (
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
         ),
     ]
     .into_iter()
