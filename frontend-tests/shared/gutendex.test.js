@@ -15,6 +15,9 @@ async function loadGutendex(fetchImpl) {
     "../utils.js": {
       cleanCatalogTitle: (value) => (typeof value === "string" ? value : ""),
     },
+    "./fetch-discover.js": {
+      fetchDiscover: (url, signal) => fetchImpl(url, { signal }),
+    },
   };
   const modules = new Map();
   const load = async (specifier) => {
