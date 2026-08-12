@@ -142,3 +142,39 @@ export async function checkForUpdates({ manual = false }: UpdateCheckOptions = {
     if (manual) showToast(t("update.checkFailed"));
   }
 }
+
+/**
+ * Builds the update dialog markup once (idempotent). Called during app
+ * boot before cacheElements() so every consumer finds the elements in the
+ * DOM; data-i18n attributes are applied by the boot-time applyTranslations()
+ * pass (see app.ts).
+ */
+export function renderUpdateDialog(): HTMLDialogElement {
+  const existing = document.getElementById("update-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#update-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "update-dialog";
+  dialog.className = "panel dialog-500";
+  dialog.setAttribute("aria-labelledby", "update-title");
+  dialog.innerHTML = `
+    <div class="panel-header">
+      <h2 class="row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-20-green"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+        <span id="update-title" data-i18n="update.title">Update Available</span>
+      </h2>
+    </div>
+    <div class="settings-body p-15-g-1">
+      <p id="update-message" data-i18n="update.message" class="m-0-fs-09-lh-15-muted">Word Hunter {version} is available! (You have {current})</p>
+      <div class="justify-end-wrap-m-t-1">
+        <button id="update-dismiss" class="ghost-button" data-i18n="update.dismiss">Later</button>
+        <button id="update-skip" class="secondary-button" data-i18n="update.skipLabel">Skip this version</button>
+        <button id="update-disable" class="secondary-button" data-i18n="update.disableUpdates">Don't remind me again</button>
+        <button id="update-open" class="primary-button" data-i18n="update.openReleases">See what's new</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}

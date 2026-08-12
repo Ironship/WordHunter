@@ -4,7 +4,7 @@ import { t } from "./i18n.js";
 
 const DESKTOP_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf";
 const OCR_IMAGE_IMPORT_ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
-const MOBILE_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/pdf";
+const MOBILE_IMPORT_ACCEPT = "text/plain,text/markdown,text/vtt,application/x-subrip,text/x-ssa,application/epub+zip,application/pdf";
 type PocketWordSheetState = "collapsed" | "expanded" | "custom";
 
 export function resolvePocketWordSheetState(
@@ -408,7 +408,10 @@ function bindPocketKeyboardOverlap(): void {
   const scrollActiveInputIntoView = (): void => {
     const active = document.activeElement;
     if (!(active instanceof HTMLElement) || !active.matches("input, textarea")) return;
-    if (!active.closest("dialog, #word-panel, .import-panel")) return;
+    // The IME overlaps inputs that live outside the classic dialog/panel
+    // containers too: the translator source (section#translator-view) and
+    // the inline vocabulary table editors.
+    if (!active.closest("dialog, #word-panel, .import-panel, #translator-view, #vocab-table")) return;
     active.scrollIntoView({ block: "center", behavior: "smooth" });
   };
   document.addEventListener("focusin", scrollActiveInputIntoView);

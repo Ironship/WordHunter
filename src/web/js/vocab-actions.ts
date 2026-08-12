@@ -3,6 +3,7 @@ import { STATUS_ORDER } from "./constants.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render, updateReaderSelection } from "./render.js";
+import { invalidateVocabListCache } from "./vocabulary/vocab-list.js";
 import { getTextById } from "./reader/renderer.js";
 import { updateWordStatusInReader } from "./reader/word-panel.js";
 import { renderShell } from "./views/shell.js";
@@ -64,6 +65,7 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
       currentEntry.translation = translated;
       currentEntry.translationSource = data.engine || "translator";
       currentEntry.updatedAt = new Date().toISOString();
+  invalidateVocabListCache();
       saveState();
 
       if (state.currentView === "reader" && state.selectedWord === word) {
@@ -235,6 +237,7 @@ export function updateWordField(word: string, field: string, value: unknown): vo
     }
   }
   entry.updatedAt = new Date().toISOString();
+  invalidateVocabListCache();
   saveState();
   if (state.currentView === "vocabulary" && field !== "translation") {
     renderVocabulary();
@@ -296,6 +299,7 @@ export function setWordImage(word: string, imageUrl: unknown): void {
   if (hadEntry && Object.is(entry.imageUrl, imageUrl)) return;
   entry.imageUrl = imageUrl;
   entry.updatedAt = new Date().toISOString();
+  invalidateVocabListCache();
   saveState();
   if (state.currentView === "reader") updateReaderSelection();
   else if (state.currentView === "vocabulary" || state.currentView === "flashcards") {
@@ -311,6 +315,7 @@ export function removeWordImage(word: string): void {
   if (hadEntry && !Object.hasOwn(entry, "imageUrl")) return;
   delete entry.imageUrl;
   entry.updatedAt = new Date().toISOString();
+  invalidateVocabListCache();
   saveState();
   if (state.currentView === "reader") updateReaderSelection();
   else if (state.currentView === "vocabulary" || state.currentView === "flashcards") {

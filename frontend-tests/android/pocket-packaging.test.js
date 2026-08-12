@@ -120,7 +120,7 @@ describe("Android Pocket packaging", () => {
     const networkSecurity = parseXml(networkSecuritySource);
 
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
-    assert.equal(androidConfig.bundle.android.minSdkVersion, 24);
+    assert.equal(androidConfig.bundle.android.minSdkVersion, 26);
     assert.equal(androidConfig.app.windows.length, 1);
     assert.equal(androidConfig.app.windows[0].create, false);
     // The webview URL is decided at runtime (android.rs overrides it with the
@@ -156,14 +156,23 @@ describe("Android Pocket packaging", () => {
       elements.filter((node) => node.name === "uses-permission").map((node) => node.attributes["android:name"]),
       ["android.permission.INTERNET", "android.permission.POST_NOTIFICATIONS"],
     );
-    assert.equal(elements.some((node) => /LEANBACK|FileProvider|file_paths/.test(JSON.stringify(node))), false);
+    assert.equal(elements.some((node) => /LEANBACK/.test(JSON.stringify(node))), false);
+    const provider = elements.find((node) => node.name === "provider");
+    assert.equal(provider.attributes["android:name"], "androidx.core.content.FileProvider");
+    assert.equal(provider.attributes["android:authorities"], "${applicationId}.fileprovider");
+    assert.equal(provider.attributes["android:grantUriPermissions"], "true");
+    assert.equal(provider.attributes["android:exported"], "false");
+    assert.equal(
+      descendants(provider).find((node) => node.name === "meta-data").attributes["android:resource"],
+      "@xml/file_paths",
+    );
     const launcher = elements.find(
       (node) => node.name === "category" && node.attributes["android:name"] === "android.intent.category.LAUNCHER",
     );
     assert.ok(launcher, "Android manifest has no launcher activity");
   });
 
-  it("derives a bounded monotonic version code and patches the generated project", () => {
+  it("derives a bounded monotonic version code and verifies the neutral generated project", () => {
     const baseConfig = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const build = read("../../scripts/build.bat");
     const parts = baseConfig.version.match(/^(\d+)\.(\d+)\.(\d+)(?:(?:-rc\.(\d+))|(?:\+(\d+)))?$/);
@@ -195,8 +204,14 @@ describe("Android Pocket packaging", () => {
     assert.match(prepare, /Copy-Item -LiteralPath \$activitySource -Destination \$activityTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$manifestSource -Destination \$manifestTarget/);
     assert.match(prepare, /Copy-Item -LiteralPath \$networkSecuritySource -Destination \$networkSecurityTarget/);
-    assert.match(prepare, /Set-AndroidGradleVersion/);
-    assert.match(prepare, /androidx\.documentfile:documentfile:1\.0\.1/);
+    assert.match(prepare, /Copy-Item -LiteralPath \$filePathsSource -Destination \$filePathsTarget/);
+    assert.match(prepare, /bundle\.android\.versionCode -ne \$versionInfo\.Code/, "config identity assert replaces literal stamping");
+    assert.match(prepare, /android-version\.mjs", "--check"/, "portable neutral-form check");
+    assert.doesNotMatch(prepare, /Set-AndroidGradleVersion/, "literal stamping removed");
+    assert.doesNotMatch(prepare, /documentfile/, "unused dependency injection removed");
+    const ensure = powershellFunction(build, "Ensure-AndroidProject");
+    assert.match(ensure, /\.template-version/, "template-version marker gate");
+    assert.match(ensure, /Remove-Item -LiteralPath \$androidDir -Recurse -Force/, "stale gen/android re-init");
     const release = powershellFunction(build, "Build-AndroidReleaseAab");
     assert.match(release, /"android", "build", "--aab", "--target", \$Target/);
     assert.match(powershellFunction(build, "Copy-OrSignAndroidAab"), /jarsigner\.exe/);

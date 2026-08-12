@@ -1,6 +1,5 @@
 // Library view: book card list (built-in + user-added).
 import { state, saveUiState } from "../state.js";
-import { els as domElements } from "../dom.js";
 import { escapeHtml, escapeAttribute, parseTagList, calcRoundedStatsPcts, calcStatsPcts } from "../utils.js";
 import { icon, renderCardStat, renderCardCount } from "../icons.js";
 import { normalizeSearchVariants } from "../tokenizer_v2.js";
@@ -9,18 +8,6 @@ import { getCachedBookTextStats, getCachedTextStats, prepareTextStats } from "..
 import { t as translate, getLocale } from "../i18n.js";
 import { bindSidebarResizer } from "../panel-resizer.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
-
-interface LibraryElements {
-  bookList: HTMLElement;
-  libraryPanel: HTMLElement;
-  libraryFiltersToggle: HTMLButtonElement;
-  librarySearch: HTMLInputElement;
-  levelFilter: HTMLSelectElement;
-  librarySort: HTMLSelectElement;
-  librarySortReverse: HTMLButtonElement;
-  libraryArchiveFilter: HTMLSelectElement;
-  librarySidebarResizer: HTMLElement;
-}
 
 interface LibraryBook {
   id: string;
@@ -57,8 +44,12 @@ interface LibraryStats {
   new: number;
 }
 
-const els = domElements as LibraryElements;
 const t = translate as (key: string, vars?: Record<string, string | number | boolean | null | undefined>) => string;
+
+/** Typed lookup helper for TS-rendered elements (see renderLibraryPanel). */
+function el<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
 
 const EMPTY_STATS: Readonly<LibraryStats> = { unique: 0, known: 0, learning: 0, ignored: 0, new: 0 };
 const STAT_SORT_KEYS = new Set(["length", "known", "new", "learning", "progress"]);
@@ -86,8 +77,8 @@ function hydrateBookStats(id: string): void {
   void source.then(queueHydrationRender).catch((error) => console.warn(`Could not load book statistics for ${id}:`, error));
 }
 
-function observeVisibleBookStats(): void {
-  const cards = [...els.bookList.querySelectorAll<HTMLElement>("[data-book-id]")];
+function observeVisibleBookStats(bookList: HTMLElement): void {
+  const cards = [...bookList.querySelectorAll<HTMLElement>("[data-book-id]")];
   if (!("IntersectionObserver" in window)) {
     cards.forEach((card) => hydrateBookStats(card.dataset.bookId || ""));
     return;
@@ -135,15 +126,21 @@ function getSortValue(book: LibraryBook, stats: LibraryStats | Readonly<LibraryS
 }
 
 export function renderLibrary(): void {
-  if (!els.bookList) return;
+  const bookList = el<HTMLElement>("book-list");
+  if (!bookList) return;
   visibleBookObserver?.disconnect();
   visibleBookObserver = null;
-  els.librarySearch.value = state.filters.libraryQuery || "";
-  els.levelFilter.value = state.filters.libraryLevel || "all";
-  if (els.librarySort) els.librarySort.value = state.filters.librarySort || "title";
-  if (els.libraryArchiveFilter) els.libraryArchiveFilter.value = state.filters.libraryArchive || "active";
-  if (els.librarySortReverse) {
-    els.librarySortReverse.dataset.reverse = state.filters.librarySortReverse ? "true" : "false";
+  const librarySearch = el<HTMLInputElement>("library-search");
+  const levelFilter = el<HTMLSelectElement>("level-filter");
+  const librarySort = el<HTMLSelectElement>("library-sort");
+  const libraryArchiveFilter = el<HTMLSelectElement>("library-archive-filter");
+  const librarySortReverse = el<HTMLButtonElement>("library-sort-reverse");
+  if (librarySearch) librarySearch.value = state.filters.libraryQuery || "";
+  if (levelFilter) levelFilter.value = state.filters.libraryLevel || "all";
+  if (librarySort) librarySort.value = state.filters.librarySort || "title";
+  if (libraryArchiveFilter) libraryArchiveFilter.value = state.filters.libraryArchive || "active";
+  if (librarySortReverse) {
+    librarySortReverse.dataset.reverse = state.filters.librarySortReverse ? "true" : "false";
   }
 
   const queryVariants = normalizeSearchVariants(state.filters.libraryQuery || "");
@@ -247,7 +244,7 @@ export function renderLibrary(): void {
     });
 
   if (!books.length) {
-    els.bookList.innerHTML = `<div class="empty-row">${escapeHtml(t("library.empty"))}</div>`;
+    bookList.innerHTML = `<div class="empty-row">${escapeHtml(t("library.empty"))}</div>`;
     return;
   }
 
@@ -256,7 +253,7 @@ export function renderLibrary(): void {
     ? state.preferences.cardStatsMode
     : "percentages";
 
-  els.bookList.innerHTML = books.map(({ book, stats, statsReady, knownPct, learningPct }) => {
+  bookList.innerHTML = books.map(({ book, stats, statsReady, knownPct, learningPct }) => {
     const isArchived = archivedBookIds.has(book.id);
     const uniqueValue = numberFormat.format(stats?.unique || 0);
     const total = (stats?.known || 0) + (stats?.ignored || 0) + (stats?.learning || 0) + (stats?.new || 0);
@@ -348,8 +345,8 @@ export function renderLibrary(): void {
           </div>
           ${blurbLine}
           ${statsBlock}
-          <div class="book-actions" style="display: flex; gap: 0.5rem; align-items: center; width: 100%; flex-wrap: wrap; margin-top: auto;">
-             <button class="primary-button" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}" style="flex: 1; justify-content: center; display: inline-flex; align-items: center; gap: 0.4rem;">
+          <div class="book-actions actions-row">
+             <button class="primary-button action-grow" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}">
               ${icon("play", 16)}
               ${escapeHtml(t("library.read"))}
             </button>
@@ -362,7 +359,7 @@ export function renderLibrary(): void {
       </article>
     `;
   }).join("");
-  if (needsStats) observeVisibleBookStats();
+  if (needsStats) observeVisibleBookStats(bookList);
 }
 
 function renderBookCover(book: LibraryBook): string {
@@ -377,25 +374,27 @@ function renderBookCover(book: LibraryBook): string {
 }
 
 function bindLibraryFiltersToggle(): void {
-  if (!els.libraryPanel || !els.libraryFiltersToggle) return;
+  const libraryPanel = document.querySelector<HTMLElement>(".library-panel");
+  const libraryFiltersToggle = el<HTMLButtonElement>("library-filters-toggle");
+  if (!libraryPanel || !libraryFiltersToggle) return;
   const setExpanded = (expanded: boolean): void => {
-    els.libraryPanel.classList.toggle("library-filters-collapsed", !expanded);
-    els.libraryFiltersToggle.setAttribute("aria-expanded", String(expanded));
+    libraryPanel.classList.toggle("library-filters-collapsed", !expanded);
+    libraryFiltersToggle.setAttribute("aria-expanded", String(expanded));
     const labelKey = expanded ? "library.hideFilters" : "library.showFilters";
     const label = t(labelKey);
-    els.libraryFiltersToggle.dataset.i18nAttr = `title=${labelKey},aria-label=${labelKey}`;
-    els.libraryFiltersToggle.title = label;
-    els.libraryFiltersToggle.setAttribute("aria-label", label);
+    libraryFiltersToggle.dataset.i18nAttr = `title=${labelKey},aria-label=${labelKey}`;
+    libraryFiltersToggle.title = label;
+    libraryFiltersToggle.setAttribute("aria-label", label);
   };
-  setExpanded(!els.libraryPanel.classList.contains("library-filters-collapsed"));
-  els.libraryFiltersToggle.addEventListener("click", () => {
-    setExpanded(els.libraryPanel.classList.contains("library-filters-collapsed"));
+  setExpanded(!libraryPanel.classList.contains("library-filters-collapsed"));
+  libraryFiltersToggle.addEventListener("click", () => {
+    setExpanded(libraryPanel.classList.contains("library-filters-collapsed"));
   });
 }
 
 export function bindLibraryEvents(): void {
   bindLibraryFiltersToggle();
-  bindSidebarResizer(els.librarySidebarResizer, {
+  bindSidebarResizer(el<HTMLElement>("library-sidebar-resizer"), {
     preference: "librarySidebarWidth", cssVariable: "--library-sidebar-width",
     defaultWidth: 360, minWidth: 280, maxWidth: 600, minMainWidth: 360,
     sidebarSelector: ".import-panel", overlay: true
@@ -433,8 +432,14 @@ export function bindLibraryEvents(): void {
   deleteDialog?.addEventListener("click", (event) => { if (event.target === deleteDialog) closeDeleteDialog(); });
 
   let librarySearchTimer: number | null = null;
-  els.librarySearch.addEventListener("input", () => {
-    state.filters.libraryQuery = els.librarySearch.value;
+  const librarySearch = el<HTMLInputElement>("library-search");
+  const levelFilter = el<HTMLSelectElement>("level-filter");
+  const librarySort = el<HTMLSelectElement>("library-sort");
+  const librarySortReverse = el<HTMLButtonElement>("library-sort-reverse");
+  const libraryArchiveFilter = el<HTMLSelectElement>("library-archive-filter");
+  const bookList = el<HTMLElement>("book-list");
+  if (librarySearch) librarySearch.addEventListener("input", () => {
+    state.filters.libraryQuery = librarySearch.value;
     if (librarySearchTimer !== null) clearTimeout(librarySearchTimer);
     librarySearchTimer = window.setTimeout(() => {
       librarySearchTimer = null;
@@ -442,31 +447,31 @@ export function bindLibraryEvents(): void {
       renderLibrary();
     }, 120);
   });
-  els.levelFilter.addEventListener("change", () => {
-    state.filters.libraryLevel = els.levelFilter.value;
+  if (levelFilter) levelFilter.addEventListener("change", () => {
+    state.filters.libraryLevel = levelFilter.value;
     void saveUiState();
     renderLibrary();
   });
-  els.librarySort.addEventListener("change", () => {
-    state.filters.librarySort = els.librarySort.value;
+  if (librarySort) librarySort.addEventListener("change", () => {
+    state.filters.librarySort = librarySort.value;
     void saveUiState();
     renderLibrary();
   });
-  if (els.librarySortReverse) {
-    els.librarySortReverse.addEventListener("click", () => {
+  if (librarySortReverse) {
+    librarySortReverse.addEventListener("click", () => {
       state.filters.librarySortReverse = !state.filters.librarySortReverse;
       void saveUiState();
       renderLibrary();
     });
   }
-  if (els.libraryArchiveFilter) {
-    els.libraryArchiveFilter.addEventListener("change", () => {
-      state.filters.libraryArchive = els.libraryArchiveFilter.value;
+  if (libraryArchiveFilter) {
+    libraryArchiveFilter.addEventListener("change", () => {
+      state.filters.libraryArchive = libraryArchiveFilter.value;
       void saveUiState();
       renderLibrary();
     });
   }
-  els.bookList.addEventListener("click", async (event) => {
+  if (bookList) bookList.addEventListener("click", async (event) => {
     if (!(event.target instanceof Element)) return;
     const control = event.target.closest<HTMLElement>("[data-action]");
     if (!control) return;
@@ -518,4 +523,135 @@ export function bindLibraryEvents(): void {
     }
     if (control.dataset.action === "edit-custom") actions.openEditBookModal(id);
   });
+}
+
+/**
+ * Builds the delete-book confirmation dialog markup once (idempotent).
+ * Called during app boot before cacheElements() so every consumer finds
+ * the elements in the DOM; data-i18n attributes are applied by the
+ * boot-time applyTranslations() pass (see app.ts).
+ */
+export function renderDeleteBookDialog(): HTMLDialogElement {
+  const existing = document.getElementById("delete-book-dialog");
+  if (existing instanceof HTMLDialogElement) return existing;
+  if (existing) throw new TypeError("#delete-book-dialog must be a dialog element");
+
+  const dialog = document.createElement("dialog");
+  dialog.id = "delete-book-dialog";
+  dialog.className = "panel confirmation-dialog";
+  dialog.setAttribute("aria-labelledby", "delete-book-title");
+  dialog.innerHTML = `
+    <div class="panel-header"><h2 id="delete-book-title"></h2></div>
+    <div class="confirmation-dialog-body">
+      <p id="delete-book-message" class="muted-copy"></p>
+      <div class="confirmation-dialog-actions">
+        <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Cancel</button>
+        <button id="delete-book-confirm" type="button" class="danger-button" data-i18n="library.removeConfirmButton"></button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
+/**
+ * Builds the library filter-bar panel (section + sidebar resizer) once
+ * (idempotent). Called during app boot before cacheElements() so every
+ * consumer finds the elements in the DOM; data-i18n attributes are applied
+ * by the boot-time applyTranslations() pass (see app.ts). The section and
+ * resizer must land BEFORE the still-static .import-panel inside the
+ * workspace grid so the grid columns keep their order.
+ */
+export function renderLibraryPanel(): HTMLElement {
+  const existing = document.querySelector(".library-panel");
+  if (existing) return existing as HTMLElement;
+
+  const view = document.getElementById("library-view");
+  if (!view) throw new TypeError("#library-view must exist before renderLibraryPanel");
+  const grid = view.querySelector<HTMLElement>(".workspace-grid");
+  if (!grid) throw new TypeError(".workspace-grid must exist inside #library-view");
+
+  const section = document.createElement("section");
+  section.className = "panel library-panel library-filters-collapsed";
+  section.setAttribute("aria-labelledby", "library-heading");
+  section.innerHTML = `
+    <div class="panel-header">
+      <div class="library-title-row">
+        <div>
+          <p class="eyebrow" data-i18n="library.eyebrow">Offline catalog</p>
+          <h2 id="library-heading" data-i18n="library.heading">Books</h2>
+        </div>
+        <button type="button" id="library-filters-toggle" class="icon-button library-filters-toggle" aria-expanded="false" aria-controls="library-filters" data-i18n-attr="title=library.showFilters,aria-label=library.showFilters" title="Show search and filters" aria-label="Show search and filters">
+          <svg class="library-filters-icon library-filters-icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <svg class="library-filters-icon library-filters-icon-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+      </div>
+      <div class="filters compact-filters" id="library-filters">
+        <label class="library-search-field">
+          <span data-i18n="library.search">Search</span>
+          <div class="search-with-hint">
+            <input id="library-search" type="search" data-i18n-attr="placeholder=library.searchPlaceholder">
+            <span class="shortcut-badge">/</span>
+          </div>
+        </label>
+        <label class="library-level-field">
+          <span data-i18n="library.level">Level</span>
+           <select id="level-filter">
+            <option value="all" data-i18n="library.levelAll">All</option>
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1">B1</option>
+            <option value="B2">B2</option>
+            <option value="C1">C1</option>
+            <option value="C2">C2</option>
+          </select>
+        </label>
+        <label class="library-status-field">
+          <span data-i18n="library.archiveFilter">Status</span>
+          <select id="library-archive-filter">
+            <option value="active" data-i18n="library.archiveActive">Active</option>
+            <option value="archived" data-i18n="library.archiveArchived">Archive</option>
+            <option value="all" data-i18n="library.archiveAll">All</option>
+          </select>
+        </label>
+        <label class="library-sort-field">
+          <span data-i18n="library.sort">Sort</span>
+          <div class="row-tight">
+            <select id="library-sort" class="flex-1">
+              <option value="title" data-i18n="library.sortByTitle">By title</option>
+              <option value="author" data-i18n="library.sortByAuthor">By author</option>
+              <option value="length" data-i18n="library.sortByLength">By length</option>
+              <option value="known" data-i18n="library.sortByKnown">Known words</option>
+              <option value="new" data-i18n="library.sortByNew">New words</option>
+              <option value="learning" data-i18n="library.sortByLearning">Learning words</option>
+              <option value="progress" data-i18n="library.sortByProgress">By progress</option>
+              <option value="year" data-i18n="library.sortByYear">By date</option>
+            </select>
+            <button type="button" id="library-sort-reverse" class="icon-button" data-reverse="true" data-i18n-attr="title=library.sortReverse,aria-label=library.sortReverse" aria-label="Reverse sort">
+              <span class="sort-indicator"></span>
+            </button>
+          </div>
+        </label>
+      </div>
+      <button type="button" id="library-import-toggle" class="secondary-button pocket-import-toggle" aria-expanded="false" data-i18n="import.heading" data-i18n-attr="title=import.heading,aria-label=import.heading">Import</button>
+    </div>
+    <div class="book-grid" id="book-list" aria-busy="false"></div>
+  `;
+
+  const resizer = document.createElement("div");
+  resizer.id = "library-sidebar-resizer";
+  resizer.className = "panel-sidebar-resizer";
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.setAttribute("data-i18n-attr", "aria-label=library.resizeImportPanel");
+
+  const importPanel = grid.querySelector<HTMLElement>(".import-panel");
+  if (importPanel) {
+    grid.insertBefore(section, importPanel);
+    grid.insertBefore(resizer, importPanel);
+  } else {
+    grid.appendChild(section);
+    grid.appendChild(resizer);
+  }
+  return section;
 }

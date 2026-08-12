@@ -20,6 +20,7 @@ import android.os.ParcelFileDescriptor
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Base64
+import android.util.Base64InputStream
 import android.util.Log
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
@@ -27,18 +28,31 @@ import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
-private const val ANDROID_EXPORT_TIMEOUT_MS = 120000L
+// The SAF picker may stay foreground for minutes while the user chooses a
+// destination, so no export timeout is armed before the picker launch. The
+// picker-phase timeout is a short grace period re-armed on every onResume.
+private const val ANDROID_EXPORT_GRACE_MS = 45_000L
 private const val ANDROID_EXPORT_WRITE_TIMEOUT_MS = 300000L
+// An abandoned import picker must not block every later import until the
+// process dies; the pending request times out natively after ~5 minutes.
+private const val ANDROID_IMPORT_TIMEOUT_MS = 5 * 60 * 1000L
 private const val ANDROID_TRANSFER_MAX_BYTES = 2L * 1024L * 1024L * 1024L
 private const val ANDROID_PDF_MAX_BITMAP_PIXELS = 8_000_000
+// Base64 PDF payloads are decoded in chunks into a cache file; the decoded
+// size is capped so a malicious/huge payload cannot OOM the Java heap.
+private const val ANDROID_PDF_MAX_BASE64_DECODED = 64L * 1024L * 1024L
+private const val ANDROID_PDF_MAX_BASE64_ENCODED = ANDROID_PDF_MAX_BASE64_DECODED * 4L / 3L + 4L
+private val ANDROID_OPEN_URL_ALLOWED_SCHEMES = setOf("https", "http", "market", "mailto")
 private const val ANDROID_DIRECT_EXPORT_MAX_CHARS = 64L * 1024L * 1024L
 private const val MAX_TTS_SPEAK_CHARS = 20_000
 private const val TTS_NOTIFICATION_CHANNEL_ID = "wordhunter-tts"
@@ -58,7 +72,9 @@ class MainActivity : TauriActivity() {
   @Volatile private var ttsReady = false
   @Volatile private var pendingExport: PendingExport? = null
   @Volatile private var pendingImportRequestId: String? = null
-  private var pendingExportResult: JSONObject? = null
+  private var pendingImportWatchdog: Runnable? = null
+  private var importLaunchRequestId: String? = null
+  @Volatile private var pendingExportResult: JSONObject? = null
   private val exportDocumentLauncher = registerForActivityResult(
     ActivityResultContracts.StartActivityForResult()
   ) { result ->
@@ -82,6 +98,7 @@ class MainActivity : TauriActivity() {
         false
       } else {
         export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        export.awaitingPicker = false
         val writeTimeout = Runnable {
           synchronized(bridgeLock) {
             if (pendingExport?.requestId == export.requestId) pendingExport = null
@@ -127,21 +144,29 @@ class MainActivity : TauriActivity() {
   private val importDocumentLauncher = registerForActivityResult(
     ActivityResultContracts.StartActivityForResult()
   ) { result ->
-    val requestId = pendingImportRequestId ?: return@registerForActivityResult
+    val requestId = importLaunchRequestId ?: return@registerForActivityResult
+    importLaunchRequestId = null
     val uri = result.data?.data
     if (result.resultCode != Activity.RESULT_OK || uri == null) {
-      pendingImportRequestId = null
+      clearPendingImportIfCurrent(requestId)
       dispatchAndroidImportResult(requestId, success = false, path = null, error = null, cancelled = true)
+      return@registerForActivityResult
+    }
+    // A result from a superseded or timed-out picker must not be processed
+    // against a newer request (or none at all).
+    val stillCurrent = synchronized(bridgeLock) { pendingImportRequestId == requestId }
+    if (!stillCurrent) {
+      Log.w("WordHunter", "Ignoring stale Android import result for $requestId.")
       return@registerForActivityResult
     }
     exportExecutor.execute {
       runCatching { copyImportDocument(uri, requestId) }
         .onSuccess { path ->
-          pendingImportRequestId = null
+          clearPendingImportIfCurrent(requestId)
           dispatchAndroidImportResult(requestId, success = true, path = path, error = null, cancelled = false)
         }
         .onFailure { error ->
-          pendingImportRequestId = null
+          clearPendingImportIfCurrent(requestId)
           dispatchAndroidImportResult(requestId, success = false, path = null, error = error.message, cancelled = false)
         }
     }
@@ -162,15 +187,18 @@ class MainActivity : TauriActivity() {
 
       override fun onDone(utteranceId: String?) {
         dispatchAndroidTtsResult(utteranceId, "done")
+        maybeClearTtsSessionUi()
       }
 
       @Deprecated("Deprecated in Android API")
       override fun onError(utteranceId: String?) {
         dispatchAndroidTtsResult(utteranceId, "error")
+        maybeClearTtsSessionUi()
       }
 
       override fun onStop(utteranceId: String?, interrupted: Boolean) {
         dispatchAndroidTtsResult(utteranceId, "stopped")
+        maybeClearTtsSessionUi()
       }
 
       override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
@@ -181,6 +209,10 @@ class MainActivity : TauriActivity() {
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    // Persist the incoming intent: the TTS-stop notification targets a
+    // singleTask activity, and a cold start after the process was trimmed
+    // must still see the stop request.
+    setIntent(intent)
     if (!intent.getBooleanExtra(EXTRA_TTS_STOP, false)) return
     intent.removeExtra(EXTRA_TTS_STOP)
     runOnUiThread {
@@ -189,7 +221,17 @@ class MainActivity : TauriActivity() {
       clearKeepScreenOn()
     }
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-tts-stop'));"
-    appWebView?.post { appWebView?.evaluateJavascript(script, null) }
+    postToWebView(script)
+  }
+
+  private fun maybeClearTtsSessionUi() {
+    // The last utterance of a chain drains the queue; release the
+    // notification and FLAG_KEEP_SCREEN_ON so a single spoken word does not
+    // leave them stuck.
+    if (textToSpeech?.isSpeaking == false) {
+      hideTtsNotification()
+      clearKeepScreenOn()
+    }
   }
 
   private fun cleanTransferCache() {
@@ -224,8 +266,38 @@ class MainActivity : TauriActivity() {
     runOnUiThread { window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
   }
 
+  override fun onPause() {
+    super.onPause()
+    // The SAF picker is foreground while we are paused; the export timeout
+    // must not fire while the user is still choosing a destination.
+    synchronized(bridgeLock) {
+      val export = pendingExport
+      if (export != null && export.awaitingPicker) {
+        export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+      }
+    }
+  }
+
   override fun onResume() {
     super.onResume()
+    // Re-arm a short grace period for an export that still awaits its pick:
+    // the launcher result removes it once the user chooses, or it clears the
+    // stale request if the dialog was abandoned.
+    synchronized(bridgeLock) {
+      val export = pendingExport
+      if (export != null && export.awaitingPicker) {
+        export.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }
+        val grace = Runnable {
+          synchronized(bridgeLock) {
+            if (pendingExport?.requestId == export.requestId) pendingExport = null
+          }
+          export.sourcePath?.let { File(it).delete() }
+          dispatchAndroidExportResult(export.requestId, success = false, error = "Android export timed out.", cancelled = false, status = "timeout")
+        }
+        export.timeoutRunnable = grace
+        mainHandler.postDelayed(grace, ANDROID_EXPORT_GRACE_MS)
+      }
+    }
     dispatchPendingAndroidExportResult()
   }
 
@@ -247,8 +319,13 @@ class MainActivity : TauriActivity() {
       pendingExport?.sourcePath?.let { File(it).delete() }
       pendingExport = null
       pendingImportRequestId = null
+      pendingImportWatchdog?.let { mainHandler.removeCallbacks(it) }
+      pendingImportWatchdog = null
     }
-    exportExecutor.shutdownNow()
+    // Drain in-flight writes instead of interrupting them: an interrupt
+    // would abort a mid-write export and leave a partial file behind.
+    exportExecutor.shutdown()
+    runCatching { exportExecutor.awaitTermination(3, TimeUnit.SECONDS) }
     closeAllPdfRenderSessions()
     hideTtsNotification()
     clearKeepScreenOn()
@@ -277,17 +354,35 @@ class MainActivity : TauriActivity() {
     @JavascriptInterface
     fun chooseImportPackage(requestId: String?): Boolean {
       val id = normalizeBridgeRequestId(requestId, "android-import")
-      synchronized(bridgeLock) {
-        if (pendingImportRequestId != null) {
-          dispatchAndroidImportResult(id, success = false, path = null, error = "Android import is already running.", cancelled = false)
-          return true
-        }
+      val supersededId = synchronized(bridgeLock) {
+        pendingImportWatchdog?.let { mainHandler.removeCallbacks(it) }
+        pendingImportWatchdog = null
+        val previous = pendingImportRequestId
         pendingImportRequestId = id
+        previous
       }
+      if (supersededId != null) {
+        Log.w("WordHunter", "Superseding stale Android import request $supersededId.")
+        dispatchAndroidImportResult(supersededId, success = false, path = null, error = "Android import superseded.", cancelled = true)
+      }
+      // An abandoned picker must not block imports until the process dies:
+      // the pending request times out natively after ~5 minutes.
+      val watchdog = Runnable {
+        synchronized(bridgeLock) {
+          if (pendingImportRequestId == id) {
+            pendingImportRequestId = null
+            pendingImportWatchdog = null
+          }
+        }
+        dispatchAndroidImportResult(id, success = false, path = null, error = "Android import timed out.", cancelled = false)
+      }
+      synchronized(bridgeLock) { pendingImportWatchdog = watchdog }
+      mainHandler.postDelayed(watchdog, ANDROID_IMPORT_TIMEOUT_MS)
+      importLaunchRequestId = id
       runOnUiThread {
         runCatching { importDocumentLauncher.launch(createImportDocumentIntent()) }
           .onFailure { error ->
-            pendingImportRequestId = null
+            clearPendingImportIfCurrent(id)
             dispatchAndroidImportResult(id, success = false, path = null, error = error.message, cancelled = false)
           }
       }
@@ -346,27 +441,24 @@ class MainActivity : TauriActivity() {
       val target = url?.trim()?.takeIf { it.isNotEmpty() } ?: return false
       val uri = runCatching { Uri.parse(target) }.getOrNull() ?: return false
       val scheme = uri.scheme?.lowercase(Locale.ROOT)
-      if (scheme != "http" && scheme != "https") return false
-      return runCatching {
-        val intent = Intent(Intent.ACTION_VIEW, uri)
-        intent.addCategory(Intent.CATEGORY_BROWSABLE)
-        startActivity(intent)
-        true
-      }.getOrDefault(false)
+      if (scheme !in ANDROID_OPEN_URL_ALLOWED_SCHEMES) return false
+      val intent = Intent(Intent.ACTION_VIEW, uri)
+      intent.addCategory(Intent.CATEGORY_BROWSABLE)
+      runOnUiThread {
+        runCatching { startActivity(intent) }
+          .onFailure { error -> Log.w("WordHunter", "Could not open $target: ${error.message}") }
+      }
+      return true
     }
 
     @JavascriptInterface
     fun beginPdfRender(sessionId: String?, dataUrl: String?): String {
       return runCatching {
         val id = safePdfRenderSessionId(sessionId)
-        val data = decodeDataUrl(dataUrl)
         val file = File(cacheDir, "wordhunter-pdf-render-$id.pdf")
         var descriptor: ParcelFileDescriptor? = null
         try {
-          FileOutputStream(file).use { output ->
-            output.write(data)
-            output.fd.sync()
-          }
+          writeDecodedDataUrl(dataUrl, file)
           descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
           val renderer = PdfRenderer(descriptor)
           synchronized(pdfRenderLock) {
@@ -380,9 +472,12 @@ class MainActivity : TauriActivity() {
           }
           throw error
         }
+        val pageCount = synchronized(pdfRenderLock) {
+          pdfRenderSessions[id]?.renderer?.pageCount ?: 0
+        }
         JSONObject()
           .put("success", true)
-          .put("pageCount", pdfRenderSessions[id]?.renderer?.pageCount ?: 0)
+          .put("pageCount", pageCount)
           .toString()
       }.getOrElse { error ->
         JSONObject()
@@ -396,43 +491,51 @@ class MainActivity : TauriActivity() {
     fun renderPdfPage(sessionId: String?, pageIndex: Int, renderWidth: Int): String {
       return runCatching {
         val id = safePdfRenderSessionId(sessionId)
-        val session = synchronized(pdfRenderLock) {
-          pdfRenderSessions[id] ?: error("PDF render session is not open.")
-        }
-        if (pageIndex < 0 || pageIndex >= session.renderer.pageCount) {
-          error("PDF page index is out of range.")
-        }
-        session.renderer.openPage(pageIndex).use { page ->
-          val sourceWidth = page.width.coerceAtLeast(1)
-          val sourceHeight = page.height.coerceAtLeast(1)
-          val targetWidth = renderWidth.coerceIn(512, 2400)
-          val targetHeight = ((sourceHeight.toDouble() / sourceWidth.toDouble()) * targetWidth)
-            .toInt()
-            .coerceAtLeast(1)
-          if (targetHeight > ANDROID_PDF_MAX_BITMAP_PIXELS / targetWidth) {
-            error("PDF page dimensions are too large to render safely.")
-          }
-          val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-          try {
-            bitmap.eraseColor(Color.WHITE)
-            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            val bytes = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
-            JSONObject()
-              .put("success", true)
-              .put("width", targetWidth)
-              .put("height", targetHeight)
-              .put("dataUrl", "data:image/png;base64," + Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP))
-              .toString()
-          } finally {
-            bitmap.recycle()
-          }
+        // The whole render runs under the lock so closeAllPdfRenderSessions()
+        // on destroy can never close a PdfRenderer mid-render.
+        synchronized(pdfRenderLock) {
+          renderPdfPageLocked(id, pageIndex, renderWidth)
         }
       }.getOrElse { error ->
         JSONObject()
           .put("success", false)
           .put("error", error.message ?: "Could not render PDF page.")
           .toString()
+      }
+    }
+
+    private fun renderPdfPageLocked(id: String, pageIndex: Int, renderWidth: Int): String {
+      val session = pdfRenderSessions[id] ?: error("PDF render session is not open.")
+      if (pageIndex < 0 || pageIndex >= session.renderer.pageCount) {
+        error("PDF page index is out of range.")
+      }
+      return session.renderer.openPage(pageIndex).use { page ->
+        val sourceWidth = page.width.coerceAtLeast(1)
+        val sourceHeight = page.height.coerceAtLeast(1)
+        val targetWidth = renderWidth.coerceIn(512, 2400)
+        val targetHeight = ((sourceHeight.toDouble() / sourceWidth.toDouble()) * targetWidth)
+          .toInt()
+          .coerceAtLeast(1)
+        if (targetHeight > ANDROID_PDF_MAX_BITMAP_PIXELS / targetWidth) {
+          error("PDF page dimensions are too large to render safely.")
+        }
+        val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        var payload: String
+        try {
+          bitmap.eraseColor(Color.WHITE)
+          page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+          val bytes = ByteArrayOutputStream()
+          bitmap.compress(Bitmap.CompressFormat.PNG, 100, bytes)
+          payload = JSONObject()
+            .put("success", true)
+            .put("width", targetWidth)
+            .put("height", targetHeight)
+            .put("dataUrl", "data:image/png;base64," + Base64.encodeToString(bytes.toByteArray(), Base64.NO_WRAP))
+            .toString()
+        } finally {
+          bitmap.recycle()
+        }
+        payload
       }
     }
 
@@ -445,6 +548,16 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  private fun clearPendingImportIfCurrent(requestId: String) {
+    synchronized(bridgeLock) {
+      if (pendingImportRequestId == requestId) {
+        pendingImportRequestId = null
+        pendingImportWatchdog?.let { mainHandler.removeCallbacks(it) }
+        pendingImportWatchdog = null
+      }
+    }
+  }
+
   private fun queueExport(
     data: String?,
     sourcePath: String?,
@@ -453,28 +566,34 @@ class MainActivity : TauriActivity() {
     requestId: String?
   ): Boolean {
     val id = normalizeBridgeRequestId(requestId, "android-export")
+    // Pre-check the payload before the SAF picker opens: the write-phase
+    // cap alone only surfaces after the user already chose a destination.
+    if (data != null && data.length > ANDROID_DIRECT_EXPORT_MAX_CHARS) {
+      dispatchAndroidExportResult(id, success = false, error = "Export is too large for direct Android write.", cancelled = false, status = "error")
+      return true
+    }
+    if (sourcePath != null && File(sourcePath).length() > ANDROID_TRANSFER_MAX_BYTES) {
+      dispatchAndroidExportResult(id, success = false, error = "WordHunter package is too large.", cancelled = false, status = "error")
+      return true
+    }
     synchronized(bridgeLock) {
       if (pendingExport != null) {
-        dispatchAndroidExportResult(id, success = false, error = "Android export is already running.", cancelled = false, status = "busy")
-        return true
+        // Busy: reject synchronously so the JS fast-path in
+        // waitForAndroidExport() resolves immediately instead of waiting
+        // for a terminal event that never comes.
+        return false
       }
-      val export = PendingExport(
+      // No picker timeout is armed here: the SAF picker may stay foreground
+      // for minutes, and a stale timeout would silently drop the destination
+      // the user just chose. The picker phase is bounded by the short grace
+      // period re-armed in onResume instead.
+      pendingExport = PendingExport(
         requestId = id,
         data = data,
         sourcePath = sourcePath,
         filename = safeExportFilename(filename),
         mime = safeMimeType(mime)
       )
-      val timeout = Runnable {
-        synchronized(bridgeLock) {
-          if (pendingExport?.requestId == export.requestId) pendingExport = null
-        }
-        export.sourcePath?.let { File(it).delete() }
-        dispatchAndroidExportResult(export.requestId, success = false, error = "Android export timed out.", cancelled = false, status = "timeout")
-      }
-      export.timeoutRunnable = timeout
-      pendingExport = export
-      mainHandler.postDelayed(timeout, ANDROID_EXPORT_TIMEOUT_MS)
     }
     runOnUiThread {
       runCatching {
@@ -511,7 +630,8 @@ class MainActivity : TauriActivity() {
     val sourcePath: String?,
     val filename: String,
     val mime: String,
-    var timeoutRunnable: Runnable? = null
+    var timeoutRunnable: Runnable? = null,
+    var awaitingPicker: Boolean = true
   )
 
   private fun closeAllPdfRenderSessions() {
@@ -528,18 +648,34 @@ class MainActivity : TauriActivity() {
     return raw.replace(Regex("[^A-Za-z0-9._-]"), "_").take(80).ifBlank { "default" }
   }
 
-  private fun decodeDataUrl(dataUrl: String?): ByteArray {
+  private fun writeDecodedDataUrl(dataUrl: String?, output: File) {
     val raw = dataUrl?.substringAfter(',', dataUrl)?.trim()?.takeIf { it.isNotEmpty() }
       ?: error("PDF data is empty.")
-    val maxEncodedLength = 400 * 1024 * 1024 * 4 / 3 + 4
-    if (raw.length > maxEncodedLength) {
-      error("PDF is too large for Pocket render (max 400 MB).")
+    if (raw.length > ANDROID_PDF_MAX_BASE64_ENCODED) {
+      error("PDF is too large for Pocket render (max 64 MB).")
     }
-    val data = Base64.decode(raw, Base64.DEFAULT)
-    if (data.size > 400 * 1024 * 1024) {
-      error("PDF is too large for Pocket render (max 400 MB).")
+    // Decode in chunks straight into the file: a full Java-heap buffer for
+    // large PDFs would OOM on lower-end devices (was a single full decode).
+    val input = ByteArrayInputStream(raw.toByteArray(Charsets.US_ASCII))
+    val decoder = Base64InputStream(input, Base64.DEFAULT)
+    val buffer = ByteArray(64 * 1024)
+    var decodedTotal = 0L
+    try {
+      FileOutputStream(output).use { stream ->
+        while (true) {
+          val count = decoder.read(buffer)
+          if (count <= 0) break
+          decodedTotal += count
+          if (decodedTotal > ANDROID_PDF_MAX_BASE64_DECODED) {
+            error("PDF is too large for Pocket render (max 64 MB).")
+          }
+          stream.write(buffer, 0, count)
+        }
+        stream.fd.sync()
+      }
+    } finally {
+      decoder.close()
     }
-    return data
   }
 
   private fun localeFor(lang: String): Locale {
@@ -634,6 +770,15 @@ class MainActivity : TauriActivity() {
     }
   }
 
+  private fun postToWebView(script: String, onPosted: (() -> Unit)? = null) {
+    val webView = appWebView ?: return
+    if (isDestroyed || isFinishing) return
+    webView.post {
+      webView.evaluateJavascript(script, null)
+      onPosted?.invoke()
+    }
+  }
+
   private fun dispatchAndroidImportResult(
     requestId: String,
     success: Boolean,
@@ -648,7 +793,7 @@ class MainActivity : TauriActivity() {
       .put("error", error ?: JSONObject.NULL)
       .put("cancelled", cancelled)
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-import',{detail:$detail}));"
-    appWebView?.post { appWebView?.evaluateJavascript(script, null) }
+    postToWebView(script)
   }
 
   private fun dispatchAndroidExportResult(
@@ -667,11 +812,8 @@ class MainActivity : TauriActivity() {
       .put("terminal", true)
     pendingExportResult = detail
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-export',{detail:$detail}));"
-    appWebView?.post {
-      appWebView?.postDelayed({
-        appWebView?.evaluateJavascript(script, null)
-        if (pendingExportResult === detail) pendingExportResult = null
-      }, 250)
+    postToWebView(script) {
+      if (pendingExportResult === detail) pendingExportResult = null
     }
   }
 
@@ -684,17 +826,14 @@ class MainActivity : TauriActivity() {
       .put("status", status)
       .put("terminal", false)
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-export',{detail:$detail}));"
-    appWebView?.post { appWebView?.evaluateJavascript(script, null) }
+    postToWebView(script)
   }
 
   private fun dispatchPendingAndroidExportResult() {
     val detail = pendingExportResult ?: return
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-export',{detail:$detail}));"
-    appWebView?.post {
-      appWebView?.postDelayed({
-        appWebView?.evaluateJavascript(script, null)
-        if (pendingExportResult === detail) pendingExportResult = null
-      }, 250)
+    postToWebView(script) {
+      if (pendingExportResult === detail) pendingExportResult = null
     }
   }
 
@@ -797,8 +936,6 @@ class MainActivity : TauriActivity() {
     if (start != null) detail.put("start", start)
     if (end != null) detail.put("end", end)
     val script = "window.dispatchEvent(new CustomEvent('wordhunter:android-tts',{detail:$detail}));"
-    appWebView?.post {
-      appWebView?.evaluateJavascript(script, null)
-    }
+    postToWebView(script)
   }
 }

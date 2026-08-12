@@ -59,9 +59,13 @@ function reportBootError(text: string): void {
   fetch("/__log_error", { method: "POST", body: text }).catch(() => {});
 }
 
+// Slow Android devices (first boot, cold caches) can exceed a 15 s startup
+// budget; keep a generous window before declaring the boot dead.
+const BOOT_WATCHDOG_MS = 30_000;
+
 window.wordHunterBootTimeout = window.setTimeout(() => {
   reportBootError("Startup timed out before the application became ready.");
-}, 15000);
+}, BOOT_WATCHDOG_MS);
 
 try {
   applyBootTheme();

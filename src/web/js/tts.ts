@@ -189,7 +189,7 @@ export async function speakWord(word: string): Promise<void> {
   if (!androidTtsBroken && getAndroidTtsBridge()) {
     const ready = await waitForAndroidTtsReady();
     if (sessionId !== ttsSessionId) return;
-    if (ready && speakSentenceAndroid(word)) return;
+    if (ready && speakSentenceAndroid(word, () => endAndroidTtsSession())) return;
     androidTtsBroken = true;
     speakWordLocal(word);
     return;

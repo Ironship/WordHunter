@@ -18,6 +18,22 @@ html.pocket-mode {
     var(--pocket-word-sheet-expanded-top),
     calc(100dvh - 4.6rem - var(--pocket-navbar-safe-bottom) - var(--pocket-word-sheet-collapsed-size))
   );
+  /* Pocket z-index scale — pinned by frontend-tests/shared/css-verifiability.test.js. */
+  --z-pocket-statusbar: 90;
+  --z-pocket-scrim: 75;
+  --z-pocket-sidebar: 80;
+  --z-pocket-toggle: 66;
+  --z-pocket-toggle-open: 81;
+  --z-pocket-topbar: 25;
+  --z-pocket-import-toggle: 50;
+  --z-pocket-toolbar: 65;
+  --z-pocket-sheet: 60;
+  --z-pocket-word-panel: 2;
+  --z-pocket-sheet-handle: 3;
+  --z-pocket-ghost: 4;
+  --z-pocket-header: 1;
+  --z-pocket-flat: 0;
+  --z-auto: auto;
   zoom: 1 !important;
 }
 
@@ -34,7 +50,7 @@ html.pocket-mode {
 .pocket-mode body::before {
   content: "";
   position: fixed;
-  z-index: 90;
+  z-index: var(--z-pocket-statusbar);
   top: 0;
   right: 0;
   left: 0;
@@ -47,7 +63,7 @@ html.pocket-mode {
 .pocket-mode.pocket-navigation-open body::after {
   content: "";
   position: fixed;
-  z-index: 75;
+  z-index: var(--z-pocket-scrim);
   inset: 0;
   background: rgba(10, 18, 14, 0.28);
 }
@@ -142,7 +158,7 @@ html.pocket-mode {
 
 .pocket-mode .sidebar {
   position: fixed;
-  z-index: 80;
+  z-index: var(--z-pocket-sidebar);
   inset: var(--pocket-statusbar-safe-top) auto 0 0;
   width: min(84vw, 320px);
   height: auto;
@@ -222,7 +238,7 @@ html.pocket-mode {
 
 .pocket-mode .pocket-navigation-toggle {
   position: fixed;
-  z-index: 66;
+  z-index: var(--z-pocket-toggle);
   bottom: calc(0.35rem + var(--pocket-navbar-safe-bottom));
   left: max(0.45rem, env(safe-area-inset-left, 0px));
   display: inline-flex;
@@ -242,7 +258,7 @@ html.pocket-mode {
 }
 
 .pocket-mode.pocket-navigation-open .pocket-navigation-toggle {
-  z-index: 81;
+  z-index: var(--z-pocket-toggle-open);
   left: max(0.45rem, env(safe-area-inset-left, 0px));
   color: var(--sidebar-ink);
   background: var(--sidebar-nav-active);
@@ -266,7 +282,7 @@ html.pocket-mode {
 
 .pocket-mode .topbar {
   position: static;
-  z-index: 25;
+  z-index: var(--z-pocket-topbar);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
@@ -331,6 +347,15 @@ html.pocket-mode {
   display: none;
 }
 
+/* Pocket-only reader controls: hidden on desktop, shown in pocket mode. */
+.pocket-only-control {
+  display: none;
+}
+
+.pocket-mode .pocket-only-control {
+  display: inline-flex;
+}
+
 .pocket-mode .desktop-help-shortcuts {
   display: none;
 }
@@ -357,7 +382,7 @@ html.pocket-mode {
 
 .pocket-mode .pocket-import-toggle {
   position: fixed;
-  z-index: 50;
+  z-index: var(--z-pocket-import-toggle);
   top: 50dvh;
   right: 0;
   display: none;
@@ -398,7 +423,7 @@ html.pocket-mode {
 
 .pocket-mode .import-panel {
   position: fixed;
-  z-index: 80;
+  z-index: var(--z-pocket-sidebar);
   top: var(--pocket-statusbar-safe-top);
   right: 0;
   bottom: calc(4.6rem + var(--pocket-navbar-safe-bottom));
@@ -422,7 +447,7 @@ html.pocket-mode {
 
 .pocket-mode .import-panel .panel-header {
   position: sticky;
-  z-index: 1;
+  z-index: var(--z-pocket-header);
   top: 0;
   padding-right: 3.5rem;
   background: var(--panel);
@@ -611,7 +636,7 @@ html.pocket-mode {
 .pocket-mode #reader-view .toolbar-buttons {
   display: grid;
   position: fixed;
-  z-index: 65;
+  z-index: var(--z-pocket-toolbar);
   right: 0;
   bottom: 0;
   left: 0;
@@ -818,7 +843,7 @@ html.pocket-mode {
 .pocket-mode .vocab-table td:last-child {
   position: static;
   right: auto;
-  z-index: auto;
+  z-index: var(--z-auto);
   box-shadow: none;
 }
 
@@ -962,7 +987,7 @@ html.pocket-mode {
 
 .pocket-mode #reader-view.active .pagination-controls {
   position: static;
-  z-index: auto;
+  z-index: var(--z-auto);
   margin: 2rem 0 0;
   padding: 0.45rem;
   flex-wrap: nowrap;
@@ -1000,7 +1025,7 @@ html.pocket-mode {
 
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-pocket-sheet);
   --pocket-word-sheet-current-top: var(--pocket-word-sheet-expanded-top);
   top: var(--pocket-word-sheet-current-top);
   left: max(0.75rem, env(safe-area-inset-left, 0px));
@@ -1052,7 +1077,7 @@ html.pocket-mode {
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper::after {
   content: "";
   position: absolute;
-  z-index: 0;
+  z-index: var(--z-pocket-flat);
   top: 2.6rem;
   right: 0.45rem;
   bottom: 0.15rem;
@@ -1075,7 +1100,7 @@ html.pocket-mode {
 
 .pocket-mode .pocket-word-panel-sheet-handle {
   position: relative;
-  z-index: 3;
+  z-index: var(--z-pocket-sheet-handle);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1109,7 +1134,7 @@ html.pocket-mode {
 
 .pocket-mode .word-panel {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-pocket-word-panel);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1135,7 +1160,7 @@ html.pocket-mode {
 
 .pocket-mode .word-panel.word-panel-card-ghost {
   position: absolute;
-  z-index: 4;
+  z-index: var(--z-pocket-ghost);
   top: 56px;
   right: 0;
   bottom: 0;
@@ -1156,7 +1181,7 @@ html.pocket-mode {
 
 .pocket-mode .word-panel-header {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-pocket-header);
   flex: 0 0 auto;
   padding: 1.35rem 0 0.65rem;
   background: var(--word-panel-status-bg, var(--panel));

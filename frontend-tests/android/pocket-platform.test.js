@@ -166,32 +166,36 @@ describe("Android Pocket platform", () => {
 
     assert.equal(document.documentElement.dataset.platform, "android");
     assert.equal(document.documentElement.classList.contains("pocket-mode"), true);
-    assert.equal(importFile.attrs.accept.includes(".txt"), true);
+    assert.equal(importFile.attrs.accept.includes(".txt"), false);
+    assert.equal(importFile.attrs.accept.includes("text/plain"), true);
   });
 
   it("marks desktop-only settings and controls in their own elements", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
-    const desktopSettingParents = [
+    // All settings controls are built by renderSettingsView() (#127 P3):
+    // phase-1 panels + the Reader and Translator & Dictionary panels.
+    const rendererSettingParents = [
       ["pref-ui-scale", "label"],
       ["pref-touch-controls", "label"],
+      ["check-updates", "section"],
       ["pref-use-edge-tts", "label"],
-      ["pref-offline-translator", "label"],
-      ["check-updates", "section"]
+      ["pref-offline-translator", "label"]
     ];
 
-    for (const [id, parentTag] of desktopSettingParents) {
-      assert.ok(classTokens(ancestorOpeningTag(html, id, parentTag)).has("desktop-only-setting"), `${id} ${parentTag}`);
+    for (const [id, parentTag] of rendererSettingParents) {
+      assert.ok(classTokens(ancestorOpeningTag(settingsSource, id, parentTag)).has("desktop-only-setting"), `${id} ${parentTag}`);
     }
     for (const id of ["reader-word-panel-toggle", "choose-data-directory"]) {
-      assert.ok(classTokens(openingTagById(html, id)).has("desktop-only-control"), id);
+      assert.ok(classTokens(openingTagById(id === "choose-data-directory" ? settingsSource : html, id)).has("desktop-only-control"), id);
     }
     for (const id of ["export-transfer-all", "export-anki-tsv"]) {
       assert.equal(classTokens(openingTagById(html, id)).has("desktop-only-control"), false, id);
     }
-    assert.equal(classTokens(ancestorOpeningTag(html, "pref-auto-add-learning", "label")).has("desktop-only-setting"), false);
-    assertSourceOrder(html, 'data-i18n="settings.groupLocalData"', 'id="choose-data-directory"');
-    assertSourceOrder(html, 'id="choose-data-directory"', 'data-i18n="settings.groupBackup"');
+    assert.equal(classTokens(ancestorOpeningTag(settingsSource, "pref-auto-add-learning", "label")).has("desktop-only-setting"), false);
+    assertSourceOrder(settingsSource, 'data-i18n="settings.groupLocalData"', 'id="choose-data-directory"');
+    assertSourceOrder(settingsSource, 'id="choose-data-directory"', 'data-i18n="settings.groupBackup"');
     assert.equal(declarationBlock(css, ".pocket-mode .desktop-only-setting").display, "none");
     assert.equal(declarationBlock(css, ".pocket-mode .desktop-only-control").display, "none");
   });
@@ -241,11 +245,12 @@ describe("Android Pocket platform", () => {
 
     assert.equal(document.documentElement.style.zoom, "1");
     assert.equal(document.documentElement.style["--ui-scale"], "1");
-    assert.equal(importFile.attrs.accept.includes(".pdf"), true);
+    assert.equal(importFile.attrs.accept.includes(".pdf"), false);
     assert.equal(importFile.attrs.accept.includes("application/pdf"), true);
-    assert.equal(importFile.attrs.accept.includes(".epub"), true);
+    assert.equal(importFile.attrs.accept.includes(".epub"), false);
     assert.equal(importFile.attrs.accept.includes(".mobi"), false);
-    assert.equal(importFile.attrs.accept.includes(".txt"), true);
+    assert.equal(importFile.attrs.accept.includes(".txt"), false);
+    assert.equal(importFile.attrs.accept.includes("text/plain"), true);
     assert.equal(importHint.innerHTML, "import.mobileFileHint");
     assert.equal(providerOptions.find((option) => option.value === "offline").disabled, true);
     assert.equal(providerOptions.find((option) => option.value === "lmstudio").hidden, true);

@@ -25,12 +25,12 @@
     </button>
     <aside class="sidebar" id="app-navigation" data-i18n-attr="aria-label=app.navAriaLabel" aria-label="Navigation">
       <div class="brand">
-        <div style="width: 100%;">
+        <div class="w-100">
           <strong data-i18n="app.title">Word Hunter</strong>
-          <div class="lang-selectors" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; justify-content: flex-start;">
-            <div style="position: relative; display: flex; align-items: center;" data-i18n-attr="title=settings.interfaceLanguageTitle">
-              <div id="app-lang-flag" style="display: flex; align-items: center;"></div>
-              <select id="pref-locale-sidebar" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+          <div class="lang-selectors row-start-m-t-05">
+            <div data-i18n-attr="title=settings.interfaceLanguageTitle" class="rel-row">
+              <div id="app-lang-flag" class="row-nogap"></div>
+              <select id="pref-locale-sidebar" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle" class="abs-fill">
                 <option value="pl" data-i18n="languages.pl">Polish</option>
                 <option value="en" data-i18n="languages.en">English</option>
                 <option value="de" data-i18n="languages.de">German</option>
@@ -44,11 +44,11 @@
               </select>
             </div>
             
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--sidebar-muted);"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sidebar"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             
-            <div style="position: relative; display: flex; align-items: center;" data-i18n-attr="title=settings.learningLanguageTitle">
-              <div id="learning-lang-flag" style="display: flex; align-items: center;"></div>
-              <select id="pref-learning-language-sidebar" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+            <div data-i18n-attr="title=settings.learningLanguageTitle" class="rel-row">
+              <div id="learning-lang-flag" class="row-nogap"></div>
+              <select id="pref-learning-language-sidebar" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle" class="abs-fill">
                 <option value="en" data-i18n="languages.en">English</option>
                 <option value="de" data-i18n="languages.de">German</option>
                 <option value="es" data-i18n="languages.es">Spanish</option>
@@ -136,7 +136,7 @@
           <span class="metric-pill metric-new" id="pill-new" data-i18n-attr="title=topbar.newTooltip"></span>
           <span class="metric-pill" id="overall-count" data-i18n-attr="title=topbar.totalTooltip"></span>
           <button class="icon-button" type="button" id="app-reload" aria-label="Reload application" data-i18n-attr="title=app.reload,aria-label=app.reload">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-18"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
           </button>
           <button class="icon-button" type="button" id="theme-toggle" data-i18n-attr="title=topbar.themeToggle,aria-label=topbar.themeToggle">
             <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 5 5-5 5-5-5 5-5Z" fill="currentColor" opacity=".28"></path><path d="m12 11 5 5-5 5-5-5 5-5Z"></path></svg>
@@ -146,154 +146,7 @@
 
       <section class="view active" id="library-view" data-title-key="nav.library">
         <div class="workspace-grid library-layout">
-          <section class="panel library-panel library-filters-collapsed" aria-labelledby="library-heading">
-            <div class="panel-header">
-              <div class="library-title-row">
-                <div>
-                  <p class="eyebrow" data-i18n="library.eyebrow">Offline catalog</p>
-                  <h2 id="library-heading" data-i18n="library.heading">Books</h2>
-                </div>
-                <button type="button" id="library-filters-toggle" class="icon-button library-filters-toggle" aria-expanded="false" aria-controls="library-filters" data-i18n-attr="title=library.showFilters,aria-label=library.showFilters" title="Show search and filters" aria-label="Show search and filters">
-                  <svg class="library-filters-icon library-filters-icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  <svg class="library-filters-icon library-filters-icon-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"></polyline></svg>
-                </button>
-              </div>
-              <div class="filters compact-filters" id="library-filters">
-                <label class="library-search-field">
-                  <span data-i18n="library.search">Search</span>
-                  <div class="search-with-hint">
-                    <input id="library-search" type="search" data-i18n-attr="placeholder=library.searchPlaceholder">
-                    <span class="shortcut-badge">/</span>
                   </div>
-                </label>
-                <label class="library-level-field">
-                  <span data-i18n="library.level">Level</span>
-                   <select id="level-filter">
-                    <option value="all" data-i18n="library.levelAll">All</option>
-                    <option value="A1">A1</option>
-                    <option value="A2">A2</option>
-                    <option value="B1">B1</option>
-                    <option value="B2">B2</option>
-                    <option value="C1">C1</option>
-                    <option value="C2">C2</option>
-                  </select>
-                </label>
-                <label class="library-status-field">
-                  <span data-i18n="library.archiveFilter">Status</span>
-                  <select id="library-archive-filter">
-                    <option value="active" data-i18n="library.archiveActive">Active</option>
-                    <option value="archived" data-i18n="library.archiveArchived">Archive</option>
-                    <option value="all" data-i18n="library.archiveAll">All</option>
-                  </select>
-                </label>
-                <label class="library-sort-field">
-                  <span data-i18n="library.sort">Sort</span>
-                  <div style="display: flex; align-items: center; gap: 0.35rem;">
-                    <select id="library-sort" style="flex: 1;">
-                      <option value="title" data-i18n="library.sortByTitle">By title</option>
-                      <option value="author" data-i18n="library.sortByAuthor">By author</option>
-                      <option value="length" data-i18n="library.sortByLength">By length</option>
-                      <option value="known" data-i18n="library.sortByKnown">Known words</option>
-                      <option value="new" data-i18n="library.sortByNew">New words</option>
-                      <option value="learning" data-i18n="library.sortByLearning">Learning words</option>
-                      <option value="progress" data-i18n="library.sortByProgress">By progress</option>
-                      <option value="year" data-i18n="library.sortByYear">By date</option>
-                    </select>
-                    <button type="button" id="library-sort-reverse" class="icon-button" data-reverse="true" data-i18n-attr="title=library.sortReverse,aria-label=library.sortReverse" aria-label="Reverse sort">
-                      <span class="sort-indicator"></span>
-                    </button>
-                  </div>
-                </label>
-              </div>
-              <button type="button" id="library-import-toggle" class="secondary-button pocket-import-toggle" aria-expanded="false" data-i18n="import.heading" data-i18n-attr="title=import.heading,aria-label=import.heading">Import</button>
-            </div>
-            <div class="book-grid" id="book-list" aria-busy="false"></div>
-          </section>
-
-          <div id="library-sidebar-resizer" class="panel-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=library.resizeImportPanel"></div>
-
-          <aside class="panel import-panel" aria-labelledby="import-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="import.eyebrow">Custom text</p>
-              <h2 id="import-heading" data-i18n="import.heading">Import</h2>
-              <button type="button" id="library-import-close" class="icon-button pocket-drawer-close" data-i18n-attr="title=reader.close,aria-label=reader.close" aria-label="Close">×</button>
-            </div>
-            <div class="import-mode-row">
-              <label for="import-mode-select">
-                <span data-i18n="import.modeLabel">Import type</span>
-                <select id="import-mode-select" class="input">
-                  <option value="books" data-i18n="import.modeBooks">Import books / texts</option>
-                  <option value="youtube" data-i18n="import.modeYoutube">Import YouTube subtitles</option>
-                </select>
-              </label>
-            </div>
-            <div id="import-books-mode">
-              <form id="import-form" class="import-form">
-                <label class="file-button">
-                  <span data-i18n="import.fileLabel">Import books / texts</span>
-                  <input id="import-file" type="file" accept=".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf">
-                </label>
-                <p class="muted-copy" id="import-file-hint" data-i18n-html="import.desktopOcrUnavailableFileHint"></p>
-                <label>
-                  <span data-i18n="import.title">Title</span>
-                  <input id="import-title" type="text" data-i18n-attr="placeholder=import.titlePlaceholder" required>
-                </label>
-                <label>
-                  <span data-i18n="import.author">Author (optional)</span>
-                  <input id="import-author" type="text" data-i18n-attr="placeholder=import.authorPlaceholder">
-                </label>
-                <label>
-                  <span data-i18n="import.tags">Tags (optional)</span>
-                  <input id="import-tags" type="text" data-i18n-attr="placeholder=import.tagsPlaceholder">
-                </label>
-                <label>
-                  <span data-i18n="import.level">Level (optional)</span>
-                  <select id="import-level">
-                    <option value="" data-i18n="library.levelAny">Any</option>
-                    <option value="A1">A1</option>
-                    <option value="A2">A2</option>
-                    <option value="B1">B1</option>
-                    <option value="B2">B2</option>
-                    <option value="C1">C1</option>
-                    <option value="C2">C2</option>
-                  </select>
-                </label>
-                <label>
-                  <span data-i18n="import.text">Text</span>
-                  <textarea id="import-text" rows="10" spellcheck="false" data-i18n-attr="placeholder=import.textPlaceholder" required></textarea>
-                </label>
-                <div class="form-group" style="margin-bottom: 1.5rem; text-align: center;">
-                  <label for="import-cover" class="import-cover-dropzone" id="import-cover-dropzone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px dashed var(--line); border-radius: 8px; padding: 1.5rem; cursor: pointer; transition: background 0.2s, border-color 0.2s;" data-i18n-attr="title=import.cover">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 32px; height: 32px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    <span style="font-size: 0.9rem; color: var(--muted);" data-i18n="import.coverPasteHint">Click to select or paste</span>
-                    <input id="import-cover" type="file" accept="image/*" class="visually-hidden">
-                  </label>
-                </div>
-                <div id="import-cover-preview" class="import-cover-preview" hidden style="margin-bottom: 1.5rem; position: relative; width: max-content;">
-                  <img id="import-cover-img" data-i18n-attr="alt=import.coverPreviewAlt" alt="Cover preview" style="max-height: 150px; border-radius: 6px; border: 1px solid var(--line);">
-                  <button type="button" id="import-cover-clear" data-i18n-attr="title=editBook.deleteCover" style="position: absolute; top: -10px; right: -10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: var(--red); color: var(--red-ink); cursor: pointer;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                </div>
-                <button class="primary-button" type="submit" id="import-submit" data-i18n="import.submit">Add to library</button>
-              </form>
-            </div>
-            <div id="import-youtube-mode" hidden>
-              <section class="youtube-import-section" aria-labelledby="youtube-import-heading">
-                <h3 id="youtube-import-heading" data-i18n="import.youtubeHeading">YouTube subtitles</h3>
-                <label>
-                  <span data-i18n="import.youtubeUrl">YouTube URL</span>
-                  <input id="import-youtube-url" type="url" data-i18n-attr="placeholder=import.youtubePlaceholder">
-                </label>
-                <div class="youtube-import-actions">
-                  <select id="import-youtube-track" hidden data-i18n-attr="aria-label=import.youtubeTrack"></select>
-                  <button class="secondary-button" type="button" id="import-youtube-load" data-i18n="import.youtubeLoad">Load subtitles</button>
-                </div>
-                <p class="muted-copy" id="import-youtube-status" aria-live="polite"></p>
-              </section>
-            </div>
-          </aside>
-        </div>
       </section>
 
       <section class="view" id="reader-view" data-title-key="nav.reader">
@@ -301,7 +154,7 @@
           <section class="panel reader-panel" aria-labelledby="reader-heading">
             <div class="reader-toolbar">
               <label>
-                <span style="display: flex; align-items: center; gap: 0.5rem;"><span data-i18n="reader.textLabel">Text</span> <span class="shortcut-badge">Ctrl+B</span></span>
+                <span class="row"><span data-i18n="reader.textLabel">Text</span> <span class="shortcut-badge">Ctrl+B</span></span>
                 <select id="text-select"></select>
               </label>
               <div class="toolbar-buttons" role="group" data-i18n-attr="aria-label=reader.controlsLabel">
@@ -321,17 +174,20 @@
                 </div>
                 <button type="button" data-font="up" data-i18n-attr="title=reader.fontUp">A+</button>
                 <button type="button" id="tts-play-text" class="secondary-button" aria-label="Read text" data-i18n-attr="title=reader.ttsPlayTitle,aria-label=reader.ttsPlayTitle">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
                 <button type="button" id="tts-stop-text" class="danger-button" hidden data-i18n-attr="title=reader.ttsStopTitle,aria-label=reader.ttsStopTitle">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><rect x="4" y="4" width="16" height="16"></rect></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><rect x="4" y="4" width="16" height="16"></rect></svg>
                 </button>
                 <button type="button" id="reader-highlight-toggle" class="icon-button" aria-pressed="true" data-i18n-attr="title=settings.highlight,aria-label=settings.highlight">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-16"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
                 </button>
                 <button type="button" id="reader-bookmarks-button" class="icon-button reader-bookmarks-button" aria-haspopup="dialog" aria-controls="reader-bookmarks-dialog" data-i18n-attr="title=reader.bookmarks,aria-label=reader.bookmarks">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4V3z"></path></svg>
                   <span id="reader-bookmarks-count" class="reader-bookmarks-count" hidden>0</span>
+                </button>
+                <button type="button" id="reader-find-toggle" class="icon-button pocket-only-control" data-i18n-attr="title=reader.findOpen,aria-label=reader.findOpen" aria-label="Find in text…">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 </button>
                 <button type="button" id="reader-word-panel-toggle" class="secondary-button desktop-only-control" data-i18n="settings.readerWordPanelHideControl" data-i18n-attr="title=settings.readerWordPanelVisibleHint,aria-label=settings.readerWordPanelVisible">
                   &gt;&gt;
@@ -405,9 +261,9 @@
             <div class="translator-controls">
               <label>
                 <span data-i18n="translator.from">From language</span>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <img id="translator-from-flag" class="flag-icon" src="" alt="" style="width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none;">
-                  <select id="translator-from" style="flex: 1;"></select>
+                <div class="row">
+                  <img id="translator-from-flag" class="flag-icon cover-thumb" src="" alt="">
+                  <select id="translator-from" class="flex-1"></select>
                 </div>
               </label>
               <button class="icon-button translator-swap" type="button" id="translator-swap" aria-label="Swap languages" data-i18n-attr="title=translator.swap,aria-label=translator.swap">
@@ -415,9 +271,9 @@
               </button>
               <label>
                 <span data-i18n="translator.to">To language</span>
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <img id="translator-to-flag" class="flag-icon" src="" alt="" style="width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none;">
-                  <select id="translator-to" style="flex: 1;"></select>
+                <div class="row">
+                  <img id="translator-to-flag" class="flag-icon cover-thumb" src="" alt="">
+                  <select id="translator-to" class="flex-1"></select>
                 </div>
               </label>
             </div>
@@ -428,9 +284,9 @@
               </label>
               <label class="translator-field">
                 <span data-i18n="translator.result">Translation</span>
-                <div style="display: flex; gap: 0.5rem; align-items: stretch; flex: 1; min-height: 0;">
-                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" style="flex: 1;"></textarea>
-                  <button type="button" id="translator-copy" class="secondary-button" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy" style="align-self: flex-end; flex-shrink: 0;">Copy</button>
+                <div class="row-stretch-flex-1">
+                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" class="flex-1"></textarea>
+                  <button type="button" id="translator-copy" class="secondary-button self-end-noshrink" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy">Copy</button>
                 </div>
               </label>
             </div>
@@ -514,13 +370,13 @@
       <section class="view" id="flashcards-view" data-title-key="nav.flashcards">
         <div class="workspace-grid flashcards-layout">
           <aside class="panel review-panel" aria-labelledby="review-heading">
-            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="panel-header row-between">
               <div>
                 <p class="eyebrow" data-i18n="vocab.reviewEyebrow">Review</p>
                 <h2 id="review-heading" data-i18n="vocab.reviewHeading">Flashcard</h2>
               </div>
-              <button class="secondary-button" type="button" id="review-reverse-toggle" style="font-size: 0.85rem; padding: 0.4rem 0.6rem; display: flex; align-items: center; gap: 0.3rem;" data-i18n-attr="title=vocab.reverseTooltip">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <button class="secondary-button chip" type="button" id="review-reverse-toggle" data-i18n-attr="title=vocab.reverseTooltip">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-14"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                 <span id="review-reverse-label" data-i18n="vocab.normalOrder">Foreign → Native</span>
               </button>
             </div>
@@ -618,13 +474,13 @@
 
       <section class="view" id="graphs-view" data-title-key="nav.graphs">
         <div class="workspace-grid graphs-layout">
-          <section class="panel" aria-labelledby="graphs-heading" style="flex: 1;">
+          <section class="panel flex-1" aria-labelledby="graphs-heading">
             <div class="panel-header">
               <div>
                 <p class="eyebrow" data-i18n="graphs.eyebrow">Statistics</p>
                 <h2 id="graphs-heading" data-i18n="graphs.heading">Charts</h2>
               </div>
-              <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <div class="row">
                 <label>
                   <span data-i18n="graphs.range">Range</span>
                   <select id="graphs-range">
@@ -648,546 +504,7 @@
         </div>
       </section>
 
-      <section class="view" id="settings-view" data-title-key="nav.settings">
-        <div class="settings-grid">
-          <section class="panel" aria-labelledby="appearance-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.appearanceEyebrow">Appearance</p>
-              <h2 id="appearance-heading" data-i18n="settings.appearanceHeading">Theme and interface</h2>
-            </div>
-            <div class="settings-body">
-              <p class="settings-subheading" data-i18n="settings.groupLanguage">Language and interface</p>
-              <label class="setting-row">
-                <span>
-                  <span data-i18n="settings.theme">Theme</span>
-                  <small data-i18n="settings.themeHint">The theme is shared by all learning languages. Familiar themes stay dark on desktop and follow the system mode on Pocket.</small>
-                </span>
-                <select id="pref-theme" data-pref="theme">
-                  <option value="familiar" data-i18n="settings.themeFamiliar">Familiar (cool blue)</option>
-                  <option value="alternative-familiar" data-i18n="settings.themeAlternativeFamiliar">Alternative familiar (aubergine and orange)</option>
-                  <option value="classic-auto" data-i18n="settings.themeClassicAuto">Word Hunter Classic (system)</option>
-                  <option value="classic-light" data-i18n="settings.themeClassicLight">Word Hunter Classic (light)</option>
-                  <option value="classic-dark" data-i18n="settings.themeClassicDark">Word Hunter Classic (dark)</option>
-                </select>
-              </label>
-              <label class="setting-row language-setting-row">
-                <span class="language-setting-title" data-i18n="settings.interfaceLanguageTitle">App interface language</span>
-                <span class="language-select-wrap">
-                  <img class="language-select-flag" data-language-flag="locale" src="flags/en.svg" alt="" aria-hidden="true">
-                  <select id="pref-locale-settings" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle">
-                    <option value="pl" data-i18n="languages.pl">Polish</option>
-                    <option value="en" data-i18n="languages.en">English</option>
-                    <option value="de" data-i18n="languages.de">German</option>
-                    <option value="es" data-i18n="languages.es">Spanish</option>
-                    <option value="fr" data-i18n="languages.fr">French</option>
-                    <option value="it" data-i18n="languages.it">Italian</option>
-                    <option value="uk" data-i18n="languages.uk">Українська</option>
-                    <option value="ru" data-i18n="languages.ru">Muscovite State</option>
-                    <option value="ja" data-i18n="languages.ja">Japanese</option>
-                    <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
-                  </select>
-                </span>
-              </label>
-              <label class="setting-row language-setting-row">
-                <span class="language-setting-title" data-i18n="settings.learningLanguageTitle">Learning language (profile)</span>
-                <span class="language-select-wrap">
-                  <img class="language-select-flag" data-language-flag="learning" src="flags/de.svg" alt="" aria-hidden="true">
-                  <select id="pref-learning-language-settings" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle">
-                    <option value="en" data-i18n="languages.en">English</option>
-                    <option value="de" data-i18n="languages.de">German</option>
-                    <option value="es" data-i18n="languages.es">Spanish</option>
-                    <option value="it" data-i18n="languages.it">Italian</option>
-                    <option value="fr" data-i18n="languages.fr">French</option>
-                    <option value="pl" data-i18n="languages.pl">Polish</option>
-                    <option value="uk" data-i18n="languages.uk">Українська</option>
-                    <option value="ru" data-i18n="languages.ru">Muscovite State</option>
-                    <option value="ja" data-i18n="languages.ja">Japanese</option>
-                    <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
-                    <option value="la" data-i18n="languages.la">Latin</option>
-                    <option value="grc" data-i18n="languages.grc">Ancient Greek</option>
-                    <option value="other" data-i18n="languages.other">Other</option>
-                  </select>
-                </span>
-              </label>
-              <div class="setting-row pocket-only-setting">
-                <span>
-                  <span data-i18n="nav.help">Help</span>
-                  <small data-i18n="help.tipsTitle">Useful Tips</small>
-                </span>
-                <button class="secondary-button" type="button" data-open-view="help" data-i18n="nav.help">Help</button>
-              </div>
-              <label class="setting-row desktop-only-setting">
-                <span id="pref-ui-scale-label"></span>
-                <input id="pref-ui-scale" type="range" min="80" max="150" step="5" aria-labelledby="pref-ui-scale-label">
-              </label>
-              <label class="setting-row toggle-row desktop-only-setting">
-                <span>
-                  <span data-i18n="settings.touchControls">Larger controls</span>
-                  <small data-i18n="settings.touchControlsHint">On desktop, makes buttons and spacing roomier for touch screens, laptops, and tablets.</small>
-                </span>
-                <input id="pref-touch-controls" type="checkbox" data-pref="touchControls">
-              </label>
-              <p class="settings-subheading" data-i18n="settings.groupLearningDisplay">Learning display</p>
-              <label class="setting-row">
-                <span data-i18n="settings.reviewGraphType">Flashcard chart</span>
-                <select id="pref-review-graph-type">
-                  <option value="heatmap" data-i18n="settings.reviewGraphHeatmap">Heatmap</option>
-                  <option value="dueForecast" data-i18n="settings.reviewGraphDue">Due forecast (21 days)</option>
-                  <option value="intervals" data-i18n="settings.reviewGraphIntervals">Intervals</option>
-                  <option value="easeDistribution" data-i18n="settings.reviewGraphEase">Ease (EF)</option>
-                  <option value="repetitions" data-i18n="settings.reviewGraphReps">Repetitions</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span data-i18n="settings.statusColors">Status colors</span>
-                <div class="color-pickers-group">
-                  <input type="color" id="pref-color-new" class="color-picker-lg" data-i18n-attr="title=vocab.statusNew,aria-label=vocab.statusNew">
-                  <input type="color" id="pref-color-learning" class="color-picker-lg" data-i18n-attr="title=vocab.statusLearning,aria-label=vocab.statusLearning">
-                  <input type="color" id="pref-color-known" class="color-picker-lg" data-i18n-attr="title=vocab.statusKnown,aria-label=vocab.statusKnown">
-                  <input type="color" id="pref-color-ignored" class="color-picker-lg" data-i18n-attr="title=vocab.statusIgnored,aria-label=vocab.statusIgnored">
-                </div>
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.dynamicLearningColors">Learning word color by SRS level</span>
-                  <small data-i18n="settings.dynamicLearningColorsHint">Level 1 starts orange and level 5 ends green. Adjust the colors below.</small>
-                </span>
-                <input id="pref-dynamic-learning-colors" type="checkbox">
-              </label>
-              <div class="setting-row" id="pref-learning-colors-row" hidden>
-                <span data-i18n="settings.learningColorPalette">Learning color palette (levels 1–5)</span>
-                <div class="color-pickers-group">
-                  <input type="color" class="color-picker-lg" data-learning-color="0">
-                  <input type="color" class="color-picker-lg" data-learning-color="1">
-                  <input type="color" class="color-picker-lg" data-learning-color="2">
-                  <input type="color" class="color-picker-lg" data-learning-color="3">
-                  <input type="color" class="color-picker-lg" data-learning-color="4">
-                </div>
-              </div>
-
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.cardStats">Stats on book cards</span>
-                  <small data-i18n="settings.cardStatsHint">Shows each book's reading progress and vocabulary count in the Library cards.</small>
-                </span>
-                <input id="pref-card-stats" type="checkbox">
-              </label>
-              <label class="setting-row" id="pref-card-stats-mode-row">
-                <span>
-                  <span data-i18n="settings.cardStatsMode">Book statistics values</span>
-                  <small data-i18n="settings.cardStatsModeHint">Show percentages, exact occurrence counts, or both.</small>
-                </span>
-                <select id="pref-card-stats-mode">
-                  <option value="percentages" data-i18n="settings.cardStatsModePercentages">Percentages</option>
-                  <option value="counts" data-i18n="settings.cardStatsModeCounts">Counts</option>
-                  <option value="both" data-i18n="settings.cardStatsModeBoth">Percentages and counts</option>
-                </select>
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.covers">Book Covers</span>
-                  <small data-i18n="settings.coversHint">Shows book cover thumbnails when Gutenberg metadata provides one; books without covers stay text-only.</small>
-                </span>
-                <input id="pref-covers" type="checkbox">
-              </label>
-              <div class="setting-row desktop-only-setting">
-                <span data-i18n="settings.ocrGpuAcceleration">OCR acceleration</span>
-                <output id="ocr-gpu-status" aria-live="polite" data-i18n="settings.ocrGpuChecking">Checking…</output>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="reader-prefs-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.readerEyebrow">Reader</p>
-              <h2 id="reader-prefs-heading" data-i18n="settings.readerHeading">Typography and behaviour</h2>
-            </div>
-            <div class="settings-body">
-              <p class="settings-subheading" data-i18n="settings.groupReader">Reader layout</p>
-              <label class="setting-row">
-                <span data-i18n="settings.font">Reader font</span>
-                <select id="pref-font" data-pref="readerFont">
-                  <option value="serif" data-i18n="settings.fontSerif">Serif (Georgia)</option>
-                  <option value="sans" data-i18n="settings.fontSans">Sans-serif (Segoe UI)</option>
-                  <option value="mono" data-i18n="settings.fontMono">Monospace (mono)</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span data-i18n="settings.lineHeight">Line height</span>
-                <select id="pref-line-height" data-pref="readerLineHeight">
-                  <option value="compact" data-i18n="settings.lineCompact">Compact</option>
-                  <option value="normal" data-i18n="settings.lineNormal">Normal</option>
-                  <option value="loose" data-i18n="settings.lineLoose">Loose</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span data-i18n="settings.textAlign">Text alignment</span>
-                <select id="pref-text-align" data-pref="readerTextAlign">
-                  <option value="left" data-i18n="settings.alignLeft">Left</option>
-                  <option value="justify" data-i18n="settings.alignJustify">Justified</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span data-i18n="settings.maxWidth">Page width</span>
-                <select id="pref-max-width" data-pref="readerMaxWidth">
-                  <option value="narrow" data-i18n="settings.widthNarrow">Narrow</option>
-                  <option value="medium" data-i18n="settings.widthMedium">Medium</option>
-                  <option value="wide" data-i18n="settings.widthWide">Wide</option>
-                  <option value="full" data-i18n="settings.widthFull">Full width</option>
-                </select>
-              </label>
-              <label class="setting-row toggle-row desktop-only-setting">
-                <span>
-                  <span data-i18n="settings.readerFocusMode">Reader focus mode</span>
-                  <small data-i18n="settings.readerFocusModeHint">On desktop, hides the top bar, book metadata, and shortcut hints to leave more room for text.</small>
-                </span>
-                <input id="pref-reader-focus-mode" type="checkbox" data-pref="readerFocusMode">
-              </label>
-              <label class="setting-row toggle-row desktop-only-setting">
-                <span>
-                  <span data-i18n="settings.readerWordPanelVisible">Word panel</span>
-                  <small data-i18n="settings.readerWordPanelVisibleHint">Lets you hide the right panel and read at full width when you do not need it.</small>
-                </span>
-                <input id="pref-reader-word-panel-visible" type="checkbox" data-pref="readerWordPanelVisible">
-              </label>
-              <details class="word-panel-items-setting">
-                <summary id="word-panel-items-heading" class="settings-subheading" data-i18n="settings.wordPanelItemsHeading"></summary>
-                <div class="word-panel-items-setting-body">
-                  <p id="word-panel-items-hint" class="muted-copy" data-i18n="settings.wordPanelItemsHint"></p>
-                  <ol id="pref-selected-word-panel-items" class="word-panel-item-list" aria-labelledby="word-panel-items-heading" aria-describedby="word-panel-items-hint"></ol>
-                </div>
-              </details>
-              <label class="setting-row">
-                <span data-i18n="settings.wordsPerPage">Words per page</span>
-                <select id="pref-words-per-page">
-                  <option value="500">500</option>
-                  <option value="1000">1000</option>
-                  <option value="2000">2000</option>
-                  <option value="5000">5000</option>
-                  <option value="999999" data-i18n="settings.wordsAll">All</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span>
-                  <span data-i18n="settings.wordAlgorithm">Word recognition</span>
-                  <small data-i18n="settings.wordAlgorithmHint">New detects languages without spaces and short subtitle lines better, for example Japanese or Chinese. Classic splits only letter runs, so it can be more predictable for simple texts.</small>
-                </span>
-                <select id="pref-word-algorithm">
-                  <option value="modern" data-i18n="settings.wordAlgorithmModern">New (default)</option>
-                  <option value="classic" data-i18n="settings.wordAlgorithmClassic">Classic</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span id="pref-font-size-label"></span>
-                <input id="pref-font-size" type="range" min="14" max="28" step="1" aria-labelledby="pref-font-size-label">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.highlight">Highlight word status in text</span>
-                  <small data-i18n="settings.highlightHint">Underlines saved words in the reader using their learning-status colors. Turn off for plain text.</small>
-                </span>
-                <input id="pref-highlight" type="checkbox" data-pref="highlightTokens">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.hideKnownIgnored">Hide known and ignored</span>
-                  <small data-i18n="settings.hideKnownIgnoredHint">Leaves known and ignored words unmarked, so only words that still need attention stand out.</small>
-                </span>
-                <input id="pref-hide-known" type="checkbox" data-pref="hideKnownIgnored">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.autoLearn">Auto-mark as “Learning”</span>
-                  <small data-i18n="settings.autoLearnHint">First click on an unknown word immediately saves it as Learning instead of leaving it New.</small>
-                </span>
-                <input id="pref-auto-learn" type="checkbox" data-pref="autoLearnOnClick">
-              </label>
-              <p class="settings-subheading" data-i18n="settings.groupFeedbackSounds">Feedback sounds</p>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.statusSounds">Feedback sounds</span>
-                  <small data-i18n="settings.statusSoundsHint">Plays a short sound after rating a flashcard or changing a word status.</small>
-                </span>
-                <input id="pref-status-sounds-enabled" type="checkbox" data-pref="statusSoundsEnabled">
-              </label>
-              <label class="setting-row">
-                <span id="pref-status-sound-volume-label" data-i18n="settings.statusSoundVolume">Feedback sound volume: {n}%</span>
-                <input id="pref-status-sound-volume" type="range" min="0" max="100" step="5" data-pref="statusSoundVolume" aria-labelledby="pref-status-sound-volume-label">
-              </label>
-              <p class="settings-subheading" data-i18n="settings.groupTts">Text to speech</p>
-              <label class="setting-row">
-                <span data-i18n="settings.ttsRate">TTS Speech Rate</span>
-                <select id="pref-tts-rate" data-pref="ttsRate">
-                  <option value="slow" data-i18n="settings.rateSlow">Slow</option>
-                  <option value="normal" data-i18n="settings.rateNormal">Normal</option>
-                  <option value="fast" data-i18n="settings.rateFast">Fast</option>
-                </select>
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.autoTtsOnWordFocus">Read word on focus</span>
-                  <small data-i18n="settings.autoTtsOnWordFocusHint">Plays pronunciation whenever word focus changes by click or keyboard navigation.</small>
-                </span>
-                <input id="pref-auto-tts-on-word-focus" type="checkbox" data-pref="autoTtsOnWordFocus">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.ttsWordHighlight">Highlight spoken word</span>
-                  <small data-i18n="settings.ttsWordHighlightHint">Shows a yellow outline on the word currently being read when the TTS engine reports word timing.</small>
-                </span>
-                <input id="pref-tts-word-highlight" type="checkbox" data-pref="ttsWordHighlight">
-              </label>
-              <label class="setting-row toggle-row desktop-only-setting">
-                <span>
-                  <span data-i18n="settings.useEdgeTts">Edge Neural TTS (online)</span>
-                  <small data-i18n="settings.useEdgeTtsHint" style="color: var(--muted); font-weight: 400;"></small>
-                </span>
-                <input id="pref-use-edge-tts" type="checkbox" data-pref="useEdgeTts">
-              </label>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="flashcard-prefs-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.flashcardEyebrow">Flashcards</p>
-              <h2 id="flashcard-prefs-heading" data-i18n="settings.flashcardHeading">Reviews and algorithm</h2>
-            </div>
-            <div class="settings-body">
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.autoAddLearningOnly">Flashcards: only 'Learning' words</span>
-                  <small data-i18n="settings.autoAddLearningOnlyHint">Only Learning words enter the review queue. New words stay out until you mark them Learning.</small>
-                </span>
-                <input id="pref-auto-add-learning" type="checkbox" data-pref="autoAddLearningOnly">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.autoTtsOnFlashcardOpen">Read new flashcards automatically</span>
-                  <small data-i18n="settings.autoTtsOnFlashcardOpenHint">Plays pronunciation when you move to another word in Flashcards.</small>
-                </span>
-                <input id="pref-auto-tts-on-flashcard-open" type="checkbox" data-pref="autoTtsOnFlashcardOpen">
-              </label>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.inTextReview">Reviews while reading</span>
-                  <small data-i18n="settings.inTextReviewHint">For Learning words, guess the translation first, then rate your recall from 1 to 5. (Reader review becomes available no sooner than the following day after first learning the word.)</small>
-                </span>
-                <input id="pref-in-text-review" type="checkbox">
-              </label>
-              <label class="setting-row">
-                <span>
-                  <span data-i18n="settings.srsAlgorithm">Flashcard algorithm</span>
-                  <small data-i18n="settings.srsAlgorithmHint">SM-2 schedules from your last grade and ease factor. FSRS estimates stability and difficulty from review history, so due dates can change more aggressively.</small>
-                </span>
-                <select id="pref-srs-algorithm">
-                  <option value="sm2" data-i18n="settings.srsAlgorithmSm2">SM-2 (classic)</option>
-                  <option value="fsrs" data-i18n="settings.srsAlgorithmFsrs">FSRS (optional)</option>
-                </select>
-              </label>
-              <label class="setting-row">
-                <span>
-                  <span data-i18n="settings.removalBehavior">Word removal behavior</span>
-                  <small data-i18n="settings.removalBehaviorHint">Ignore keeps the entry and hides it from learning. Delete removes it completely, so the word appears as New again.</small>
-                </span>
-                <select id="pref-removal-behavior" data-pref="removalBehavior">
-                  <option value="ignored" data-i18n="settings.removalBehaviorIgnored">Ignore (keep translation)</option>
-                  <option value="delete" data-i18n="settings.removalBehaviorDelete">Delete (reset as 'new')</option>
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="translator-prefs-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.translatorEyebrow">Translator &amp; Dictionary</p>
-              <h2 id="translator-prefs-heading" data-i18n="settings.translatorHeading">Translations and links</h2>
-            </div>
-            <div class="settings-body">
-              <div id="pref-translation-language-settings" hidden>
-                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                  <span>
-                    <span data-i18n="settings.translationSourceLanguage">Translation source language</span>
-                    <small data-i18n="settings.translationLanguageHint">Enter a language code such as nl, pt-BR, or eo. The pair is shared by every translation engine in this profile.</small>
-                  </span>
-                  <input id="pref-translation-source-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationSourceLanguagePlaceholder" class="input">
-                </label>
-                <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                  <span data-i18n="settings.translationTargetLanguage">Translation target language</span>
-                  <input id="pref-translation-target-language" type="text" list="translation-language-codes" autocomplete="off" spellcheck="false" data-i18n-attr="placeholder=settings.translationTargetLanguagePlaceholder" class="input">
-                </label>
-                <datalist id="translation-language-codes">
-                  <option value="de"></option>
-                  <option value="en"></option>
-                  <option value="es"></option>
-                  <option value="fr"></option>
-                  <option value="it"></option>
-                  <option value="ja"></option>
-                  <option value="pl"></option>
-                  <option value="ru"></option>
-                  <option value="uk"></option>
-                  <option value="zh"></option>
-                  <option value="la"></option>
-                  <option value="grc"></option>
-                </datalist>
-              </div>
-              <label class="setting-row toggle-row desktop-only-setting">
-                <span>
-                  <span data-i18n="settings.offlineTranslator">Advanced offline translator</span>
-                  <small data-i18n="settings.offlineTranslatorHint">Enables local CTranslate2 translation for words and full sentences. Works offline after downloading language packs (~100-200MB each).</small>
-                </span>
-                <input id="pref-offline-translator" type="checkbox">
-              </label>
-              <label class="setting-row">
-                <span data-i18n="settings.translationProvider">Translation engine</span>
-                <select id="pref-translation-provider">
-                  <option value="offline" data-i18n="settings.translationProviderOffline">Offline CTranslate2</option>
-                  <option value="deepl" data-i18n="settings.translationProviderDeepL">DeepL</option>
-                  <option value="google" data-i18n="settings.translationProviderGoogle">Google Translate</option>
-                  <option value="lmstudio" data-i18n="settings.translationProviderLmStudio">LM Studio</option>
-                </select>
-              </label>
-              <label id="pref-deepl-key-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.deeplApiKey">DeepL API key</span>
-                <input id="pref-deepl-api-key" type="password" data-i18n-attr="placeholder=settings.deeplApiKeyPlaceholder" class="input">
-              </label>
-              <label id="pref-lmstudio-endpoint-row" class="setting-row desktop-only-setting" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.lmStudioEndpoint">LM Studio endpoint</span>
-                <input id="pref-lmstudio-endpoint" type="text" class="input">
-              </label>
-              <label id="pref-lmstudio-model-row" class="setting-row desktop-only-setting" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.lmStudioModel">LM Studio model</span>
-                <input id="pref-lmstudio-model" type="text" data-i18n-attr="placeholder=settings.lmStudioModelPlaceholder" class="input">
-              </label>
-              <label id="pref-auto-translate-row" class="setting-row toggle-row" style="opacity: 0.5; pointer-events: none; transition: opacity 0.2s;">
-                <span>
-                  <span data-i18n="settings.autoTranslate">Auto-fill translation</span>
-                  <small data-i18n="settings.autoTranslateHint">When a saved word has an empty translation, fills it with the selected translation engine. Manual translations stay untouched.</small>
-                </span>
-                <input id="pref-auto-translate" type="checkbox" data-pref="autoTranslateWords">
-              </label>
-              <label id="pref-argos-as-dict-row" class="setting-row toggle-row desktop-only-setting" style="opacity: 0.5; pointer-events: none; transition: opacity 0.2s;">
-                <span>
-                  <span data-i18n="settings.argosAsDict">Dictionary button opens translator</span>
-                  <small data-i18n="settings.argosAsDictHint">Makes the dictionary button (M) open the built-in offline translator for the selected word instead of your dictionary URL.</small>
-                </span>
-                <input id="pref-argos-as-dict" type="checkbox" data-pref="argosAsDict">
-              </label>
-              <label class="setting-row desktop-only-setting">
-                <span data-i18n="settings.dictionaryMode">Open Dictionary in</span>
-                <select id="pref-dictionary-mode" data-pref="dictionaryMode">
-                  <option value="internal" data-i18n="settings.dictModeInternal">Internal window</option>
-                  <option value="external" data-i18n="settings.dictModeExternal">External browser</option>
-                </select>
-              </label>
-              <label class="setting-row desktop-only-setting">
-                <span data-i18n="settings.youglishMode">Opening YouGlish</span>
-                <select id="pref-youglish-mode" data-pref="youglishMode">
-                  <option value="internal" data-i18n="settings.dictModeInternal">Internal window</option>
-                  <option value="external" data-i18n="settings.dictModeExternal">External browser</option>
-                </select>
-              </label>
-              <label class="setting-row" style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.dictionaryUrl">Dictionary URL (use {{word}})</span>
-                <input id="pref-dictionary-url" type="text" data-pref="dictionaryUrl" data-i18n-attr="placeholder=settings.dictionaryUrlPlaceholder" placeholder="https://en.wiktionary.org/wiki/{{word}}" class="input">
-              </label>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="ai-prefs-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.aiEyebrow">AI explanations</p>
-              <h2 id="ai-prefs-heading" data-i18n="settings.aiHeading">AI explanations of words and phrases</h2>
-            </div>
-            <div class="settings-body">
-              <p class="settings-subheading" data-i18n="settings.groupAi">Language assistant</p>
-              <p class="muted-copy" data-i18n="settings.aiHint">Explains the selected word or phrase based on the sentence it appears in. Works with any OpenAI-compatible server — local (LM Studio, llama.cpp, Ollama) or remote (e.g. opencode.ai, OpenAI, DeepSeek).</p>
-              <label class="setting-row toggle-row">
-                <span>
-                  <span data-i18n="settings.aiExplanations">Enable AI explanations</span>
-                  <small data-i18n="settings.aiExplanationsHint">Adds an “Explain” button to the word panel. The API key is stored locally and sent only to the endpoint you choose.</small>
-                </span>
-                <input id="pref-ai-explanations" type="checkbox">
-              </label>
-              <label id="pref-ai-endpoint-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.aiEndpoint">Endpoint (OpenAI-compatible)</span>
-                <input id="pref-ai-endpoint" type="text" class="input">
-              </label>
-              <label id="pref-ai-model-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.aiModel">Model</span>
-                <input id="pref-ai-model" type="text" data-i18n-attr="placeholder=settings.aiModelPlaceholder" class="input">
-              </label>
-              <label id="pref-ai-key-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span data-i18n="settings.aiApiKey">API key</span>
-                <input id="pref-ai-api-key" type="password" data-i18n-attr="placeholder=settings.aiApiKeyPlaceholder" class="input">
-              </label>
-              <label id="pref-ai-effort-row" class="setting-row" hidden style="flex-direction: column; align-items: stretch; gap: 0.25rem;">
-                <span>
-                  <span data-i18n="settings.aiEffort">Reasoning effort</span>
-                  <small data-i18n="settings.aiEffortHint">How much effort the model should put into reasoning. Empty = do not send — the endpoint uses its own default.</small>
-                </span>
-                <select id="pref-ai-effort" class="input">
-                  <option value="" data-i18n="settings.aiEffortAuto">Automatic (do not send)</option>
-                  <option value="minimal" data-i18n="settings.aiEffortMinimal">Minimal</option>
-                  <option value="low" data-i18n="settings.aiEffortLow">Low</option>
-                  <option value="medium" data-i18n="settings.aiEffortMedium">Medium</option>
-                  <option value="high" data-i18n="settings.aiEffortHigh">High</option>
-                  <option value="max" data-i18n="settings.aiEffortMax">Maximum</option>
-                </select>
-              </label>
-              <label id="pref-ai-auto-trigger-row" class="setting-row toggle-row" hidden>
-                <span>
-                  <span data-i18n="settings.aiAutoTrigger">Explain new words automatically</span>
-                  <small data-i18n="settings.aiAutoTriggerHint">When a word without an AI explanation is opened, the explanation is fetched automatically and appended to the word's note.</small>
-                </span>
-                <input id="pref-ai-auto-trigger" type="checkbox">
-              </label>
-            </div>
-          </section>
-
-          <section class="panel" aria-labelledby="data-heading">
-            <div class="panel-header stacked">
-              <p class="eyebrow" data-i18n="settings.dataEyebrow">Local data</p>
-              <h2 id="data-heading" data-i18n="settings.dataHeading">Import and export</h2>
-            </div>
-            <div class="settings-body">
-              <p class="settings-subheading" data-i18n="settings.groupLocalData">Data on this device</p>
-              <p class="muted-copy" id="storage-summary"></p>
-              <p class="muted-copy" id="data-directory"></p>
-              <div class="data-actions compact-actions desktop-only-setting">
-                <button id="choose-data-directory" type="button" class="secondary-button desktop-only-control" data-i18n="settings.chooseDataFolder">Choose local data folder</button>
-              </div>
-              <div id="recovery-status-panel" class="recovery-status-panel" hidden>
-                <div id="recovery-status-list" class="recovery-status-list"></div>
-              </div>
-              <p class="settings-subheading" data-i18n="settings.groupBackup">Backup and import</p>
-              <div class="data-actions">
-                <section class="data-action-row desktop-only-setting">
-                  <div class="data-action-copy">
-                    <h3 data-i18n="update.checkTitle">App updates</h3>
-                    <p data-i18n="update.checkHint">Manually check whether a newer version of Word Hunter is available.</p>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="secondary-button" type="button" id="check-updates" data-i18n="update.checkButton">Check for updates</button>
-                  </div>
-                </section>
-                <section class="data-action-row">
-                  <div class="data-action-copy">
-                    <h3 data-i18n="settings.resetTitle">Restore settings</h3>
-                    <p data-i18n="settings.resetHint">Resets theme, reader, dictionary, TTS, and other preferences to defaults. It does not delete words or texts.</p>
-                  </div>
-                  <div class="data-action-buttons">
-                    <button class="secondary-button" type="button" id="reset-prefs" data-i18n="settings.resetPrefs">Reset Preferences</button>
-                  </div>
-                </section>
-
-              </div>
-            </div>
-          </section>
-
-        </div>
-      </section>
-
-      <section class="view" id="export-view" data-title-key="nav.export">
+                <section class="view" id="export-view" data-title-key="nav.export">
         <div class="settings-grid">
           <section class="panel" aria-labelledby="transfer-heading">
             <div class="panel-header stacked">
@@ -1290,12 +607,12 @@
               <p class="eyebrow" data-i18n="help.eyebrow">Help</p>
               <h2 id="help-heading" data-i18n="help.heading">Help and shortcuts</h2>
             </div>
-            <div class="settings-body" style="gap: 2rem;">
+            <div class="settings-body gap-2">
               <p class="muted-copy" data-i18n="help.shortcutScope"></p>
               <div>
-                <h3 data-i18n="help.navTitle" style="margin-top: 0;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.navTitle" class="m-t-0"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.navKeys.library"></li>
                     <li data-i18n-html="help.navKeys.reader"></li>
                     <li data-i18n-html="help.navKeys.translator"></li>
@@ -1315,9 +632,9 @@
               </div>
 
               <div>
-                <h3 data-i18n="help.readerTitle" style="margin-top: 0;"></h3>
-                <div style="line-height: 2; margin-bottom: 1rem;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.readerTitle" class="m-t-0"></h3>
+                <div class="lh-2-m-b-1">
+                  <ul class="m-0">
                     <li data-i18n-html="help.readerKeys.select"></li>
                     <li data-i18n-html="help.readerKeys.font"></li>
                     <li data-i18n-html="help.readerKeys.focus"></li>
@@ -1330,9 +647,9 @@
                   </ul>
                 </div>
                 
-                <h3 data-i18n="help.focusTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2; margin-bottom: 1rem;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.focusTitle" class="m-t-1"></h3>
+                <div class="lh-2-m-b-1">
+                  <ul class="m-0">
                     <li data-i18n-html="help.focusKeys.prevNext"></li>
                     <li data-i18n-html="help.focusKeys.line"></li>
                     <li data-i18n-html="help.focusKeys.escape"></li>
@@ -1342,9 +659,9 @@
                   </ul>
                 </div>
                 
-                <h3 data-i18n="help.actionTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.actionTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.actionKeys.merge"></li>
                     <li data-i18n-html="help.actionKeys.smartSuggest"></li>
                     <li data-i18n-html="help.actionKeys.ttsWord"></li>
@@ -1357,9 +674,9 @@
                     <li data-i18n-html="help.actionKeys.removeStatus"></li>
                   </ul>
                 </div>
-                <h3 data-i18n="help.flashcardsTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.flashcardsTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.flashcardsKeys.flip"></li>
                     <li data-i18n-html="help.flashcardsKeys.prevNext"></li>
                     <li data-i18n-html="help.flashcardsKeys.score"></li>
@@ -1370,9 +687,9 @@
                     <li data-i18n-html="help.flashcardsKeys.searchImage"></li>
                   </ul>
                 </div>
-                <h3 data-i18n="help.editorTitle" style="margin-top: 1rem;"></h3>
-                <div style="line-height: 2;">
-                  <ul style="margin: 0;">
+                <h3 data-i18n="help.editorTitle" class="m-t-1"></h3>
+                <div class="lh-2">
+                  <ul class="m-0">
                     <li data-i18n-html="help.editorKeys.word"></li>
                     <li data-i18n-html="help.editorKeys.book"></li>
                   </ul>
@@ -1387,10 +704,10 @@
               <h2 id="help-sm2" data-i18n="help.sm2Title">Spaced Repetition (FSRS / SM-2)</h2>
             </div>
             <div class="settings-body">
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 1rem;" data-i18n-html="help.sm2Body1"></p>
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 1rem;" data-i18n-html="help.sm2BodyFsrs"></p>
-              <p style="color: var(--muted); line-height: 1.6; margin-bottom: 0.5rem;" data-i18n-html="help.sm2Body2"></p>
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.5rem;">
+              <p data-i18n-html="help.sm2Body1" class="muted-lh-1-6-m-b-1"></p>
+              <p data-i18n-html="help.sm2BodyFsrs" class="muted-lh-1-6-m-b-1"></p>
+              <p data-i18n-html="help.sm2Body2" class="muted-lh-1-6-m-b-05"></p>
+              <ul class="note-list-g-05">
                 <li data-i18n-html="help.sm2Grade02"></li>
                 <li data-i18n-html="help.sm2Grade3"></li>
                 <li data-i18n-html="help.sm2Grade4"></li>
@@ -1405,7 +722,7 @@
               <h2 id="help-tips" data-i18n="help.tipsTitle">Useful Tips</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 1rem;">
+              <ul class="note-list-g-1">
                 <li data-i18n-html="help.tip1"></li>
                 <li data-i18n-html="help.tip2"></li>
                 <li data-i18n-html="help.tip3"></li>
@@ -1424,7 +741,7 @@
               <h2 id="help-credits" data-i18n="help.creditsTitle">Open Source, APIs &amp; Model Sources</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.8rem;">
+              <ul class="note-list">
                 <li data-i18n-html="help.creditGutenberg"></li>
                 <li data-i18n-html="help.creditWikipedia"></li>
                 <li data-i18n-html="help.creditYouglish"></li>
@@ -1444,13 +761,13 @@
               <h2 id="help-contact" data-i18n="help.contactTitle">About the App</h2>
             </div>
             <div class="settings-body">
-              <ul style="padding-left: 1.2rem; line-height: 1.8; margin: 0; color: var(--muted); display: flex; flex-direction: column; gap: 0.8rem;">
+              <ul class="note-list">
                 <li data-i18n-html="help.contactGithub"></li>
                 <li data-i18n-html="help.contactDiscussions"></li>
                 <li data-i18n-html="help.contactIssues"></li>
                 <li data-i18n-html="help.contactAuthor"></li>
                 <li data-i18n-html="help.contactLicense"></li>
-                <li data-i18n-html="help.whatsNew" style="color: var(--accent-ink);"></li>
+                <li data-i18n-html="help.whatsNew" class="text-accent-ink"></li>
                 <li data-i18n-html="help.version"></li>
               </ul>
             </div>
@@ -1460,288 +777,15 @@
     </main>
   </div>
 
-  <div class="toast" id="toast" role="status" aria-live="polite">
-    <span id="toast-message"></span>
-    <button type="button" class="toast-close" id="toast-close" data-i18n-attr="aria-label=reader.close" aria-label="Close">×</button>
-  </div>
 
-  <dialog id="language-onboarding-dialog" class="panel language-onboarding-dialog" aria-labelledby="language-onboarding-title">
-    <div class="language-onboarding-body">
-      <p class="eyebrow" data-i18n="onboarding.languageEyebrow">Word Hunter Pocket</p>
-      <h2 id="language-onboarding-title" data-i18n="onboarding.languageHeading">Choose your languages</h2>
-      <p class="muted-copy" data-i18n="onboarding.languageCopy">Pick the app language and the language profile you want to learn first. You can change both later in Settings.</p>
-      <label class="language-setting-row language-onboarding-row">
-        <span class="language-setting-title" data-i18n="settings.interfaceLanguageTitle">App interface language</span>
-        <span class="language-select-wrap">
-          <img class="language-select-flag" data-language-flag="locale" src="flags/en.svg" alt="" aria-hidden="true">
-          <select id="pref-locale-onboarding" aria-label="App interface language" data-i18n-attr="aria-label=settings.interfaceLanguageTitle">
-            <option value="pl" data-i18n="languages.pl">Polish</option>
-            <option value="en" data-i18n="languages.en">English</option>
-            <option value="de" data-i18n="languages.de">German</option>
-            <option value="es" data-i18n="languages.es">Spanish</option>
-            <option value="fr" data-i18n="languages.fr">French</option>
-            <option value="it" data-i18n="languages.it">Italian</option>
-            <option value="uk" data-i18n="languages.uk">Українська</option>
-            <option value="ru" data-i18n="languages.ru">Muscovite State</option>
-            <option value="ja" data-i18n="languages.ja">Japanese</option>
-            <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
-          </select>
-        </span>
-      </label>
-      <label class="language-setting-row language-onboarding-row">
-        <span class="language-setting-title" data-i18n="settings.learningLanguageTitle">Learning language (profile)</span>
-        <span class="language-select-wrap">
-          <img class="language-select-flag" data-language-flag="learning" src="flags/de.svg" alt="" aria-hidden="true">
-          <select id="pref-learning-language-onboarding" aria-label="Learning language (profile)" data-i18n-attr="aria-label=settings.learningLanguageTitle">
-            <option value="en" data-i18n="languages.en">English</option>
-            <option value="de" data-i18n="languages.de">German</option>
-            <option value="es" data-i18n="languages.es">Spanish</option>
-            <option value="it" data-i18n="languages.it">Italian</option>
-            <option value="fr" data-i18n="languages.fr">French</option>
-            <option value="pl" data-i18n="languages.pl">Polish</option>
-            <option value="uk" data-i18n="languages.uk">Українська</option>
-            <option value="ru" data-i18n="languages.ru">Muscovite State</option>
-            <option value="ja" data-i18n="languages.ja">Japanese</option>
-            <option value="zh" data-i18n="languages.zh">Chinese (Simplified)</option>
-            <option value="la" data-i18n="languages.la">Latin</option>
-            <option value="grc" data-i18n="languages.grc">Ancient Greek</option>
-            <option value="other" data-i18n="languages.other">Other</option>
-          </select>
-        </span>
-      </label>
-      <button id="language-onboarding-done" class="primary-button" type="button" data-i18n="onboarding.continue">Continue</button>
-    </div>
-  </dialog>
-
-  <dialog id="youglish-modal" class="panel" style="max-width: 700px; padding: 0;" aria-labelledby="youglish-modal-title">
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--line);">
-      <h2 id="youglish-modal-title" data-i18n="reader.youglishModalTitle" style="margin: 0; font-size: 1.25rem;">Pronunciation (YouGlish)</h2>
+  <dialog id="youglish-modal" class="panel max-w-700" aria-labelledby="youglish-modal-title">
+    <div class="dialog-header">
+      <h2 id="youglish-modal-title" data-i18n="reader.youglishModalTitle" class="dialog-title">Pronunciation (YouGlish)</h2>
       <button type="button" id="youglish-close" class="icon-button" data-i18n-attr="title=reader.close">×</button>
     </div>
-    <div id="youglish-modal-body" style="padding: 1rem; display: flex; justify-content: center;">
+    <div id="youglish-modal-body" class="flex-center-p-1">
       <div id="youglish-widget"></div>
     </div>
-  </dialog>
-
-  <dialog id="reader-bookmarks-dialog" class="panel reader-bookmarks-dialog" aria-labelledby="reader-bookmarks-title">
-    <div class="panel-header">
-      <div>
-        <p class="eyebrow" data-i18n="reader.bookmarks">Bookmarks</p>
-        <h2 id="reader-bookmarks-title" data-i18n="reader.bookmarksTitle">Bookmarks in this book</h2>
-      </div>
-      <button type="button" id="reader-bookmarks-close" class="icon-button" data-i18n-attr="title=reader.close,aria-label=reader.close">×</button>
-    </div>
-    <div class="reader-bookmarks-dialog-body">
-      <form id="reader-bookmark-form" class="reader-bookmark-form">
-        <label for="reader-bookmark-label" data-i18n="reader.bookmarkLabel">Label or comment</label>
-        <input id="reader-bookmark-label" type="text" maxlength="160" autocomplete="off" data-i18n-attr="placeholder=reader.bookmarkPlaceholder">
-        <fieldset class="reader-bookmark-color-field">
-          <legend data-i18n="reader.bookmarkColor">Color</legend>
-          <div class="reader-bookmark-colors">
-            <label class="reader-bookmark-color" data-bookmark-color="amber">
-              <input type="radio" name="reader-bookmark-color" value="amber" data-i18n-attr="title=reader.bookmarkColorAmber,aria-label=reader.bookmarkColorAmber" checked>
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="red">
-              <input type="radio" name="reader-bookmark-color" value="red" data-i18n-attr="title=reader.bookmarkColorRed,aria-label=reader.bookmarkColorRed">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="green">
-              <input type="radio" name="reader-bookmark-color" value="green" data-i18n-attr="title=reader.bookmarkColorGreen,aria-label=reader.bookmarkColorGreen">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="blue">
-              <input type="radio" name="reader-bookmark-color" value="blue" data-i18n-attr="title=reader.bookmarkColorBlue,aria-label=reader.bookmarkColorBlue">
-              <span aria-hidden="true"></span>
-            </label>
-            <label class="reader-bookmark-color" data-bookmark-color="purple">
-              <input type="radio" name="reader-bookmark-color" value="purple" data-i18n-attr="title=reader.bookmarkColorPurple,aria-label=reader.bookmarkColorPurple">
-              <span aria-hidden="true"></span>
-            </label>
-          </div>
-        </fieldset>
-        <div class="reader-bookmark-form-actions">
-          <button type="button" id="reader-bookmark-cancel-edit" class="secondary-button" data-i18n="reader.bookmarkCancelEdit" hidden>Cancel editing</button>
-          <button type="submit" id="reader-bookmark-submit" class="primary-button" data-i18n="reader.bookmarkAdd">Add here</button>
-        </div>
-      </form>
-      <div id="reader-bookmark-list" class="reader-bookmark-list" aria-live="polite"></div>
-    </div>
-  </dialog>
-
-  <dialog id="move-book-dialog" class="panel" aria-labelledby="move-book-title">
-    <div class="panel-header">
-      <h2 id="move-book-title" data-i18n="moveBook.title">Move Book</h2>
-    </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
-      <p class="muted-copy" data-i18n="moveBook.hint">Select the target language profile for this book:</p>
-      <select id="move-book-select" class="input" data-i18n-attr="aria-label=library.moveBook"></select>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-        <button id="move-book-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
-        <button id="move-book-confirm" class="primary-button" data-i18n="moveBook.confirm">Move</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="delete-book-dialog" class="panel confirmation-dialog" aria-labelledby="delete-book-title">
-    <div class="panel-header"><h2 id="delete-book-title"></h2></div>
-    <div class="confirmation-dialog-body">
-      <p id="delete-book-message" class="muted-copy"></p>
-      <div class="confirmation-dialog-actions">
-        <button id="delete-book-cancel" type="button" class="secondary-button" data-i18n="library.moveCancel">Cancel</button>
-        <button id="delete-book-confirm" type="button" class="danger-button" data-i18n="library.removeConfirmButton"></button>
-      </div>
-    </div>
-  </dialog>
-
-
-  <dialog id="edit-book-dialog" class="panel edit-book-dialog" aria-labelledby="edit-book-title-heading">
-    <div class="panel-header">
-      <h2 id="edit-book-title-heading" data-i18n="editBook.title">Edit book</h2>
-    </div>
-    <div class="settings-body edit-book-body">
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.titleLabel">Title</span>
-        <input id="edit-book-title" type="text" class="input" style="width: 100%;">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.authorLabel">Author</span>
-        <input id="edit-book-author" type="text" class="input" style="width: 100%;">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.tagsLabel">Tags</span>
-        <input id="edit-book-tags" type="text" class="input" data-i18n-attr="placeholder=import.tagsPlaceholder" style="width: 100%;">
-      </label>
-      <label class="setting-row edit-book-field">
-        <span data-i18n="editBook.levelLabel">Level</span>
-        <select id="edit-book-level" class="input" style="width: 100%;">
-          <option value="" data-i18n="library.levelAny">Any</option>
-          <option value="A1">A1</option>
-          <option value="A2">A2</option>
-          <option value="B1">B1</option>
-          <option value="B2">B2</option>
-          <option value="C1">C1</option>
-          <option value="C2">C2</option>
-        </select>
-      </label>
-      <div class="setting-row edit-book-field">
-        <span data-i18n="editBook.coverLabel">Cover</span>
-        <div class="edit-book-cover-row">
-          <div id="edit-book-cover-preview" class="edit-book-cover-preview" hidden>
-            <img id="edit-book-cover-img" src="" data-i18n-attr="alt=editBook.coverPreviewAlt" alt="Cover preview">
-            <button id="edit-book-cover-clear" class="edit-book-cover-clear" type="button" data-i18n-attr="title=editBook.deleteCover">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-          <label for="edit-book-cover" class="edit-book-cover-dropzone" id="edit-book-cover-dropzone" data-i18n-attr="title=editBook.changeCover">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 28px; height: 28px; color: var(--muted); margin-bottom: 0.5rem;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            <span style="font-size: 0.85rem; color: var(--muted); text-align: center;" data-i18n="import.coverPasteHint">Click to select or paste</span>
-            <input id="edit-book-cover" type="file" accept="image/*" class="visually-hidden">
-          </label>
-        </div>
-      </div>
-      <label class="setting-row edit-book-field edit-book-text-field">
-        <span data-i18n="editBook.textLabel">Text (You can paste images with Ctrl+V)</span>
-        <textarea id="edit-book-text" class="input" spellcheck="false"></textarea>
-      </label>
-      <div class="edit-book-actions">
-        <button id="edit-book-cancel" class="secondary-button" data-i18n="editBook.cancel">Cancel</button>
-        <button id="edit-book-save" class="primary-button" data-i18n="editBook.save">Save</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="argos-download-dialog" class="panel" style="width: 90vw; max-width: 500px;" aria-labelledby="argos-download-title">
-    <div class="panel-header">
-      <h2 id="argos-download-title" data-i18n="settings.argosDownloadTitle">Download offline models</h2>
-    </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
-      <p class="muted-copy" data-i18n="settings.argosDownloadHint">Downloads local translation packages for the selected languages, including pairs with English and your learning language when available.</p>
-      <div id="argos-languages-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="en" checked>
-          <span data-i18n="languages.en">English</span>
-        </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="pl" checked>
-          <span data-i18n="languages.pl">Polish</span>
-        </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="de">
-          <span data-i18n="languages.de">German</span>
-        </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="es">
-          <span data-i18n="languages.es">Spanish</span>
-        </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="fr">
-          <span data-i18n="languages.fr">French</span>
-        </label>
-        <label class="status-check" style="justify-content: flex-start; gap: 0.5rem;">
-          <input type="checkbox" value="zh">
-          <span data-i18n="languages.zh">Chinese (Simplified)</span>
-        </label>
-      </div>
-      <p style="color: var(--red); font-size: 0.85rem; margin-top: 1rem;" data-i18n="settings.argosDownloadWarning">Note: downloading models will take a while. Do not close the app during the process.</p>
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-        <button id="argos-download-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
-        <button id="argos-download-confirm" class="primary-button" data-i18n="settings.argosDownloadConfirm">Download</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="update-dialog" class="panel" style="width: 90vw; max-width: 500px;" aria-labelledby="update-title">
-    <div class="panel-header">
-      <h2 style="display: flex; align-items: center; gap: 0.5rem;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px; flex-shrink: 0; color: var(--green);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
-        <span id="update-title" data-i18n="update.title">Update Available</span>
-      </h2>
-    </div>
-    <div class="settings-body" style="padding: 1.5rem; gap: 1rem;">
-      <p id="update-message" data-i18n="update.message" style="margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted);">Word Hunter {version} is available! (You have {current})</p>
-      <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem;">
-        <button id="update-dismiss" class="ghost-button" data-i18n="update.dismiss">Later</button>
-        <button id="update-skip" class="secondary-button" data-i18n="update.skipLabel">Skip this version</button>
-        <button id="update-disable" class="secondary-button" data-i18n="update.disableUpdates">Don't remind me again</button>
-        <button id="update-open" class="primary-button" data-i18n="update.openReleases">See what's new</button>
-      </div>
-    </div>
-  </dialog>
-
-  <dialog id="add-word-dialog" class="panel word-editor-dialog" style="width: 92vw; max-width: 680px;" aria-labelledby="add-word-dialog-title">
-    <div class="panel-header">
-      <h2 id="add-word-dialog-title" data-i18n="vocab.addWordTitle">Add word</h2>
-    </div>
-    <div class="word-editor-body">
-      <div class="word-editor-grid">
-        <label class="word-editor-field word-editor-word">
-          <span data-i18n="vocab.addWordLabel">Word</span>
-          <input id="add-word-input" type="text" class="input" autocomplete="off" autofocus>
-        </label>
-        <label class="word-editor-field word-editor-article">
-          <span data-i18n="vocab.addArticleLabel">Article (optional)</span>
-          <input id="add-article-input" type="text" class="input" autocomplete="off" spellcheck="false">
-        </label>
-        <label class="word-editor-field word-editor-translation">
-          <span data-i18n="vocab.addTranslationLabel">Translation (optional)</span>
-          <input id="add-translation-input" type="text" class="input" autocomplete="off">
-        </label>
-        <fieldset class="word-editor-status">
-          <legend data-i18n="vocab.status">Status</legend>
-          <div id="add-word-status-buttons" class="status-options"></div>
-        </fieldset>
-        <label class="word-editor-field word-editor-example">
-          <span data-i18n="vocab.addExampleLabel">Example sentence (optional)</span>
-          <textarea id="add-example-input" class="input" rows="4" autocomplete="off" spellcheck="false"></textarea>
-        </label>
-      </div>
-      <div class="word-editor-actions">
-        <button id="add-word-cancel" class="secondary-button" data-i18n="moveBook.cancel">Cancel</button>
-        <button id="add-word-confirm" class="primary-button" data-i18n="vocab.addWordConfirm">Add</button>
-      </div>
-    </div>
-    <input id="add-word-editing" type="hidden" value="">
   </dialog>
 
   <script type="module" src="app.js"></script>

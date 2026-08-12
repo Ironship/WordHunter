@@ -37,6 +37,16 @@ describe("manual transfer tab", () => {
     assert.match(settings, /JSON\.stringify\(\{ confirm: true \}\)/);
   });
 
+  it("sends an explicit confirmation with the store wipe (fix #211)", () => {
+    // Destructive store actions must be confirmed the same way as native
+    // file dialogs: the backend refuses /__store/wipe without confirm: true.
+    assert.match(
+      actions,
+      /\/__store\/wipe[^}]*confirm: true/,
+      "the wipe call must carry confirm: true",
+    );
+  });
+
   it("stores timestamps in YAML and packages book assets with path validation", () => {
     assert.match(transfer, /manifest\.yaml/);
     assert.match(transfer, /words\/.*\.yaml/);

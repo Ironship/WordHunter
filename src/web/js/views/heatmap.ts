@@ -86,12 +86,12 @@ export function renderContributionHeatmap(target: HTMLElement, options: Contribu
   const MONTHS = t("graphs.monthLabels").split("|");
   const months = buildContributionMonthLabels(weeks, weeksToShow, MONTHS);
 
-  let html = '<div class="heatmap-wrap"><div class="heatmap-day-labels" style="width:10px;"></div><div class="heatmap-grid-area">';
+  let html = '<div class="heatmap-wrap"><div class="heatmap-day-labels w-10"></div><div class="heatmap-grid-area">';
   html += '<div class="heatmap-months">';
   for (const m of months) {
     html += `<span style="position:absolute;left:${m.week * 17}px;">${escapeHtml(m.label)}</span>`;
   }
-  html += '<span style="visibility:hidden;">' + escapeHtml(MONTHS[0]) + '</span></div>';
+  html += '<span class="visibility-hidden">' + escapeHtml(MONTHS[0]) + '</span></div>';
   html += '<div class="heatmap-grid">';
   for (let weekIndex = 0; weekIndex < weeks.length; weekIndex += 1) {
     const week = weeks[weekIndex];

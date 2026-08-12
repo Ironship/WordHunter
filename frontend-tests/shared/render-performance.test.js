@@ -317,7 +317,8 @@ describe("render performance guards", () => {
       "../reader/selection.js": {
         setReaderSelectionAnchorFromToken: noOp,
         clearReaderSelectionRange: noOp,
-        clearReaderSelection: noOp
+        clearReaderSelection: noOp,
+        bindTouchPhraseSelection: noOp
       },
       "../reader/scroll.js": {
         rememberReaderScrollPosition(options) { rememberCalls.push(options); }

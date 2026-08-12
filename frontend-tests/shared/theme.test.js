@@ -178,15 +178,18 @@ describe("named themes", () => {
 
   it("wires the Settings selector to all themes and themed control colors", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
     assert.match(html, /<link rel="stylesheet" href="theme\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="styles\.css[^>]*>/);
     assert.match(html, /<link rel="stylesheet" href="platforms\/android-pocket\.css[^>]*>/);
     assert.ok(html.indexOf("theme.css") < html.indexOf("styles.css"));
     assert.ok(html.indexOf("styles.css") < html.indexOf("platforms/android-pocket.css"));
-    assert.match(html, /id="pref-theme" data-pref="theme"/);
+    // The Settings view is built at boot by renderSettingsView() (port of
+    // #127 P3) — the theme selector lives in the renderer source.
+    assert.match(settingsSource, /id="pref-theme" data-pref="theme"/);
     for (const theme of ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"]) {
-      assert.match(html, new RegExp(`option value="${theme}"`));
+      assert.match(settingsSource, new RegExp(`option value="${theme}"`));
     }
     assert.match(styles, /\.primary-button\s*\{[^}]*background:\s*var\(--control-accent\)/s);
     assert.match(styles, /input\[type="checkbox"\]:checked\s*\{[^}]*background:\s*var\(--control-accent\)/s);
@@ -294,5 +297,41 @@ describe("named themes", () => {
     assert.match(popup, /\.primary-button[^}]*color:\s*var\(--popup-accent-ink\)/s);
     assert.match(popup, /box-shadow:[^;]*rgba\([^;]+;\s*box-shadow:[^;]*color-mix/s);
     assert.doesNotMatch(popup, /\.engine-info[^}]*opacity:/s);
+  });
+});
+
+describe("boot-bg token parity (theme.ts ↔ theme.css)", () => {
+  /* P3 #129 token-drift guard: applyTheme() sets --boot-bg at runtime from
+     resolveTheme() colors (theme.ts); the static stylesheet declares the same
+     token for the pre-JS boot paint (theme.css). If the two drift apart, the
+     boot flash color no longer matches the first themed paint.
+     Baseline (2026-08): 6/6 parity — familiar #0067a8/#00395d,
+     alternative-familiar #5e2750/#2c001e, classic #f7f9f6/#0d1114. */
+  const tsSource = readFileSync(new URL("../../src/web/js/theme.ts", import.meta.url), "utf8");
+  const cssSource = readFileSync(new URL("../../src/web/theme.css", import.meta.url), "utf8");
+
+  const tsBootColors = () =>
+    [...tsSource.matchAll(/"#[0-9a-fA-F]{6}"/g)]
+      .map((m) => m[0].slice(2, -1).toLowerCase()).sort();
+  const cssBootBg = () =>
+    [...cssSource.matchAll(/--boot-bg:\s*#[0-9a-fA-F]{6}/g)]
+      .map((m) => m[0].match(/#[0-9a-fA-F]{6}/)[0].slice(1).toLowerCase()).sort();
+
+  it("pins the 6 theme.ts boot colors", () => {
+    assert.deepEqual(tsBootColors(),
+      ["00395d", "0067a8", "0d1114", "2c001e", "5e2750", "f7f9f6"],
+      "theme.ts resolveTheme() must keep exactly the 6 pinned boot colors");
+  });
+
+  it("pins the 6 theme.css --boot-bg values", () => {
+    assert.deepEqual(cssBootBg(),
+      ["00395d", "0067a8", "0d1114", "2c001e", "5e2750", "f7f9f6"],
+      "theme.css must keep exactly the 6 pinned --boot-bg values");
+  });
+
+  it("keeps theme.ts boot colors in parity with theme.css --boot-bg", () => {
+    assert.deepEqual(tsBootColors(), cssBootBg(),
+      "theme.ts resolveTheme() colors and theme.css --boot-bg must stay identical " +
+      "(runtime theme color vs pre-JS boot paint)");
   });
 });

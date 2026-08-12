@@ -95,23 +95,6 @@ function Download-File([string]$Url, [string]$Destination, [string]$Sha256) {
     }
 }
 
-function Set-RegexOnce([string]$Text, [string]$Pattern, [string]$Replacement, [string]$Description) {
-    $matches = [regex]::Matches($Text, $Pattern)
-    if ($matches.Count -eq 0) {
-        Fail "Could not patch $Description because the expected Gradle regex did not match: $Pattern"
-    }
-    if ($matches.Count -gt 1) {
-        Fail "Could not patch $Description because the expected Gradle regex matched $($matches.Count) times: $Pattern"
-    }
-    return [regex]::Replace($Text, $Pattern, $Replacement, 1)
-}
-
-function Assert-TextContains([string]$Text, [string]$Pattern, [string]$Description) {
-    if ($Text -notmatch $Pattern) {
-        Fail "$Description assertion failed after patching."
-    }
-}
-
 function Invoke-External([string]$File, [string[]]$Arguments) {
     $printable = @($File) + $Arguments
     Write-Host ("    $ " + ($printable -join " "))
@@ -387,16 +370,16 @@ function Ensure-AndroidNdk([string]$Sdk) {
         return $env:NDK_HOME
     }
 
+    $pinnedNdk = "27.0.12077973"
     $ndkRoot = Join-Path $Sdk "ndk"
     $ndk = Get-ChildItem -LiteralPath $ndkRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
+        Where-Object Name -eq $pinnedNdk
     if (-not $ndk) {
         Fail @"
-Android NDK was not found.
+Android NDK $pinnedNdk was not found.
 
-Install it with Android sdkmanager, for example:
-  sdkmanager `"ndk;27.0.12077973`"
+Install exactly this version with Android sdkmanager, for example:
+  sdkmanager `"ndk;$pinnedNdk`"
 "@
     }
 
@@ -431,13 +414,24 @@ function Ensure-AndroidToolchain([string]$RustTarget = "aarch64-linux-android") 
 }
 
 function Ensure-AndroidProject {
-    $gradle = Join-Path $Root "src-tauri\gen\android\gradlew.bat"
-    if (Test-Path -LiteralPath $gradle) {
+    $androidDir = Join-Path $Root "src-tauri\gen\android"
+    $gradle = Join-Path $androidDir "gradlew.bat"
+    $marker = Join-Path $androidDir ".template-version"
+    $expectedMarker = "tauri-cli $RequiredTauriCliVersion"
+    $markerMatches = (Test-Path -LiteralPath $marker) -and ((Get-Content -Raw -LiteralPath $marker).Trim() -eq $expectedMarker)
+    if ((Test-Path -LiteralPath $gradle) -and $markerMatches) {
         return
     }
 
-    Write-Step "Initializing Tauri Android project"
+    # Re-initialize when the project is missing or the committed template marker drifted from
+    # the pinned CLI (issue #209 bullet 4): tauri android init never refreshes existing files,
+    # so a stale gen/android must be removed first, then re-overlaid by Prepare-AndroidProject.
+    Write-Step "Initializing Tauri Android project (template marker $expectedMarker)"
+    if (Test-Path -LiteralPath $androidDir) {
+        Remove-Item -LiteralPath $androidDir -Recurse -Force
+    }
     Invoke-External "cargo.exe" @("tauri", "android", "init", "--ci", "--skip-targets-install")
+    [IO.File]::WriteAllText($marker, $expectedMarker)
 }
 
 function Sync-AndroidLauncherIcons {
@@ -547,24 +541,6 @@ function Get-AndroidVersionInfo {
     }
 }
 
-function Set-AndroidGradleVersion([string]$GradleText, [object]$VersionInfo) {
-    $GradleText = Set-RegexOnce `
-        $GradleText `
-        '(?m)^(\s*)versionCode\s*=\s*.+$' `
-        ('${1}versionCode = ' + $VersionInfo.Code) `
-        "Android versionCode"
-    $GradleText = Set-RegexOnce `
-        $GradleText `
-        '(?m)^(\s*)versionName\s*=\s*.+$' `
-        ('${1}versionName = "' + $VersionInfo.Name + '"') `
-        "Android versionName"
-
-    Assert-TextContains $GradleText ('(?m)^\s*versionCode\s*=\s*' + $VersionInfo.Code + '\s*$') "Android versionCode"
-    Assert-TextContains $GradleText ('(?m)^\s*versionName\s*=\s*"' + [regex]::Escape($VersionInfo.Name) + '"\s*$') "Android versionName"
-    Write-Note "Android versionName $($VersionInfo.Name), versionCode $($VersionInfo.Code) from $($VersionInfo.Source)"
-    return $GradleText
-}
-
 function Prepare-AndroidProject {
     Write-Step "Preparing Android project"
 
@@ -575,6 +551,8 @@ function Prepare-AndroidProject {
     $manifestTarget = Join-Path $androidApp "src\main\AndroidManifest.xml"
     $networkSecuritySource = Join-Path $Root "src-tauri\platforms\android\network_security_config.xml"
     $networkSecurityTarget = Join-Path $androidApp "src\main\res\xml\network_security_config.xml"
+    $filePathsSource = Join-Path $Root "src-tauri\platforms\android\res\xml\file_paths.xml"
+    $filePathsTarget = Join-Path $androidApp "src\main\res\xml\file_paths.xml"
     if (-not (Test-Path -LiteralPath $activitySource)) {
         Fail "Android MainActivity source was not found: $activitySource"
     }
@@ -584,17 +562,35 @@ function Prepare-AndroidProject {
     if (-not (Test-Path -LiteralPath $networkSecuritySource)) {
         Fail "Android network security config was not found: $networkSecuritySource"
     }
+    if (-not (Test-Path -LiteralPath $filePathsSource)) {
+        Fail "Android file paths config was not found: $filePathsSource"
+    }
     Copy-Item -LiteralPath $activitySource -Destination $activityTarget -Force
     Copy-Item -LiteralPath $manifestSource -Destination $manifestTarget -Force
     Ensure-Directory (Split-Path -Parent $networkSecurityTarget)
     Copy-Item -LiteralPath $networkSecuritySource -Destination $networkSecurityTarget -Force
+    Ensure-Directory (Split-Path -Parent $filePathsTarget)
+    Copy-Item -LiteralPath $filePathsSource -Destination $filePathsTarget -Force
     Remove-Item -LiteralPath (Join-Path $androidApp "src\main\assets\ocr-runtime") -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Item -LiteralPath (Join-Path $androidApp "src\main\res\xml\file_paths.xml") -Force -ErrorAction SilentlyContinue
     $valuesDir = Join-Path $androidApp "src\main\res\values"
     $nightValuesDir = Join-Path $androidApp "src\main\res\values-night"
     Ensure-Directory $valuesDir
     Ensure-Directory $nightValuesDir
-    $themeXml = @"
+    # Day and night themes must not be byte-identical: the status bar icon
+    # direction has to follow the mode. Day (light background) gets dark
+    # icons (windowLightStatusBar=true), night (dark background) light icons
+    # (windowLightStatusBar=false).
+    $dayThemeXml = @"
+<resources>
+    <style name="Theme.word_hunter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#f7f9f6</item>
+        <item name="android:statusBarColor">#f7f9f6</item>
+        <item name="android:navigationBarColor">#f7f9f6</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
+"@
+    $nightThemeXml = @"
 <resources>
     <style name="Theme.word_hunter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">#0d1114</item>
@@ -604,22 +600,21 @@ function Prepare-AndroidProject {
     </style>
 </resources>
 "@
-    Set-Content -LiteralPath (Join-Path $valuesDir "themes.xml") -Value $themeXml -NoNewline
-    Set-Content -LiteralPath (Join-Path $nightValuesDir "themes.xml") -Value $themeXml -NoNewline
+    Set-Content -LiteralPath (Join-Path $valuesDir "themes.xml") -Value $dayThemeXml -NoNewline
+    Set-Content -LiteralPath (Join-Path $nightValuesDir "themes.xml") -Value $nightThemeXml -NoNewline
 
-    $gradle = Join-Path $androidApp "build.gradle.kts"
-    $gradleText = Get-Content -Raw -LiteralPath $gradle
-    $gradleText = Set-AndroidGradleVersion $gradleText (Get-AndroidVersionInfo)
-    if ($gradleText -notmatch "androidx\.documentfile:documentfile:") {
-        $dependency = '    implementation("androidx.documentfile:documentfile:1.0.1")'
-        $gradleText = Set-RegexOnce `
-            $gradleText `
-            '(\s+implementation\("androidx\.activity:activity-ktx:[^"]+"\))' `
-            ('${1}' + "`r`n" + $dependency) `
-            "Android documentfile dependency"
+    # The committed gen/android project is version-neutral: the version identity lives in
+    # src-tauri/tauri.android.conf.json bundle.android.versionCode, which the Tauri CLI writes
+    # into app/tauri.properties on every build. Assert the config matches the derived formula
+    # instead of re-stamping gradle literals (issue #209), then stamp/verify with the portable
+    # script so Windows and F-Droid/Linux share one implementation.
+    $versionInfo = Get-AndroidVersionInfo
+    $androidConfig = Get-Content -Raw -LiteralPath (Join-Path $Root "src-tauri\tauri.android.conf.json") | ConvertFrom-Json
+    if ([int64]$androidConfig.bundle.android.versionCode -ne $versionInfo.Code) {
+        Fail "src-tauri\tauri.android.conf.json bundle.android.versionCode $($androidConfig.bundle.android.versionCode) does not match the derived versionCode $($versionInfo.Code) for version $($versionInfo.Source)"
     }
-    Assert-TextContains $gradleText 'implementation\("androidx\.documentfile:documentfile:1\.0\.1"\)' "Android documentfile dependency"
-    Set-Content -LiteralPath $gradle -Value $gradleText -NoNewline
+    Invoke-External "node.exe" @("scripts\android-version.mjs")
+    Invoke-External "node.exe" @("scripts\android-version.mjs", "--check")
 
     Sync-AndroidLauncherIcons
 }

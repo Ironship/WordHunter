@@ -6,12 +6,14 @@ const { APP_LOCALES, LEARNING_LANGUAGES } = await import("../../dist/web/js/cons
 const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
 
 const html = fs.readFileSync("dist/web/index.html", "utf8");
+const settingsSource = fs.readFileSync("dist/web/js/events/settings.js", "utf8");
+const onboardingSource = fs.readFileSync("dist/web/js/onboarding.js", "utf8");
 const discoverView = fs.readFileSync("dist/web/js/views/discover.js", "utf8");
 const discoverEvents = fs.readFileSync("dist/web/js/events/discover.js", "utf8");
 const defaults = fs.readFileSync("dist/web/js/state/defaults.js", "utf8");
 
-function selectBody(id) {
-  const match = html.match(new RegExp(`<select id="${id}"[\\s\\S]*?<\\/select>`));
+function selectBody(source, id) {
+  const match = source.match(new RegExp(`<select id="${id}"[\\s\\S]*?<\\/select>`));
   assert.ok(match, `missing select: ${id}`);
   return match[0];
 }
@@ -22,15 +24,19 @@ function optionValues(selectHtml) {
 
 describe("language selectors", () => {
   it("keeps app locale selectors limited to shipped locale files", () => {
-    for (const id of ["pref-locale-sidebar", "pref-locale-settings", "pref-locale-onboarding"]) {
-      assert.deepEqual(optionValues(selectBody(id)), APP_LOCALES);
-    }
+    assert.deepEqual(optionValues(selectBody(html, "pref-locale-sidebar")), APP_LOCALES);
+    // The settings view is built at boot by renderSettingsView() (port of
+    // #127 P3) — its selects live in the renderer source.
+    assert.deepEqual(optionValues(selectBody(settingsSource, "pref-locale-settings")), APP_LOCALES);
+    // The onboarding dialog is built at boot by renderLanguageOnboardingDialog()
+    // (port of #127 P1) — its selects live in the renderer source.
+    assert.deepEqual(optionValues(selectBody(onboardingSource, "pref-locale-onboarding")), APP_LOCALES);
   });
 
   it("offers every learning profile in every learning-language selector", () => {
-    for (const id of ["pref-learning-language-sidebar", "pref-learning-language-settings", "pref-learning-language-onboarding"]) {
-      assert.deepEqual(optionValues(selectBody(id)), LEARNING_LANGUAGES);
-    }
+    assert.deepEqual(optionValues(selectBody(html, "pref-learning-language-sidebar")), LEARNING_LANGUAGES);
+    assert.deepEqual(optionValues(selectBody(settingsSource, "pref-learning-language-settings")), LEARNING_LANGUAGES);
+    assert.deepEqual(optionValues(selectBody(onboardingSource, "pref-learning-language-onboarding")), LEARNING_LANGUAGES);
   });
 
   it("uses the active learning profile instead of a separate discover language selector", () => {

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
 const css = ["theme.css", "styles.css"]
   .map((file) => readFileSync(new URL(`../../dist/web/${file}`, import.meta.url), "utf8"))
   .join("\n");
@@ -206,6 +207,8 @@ globalThis.document = {
 globalThis.requestAnimationFrame = (callback) => callback();
 
 const { els } = await import("../../dist/web/js/dom.js");
+const { installSettingsFixture } = await import("../shared/settings-fixture.js");
+installSettingsFixture(globalThis.document, els);
 const { bookTexts } = await import("../../dist/web/js/books.js");
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { applyPreferences, syncSettingsControls, updatePreferenceValue } = await import("../../dist/web/js/preferences.js");
@@ -343,7 +346,15 @@ describe("desktop reader behavior", () => {
     });
 
     const before = { textContent: "sehr", dataset: { wordIndex: "86", charOffset: "505" } };
-    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const selected = {
+      textContent: "genau",
+      dataset: { wordIndex: "87", charOffset: "510" },
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      removeAttribute() {},
+      hasAttribute() { return false; },
+      setAttribute() {},
+      closest() { return null; }
+    };
     const after = { textContent: "hier", dataset: { wordIndex: "88", charOffset: "516" } };
     const originalGetElementById = document.getElementById;
     document.getElementById = (id) => id === "reader-text"
@@ -376,7 +387,15 @@ describe("desktop reader behavior", () => {
       readerScrolls: { book: { readerPage: 2, scrollTop: 275, wordIndex: 61 } },
       preferences: { readerBookmarks: {} }
     });
-    const selected = { textContent: "genau", dataset: { wordIndex: "87", charOffset: "510" } };
+    const selected = {
+      textContent: "genau",
+      dataset: { wordIndex: "87", charOffset: "510" },
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      removeAttribute() {},
+      hasAttribute() { return false; },
+      setAttribute() {},
+      closest() { return null; }
+    };
     const readerText = {
       scrollTop: 275,
       querySelector: (selector) => selector.includes('data-word-index="87"') ? selected : null,
@@ -683,8 +702,13 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(attribute(openingTag(button), "aria-haspopup"), "dialog");
     assert.equal(attribute(openingTag(button), "aria-controls"), "reader-bookmarks-dialog");
     assert.ok(containingElementById(html, "section", "reader-bookmark-tabs"));
-    assert.ok(elementById(html, "reader-bookmarks-dialog"));
-    assert.equal((html.match(/name="reader-bookmark-color"/g) || []).length, 5);
+    // The dialog markup itself is built at boot by renderBookmarksDialog()
+    // (port of #127 P1), so its contract lives in the renderer source.
+    assert.doesNotMatch(html, /<dialog id="reader-bookmarks-dialog"/);
+    const bookmarksModule = readFileSync(new URL("../../dist/web/js/reader/bookmarks.js", import.meta.url), "utf8");
+    assert.match(bookmarksModule, /function renderBookmarksDialog/);
+    assert.match(bookmarksModule, /dialog\.id = "reader-bookmarks-dialog"/);
+    assert.equal((bookmarksModule.match(/type="radio" name="reader-bookmark-color"/g) || []).length, 5);
     assert.equal(cssDeclarations(css, ".reader-bookmark-tabs").position, "absolute");
     assert.equal(cssDeclarations(css, "button.reader-bookmark-tab")["pointer-events"], "auto");
     assert.equal(cssDeclarations(css, ".word-token.reader-inline-bookmark").position, "relative");
@@ -703,12 +727,14 @@ describe("desktop reader markup and style contracts", () => {
       ["pref-touch-controls", "touchControls"],
       ["pref-tts-word-highlight", "ttsWordHighlight"]
     ]) {
-      const input = elementById(html, id);
+      // All four controls live in the settings view built by
+      // renderSettingsView() (#127 P3).
+      const input = elementById(settingsSource, id);
       assert.equal(attribute(openingTag(input), "data-pref"), preference);
     }
-    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
-    assert.equal(hasClass(containingElementById(html, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
-    assert.equal(hasClass(containingElementById(html, "label", "pref-touch-controls"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-reader-focus-mode"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-reader-word-panel-visible"), "desktop-only-setting"), true);
+    assert.equal(hasClass(containingElementById(settingsSource, "label", "pref-touch-controls"), "desktop-only-setting"), true);
 
     const panelToggle = elementById(html, "reader-word-panel-toggle");
     assert.equal(hasClass(panelToggle, "desktop-only-control"), true);
@@ -786,8 +812,10 @@ describe("desktop reader markup and style contracts", () => {
     elementById(html, "help-view");
     elementById(html, "pref-locale-sidebar");
     elementById(html, "pref-learning-language-sidebar");
-    elementByAttribute(html, "data-language-flag", "locale", "img");
-    elementByAttribute(html, "data-language-flag", "learning", "img");
+    // The language-flag images live in the Appearance panel built by
+    // renderSettingsView() (#127 P3).
+    elementByAttribute(settingsSource, "data-language-flag", "locale", "img");
+    elementByAttribute(settingsSource, "data-language-flag", "learning", "img");
   });
 
   it("keeps long navigation labels separate from shortcut badges", () => {
@@ -801,8 +829,13 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("statically suppresses Pocket drawer controls outside Pocket mode", () => {
-    assert.equal(hasClass(elementById(html, "library-import-toggle"), "pocket-import-toggle"), true);
-    assert.equal(hasClass(elementById(html, "library-import-close"), "pocket-drawer-close"), true);
+    const libraryModule = readFileSync(new URL("../../dist/web/js/views/library.js", import.meta.url), "utf8");
+    const importModule = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    // library-import-toggle / library-import-close are TS-rendered (#127 P2):
+    // their pocket marker classes live in the renderer sources, not in
+    // static HTML.
+    assert.match(libraryModule, /id="library-import-toggle" class="secondary-button pocket-import-toggle"/);
+    assert.match(importModule, /id="library-import-close" class="icon-button pocket-drawer-close"/);
     assert.equal(hasClass(elementById(html, "pocket-navigation-toggle"), "pocket-navigation-toggle"), true);
     assert.equal(hasClass(elementById(html, "reader-pocket-navigation-toggle"), "pocket-reader-navigation-toggle"), true);
     assert.equal(cssDeclarations(css, ":root:not(.pocket-mode) button.pocket-import-toggle").display, "none");
@@ -825,23 +858,32 @@ describe("desktop reader markup and style contracts", () => {
   });
 
   it("keeps Settings and Export as separate structural sections", () => {
-    const settingsSection = elementById(html, "settings-view");
+    // The settings shell + all six panels are built by renderSettingsView()
+    // (#127 P3); groupReader/groupTts live in the ported Reader panel.
+    assert.match(settingsSource, /view\.id = "settings-view"/);
+    assert.match(settingsSource, /view\.setAttribute\("data-title-key", "nav\.settings"\)/);
     const exportSection = elementById(html, "export-view");
-    for (const key of ["groupLanguage", "groupLearningDisplay", "groupReader", "groupTts", "groupLocalData", "groupBackup"]) {
-      elementByAttribute(settingsSection, "data-i18n", `settings.${key}`);
+    for (const key of ["groupLanguage", "groupLearningDisplay", "groupLocalData", "groupBackup", "groupReader", "groupTts"]) {
+      assert.match(settingsSource, new RegExp(`data-i18n="settings\.${key}"`));
     }
-    assert.equal(findElement(settingsSection, (tag) => attribute(tag, "id") === "export-transfer-all"), null);
+    // The renderer's shell must not contain the Export transfer actions.
+    assert.doesNotMatch(settingsSource, /id="export-transfer-all"/);
     assert.equal(attribute(openingTag(exportSection), "data-title-key"), "nav.export");
     elementByAttribute(exportSection, "data-i18n", "transfer.heading");
     assert.equal(cssDeclarations(css, ".settings-subheading")["text-transform"], "uppercase");
   });
 
   it("defines a scrollable edit-book dialog layout", () => {
-    const dialog = elementById(html, "edit-book-dialog");
-    assert.equal(hasClass(dialog, "edit-book-dialog"), true);
-    elementByClass(dialog, "edit-book-body", "div");
-    elementById(dialog, "edit-book-save");
-    assert.equal(hasClass(elementById(dialog, "edit-book-cover-clear"), "edit-book-cover-clear"), true);
+    // The dialog markup itself is built at boot by renderEditBookDialog()
+    // (port of #127 P1), so its contract lives in the renderer source.
+    assert.doesNotMatch(html, /<dialog id="edit-book-dialog"/);
+    const editModalModule = readFileSync(new URL("../../dist/web/js/book-actions/edit-modal.js", import.meta.url), "utf8");
+    assert.match(editModalModule, /function renderEditBookDialog/);
+    assert.match(editModalModule, /dialog\.id = "edit-book-dialog"/);
+    assert.match(editModalModule, /className = "panel edit-book-dialog"/);
+    assert.match(editModalModule, /class="settings-body edit-book-body"/);
+    assert.match(editModalModule, /id="edit-book-save"/);
+    assert.match(editModalModule, /class="edit-book-cover-clear"/);
     assert.deepEqual(
       { display: cssDeclarations(css, ".edit-book-dialog[open]").display, direction: cssDeclarations(css, ".edit-book-dialog[open]")["flex-direction"] },
       { display: "flex", direction: "column" }

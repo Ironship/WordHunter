@@ -85,7 +85,11 @@ describe("dead-code contract (#116)", () => {
     assert.ok(iface, "WhDomCache interface must exist");
     assert.doesNotMatch(iface[1], /\[key:\s*string\]/, "WhDomCache must not have an index signature");
     const declared = new Set([...iface[1].matchAll(/^\s*([A-Za-z_$][A-Za-z0-9_$]*)\??:/gm)].map((m) => m[1]));
-    const assigned = [...dom.matchAll(/els\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=/g)].map((m) => m[1]);
+    const assigned = [
+      ...[...dom.matchAll(/els\.([A-Za-z_$][A-Za-z0-9_$]*)\s*=/g)].map((m) => m[1]),
+      // Settings controls are initialized lazily via lazySettingsEl ("key", "id").
+      ...[...dom.matchAll(/lazySettingsEl\("([A-Za-z_$][A-Za-z0-9_$]*)"/g)].map((m) => m[1])
+    ];
     const missing = [...new Set(assigned)].filter((k) => !declared.has(k));
     assert.deepEqual(
       missing,

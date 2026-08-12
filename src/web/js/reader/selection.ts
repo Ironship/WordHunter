@@ -122,6 +122,40 @@ export function clearReaderSelection(renderSelection = false): void {
   if (renderSelection) updateReaderSelection();
 }
 
+/** Maps a native DOM text selection over the reader text to the token-range
+ *  phrase state, so touch (and mouse-drag) phrase selection works. Single-token
+ *  selections are ignored — the tap path owns those. */
+export function bindTouchPhraseSelection(): void {
+  document.addEventListener("selectionchange", () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const anchorNode = selection.anchorNode;
+    const focusNode = selection.focusNode;
+    if (!(anchorNode instanceof Node) || !(focusNode instanceof Node)) return;
+    if (!els.readerText?.contains(anchorNode) || !els.readerText?.contains(focusNode)) return;
+    const tokenOf = (node: Node): HTMLButtonElement | null => {
+      const element = node.nodeType === Node.ELEMENT_NODE ? (node as HTMLElement) : node.parentElement;
+      const token = element?.closest?.(".word-token");
+      return token instanceof HTMLButtonElement ? token : null;
+    };
+    const anchorToken = tokenOf(anchorNode);
+    const focusToken = tokenOf(focusNode);
+    if (!anchorToken || !focusToken) return;
+    const tokens = getReaderWordTokens();
+    const anchorIndex = tokens.indexOf(anchorToken);
+    const focusIndex = tokens.indexOf(focusToken);
+    if (anchorIndex === -1 || focusIndex === -1 || anchorIndex === focusIndex) return;
+    const range: WhRecord = { anchor: anchorIndex, focus: focusIndex };
+    const current = state.readerSelectionRange;
+    if (current && Number(current.anchor) === anchorIndex && Number(current.focus) === focusIndex) return;
+    state.readerSelectionRange = range;
+    state.selectedWord = normalizeWord(getRangeText(tokens, range));
+    saveUiState();
+    window.lastActiveToken = tokens[focusIndex];
+    updateReaderSelection();
+  });
+}
+
 export function extendReaderSelection(direction: "left" | "right"): boolean {
   const tokens = getReaderWordTokens();
   if (!tokens.length) return false;

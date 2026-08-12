@@ -685,7 +685,7 @@ export async function clearLocalState(): Promise<void> {
   if (window.__qtBridge) {
     try {
       await runExclusiveStateWrite(async () => {
-        const result = await postStoreCommand("/__store/wipe");
+        const result = await postStoreCommand("/__store/wipe", { confirm: true });
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(UI_STORAGE_KEY);
         try {

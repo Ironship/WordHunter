@@ -55,6 +55,7 @@ export function bindReaderEvents(): void {
       || !(wordPanel instanceof HTMLElement)) return;
     bindReaderBookmarkEvents();
     void import("../reader/find.js").then(({ bindReaderFindEvents }) => bindReaderFindEvents());
+    void import("../reader/selection.js").then(({ bindTouchPhraseSelection }) => bindTouchPhraseSelection());
 
     let lastWordPanelInteractionAt = 0;
     let pdfWordClickTimer: number | null = null;
@@ -104,6 +105,9 @@ export function bindReaderEvents(): void {
     });
     els.readerNextWord?.addEventListener("click", () => {
       if (!navigateReaderWord(1)) showToast(t("reader.wordNavPageEnd"));
+    });
+    els.readerFindToggle?.addEventListener("click", () => {
+      void import("../reader/find.js").then(({ toggleReaderFind }) => toggleReaderFind());
     });
     let readerScrollSaveTimer: number | null = null;
     registerFrontendStateFlusher(() => {
