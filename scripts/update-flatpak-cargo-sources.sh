@@ -126,8 +126,11 @@ PY
 if [[ "$mode" == "check" ]]; then
   # Normalize line endings before comparing: on Windows the generator writes
   # CRLF while the committed file is LF (repo .gitattributes) — an EOL-only
-  # difference must not fail the drift check.
-  if ! diff -u flatpak/cargo-sources.json <(tr -d '\r' < "$merged_sources"); then
+  # difference must not fail the drift check. Normalize BOTH sides: the
+  # working-copy copy of the committed file is CRLF right after a Windows
+  # regeneration, and the committed blob is LF — comparing raw bytes fails
+  # even though git sees no content change.
+  if ! diff -u <(tr -d '\r' < flatpak/cargo-sources.json) <(tr -d '\r' < "$merged_sources"); then
     echo
     echo "flatpak/cargo-sources.json is out of date." >&2
     echo "Run ./scripts/update-flatpak-cargo-sources.sh and commit the result." >&2
