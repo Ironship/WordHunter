@@ -10,6 +10,7 @@ import {
   STORAGE_KEY,
   UI_SCALE
 } from "../constants.js";
+import { todayISO } from "../sm2.js";
 import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
 import { normalizeLearningColors } from "../reader-colors.js";
@@ -279,7 +280,9 @@ function normalizeVocabEntries(rawVocab: unknown, language = "en"): WhVocabulary
     if (typeof entry.stability !== "number" || !Number.isFinite(entry.stability)) entry.stability = 0;
     if (typeof entry.difficulty !== "number" || !Number.isFinite(entry.difficulty)) entry.difficulty = 5;
     if (entry.srsAlgorithm !== "fsrs") entry.srsAlgorithm = "sm2";
-    if (!entry.nextDate) entry.nextDate = new Date().toISOString().slice(0, 10);
+    // Local day (todayISO) — a UTC date here made cards added between
+    // 00:00 and 02:00 local time immediately overdue.
+    if (!entry.nextDate) entry.nextDate = todayISO();
   }
   return vocab;
 }

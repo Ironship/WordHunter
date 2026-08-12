@@ -2,6 +2,7 @@
  * Individual chart render functions for the graphs view.
  */
 import { state } from "../state.js";
+import { todayISO } from "../sm2.js";
 import { getLocale, t as rawT } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
@@ -196,7 +197,9 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
   const W = ctx.w, H = ctx.h;
   const pad = { top: 52, right: 20, bottom: 40, left: 44 };
   const pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  const today = new Date().toISOString().slice(0, 10);
+  // Local "today" — the review queue (isDue) uses todayISO(); using UTC
+  // here shifted every bucket by a day in the 00:00-02:00 window (PL).
+  const today = todayISO();
   if (options.allTime) {
     const todayDate = new Date(`${today}T00:00:00`);
     let overdue = 0;

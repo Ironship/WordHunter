@@ -2,6 +2,7 @@
  * Shared helpers and module-level state for graphs.
  */
 import { state } from "../state.js";
+import { todayISO } from "../sm2.js";
 import { t as rawT } from "../i18n.js";
 import { setElementBusy } from "../loading.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
@@ -255,7 +256,9 @@ export function buildHeatmapActivityCounts(entries: readonly VocabEntry[]) {
     const time = new Date(d).getTime();
     if (!Number.isFinite(time)) continue;
     firstTime = Math.min(firstTime, time);
-    const day = new Date(time).toISOString().slice(0, 10);
+    // Local calendar day — a review at 23:30 local must count for that
+    // day, not the next UTC day.
+    const day = todayISO(new Date(time));
     counts[day] = (counts[day] || 0) + 1;
   }
   return { counts, firstTime };
@@ -283,7 +286,7 @@ export function renderStatsSummary(_chartEntries?: readonly VocabEntry[]): void 
   const el = document.getElementById("graphs-stats");
   if (!el) return;
   let due = 0, overdue = 0, total = 0, newCount = 0, learning = 0, known = 0, matureCount = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   for (const e of _chartEntries || Object.values(state.vocab) as VocabEntry[]) {
     if (e.status === "ignored") continue;
     total++;
