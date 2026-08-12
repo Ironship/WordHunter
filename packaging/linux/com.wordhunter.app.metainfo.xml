@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.11-rc.1" date="2026-08-12">
+      <description>
+        <ul>
+          <li>Android reliability: TTS word highlighting works on modern Android versions, day/night themes follow the system, exporting no longer stalls on a busy database, and the app starts faster after background restarts.</li>
+          <li>Youglish opens through the native Android bridge.</li>
+          <li>Settings and dialog screens are rendered by TypeScript components with no duplicated static markup.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.10" date="2026-08-07">
       <description>
         <ul>
