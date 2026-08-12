@@ -679,7 +679,11 @@ export function renderSettingsView(): HTMLElement {
 
         </div>
   `;
-  document.body.appendChild(view);
+  // Mount inside .main-panel like the other views — appending to document.body
+  // puts the view below the app shell (below the fold), making the Settings
+  // tab look empty until the user scrolls.
+  const host = document.querySelector<HTMLElement>("main.main-panel") ?? document.body;
+  host.appendChild(view);
   return view;
 }
 
