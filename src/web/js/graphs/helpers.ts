@@ -4,6 +4,8 @@
 import { state } from "../state.js";
 import { todayISO } from "../sm2.js";
 import { t as rawT } from "../i18n.js";
+import { simulateNextReview } from "../sm2.js";
+import type { SrsEntry } from "../sm2.js";
 import { setElementBusy } from "../loading.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
 
@@ -135,6 +137,34 @@ function dateTimestamp(value: DateInput): number {
 
 export function daysBetween(a: DateInput, b: DateInput): number {
   return Math.round((dateTimestamp(a) - dateTimestamp(b)) / 86400000);
+}
+
+// Forecast projection: the real buckets for existing nextDates PLUS, for
+// every due card (delta <= 0), one simulated "good" review through the
+// card's own scheduler — so the chart shows what the coming days will look
+// like after today's session, not just an empty future.
+export function projectDueBuckets(
+  entries: readonly VocabEntry[],
+  today: string,
+  horizon = 30,
+  quality: unknown = 4
+): { buckets: number[]; overdue: number; total: number } {
+  const buckets = new Array(horizon).fill(0);
+  let overdue = 0;
+  let total = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || e.status === "known" || !e.nextDate) continue;
+    total++;
+    const delta = daysBetween(e.nextDate, today);
+    if (delta < 0) overdue++;
+    else if (delta < horizon) buckets[delta]++;
+    if (delta <= 0) {
+      const sim = simulateNextReview(e as unknown as SrsEntry, quality);
+      const sd = daysBetween(sim.nextDate, today);
+      if (sd > 0 && sd < horizon) buckets[sd]++;
+    }
+  }
+  return { buckets, overdue, total };
 }
 
 export function canvas(id: string): ChartContext | null {

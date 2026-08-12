@@ -16,7 +16,7 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t as rawT } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
-import { buildEaseFactorBins, buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg } from "../graphs/helpers.js";
+import { buildEaseFactorBins, buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg, projectDueBuckets } from "../graphs/helpers.js";
 import type { ChartContext, VocabEntry } from "../graphs/helpers.js";
 import { formatSrsMeta } from "./review-card.js";
 
@@ -85,13 +85,7 @@ export function renderReviewChart(srsEntries: readonly ReviewEntry[], today: str
 
       if (graphType === "dueForecast") {
         const days = 21;
-        const buckets = new Array(days).fill(0);
-        let overdue = 0;
-        for (const e of srsEntries) {
-          const delta = diffDays(e.nextDate, today);
-          if (delta < 0) overdue++;
-          else if (delta < days) buckets[delta]++;
-        }
+        const { buckets, overdue } = projectDueBuckets(srsEntries, today, days);
         const maxVal = Math.max(1, overdue, ...buckets);
         const barW = Math.max(3, (W - pad.left - pad.right) / (days + (overdue > 0 ? 1 : 0)) - 3);
         let bx = pad.left;
