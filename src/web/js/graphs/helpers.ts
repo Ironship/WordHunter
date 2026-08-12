@@ -133,6 +133,9 @@ export function canvas(id: string): ChartContext | null {
 export function showTooltip(evt: MouseEvent, tipText: string): void {
   if (!tooltipEl) { tooltipEl = document.createElement("div"); tooltipEl.className = "chart-tooltip"; document.body.appendChild(tooltipEl); }
   tooltipEl.textContent = tipText;
+  // Show first, then measure: offsetWidth/offsetHeight of a display:none
+  // element are 0 and the clamp would compute against an empty box.
+  tooltipEl.style.display = "block";
   const pos = clampTooltipPosition(
     evt.clientX + 14,
     evt.clientY - 32,
@@ -143,7 +146,6 @@ export function showTooltip(evt: MouseEvent, tipText: string): void {
   );
   tooltipEl.style.left = pos.x + "px";
   tooltipEl.style.top = pos.y + "px";
-  tooltipEl.style.display = "block";
 }
 
 // Keeps the tooltip inside the viewport (8 px margin) — near the right/bottom
