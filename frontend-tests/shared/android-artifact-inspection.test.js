@@ -4,7 +4,9 @@ import { readFileSync } from "node:fs";
 import {
   androidVersionCodeFor,
   isBadgingDebuggable,
+  parseAxmlManifest,
   parseBadgingPackage,
+  parseTextManifest,
   parseXmlTreeManifest,
 } from "../../scripts/inspect-artifact.mjs";
 
@@ -89,5 +91,87 @@ describe("Android release artifact assertions", () => {
       debuggable: false,
     });
     assert.equal(parseXmlTreeManifest(debugXmlTree).debuggable, true);
+  });
+
+  it("parses the text manifest from the AAB archive root", () => {
+    const text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.wordhunter.pocket" versionCode="101001101" versionName="1.0.11-rc.1">';
+    assert.deepEqual(parseTextManifest(text), {
+      versionCode: 101001101,
+      versionName: "1.0.11-rc.1",
+      debuggable: false,
+    });
+    assert.equal(
+      parseTextManifest('<manifest android:debuggable="true"></manifest>').debuggable,
+      true,
+    );
+    assert.deepEqual(parseTextManifest("<not-a-manifest/>"), {
+      versionCode: null,
+      versionName: null,
+      debuggable: false,
+    });
+  });
+
+  it("parses the binary AXML manifest from the AAB archive root", () => {
+    // Minimal synthetic AXML: header + string pool ("1.0.11-rc.1") + resource
+    // map + one start-element carrying versionCode/versionName/debuggable by
+    // resource id.
+    const versionName = "1.0.11-rc.1";
+    // Pool: 20-byte header (count, styleCount, flags, stringsStart,
+    // stylesStart) + 4-byte offset table + 2-byte length + utf16 chars.
+    const pool = Buffer.alloc(20 + 4 + 2 + versionName.length * 2);
+    pool.writeUInt32LE(1, 0); // stringCount
+    pool.writeUInt32LE(0, 4); // styleCount
+    pool.writeUInt32LE(0, 8); // flags
+    pool.writeUInt32LE(32, 12); // stringsStart (8 chunk header + 20 pool header + 4 offsets)
+    pool.writeUInt32LE(0, 16); // stylesStart
+    pool.writeUInt32LE(0, 20); // offset[0] = 0
+    pool.writeUInt16LE(versionName.length, 24);
+    pool.write(versionName, 26, "utf16le");
+
+    const resourceMap = Buffer.alloc(4 + 3 * 4);
+    resourceMap.writeUInt32LE(0x0101021b, 0); // versionCode
+    resourceMap.writeUInt32LE(0x0101021c, 4); // versionName
+    resourceMap.writeUInt32LE(0x0101000f, 8); // debuggable
+
+    // Start-element: header 8 + line 4 + comment 4 + ns 4 + name 4 +
+    // attrStart 2 + attrSize 2 + attrCount 2 (=28) + attrs 3 x 20 -> 92.
+    const element = Buffer.alloc(92);
+    element.writeUInt16LE(0x0102, 0);
+    element.writeUInt16LE(16, 2);
+    element.writeUInt32LE(92, 4);
+    element.writeUInt16LE(20, 24); // attributeStart
+    element.writeUInt16LE(20, 26); // attributeSize
+    element.writeUInt16LE(3, 28); // attrCount
+    // attr 0 @32: versionCode (resource id 0) -> int 101001101
+    element.writeUInt32LE(0, 36);
+    element.writeUInt8(0x10, 44);
+    element.writeUInt32LE(101001101, 48);
+    // attr 1 @52: versionName (resource id 1) -> string pool index 0
+    element.writeUInt32LE(1, 56);
+    element.writeUInt8(0x03, 64);
+    element.writeUInt32LE(0, 68);
+    // attr 2 @72: debuggable (resource id 2) -> bool false
+    element.writeUInt32LE(2, 76);
+    element.writeUInt8(0x12, 84);
+    element.writeUInt32LE(0, 88);
+
+    const stringPoolChunk = Buffer.alloc(8 + pool.length);
+    stringPoolChunk.writeUInt16LE(0x0001, 0);
+    stringPoolChunk.writeUInt16LE(28, 2);
+    stringPoolChunk.writeUInt32LE(8 + pool.length, 4);
+    pool.copy(stringPoolChunk, 8);
+
+    const resourceMapChunk = Buffer.alloc(8 + resourceMap.length);
+    resourceMapChunk.writeUInt16LE(0x0180, 0);
+    resourceMapChunk.writeUInt16LE(8, 2);
+    resourceMapChunk.writeUInt32LE(8 + resourceMap.length, 4);
+    resourceMap.copy(resourceMapChunk, 8);
+
+    const axml = Buffer.concat([Buffer.from([0x03, 0x00, 0x08, 0x00, 24, 0, 0, 0]), stringPoolChunk, resourceMapChunk, element]);
+    const parsed = parseAxmlManifest(axml);
+    assert.equal(parsed.versionCode, 101001101);
+    assert.equal(parsed.versionName, "1.0.11-rc.1");
+    assert.equal(parsed.debuggable, false);
+    assert.equal(parseAxmlManifest(Buffer.from("garbage")).axml, false);
   });
 });
