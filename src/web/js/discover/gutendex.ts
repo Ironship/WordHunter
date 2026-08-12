@@ -4,6 +4,7 @@
 import { GUTENDEX_URL } from "../constants.js";
 import { t } from "../i18n.js";
 import { cleanCatalogTitle } from "../utils.js";
+import { fetchDiscover } from "./fetch-discover.js";
 
 const LEVEL_TOPICS: Record<string, string> = {
   A1: "children",
@@ -62,7 +63,7 @@ export async function searchGutendex(
   if (topic) params.set("topic", topic);
   params.set("page", String(discover.page || 1));
 
-  const response = await fetch(`${GUTENDEX_URL}?${params.toString()}`, { signal });
+  const response = await fetchDiscover(`${GUTENDEX_URL}?${params.toString()}`, signal);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const rawData: unknown = await response.json();
   const data = asRecord(rawData) || {};
