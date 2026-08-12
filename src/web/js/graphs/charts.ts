@@ -9,6 +9,7 @@ import {
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
   buildEaseFactorBins
 } from "./helpers.js";
+import { countMatureYoung } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
 
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
@@ -544,11 +545,7 @@ export function renderMatureVsYoung(_chartEntries?: readonly VocabEntry[], _opti
   const W = ctx.w, H = ctx.h;
   const cx = W / 2, cy = H / 2 + 4;
   const r = Math.min(W, H) / 2 - 34, ir = r * 0.55;
-  let young = 0, mature = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known") continue;
-    if ((e.interval || 0) >= 21) mature++; else young++;
-  }
+  const { young, mature } = countMatureYoung(_chartEntries || stateVocabEntries());
   const total = Math.max(1, young + mature);
 
   ctx.fillStyle = panelBg; ctx.fillRect(0, 0, W, H);
