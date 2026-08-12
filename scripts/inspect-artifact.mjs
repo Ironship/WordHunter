@@ -331,6 +331,99 @@ export function parseXmlTreeManifest(xmltree) {
   };
 }
 
+// AABs carry the original AndroidManifest.xml at the archive root
+// (manifest/AndroidManifest.xml). Recent AGP versions produce AABs whose
+// protobuf manifest (base/manifest/) aapt2 from newer build-tools refuses to
+// read ("could not identify format of APK"), so the AAB version identity is
+// verified from the root manifest instead: text XML when present, binary
+// AXML otherwise.
+export function parseTextManifest(xml) {
+  const tag = xml.match(/<manifest[^>]*>/);
+  if (!tag) return { versionCode: null, versionName: null, debuggable: false };
+  const attrs = tag[0];
+  const versionCodeMatch = attrs.match(/versionCode="(\d+)"/);
+  const versionNameMatch = attrs.match(/versionName="([^"]+)"/);
+  const debuggableMatch = attrs.match(/android:debuggable="(true|false)"/);
+  return {
+    versionCode: versionCodeMatch ? Number(versionCodeMatch[1]) : null,
+    versionName: versionNameMatch ? versionNameMatch[1] : null,
+    debuggable: debuggableMatch ? debuggableMatch[1] === "true" : false,
+  };
+}
+
+// Binary AXML: chunked format with a string pool (0x0001), a resource map
+// (0x0180) mapping string indices to resource ids, and start-element chunks
+// (0x0102) carrying typed attributes. The manifest's versionCode
+// (0x0101021b), versionName (0x0101021c), and debuggable (0x0101000f)
+// attributes are located by resource id and decoded from the typed value.
+const AXML_VERSION_CODE_ID = 0x0101021b;
+const AXML_VERSION_NAME_ID = 0x0101021c;
+const AXML_DEBUGGABLE_ID = 0x0101000f;
+
+export function parseAxmlManifest(bytes) {
+  if (bytes.length < 8 || bytes.readUInt32LE(0) !== 0x00080003) {
+    return { versionCode: null, versionName: null, debuggable: false, axml: false };
+  }
+  let strings = [];
+  const resourceMap = [];
+  const found = { versionCode: null, versionName: null, debuggable: false, axml: true };
+  const u16 = (at) => (at + 2 <= bytes.length ? bytes.readUInt16LE(at) : 0);
+  const u32 = (at) => (at + 4 <= bytes.length ? bytes.readUInt32LE(at) : 0);
+  const u8 = (at) => (at + 1 <= bytes.length ? bytes.readUInt8(at) : 0);
+  let offset = 8;
+  while (offset + 8 <= bytes.length) {
+    const type = u16(offset);
+    const chunkSize = u32(offset + 4);
+    if (chunkSize < 8 || offset + chunkSize > bytes.length) break;
+    if (type === 0x0001) {
+      const stringCount = u32(offset + 8);
+      const stringsStart = u32(offset + 20);
+      const stringPoolBase = offset + stringsStart;
+      for (let index = 0; index < stringCount; index += 1) {
+        const stringOffset = u32(offset + 28 + index * 4);
+        const at = stringPoolBase + stringOffset;
+        if (at + 2 > bytes.length) break;
+        const length = u16(at);
+        const end = at + 2 + length * 2;
+        if (end > bytes.length) break;
+        strings.push(bytes.toString("utf16le", at + 2, end));
+      }
+    } else if (type === 0x0180) {
+      for (let at = offset + 8; at + 4 <= offset + chunkSize; at += 4) {
+        resourceMap.push(u32(at));
+      }
+    } else if (type === 0x0102) {
+      const attrCount = u16(offset + 28);
+      let attrOffset = offset + 32;
+      for (let index = 0; index < attrCount; index += 1) {
+        const nameField = u32(attrOffset + 4);
+        const valueType = u8(attrOffset + 12);
+        const valueData = u32(attrOffset + 16);
+        let resourceId = nameField;
+        if (nameField & 0x80000000) resourceId = nameField & 0x7fffffff;
+        else if (nameField < resourceMap.length) resourceId = resourceMap[nameField];
+        if (resourceId === AXML_VERSION_CODE_ID) {
+          found.versionCode = valueData;
+        } else if (resourceId === AXML_VERSION_NAME_ID) {
+          if (valueType === 0x03 && valueData < strings.length) found.versionName = strings[valueData];
+          else if (valueType === 0x01) found.versionName = strings[valueData];
+        } else if (resourceId === AXML_DEBUGGABLE_ID) {
+          found.debuggable = valueData !== 0;
+        }
+        attrOffset += 20;
+      }
+    }
+    offset += chunkSize;
+  }
+  return found;
+}
+
+export function readZipEntryText(archive, name) {
+  const entry = archive.entries.get(name.toLowerCase());
+  if (!entry) return null;
+  return zipEntryBytes(archive, entry).toString("utf8");
+}
+
 function androidExpectations() {
   const config = JSON.parse(
     readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
@@ -438,8 +531,14 @@ export function inspectAndroid(path, abi) {
   const expected = androidExpectations();
   const aapt2 = findAapt2();
   if (isAab) {
-    const xmltree = run(aapt2, ["dump", "xmltree", "--file", "base/manifest/AndroidManifest.xml", path]);
-    const manifest = parseXmlTreeManifest(xmltree);
+    const archive = readZipArchive(path);
+    const manifestXml = readZipEntryText(archive, "manifest/AndroidManifest.xml");
+    if (manifestXml === null) fail(`${path}: missing manifest/AndroidManifest.xml`);
+    const textManifest = parseTextManifest(manifestXml);
+    let manifest = textManifest;
+    if (textManifest.versionCode === null && textManifest.versionName === null) {
+      manifest = parseAxmlManifest(Buffer.from(manifestXml, "utf8"));
+    }
     if (manifest.versionCode !== expected.versionCode) {
       fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
     }
