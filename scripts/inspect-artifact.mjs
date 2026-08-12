@@ -450,7 +450,9 @@ export function parseProtoManifest(bytes) {
     return { start, end };
   }
 
-  // Collect XmlAttribute payloads from an XmlElement message (field 5).
+  // Collect payloads of fields 4 and 5 (attribute messages in both the old
+  // aapt1-style layout — attributes directly on the node — and the aapt2
+  // XmlElement layout — attributes on the element).
   function collectAttributes(payload, out) {
     let at = payload.start;
     while (at < payload.end) {
@@ -461,7 +463,7 @@ export function parseProtoManifest(bytes) {
       if (wireType === 2) {
         const ld = lengthDelimited(at);
         if (!ld) return;
-        if (fieldNumber === 5) out.push({ start: ld.start, end: ld.end });
+        if (fieldNumber === 4 || fieldNumber === 5) out.push({ start: ld.start, end: ld.end });
         at = ld.end;
       } else if (wireType === 0) {
         at = varint(at).at;
@@ -471,9 +473,11 @@ export function parseProtoManifest(bytes) {
     }
   }
 
-  // The AAB manifest is a bare aapt.pb.XmlNode; older builds wrap it in
-  // aapt.pb.Manifest { XmlNode manifest = 1 }. Accept both: scan the
-  // top-level fields AND the payload of a top-level field 1 (the wrapper).
+  // Candidate payloads that may hold attributes:
+  //  - top-level field 5: a bare XmlNode.element / element
+  //  - top-level field 1: the wrapper (Manifest.manifest) or a node whose
+  //    attributes live directly on it (old layout) — scan it for elements
+  //    and also use it as a candidate itself.
   const candidates = [];
   let at = 0;
   while (at < bytes.length) {
@@ -486,11 +490,12 @@ export function parseProtoManifest(bytes) {
       if (!ld) break;
       if (fieldNumber === 5) candidates.push({ start: ld.start, end: ld.end });
       else if (fieldNumber === 1) {
-        // Wrapper (Manifest.manifest) — the XmlNode payload may hold an
-        // XmlElement at field 5; push the ELEMENT, not the wrapper.
         const inner = [];
         collectAttributes(ld, inner);
-        if (inner.length > 0) candidates.push(inner[0]);
+        if (inner.length > 0) {
+          candidates.push(...inner);
+          candidates.push({ start: ld.start, end: ld.end });
+        }
       }
       at = ld.end;
     } else if (wireType === 0) {
@@ -505,6 +510,7 @@ export function parseProtoManifest(bytes) {
   for (const attr of attributes) {
     let resourceId = null;
     let name = null;
+    let rawValue = null;
     let typedValue = null;
     let at = attr.start;
     while (at < attr.end) {
@@ -516,6 +522,7 @@ export function parseProtoManifest(bytes) {
         const ld = lengthDelimited(at);
         if (!ld) break;
         if (fieldNumber === 2) name = bytes.toString("utf8", ld.start, ld.end);
+        else if (fieldNumber === 3) rawValue = bytes.toString("utf8", ld.start, ld.end);
         else if (fieldNumber === 5) resourceId = varint(ld.start).value;
         else if (fieldNumber === 6) typedValue = { start: ld.start, end: ld.end };
         at = ld.end;
@@ -525,63 +532,63 @@ export function parseProtoManifest(bytes) {
         break;
       }
     }
-    if (typedValue === null) continue;
-    found.attrs.push({ resourceId, name });
+    if (name === null && typedValue === null) continue;
+    found.attrs.push({ resourceId, name, rawValue });
+
+    // Typed value: field 2 varint (int) / field 3 string. The old layout
+    // nests the int under field 7 -> field 6.
+    const typedInt = () => {
+      let out = null;
+      if (!typedValue) return out;
+      let t = typedValue.start;
+      while (t < typedValue.end) {
+        const tg = varint(t);
+        t = tg.at;
+        const fn = tg.value >>> 3;
+        const wt = tg.value & 0x7;
+        if (wt === 0) {
+          if (fn === 2 || fn === 6) out = varint(t).value;
+          t = varint(t).at;
+        } else if (wt === 2) {
+          const ldd = lengthDelimited(t);
+          if (!ldd) break;
+          t = ldd.end;
+        } else {
+          break;
+        }
+      }
+      return out;
+    };
+    const typedString = () => {
+      if (!typedValue) return null;
+      let t = typedValue.start;
+      while (t < typedValue.end) {
+        const tg = varint(t);
+        t = tg.at;
+        const fn = tg.value >>> 3;
+        const wt = tg.value & 0x7;
+        if (wt === 2) {
+          const ldd = lengthDelimited(t);
+          if (!ldd) break;
+          if (fn === 3) return bytes.toString("utf8", ldd.start, ldd.end);
+          t = ldd.end;
+        } else if (wt === 0) {
+          t = varint(t).at;
+        } else {
+          break;
+        }
+      }
+      return null;
+    };
+
     if (resourceId === 0x0101021b || name === "versionCode") {
-      let at2 = typedValue.start;
-      while (at2 < typedValue.end) {
-        const tag = varint(at2);
-        at2 = tag.at;
-        const fieldNumber = tag.value >>> 3;
-        const wireType = tag.value & 0x7;
-        if (wireType === 2) {
-          const ld = lengthDelimited(at2);
-          if (!ld) break;
-          if (fieldNumber === 3) found.versionName = bytes.toString("utf8", ld.start, ld.end);
-          at2 = ld.end;
-        } else if (wireType === 0) {
-          if (fieldNumber === 2) found.versionCode = varint(at2).value;
-          at2 = varint(at2).at;
-        } else {
-          break;
-        }
-      }
+      if (rawValue !== null && /^\d+$/.test(rawValue)) found.versionCode = Number(rawValue);
+      else if (typedValue) found.versionCode = typedInt();
     } else if (resourceId === 0x0101021c || name === "versionName") {
-      let at2 = typedValue.start;
-      while (at2 < typedValue.end) {
-        const tag = varint(at2);
-        at2 = tag.at;
-        const fieldNumber = tag.value >>> 3;
-        const wireType = tag.value & 0x7;
-        if (wireType === 2) {
-          const ld = lengthDelimited(at2);
-          if (!ld) break;
-          if (fieldNumber === 3) found.versionName = bytes.toString("utf8", ld.start, ld.end);
-          at2 = ld.end;
-        } else if (wireType === 0) {
-          at2 = varint(at2).at;
-        } else {
-          break;
-        }
-      }
+      found.versionName = rawValue ?? typedString();
     } else if (resourceId === 0x0101000f || name === "debuggable") {
-      let at2 = typedValue.start;
-      while (at2 < typedValue.end) {
-        const tag = varint(at2);
-        at2 = tag.at;
-        const fieldNumber = tag.value >>> 3;
-        const wireType = tag.value & 0x7;
-        if (wireType === 0) {
-          if (fieldNumber === 2) found.debuggable = varint(at2).value !== 0;
-          at2 = varint(at2).at;
-        } else if (wireType === 2) {
-          const ld = lengthDelimited(at2);
-          if (!ld) break;
-          at2 = ld.end;
-        } else {
-          break;
-        }
-      }
+      if (rawValue !== null) found.debuggable = rawValue === "true";
+      else if (typedValue) found.debuggable = typedInt() !== 0;
     }
   }
   return found;

@@ -234,5 +234,21 @@ describe("Android release artifact assertions", () => {
     assert.equal(named.versionCode, 101001101);
     assert.equal(named.versionName, "1.0.11-rc.1");
     assert.equal(named.debuggable, false);
+    // Old aapt1-style layout: attributes directly on the node (field 4)
+    // with the raw value as a string (field 3). Verified against the real
+    // 1.0.10 AAB manifest (base/manifest/AndroidManifest.xml, 5716 B).
+    const rawAttr = (name, value) =>
+      Buffer.concat([ld(2, Buffer.from(name, "utf8")), ld(3, Buffer.from(value, "utf8"))]);
+    const oldNode = Buffer.concat([
+      ld(3, Buffer.from("manifest", "utf8")),
+      ld(4, rawAttr("package", "com.wordhunter.pocket")),
+      ld(4, rawAttr("versionCode", "101001101")),
+      ld(4, rawAttr("versionName", "1.0.11-rc.1")),
+      ld(4, rawAttr("debuggable", "false")),
+    ]);
+    const oldLayout = parseProtoManifest(ld(1, oldNode));
+    assert.equal(oldLayout.versionCode, 101001101);
+    assert.equal(oldLayout.versionName, "1.0.11-rc.1");
+    assert.equal(oldLayout.debuggable, false);
   });
 });
