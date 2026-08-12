@@ -92,6 +92,17 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
     let Ok(mut child) = command.spawn() else {
         return gpu_status_value("failed");
     };
+    let finish = |output: std::process::Output| -> Value {
+        // Honor a well-formed status document even when the runner exits
+        // non-zero (e.g. a DirectML warning path or a broken pipe on print) —
+        // DirectML session creation can take well over the old 30s deadline
+        // on a cold start, and a killed child that already printed its
+        // verdict must not mask a working GPU.
+        if !output.status.success() && parse_gpu_probe_output(&output.stdout)["status"] == "failed" {
+            return gpu_status_value("failed");
+        }
+        parse_gpu_probe_output(&output.stdout)
+    };
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
     let output = loop {
         match child.try_wait() {
@@ -99,7 +110,9 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
                     let _ = child.kill();
-                    let _ = child.wait();
+                    if let Some(output) = child.wait_with_output().ok() {
+                        return finish(output);
+                    }
                     return gpu_status_value("failed");
                 }
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -110,14 +123,7 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
     let Some(output) = output else {
         return gpu_status_value("failed");
     };
-    // Honor a well-formed status document even when the runner exits
-    // non-zero (e.g. a DirectML warning path or a broken pipe on print) —
-    // DirectML session creation can take well over the old 30s deadline on
-    // a cold start, and killing the child must not mask a working GPU.
-    if !output.status.success() && parse_gpu_probe_output(&output.stdout)["status"] == "failed" {
-        return gpu_status_value("failed");
-    }
-    parse_gpu_probe_output(&output.stdout)
+    finish(output)
 }
 
 /// Returns the cached GPU status, probing once on first use. Failed probes are
