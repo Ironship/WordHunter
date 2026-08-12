@@ -367,7 +367,12 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
   });
   const updatedAt = now.toISOString();
   let status = currentEntry.status;
-  if (quality >= 4 && currentEntry.repetition >= 2) status = "known";
+  // Graduate to "known" only when the card is mature (interval >= 21 days).
+  // The old rule (quality >= 4 after two repetitions) retired cards at
+  // ~1-8 day intervals: the review queue never built future reviews, ease
+  // factors never drifted, no card ever reached maturity, and the graphs
+  // (forecast, ease distribution, mature/young) degraded to a single bucket.
+  if (quality >= 4 && (currentEntry.interval ?? 0) >= 21) status = "known";
   else if (quality < 3) status = "learning";
   else if (currentEntry.status === "new") status = "learning";
   setEntryStatus(currentEntry, status, updatedAt);
