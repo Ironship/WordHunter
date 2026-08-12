@@ -11,7 +11,6 @@ import { renderGraphs } from "./views/graphs.js";
 import { renderTranslator } from "./views/translator.js";
 import { syncSettingsControls } from "./preferences.js";
 import { t } from "./i18n.js";
-import { els } from "./dom.js";
 import { applyPlatformUi, isAndroidPlatform } from "./platform.js";
 
 type ViewName = "library" | "reader" | "vocabulary" | "flashcards" | "graphs" | "discover" | "translator" | "export" | "settings" | "help";
@@ -134,7 +133,8 @@ function renderOcrGpuStatus(): void {
       : ocrGpuStatus?.status === "failed"
         ? "settings.ocrGpuFailed"
         : "settings.ocrGpuChecking";
-  if (els.ocrGpuStatus) els.ocrGpuStatus.textContent = t(key);
+  const ocrStatus = document.getElementById("ocr-gpu-status");
+  if (ocrStatus) ocrStatus.textContent = t(key);
 }
 
 export function ensureCurrentText(): void {

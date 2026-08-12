@@ -211,12 +211,25 @@ Encrypted, corrupt, unsupported, or empty PDFs can still be rejected. A damaged
 desktop package with a missing OCR runner or model reports that packaging/runtime
 problem instead of silently returning an incomplete OCR result.
 
+**YouTube captions (optional).** The desktop import panel can load subtitles
+from a YouTube video URL. This uses the open-source [yt-dlp] tool as an
+optional external dependency — Word Hunter does not bundle it. Install Python 3
+with yt-dlp on your PATH, or drop a standalone `yt-dlp` binary (`yt-dlp.exe`
+on Windows) next to the app executable or in its `bin/` subdirectory. The
+`WORDHUNTER_YTDLP` environment variable overrides the yt-dlp binary to use.
+On Flatpak and Snap, the host's yt-dlp is found automatically under
+`/run/host` and `/var/lib/snapd/hostfs`. Caption downloads time out after 120
+seconds, and failures report the yt-dlp exit status.
+
+[yt-dlp]: https://github.com/yt-dlp/yt-dlp
+
 <img src="docs/screenshots/pc-library.png" width="860" alt="Word Hunter desktop library with import panel">
 
 Word Hunter Pocket shows the same kind of library in a phone layout. Pocket is
 optimized for reading and review on Android, with a compact card list, large
 touch targets, collapsible search filters, and a side import drawer for lighter
-mobile imports.
+mobile imports. OCR for scanned/image-only PDFs is not available in Pocket —
+import them through the desktop version (local OCR runtime).
 
 "<img width="2537" height="1380" alt="{953014A0-B7A5-4189-9D98-CF6A9BB5C940}" src="https://github.com/user-attachments/assets/765efecf-21ad-4c52-acbe-302689664cad" />
 
@@ -370,6 +383,25 @@ Android Pocket release builds derive `versionName` and monotonic `versionCode`
 from stable or `-rc.N` SemVer values in `src-tauri/tauri.conf.json`. Stable
 builds sort after every release candidate for the same version; see
 `docs/release-validation.md` before changing the release version scheme.
+
+The Android project under `src-tauri/gen/android/` is committed in a
+version-neutral form: `app/build.gradle.kts` reads `versionCode`/`versionName`
+from `app/tauri.properties`, which the Tauri CLI regenerates on every build
+from `src-tauri/tauri.conf.json` and the pinned `bundle.android.versionCode`
+in `src-tauri/tauri.android.conf.json` (`scripts/android-version.mjs --check`
+verifies the identity and the neutral gradle form). The
+`.template-version` marker pins the Tauri CLI used to generate the committed
+project; `scripts/build.bat` re-initializes `gen/android` when it drifts.
+`scripts/prepare-android.mjs` applies the same overlay as the Windows recipe
+(custom `MainActivity.kt`, manifest, network security config, file paths,
+day/night themes) on Linux/macOS without PowerShell or the Tauri CLI.
+F-Droid-style recipe (after `npm ci && npm run build:frontend` and a cargo
+build of the Android Rust lib):
+
+```bash
+node scripts/prepare-android.mjs
+cd src-tauri/gen/android && ./gradlew assembleRelease -PabiList=arm64-v8a
+```
 
 ### Flatpak
 

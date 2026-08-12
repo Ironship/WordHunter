@@ -438,11 +438,164 @@ describe("repository validation wiring", () => {
     assert.match(docs, /artifact-validation\.yml/);
   });
 
-  it("keeps every id in index.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
-    const html = read("../../src/web/index.html");
-    const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
-    const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-    assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in index.html: ${[...new Set(duplicates)].join(", ")}`);
+  it("keeps every id in index.html and translator-popup.html unique (regression: duplicate edit-book-title broke the Edit Book modal)", () => {
+    for (const path of ["../../src/web/index.html", "../../src/web/templates/translator-popup.html"]) {
+      const html = read(path);
+      const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+      const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+      assert.deepEqual([...new Set(duplicates)], [], `duplicate id(s) in ${path}: ${[...new Set(duplicates)].join(", ")}`);
+    }
+  });
+
+  // Ids created at runtime by TypeScript (audited; #127 P1 ports the static
+  // dialogs into TS renderers that run before cacheElements()). Any id
+  // referenced from TS but absent here must exist in src/web/index.html.
+  const TS_CREATED_IDS = new Set([
+    "graph-due", // graphs/charts.ts (canvas)
+    "graph-status", // graphs/charts.ts (canvas)
+    "vocab-progress", // graphs container id (views/graphs.ts)
+    "graphs-loading", // graphs/helpers.ts (busy overlay)
+    "import-loading", // events/book-import.ts (busy overlay)
+    "unsaved-confirm-dialog", // dialog-backdrop.ts
+    "youglish-widget-in-modal", // youglish modal widget host
+    "graph-vocab-progress", // graphs/charts.ts (canvas)
+    "page-jump-input", // reader/pagination.ts (page-jump bar)
+    "review-chart-canvas", // vocabulary/review-chart.ts (innerHTML)
+    "review-heatmap", // vocabulary/review-chart.ts (innerHTML)
+    "review-session-summary-done", // vocabulary/review-card.ts (innerHTML)
+    "translator-download-prompt", // views/translator.ts (innerHTML)
+    "data-folder-confirm-dialog", // events/settings.ts (dialog.id)
+    "export-progress-eta", // sync-actions.ts (innerHTML)
+    "export-progress-fill", // sync-actions.ts (innerHTML)
+    "export-progress-text", // sync-actions.ts (innerHTML)
+    "ocr-cancel", // events/book-import.ts (innerHTML)
+    "ocr-progress-eta", // events/book-import.ts (innerHTML)
+    "ocr-progress-text", // events/book-import.ts (innerHTML)
+    "ocr-whole-book-confirm", // events/book-import.ts (dialog.id)
+    "pocket-pdf-scan-warning", // events/book-import.ts (dialog.id)
+    "reader-bookmarks-dialog", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-form", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-label", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-submit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-cancel-edit", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmark-list", // reader/bookmarks.ts (renderBookmarksDialog)
+    "reader-bookmarks-close", // reader/bookmarks.ts (renderBookmarksDialog)
+    "move-book-dialog", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-title", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-select", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-cancel", // events/move-book.ts (renderMoveBookDialog)
+    "move-book-confirm", // events/move-book.ts (renderMoveBookDialog)
+    "delete-book-dialog", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-title", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-message", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-cancel", // views/library.ts (renderDeleteBookDialog)
+    "delete-book-confirm", // views/library.ts (renderDeleteBookDialog)
+    "library-heading", // views/library.ts (renderLibraryPanel)
+    "library-filters-toggle", // views/library.ts (renderLibraryPanel)
+    "library-filters", // views/library.ts (renderLibraryPanel)
+    "library-search", // views/library.ts (renderLibraryPanel)
+    "level-filter", // views/library.ts (renderLibraryPanel)
+    "library-archive-filter", // views/library.ts (renderLibraryPanel)
+    "library-sort", // views/library.ts (renderLibraryPanel)
+    "library-sort-reverse", // views/library.ts (renderLibraryPanel)
+    "library-import-toggle", // views/library.ts (renderLibraryPanel)
+    "book-list", // views/library.ts (renderLibraryPanel)
+    "library-sidebar-resizer", // views/library.ts (renderLibraryPanel)
+    "update-dialog", // update-checker.ts (renderUpdateDialog)
+    "update-title", // update-checker.ts (renderUpdateDialog)
+    "update-message", // update-checker.ts (renderUpdateDialog)
+    "update-dismiss", // update-checker.ts (renderUpdateDialog)
+    "update-skip", // update-checker.ts (renderUpdateDialog)
+    "update-disable", // update-checker.ts (renderUpdateDialog)
+    "update-open", // update-checker.ts (renderUpdateDialog)
+    "toast", // toast.ts (renderToast)
+    "toast-message", // toast.ts (renderToast)
+    "language-onboarding-dialog", // onboarding.ts (renderLanguageOnboardingDialog)
+    "language-onboarding-title", // onboarding.ts (renderLanguageOnboardingDialog)
+    "language-onboarding-done", // onboarding.ts (renderLanguageOnboardingDialog)
+    "pref-locale-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
+    "pref-learning-language-onboarding", // onboarding.ts (renderLanguageOnboardingDialog)
+    "add-word-dialog", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-dialog-title", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-article-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-translation-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-status-buttons", // events/word-editor.ts (renderAddWordDialog)
+    "add-example-input", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-cancel", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-confirm", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-editing", // events/word-editor.ts (renderAddWordDialog)
+    "argos-download-dialog", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-title", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-languages-list", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-cancel", // events/settings.ts (renderArgosDownloadDialog)
+    "argos-download-confirm", // events/settings.ts (renderArgosDownloadDialog)
+    "edit-book-dialog", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-title-heading", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-title", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-author", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-tags", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-level", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-preview", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-img", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-clear", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover-dropzone", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cover", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-text", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-cancel", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "edit-book-save", // book-actions/edit-modal.ts (renderEditBookDialog)
+    "import-panel", // events/book-import.ts (renderImportPanel)
+    "import-form", // events/book-import.ts (renderImportPanel)
+    "import-mode-select", // events/book-import.ts (renderImportPanel)
+    "import-books-mode", // events/book-import.ts (renderImportPanel)
+    "import-youtube-mode", // events/book-import.ts (renderImportPanel)
+    "import-youtube-url", // events/book-import.ts (renderImportPanel)
+    "import-youtube-load", // events/book-import.ts (renderImportPanel)
+    "import-youtube-track", // events/book-import.ts (renderImportPanel)
+    "import-youtube-status", // events/book-import.ts (renderImportPanel)
+    "import-title", // events/book-import.ts (renderImportPanel)
+    "import-author", // events/book-import.ts (renderImportPanel)
+    "import-tags", // events/book-import.ts (renderImportPanel)
+    "import-level", // events/book-import.ts (renderImportPanel)
+    "import-text", // events/book-import.ts (renderImportPanel)
+    "import-file", // events/book-import.ts (renderImportPanel)
+    "import-cover", // events/book-import.ts (renderImportPanel)
+    "import-cover-preview", // events/book-import.ts (renderImportPanel)
+    "import-cover-img", // events/book-import.ts (renderImportPanel)
+    "import-cover-clear", // events/book-import.ts (renderImportPanel)
+    "import-cover-dropzone", // events/book-import.ts (renderImportPanel)
+    "import-submit", // events/book-import.ts (renderImportPanel)
+    "import-file-hint", // platform.ts (applyPlatformUi)
+    "library-import-close", // platform.ts (bindPocketImportDrawer)
+    "settings-view", // events/settings.ts (renderSettingsView)
+    "pref-in-text-review", // events/settings.ts (renderSettingsView)
+    "check-updates", // events/settings.ts (renderSettingsView)
+    "ocr-gpu-status", // events/settings.ts (renderSettingsView)
+    "pref-translation-provider", // platform.ts (getElementById literal)
+  ]);
+
+  it("keeps every byId target in dom.ts present in index.html or on the audited TS-created allowlist", () => {
+    const domSource = read("../../src/web/js/dom.ts");
+    const htmlIds = new Set([...read("../../src/web/index.html").matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+    const byIdTargets = [...domSource.matchAll(/byId(?:<[^>]+>)?\("([^"]+)"\)/g)].map((match) => match[1]);
+    const missing = [...new Set(byIdTargets.filter((id) => !htmlIds.has(id) && !TS_CREATED_IDS.has(id)))];
+    assert.deepEqual(missing, [], `byId target(s) missing from index.html and allowlist: ${missing.join(", ")}`);
+  });
+
+  it("keeps every getElementById / querySelector('#id') literal in src/web/js present in index.html or on the audited TS-created allowlist", () => {
+    const htmlIds = new Set([...read("../../src/web/index.html").matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]));
+    const missing = new Set();
+    const tsSources = filesBelow(new URL("../../src/web/js/", import.meta.url)).filter((file) => file.pathname.endsWith(".ts"));
+    for (const file of tsSources) {
+      const source = readFileSync(file, "utf8");
+      for (const match of source.matchAll(/getElementById\("([^"]+)"\)/g)) {
+        if (!htmlIds.has(match[1]) && !TS_CREATED_IDS.has(match[1])) missing.add(match[1]);
+      }
+      for (const match of source.matchAll(/querySelector(?:All)?(?:<[^>]+>)?\(\s*["']#([A-Za-z0-9_-]+)["']\)/g)) {
+        if (!htmlIds.has(match[1]) && !TS_CREATED_IDS.has(match[1])) missing.add(match[1]);
+      }
+    }
+    assert.deepEqual([...missing].sort(), [], `id literal(s) missing from index.html and allowlist: ${[...missing].sort().join(", ")}`);
   });
 
   it("keeps the AppStream metainfo canonical in packaging/linux and mirrors it into flatpak", () => {

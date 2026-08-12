@@ -14,6 +14,31 @@ import { themeIcon } from "./icons.js";
 import { normalizeSelectedWordPanelItems, rekeyActiveVocabForLocale } from "./state/normalize.js";
 import { postStoreJson } from "./store-bridge.js";
 
+function byId<T extends HTMLElement = HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
+function localeSelects(): HTMLSelectElement[] {
+  return [
+    byId<HTMLSelectElement>("pref-locale-sidebar"),
+    byId<HTMLSelectElement>("pref-locale-settings"),
+    byId<HTMLSelectElement>("pref-locale-onboarding"),
+  ].filter((control): control is HTMLSelectElement => control !== null);
+}
+
+function learningLanguageSelects(): HTMLSelectElement[] {
+  return [
+    byId<HTMLSelectElement>("pref-learning-language-sidebar"),
+    byId<HTMLSelectElement>("pref-learning-language-settings"),
+    byId<HTMLSelectElement>("pref-learning-language-onboarding"),
+  ].filter((control): control is HTMLSelectElement => control !== null);
+}
+
+function learningColorInputs(): HTMLInputElement[] {
+  return Array.from(document.querySelectorAll<HTMLInputElement>("[data-learning-color]"));
+}
+
+
 let queuedNativeUiScale: number | null = null;
 let nativeUiScaleQueue: Promise<void> = Promise.resolve();
 
@@ -58,12 +83,12 @@ function recoveryIssueCount(status: WhRecoveryStatus | null): number {
 function renderRecoveryStatus() {
   const status = state.recoveryStatus;
   const issueCount = recoveryIssueCount(status);
-  if (els.recoveryStatusPanel) {
-    els.recoveryStatusPanel.hidden = issueCount === 0;
+  if (byId<HTMLElement>("recovery-status-panel")) {
+    byId<HTMLElement>("recovery-status-panel").hidden = issueCount === 0;
   }
-  if (!els.recoveryStatusList) return;
+  if (!byId<HTMLElement>("recovery-status-list")) return;
   if (issueCount === 0) {
-    els.recoveryStatusList.innerHTML = "";
+    byId<HTMLElement>("recovery-status-list").innerHTML = "";
     return;
   }
   const lines = [];
@@ -81,7 +106,7 @@ function renderRecoveryStatus() {
     ...(Array.isArray(status.skippedRecords) ? status.skippedRecords : []),
     ...(Array.isArray(status.corruptConflicts) ? status.corruptConflicts : [])
   ].slice(0, 5);
-  els.recoveryStatusList.innerHTML = `
+  byId<HTMLElement>("recovery-status-list").innerHTML = `
     <div class="recovery-status-title">${escapeHtml(t("settings.recoveryStatusTitle", { n: issueCount }))}</div>
     <ul class="recovery-status-lines">
       ${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("")}
@@ -132,7 +157,7 @@ export function applyPreferences(): Promise<void> {
   const previousTheme = root.dataset.themePref;
   const previousMode = root.dataset.theme;
   const resolvedTheme = applyTheme(theme);
-  if (els.prefTheme) els.prefTheme.value = theme;
+  if (byId<HTMLSelectElement>("pref-theme")) byId<HTMLSelectElement>("pref-theme").value = theme;
 
   const fontKey = FONT_STACKS[prefs.readerFont] ? prefs.readerFont : "serif";
   const lineKey = LINE_HEIGHTS[prefs.readerLineHeight] ? prefs.readerLineHeight : "normal";
@@ -173,9 +198,9 @@ export function applyPreferences(): Promise<void> {
 }
 
 export function syncSettingsControls() {
-  if (els.prefTheme) els.prefTheme.value = normalizeTheme(state.preferences.theme);
-  els.prefLocales?.forEach((control) => { control.value = state.preferences.locale || "pl"; });
-  els.prefLearningLanguages?.forEach((control) => { control.value = state.preferences.learningLanguage || "en"; });
+  if (byId<HTMLSelectElement>("pref-theme")) byId<HTMLSelectElement>("pref-theme").value = normalizeTheme(state.preferences.theme);
+  localeSelects().forEach((control) => { control.value = state.preferences.locale || "pl"; });
+  learningLanguageSelects().forEach((control) => { control.value = state.preferences.learningLanguage || "en"; });
 
   const setFlagImages = (kind: string, lang: string, supported: readonly string[], fallback: string): string => {
     const flagKey = supported.includes(lang) ? lang : fallback;
@@ -190,14 +215,14 @@ export function syncSettingsControls() {
   const appFlagKey = setFlagImages("locale", locale, APP_LOCALES, "pl");
   const appFlagEl = document.getElementById("app-lang-flag");
   if (appFlagEl) {
-    appFlagEl.innerHTML = `<img src="flags/${appFlagKey}.svg" alt="${escapeHtml(t(`languages.${appFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    appFlagEl.innerHTML = `<img src="flags/${appFlagKey}.svg" alt="${escapeHtml(t(`languages.${appFlagKey}`))}" class="cover-thumb-block">`;
   }
 
   const lang = state.preferences.learningLanguage || "en";
   const learnFlagKey = setFlagImages("learning", lang, LEARNING_LANGUAGES, "en");
   const learnFlagEl = document.getElementById("learning-lang-flag");
   if (learnFlagEl) {
-    learnFlagEl.innerHTML = `<img src="flags/${learnFlagKey}.svg" alt="${escapeHtml(t(`languages.${learnFlagKey}`))}" style="width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none;">`;
+    learnFlagEl.innerHTML = `<img src="flags/${learnFlagKey}.svg" alt="${escapeHtml(t(`languages.${learnFlagKey}`))}" class="cover-thumb-block">`;
   }
 
   const prefs: Partial<WhPreferences> = state.preferences || {};
@@ -208,8 +233,10 @@ export function syncSettingsControls() {
   if (els.prefDictionaryUrl) els.prefDictionaryUrl.value = prefs.dictionaryUrl || "";
   if (els.prefDictionaryMode) els.prefDictionaryMode.value = prefs.dictionaryMode || "internal";
   if (els.prefYouglishMode) els.prefYouglishMode.value = prefs.youglishMode || "internal";
-  els.prefFont.value = prefs.readerFont || "serif";
-  els.prefLineHeight.value = prefs.readerLineHeight || "normal";
+  const prefFont = byId<HTMLSelectElement>("pref-font");
+  if (prefFont) prefFont.value = prefs.readerFont || "serif";
+  const prefLineHeight = byId<HTMLSelectElement>("pref-line-height");
+  if (prefLineHeight) prefLineHeight.value = prefs.readerLineHeight || "normal";
   if (els.prefTextAlign) els.prefTextAlign.value = prefs.readerTextAlign || "left";
   if (els.prefMaxWidth) els.prefMaxWidth.value = prefs.readerMaxWidth || "wide";
   if (els.prefReaderFocusMode) els.prefReaderFocusMode.checked = prefs.readerFocusMode === true;
@@ -222,10 +249,10 @@ export function syncSettingsControls() {
   }
   if (els.prefWordsPerPage) els.prefWordsPerPage.value = String(prefs.wordsPerPage || "1000");
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
-  if (els.prefSrsAlgorithm) els.prefSrsAlgorithm.value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
+  if (byId<HTMLSelectElement>("pref-srs-algorithm")) byId<HTMLSelectElement>("pref-srs-algorithm").value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";
   if (els.prefTtsRate) els.prefTtsRate.value = prefs.ttsRate || "normal";
   if (els.prefAutoTtsOnWordFocus) els.prefAutoTtsOnWordFocus.checked = prefs.autoTtsOnWordFocus === true;
-  if (els.prefAutoTtsOnFlashcardOpen) els.prefAutoTtsOnFlashcardOpen.checked = prefs.autoTtsOnFlashcardOpen !== false;
+  if (byId<HTMLInputElement>("pref-auto-tts-on-flashcard-open")) byId<HTMLInputElement>("pref-auto-tts-on-flashcard-open").checked = prefs.autoTtsOnFlashcardOpen !== false;
   if (els.prefTtsWordHighlight) els.prefTtsWordHighlight.checked = prefs.ttsWordHighlight === true;
   if (els.prefStatusSoundsEnabled) els.prefStatusSoundsEnabled.checked = prefs.statusSoundsEnabled !== false;
   const statusSoundPercent = Math.round(clamp(Number(prefs.statusSoundVolume) || 0, 0, 1) * 100);
@@ -236,7 +263,7 @@ export function syncSettingsControls() {
   if (els.prefStatusSoundVolumeLabel) {
     els.prefStatusSoundVolumeLabel.textContent = t("settings.statusSoundVolume", { n: statusSoundPercent });
   }
-  if (els.prefRemovalBehavior) els.prefRemovalBehavior.value = prefs.removalBehavior || "ignored";
+  if (byId<HTMLSelectElement>("pref-removal-behavior")) byId<HTMLSelectElement>("pref-removal-behavior").value = prefs.removalBehavior || "ignored";
   if (els.ankiExportStatusFilters?.length) {
     const selected = Array.isArray(prefs.ankiExportStatuses) && prefs.ankiExportStatuses.length
       ? prefs.ankiExportStatuses
@@ -246,31 +273,34 @@ export function syncSettingsControls() {
       input.checked = selectedSet.has(input.value);
     });
   }
-  els.prefFontSize.value = String(state.readerFontSize || 18);
+  const prefFontSize = byId<HTMLInputElement>("pref-font-size");
+  if (prefFontSize) prefFontSize.value = String(state.readerFontSize || 18);
   if (els.prefFontSizeLabel) els.prefFontSizeLabel.textContent = t("settings.fontSize", { n: state.readerFontSize || 18 });
   if (els.readerFontSizeSlider) els.readerFontSizeSlider.value = String(state.readerFontSize || 18);
   if (els.readerFontSizeValue) els.readerFontSizeValue.textContent = `${state.readerFontSize || 18}px`;
   const uiScale = clamp(Math.round(Number(prefs.uiScale) || UI_SCALE.DEFAULT), UI_SCALE.MIN, UI_SCALE.MAX);
-  if (els.prefUiScale) els.prefUiScale.value = String(uiScale);
-  if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: uiScale });
-  if (els.prefTouchControls) els.prefTouchControls.checked = prefs.touchControls === true;
-  els.prefHighlight.checked = prefs.highlightTokens !== false;
+  if (byId<HTMLInputElement>("pref-ui-scale")) byId<HTMLInputElement>("pref-ui-scale").value = String(uiScale);
+  if (byId<HTMLInputElement>("pref-ui-scale-label")) byId<HTMLInputElement>("pref-ui-scale-label").textContent = t("settings.uiScale", { n: uiScale });
+  if (byId<HTMLInputElement>("pref-touch-controls")) byId<HTMLInputElement>("pref-touch-controls").checked = prefs.touchControls === true;
+  const prefHighlight = byId<HTMLInputElement>("pref-highlight");
+  if (prefHighlight) prefHighlight.checked = prefs.highlightTokens !== false;
   if (els.readerHighlightToggle) els.readerHighlightToggle.setAttribute("aria-pressed", String(prefs.highlightTokens !== false));
   if (els.prefHideKnown) els.prefHideKnown.checked = prefs.hideKnownIgnored === true;
-  if (els.prefInTextReview) els.prefInTextReview.checked = prefs.inTextReview === true;
-  if (els.prefDynamicLearningColors) els.prefDynamicLearningColors.checked = prefs.dynamicLearningColors === true;
-  if (els.prefLearningColors?.length) {
+  if (byId<HTMLInputElement>("pref-in-text-review")) byId<HTMLInputElement>("pref-in-text-review").checked = prefs.inTextReview === true;
+  if (byId<HTMLInputElement>("pref-dynamic-learning-colors")) byId<HTMLInputElement>("pref-dynamic-learning-colors").checked = prefs.dynamicLearningColors === true;
+  if (learningColorInputs().length) {
     const colors = normalizeLearningColors(prefs.learningColors);
-    els.prefLearningColors.forEach((input, index) => {
+    learningColorInputs().forEach((input, index) => {
       input.value = colors[index];
       input.title = t("settings.learningColorLevel", { n: index + 1 });
       input.setAttribute("aria-label", input.title);
     });
   }
-  if (els.prefLearningColorsRow) els.prefLearningColorsRow.hidden = prefs.dynamicLearningColors !== true;
-  if (els.prefReviewGraphType) els.prefReviewGraphType.value = prefs.reviewGraphType || "heatmap";
-  els.prefAutoLearn.checked = prefs.autoLearnOnClick === true;
-  if (els.prefAutoAddLearning) els.prefAutoAddLearning.checked = prefs.autoAddLearningOnly === true;
+  if (byId<HTMLElement>("pref-learning-colors-row")) byId<HTMLElement>("pref-learning-colors-row").hidden = prefs.dynamicLearningColors !== true;
+  if (byId<HTMLSelectElement>("pref-review-graph-type")) byId<HTMLSelectElement>("pref-review-graph-type").value = prefs.reviewGraphType || "heatmap";
+  const prefAutoLearn = byId<HTMLInputElement>("pref-auto-learn");
+  if (prefAutoLearn) prefAutoLearn.checked = prefs.autoLearnOnClick === true;
+  if (byId<HTMLInputElement>("pref-auto-add-learning")) byId<HTMLInputElement>("pref-auto-add-learning").checked = prefs.autoAddLearningOnly === true;
   let provider = normalizeTranslationProvider(prefs.translationProvider);
   if (isAndroidPlatform() && isDesktopOnlyTranslationProvider(provider)) {
     provider = "google";
@@ -285,17 +315,17 @@ export function syncSettingsControls() {
   if (els.prefLmStudioEndpointRow) els.prefLmStudioEndpointRow.hidden = provider !== "lmstudio";
   if (els.prefLmStudioModelRow) els.prefLmStudioModelRow.hidden = provider !== "lmstudio";
   const aiEnabled = prefs.aiExplanationsEnabled === true;
-  if (els.prefAiExplanations) els.prefAiExplanations.checked = aiEnabled;
-  if (els.prefAiEndpoint) els.prefAiEndpoint.value = prefs.aiExplanationEndpoint || DEFAULT_AI_ENDPOINT;
-  if (els.prefAiModel) els.prefAiModel.value = prefs.aiExplanationModel || DEFAULT_AI_MODEL;
-  if (els.prefAiApiKey) els.prefAiApiKey.value = prefs.aiExplanationApiKey || "";
-  if (els.prefAiEffort) els.prefAiEffort.value = normalizeAiTextPreference("aiExplanationEffort", prefs.aiExplanationEffort);
-  if (els.prefAiAutoTrigger) els.prefAiAutoTrigger.checked = prefs.aiExplanationAutoTrigger === true;
-  if (els.prefAiEndpointRow) els.prefAiEndpointRow.hidden = !aiEnabled;
-  if (els.prefAiModelRow) els.prefAiModelRow.hidden = !aiEnabled;
-  if (els.prefAiApiKeyRow) els.prefAiApiKeyRow.hidden = !aiEnabled;
-  if (els.prefAiEffortRow) els.prefAiEffortRow.hidden = !aiEnabled;
-  if (els.prefAiAutoTriggerRow) els.prefAiAutoTriggerRow.hidden = !aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-explanations")) byId<HTMLInputElement>("pref-ai-explanations").checked = aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-endpoint")) byId<HTMLInputElement>("pref-ai-endpoint").value = prefs.aiExplanationEndpoint || DEFAULT_AI_ENDPOINT;
+  if (byId<HTMLInputElement>("pref-ai-model")) byId<HTMLInputElement>("pref-ai-model").value = prefs.aiExplanationModel || DEFAULT_AI_MODEL;
+  if (byId<HTMLInputElement>("pref-ai-api-key")) byId<HTMLInputElement>("pref-ai-api-key").value = prefs.aiExplanationApiKey || "";
+  if (byId<HTMLSelectElement>("pref-ai-effort")) byId<HTMLSelectElement>("pref-ai-effort").value = normalizeAiTextPreference("aiExplanationEffort", prefs.aiExplanationEffort);
+  if (byId<HTMLInputElement>("pref-ai-auto-trigger")) byId<HTMLInputElement>("pref-ai-auto-trigger").checked = prefs.aiExplanationAutoTrigger === true;
+  if (byId<HTMLInputElement>("pref-ai-endpoint-row")) byId<HTMLInputElement>("pref-ai-endpoint-row").hidden = !aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-model-row")) byId<HTMLInputElement>("pref-ai-model-row").hidden = !aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-api-key-row")) byId<HTMLInputElement>("pref-ai-api-key-row").hidden = !aiEnabled;
+  if (byId<HTMLSelectElement>("pref-ai-effort-row")) byId<HTMLSelectElement>("pref-ai-effort-row").hidden = !aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-auto-trigger-row")) byId<HTMLInputElement>("pref-ai-auto-trigger-row").hidden = !aiEnabled;
   if (els.prefAutoTranslate) els.prefAutoTranslate.checked = prefs.autoTranslateWords === true;
   if (els.prefAutoTranslateRow) {
     const enabled = canUseTranslationProvider();
@@ -315,22 +345,22 @@ export function syncSettingsControls() {
       els.prefArgosAsDict.disabled = !enabled;
     }
   }
-  els.prefCardStats.checked = prefs.showCardStats !== false;
-  if (els.prefCardStatsMode) els.prefCardStatsMode.value = ["percentages", "counts", "both"].includes(prefs.cardStatsMode) ? prefs.cardStatsMode : "percentages";
-  if (els.prefCardStatsModeRow) {
+  if (byId<HTMLInputElement>("pref-card-stats")) byId<HTMLInputElement>("pref-card-stats").checked = prefs.showCardStats !== false;
+  if (byId<HTMLInputElement>("pref-card-stats-mode")) byId<HTMLInputElement>("pref-card-stats-mode").value = ["percentages", "counts", "both"].includes(prefs.cardStatsMode) ? prefs.cardStatsMode : "percentages";
+  if (byId<HTMLInputElement>("pref-card-stats-mode-row")) {
     const enabled = prefs.showCardStats !== false;
-    els.prefCardStatsModeRow.style.opacity = enabled ? "1" : "0.5";
-    els.prefCardStatsModeRow.setAttribute("aria-disabled", String(!enabled));
-    if (els.prefCardStatsMode) els.prefCardStatsMode.disabled = !enabled;
+    byId<HTMLInputElement>("pref-card-stats-mode-row").style.opacity = enabled ? "1" : "0.5";
+    byId<HTMLInputElement>("pref-card-stats-mode-row").setAttribute("aria-disabled", String(!enabled));
+    if (byId<HTMLInputElement>("pref-card-stats-mode")) byId<HTMLInputElement>("pref-card-stats-mode").disabled = !enabled;
   }
-  if (els.prefCovers) els.prefCovers.checked = prefs.showCovers !== false;
+  if (byId<HTMLInputElement>("pref-covers")) byId<HTMLInputElement>("pref-covers").checked = prefs.showCovers !== false;
   if (els.prefUseEdgeTts) els.prefUseEdgeTts.checked = prefs.useEdgeTts === true;
 
-  if (els.prefColorNew) els.prefColorNew.value = prefs.colorNew || "#ff6b6b";
-  if (els.prefColorLearning) els.prefColorLearning.value = prefs.colorLearning || "#ffb84d";
-  if (els.prefColorKnown) els.prefColorKnown.value = prefs.colorKnown || "#8ce99a";
-  if (els.prefColorIgnored) els.prefColorIgnored.value = prefs.colorIgnored || "#ced4da";
-  if (els.storageSummary && state.currentView === "settings") {
+  if (byId<HTMLInputElement>("pref-color-new")) byId<HTMLInputElement>("pref-color-new").value = prefs.colorNew || "#ff6b6b";
+  if (byId<HTMLInputElement>("pref-color-learning")) byId<HTMLInputElement>("pref-color-learning").value = prefs.colorLearning || "#ffb84d";
+  if (byId<HTMLInputElement>("pref-color-known")) byId<HTMLInputElement>("pref-color-known").value = prefs.colorKnown || "#8ce99a";
+  if (byId<HTMLInputElement>("pref-color-ignored")) byId<HTMLInputElement>("pref-color-ignored").value = prefs.colorIgnored || "#ced4da";
+  if (byId<HTMLElement>("storage-summary") && state.currentView === "settings") {
     try {
       const bytes = new Blob([JSON.stringify(state)]).size;
       const kb = (bytes / 1024).toFixed(1);
@@ -339,13 +369,13 @@ export function syncSettingsControls() {
         texts: state.customTexts.length,
         kb
       });
-      els.storageSummary.textContent = summary;
+      byId<HTMLElement>("storage-summary").textContent = summary;
     } catch (error) {
       console.warn(error);
     }
   }
-  if (els.dataDirectory) {
-    els.dataDirectory.textContent = state.dataDirectory
+  if (byId<HTMLElement>("data-directory")) {
+    byId<HTMLElement>("data-directory").textContent = state.dataDirectory
       ? t("settings.dataFolderPath", { path: state.dataDirectory })
       : t("settings.dataFolderDefault");
   }
@@ -422,7 +452,7 @@ export function setUiScale(value: unknown): number {
   state.preferences.uiScale = clamped;
   saveState();
   applyPreferences();
-  if (els.prefUiScale) els.prefUiScale.value = String(clamped);
-  if (els.prefUiScaleLabel) els.prefUiScaleLabel.textContent = t("settings.uiScale", { n: clamped });
+  if (byId<HTMLInputElement>("pref-ui-scale")) byId<HTMLInputElement>("pref-ui-scale").value = String(clamped);
+  if (byId<HTMLInputElement>("pref-ui-scale-label")) byId<HTMLInputElement>("pref-ui-scale-label").textContent = t("settings.uiScale", { n: clamped });
   return clamped;
 }

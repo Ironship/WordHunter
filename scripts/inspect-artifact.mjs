@@ -331,6 +331,274 @@ export function parseXmlTreeManifest(xmltree) {
   };
 }
 
+// AABs carry the original AndroidManifest.xml at the archive root
+// (manifest/AndroidManifest.xml). Recent AGP versions produce AABs whose
+// protobuf manifest (base/manifest/) aapt2 from newer build-tools refuses to
+// read ("could not identify format of APK"), so the AAB version identity is
+// verified from the root manifest instead: text XML when present, binary
+// AXML otherwise.
+export function parseTextManifest(xml) {
+  const tag = xml.match(/<manifest[^>]*>/);
+  if (!tag) return { versionCode: null, versionName: null, debuggable: false };
+  const attrs = tag[0];
+  const versionCodeMatch = attrs.match(/versionCode="(\d+)"/);
+  const versionNameMatch = attrs.match(/versionName="([^"]+)"/);
+  const debuggableMatch = attrs.match(/android:debuggable="(true|false)"/);
+  return {
+    versionCode: versionCodeMatch ? Number(versionCodeMatch[1]) : null,
+    versionName: versionNameMatch ? versionNameMatch[1] : null,
+    debuggable: debuggableMatch ? debuggableMatch[1] === "true" : false,
+  };
+}
+
+// Binary AXML: chunked format with a string pool (0x0001), a resource map
+// (0x0180) mapping string indices to resource ids, and start-element chunks
+// (0x0102) carrying typed attributes. The manifest's versionCode
+// (0x0101021b), versionName (0x0101021c), and debuggable (0x0101000f)
+// attributes are located by resource id and decoded from the typed value.
+const AXML_VERSION_CODE_ID = 0x0101021b;
+const AXML_VERSION_NAME_ID = 0x0101021c;
+const AXML_DEBUGGABLE_ID = 0x0101000f;
+
+export function parseAxmlManifest(bytes) {
+  if (bytes.length < 8 || bytes.readUInt32LE(0) !== 0x00080003) {
+    return { versionCode: null, versionName: null, debuggable: false, axml: false };
+  }
+  let strings = [];
+  const resourceMap = [];
+  const found = { versionCode: null, versionName: null, debuggable: false, axml: true };
+  const u16 = (at) => (at + 2 <= bytes.length ? bytes.readUInt16LE(at) : 0);
+  const u32 = (at) => (at + 4 <= bytes.length ? bytes.readUInt32LE(at) : 0);
+  const u8 = (at) => (at + 1 <= bytes.length ? bytes.readUInt8(at) : 0);
+  let offset = 8;
+  while (offset + 8 <= bytes.length) {
+    const type = u16(offset);
+    const chunkSize = u32(offset + 4);
+    if (chunkSize < 8 || offset + chunkSize > bytes.length) break;
+    if (type === 0x0001) {
+      const stringCount = u32(offset + 8);
+      const stringsStart = u32(offset + 20);
+      const stringPoolBase = offset + stringsStart;
+      for (let index = 0; index < stringCount; index += 1) {
+        const stringOffset = u32(offset + 28 + index * 4);
+        const at = stringPoolBase + stringOffset;
+        if (at + 2 > bytes.length) break;
+        const length = u16(at);
+        const end = at + 2 + length * 2;
+        if (end > bytes.length) break;
+        strings.push(bytes.toString("utf16le", at + 2, end));
+      }
+    } else if (type === 0x0180) {
+      for (let at = offset + 8; at + 4 <= offset + chunkSize; at += 4) {
+        resourceMap.push(u32(at));
+      }
+    } else if (type === 0x0102) {
+      const attrCount = u16(offset + 28);
+      let attrOffset = offset + 32;
+      for (let index = 0; index < attrCount; index += 1) {
+        const nameField = u32(attrOffset + 4);
+        const valueType = u8(attrOffset + 12);
+        const valueData = u32(attrOffset + 16);
+        let resourceId = nameField;
+        if (nameField & 0x80000000) resourceId = nameField & 0x7fffffff;
+        else if (nameField < resourceMap.length) resourceId = resourceMap[nameField];
+        if (resourceId === AXML_VERSION_CODE_ID) {
+          found.versionCode = valueData;
+        } else if (resourceId === AXML_VERSION_NAME_ID) {
+          if (valueType === 0x03 && valueData < strings.length) found.versionName = strings[valueData];
+          else if (valueType === 0x01) found.versionName = strings[valueData];
+        } else if (resourceId === AXML_DEBUGGABLE_ID) {
+          found.debuggable = valueData !== 0;
+        }
+        attrOffset += 20;
+      }
+    }
+    offset += chunkSize;
+  }
+  return found;
+}
+
+// The AGP-produced AAB keeps its manifest only as protobuf under base/
+// (no root text/AXML copy), so the version identity is also parsed from the
+// protobuf wire format directly (no schema library needed):
+//   Manifest { XmlNode manifest = 1 }
+//   XmlNode  { XmlElement element = 3 }
+//   XmlElement { string name = 1; ...; XmlAttribute attribute = 5; ... }
+//   XmlAttribute { ...; int32 resource_id = 5; TypedValue typed_value = 6; }
+//   TypedValue { int32 type = 1; int32 value = 2; string string_value = 3; }
+export function parseProtoManifest(bytes) {
+  const found = { versionCode: null, versionName: null, debuggable: false, attrs: [] };
+
+  function varint(at) {
+    let value = 0;
+    let shift = 0;
+    while (at < bytes.length && shift < 64) {
+      const byte = bytes[at];
+      at += 1;
+      value |= (byte & 0x7f) << shift;
+      if (!(byte & 0x80)) return { value: value >>> 0, at };
+      shift += 7;
+    }
+    return { value: 0, at };
+  }
+
+  function lengthDelimited(at) {
+    const len = varint(at);
+    const start = len.at;
+    const end = start + len.value;
+    if (end > bytes.length) return null;
+    return { start, end };
+  }
+
+  // Collect payloads of fields 4 and 5 (attribute messages in both the old
+  // aapt1-style layout — attributes directly on the node — and the aapt2
+  // XmlElement layout — attributes on the element).
+  function collectAttributes(payload, out) {
+    let at = payload.start;
+    while (at < payload.end) {
+      const tag = varint(at);
+      at = tag.at;
+      const fieldNumber = tag.value >>> 3;
+      const wireType = tag.value & 0x7;
+      if (wireType === 2) {
+        const ld = lengthDelimited(at);
+        if (!ld) return;
+        if (fieldNumber === 4 || fieldNumber === 5) out.push({ start: ld.start, end: ld.end });
+        at = ld.end;
+      } else if (wireType === 0) {
+        at = varint(at).at;
+      } else {
+        return;
+      }
+    }
+  }
+
+  // Candidate payloads that may hold attributes:
+  //  - top-level field 5: a bare XmlNode.element / element
+  //  - top-level field 1: the wrapper (Manifest.manifest) or a node whose
+  //    attributes live directly on it (old layout) — scan it for elements
+  //    and also use it as a candidate itself.
+  const candidates = [];
+  let at = 0;
+  while (at < bytes.length) {
+    const tag = varint(at);
+    at = tag.at;
+    const fieldNumber = tag.value >>> 3;
+    const wireType = tag.value & 0x7;
+    if (wireType === 2) {
+      const ld = lengthDelimited(at);
+      if (!ld) break;
+      if (fieldNumber === 5) candidates.push({ start: ld.start, end: ld.end });
+      else if (fieldNumber === 1) {
+        const inner = [];
+        collectAttributes(ld, inner);
+        if (inner.length > 0) {
+          candidates.push(...inner);
+          candidates.push({ start: ld.start, end: ld.end });
+        }
+      }
+      at = ld.end;
+    } else if (wireType === 0) {
+      at = varint(at).at;
+    } else {
+      break;
+    }
+  }
+
+  const attributes = [];
+  for (const candidate of candidates) collectAttributes(candidate, attributes);
+  for (const attr of attributes) {
+    let resourceId = null;
+    let name = null;
+    let rawValue = null;
+    let typedValue = null;
+    let at = attr.start;
+    while (at < attr.end) {
+      const tag = varint(at);
+      at = tag.at;
+      const fieldNumber = tag.value >>> 3;
+      const wireType = tag.value & 0x7;
+      if (wireType === 2) {
+        const ld = lengthDelimited(at);
+        if (!ld) break;
+        if (fieldNumber === 2) name = bytes.toString("utf8", ld.start, ld.end);
+        else if (fieldNumber === 3) rawValue = bytes.toString("utf8", ld.start, ld.end);
+        else if (fieldNumber === 5) resourceId = varint(ld.start).value;
+        else if (fieldNumber === 6) typedValue = { start: ld.start, end: ld.end };
+        at = ld.end;
+      } else if (wireType === 0) {
+        at = varint(at).at;
+      } else {
+        break;
+      }
+    }
+    if (name === null && typedValue === null) continue;
+    found.attrs.push({ resourceId, name, rawValue });
+
+    // Typed value: field 2 varint (int) / field 3 string. The old layout
+    // nests the int under field 7 -> field 6.
+    const typedInt = () => {
+      let out = null;
+      if (!typedValue) return out;
+      let t = typedValue.start;
+      while (t < typedValue.end) {
+        const tg = varint(t);
+        t = tg.at;
+        const fn = tg.value >>> 3;
+        const wt = tg.value & 0x7;
+        if (wt === 0) {
+          if (fn === 2 || fn === 6) out = varint(t).value;
+          t = varint(t).at;
+        } else if (wt === 2) {
+          const ldd = lengthDelimited(t);
+          if (!ldd) break;
+          t = ldd.end;
+        } else {
+          break;
+        }
+      }
+      return out;
+    };
+    const typedString = () => {
+      if (!typedValue) return null;
+      let t = typedValue.start;
+      while (t < typedValue.end) {
+        const tg = varint(t);
+        t = tg.at;
+        const fn = tg.value >>> 3;
+        const wt = tg.value & 0x7;
+        if (wt === 2) {
+          const ldd = lengthDelimited(t);
+          if (!ldd) break;
+          if (fn === 3) return bytes.toString("utf8", ldd.start, ldd.end);
+          t = ldd.end;
+        } else if (wt === 0) {
+          t = varint(t).at;
+        } else {
+          break;
+        }
+      }
+      return null;
+    };
+
+    if (resourceId === 0x0101021b || name === "versionCode") {
+      if (rawValue !== null && /^\d+$/.test(rawValue)) found.versionCode = Number(rawValue);
+      else if (typedValue) found.versionCode = typedInt();
+    } else if (resourceId === 0x0101021c || name === "versionName") {
+      found.versionName = rawValue ?? typedString();
+    } else if (resourceId === 0x0101000f || name === "debuggable") {
+      if (rawValue !== null) found.debuggable = rawValue === "true";
+      else if (typedValue) found.debuggable = typedInt() !== 0;
+    }
+  }
+  return found;
+}
+export function readZipEntryText(archive, name) {
+  const entry = archive.entries.get(name.toLowerCase());
+  if (!entry) return null;
+  return zipEntryBytes(archive, entry).toString("utf8");
+}
+
 function androidExpectations() {
   const config = JSON.parse(
     readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"),
@@ -368,6 +636,13 @@ function findAapt2() {
     fail(`No Android build-tools directory found below ${sdkRoot}`);
   }
   if (versions.length === 0) fail(`No Android build-tools versions found below ${buildTools}`);
+  // Prefer the version the release workflow pins via ANDROID_BUILD_TOOLS:
+  // newer runner images preinstall newer build-tools whose aapt2 regressed
+  // AAB manifest parsing, so picking the highest version is not safe.
+  const pinned = process.env.ANDROID_BUILD_TOOLS;
+  if (pinned && versions.includes(pinned)) {
+    return join(buildTools, pinned, process.platform === "win32" ? "aapt2.exe" : "aapt2");
+  }
   versions.sort((a, b) => {
     const left = a.split(".").map(Number);
     const right = b.split(".").map(Number);
@@ -431,8 +706,36 @@ export function inspectAndroid(path, abi) {
   const expected = androidExpectations();
   const aapt2 = findAapt2();
   if (isAab) {
-    const xmltree = run(aapt2, ["dump", "xmltree", "--file", "base/manifest/AndroidManifest.xml", path]);
-    const manifest = parseXmlTreeManifest(xmltree);
+    const archive = readZipArchive(path);
+    // AGP-produced AABs keep the manifest only as protobuf under base/; the
+    // root text/AXML copy exists on older bundletool versions. Try every
+    // representation before failing.
+    let manifest = null;
+    const manifestXml = readZipEntryText(archive, "manifest/AndroidManifest.xml");
+    if (manifestXml !== null) {
+      manifest = parseTextManifest(manifestXml);
+      if (manifest.versionCode === null && manifest.versionName === null) {
+        manifest = parseAxmlManifest(Buffer.from(manifestXml, "utf8"));
+      }
+    }
+    if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
+      const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
+      if (protoEntry) {
+        const protoBytes = zipEntryBytes(archive, protoEntry);
+        manifest = parseProtoManifest(protoBytes);
+        if (manifest.versionCode === null && manifest.versionName === null) {
+          // Some bundletool versions store the base/ manifest as binary AXML.
+          manifest = parseAxmlManifest(protoBytes);
+        }
+      }
+    }
+    if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
+      const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
+      const protoDiag = protoEntry
+        ? parseProtoManifest(zipEntryBytes(archive, protoEntry)).attrs.map((a) => (a.name ?? "") + "=" + (a.resourceId === null ? "-" : "0x" + a.resourceId.toString(16))).join(",")
+        : "no base/manifest entry";
+      fail(`${path}: could not determine the version identity from the AAB manifest (proto attrs: ${protoDiag})`);
+    }
     if (manifest.versionCode !== expected.versionCode) {
       fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
     }

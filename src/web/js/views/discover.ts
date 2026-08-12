@@ -205,7 +205,7 @@ function renderResults(data?: DiscoverSearchResult): void {
     const coverBlock = showCover
       ? (cover
         ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
-        : `<div class="book-cover" aria-hidden="true"><div style="width:100%;height:100%;background:var(--line);border-radius:4px;"></div></div>`)
+        : `<div class="book-cover" aria-hidden="true"><div class="img-placeholder"></div></div>`)
       : "";
 
     let sourceTag = t("discover.sourceGutenberg", { id: escapeHtml(id) });
@@ -229,12 +229,12 @@ function renderResults(data?: DiscoverSearchResult): void {
             <p>${escapeHtml(author)}${authorYears ? ` · ${escapeHtml(authorYears)}` : ""}</p>
           </div>
           ${summary ? `<p class="book-summary">${escapeHtml(summary.slice(0, 200))}${summary.length > 200 ? "…" : ""}</p>` : ""}
-          <div class="book-actions" style="flex-direction: row; justify-content: space-between; align-items: center; gap: 0.5rem; width: 100%;">
-            <label class="discover-check" style="margin: 0;">
+          <div class="book-actions row-between-g-05">
+            <label class="discover-check m-0">
               <input type="checkbox" data-discover-check="${escapeAttribute(id)}" ${isSelected ? "checked" : ""}>
               <span>${escapeHtml(t("discover.selectLabel"))}</span>
             </label>
-            <div style="display: flex; gap: 0.5rem;">
+            <div class="flex-gap-05">
               <button class="primary-button icon-button" type="button" data-discover-add="${escapeAttribute(id)}" ${inLibrary ? "disabled" : ""} title="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}" aria-label="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}">
                 ${inLibrary
                   ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`

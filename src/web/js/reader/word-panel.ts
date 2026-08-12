@@ -158,8 +158,8 @@ function renderArticleEditor(
 function renderTranslationEditor(entry: WordPanelEntry, word: string, marginTop = "0"): string {
   return `
     <label style="margin-top: ${marginTop};">
-      <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-        ${escapeHtml(t("reader.translationLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">E</span>
+      <span class="row-between">
+        ${escapeHtml(t("reader.translationLabel"))} <span class="shortcut-badge badge-tiny">E</span>
       </span>
       <input type="text" value="${escapeAttribute(entry.translation || "")}" data-word="${escapeHtml(word)}" data-word-field="translation" placeholder="${escapeAttribute(t("reader.translationPlaceholder"))}">
     </label>
@@ -554,8 +554,8 @@ function renderContentItem(
   if (id === "note") {
     return `
       <label data-word-panel-item="note">
-        <span style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-          ${escapeHtml(t("reader.noteLabel"))} <span class="shortcut-badge" style="font-size: 0.65rem; padding: 0.1rem 0.3rem;">N</span>
+        <span class="row-between">
+          ${escapeHtml(t("reader.noteLabel"))} <span class="shortcut-badge badge-tiny">N</span>
         </span>
         <textarea rows="4" spellcheck="false" data-word="${escapeAttribute(word)}" data-word-field="note" placeholder="${escapeAttribute(t("reader.notePlaceholder"))}">${escapeHtml(entry.note || "")}</textarea>
       </label>
@@ -563,18 +563,18 @@ function renderContentItem(
   }
   if (id === "image") {
     return entry.imageUrl ? `
-      <div class="word-image-preview" data-word-panel-item="image" style="margin-top: 1rem; text-align: center; position: relative; display: inline-block; width: 100%;">
-        <img src="${escapeAttribute(entry.imageUrl)}" alt="${escapeAttribute(t("reader.imageAlt"))}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
+      <div class="word-image-preview upload-zone" data-word-panel-item="image">
+        <img src="${escapeAttribute(entry.imageUrl)}" alt="${escapeAttribute(t("reader.imageAlt"))}"  class="thumb-bordered" />
         <button class="word-image-remove" type="button" data-action="remove-image" data-word="${escapeAttribute(word)}" aria-label="${escapeAttribute(t("reader.removeImage"))}" title="${escapeAttribute(t("reader.removeImage"))}">×</button>
       </div>
     ` : `
-      <div class="word-image-search" data-word-panel-item="image" style="margin-top: 1rem; text-align: center;">
+      <div class="word-image-search m-t-1-center" data-word-panel-item="image">
         <button class="secondary-button button-xs image-action-button" type="button" data-action="search-image" data-word="${escapeAttribute(word)}" title="${escapeAttribute(t("vocab.addImage"))}">
           ${icon("image", 14)}
           ${escapeHtml(t("vocab.addImage"))}
           <span class="shortcut-badge">I</span>
         </button>
-        <div id="image-search-results-${escapeAttribute(word)}" style="margin-top: 0.25rem;"></div>
+        <div id="image-search-results-${escapeAttribute(word)}" class="m-t-025"></div>
       </div>
     `;
   }

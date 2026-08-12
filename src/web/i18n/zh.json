@@ -284,7 +284,8 @@
     "pdfCorrectionDiscard": "放弃对此修正的编辑？",
     "wordNavPageStart": "你已到达本页第一个单词。",
     "wordNavPageEnd": "你已到达本页最后一个单词。",
-    "aiNoteMarker": "AI 解释"
+    "aiNoteMarker": "AI 解释",
+    "findOpen": "在文本中查找…"
   },
   "vocab": {
     "eyebrow": "你的单词",
@@ -760,8 +761,8 @@
     "contactIssues": "<strong>错误报告与功能请求：</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>联系：</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>许可：</strong> AGPL-3.0-or-later。衍生代码的闭源商业使用需要单独的书面许可。详情：https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "<strong>Word Hunter 1.0.10 新增单词和短语的上下文 AI 解释：支持 OpenAI 兼容服务的流式回答、推理努力级别、新单词的自动解释、扫描页面的可选图像上下文、本地缓存、翻译器按钮，以及端点、模型和 API 密钥配置。还修复了重复持久化保存阻塞应用退出的问题。</strong>",
-    "version": "<strong>版本：</strong> Word Hunter 1.0.10",
+    "whatsNew": "<strong>Word Hunter 1.0.11-rc.1 增强了 Android 的可靠性并继续界面清理：TTS 单词高亮在较新的 Android 版本上正常工作，日/夜主题跟随系统，导出不再因数据库繁忙而停滞，后台重启后应用启动更快，Youglish 通过 Android 原生桥接打开，设置和对话框界面现在由 TypeScript 组件渲染，不再有重复的静态标记。</strong>",
+    "version": "<strong>版本：</strong> Word Hunter 1.0.11-rc.1",
     "tipsEyebrow": "文档",
     "focusHint1": "按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 进入或返回文本",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> 在单词间导航",
@@ -881,6 +882,7 @@
     "wordRemoved": "单词已从列表中移除。",
     "wordCopied": "已复制：{word}",
     "copyFailed": "无法复制所选单词。",
+    "openExternalFailed": "无法在浏览器中打开链接。",
     "emptyFields": "请填写标题和文本。",
     "bookMoved": "书籍移动成功",
     "textAdded": "文本已添加到书库。",

@@ -665,6 +665,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)]
+    // The APPDATA pointer mechanism is Windows-only since fix #135 (B1):
+    // appdata_dir() is gated to #[cfg(windows)], so on Linux this test would
+    // assert the very behaviour the fix removed (APPDATA beating XDG).
     fn redirected_missing_data_dir_falls_back_to_default_folder() {
         let _lock = crate::TEST_ENV_LOCK
             .lock()

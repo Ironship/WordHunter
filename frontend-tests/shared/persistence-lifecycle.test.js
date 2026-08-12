@@ -117,7 +117,7 @@ async function loadAppHarness({
 
   await evaluateWithMocks("../../dist/web/app.js", {
     "./js/dom.js": { cacheElements: noOp, els: {} },
-    "./js/toast.js": { showToast: noOp },
+    "./js/toast.js": { showToast: noOp, renderToast: noOp },
     "./js/events.js": { bindEvents: noOp },
     "./js/preferences.js": { applyPreferences, setSyncStatus: noOp, syncSettingsControls: noOp },
     "./js/books.js": {
@@ -144,9 +144,14 @@ async function loadAppHarness({
       clearPendingDelta() { calls.push("clear-pending"); },
       saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
     },
-    "./js/views/library.js": { bindLibraryEvents: noOp, renderLibrary: () => calls.push("render-library") },
+    "./js/views/library.js": { bindLibraryEvents: noOp, renderDeleteBookDialog: noOp, renderLibraryPanel: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
     "./js/youglish.js": { refreshYouGlishTheme: noOp },
+    "./js/reader/bookmarks.js": { renderBookmarksDialog: noOp },
+    "./js/events/move-book.js": { renderMoveBookDialog: noOp },
+    "./js/events/word-editor.js": { renderAddWordDialog: noOp },
+"./js/events/settings.js": { renderArgosDownloadDialog: noOp, renderSettingsView: noOp },
+    "./js/events/book-import.js": { renderImportPanel: noOp },    "./js/book-actions/edit-modal.js": { renderEditBookDialog: noOp },
     "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
     "./js/platform.js": {
       applyPlatformUi: noOp,
@@ -166,7 +171,9 @@ async function loadAppHarness({
     console
   }, {
     "./js/views/reader.js": { bindReaderEvents: noOp },
-    "./js/update-checker.js": { checkForUpdates: noOp }
+    "./js/update-checker.js": { checkForUpdates: noOp, renderUpdateDialog: noOp },
+    "./js/onboarding.js": { renderLanguageOnboardingDialog: noOp },
+    "./js/youglish.js": { renderYouGlishModal: noOp, openYouGlish: noOp, closeYouGlish: noOp, refreshYouGlishTheme: noOp }
   });
 
   return {

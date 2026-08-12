@@ -7,7 +7,7 @@ import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { icon } from "../icons.js";
 import { t } from "../i18n.js";
 import { applyReviewNative, isDue, todayISO } from "../sm2.js";
-import { renderVocabulary } from "./vocab-list.js";
+import { renderVocabulary, invalidateVocabListCache } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playReviewGradeSound, playStatusSound } from "../status-sounds.js";
@@ -186,16 +186,16 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   let frontHtml = "";
   if (!isReverse) {
     frontHtml = `
-      <strong style="font-size: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
+      <strong class="review-icon">
         ${escapeHtml(formatHeadword(card.word, card.article))}
-        <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" aria-label="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+        <button class="secondary-button round-icon-btn-28" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" aria-label="${escapeAttribute(t("reader.ttsWordTitle"))}">
           ${icon("speaker", 14)}
         </button>
       </strong>
       ${context ? `
-        <p class="review-context" style="font-size: 0.9rem; color: var(--muted); margin-top: 0.75rem; font-style: italic; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
+        <p class="review-context hint-italic-center">
           „${escapeHtml(displayContext)}”
-          <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(context)}" title="${escapeAttribute(t("vocab.readSentence"))}" aria-label="${escapeAttribute(t("vocab.readSentence"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+          <button class="secondary-button round-icon-btn-24" type="button" data-tts-word="${escapeAttribute(context)}" title="${escapeAttribute(t("vocab.readSentence"))}" aria-label="${escapeAttribute(t("vocab.readSentence"))}">
             ${icon("speaker", 12)}
           </button>
         </p>
@@ -204,12 +204,12 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   } else {
     frontHtml = `
       ${card.translation ? `
-        <p class="review-translation-front" style="font-size: 1.5rem; font-weight: 500; color: var(--ink); margin-top: 0.5rem; display: block; width: 100%; text-align: center;">
+        <p class="review-translation-front review-title">
           ${escapeHtml(card.translation)}
         </p>
       ` : renderReviewTranslationInput(card)}
       ${context ? `
-        <p class="review-context" style="font-size: 0.9rem; color: var(--muted); margin-top: 0.75rem; font-style: italic; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
+        <p class="review-context hint-italic-center">
           „${escapeHtml(maskHeadwordInSentence(displayContext, card.word, card.article))}”
         </p>
       ` : ""}
@@ -219,20 +219,20 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   let imageHtml = "";
   if (card.imageUrl) {
     imageHtml = `
-      <div class="review-image" style="margin-top: 0.5rem; text-align: center; position: relative; display: inline-block;">
-        <img src="${escapeAttribute(card.imageUrl)}" alt="${escapeAttribute(formatHeadword(card.word, card.article))}" style="max-height: 120px; max-width: 100%; border-radius: 6px; border: 1px solid var(--line);" />
+      <div class="review-image upload-zone-sm">
+        <img src="${escapeAttribute(card.imageUrl)}" alt="${escapeAttribute(formatHeadword(card.word, card.article))}"  class="thumb-bordered" />
         <button class="word-image-remove review-image-remove" type="button" data-action="remove-image" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.removeImage"))}" aria-label="${escapeAttribute(t("reader.removeImage"))}">×</button>
       </div>
     `;
   } else {
     imageHtml = `
-      <div class="review-image-search" style="margin-top: 0.5rem; text-align: center;">
+      <div class="review-image-search m-t-05-center">
         <button class="secondary-button button-xs image-action-button" type="button" data-review-action="search-image" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("vocab.addImage"))}">
           ${icon("image", 14)}
           ${escapeHtml(t("vocab.addImage"))}
           <span class="shortcut-badge">I</span>
         </button>
-        <div id="review-image-search-results-${escapeAttribute(card.key)}" style="margin-top: 0.25rem;"></div>
+        <div id="review-image-search-results-${escapeAttribute(card.key)}" class="m-t-025"></div>
       </div>
     `;
   }
@@ -242,27 +242,27 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     if (!isReverse) {
       backHtml = `
         ${card.translation ? `
-          <p class="review-translation" style="margin-top: 1rem; font-size: 1.2rem; font-weight: 500; color: var(--ink);">${escapeHtml(card.translation)}</p>
+          <p class="review-translation review-subtitle">${escapeHtml(card.translation)}</p>
         ` : renderReviewTranslationInput(card)}
-        ${card.note ? `<p class="review-note" style="margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem;">${escapeHtml(card.note)}</p>` : ""}
+        ${card.note ? `<p class="review-note stat-note">${escapeHtml(card.note)}</p>` : ""}
       `;
     } else {
       backHtml = `
-        <strong style="font-size: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%; margin-top: 1rem;">
+        <strong class="review-icon-m-t-1">
           ${escapeHtml(formatHeadword(card.word, card.article))}
-          <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" aria-label="${escapeAttribute(t("reader.ttsWordTitle"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+          <button class="secondary-button round-icon-btn-28" type="button" data-tts-word="${escapeAttribute(formatHeadword(card.word, card.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" aria-label="${escapeAttribute(t("reader.ttsWordTitle"))}">
             ${icon("speaker", 14)}
           </button>
         </strong>
         ${context ? `
-          <p class="review-context-unmasked" style="font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; font-style: italic; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%;">
+          <p class="review-context-unmasked hint-italic-center-m-t-05">
             „${escapeHtml(displayContext)}”
-            <button class="secondary-button" type="button" data-tts-word="${escapeAttribute(context)}" title="${escapeAttribute(t("vocab.readSentence"))}" aria-label="${escapeAttribute(t("vocab.readSentence"))}" style="padding: 0.2rem; min-height: auto; border-radius: 50%; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--line); color: var(--muted); cursor: pointer;">
+            <button class="secondary-button round-icon-btn-24" type="button" data-tts-word="${escapeAttribute(context)}" title="${escapeAttribute(t("vocab.readSentence"))}" aria-label="${escapeAttribute(t("vocab.readSentence"))}">
               ${icon("speaker", 12)}
             </button>
           </p>
         ` : ""}
-        ${card.note ? `<p class="review-note" style="margin-top: 0.5rem; color: var(--muted); font-size: 0.95rem;">${escapeHtml(card.note)}</p>` : ""}
+        ${card.note ? `<p class="review-note stat-note">${escapeHtml(card.note)}</p>` : ""}
       `;
     }
     backHtml = `<div id="review-card-answer" class="review-card-answer">${backHtml}</div>`;
@@ -284,7 +284,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         </div>
       </div>
     </div>
-    <div class="word-actions" style="flex-wrap: wrap;">
+    <div class="word-actions flex-wrap">
       <button class="secondary-button" type="button" data-dict-word="${escapeAttribute(card.word)}" title="${escapeAttribute(t("vocab.openDictionary"))}" aria-label="${escapeAttribute(t("vocab.openDictionary"))}">
         ${icon("book", 16)}
         <span class="shortcut-badge">M</span>
@@ -335,7 +335,7 @@ function renderSessionSummary(): void {
       <h3>${escapeHtml(t("review.sessionSummaryTitle"))}</h3>
       <p>${escapeHtml(t("review.sessionSummaryCount", { n: sessionStats.total }))}</p>
       <p>${escapeHtml(t("review.sessionSummaryAccuracy", { pct }))}</p>
-      <button type="button" class="primary-button" id="review-session-summary-done" style="margin-top: 1rem;">${escapeHtml(t("review.sessionSummaryDone"))}</button>
+      <button type="button" class="primary-button m-t-1" id="review-session-summary-done">${escapeHtml(t("review.sessionSummaryDone"))}</button>
     </div>
   `;
   document.getElementById("review-session-summary-done")?.addEventListener("click", () => {
@@ -371,6 +371,7 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
   else if (quality < 3) status = "learning";
   else if (currentEntry.status === "new") status = "learning";
   setEntryStatus(currentEntry, status, updatedAt);
+  invalidateVocabListCache();
   // A first transition to Learning must not replace the schedule just computed by FSRS/SM-2.
   currentEntry.nextDate = reviewedEntry.nextDate;
   return currentEntry;
@@ -407,6 +408,7 @@ export function removeFromSrs(word: string): void {
   const entry = state.vocab[word];
   if (!entry) return;
   const previousStatus = setEntryStatus(entry, "ignored");
+  invalidateVocabListCache();
   if (previousStatus !== "ignored") playStatusSound("ignored");
   saveState();
   state.reviewIndex = 0;

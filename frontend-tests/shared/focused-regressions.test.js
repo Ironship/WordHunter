@@ -119,19 +119,16 @@ describe("lazy library statistics", () => {
       userBooks: [],
       archivedBookIds: []
     };
+    const libraryElements = {
+      "book-list": bookList,
+      "library-search": { value: "" },
+      "level-filter": { value: "" },
+      "library-sort": { value: "" },
+      "library-archive-filter": { value: "" },
+      "library-sort-reverse": { dataset: {} }
+    };
     const { renderLibrary } = await evaluateWithMocks("dist/web/js/views/library.js", {
       "../state.js": { state, saveUiState() {} },
-      "../dom.js": { els: {
-        bookList,
-        librarySearch: {},
-        levelFilter: {},
-        librarySort: {},
-        librarySortReverse: { dataset: {} },
-        libraryArchiveFilter: {},
-        libraryPanel: null,
-        libraryFiltersToggle: null,
-        librarySidebarResizer: null
-      } },
       "../utils.js": {
         escapeHtml: String,
         escapeAttribute: String,
@@ -166,6 +163,10 @@ describe("lazy library statistics", () => {
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, {
       window: {},
+      document: {
+        getElementById(id) { return libraryElements[id] ?? null; },
+        querySelector() { return null; }
+      },
       requestAnimationFrame: () => 1,
       Intl
     });
@@ -203,7 +204,8 @@ async function globalActionsHarness(options = {}) {
       clearReaderSelection() {
         calls.push(["clear", state.selectedWord]);
         state.selectedWord = null;
-      }
+      },
+      bindTouchPhraseSelection() {}
     },
     "../views/vocabulary.js": { gradeReview() {}, loadMoreVocab() {}, removeFromSrs() {} },
     "../vocab-actions.js": {
@@ -610,21 +612,21 @@ describe("focused frontend regressions", () => {
 
     let closeCount = 0;
     const els = {
-      editBookTitle: { value: "" },
-      editBookAuthor: { value: "" },
-      editBookTags: { value: "" },
-      editBookLevel: { value: "" },
-      editBookText: { value: "", readOnly: false },
-      editBookCoverImg: { src: "" },
-      editBookCoverPreview: { hidden: true },
-      editBookDialog: { showModal() {}, close() { closeCount += 1; } },
-      editBookCancel: { disabled: false },
-      editBookSave: { disabled: false }
+      "edit-book-title": { value: "" },
+      "edit-book-author": { value: "" },
+      "edit-book-tags": { value: "" },
+      "edit-book-level": { value: "" },
+      "edit-book-text": { value: "", readOnly: false },
+      "edit-book-cover-img": { src: "" },
+      "edit-book-cover-preview": { hidden: true },
+      "edit-book-dialog": { showModal() {}, close() { closeCount += 1; } },
+      "edit-book-cancel": { disabled: false },
+      "edit-book-save": { disabled: false }
     };
+    const document = { getElementById: (id) => els[id] ?? null };
     const state = { customTexts: [{ id: "custom-1", title: "Title", text: "Body" }], userBooks: [] };
     const module = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
       "../state.js": { state },
-      "../dom.js": { els },
       "../toast.js": { showToast() {} },
       "../books.js": {
         bookTexts: new Map([["custom-1", "stale body"]]),
@@ -638,10 +640,10 @@ describe("focused frontend regressions", () => {
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
       "../store-bridge.js": { upsertStoredText() {} }
-    }, { window: { __qtBridge: false } });
+    }, { window: { __qtBridge: false }, document });
 
     await module.openEditBookModal("custom-1");
-    assert.equal(els.editBookText.value, "fresh synced body");
+    assert.equal(els["edit-book-text"].value, "fresh synced body");
     module.setPendingEditCoverDataUrl("data:image/png;base64,test");
     assert.equal(module.isEditBookDirty(), true);
 
@@ -649,7 +651,7 @@ describe("focused frontend regressions", () => {
 
     assert.equal(module.pendingEditCoverDataUrl, null);
     assert.equal(module.isEditBookDirty(), false);
-    assert.equal(els.editBookText.readOnly, false);
+    assert.equal(els["edit-book-text"].readOnly, false);
     assert.equal(closeCount, 1);
   });
 
@@ -671,21 +673,21 @@ describe("focused frontend regressions", () => {
     let showCount = 0;
     const toasts = [];
     const els = {
-      editBookTitle: { value: "" },
-      editBookAuthor: { value: "" },
-      editBookTags: { value: "" },
-      editBookLevel: { value: "" },
-      editBookText: { value: "stale body", readOnly: false },
-      editBookCoverImg: { src: "" },
-      editBookCoverPreview: { hidden: true },
-      editBookDialog: { showModal() { showCount += 1; }, close() {} },
-      editBookCancel: { disabled: false },
-      editBookSave: { disabled: false }
+      "edit-book-title": { value: "" },
+      "edit-book-author": { value: "" },
+      "edit-book-tags": { value: "" },
+      "edit-book-level": { value: "" },
+      "edit-book-text": { value: "stale body", readOnly: false },
+      "edit-book-cover-img": { src: "" },
+      "edit-book-cover-preview": { hidden: true },
+      "edit-book-dialog": { showModal() { showCount += 1; }, close() {} },
+      "edit-book-cancel": { disabled: false },
+      "edit-book-save": { disabled: false }
     };
+    const document = { getElementById: (id) => els[id] ?? null };
     const state = { customTexts: [{ id: "custom-1", title: "Title" }], userBooks: [] };
     const module = await evaluateWithMocks("dist/web/js/book-actions/edit-modal.js", {
       "../state.js": { state },
-      "../dom.js": { els },
       "../toast.js": { showToast(message) { toasts.push(message); } },
       "../books.js": {
         bookTexts: new Map([["custom-1", "stale body"]]),
@@ -699,7 +701,7 @@ describe("focused frontend regressions", () => {
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
       "../store-bridge.js": { upsertStoredText() {} }
-    }, { window: { __qtBridge: true }, console: { warn() {} } });
+    }, { window: { __qtBridge: true }, document, console: { warn() {} } });
 
     await module.openEditBookModal("custom-1");
 
@@ -765,9 +767,9 @@ describe("focused frontend regressions", () => {
 
   it("keeps Argos cancellation disabled and inert while installation is running", () => {
     const settings = read("dist/web/js/events/settings.js");
-    assert.match(settings, /function cancelArgosDownload\(\) \{[\s\S]*?if \(argosDownloadRunning\)\s*return;[\s\S]*?argosDownloadDialog\)\s*els\.argosDownloadDialog\.close\(\)/);
-    assert.match(settings, /argosDownloadRunning = true;[\s\S]*?argosDownloadCancel\)\s*els\.argosDownloadCancel\.disabled = true/);
-    assert.match(settings, /finally \{[\s\S]*?argosDownloadRunning = false;[\s\S]*?argosDownloadCancel\)\s*els\.argosDownloadCancel\.disabled = false/);
+    assert.match(settings, /function cancelArgosDownload\(\) \{[^]*?if \(argosDownloadRunning\)\s*return;[^]*?getElementById\("argos-download-dialog"\)\?\.close\(\)/);
+    assert.match(settings, /argosDownloadRunning = true;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = true/);
+    assert.match(settings, /finally \{[^]*?argosDownloadRunning = false;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = false/);
   });
 
   it("disables inaccessible Translator navigation and rejects its click handler", async () => {

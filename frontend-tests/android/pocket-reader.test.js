@@ -29,6 +29,46 @@ function assertDeclarations(css, selector, expected) {
 }
 
 describe("Android Pocket reader", () => {
+  it("wires the pocket reader find toggle and touch phrase selection", () => {
+    const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+    const readerEvents = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
+    const selection = readFileSync(new URL("../../dist/web/js/reader/selection.js", import.meta.url), "utf8");
+    const dom = readFileSync(new URL("../../dist/web/js/dom.js", import.meta.url), "utf8");
+    const platform = readFileSync(new URL("../../dist/web/js/platform.js", import.meta.url), "utf8");
+    const vocabList = readFileSync(new URL("../../dist/web/js/vocabulary/vocab-list.js", import.meta.url), "utf8");
+    const vocabActions = readFileSync(new URL("../../dist/web/js/vocab-actions.js", import.meta.url), "utf8");
+    const reviewCard = readFileSync(new URL("../../dist/web/js/vocabulary/review-card.js", import.meta.url), "utf8");
+    const wordEditor = readFileSync(new URL("../../dist/web/js/events/word-editor.js", import.meta.url), "utf8");
+
+    // B1: pocket-only find toggle exists, is hidden on desktop, wired to the
+    // find bar toggle, and cached in the els registry.
+    assert.match(html, /id="reader-find-toggle"[^>]*class="[^"]*pocket-only-control/);
+    assert.match(css, /\.pocket-only-control\s*\{\s*display:\s*none/);
+    assert.match(css, /\.pocket-mode \.pocket-only-control\s*\{\s*display:\s*inline-flex/);
+    assert.match(dom, /els\.readerFindToggle = byId\("reader-find-toggle"\)/);
+    assert.match(readerEvents, /readerFindToggle\?\.addEventListener\("click"/);
+    assert.match(readerEvents, /toggleReaderFind\(\)/);
+
+    // B4: touch phrase selection — the selectionchange bridge maps DOM
+    // selections over .word-token to the token range state.
+    assert.match(readerEvents, /bindTouchPhraseSelection\(\)/);
+    assert.match(selection, /addEventListener\("selectionchange"/);
+    assert.match(selection, /const range = \{ anchor: anchorIndex, focus: focusIndex \};/);
+    assert.match(selection, /anchorIndex === focusIndex\)/);
+
+    // B3: the IME overlap guard covers translator + vocab table editors.
+    assert.match(platform, /#translator-view, #vocab-table/);
+
+    // B10: the sorted base list is cached and invalidated at every
+    // updatedAt-touching mutation site.
+    assert.match(vocabList, /invalidateVocabListCache/);
+    assert.match(vocabList, /cachedVocabBase/);
+    assert.match(vocabActions, /invalidateVocabListCache\(\)/);
+    assert.match(reviewCard, /invalidateVocabListCache\(\)/);
+    assert.match(wordEditor, /invalidateVocabListCache\(\)/);
+  });
+
   it("computes page slices used by Pocket reader navigation", async () => {
     globalThis.window = {};
     globalThis.localStorage = { getItem: () => null, setItem() {} };

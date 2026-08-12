@@ -104,7 +104,7 @@ export function renderGraphs() {
   if (!Object.keys(state.vocab).length) {
     delete graphArea.dataset.graphSignature;
     delete graphArea.dataset.graphRendered;
-    graphArea.innerHTML = `<div class="empty-state" style="padding:3rem"><p>${t("graphs.empty")}</p></div>`;
+    graphArea.innerHTML = `<div class="empty-state p-3"><p>${t("graphs.empty")}</p></div>`;
     const heat = document.getElementById("graphs-heatmap");
     if (heat) heat.innerHTML = "";
     setGraphsLoading(false);

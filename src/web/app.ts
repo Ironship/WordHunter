@@ -1,6 +1,6 @@
 // Punkt wejścia aplikacji. Składa moduły, nie zawiera logiki domenowej.
-import { cacheElements, els } from "./js/dom.js";
-import { showToast } from "./js/toast.js";
+import { cacheElements } from "./js/dom.js";
+import { renderToast, showToast } from "./js/toast.js";
 import { bindEvents } from "./js/events.js";
 import { applyPreferences, syncSettingsControls } from "./js/preferences.js";
 import { hydrateCurrentReaderText, loadBooksCatalog } from "./js/books.js";
@@ -8,11 +8,19 @@ import { render, ensureCurrentText } from "./js/render.js";
 import { loadLocale, applyTranslations, t, getLocale, initialLocale } from "./js/i18n.js";
 import { applyBridgeSnapshotToState, flushFrontendStateBuffers, flushUiStateSync, saveState, state } from "./js/state.js";
 import { clearPendingDelta, flushPendingDeltaToLocalStorage, readPendingDelta, saveWithRetry } from "./js/api.js";
-import { bindLibraryEvents, renderLibrary } from "./js/views/library.js";
+import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary, renderLibraryPanel } from "./js/views/library.js";
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
-import { refreshYouGlishTheme } from "./js/youglish.js";
+import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
+import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
+import { renderMoveBookDialog } from "./js/events/move-book.js";
+import { renderAddWordDialog } from "./js/events/word-editor.js";
+import { renderArgosDownloadDialog, renderSettingsView } from "./js/events/settings.js";
+import { renderUpdateDialog } from "./js/update-checker.js";
+import { renderLanguageOnboardingDialog } from "./js/onboarding.js";
+import { renderEditBookDialog } from "./js/book-actions/edit-modal.js";
+import { renderImportPanel } from "./js/events/book-import.js";
 
 detectPlatform();
 
@@ -191,9 +199,15 @@ function startBridgeStateLoad(): void {
 
 function showLanguageOnboardingIfNeeded() {
   if (!isAndroidPlatform() || state.preferences.languageOnboardingDone === true) return;
-  const dialog = els.languageOnboardingDialog;
-  const doneButton = els.languageOnboardingDone;
+  const dialog = document.getElementById("language-onboarding-dialog");
+  const doneButton = document.getElementById("language-onboarding-done");
   if (!(dialog instanceof HTMLDialogElement) || !(doneButton instanceof HTMLButtonElement)) return;
+  // The renderer seeds the selects at boot; re-sync in case the bridge
+  // snapshot changed the preferences between boot and first show.
+  const localeSelect = document.getElementById("pref-locale-onboarding") as HTMLSelectElement | null;
+  if (localeSelect) localeSelect.value = state.preferences.locale || "pl";
+  const learningSelect = document.getElementById("pref-learning-language-onboarding") as HTMLSelectElement | null;
+  if (learningSelect) learningSelect.value = state.preferences.learningLanguage || "en";
   dialog.addEventListener("cancel", (event) => event.preventDefault());
   doneButton.addEventListener("click", () => {
     state.preferences.languageOnboardingDone = true;
@@ -205,6 +219,21 @@ function showLanguageOnboardingIfNeeded() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    // TS-rendered dialogs (port of #127 P1): build them before cacheElements()
+    // so every boot-time consumer and the els cache find the elements in DOM.
+    renderToast();
+    renderBookmarksDialog();
+    renderMoveBookDialog();
+    renderDeleteBookDialog();
+    renderUpdateDialog();
+    renderLanguageOnboardingDialog();
+    renderYouGlishModal();
+    renderAddWordDialog();
+    renderArgosDownloadDialog();
+    renderSettingsView();
+    renderEditBookDialog();
+    renderLibraryPanel();
+    renderImportPanel();
     cacheElements();
     startBridgeStateLoad();
     recoverPendingFlush();

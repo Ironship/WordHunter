@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.word_hunter" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">#0d1114</item>
+        <item name="android:statusBarColor">#0d1114</item>
+        <item name="android:navigationBarColor">#071724</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

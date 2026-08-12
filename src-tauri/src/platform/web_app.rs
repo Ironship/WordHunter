@@ -266,11 +266,16 @@ fn boxed_string(err: String) -> Box<dyn std::error::Error> {
 
 fn show_startup_error(message: &str) {
     #[cfg(not(target_os = "android"))]
-    let _ = rfd::MessageDialog::new()
-        .set_title("Word Hunter could not start")
-        .set_description(message)
-        .set_level(rfd::MessageLevel::Error)
-        .show();
+    {
+        // rfd 0.15's MessageDialog::show() returns MessageDialogResult
+        // directly (no Result), so a missing display/portal cannot be
+        // detected through the return value.
+        let _ = rfd::MessageDialog::new()
+            .set_title("Word Hunter could not start")
+            .set_description(message)
+            .set_level(rfd::MessageLevel::Error)
+            .show();
+    }
     #[cfg(target_os = "android")]
     let _ = message;
 }

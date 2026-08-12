@@ -18,6 +18,32 @@ export let vocabRenderCount = 50;
 export let filteredVocabEntries: VocabListEntry[] = [];
 export const sessionAddedWords = new Set<string>();
 
+/**
+ * Sorted base list cache: mapping + sorting (the expensive part of every
+ * render) is skipped when neither the vocab reference nor the key count
+ * changed since the last render. Explicit invalidation is called from every
+ * updatedAt-touching mutation site (see invalidateVocabListCache callers).
+ */
+let cachedVocabBase: { source: WhVocabulary; keyCount: number; entries: VocabListEntry[] } | null = null;
+
+export function invalidateVocabListCache(): void {
+  cachedVocabBase = null;
+}
+
+function getVocabBase(): VocabListEntry[] {
+  const source = state.vocab;
+  if (cachedVocabBase
+    && cachedVocabBase.source === source
+    && cachedVocabBase.keyCount === Object.keys(source).length) {
+    return cachedVocabBase.entries;
+  }
+  const entries = Object.entries(source)
+    .map(([key, entry]): VocabListEntry => ({ ...entry, key, word: entry.word || key }))
+    .sort((first, second) => (second.updatedAt || "").localeCompare(first.updatedAt || ""));
+  cachedVocabBase = { source, keyCount: entries.length, entries };
+  return entries;
+}
+
 function getSelectedVocabStatuses(): WhVocabStatus[] {
   if (!Array.isArray(state.filters.vocabStatuses)) {
     state.filters.vocabStatuses = VOCAB_STATUS_FILTERS.filter(isVocabStatus);
@@ -69,8 +95,7 @@ export function renderVocabulary(resetLimit = true): void {
   const canonicalQuery = normalizeVocabularyWord(state.filters.vocabQuery || "", vocabularyLanguage);
   if (canonicalQuery && !queryVariants.includes(canonicalQuery)) queryVariants.push(canonicalQuery);
   const statusFilters = new Set(getSelectedVocabStatuses());
-  filteredVocabEntries = Object.entries(state.vocab)
-    .map(([key, entry]): VocabListEntry => ({ ...entry, key, word: entry.word || key }))
+  filteredVocabEntries = getVocabBase()
     .filter((entry) => {
       const matchesStatus = statusFilters.has(entry.status);
       const haystackText = `${formatHeadword(entry.word, entry.article)} ${entry.word} ${normalizeVocabularyWord(entry.word, vocabularyLanguage)} ${entry.translation || ""} ${entry.note || ""}`;
@@ -82,8 +107,7 @@ export function renderVocabulary(resetLimit = true): void {
         vocabularyLanguage
       );
       return matchesStatus && matchesQuery && matchesText;
-    })
-    .sort((first, second) => (second.updatedAt || "").localeCompare(first.updatedAt || ""));
+    });
 
   if (!filteredVocabEntries.length) {
     els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(t("vocab.empty"))}</td></tr>`;
@@ -125,9 +149,9 @@ export function renderVocabulary(resetLimit = true): void {
           <button class="icon-button" type="button" data-edit-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("editBook.title"))}" aria-label="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>
           <button class="icon-button" type="button" data-tts-word="${escapeAttribute(formatHeadword(entry.word, entry.article))}" title="${escapeAttribute(t("reader.ttsWordTitle"))}" aria-label="${escapeAttribute(t("reader.ttsWordTitle"))}">${icon("speaker", 16)}</button>
           <button class="icon-button" type="button" data-youglish-word="${escapeHtml(entry.word)}" title="${escapeAttribute(t("reader.youglishWordTitle"))}" aria-label="${escapeAttribute(t("reader.youglishWordTitle"))}">${icon("video", 16)}</button>
-          <button class="icon-button" style="color: var(--blue); border-color: color-mix(in srgb, var(--blue) 42%, var(--line)); background: var(--blue-soft);" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="learning" title="${escapeAttribute(t("vocab.btnLearning"))}" aria-label="${escapeAttribute(t("vocab.btnLearning"))}">${icon("pencil", 14)}</button>
-          <button class="icon-button" style="color: var(--green); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); background: var(--green-soft);" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="known" title="${escapeAttribute(t("vocab.btnKnown"))}" aria-label="${escapeAttribute(t("vocab.btnKnown"))}">${icon("check", 14)}</button>
-          <button class="icon-button" style="color: var(--muted); border-color: var(--line);" type="button" data-ignore-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("vocab.btnIgnore"))}" aria-label="${escapeAttribute(t("vocab.btnIgnore"))}">${icon("eyeOff", 14)}</button>
+          <button class="icon-button status-blue" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="learning" title="${escapeAttribute(t("vocab.btnLearning"))}" aria-label="${escapeAttribute(t("vocab.btnLearning"))}">${icon("pencil", 14)}</button>
+          <button class="icon-button status-green" type="button" data-word="${escapeHtml(entry.key)}" data-set-status="known" title="${escapeAttribute(t("vocab.btnKnown"))}" aria-label="${escapeAttribute(t("vocab.btnKnown"))}">${icon("check", 14)}</button>
+          <button class="icon-button status-muted" type="button" data-ignore-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("vocab.btnIgnore"))}" aria-label="${escapeAttribute(t("vocab.btnIgnore"))}">${icon("eyeOff", 14)}</button>
           <button class="icon-button danger-button" type="button" data-delete-word="${escapeHtml(entry.key)}" title="${escapeAttribute(t("vocab.btnDelete"))}" aria-label="${escapeAttribute(t("vocab.btnDelete"))}">${icon("trash", 14)}</button>
         </div>
       </td>
@@ -136,7 +160,7 @@ export function renderVocabulary(resetLimit = true): void {
   }).join("");
 
   if (vocabRenderCount < filteredVocabEntries.length) {
-    els.vocabTableBody.innerHTML += `<tr><td colspan="5" style="text-align: center; padding: 1rem;"><button type="button" class="ghost-button" id="load-more-vocab">${escapeHtml(t("vocab.loadMore"))}</button></td></tr>`;
+    els.vocabTableBody.innerHTML += `<tr><td colspan="5" class="center-p-1"><button type="button" class="ghost-button" id="load-more-vocab">${escapeHtml(t("vocab.loadMore"))}</button></td></tr>`;
   }
 }
 
