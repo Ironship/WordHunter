@@ -44,6 +44,11 @@ export function createAutosave(getState: () => WhAppState) {
   let durableStateRevision = 0;
   let vocabularyRevision = 0;
   let mutationSequence = 0;
+  // Highest mutation sequence covered by a successful backend save. A
+  // mutation above this line with no dirty-language/text attribution means
+  // the delta would be empty while real changes are pending — the save must
+  // fall back to a full snapshot (order-independent dirty tracking).
+  let lastPersistedSequence = 0;
   let saveStartedMutationSequence = 0;
   // Identity of this autosave session: the pending teardown delta is cleared
   // by a later save only when both come from the same session (cross-session
@@ -149,6 +154,10 @@ export function createAutosave(getState: () => WhAppState) {
       applyBackendSaveStatus(result);
       retryDelayMs = 0;
       lastSaveSucceededAt = Date.now();
+      // The payload built at payloadSequence covers every mutation up to
+      // that sequence — record it so a later unattributed mutation is
+      // detected (and saved as a full snapshot) instead of silently lost.
+      lastPersistedSequence = Math.max(lastPersistedSequence, payloadSequence);
       dirtyVocabLangs.clear();
       dirtyTextIds.clear();
       allTextsDirty = false;
@@ -182,8 +191,14 @@ export function createAutosave(getState: () => WhAppState) {
     // The save-pending follow-up (a save re-run right after markSucceeded
     // cleared the dirty sets) builds an EMPTY payload: it carries no records,
     // so it must not be allowed to clear the pending delta either.
-    const payloadHasRecords = dirtyVocabLangs.size > 0 || dirtyTextIds.size > 0 || allTextsDirty;
-    const payload = buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
+    const unattributedMutationsPending = dirtyVocabLangs.size === 0 && dirtyTextIds.size === 0 && !allTextsDirty && mutationSequence > lastPersistedSequence;
+    const payloadHasRecords = dirtyVocabLangs.size > 0 || dirtyTextIds.size > 0 || allTextsDirty || unattributedMutationsPending;
+    // An empty delta from a dirty state is always a bug indicator: the dirty
+    // tracking failed to attribute a mutation (or a save-pending follow-up
+    // lost the dirty sets). A full snapshot is unconditionally safe.
+    const payload = unattributedMutationsPending
+      ? buildSavePayload(current)
+      : buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
     savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
       // The backend may reject a delta payload (validation edge or an older
       // server build). Retry once with a full snapshot — but only for an
@@ -331,6 +346,13 @@ export function createAutosave(getState: () => WhAppState) {
           const ctx = dirtyContexts.get(object);
           if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
             if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (vocabularyMaps.has(object) || vocabularyEntries.has(object)) {
+            // Root state.vocab path: the mutation was recorded but no
+            // profile-chain traversal attributed it to a language. Attribute
+            // to the active learning language so the delta carries the
+            // change regardless of access order.
+            const lang = rawState()?.preferences?.learningLanguage;
+            if (typeof lang === "string" && lang) dirtyVocabLangs.add(lang);
           } else if (ctx?.kind === "text") {
             const id = (object as WhRecord).id;
             if (typeof id === "string" && id) dirtyTextIds.add(id);
@@ -362,6 +384,11 @@ export function createAutosave(getState: () => WhAppState) {
           const ctx = dirtyContexts.get(object);
           if (ctx?.kind === "vocab" || ctx?.kind === "word" || ctx?.kind === "profile" || ctx?.kind === "books") {
             if (ctx.lang) dirtyVocabLangs.add(ctx.lang);
+          } else if (vocabularyMaps.has(object) || vocabularyEntries.has(object)) {
+            // Root state.vocab path: same order-independent attribution as
+            // the set trap.
+            const lang = rawState()?.preferences?.learningLanguage;
+            if (typeof lang === "string" && lang) dirtyVocabLangs.add(lang);
           } else if (ctx?.kind === "text") {
             const id = (object as WhRecord).id;
             if (typeof id === "string" && id) dirtyTextIds.add(id);
