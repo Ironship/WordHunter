@@ -504,6 +504,7 @@ export function parseProtoManifest(bytes) {
   for (const candidate of candidates) collectAttributes(candidate, attributes);
   for (const attr of attributes) {
     let resourceId = null;
+    let name = null;
     let typedValue = null;
     let at = attr.start;
     while (at < attr.end) {
@@ -514,7 +515,8 @@ export function parseProtoManifest(bytes) {
       if (wireType === 2) {
         const ld = lengthDelimited(at);
         if (!ld) break;
-        if (fieldNumber === 5) resourceId = varint(ld.start).value;
+        if (fieldNumber === 2) name = bytes.toString("utf8", ld.start, ld.end);
+        else if (fieldNumber === 5) resourceId = varint(ld.start).value;
         else if (fieldNumber === 6) typedValue = { start: ld.start, end: ld.end };
         at = ld.end;
       } else if (wireType === 0) {
@@ -523,9 +525,9 @@ export function parseProtoManifest(bytes) {
         break;
       }
     }
-    if (resourceId === null || !typedValue) continue;
-    found.attrs.push({ resourceId });
-    if (resourceId === 0x0101021b) {
+    if (typedValue === null) continue;
+    found.attrs.push({ resourceId, name });
+    if (resourceId === 0x0101021b || name === "versionCode") {
       let at2 = typedValue.start;
       while (at2 < typedValue.end) {
         const tag = varint(at2);
@@ -544,7 +546,7 @@ export function parseProtoManifest(bytes) {
           break;
         }
       }
-    } else if (resourceId === 0x0101021c) {
+    } else if (resourceId === 0x0101021c || name === "versionName") {
       let at2 = typedValue.start;
       while (at2 < typedValue.end) {
         const tag = varint(at2);
@@ -562,7 +564,7 @@ export function parseProtoManifest(bytes) {
           break;
         }
       }
-    } else if (resourceId === 0x0101000f) {
+    } else if (resourceId === 0x0101000f || name === "debuggable") {
       let at2 = typedValue.start;
       while (at2 < typedValue.end) {
         const tag = varint(at2);
@@ -723,7 +725,7 @@ export function inspectAndroid(path, abi) {
     if (!manifest || (manifest.versionCode === null && manifest.versionName === null)) {
       const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
       const protoDiag = protoEntry
-        ? parseProtoManifest(zipEntryBytes(archive, protoEntry)).attrs.map((a) => "0x" + a.resourceId.toString(16)).join(",")
+        ? parseProtoManifest(zipEntryBytes(archive, protoEntry)).attrs.map((a) => (a.name ?? "") + "=" + (a.resourceId === null ? "-" : "0x" + a.resourceId.toString(16))).join(",")
         : "no base/manifest entry";
       fail(`${path}: could not determine the version identity from the AAB manifest (proto attrs: ${protoDiag})`);
     }

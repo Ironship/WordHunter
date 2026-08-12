@@ -204,6 +204,8 @@ describe("Android release artifact assertions", () => {
     };
     const attribute = (resourceId, typedValue) =>
       Buffer.concat([ld(5, varint(resourceId)), ld(6, typedValue)]);
+    const namedAttribute = (name, typedValue) =>
+      Buffer.concat([ld(2, Buffer.from(name, "utf8")), ld(6, typedValue)]);
     const element = Buffer.concat([
       ld(1, Buffer.from("manifest", "utf8")),
       ld(5, attribute(0x0101021b, typed(0x10, 101001101))),
@@ -221,5 +223,16 @@ describe("Android release artifact assertions", () => {
     assert.equal(bare.versionCode, 101001101);
     assert.equal(bare.versionName, "1.0.11-rc.1");
     assert.equal(bare.debuggable, false);
+    // Some AABs omit resource ids and carry only the attribute name.
+    const namedElement = Buffer.concat([
+      ld(1, Buffer.from("manifest", "utf8")),
+      ld(5, namedAttribute("versionCode", typed(0x10, 101001101))),
+      ld(5, namedAttribute("versionName", typed(0x10, 0, "1.0.11-rc.1"))),
+      ld(5, namedAttribute("debuggable", typed(0x12, 0))),
+    ]);
+    const named = parseProtoManifest(ld(5, namedElement));
+    assert.equal(named.versionCode, 101001101);
+    assert.equal(named.versionName, "1.0.11-rc.1");
+    assert.equal(named.debuggable, false);
   });
 });
