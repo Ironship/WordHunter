@@ -442,7 +442,6 @@ export function parseProtoManifest(bytes) {
     return { value: 0, at };
   }
 
-  // Returns the payload [start, end) of a length-delimited field at `at`.
   function lengthDelimited(at) {
     const len = varint(at);
     const start = len.at;
@@ -451,58 +450,140 @@ export function parseProtoManifest(bytes) {
     return { start, end };
   }
 
-  // Iterate the fields of a message; `visit(fieldNumber, start, end)`.
-  function fields(start, end, visit) {
-    let at = start;
-    while (at < end) {
+  // Collect XmlAttribute payloads from an XmlElement message (field 5).
+  function collectAttributes(payload, out) {
+    let at = payload.start;
+    while (at < payload.end) {
       const tag = varint(at);
       at = tag.at;
       const fieldNumber = tag.value >>> 3;
       const wireType = tag.value & 0x7;
-      if (wireType === 0) {
-        at = varint(at).at;
-      } else if (wireType === 2) {
+      if (wireType === 2) {
         const ld = lengthDelimited(at);
         if (!ld) return;
-        visit(fieldNumber, ld.start, ld.end);
+        if (fieldNumber === 5) out.push({ start: ld.start, end: ld.end });
         at = ld.end;
+      } else if (wireType === 0) {
+        at = varint(at).at;
       } else {
-        return; // unsupported wire type (fixed32/64, groups)
+        return;
       }
     }
   }
 
-  // Manifest { XmlNode manifest = 1 }
-  fields(0, bytes.length, (f1, s1, e1) => {
-    if (f1 !== 1) return;
-    // XmlNode { XmlElement element = 3 }
-    fields(s1, e1, (f2, s2, e2) => {
-      if (f2 !== 5) return; // XmlNode.element (AAPT2 Resources.proto)
-      // XmlElement { ...; XmlAttribute attribute = 5 }
-      fields(s2, e2, (f3, s3, e3) => {
-        if (f3 !== 5) return;
-        let resourceId = null;
-        let typedValue = null;
-        // XmlAttribute { ...; int32 resource_id = 5; TypedValue typed_value = 6 }
-        fields(s3, e3, (f4, s4, e4) => {
-          if (f4 === 5) resourceId = varint(s4).value;
-          else if (f4 === 6) typedValue = { s: s4, e: e4 };
-        });
-        if (resourceId === null || !typedValue) return;
-        found.attrs.push({ resourceId });
-        if (resourceId === 0x0101021b) {
-          fields(typedValue.s, typedValue.e, (f5, s5) => { if (f5 === 2) found.versionCode = varint(s5).value; });
-        } else if (resourceId === 0x0101021c) {
-          fields(typedValue.s, typedValue.e, (f5, s5, e5) => { if (f5 === 3) found.versionName = bytes.toString("utf8", s5, e5); });
-        } else if (resourceId === 0x0101000f) {
-          fields(typedValue.s, typedValue.e, (f5, s5) => { if (f5 === 2) found.debuggable = varint(s5).value !== 0; });
+  // The AAB manifest is a bare aapt.pb.XmlNode; older builds wrap it in
+  // aapt.pb.Manifest { XmlNode manifest = 1 }. Accept both: scan the
+  // top-level fields AND the payload of a top-level field 1 (the wrapper).
+  const candidates = [];
+  let at = 0;
+  while (at < bytes.length) {
+    const tag = varint(at);
+    at = tag.at;
+    const fieldNumber = tag.value >>> 3;
+    const wireType = tag.value & 0x7;
+    if (wireType === 2) {
+      const ld = lengthDelimited(at);
+      if (!ld) break;
+      if (fieldNumber === 5) candidates.push({ start: ld.start, end: ld.end });
+      else if (fieldNumber === 1) {
+        // Wrapper (Manifest.manifest) — the XmlNode payload may hold an
+        // XmlElement at field 5; push the ELEMENT, not the wrapper.
+        const inner = [];
+        collectAttributes(ld, inner);
+        if (inner.length > 0) candidates.push(inner[0]);
+      }
+      at = ld.end;
+    } else if (wireType === 0) {
+      at = varint(at).at;
+    } else {
+      break;
+    }
+  }
+
+  const attributes = [];
+  for (const candidate of candidates) collectAttributes(candidate, attributes);
+  for (const attr of attributes) {
+    let resourceId = null;
+    let typedValue = null;
+    let at = attr.start;
+    while (at < attr.end) {
+      const tag = varint(at);
+      at = tag.at;
+      const fieldNumber = tag.value >>> 3;
+      const wireType = tag.value & 0x7;
+      if (wireType === 2) {
+        const ld = lengthDelimited(at);
+        if (!ld) break;
+        if (fieldNumber === 5) resourceId = varint(ld.start).value;
+        else if (fieldNumber === 6) typedValue = { start: ld.start, end: ld.end };
+        at = ld.end;
+      } else if (wireType === 0) {
+        at = varint(at).at;
+      } else {
+        break;
+      }
+    }
+    if (resourceId === null || !typedValue) continue;
+    found.attrs.push({ resourceId });
+    if (resourceId === 0x0101021b) {
+      let at2 = typedValue.start;
+      while (at2 < typedValue.end) {
+        const tag = varint(at2);
+        at2 = tag.at;
+        const fieldNumber = tag.value >>> 3;
+        const wireType = tag.value & 0x7;
+        if (wireType === 2) {
+          const ld = lengthDelimited(at2);
+          if (!ld) break;
+          if (fieldNumber === 3) found.versionName = bytes.toString("utf8", ld.start, ld.end);
+          at2 = ld.end;
+        } else if (wireType === 0) {
+          if (fieldNumber === 2) found.versionCode = varint(at2).value;
+          at2 = varint(at2).at;
+        } else {
+          break;
         }
-      });
-    });
-  });
+      }
+    } else if (resourceId === 0x0101021c) {
+      let at2 = typedValue.start;
+      while (at2 < typedValue.end) {
+        const tag = varint(at2);
+        at2 = tag.at;
+        const fieldNumber = tag.value >>> 3;
+        const wireType = tag.value & 0x7;
+        if (wireType === 2) {
+          const ld = lengthDelimited(at2);
+          if (!ld) break;
+          if (fieldNumber === 3) found.versionName = bytes.toString("utf8", ld.start, ld.end);
+          at2 = ld.end;
+        } else if (wireType === 0) {
+          at2 = varint(at2).at;
+        } else {
+          break;
+        }
+      }
+    } else if (resourceId === 0x0101000f) {
+      let at2 = typedValue.start;
+      while (at2 < typedValue.end) {
+        const tag = varint(at2);
+        at2 = tag.at;
+        const fieldNumber = tag.value >>> 3;
+        const wireType = tag.value & 0x7;
+        if (wireType === 0) {
+          if (fieldNumber === 2) found.debuggable = varint(at2).value !== 0;
+          at2 = varint(at2).at;
+        } else if (wireType === 2) {
+          const ld = lengthDelimited(at2);
+          if (!ld) break;
+          at2 = ld.end;
+        } else {
+          break;
+        }
+      }
+    }
+  }
   return found;
 }
-
 export function readZipEntryText(archive, name) {
   const entry = archive.entries.get(name.toLowerCase());
   if (!entry) return null;

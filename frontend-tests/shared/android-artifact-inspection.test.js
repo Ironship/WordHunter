@@ -199,7 +199,7 @@ describe("Android release artifact assertions", () => {
     const typed = (type, value, stringValue) => {
       const parts = [ld(1, Buffer.from([type]))];
       if (stringValue !== undefined) parts.push(ld(3, Buffer.from(stringValue, "utf8")));
-      else parts.push(ld(2, varint(value)));
+      else parts.push(Buffer.concat([Buffer.from([2 << 3]), varint(value)])); // field 2, wire 0
       return Buffer.concat(parts);
     };
     const attribute = (resourceId, typedValue) =>
@@ -216,5 +216,10 @@ describe("Android release artifact assertions", () => {
     assert.equal(parsed.versionCode, 101001101);
     assert.equal(parsed.versionName, "1.0.11-rc.1");
     assert.equal(parsed.debuggable, false);
+    // Real AABs store the manifest as a bare XmlNode (no Manifest wrapper).
+    const bare = parseProtoManifest(node);
+    assert.equal(bare.versionCode, 101001101);
+    assert.equal(bare.versionName, "1.0.11-rc.1");
+    assert.equal(bare.debuggable, false);
   });
 });
