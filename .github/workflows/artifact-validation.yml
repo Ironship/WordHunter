@@ -96,12 +96,13 @@ jobs:
       - name: Install Android SDK and NDK packages
         shell: pwsh
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.0.12077973"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0" "build-tools;36.0.0" "ndk;27.0.12077973"
           "NDK_HOME=$env:ANDROID_HOME\ndk\27.0.12077973" | Out-File -FilePath $env:GITHUB_ENV -Append
-          # Pin the build-tools version for artifact inspection: newer runner
-          # images preinstall newer build-tools (e.g. 37.0.0) whose aapt2
-          # regressed AAB manifest parsing; the inspector honors this pin.
-          "ANDROID_BUILD_TOOLS=36.0.0" | Out-File -FilePath $env:GITHUB_ENV -Append
+          # Pin the build-tools version for artifact inspection: aapt2 from
+          # build-tools 36+ regressed AAB manifest parsing ("could not identify
+          # format of APK" on a valid AAB); 35.0.0 is the last known-good
+          # inspector version. 36.0.0 stays installed for the gradle build.
+          "ANDROID_BUILD_TOOLS=35.0.0" | Out-File -FilePath $env:GITHUB_ENV -Append
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@4e529fb27e59237866a6523e61ab248308c068b4
