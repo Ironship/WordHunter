@@ -114,7 +114,7 @@ export function canvas(id: string): ChartContext | null {
   const p = c.parentElement;
   if (!p) return null;
   const ps = getComputedStyle(p);
-  const w = Math.max(280, p.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 400;
+  const w = Math.max(240, p.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 400;
   const h = Math.round(parseFloat(getComputedStyle(c).height)) || Math.round(w / 1.5);
   const pixelWidth = Math.max(1, Math.round(w * dpr));
   const pixelHeight = Math.max(1, Math.round(h * dpr));
@@ -133,9 +133,34 @@ export function canvas(id: string): ChartContext | null {
 export function showTooltip(evt: MouseEvent, tipText: string): void {
   if (!tooltipEl) { tooltipEl = document.createElement("div"); tooltipEl.className = "chart-tooltip"; document.body.appendChild(tooltipEl); }
   tooltipEl.textContent = tipText;
-  tooltipEl.style.left = (evt.clientX + 14) + "px";
-  tooltipEl.style.top = (evt.clientY - 32) + "px";
+  const pos = clampTooltipPosition(
+    evt.clientX + 14,
+    evt.clientY - 32,
+    tooltipEl.offsetWidth,
+    tooltipEl.offsetHeight,
+    window.innerWidth,
+    window.innerHeight
+  );
+  tooltipEl.style.left = pos.x + "px";
+  tooltipEl.style.top = pos.y + "px";
   tooltipEl.style.display = "block";
+}
+
+// Keeps the tooltip inside the viewport (8 px margin) — near the right/bottom
+// edges it would otherwise render off-screen.
+export function clampTooltipPosition(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number
+): { x: number; y: number } {
+  const margin = 8;
+  return {
+    x: Math.max(margin, Math.min(x, viewportWidth - width - margin)),
+    y: Math.max(margin, Math.min(y, viewportHeight - height - margin))
+  };
 }
 
 export function hideTooltip(): void { if (tooltipEl) tooltipEl.style.display = "none"; }
@@ -196,7 +221,7 @@ export function drawBarChart(
     }
     ctx.strokeRect(pad.left, pad.top, pw, ph);
     ctx.fillStyle = labelMuted;
-    ctx.font = "10px Inter, sans-serif";
+    ctx.font = "11px Inter, sans-serif";
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     for (let i = 0; i <= 4; i++) {
@@ -208,15 +233,21 @@ export function drawBarChart(
     const x = pad.left + i * (pw / bins.length) + (minimal ? 2 : 3);
     drawChartBar(ctx, x, pad.top + ph - h, barW, h, bins[i].color || color);
     ctx.fillStyle = minimal ? text : labelMuted;
-    ctx.font = "9px Inter, sans-serif";
+    ctx.font = "10px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.fillText(bins[i].label, x + barW / 2, H - pad.bottom + (minimal ? 8 : 14));
     if (bins[i].val > 0) {
-      ctx.fillStyle = text;
-      ctx.font = minimal ? "9px Inter,sans-serif" : "bold 10px Inter, sans-serif";
-      ctx.textBaseline = minimal ? "top" : "bottom";
-      ctx.fillText(String(bins[i].val), x + barW / 2, minimal ? pad.top + ph - h - 4 : Math.max(18, pad.top + ph - h - 4));
+      // Value label above the bar; skip it when the bar fills the plot (the
+      // label would collide with the title/subtitle zone — the old clamp to
+      // y=18 parked short-bar labels right on top of the subtitle).
+      const ly = pad.top + ph - h - 4;
+      if (ly >= pad.top + 12) {
+        ctx.fillStyle = text;
+        ctx.font = minimal ? "10px Inter,sans-serif" : "bold 11px Inter, sans-serif";
+        ctx.textBaseline = minimal ? "top" : "bottom";
+        ctx.fillText(String(bins[i].val), x + barW / 2, ly);
+      }
     }
   }
 }

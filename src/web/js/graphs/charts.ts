@@ -284,7 +284,7 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
     drawChartBar(ctx, x, y, barW, h, d === 0 ? green : blue, 2);
     hotAreas.push({ x, y, w: barW, h, label: buckets[d] + ' ' + t("graphs.cards") });
   }
-  ctx.fillStyle = labelMuted; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let i = 0; i <= 4; i++) ctx.fillText(String(Math.round((i / 4) * maxVal)), pad.left - 6, pad.top + ph - (i / 4) * ph);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (let d = 0; d < DAYS; d += 5) {
@@ -517,7 +517,7 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
     ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
   }
   const fmt = (v: number) => maxS < 10 ? v.toFixed(1) : Math.round(v).toString();
-  ctx.fillStyle = labelMuted; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let i = 0; i <= 4; i++) { ctx.fillText(fmt((i / 4) * maxS), pad.left - 6, pad.top + ph - (i / 4) * ph); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (let i = 0; i <= 4; i++) ctx.fillText(Math.round((i / 4) * maxD).toString(), pad.left + (i / 4) * pw, H - pad.bottom + 16);
