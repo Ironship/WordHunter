@@ -477,7 +477,7 @@ export function parseProtoManifest(bytes) {
     if (f1 !== 1) return;
     // XmlNode { XmlElement element = 3 }
     fields(s1, e1, (f2, s2, e2) => {
-      if (f2 !== 3) return;
+      if (f2 !== 5) return; // XmlNode.element (AAPT2 Resources.proto)
       // XmlElement { ...; XmlAttribute attribute = 5 }
       fields(s2, e2, (f3, s3, e3) => {
         if (f3 !== 5) return;
