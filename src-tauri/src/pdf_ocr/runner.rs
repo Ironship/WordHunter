@@ -40,6 +40,24 @@ pub(crate) fn gpu_status_value_with_provider(status: &str, provider: &str) -> Va
     }
 }
 
+/// Parses the runner's `--gpu-status` stdout. A well-formed `{"status": ...}`
+/// document is honored as-is (the runner itself only ever emits `ready` or
+/// `unavailable`); anything missing/invalid maps to `failed`.
+pub(crate) fn parse_gpu_probe_output(stdout: &[u8]) -> Value {
+    let parsed = serde_json::from_slice::<Value>(stdout).ok();
+    let status = parsed
+        .as_ref()
+        .and_then(|value| value.get("status"))
+        .and_then(Value::as_str)
+        .unwrap_or("failed");
+    let provider = parsed
+        .as_ref()
+        .and_then(|value| value.get("provider"))
+        .and_then(Value::as_str)
+        .unwrap_or("cpu");
+    gpu_status_value_with_provider(status, provider)
+}
+
 pub(crate) fn platform_gpu_status_without_runner() -> Option<Value> {
     if cfg!(any(windows, target_os = "linux")) {
         None
@@ -74,14 +92,28 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
     let Ok(mut child) = command.spawn() else {
         return gpu_status_value("failed");
     };
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let finish = |output: std::process::Output| -> Value {
+        // Honor a well-formed status document even when the runner exits
+        // non-zero (e.g. a DirectML warning path or a broken pipe on print) —
+        // DirectML session creation can take well over the old 30s deadline
+        // on a cold start, and a killed child that already printed its
+        // verdict must not mask a working GPU.
+        if !output.status.success() && parse_gpu_probe_output(&output.stdout)["status"] == "failed"
+        {
+            return gpu_status_value("failed");
+        }
+        parse_gpu_probe_output(&output.stdout)
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
     let output = loop {
         match child.try_wait() {
             Ok(Some(_)) => break child.wait_with_output().ok(),
             Ok(None) => {
                 if std::time::Instant::now() >= deadline {
                     let _ = child.kill();
-                    let _ = child.wait();
+                    if let Some(output) = child.wait_with_output().ok() {
+                        return finish(output);
+                    }
                     return gpu_status_value("failed");
                 }
                 std::thread::sleep(std::time::Duration::from_millis(100));
@@ -92,21 +124,7 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
     let Some(output) = output else {
         return gpu_status_value("failed");
     };
-    if !output.status.success() {
-        return gpu_status_value("failed");
-    }
-    let parsed = serde_json::from_slice::<Value>(&output.stdout).ok();
-    let status = parsed
-        .as_ref()
-        .and_then(|value| value.get("status"))
-        .and_then(Value::as_str)
-        .unwrap_or("failed");
-    let provider = parsed
-        .as_ref()
-        .and_then(|value| value.get("provider"))
-        .and_then(Value::as_str)
-        .unwrap_or("cpu");
-    gpu_status_value_with_provider(status, provider)
+    finish(output)
 }
 
 /// Returns the cached GPU status, probing once on first use. Failed probes are
@@ -438,6 +456,50 @@ fn read_tail(path: &Path) -> String {
     let chars = text.chars().collect::<Vec<_>>();
     let start = chars.len().saturating_sub(4000);
     chars[start..].iter().collect::<String>().trim().to_string()
+}
+
+#[cfg(test)]
+mod gpu_probe_tests {
+    use super::{gpu_status_value, parse_gpu_probe_output};
+
+    #[test]
+    fn honors_well_formed_status_on_nonzero_exit() {
+        let value = parse_gpu_probe_output(br#"{"status":"ready","provider":"directml"}"#);
+        assert_eq!(value["status"], "ready");
+        assert_eq!(value["provider"], "directml");
+    }
+
+    #[test]
+    fn honors_unavailable_from_the_runner() {
+        let value = parse_gpu_probe_output(br#"{"status":"unavailable","provider":"cpu"}"#);
+        assert_eq!(value["status"], "unavailable");
+    }
+
+    #[test]
+    fn fails_when_stdout_is_empty() {
+        let value = parse_gpu_probe_output(b"");
+        assert_eq!(value["status"], "failed");
+    }
+
+    #[test]
+    fn fails_when_stdout_is_not_json() {
+        let value = parse_gpu_probe_output(b"DirectML init warning\n{not json");
+        assert_eq!(value["status"], "failed");
+    }
+
+    #[test]
+    fn unknown_status_maps_to_failed() {
+        let value = parse_gpu_probe_output(br#"{"status":"bogus","provider":"cpu"}"#);
+        assert_eq!(value["status"], "failed");
+        assert_eq!(value["provider"], "cpu");
+    }
+
+    #[test]
+    fn probe_failure_value_uses_cpu_provider() {
+        let value = gpu_status_value("failed");
+        assert_eq!(value["status"], "failed");
+        assert_eq!(value["provider"], "cpu");
+    }
 }
 
 #[cfg(all(test, unix))]

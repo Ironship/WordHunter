@@ -1,0 +1,5 @@
+Word Hunter 1.0.11-rc.2
+
+- Android reliability: TTS word highlighting on modern Android, day/night themes, exporting no longer stalls on a busy database, faster startup after background restarts.
+- Youglish opens through the native Android bridge.
+- Settings and dialogs rendered by TypeScript components (no duplicated static markup).

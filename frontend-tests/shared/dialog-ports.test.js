@@ -52,6 +52,13 @@ async function evaluateWithMocks(file, importValues, globals = {}) {
 function fakeDocument() {
   const registry = new Map();
   const bodyChildren = [];
+  const mainPanel = {
+    isElement: true,
+    id: "main-panel",
+    className: "main-panel",
+    children: [],
+    appendChild(child) { this.children.push(child); registry.set(child.id, child); }
+  };
   const makeElement = () => ({
     isDialog: true,
     isElement: true,
@@ -74,8 +81,12 @@ function fakeDocument() {
   return {
     registry,
     bodyChildren,
+    mainPanel,
     getElementById(id) { return registry.get(id) ?? null; },
     createElement() { return makeElement(); },
+    querySelector(selector) {
+      return selector === "main.main-panel" ? mainPanel : null;
+    },
     body: { appendChild(element) { bodyChildren.push(element); registry.set(element.id, element); } }
   };
 }
@@ -763,7 +774,12 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.equal(view.id, "settings-view");
     assert.equal(view.className, "view");
     assert.equal(view.attrs["data-title-key"], "nav.settings");
-    assert.equal(document.bodyChildren.length, 1);
+    // The settings view must mount inside .main-panel (sibling of the other
+    // views), NOT document.body — body mounting puts it below the fold and
+    // makes the tab look empty until the user scrolls (issue #127 P3 fix).
+    assert.equal(document.mainPanel.children.length, 1);
+    assert.equal(document.mainPanel.children[0], view);
+    assert.equal(document.bodyChildren.length, 0);
     // Shell + all settings panels built by renderSettingsView(): Appearance,
     // Flashcards, Reader, Translator & Dictionary, AI, Local data (#127 P3).
     for (const id of [
@@ -868,7 +884,7 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.match(view.innerHTML, /id="pref-offline-translator"/);
     assert.match(view.innerHTML, /id="pref-font"/);
     assert.equal(renderSettingsView(), view, "render must be idempotent");
-    assert.equal(document.bodyChildren.length, 1);
+    assert.equal(document.mainPanel.children.length, 1);
   });
 
   it("keeps the settings view out of static HTML and renders it before cacheElements", () => {
