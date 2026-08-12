@@ -68,6 +68,21 @@ export function buildEaseFactorBins(
 
 export type ChartContext = CanvasRenderingContext2D & { w: number; h: number };
 
+// Mature = interval >= 21 days (Anki convention). Ignored cards are
+// suspended and excluded; known cards COUNT — they graduated at the
+// 21-day threshold and are the classic mature cards (excluding them made
+// the chart permanently one-sided).
+export function countMatureYoung(entries: readonly VocabEntry[]): { young: number; mature: number } {
+  let young = 0;
+  let mature = 0;
+  for (const e of entries) {
+    if (e.status === "ignored") continue;
+    if ((e.interval || 0) >= 21) mature++;
+    else young++;
+  }
+  return { young, mature };
+}
+
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
 // Theme colors (initialized by updateColors)
@@ -295,7 +310,7 @@ export function renderStatsSummary(_chartEntries?: readonly VocabEntry[]): void 
       if (d < 0) overdue++;
       else if (d === 0) due++;
     }
-    if (e.status !== "known" && (e.interval || 0) >= 21) matureCount++;
+    if ((e.interval || 0) >= 21) matureCount++;
   }
   const dueTotal = due + overdue;
   const srsActive = total - known;
