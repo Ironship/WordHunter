@@ -98,7 +98,8 @@ pub(crate) fn probe_gpu_status(app_handle: &AppHandle) -> Value {
         // DirectML session creation can take well over the old 30s deadline
         // on a cold start, and a killed child that already printed its
         // verdict must not mask a working GPU.
-        if !output.status.success() && parse_gpu_probe_output(&output.stdout)["status"] == "failed" {
+        if !output.status.success() && parse_gpu_probe_output(&output.stdout)["status"] == "failed"
+        {
             return gpu_status_value("failed");
         }
         parse_gpu_probe_output(&output.stdout)
