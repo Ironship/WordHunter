@@ -6,6 +6,7 @@ import {
   isBadgingDebuggable,
   parseAxmlManifest,
   parseBadgingPackage,
+  parseProtoManifest,
   parseTextManifest,
   parseXmlTreeManifest,
 } from "../../scripts/inspect-artifact.mjs";
@@ -167,11 +168,53 @@ describe("Android release artifact assertions", () => {
     resourceMapChunk.writeUInt32LE(8 + resourceMap.length, 4);
     resourceMap.copy(resourceMapChunk, 8);
 
-    const axml = Buffer.concat([Buffer.from([0x03, 0x00, 0x08, 0x00, 24, 0, 0, 0]), stringPoolChunk, resourceMapChunk, element]);
+    const axml = Buffer.concat([Buffer.from([0x03, 0, 0x08, 0, 24, 0, 0, 0]), stringPoolChunk, resourceMapChunk, element]);
     const parsed = parseAxmlManifest(axml);
     assert.equal(parsed.versionCode, 101001101);
     assert.equal(parsed.versionName, "1.0.11-rc.1");
     assert.equal(parsed.debuggable, false);
     assert.equal(parseAxmlManifest(Buffer.from("garbage")).axml, false);
+  });
+
+  it("parses the protobuf manifest from the AAB base/ directory", () => {
+    // Minimal synthetic protobuf manifest (AAPT2 XmlNode schema):
+    // Manifest{ XmlNode manifest=1 } -> XmlNode{ element=3 } ->
+    // XmlElement{ name=1; attribute=5 x3 } ->
+    // XmlAttribute{ resource_id=5; typed_value=6 } ->
+    // TypedValue{ value=2 / string_value=3 }.
+    const varint = (value) => {
+      const out = [];
+      let v = value >>> 0;
+      while (v > 0x7f) {
+        out.push((v & 0x7f) | 0x80);
+        v = v >>> 7;
+      }
+      out.push(v);
+      return Buffer.from(out);
+    };
+    const ld = (field, payload) => {
+      const tag = Buffer.from([(field << 3) | 2]);
+      return Buffer.concat([tag, varint(payload.length), payload]);
+    };
+    const typed = (type, value, stringValue) => {
+      const parts = [ld(1, Buffer.from([type]))];
+      if (stringValue !== undefined) parts.push(ld(3, Buffer.from(stringValue, "utf8")));
+      else parts.push(ld(2, varint(value)));
+      return Buffer.concat(parts);
+    };
+    const attribute = (resourceId, typedValue) =>
+      Buffer.concat([ld(5, varint(resourceId)), ld(6, typedValue)]);
+    const element = Buffer.concat([
+      ld(1, Buffer.from("manifest", "utf8")),
+      ld(5, attribute(0x0101021b, typed(0x10, 101001101))),
+      ld(5, attribute(0x0101021c, typed(0x10, 0, "1.0.11-rc.1"))),
+      ld(5, attribute(0x0101000f, typed(0x12, 0))),
+    ]);
+    const node = ld(3, element);
+    const manifest = ld(1, node);
+    const parsed = parseProtoManifest(manifest);
+    assert.equal(parsed.versionCode, 101001101);
+    assert.equal(parsed.versionName, "1.0.11-rc.1");
+    assert.equal(parsed.debuggable, false);
   });
 });

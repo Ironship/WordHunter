@@ -418,6 +418,90 @@ export function parseAxmlManifest(bytes) {
   return found;
 }
 
+// The AGP-produced AAB keeps its manifest only as protobuf under base/
+// (no root text/AXML copy), so the version identity is also parsed from the
+// protobuf wire format directly (no schema library needed):
+//   Manifest { XmlNode manifest = 1 }
+//   XmlNode  { XmlElement element = 3 }
+//   XmlElement { string name = 1; ...; XmlAttribute attribute = 5; ... }
+//   XmlAttribute { ...; int32 resource_id = 5; TypedValue typed_value = 6; }
+//   TypedValue { int32 type = 1; int32 value = 2; string string_value = 3; }
+export function parseProtoManifest(bytes) {
+  const found = { versionCode: null, versionName: null, debuggable: false };
+
+  function varint(at) {
+    let value = 0;
+    let shift = 0;
+    while (at < bytes.length && shift < 64) {
+      const byte = bytes[at];
+      at += 1;
+      value |= (byte & 0x7f) << shift;
+      if (!(byte & 0x80)) return { value: value >>> 0, at };
+      shift += 7;
+    }
+    return { value: 0, at };
+  }
+
+  // Returns the payload [start, end) of a length-delimited field at `at`.
+  function lengthDelimited(at) {
+    const len = varint(at);
+    const start = len.at;
+    const end = start + len.value;
+    if (end > bytes.length) return null;
+    return { start, end };
+  }
+
+  // Iterate the fields of a message; `visit(fieldNumber, start, end)`.
+  function fields(start, end, visit) {
+    let at = start;
+    while (at < end) {
+      const tag = varint(at);
+      at = tag.at;
+      const fieldNumber = tag.value >>> 3;
+      const wireType = tag.value & 0x7;
+      if (wireType === 0) {
+        at = varint(at).at;
+      } else if (wireType === 2) {
+        const ld = lengthDelimited(at);
+        if (!ld) return;
+        visit(fieldNumber, ld.start, ld.end);
+        at = ld.end;
+      } else {
+        return; // unsupported wire type (fixed32/64, groups)
+      }
+    }
+  }
+
+  // Manifest { XmlNode manifest = 1 }
+  fields(0, bytes.length, (f1, s1, e1) => {
+    if (f1 !== 1) return;
+    // XmlNode { XmlElement element = 3 }
+    fields(s1, e1, (f2, s2, e2) => {
+      if (f2 !== 3) return;
+      // XmlElement { ...; XmlAttribute attribute = 5 }
+      fields(s2, e2, (f3, s3, e3) => {
+        if (f3 !== 5) return;
+        let resourceId = null;
+        let typedValue = null;
+        // XmlAttribute { ...; int32 resource_id = 5; TypedValue typed_value = 6 }
+        fields(s3, e3, (f4, s4, e4) => {
+          if (f4 === 5) resourceId = varint(s4).value;
+          else if (f4 === 6) typedValue = { s: s4, e: e4 };
+        });
+        if (resourceId === null || !typedValue) return;
+        if (resourceId === 0x0101021b) {
+          fields(typedValue.s, typedValue.e, (f5, s5) => { if (f5 === 2) found.versionCode = varint(s5).value; });
+        } else if (resourceId === 0x0101021c) {
+          fields(typedValue.s, typedValue.e, (f5, s5, e5) => { if (f5 === 3) found.versionName = bytes.toString("utf8", s5, e5); });
+        } else if (resourceId === 0x0101000f) {
+          fields(typedValue.s, typedValue.e, (f5, s5) => { if (f5 === 2) found.debuggable = varint(s5).value !== 0; });
+        }
+      });
+    });
+  });
+  return found;
+}
+
 export function readZipEntryText(archive, name) {
   const entry = archive.entries.get(name.toLowerCase());
   if (!entry) return null;
@@ -538,6 +622,13 @@ export function inspectAndroid(path, abi) {
     let manifest = textManifest;
     if (textManifest.versionCode === null && textManifest.versionName === null) {
       manifest = parseAxmlManifest(Buffer.from(manifestXml, "utf8"));
+    }
+    if (manifest.versionCode === null && manifest.versionName === null) {
+      // AGP-produced AABs keep the manifest only as protobuf under base/.
+      const protoEntry = archive.entries.get("base/manifest/androidmanifest.xml");
+      if (protoEntry) {
+        manifest = parseProtoManifest(zipEntryBytes(archive, protoEntry));
+      }
     }
     if (manifest.versionCode !== expected.versionCode) {
       fail(`${path} has versionCode ${manifest.versionCode}; expected ${expected.versionCode} (from tauri.conf.json version ${expected.versionName})`);
