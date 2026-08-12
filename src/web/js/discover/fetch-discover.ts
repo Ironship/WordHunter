@@ -28,7 +28,7 @@ export async function fetchDiscover(url: string, signal: AbortSignal | null): Pr
       if (response.ok) return response;
       lastError = new Error(`HTTP ${response.status}`);
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") throw error;
+      if (error != null && typeof error === "object" && (error as { name?: unknown }).name === "AbortError") throw error;
       lastError = error;
     }
     if (attempt + 1 < MAX_DISCOVER_ATTEMPTS) {
