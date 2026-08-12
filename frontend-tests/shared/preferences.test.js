@@ -35,6 +35,8 @@ globalThis.CustomEvent = class CustomEvent {
 };
 
 const { els } = await import("../../dist/web/js/dom.js");
+const { installSettingsFixture } = await import("./settings-fixture.js");
+installSettingsFixture(globalThis.document, els);
 const { createDefaultState, normalizeState, replaceState, state } = await import("../../dist/web/js/state.js");
 const { resetPreferences, syncSettingsControls } = await import("../../dist/web/js/preferences.js");
 const { renderWordPanel } = await import("../../dist/web/js/reader/word-panel.js");

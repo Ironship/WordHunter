@@ -68,42 +68,24 @@ export function cacheElements() {
   els.ankiExportStatusFilters = [...document.querySelectorAll<HTMLInputElement>("[data-anki-export-status]")];
   els.clearWords = byId("clear-words");
   els.clearLibrary = byId("clear-library");
-  els.resetPrefs = byId("reset-prefs");
-  els.prefRemovalBehavior = byId("pref-removal-behavior");
-  els.prefTheme = byId("pref-theme");
   els.prefLocales = [
     byId<HTMLSelectElement>("pref-locale-sidebar"),
-    byId<HTMLSelectElement>("pref-locale-settings"),
   ].filter(Boolean);
   els.prefLearningLanguages = [
     byId<HTMLSelectElement>("pref-learning-language-sidebar"),
-    byId<HTMLSelectElement>("pref-learning-language-settings"),
   ].filter(Boolean);
   els.prefLocale = els.prefLocales[0] || null;
   els.prefLearningLanguage = els.prefLearningLanguages[0] || null;
-  els.prefColorNew = byId("pref-color-new");
-  els.prefColorLearning = byId("pref-color-learning");
-  els.prefColorKnown = byId("pref-color-known");
-  els.prefColorIgnored = byId("pref-color-ignored");
-  els.prefDynamicLearningColors = byId("pref-dynamic-learning-colors");
-  els.prefLearningColors = [...document.querySelectorAll<HTMLInputElement>("[data-learning-color]")];
-  els.prefLearningColorsRow = byId("pref-learning-colors-row");
   els.prefFont = byId("pref-font");
   els.prefLineHeight = byId("pref-line-height");
   els.prefWordsPerPage = byId("pref-words-per-page");
   els.prefWordAlgorithm = byId("pref-word-algorithm");
-  els.prefSrsAlgorithm = byId("pref-srs-algorithm");
   els.prefFontSize = byId("pref-font-size");
   els.prefFontSizeLabel = byId("pref-font-size-label");
-  els.prefUiScale = byId("pref-ui-scale");
-  els.prefUiScaleLabel = byId("pref-ui-scale-label");
-  els.prefTouchControls = byId("pref-touch-controls");
   els.prefHighlight = byId("pref-highlight");
   els.prefHideKnown = byId("pref-hide-known");
   els.prefInTextReview = byId("pref-in-text-review");
-  els.prefReviewGraphType = byId("pref-review-graph-type");
   els.prefAutoLearn = byId("pref-auto-learn");
-  els.prefAutoAddLearning = byId("pref-auto-add-learning");
   els.prefAutoTranslate = byId("pref-auto-translate");
   els.prefAutoTranslateRow = byId("pref-auto-translate-row");
   els.prefOfflineTranslator = byId("pref-offline-translator");
@@ -117,27 +99,11 @@ export function cacheElements() {
   els.prefLmStudioEndpointRow = byId("pref-lmstudio-endpoint-row");
   els.prefLmStudioModel = byId("pref-lmstudio-model");
   els.prefLmStudioModelRow = byId("pref-lmstudio-model-row");
-  els.prefAiExplanations = byId("pref-ai-explanations");
-  els.prefAiEndpoint = byId("pref-ai-endpoint");
-  els.prefAiEndpointRow = byId("pref-ai-endpoint-row");
-  els.prefAiModel = byId("pref-ai-model");
-  els.prefAiModelRow = byId("pref-ai-model-row");
-  els.prefAiApiKey = byId("pref-ai-api-key");
-  els.prefAiApiKeyRow = byId("pref-ai-key-row");
-  els.prefAiEffort = byId("pref-ai-effort");
-  els.prefAiEffortRow = byId("pref-ai-effort-row");
-  els.prefAiAutoTrigger = byId("pref-ai-auto-trigger");
-  els.prefAiAutoTriggerRow = byId("pref-ai-auto-trigger-row");
   els.prefArgosAsDict = byId("pref-argos-as-dict");
   els.prefArgosAsDictRow = byId("pref-argos-as-dict-row");
   els.prefDictionaryUrl = byId("pref-dictionary-url");
   els.prefDictionaryMode = byId("pref-dictionary-mode");
   els.prefYouglishMode = byId("pref-youglish-mode");
-  els.prefCardStats = byId("pref-card-stats");
-  els.prefCardStatsMode = byId("pref-card-stats-mode");
-  els.prefCardStatsModeRow = byId("pref-card-stats-mode-row");
-  els.prefCovers = byId("pref-covers");
-  els.ocrGpuStatus = byId("ocr-gpu-status");
   els.prefTextAlign = byId("pref-text-align");
   els.prefMaxWidth = byId("pref-max-width");
   els.prefReaderFocusMode = byId("pref-reader-focus-mode");
@@ -145,18 +111,12 @@ export function cacheElements() {
   els.prefSelectedWordPanelItems = document.getElementById("pref-selected-word-panel-items");
   els.prefTtsRate = byId("pref-tts-rate");
   els.prefAutoTtsOnWordFocus = byId("pref-auto-tts-on-word-focus");
-  els.prefAutoTtsOnFlashcardOpen = byId("pref-auto-tts-on-flashcard-open");
   els.prefTtsWordHighlight = byId("pref-tts-word-highlight");
   els.prefStatusSoundsEnabled = byId("pref-status-sounds-enabled");
   els.prefStatusSoundVolume = byId("pref-status-sound-volume");
   els.prefStatusSoundVolumeLabel = byId("pref-status-sound-volume-label");
   els.prefUseEdgeTts = byId("pref-use-edge-tts");
 
-  els.storageSummary = byId("storage-summary");
-  els.dataDirectory = byId("data-directory");
-  els.recoveryStatusPanel = byId("recovery-status-panel");
-  els.recoveryStatusList = byId("recovery-status-list");
-  els.chooseDataDirectory = byId("choose-data-directory");
 
   els.discoverForm = byId("discover-form");
   els.discoverQuery = byId("discover-query");
