@@ -272,6 +272,12 @@ fn static_responses_include_security_headers() {
     assert!(response.contains("X-Frame-Options: DENY"));
     assert!(response.contains("Content-Security-Policy: default-src 'self'"));
     assert!(response.contains("frame-ancestors 'none'"));
+    // The Discover view (and other user-configurable integrations) fetch
+    // external https APIs (gutendex, wikipedia, youglish, deepl, dictionary,
+    // AI endpoints) and local LM Studio (http://127.0.0.1). connect-src must
+    // allow them — a bare 'self' silently kills every external fetch with a
+    // CSP violation ("Could not fetch results." in Discover).
+    assert!(response.contains("connect-src 'self' https: http://127.0.0.1:* http://localhost:*"));
 }
 
 #[test]
