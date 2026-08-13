@@ -10,6 +10,7 @@ import { escapeHtml, escapeAttribute, calcStatsPcts } from "../utils.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { findBookById, getAllBooks, bookTexts } from "../books.js";
+import { openAndroidUrl } from "../platform.js";
 import { renderPlainText } from "./text-renderer.js";
 import { isPdfOcrText, renderPdfOcrReader } from "./pdf-ocr-renderer.js";
 import {
@@ -124,6 +125,10 @@ function renderReaderSource(current: WhText): void {
     const sourceLink = els.readerSource.querySelector("a.reader-source-link");
     sourceLink?.addEventListener("click", (event: Event) => {
       event.preventDefault();
+      // Android first: the bridge opens the system browser; without it the
+      // webview cannot open the link and the toast below would lie about a
+      // failure while the browser actually opened (audit 2026-08-13).
+      if (openAndroidUrl(url)) return;
       fetch(`/__open_external?url=${encodeURIComponent(url)}`)
         .then((res) => {
           if (!res.ok) {

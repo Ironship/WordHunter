@@ -160,6 +160,8 @@ describe("lazy library statistics", () => {
       },
       "../i18n.js": { t: (key) => key, getLocale: () => "en" },
       "../panel-resizer.js": { bindSidebarResizer() {} },
+      "../platform.js": { openAndroidUrl: () => false },
+      "../toast.js": { showToast: () => {} },
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, {
       window: {},
