@@ -1,6 +1,8 @@
 #[cfg(unix)]
 use super::config_dir;
-use super::{data_dir, device_id, read_config_file, sanitize_id, write_config_file};
+use super::{
+    data_dir, device_id, read_config_file, resolve_default_data_dir, sanitize_id, write_config_file,
+};
 use std::ffi::OsString;
 use std::path::Path;
 
@@ -44,6 +46,40 @@ fn sanitizes_ids_to_file_names() {
     assert!(sanitize_id("folder\\book-1").is_err());
     assert!(sanitize_id("book:alternate-stream").is_err());
     assert!(sanitize_id("..").is_err());
+}
+
+#[test]
+fn resolve_default_data_dir_platform_shapes() {
+    // Android shape (the 2026-08-13 crash): APPDATA is set by
+    // platform/android.rs from tauri's app_data_dir — it must win even
+    // with no XDG/HOME at all.
+    let appdata = tempfile::tempdir().unwrap();
+    let dir =
+        resolve_default_data_dir(Some(appdata.path().to_path_buf()), None, "WordHunter").unwrap();
+    assert_eq!(dir, appdata.path().join("WordHunter"));
+
+    // Linux/macOS shape: no APPDATA, explicit XDG_DATA_HOME wins.
+    let xdg = tempfile::tempdir().unwrap();
+    let dir = resolve_default_data_dir(None, Some(xdg.path().to_path_buf()), "WordHunter").unwrap();
+    assert_eq!(dir, xdg.path().join("WordHunter"));
+
+    // Linux/macOS shape: no APPDATA, no XDG — the resolved base already
+    // includes the HOME/.local/share fallback (xdg_data_dir does that).
+    let home = tempfile::tempdir().unwrap();
+    let dir = resolve_default_data_dir(
+        None,
+        Some(home.path().join(".local").join("share")),
+        "WordHunter",
+    )
+    .unwrap();
+    assert_eq!(
+        dir,
+        home.path().join(".local").join("share").join("WordHunter")
+    );
+
+    // The exact crash shape: nothing resolvable at all.
+    let error = resolve_default_data_dir(None, None, "WordHunter").unwrap_err();
+    assert_eq!(error, "could not locate user data directory");
 }
 
 #[test]
