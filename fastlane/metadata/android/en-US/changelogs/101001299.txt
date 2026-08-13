@@ -1,0 +1,6 @@
+What is new in Word Hunter 1.0.12:
+
+- Android reliability: minSdk raised to Android 8.0 (API 26), day/night theme support, background-service watchdog, improved file-open flows
+- Renderer migration continues: settings, import, library, reader and translator panels are now TypeScript renderers
+- Redesigned Argos download dialog
+- Hardened release CI: AAB manifests are now parsed directly (aapt2 incompatibility with AGP 8.11 bundles)
