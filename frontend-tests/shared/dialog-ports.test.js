@@ -891,6 +891,16 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.equal(document.mainPanel.children.length, 1);
   });
 
+  it("toggles the AI API-key row by the id the settings markup actually uses", () => {
+    // Regression (2026-08-13): the row is #pref-ai-key-row in the markup,
+    // but preferences.ts toggled the stale #pref-ai-api-key-row, so the API
+    // key field stayed hidden forever and AI explanations could never be
+    // configured. Pin both sides of the contract.
+    const prefs = readFileSync(new URL("../../dist/web/js/preferences.js", import.meta.url), "utf8");
+    assert.match(prefs, /"pref-ai-key-row"/, "preferences.js must target #pref-ai-key-row");
+    assert.doesNotMatch(prefs, /"pref-ai-api-key-row"/, "stale #pref-ai-api-key-row reference");
+  });
+
   it("keeps the settings view out of static HTML and renders it before cacheElements", () => {
     const html = read("dist/web/index.html");
     const app = read("dist/web/app.js");

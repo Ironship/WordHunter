@@ -126,6 +126,27 @@ describe("Android Pocket layout", () => {
     assertDeclarations(css, ".pocket-mode .pocket-drawer-close", { display: "inline-flex" });
   });
 
+  it("keeps the Pocket reader control bar to a single row (find floats top-right)", () => {
+    const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
+
+    // The find (lupa) toggle leaves the six-column bottom grid and floats at
+    // the top-right of the reader, so exactly six controls remain in the
+    // grid: nav-toggle, highlight, TTS, prev, next, bookmarks — one row.
+    assertDeclarations(css, '.pocket-mode[data-view="reader"] #reader-find-toggle', {
+      position: "fixed",
+      top: "calc(var(--pocket-statusbar-safe-top) + 0.5rem)",
+      right: "max(0.75rem, env(safe-area-inset-right, 0px))",
+      width: "44px",
+      height: "44px",
+    });
+    assertDeclarations(css, ".pocket-mode #reader-view .toolbar-buttons", {
+      "grid-template-columns": "repeat(6, minmax(0, 1fr))",
+    });
+    // The font controls stay hidden, so the six columns hold exactly six items.
+    assertDeclarations(css, ".pocket-mode #reader-view .toolbar-buttons [data-font]", { display: "none" });
+    assertDeclarations(css, ".pocket-mode #reader-view .reader-zoom-slider", { display: "none" });
+  });
+
   it("marks library filters for the Pocket collapse control", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const css = readFileSync(new URL("../../dist/web/platforms/android-pocket.css", import.meta.url), "utf8");
