@@ -2,13 +2,15 @@
  * Individual chart render functions for the graphs view.
  */
 import { state } from "../state.js";
+import { todayISO } from "../sm2.js";
 import { getLocale, t as rawT } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
-  buildEaseFactorBins
+  buildEaseFactorBins, countReviewsByWeekday, projectDueBuckets, collectFsrsPoints
 } from "./helpers.js";
+import { countMatureYoung } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
 
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
@@ -196,7 +198,9 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
   const W = ctx.w, H = ctx.h;
   const pad = { top: 52, right: 20, bottom: 40, left: 44 };
   const pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  const today = new Date().toISOString().slice(0, 10);
+  // Local "today" — the review queue (isDue) uses todayISO(); using UTC
+  // here shifted every bucket by a day in the 00:00-02:00 window (PL).
+  const today = todayISO();
   if (options.allTime) {
     const todayDate = new Date(`${today}T00:00:00`);
     let overdue = 0;
@@ -246,16 +250,11 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
     ctx.fillText(t("graphs.totalReviews", { n: total, overdue }), W / 2, 24);
     return;
   }
-  const buckets = new Array(DAYS).fill(0);
-  let overdue = 0, total = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known") continue;
-    if (!e.nextDate) continue;
-    total++;
-    const delta = daysBetween(e.nextDate, today);
-    if (delta < 0) overdue++;
-    else if (delta < DAYS) buckets[delta]++;
-  }
+  const { buckets, overdue, total } = projectDueBuckets(
+    _chartEntries || stateVocabEntries(),
+    today,
+    DAYS
+  );
   const maxVal = Math.max(1, overdue, ...buckets);
   const totalSlots = DAYS + (overdue > 0 ? 1 : 0);
   const barW = Math.max(2, pw / totalSlots - 3);
@@ -284,7 +283,7 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
     drawChartBar(ctx, x, y, barW, h, d === 0 ? green : blue, 2);
     hotAreas.push({ x, y, w: barW, h, label: buckets[d] + ' ' + t("graphs.cards") });
   }
-  ctx.fillStyle = labelMuted; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let i = 0; i <= 4; i++) ctx.fillText(String(Math.round((i / 4) * maxVal)), pad.left - 6, pad.top + ph - (i / 4) * ph);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (let d = 0; d < DAYS; d += 5) {
@@ -452,13 +451,7 @@ export function renderDayOfWeek(_chartEntries?: readonly VocabEntry[], _options?
   const DAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   const W = ctx.w, H = ctx.h;
   const dayNames = DAY_KEYS.map((key) => t(`graphs.${key}`));
-  const counts = new Array(7).fill(0);
-  let total = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || !e.addedAt && !e.lastReviewedAt) continue;
-    const d = new Date(e.lastReviewedAt || e.addedAt);
-    counts[d.getDay()]++; total++;
-  }
+  const { counts, total } = countReviewsByWeekday(_chartEntries || stateVocabEntries());
   const maxVal = Math.max(1, ...counts);
   const pad = { top: 48, right: 28, bottom: 54, left: 50 };
   const pw = W - pad.left - pad.right;
@@ -495,19 +488,14 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
   const W = ctx.w, H = ctx.h;
   const pad = { top: 34, right: 20, bottom: 54, left: 52 };
   const pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  const points: Array<{ s: number; d: number }> = [];
-  let maxS = 0, maxD = 10;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known" || e.srsAlgorithm !== "fsrs") continue;
-    const s = e.stability || 0, d = e.difficulty || 5;
-    if (s > 0) { points.push({ s, d }); if (s > maxS) maxS = s; }
-  }
+  const { points, maxS } = collectFsrsPoints(_chartEntries || stateVocabEntries());
+  const maxD = 10;
   if (!points.length) {
     ctx.fillStyle = text; ctx.font = "13px Inter, sans-serif"; ctx.textAlign = "center";
     ctx.fillText(t("graphs.noFsrsData"), W / 2, H / 2);
     return;
   }
-  maxS = Math.max(maxS, 1);
+  const maxSPlot = Math.max(maxS, 1);
   ctx.fillStyle = panelBg; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = grid; ctx.lineWidth = 0.5;
   for (let i = 0; i <= 4; i++) {
@@ -516,9 +504,9 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
     const x = pad.left + (i / 4) * pw;
     ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
   }
-  const fmt = (v: number) => maxS < 10 ? v.toFixed(1) : Math.round(v).toString();
-  ctx.fillStyle = labelMuted; ctx.font = "10px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  for (let i = 0; i <= 4; i++) { ctx.fillText(fmt((i / 4) * maxS), pad.left - 6, pad.top + ph - (i / 4) * ph); }
+  const fmt = (v: number) => maxSPlot < 10 ? v.toFixed(1) : Math.round(v).toString();
+  ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i = 0; i <= 4; i++) { ctx.fillText(fmt((i / 4) * maxSPlot), pad.left - 6, pad.top + ph - (i / 4) * ph); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (let i = 0; i <= 4; i++) ctx.fillText(Math.round((i / 4) * maxD).toString(), pad.left + (i / 4) * pw, H - pad.bottom + 16);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -530,7 +518,7 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
   ctx.restore();
   for (const p of points) {
     const x = pad.left + (p.d / maxD) * pw;
-    const y = pad.top + ph - (p.s / maxS) * ph;
+    const y = pad.top + ph - (p.s / maxSPlot) * ph;
     ctx.fillStyle = blue; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = panelBg; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
   }
@@ -544,11 +532,7 @@ export function renderMatureVsYoung(_chartEntries?: readonly VocabEntry[], _opti
   const W = ctx.w, H = ctx.h;
   const cx = W / 2, cy = H / 2 + 4;
   const r = Math.min(W, H) / 2 - 34, ir = r * 0.55;
-  let young = 0, mature = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known") continue;
-    if ((e.interval || 0) >= 21) mature++; else young++;
-  }
+  const { young, mature } = countMatureYoung(_chartEntries || stateVocabEntries());
   const total = Math.max(1, young + mature);
 
   ctx.fillStyle = panelBg; ctx.fillRect(0, 0, W, H);

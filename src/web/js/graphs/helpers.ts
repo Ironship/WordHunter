@@ -2,7 +2,10 @@
  * Shared helpers and module-level state for graphs.
  */
 import { state } from "../state.js";
+import { todayISO } from "../sm2.js";
 import { t as rawT } from "../i18n.js";
+import { simulateNextReview } from "../sm2.js";
+import type { SrsEntry } from "../sm2.js";
 import { setElementBusy } from "../loading.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
 
@@ -68,6 +71,55 @@ export function buildEaseFactorBins(
 
 export type ChartContext = CanvasRenderingContext2D & { w: number; h: number };
 
+// Mature = interval >= 21 days (Anki convention). Ignored cards are
+// suspended and excluded; known cards COUNT — they graduated at the
+// 21-day threshold and are the classic mature cards (excluding them made
+// the chart permanently one-sided).
+export function countMatureYoung(entries: readonly VocabEntry[]): { young: number; mature: number } {
+  let young = 0;
+  let mature = 0;
+  for (const e of entries) {
+    if (e.status === "ignored") continue;
+    if ((e.interval || 0) >= 21) mature++;
+    else young++;
+  }
+  return { young, mature };
+}
+
+// Review activity per weekday — counts cards by their lastReviewedAt LOCAL
+// weekday only. Cards never reviewed must not count (they used to fall back
+// to addedAt, faking "review activity" — 583/640 entries in the user's data).
+export function countReviewsByWeekday(entries: readonly VocabEntry[]): { counts: number[]; total: number } {
+  const counts = new Array(7).fill(0);
+  let total = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || !e.lastReviewedAt) continue;
+    counts[new Date(e.lastReviewedAt).getDay()]++;
+    total++;
+  }
+  return { counts, total };
+}
+
+// FSRS scatter points: every fsrs card with a positive stability, INCLUDING
+// known cards — the known cohort carries the highest stability values (e.g.
+// 33+) and the axis must span them, or the chart compresses the whole range.
+export function collectFsrsPoints(
+  entries: readonly VocabEntry[]
+): { points: Array<{ s: number; d: number }>; maxS: number } {
+  const points: Array<{ s: number; d: number }> = [];
+  let maxS = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || e.srsAlgorithm !== "fsrs") continue;
+    const s = e.stability || 0;
+    const d = e.difficulty || 5;
+    if (s > 0) {
+      points.push({ s, d });
+      if (s > maxS) maxS = s;
+    }
+  }
+  return { points, maxS };
+}
+
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
 // Theme colors (initialized by updateColors)
@@ -107,6 +159,34 @@ export function daysBetween(a: DateInput, b: DateInput): number {
   return Math.round((dateTimestamp(a) - dateTimestamp(b)) / 86400000);
 }
 
+// Forecast projection: the real buckets for existing nextDates PLUS, for
+// every due card (delta <= 0), one simulated "good" review through the
+// card's own scheduler — so the chart shows what the coming days will look
+// like after today's session, not just an empty future.
+export function projectDueBuckets(
+  entries: readonly VocabEntry[],
+  today: string,
+  horizon = 30,
+  quality: unknown = 4
+): { buckets: number[]; overdue: number; total: number } {
+  const buckets = new Array(horizon).fill(0);
+  let overdue = 0;
+  let total = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || e.status === "known" || !e.nextDate) continue;
+    total++;
+    const delta = daysBetween(e.nextDate, today);
+    if (delta < 0) overdue++;
+    else if (delta < horizon) buckets[delta]++;
+    if (delta <= 0) {
+      const sim = simulateNextReview(e as unknown as SrsEntry, quality);
+      const sd = daysBetween(sim.nextDate, today);
+      if (sd > 0 && sd < horizon) buckets[sd]++;
+    }
+  }
+  return { buckets, overdue, total };
+}
+
 export function canvas(id: string): ChartContext | null {
   const c = document.getElementById(id) as HTMLCanvasElement | null;
   if (!c) return null;
@@ -114,7 +194,7 @@ export function canvas(id: string): ChartContext | null {
   const p = c.parentElement;
   if (!p) return null;
   const ps = getComputedStyle(p);
-  const w = Math.max(280, p.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 400;
+  const w = Math.max(240, p.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight)) || 400;
   const h = Math.round(parseFloat(getComputedStyle(c).height)) || Math.round(w / 1.5);
   const pixelWidth = Math.max(1, Math.round(w * dpr));
   const pixelHeight = Math.max(1, Math.round(h * dpr));
@@ -133,9 +213,36 @@ export function canvas(id: string): ChartContext | null {
 export function showTooltip(evt: MouseEvent, tipText: string): void {
   if (!tooltipEl) { tooltipEl = document.createElement("div"); tooltipEl.className = "chart-tooltip"; document.body.appendChild(tooltipEl); }
   tooltipEl.textContent = tipText;
-  tooltipEl.style.left = (evt.clientX + 14) + "px";
-  tooltipEl.style.top = (evt.clientY - 32) + "px";
+  // Show first, then measure: offsetWidth/offsetHeight of a display:none
+  // element are 0 and the clamp would compute against an empty box.
   tooltipEl.style.display = "block";
+  const pos = clampTooltipPosition(
+    evt.clientX + 14,
+    evt.clientY - 32,
+    tooltipEl.offsetWidth,
+    tooltipEl.offsetHeight,
+    window.innerWidth,
+    window.innerHeight
+  );
+  tooltipEl.style.left = pos.x + "px";
+  tooltipEl.style.top = pos.y + "px";
+}
+
+// Keeps the tooltip inside the viewport (8 px margin) — near the right/bottom
+// edges it would otherwise render off-screen.
+export function clampTooltipPosition(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number
+): { x: number; y: number } {
+  const margin = 8;
+  return {
+    x: Math.max(margin, Math.min(x, viewportWidth - width - margin)),
+    y: Math.max(margin, Math.min(y, viewportHeight - height - margin))
+  };
 }
 
 export function hideTooltip(): void { if (tooltipEl) tooltipEl.style.display = "none"; }
@@ -196,7 +303,7 @@ export function drawBarChart(
     }
     ctx.strokeRect(pad.left, pad.top, pw, ph);
     ctx.fillStyle = labelMuted;
-    ctx.font = "10px Inter, sans-serif";
+    ctx.font = "11px Inter, sans-serif";
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     for (let i = 0; i <= 4; i++) {
@@ -208,15 +315,21 @@ export function drawBarChart(
     const x = pad.left + i * (pw / bins.length) + (minimal ? 2 : 3);
     drawChartBar(ctx, x, pad.top + ph - h, barW, h, bins[i].color || color);
     ctx.fillStyle = minimal ? text : labelMuted;
-    ctx.font = "9px Inter, sans-serif";
+    ctx.font = "10px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     ctx.fillText(bins[i].label, x + barW / 2, H - pad.bottom + (minimal ? 8 : 14));
     if (bins[i].val > 0) {
-      ctx.fillStyle = text;
-      ctx.font = minimal ? "9px Inter,sans-serif" : "bold 10px Inter, sans-serif";
-      ctx.textBaseline = minimal ? "top" : "bottom";
-      ctx.fillText(String(bins[i].val), x + barW / 2, minimal ? pad.top + ph - h - 4 : Math.max(18, pad.top + ph - h - 4));
+      // Value label above the bar; skip it when the bar fills the plot (the
+      // label would collide with the title/subtitle zone — the old clamp to
+      // y=18 parked short-bar labels right on top of the subtitle).
+      const ly = pad.top + ph - h - 4;
+      if (ly >= pad.top + 12) {
+        ctx.fillStyle = text;
+        ctx.font = minimal ? "10px Inter,sans-serif" : "bold 11px Inter, sans-serif";
+        ctx.textBaseline = minimal ? "top" : "bottom";
+        ctx.fillText(String(bins[i].val), x + barW / 2, ly);
+      }
     }
   }
 }
@@ -255,7 +368,9 @@ export function buildHeatmapActivityCounts(entries: readonly VocabEntry[]) {
     const time = new Date(d).getTime();
     if (!Number.isFinite(time)) continue;
     firstTime = Math.min(firstTime, time);
-    const day = new Date(time).toISOString().slice(0, 10);
+    // Local calendar day — a review at 23:30 local must count for that
+    // day, not the next UTC day.
+    const day = todayISO(new Date(time));
     counts[day] = (counts[day] || 0) + 1;
   }
   return { counts, firstTime };
@@ -283,7 +398,7 @@ export function renderStatsSummary(_chartEntries?: readonly VocabEntry[]): void 
   const el = document.getElementById("graphs-stats");
   if (!el) return;
   let due = 0, overdue = 0, total = 0, newCount = 0, learning = 0, known = 0, matureCount = 0;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   for (const e of _chartEntries || Object.values(state.vocab) as VocabEntry[]) {
     if (e.status === "ignored") continue;
     total++;
@@ -295,7 +410,7 @@ export function renderStatsSummary(_chartEntries?: readonly VocabEntry[]): void 
       if (d < 0) overdue++;
       else if (d === 0) due++;
     }
-    if (e.status !== "known" && (e.interval || 0) >= 21) matureCount++;
+    if ((e.interval || 0) >= 21) matureCount++;
   }
   const dueTotal = due + overdue;
   const srsActive = total - known;

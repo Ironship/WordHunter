@@ -150,6 +150,25 @@ export function todayISO(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Pure, non-mutating simulation of one review: applies the card's own
+ * scheduler (SM2 or FSRS) with the given quality and returns the projected
+ * interval and nextDate. Used by the Graphs forecast projection — the real
+ * review path (applyReviewNative) is left untouched.
+ */
+export function simulateNextReview(
+  entry: SrsEntry,
+  quality: unknown,
+  now = new Date()
+): { interval: number; nextDate: string } {
+  const schedule = entry.srsAlgorithm === "fsrs"
+    ? calculateFSRS(quality, entry, now)
+    : calculateSM2(quality, entry);
+  const next = new Date(now);
+  next.setDate(next.getDate() + schedule.interval);
+  return { interval: schedule.interval, nextDate: todayISO(next) };
+}
+
 /** Adds N days to a date and returns in YYYY-MM-DD format. */
 function addDaysISO(days: number, from = new Date()): string {
   const d = new Date(from);
