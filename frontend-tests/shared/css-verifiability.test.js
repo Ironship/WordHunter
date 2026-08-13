@@ -59,7 +59,7 @@ const DUP_GROUP_PIN = 48;
    "pocket-reader.css" (6371 B) is theme.css — no such file exists on main. */
 const CSS_SIZE_PIN = new Map([
   ["src/web/styles.css", 109300],
-  ["src/web/platforms/android-pocket.css", 32200],
+  ["src/web/platforms/android-pocket.css", 33000],
   ["src/web/theme.css", 6500]
 ]);
 

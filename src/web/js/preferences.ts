@@ -323,7 +323,7 @@ export function syncSettingsControls() {
   if (byId<HTMLInputElement>("pref-ai-auto-trigger")) byId<HTMLInputElement>("pref-ai-auto-trigger").checked = prefs.aiExplanationAutoTrigger === true;
   if (byId<HTMLInputElement>("pref-ai-endpoint-row")) byId<HTMLInputElement>("pref-ai-endpoint-row").hidden = !aiEnabled;
   if (byId<HTMLInputElement>("pref-ai-model-row")) byId<HTMLInputElement>("pref-ai-model-row").hidden = !aiEnabled;
-  if (byId<HTMLInputElement>("pref-ai-api-key-row")) byId<HTMLInputElement>("pref-ai-api-key-row").hidden = !aiEnabled;
+  if (byId<HTMLInputElement>("pref-ai-key-row")) byId<HTMLInputElement>("pref-ai-key-row").hidden = !aiEnabled;
   if (byId<HTMLSelectElement>("pref-ai-effort-row")) byId<HTMLSelectElement>("pref-ai-effort-row").hidden = !aiEnabled;
   if (byId<HTMLInputElement>("pref-ai-auto-trigger-row")) byId<HTMLInputElement>("pref-ai-auto-trigger-row").hidden = !aiEnabled;
   if (els.prefAutoTranslate) els.prefAutoTranslate.checked = prefs.autoTranslateWords === true;
