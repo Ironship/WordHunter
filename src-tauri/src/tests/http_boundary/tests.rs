@@ -544,3 +544,28 @@ fn store_save_without_conflicts_returns_204() {
     assert_eq!(response.status, 204);
     assert!(response.body.is_empty());
 }
+
+#[test]
+fn listener_carries_no_socket_timeout() {
+    // Regression (2026-08-13, Android): setting SO_RCVTIMEO on the LISTENING
+    // socket made accept() fail after 60 s of idle traffic on Android; the
+    // vendored tiny_http then ended incoming_requests() and the server thread
+    // dropped the listener — the app lost its whole HTTP backend mid-session
+    // ("No text source found" on every book open). The slow-loris deadline
+    // must live in the vendored accept path (connection.rs), not on the
+    // listener. Pin both sides of the contract at the source level.
+    let server_source = include_str!("../../server.rs");
+    assert!(
+        !server_source.contains("set_read_timeout"),
+        "server.rs must not set a read timeout on the listening socket"
+    );
+    assert!(
+        server_source.contains("connection.rs sets a 60 s read/write deadline"),
+        "slow-loris protection must be delegated to the vendored accept path"
+    );
+    let connection_source = include_str!("../../../vendor/tiny_http/src/connection.rs");
+    assert!(
+        connection_source.contains("set_read_timeout(Some(Duration::from_secs(60)))"),
+        "the vendored accept path must keep the per-connection deadline"
+    );
+}
