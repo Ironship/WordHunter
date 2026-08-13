@@ -10,16 +10,19 @@ fn env_path(name: &str) -> Option<PathBuf> {
     })
 }
 
-// APPDATA is a Windows concept; on Linux it is at best a Wine/Proton
+// APPDATA is a Windows concept; on Linux/macOS it is at best a Wine/Proton
 // artifact and must never win over the XDG base directories (issue #135,
-// bullet 1). config_dir() and default_data_dir() both route their APPDATA
-// lookup through this single gate, so no per-call-site cfg is needed.
-#[cfg(windows)]
+// bullet 1). Android is the one exception: platform/android.rs sets APPDATA
+// from tauri's app_data_dir during setup (Android has neither XDG nor HOME
+// for app processes), so the mobile build must honor it here.
+// config_dir() and default_data_dir() both route their APPDATA lookup
+// through this single gate, so no per-call-site cfg is needed.
+#[cfg(any(windows, target_os = "android"))]
 fn appdata_dir() -> Option<PathBuf> {
     env_path("APPDATA")
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "android")))]
 fn appdata_dir() -> Option<PathBuf> {
     None
 }
@@ -75,14 +78,25 @@ fn write_config_file(app_name: &str, suffix: &str, bytes: &[u8]) -> Result<(), S
     crate::store::durable::write_file_atomic(&path, bytes, true)
 }
 
-fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
-    if let Some(appdata) = appdata_dir() {
+// Pure, platform-agnostic resolution core: appdata (Windows native, or the
+// APPDATA contract set by platform/android.rs) wins; otherwise the XDG data
+// base (which already includes the HOME/.local/share fallback). Testable on
+// every host so the Linux/macOS and Android shapes are both pinned.
+pub(crate) fn resolve_default_data_dir(
+    appdata: Option<PathBuf>,
+    xdg_data: Option<PathBuf>,
+    app_name: &str,
+) -> Result<PathBuf, String> {
+    if let Some(appdata) = appdata {
         return Ok(appdata.join(app_name));
     }
-
-    xdg_data_dir()
+    xdg_data
         .map(|base| base.join(app_name))
         .ok_or_else(|| "could not locate user data directory".to_string())
+}
+
+fn default_data_dir(app_name: &str) -> Result<PathBuf, String> {
+    resolve_default_data_dir(appdata_dir(), xdg_data_dir(), app_name)
 }
 
 /// How to treat a stored data-dir pointer whose metadata could not be

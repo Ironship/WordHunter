@@ -8,6 +8,8 @@ import { getCachedBookTextStats, getCachedTextStats, prepareTextStats } from "..
 import { t as translate, getLocale } from "../i18n.js";
 import { bindSidebarResizer } from "../panel-resizer.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { openAndroidUrl } from "../platform.js";
+import { showToast } from "../toast.js";
 
 interface LibraryBook {
   id: string;
@@ -326,7 +328,7 @@ export function renderLibrary(): void {
     const metaLine = metaParts.length ? `<p class="book-card-meta-line">${escapeHtml(metaParts.join(" · "))}</p>` : "";
     const blurbLine = book.blurb ? `<p class="book-card-blurb">${escapeHtml(book.blurb)}</p>` : "";
     const gutenbergLink = book.pageUrl && !book.isCustom
-      ? `<a class="icon-button" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 16)}</a>`
+      ? `<a class="icon-button" data-action="open-source" data-id="${escapeAttribute(book.id)}" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 16)}</a>`
       : "";
     return `
       <article class="book-card ${cover ? "has-cover" : ""} ${isArchived ? "archived" : ""}" data-book-id="${escapeAttribute(book.id)}" data-level="${escapeHtml(book.level)}">
@@ -476,6 +478,28 @@ export function bindLibraryEvents(): void {
     const control = event.target.closest<HTMLElement>("[data-action]");
     if (!control) return;
     const id = control.dataset.id;
+
+    if (control.dataset.action === "open-source") {
+      const url = control.getAttribute("href");
+      if (url) {
+        // On Android the webview cannot open new windows, so the native
+        // bridge goes first; /__open_external covers the desktop webview.
+        if (openAndroidUrl(url)) return;
+        fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+          .then((res) => {
+            if (!res.ok) {
+              console.warn("Failed to open source link", `HTTP ${res.status}`);
+              showToast(translate("toast.openExternalFailed"), "error");
+            }
+          })
+          .catch((error) => {
+            console.warn("Failed to open source link", error);
+            showToast(translate("toast.openExternalFailed"), "error");
+          });
+      }
+      return;
+    }
+
     const actions = await import("../book-actions.js");
 
     const customText = (state.customTexts || []).find((t) => t.id === id);
