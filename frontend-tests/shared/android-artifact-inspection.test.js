@@ -67,8 +67,8 @@ describe("Android release artifact assertions", () => {
 
   it("pins the tauri.conf.json contract the APK/AAB assertions rely on", () => {
     assert.equal(tauriConfig.identifier, "com.wordhunter.app");
-    assert.equal(tauriConfig.version, "1.0.13-rc.1");
-    assert.equal(androidVersionCodeFor(tauriConfig.version), 101001301);
+    assert.equal(tauriConfig.version, "1.0.13-rc.2");
+    assert.equal(androidVersionCodeFor(tauriConfig.version), 101001302);
     // The Android overlay overrides the package name (Word.Hunter.Pocket);
     // androidExpectations() must use it, not the desktop identifier.
     assert.equal(androidConfig.identifier, "com.wordhunter.pocket");
@@ -95,10 +95,10 @@ describe("Android release artifact assertions", () => {
   });
 
   it("parses the text manifest from the AAB archive root", () => {
-    const text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.wordhunter.pocket" versionCode="101001101" versionName="1.0.13-rc.1">';
+    const text = '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.wordhunter.pocket" versionCode="101001101" versionName="1.0.13-rc.2">';
     assert.deepEqual(parseTextManifest(text), {
       versionCode: 101001101,
-      versionName: "1.0.13-rc.1",
+      versionName: "1.0.13-rc.2",
       debuggable: false,
     });
     assert.equal(
@@ -113,10 +113,10 @@ describe("Android release artifact assertions", () => {
   });
 
   it("parses the binary AXML manifest from the AAB archive root", () => {
-    // Minimal synthetic AXML: header + string pool ("1.0.13-rc.1") + resource
+    // Minimal synthetic AXML: header + string pool ("1.0.13-rc.2") + resource
     // map + one start-element carrying versionCode/versionName/debuggable by
     // resource id.
-    const versionName = "1.0.13-rc.1";
+    const versionName = "1.0.13-rc.2";
     // Pool: 20-byte header (count, styleCount, flags, stringsStart,
     // stylesStart) + 4-byte offset table + 2-byte length + utf16 chars.
     const pool = Buffer.alloc(20 + 4 + 2 + versionName.length * 2);
@@ -171,7 +171,7 @@ describe("Android release artifact assertions", () => {
     const axml = Buffer.concat([Buffer.from([0x03, 0, 0x08, 0, 24, 0, 0, 0]), stringPoolChunk, resourceMapChunk, element]);
     const parsed = parseAxmlManifest(axml);
     assert.equal(parsed.versionCode, 101001101);
-    assert.equal(parsed.versionName, "1.0.13-rc.1");
+    assert.equal(parsed.versionName, "1.0.13-rc.2");
     assert.equal(parsed.debuggable, false);
     assert.equal(parseAxmlManifest(Buffer.from("garbage")).axml, false);
   });
@@ -209,30 +209,30 @@ describe("Android release artifact assertions", () => {
     const element = Buffer.concat([
       ld(1, Buffer.from("manifest", "utf8")),
       ld(5, attribute(0x0101021b, typed(0x10, 101001101))),
-      ld(5, attribute(0x0101021c, typed(0x10, 0, "1.0.13-rc.1"))),
+      ld(5, attribute(0x0101021c, typed(0x10, 0, "1.0.13-rc.2"))),
       ld(5, attribute(0x0101000f, typed(0x12, 0))),
     ]);
     const node = ld(5, element); // XmlNode.element = field 5 in the AAPT2 schema
     const manifest = ld(1, node);
     const parsed = parseProtoManifest(manifest);
     assert.equal(parsed.versionCode, 101001101);
-    assert.equal(parsed.versionName, "1.0.13-rc.1");
+    assert.equal(parsed.versionName, "1.0.13-rc.2");
     assert.equal(parsed.debuggable, false);
     // Real AABs store the manifest as a bare XmlNode (no Manifest wrapper).
     const bare = parseProtoManifest(node);
     assert.equal(bare.versionCode, 101001101);
-    assert.equal(bare.versionName, "1.0.13-rc.1");
+    assert.equal(bare.versionName, "1.0.13-rc.2");
     assert.equal(bare.debuggable, false);
     // Some AABs omit resource ids and carry only the attribute name.
     const namedElement = Buffer.concat([
       ld(1, Buffer.from("manifest", "utf8")),
       ld(5, namedAttribute("versionCode", typed(0x10, 101001101))),
-      ld(5, namedAttribute("versionName", typed(0x10, 0, "1.0.13-rc.1"))),
+      ld(5, namedAttribute("versionName", typed(0x10, 0, "1.0.13-rc.2"))),
       ld(5, namedAttribute("debuggable", typed(0x12, 0))),
     ]);
     const named = parseProtoManifest(ld(5, namedElement));
     assert.equal(named.versionCode, 101001101);
-    assert.equal(named.versionName, "1.0.13-rc.1");
+    assert.equal(named.versionName, "1.0.13-rc.2");
     assert.equal(named.debuggable, false);
     // Old aapt1-style layout: attributes directly on the node (field 4)
     // with the raw value as a string (field 3). Verified against the real
@@ -243,12 +243,12 @@ describe("Android release artifact assertions", () => {
       ld(3, Buffer.from("manifest", "utf8")),
       ld(4, rawAttr("package", "com.wordhunter.pocket")),
       ld(4, rawAttr("versionCode", "101001101")),
-      ld(4, rawAttr("versionName", "1.0.13-rc.1")),
+      ld(4, rawAttr("versionName", "1.0.13-rc.2")),
       ld(4, rawAttr("debuggable", "false")),
     ]);
     const oldLayout = parseProtoManifest(ld(1, oldNode));
     assert.equal(oldLayout.versionCode, 101001101);
-    assert.equal(oldLayout.versionName, "1.0.13-rc.1");
+    assert.equal(oldLayout.versionName, "1.0.13-rc.2");
     assert.equal(oldLayout.debuggable, false);
   });
 });
