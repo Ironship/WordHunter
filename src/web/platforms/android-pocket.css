@@ -671,6 +671,23 @@ html.pocket-mode {
   box-shadow: none;
 }
 
+/* The find (lupa) toggle leaves the six-column bottom grid and floats at the
+   top-right of the reader, so the control bar stays a single row: nav-toggle,
+   highlight, TTS, prev, next, bookmarks = exactly six grid items. */
+.pocket-mode[data-view="reader"] #reader-find-toggle {
+  position: fixed;
+  z-index: var(--z-pocket-toolbar);
+  top: calc(var(--pocket-statusbar-safe-top) + 0.5rem);
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--sidebar-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+}
+
 .pocket-mode #reader-view .pocket-word-navigation {
   display: inline-flex;
   width: 100%;
