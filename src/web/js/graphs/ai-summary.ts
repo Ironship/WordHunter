@@ -4,6 +4,7 @@
  * conclusions summary into a section below the graphs.
  */
 import { state } from "../state.js";
+import { todayISO } from "../sm2.js";
 import {
   aiExplanationConfigured,
   aiExplanationLanguagePair,
@@ -18,7 +19,7 @@ import type { VocabEntry } from "./helpers.js";
 /** Serialize the current vocabulary statistics as plain text for the LLM. */
 function buildGraphsSummaryText(): string {
   const entries = Object.values(state.vocab) as VocabEntry[];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   let total = 0;
   let newCount = 0;
   let learning = 0;
