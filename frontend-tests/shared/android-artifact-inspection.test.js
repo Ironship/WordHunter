@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   androidVersionCodeFor,
+  hasFrontendEntry,
   isBadgingDebuggable,
   parseAxmlManifest,
   parseBadgingPackage,
@@ -58,6 +59,14 @@ const debugXmlTree = releaseXmlTree.replace(
 );
 
 describe("Android release artifact assertions", () => {
+  it("requires the bundled frontend entry (APK: assets/index.html, AAB: base/assets/index.html)", () => {
+    assert.equal(hasFrontendEntry(["assets/index.html", "assets/web/app.js"], false), true);
+    assert.equal(hasFrontendEntry(["base/assets/index.html", "base/manifest/AndroidManifest.xml"], true), true);
+    // The 1.0.11/1.0.12 regression: the release recipe never copied dist/web
+    // into the app assets, so every Android build opened an empty WebView.
+    assert.equal(hasFrontendEntry(["assets/tauri.conf.json", "assets/LICENSE"], false), false);
+    assert.equal(hasFrontendEntry(["base/assets/tauri.conf.json"], true), false);
+  });
   it("derives the Android versionCode the way tauri-cli 2.11.4 does", () => {
     assert.equal(androidVersionCodeFor("1.0.10"), 101001099);
     assert.equal(androidVersionCodeFor("1.0.9"), 101000999);

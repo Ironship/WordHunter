@@ -541,6 +541,26 @@ function Get-AndroidVersionInfo {
     }
 }
 
+function Sync-AndroidFrontendAssets {
+    # The WebView loads tauri://localhost from the app assets root, but the
+    # tauri CLI only injects tauri.conf.json + bundle.resources there — it
+    # never copies frontendDist. Without this step every Android build ships
+    # with an empty frontend (root-caused 2026-08-13: every release since
+    # the Android recipe existed opened a blank screen). The inspector gate
+    # (assets/index.html) turns a regression here into a red pipeline.
+    $assetsDir = Join-Path $Root "src-tauri\gen\android\app\src\main\assets"
+    $distDir = Join-Path $Root "dist\web"
+    if (-not (Test-Path -LiteralPath (Join-Path $distDir "index.html"))) {
+        Fail "compiled frontend is missing: dist\web\index.html (run npm run build:frontend first)"
+    }
+    Ensure-Directory $assetsDir
+    Copy-Item -LiteralPath (Join-Path $distDir "*") -Destination $assetsDir -Recurse -Force
+    if (-not (Test-Path -LiteralPath (Join-Path $assetsDir "index.html"))) {
+        Fail "frontend asset sync failed: index.html missing in $assetsDir"
+    }
+    Write-Note "Frontend assets synced into the Android app assets"
+}
+
 function Prepare-AndroidProject {
     Write-Step "Preparing Android project"
 
@@ -616,6 +636,7 @@ function Prepare-AndroidProject {
     Invoke-External "node.exe" @("scripts\android-version.mjs")
     Invoke-External "node.exe" @("scripts\android-version.mjs", "--check")
 
+    Sync-AndroidFrontendAssets
     Sync-AndroidLauncherIcons
 }
 
