@@ -104,6 +104,7 @@ function androidFixture(abi = "arm64-v8a") {
     "base/manifest/AndroidManifest.xml": "binary manifest",
     "base/dex/classes.dex": "dex",
     [`base/lib/${abi}/libword_hunter.so`]: createArm64Elf(),
+    "base/assets/index.html": "<!doctype html>",
     "base/root/LICENSE": "license",
     "base/root/THIRD-PARTY-NOTICES.md": "notices",
     "base/root/THIRD-PARTY-LICENSES.html": "licenses",
@@ -227,6 +228,14 @@ describe("Android Pocket packaging", () => {
       const invalid = join(directory, "Word.Hunter.Pocket.release.aab");
       writeStoredZip(invalid, androidFixture("x86_64"));
       assert.throws(() => inspectAndroidZipList(invalid, "arm64-v8a"), /expected only arm64-v8a/);
+
+      // Regression gate (2026-08-13): an artifact without a bundled
+      // frontend ships an empty WebView.
+      const empty = join(directory, "Word.Hunter.Pocket.release.aab");
+      const emptyFixture = androidFixture();
+      delete emptyFixture["base/assets/index.html"];
+      writeStoredZip(empty, emptyFixture);
+      assert.throws(() => inspectAndroidZipList(empty, "arm64-v8a"), /no bundled frontend/);
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

@@ -244,6 +244,15 @@ function requireSuffix(names, suffix) {
   return found;
 }
 
+// The Android WebView loads tauri://localhost, which serves the assets
+// root: a release APK/AAB without a bundled index.html opens an empty
+// white screen (root-caused 2026-08-13 — the release recipe never copied
+// dist/web into the app assets, affecting every Android release).
+export function hasFrontendEntry(names, isAab) {
+  const expected = isAab ? "base/assets/index.html" : "assets/index.html";
+  return names.some((name) => name === expected);
+}
+
 function assertPeX64(bytes, description) {
   if (bytes.length < 64 || bytes[0] !== 0x4d || bytes[1] !== 0x5a) {
     fail(`${description} is not a PE executable`);
@@ -693,6 +702,9 @@ export function inspectAndroidZipList(path, abi) {
     fail(`${path} unexpectedly contains the desktop OCR runtime`);
   }
   for (const legalFile of legalFiles) requireSuffix(names, legalFile);
+  if (!hasFrontendEntry(names, isAab)) {
+    fail(`${path} has no bundled frontend (${isAab ? "base/assets/index.html" : "assets/index.html"} missing): the WebView would open empty`);
+  }
 
 
   console.log(`Validated ${isAab ? "AAB" : "APK"}: ${path} (${abi}, ${names.length} entries)`);
