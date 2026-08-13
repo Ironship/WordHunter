@@ -272,6 +272,8 @@ describe("delete-book dialog renderer (views/library.ts)", () => {
       },
       "../i18n.js": { t: (key) => key, getLocale: () => "en" },
       "../panel-resizer.js": { bindSidebarResizer: () => {} },
+      "../platform.js": { openAndroidUrl: () => false },
+      "../toast.js": { showToast: () => {} },
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
@@ -592,6 +594,8 @@ describe("library filter bar renderer (views/library.ts)", () => {
       },
       "../i18n.js": { t: (key) => key, getLocale: () => "en" },
       "../panel-resizer.js": { bindSidebarResizer: () => {} },
+      "../platform.js": { openAndroidUrl: () => false },
+      "../toast.js": { showToast: () => {} },
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
