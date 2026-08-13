@@ -8,7 +8,7 @@ import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
-  buildEaseFactorBins, countReviewsByWeekday, projectDueBuckets
+  buildEaseFactorBins, countReviewsByWeekday, projectDueBuckets, collectFsrsPoints
 } from "./helpers.js";
 import { countMatureYoung } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
@@ -488,19 +488,14 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
   const W = ctx.w, H = ctx.h;
   const pad = { top: 34, right: 20, bottom: 54, left: 52 };
   const pw = W - pad.left - pad.right, ph = H - pad.top - pad.bottom;
-  const points: Array<{ s: number; d: number }> = [];
-  let maxS = 0, maxD = 10;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known" || e.srsAlgorithm !== "fsrs") continue;
-    const s = e.stability || 0, d = e.difficulty || 5;
-    if (s > 0) { points.push({ s, d }); if (s > maxS) maxS = s; }
-  }
+  const { points, maxS } = collectFsrsPoints(_chartEntries || stateVocabEntries());
+  const maxD = 10;
   if (!points.length) {
     ctx.fillStyle = text; ctx.font = "13px Inter, sans-serif"; ctx.textAlign = "center";
     ctx.fillText(t("graphs.noFsrsData"), W / 2, H / 2);
     return;
   }
-  maxS = Math.max(maxS, 1);
+  const maxSPlot = Math.max(maxS, 1);
   ctx.fillStyle = panelBg; ctx.fillRect(0, 0, W, H);
   ctx.strokeStyle = grid; ctx.lineWidth = 0.5;
   for (let i = 0; i <= 4; i++) {
@@ -509,9 +504,9 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
     const x = pad.left + (i / 4) * pw;
     ctx.beginPath(); ctx.moveTo(x, pad.top); ctx.lineTo(x, pad.top + ph); ctx.stroke();
   }
-  const fmt = (v: number) => maxS < 10 ? v.toFixed(1) : Math.round(v).toString();
+  const fmt = (v: number) => maxSPlot < 10 ? v.toFixed(1) : Math.round(v).toString();
   ctx.fillStyle = labelMuted; ctx.font = "11px Inter, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  for (let i = 0; i <= 4; i++) { ctx.fillText(fmt((i / 4) * maxS), pad.left - 6, pad.top + ph - (i / 4) * ph); }
+  for (let i = 0; i <= 4; i++) { ctx.fillText(fmt((i / 4) * maxSPlot), pad.left - 6, pad.top + ph - (i / 4) * ph); }
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (let i = 0; i <= 4; i++) ctx.fillText(Math.round((i / 4) * maxD).toString(), pad.left + (i / 4) * pw, H - pad.bottom + 16);
   ctx.textAlign = "center"; ctx.textBaseline = "top";
@@ -523,7 +518,7 @@ export function renderFsrsScatter(_chartEntries?: readonly VocabEntry[], _option
   ctx.restore();
   for (const p of points) {
     const x = pad.left + (p.d / maxD) * pw;
-    const y = pad.top + ph - (p.s / maxS) * ph;
+    const y = pad.top + ph - (p.s / maxSPlot) * ph;
     ctx.fillStyle = blue; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = panelBg; ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
   }

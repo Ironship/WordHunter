@@ -100,6 +100,26 @@ export function countReviewsByWeekday(entries: readonly VocabEntry[]): { counts:
   return { counts, total };
 }
 
+// FSRS scatter points: every fsrs card with a positive stability, INCLUDING
+// known cards — the known cohort carries the highest stability values (e.g.
+// 33+) and the axis must span them, or the chart compresses the whole range.
+export function collectFsrsPoints(
+  entries: readonly VocabEntry[]
+): { points: Array<{ s: number; d: number }>; maxS: number } {
+  const points: Array<{ s: number; d: number }> = [];
+  let maxS = 0;
+  for (const e of entries) {
+    if (e.status === "ignored" || e.srsAlgorithm !== "fsrs") continue;
+    const s = e.stability || 0;
+    const d = e.difficulty || 5;
+    if (s > 0) {
+      points.push({ s, d });
+      if (s > maxS) maxS = s;
+    }
+  }
+  return { points, maxS };
+}
+
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
 // Theme colors (initialized by updateColors)
