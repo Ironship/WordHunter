@@ -503,7 +503,7 @@ describe("render performance guards", () => {
       "../i18n.js": { t: (key) => key },
       "../loading.js": { setElementBusy() {} },
       "../views/heatmap.js": { renderContributionHeatmap() {} },
-      "../sm2.js": { todayISO: () => "2026-08-12" }
+      "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }) }
     }, {
       document: {
         documentElement: {},

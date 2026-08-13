@@ -8,7 +8,7 @@ import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
   C, text, muted, blue, green, red, amber, panelBg, grid, labelMuted,
   DAYS, canvas, daysBetween, showTooltip, hideTooltip, drawBarChart, drawChartBar, colorWithAlpha,
-  buildEaseFactorBins, countReviewsByWeekday
+  buildEaseFactorBins, countReviewsByWeekday, projectDueBuckets
 } from "./helpers.js";
 import { countMatureYoung } from "./helpers.js";
 import type { ChartBin, ChartOptions, VocabEntry } from "./helpers.js";
@@ -250,16 +250,11 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
     ctx.fillText(t("graphs.totalReviews", { n: total, overdue }), W / 2, 24);
     return;
   }
-  const buckets = new Array(DAYS).fill(0);
-  let overdue = 0, total = 0;
-  for (const e of _chartEntries || stateVocabEntries()) {
-    if (e.status === "ignored" || e.status === "known") continue;
-    if (!e.nextDate) continue;
-    total++;
-    const delta = daysBetween(e.nextDate, today);
-    if (delta < 0) overdue++;
-    else if (delta < DAYS) buckets[delta]++;
-  }
+  const { buckets, overdue, total } = projectDueBuckets(
+    _chartEntries || stateVocabEntries(),
+    today,
+    DAYS
+  );
   const maxVal = Math.max(1, overdue, ...buckets);
   const totalSlots = DAYS + (overdue > 0 ? 1 : 0);
   const barW = Math.max(2, pw / totalSlots - 3);
