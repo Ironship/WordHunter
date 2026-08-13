@@ -95,6 +95,16 @@ html.pocket-mode {
   min-height: 44px;
 }
 
+/* The small round TTS buttons on the review card (round-icon-btn-28/24)
+   stay at 24-28 px wide on Pocket otherwise — below the 44 px touch
+   target. Same bump as the icon buttons above. */
+.pocket-mode .round-icon-btn-28,
+.pocket-mode .round-icon-btn-24 {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+}
+
 .pocket-mode input.color-picker-lg {
   width: var(--color-picker-size);
   min-width: var(--color-picker-size);

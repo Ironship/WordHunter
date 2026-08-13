@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.13-rc.1" date="2026-08-13" type="development">
+      <description>
+        <ul>
+          <li>Fixes the Android launch crash: the app now resolves its data folder correctly and starts on the phone.</li>
+          <li>Source links in the library and reader open through the native browser on Android.</li>
+          <li>Review-card voice buttons are proper 44 px touch targets in the Pocket layout.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.12" date="2026-08-12">
       <description>
         <ul>
