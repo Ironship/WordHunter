@@ -18,7 +18,7 @@ import { t as rawT } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
 import { buildEaseFactorBins, buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg, projectDueBuckets } from "../graphs/helpers.js";
 import type { ChartContext, VocabEntry } from "../graphs/helpers.js";
-import { formatSrsMeta } from "./review-card.js";
+import { formatSrsMeta, reviewSessionKeyOrder } from "./review-card.js";
 
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
 
@@ -142,7 +142,24 @@ export function renderReviewUpcoming(srsEntries: readonly ReviewEntry[], today: 
     reviewEls.reviewUpcoming.innerHTML = `<p class="empty-row">${escapeHtml(t("vocab.upcomingEmpty"))}</p>`;
     return;
   }
-  const rows = srsEntries.slice(0, 30).map((entry) => {
+  // Due rows (overdue + today) follow the current flashcard session order so
+  // the visible queue can't leak the deck's alphabetical insertion order;
+  // future rows stay date-sorted. Entries without a session slot (no session
+  // yet, or words due later) keep their original position at the end of the
+  // due group.
+  const sessionIndex = new Map(reviewSessionKeyOrder().map((key, index) => [key, index]));
+  const keyOf = (entry: ReviewEntry): string => (entry as ReviewEntry & { key?: string }).key ?? entry.word;
+  const due = srsEntries.filter((entry) => diffDays(entry.nextDate, today) <= 0);
+  const future = srsEntries.filter((entry) => diffDays(entry.nextDate, today) > 0);
+  const ordered = [
+    ...due.slice().sort((a, b) => {
+      const indexA = sessionIndex.get(keyOf(a)) ?? Number.MAX_SAFE_INTEGER;
+      const indexB = sessionIndex.get(keyOf(b)) ?? Number.MAX_SAFE_INTEGER;
+      return indexA - indexB;
+    }),
+    ...future
+  ];
+  const rows = ordered.slice(0, 30).map((entry) => {
     const delta = diffDays(entry.nextDate, today);
     let when;
     if (delta < 0) when = t("vocab.upcomingOverdue", { days: -delta });
