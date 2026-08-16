@@ -114,13 +114,14 @@ describe("flashcard gestures", () => {
     assert.equal(surfaceEvent.propagationStopped, true);
   });
 
-  it("keeps word-panel control taps alive after a reader word-card swipe", () => {
-    // The reader word panel has the same post-swipe click suppression; both
-    // the capture and bubble handlers must exempt interactive controls or
-    // the reader 'add image' path stays dead on Android.
+  it("keeps control and word taps alive after a reader swipe", () => {
+    // The reader has three post-swipe click suppressions: word-panel capture
+    // + bubble handlers AND the reader-text surface handler. All three must
+    // exempt interactive targets, or word selection / 'add image' stays dead
+    // right after a swipe on Android.
     const reader = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
     assert.match(reader, /\[role=/);
-    assert.equal((reader.match(/closest\(INTERACTIVE_CLICK_SELECTOR\)/g) || []).length, 2);
+    assert.equal((reader.match(/closest\(INTERACTIVE_CLICK_SELECTOR\)/g) || []).length, 3);
   });
 
   it("reveals on a tap and navigates the deck on horizontal pointer gestures", () => {

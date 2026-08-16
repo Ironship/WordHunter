@@ -296,9 +296,15 @@ export function bindReaderEvents(): void {
     });
     readerText.addEventListener("click", async (event) => {
       if (Date.now() < suppressSwipeClickUntil) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
+        // The window kills the stray synthetic click a swipe leaves on the
+        // text surface. Word tokens and controls are interactive — a quick
+        // tap on a word right after swiping must still select it.
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target?.closest(INTERACTIVE_CLICK_SELECTOR)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
       }
       if (!(event.target instanceof Element)) return;
       const zoomBtn = event.target.closest("[data-pdf-zoom]");
