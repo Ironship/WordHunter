@@ -47,23 +47,14 @@ export function appendAiExplanationToNote(word: string, explanation: string): st
   if (new RegExp(`(?:^|\n)[^\n]+:\n${trimmedEscaped}`).test(current)) return current;
   const marker = `${t("reader.aiNoteMarker")}:\n${trimmed}`;
   const next = current ? `${current}\n\n${marker}` : marker;
-  // Flush pending debounced saves before overwriting. The global debouncer
-  // keeps a SINGLE slot, so when we are about to write a note we re-schedule
-  // this word's note slot from the live value and flush immediately — the
-  // pending write can neither clobber the canonical write below nor be
-  // clobbered by it.
+  // Flush pending debounced saves FIRST. The global debouncer keeps a SINGLE
+  // slot — re-scheduling it here would silently drop an unrelated pending
+  // field save. A plain flush applies any pending edit, then the canonical
+  // write below wins for this note.
   const pendingApi = window as Window & {
     flushWordFieldSave?: () => void;
-    scheduleWordFieldSave?: (word: string, field: string, value: string) => void;
   };
-  if (pendingApi.scheduleWordFieldSave && field) {
-    // Re-write the pending note slot from the live textarea (current + marker
-    // is what we are about to persist), then flush — one canonical write.
-    pendingApi.scheduleWordFieldSave(word, "note", next);
-    pendingApi.flushWordFieldSave?.();
-  } else {
-    pendingApi.flushWordFieldSave?.();
-  }
+  pendingApi.flushWordFieldSave?.();
   if (field) field.value = next;
   updateWordField(word, "note", next);
   return next;
