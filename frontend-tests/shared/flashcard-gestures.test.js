@@ -3,10 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 class FakeElement {
-  constructor(interactive = false) { this.interactive = interactive; }
+  constructor(...selectors) {
+    // Selectors this element matches (empty = plain card surface).
+    this.selectors = new Set(selectors);
+  }
   closest(selector) {
-    if (selector === "[data-review-card-surface]") return this;
-    return this.interactive ? this : null;
+    const parts = String(selector).split(",").map((part) => part.trim());
+    return parts.some((part) => this.selectors.has(part)) ? this : null;
   }
 }
 class FakeHTMLElement extends FakeElement {}
@@ -71,7 +74,7 @@ describe("flashcard gestures", () => {
 
   it("keeps clicks on interactive controls alive inside the post-swipe suppression window", () => {
     const host = new FakeHost();
-    const surface = new FakeElement();
+    const surface = new FakeElement("[data-review-card-surface]");
     els.reviewCard = host;
     bindFlashcardEvents();
     // Arm the 400 ms suppression window with a real swipe.
@@ -81,8 +84,8 @@ describe("flashcard gestures", () => {
     });
     host.emit("pointerup", { pointerId: 2, clientX: 50, clientY: 25, preventDefault() {} });
 
-    const clickEvent = (interactive) => ({
-      target: new FakeElement(interactive),
+    const clickEvent = (selector = null) => ({
+      target: selector ? new FakeElement(selector) : new FakeElement(),
       defaultPrevented: false,
       propagationStopped: false,
       preventDefault() { this.defaultPrevented = true; },
@@ -91,22 +94,38 @@ describe("flashcard gestures", () => {
 
     // A tap on an image-suggestion tile / any control must survive so the
     // document-level handler (setWordImage) can still run.
-    const tileEvent = clickEvent(true);
+    const tileEvent = clickEvent("button");
     host.emit("click", tileEvent);
     assert.equal(tileEvent.defaultPrevented, false);
     assert.equal(tileEvent.propagationStopped, false);
 
+    // The upload tile is a div[role="button"], not a <button> — it must
+    // survive as well.
+    const uploadEvent = clickEvent('[role="button"]');
+    host.emit("click", uploadEvent);
+    assert.equal(uploadEvent.defaultPrevented, false);
+    assert.equal(uploadEvent.propagationStopped, false);
+
     // The stray synthetic click a swipe leaves on the plain card surface
     // must still be swallowed.
-    const surfaceEvent = clickEvent(false);
+    const surfaceEvent = clickEvent();
     host.emit("click", surfaceEvent);
     assert.equal(surfaceEvent.defaultPrevented, true);
     assert.equal(surfaceEvent.propagationStopped, true);
   });
 
+  it("keeps word-panel control taps alive after a reader word-card swipe", () => {
+    // The reader word panel has the same post-swipe click suppression; both
+    // the capture and bubble handlers must exempt interactive controls or
+    // the reader 'add image' path stays dead on Android.
+    const reader = readFileSync(new URL("../../dist/web/js/views/reader.js", import.meta.url), "utf8");
+    assert.match(reader, /\[role=/);
+    assert.equal((reader.match(/closest\(INTERACTIVE_CLICK_SELECTOR\)/g) || []).length, 2);
+  });
+
   it("reveals on a tap and navigates the deck on horizontal pointer gestures", () => {
     const host = new FakeHost();
-    const surface = new FakeElement();
+    const surface = new FakeElement("[data-review-card-surface]");
     els.reviewCard = host;
     bindFlashcardEvents();
     const start = (x, y, target = surface) => host.emit("pointerdown", {
@@ -120,7 +139,7 @@ describe("flashcard gestures", () => {
     start(50, 20); finish(160, 25);
     start(50, 20); finish(54, 24);
     start(50, 20); finish(54, 90);
-    start(50, 20, new FakeElement(true)); finish(54, 24);
+    start(50, 20, new FakeElement("button")); finish(54, 24);
 
     assert.deepEqual(host.clicks, { next: 1, prev: 1, toggle: 1 });
   });

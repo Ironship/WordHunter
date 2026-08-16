@@ -7,7 +7,7 @@ interface FlashcardGesture {
   canReveal: boolean;
 }
 
-const INTERACTIVE_SELECTOR = "button, a, input, textarea, select, [contenteditable]";
+const INTERACTIVE_SELECTOR = "button, a, input, textarea, select, [contenteditable], [role=\"button\"]";
 const CARD_SWIPE_MIN_DISTANCE = 56;
 const CARD_SWIPE_AXIS_RATIO = 1.2;
 
