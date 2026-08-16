@@ -132,6 +132,7 @@ export function bindReaderEvents(): void {
     let swipeStart: SwipePoint | null = null;
     let suppressSwipeClickUntil = 0;
     let wordCardResetTimer = 0;
+    const INTERACTIVE_CLICK_SELECTOR = "button, a, input, textarea, select, [contenteditable], [role=\"button\"]";
     const isWordPanelOpen = (): boolean => {
       const root = document.documentElement;
       if (!state.selectedWord) return false;
@@ -489,15 +490,23 @@ export function bindReaderEvents(): void {
     wordPanel.addEventListener("focusin", rememberWordPanelInteraction);
     wordPanel.addEventListener("click", (event) => {
       if (Date.now() >= suppressSwipeClickUntil) return;
+      // The window only exists to kill the stray synthetic click a word-card
+      // swipe leaves on the panel surface. Taps on interactive controls
+      // (image tiles, upload tile, buttons) must still reach their handlers.
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(INTERACTIVE_CLICK_SELECTOR)) return;
       event.preventDefault();
       event.stopPropagation();
     }, { capture: true });
     wordPanel.addEventListener("click", async (event) => {
       rememberWordPanelInteraction();
       if (Date.now() < suppressSwipeClickUntil) {
-        event.preventDefault();
-        event.stopPropagation();
-        return;
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target?.closest(INTERACTIVE_CLICK_SELECTOR)) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
       }
       if (!(event.target instanceof Element)) return;
       const articleBtn = event.target.closest("[data-suggest-article]");
