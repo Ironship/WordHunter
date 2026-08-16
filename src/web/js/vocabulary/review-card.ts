@@ -61,6 +61,15 @@ function shuffle<T>(values: readonly T[]): T[] {
   return shuffled;
 }
 
+/**
+ * Stable shuffled key order of the current review session (due cards only).
+ * The upcoming list reuses it so the visible queue can't leak the
+ * alphabetical insertion order of the deck.
+ */
+export function reviewSessionKeyOrder(): readonly string[] {
+  return reviewSession ? [...reviewSession.keys] : [];
+}
+
 function buildReviewQueue(entries: readonly ReviewQueueEntry[], today: string): ReviewQueueEntry[] {
   const profile = effectiveLearningLanguage(state.preferences);
   const byKey = new Map(entries.filter((entry) => isDue(entry.nextDate, today)).map((entry) => [entry.key, entry]));
