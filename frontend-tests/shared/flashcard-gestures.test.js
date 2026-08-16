@@ -69,6 +69,41 @@ describe("flashcard gestures", () => {
     assert.ok(html.indexOf('id="review-chart-fullwidth"') < html.indexOf('id="review-upcoming"'));
   });
 
+  it("keeps clicks on interactive controls alive inside the post-swipe suppression window", () => {
+    const host = new FakeHost();
+    const surface = new FakeElement();
+    els.reviewCard = host;
+    bindFlashcardEvents();
+    // Arm the 400 ms suppression window with a real swipe.
+    host.emit("pointerdown", {
+      isPrimary: true, pointerType: "touch", button: 0, pointerId: 2,
+      clientX: 160, clientY: 20, target: surface
+    });
+    host.emit("pointerup", { pointerId: 2, clientX: 50, clientY: 25, preventDefault() {} });
+
+    const clickEvent = (interactive) => ({
+      target: new FakeElement(interactive),
+      defaultPrevented: false,
+      propagationStopped: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() { this.propagationStopped = true; }
+    });
+
+    // A tap on an image-suggestion tile / any control must survive so the
+    // document-level handler (setWordImage) can still run.
+    const tileEvent = clickEvent(true);
+    host.emit("click", tileEvent);
+    assert.equal(tileEvent.defaultPrevented, false);
+    assert.equal(tileEvent.propagationStopped, false);
+
+    // The stray synthetic click a swipe leaves on the plain card surface
+    // must still be swallowed.
+    const surfaceEvent = clickEvent(false);
+    host.emit("click", surfaceEvent);
+    assert.equal(surfaceEvent.defaultPrevented, true);
+    assert.equal(surfaceEvent.propagationStopped, true);
+  });
+
   it("reveals on a tap and navigates the deck on horizontal pointer gestures", () => {
     const host = new FakeHost();
     const surface = new FakeElement();

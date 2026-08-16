@@ -71,6 +71,13 @@ export function bindFlashcardEvents(): void {
 
   host.addEventListener("click", (event) => {
     if (Date.now() >= suppressClickUntil) return;
+    // The window only exists to kill the stray synthetic click a swipe leaves
+    // on the card surface. Never swallow clicks on interactive controls —
+    // on touch devices this window is hot right after every deck swipe, so a
+    // legitimate tap on an image tile / button must still reach the
+    // document-level action handler.
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest(INTERACTIVE_SELECTOR)) return;
     event.preventDefault();
     event.stopPropagation();
   }, { capture: true });
