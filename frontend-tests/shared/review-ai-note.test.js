@@ -171,7 +171,10 @@ describe("flashcards AI explanation → word note", () => {
     await runReviewCardAiExplain(button, "run");
 
     assert.match(state.vocab.run.note, /^Live edit\.\n\nWyjaśnienie AI:\nTo czasownik\.$/);
-    assert.ok(flushed.some((entry) => Array.isArray(entry) && entry[0] === "schedule"));
+    // Only a flush: the single global pending slot must never be re-scheduled
+    // here, or an unrelated pending field save would be silently dropped.
+    assert.ok(flushed.includes("flush"));
+    assert.ok(!flushed.some((entry) => Array.isArray(entry) && entry[0] === "schedule"));
   });
 
   it("appends the finished explanation to state.vocab[word].note", async () => {
