@@ -103,6 +103,7 @@ function sharedMocks({ state, calls, flushed }) {
     "../loading.js": { beginElementBusy: () => () => {} },
     "../i18n.js": { t: (key) => (key === "reader.aiNoteMarker" ? MARKER : key) },
     // Deps of the real shared ai-note-append chunk (loaded from dist).
+    "./state.js": { state },
     "./i18n.js": { t: (key) => (key === "reader.aiNoteMarker" ? MARKER : key) },
     "./views/vocabulary.js": {
       getOrCreateEntry(word) {
@@ -119,9 +120,9 @@ function sharedMocks({ state, calls, flushed }) {
   };
 }
 
-function globalsWith(flushed) {
+function globalsWith(flushed, field = null) {
   return {
-    document: { querySelector: () => null },
+    document: { querySelector: () => field },
     CSS: { escape: (value) => String(value) },
     window: {
       flushWordFieldSave: () => flushed.push("flush"),
@@ -131,6 +132,48 @@ function globalsWith(flushed) {
 }
 
 describe("flashcards AI explanation → word note", () => {
+  it("ignores the hidden reader textarea outside the reader view", async () => {
+    const state = makeState(); // currentView: "flashcards"
+    state.vocab.run.note = "Bieżąca notatka.";
+    const calls = [];
+    const flushed = [];
+    const { button } = makeCardDom();
+    // The reader panel stays in the DOM when another view is active; its
+    // textarea is stale and must not be read or re-scheduled.
+    const field = { value: "STALE HIDDEN PANEL VALUE" };
+    const { runReviewCardAiExplain } = await evaluateReviewAi(
+      sharedMocks({ state, calls, flushed }),
+      globalsWith(flushed, field),
+      { "../ai-note-append.js": "dist/web/js/ai-note-append.js" }
+    );
+
+    await runReviewCardAiExplain(button, "run");
+
+    assert.match(state.vocab.run.note, /^Bieżąca notatka\./);
+    assert.doesNotMatch(state.vocab.run.note, /STALE/);
+    // The shared pending-save slot must not be hijacked by a stale-field write.
+    assert.ok(!flushed.some((entry) => Array.isArray(entry) && entry[0] === "schedule"));
+  });
+
+  it("reads the live textarea value when the reader view is open", async () => {
+    const state = makeState();
+    state.currentView = "reader";
+    const calls = [];
+    const flushed = [];
+    const { button } = makeCardDom();
+    const field = { value: "Live edit." };
+    const { runReviewCardAiExplain } = await evaluateReviewAi(
+      sharedMocks({ state, calls, flushed }),
+      globalsWith(flushed, field),
+      { "../ai-note-append.js": "dist/web/js/ai-note-append.js" }
+    );
+
+    await runReviewCardAiExplain(button, "run");
+
+    assert.match(state.vocab.run.note, /^Live edit\.\n\nWyjaśnienie AI:\nTo czasownik\.$/);
+    assert.ok(flushed.some((entry) => Array.isArray(entry) && entry[0] === "schedule"));
+  });
+
   it("appends the finished explanation to state.vocab[word].note", async () => {
     const state = makeState();
     const calls = [];
