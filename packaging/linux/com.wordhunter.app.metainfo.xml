@@ -37,7 +37,7 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="1.0.13-rc.3" date="2026-08-13" type="development">
+    <release version="1.0.13-rc.4" date="2026-08-13" type="development">
       <description>
         <ul>
           <li>Fixes the Android launch crash: the app now resolves its data folder correctly and starts on the phone.</li>
