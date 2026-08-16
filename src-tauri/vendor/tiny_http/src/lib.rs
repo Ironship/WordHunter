@@ -340,8 +340,16 @@ impl Server {
 
                     Err(e) => {
                         log::error!("Error accepting new client: {}", e);
-                        inside_messages.push(e.into());
-                        break;
+                        // A transient accept error (EMFILE, ECONNABORTED,
+                        // interrupted syscall) must not kill the whole
+                        // backend: keep the listener alive and rely on the
+                        // close flag to end this loop. Do NOT forward the
+                        // error to the main loop — a Message::Error makes
+                        // recv() return Err and shuts the server down
+                        // mid-session (same failure class as the listener
+                        // read-timeout bug: 'No text source found').
+                        thread::sleep(Duration::from_millis(100));
+                        continue;
                     }
                 }
             }
