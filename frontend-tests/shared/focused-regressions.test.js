@@ -1976,6 +1976,27 @@ async function evaluateWordPanel({
       }
     },
     "../vocab-actions.js": { updateWordField },
+    // Contract mirror of the real ../ai-note-append.js (exercised end to end
+    // by review-ai-note.test.js): appends the explanation through the mocked
+    // updateWordField so the reader-flow tests still observe the note write.
+    "../ai-note-append.js": {
+      appendAiExplanationToNote(word, explanation) {
+        const trimmed = String(explanation || "").trim();
+        if (!trimmed) return "";
+        const entry = state.vocab[word];
+        const current = entry?.note || "";
+        // Mirrors the real module: localized "<label>:<text>" block, dedupe
+        // included. The harness i18n mock (t: (key) => key) makes the marker
+        // render as the literal key name. NL avoids backslash escaping here.
+        const NL = String.fromCharCode(10);
+        const marker = "reader.aiNoteMarker";
+        const block = marker + ":" + NL + trimmed;
+        if (current.includes(block)) return current;
+        const next = current ? current + NL + NL + block : block;
+        updateWordField(word, "note", next);
+        return next;
+      }
+    },
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
     "./selection.js": { getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {
