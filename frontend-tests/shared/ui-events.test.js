@@ -77,6 +77,53 @@ describe("shared UI event behavior", () => {
     assert.equal(input.value, "");
   });
 
+  it("compresses oversized image uploads through a canvas before saving", async () => {
+    const bigDataUrl = "data:image/png;base64," + "A".repeat(500 * 1024);
+    globalThis.FileReader = class {
+      readAsDataURL() { this.onload({ target: { result: bigDataUrl } }); }
+    };
+    const drawn = [];
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext() { return { drawImage(image, x, y, w, h) { drawn.push([image, x, y, w, h]); } }; },
+      toDataURL() { return "data:image/jpeg;base64,COMPRESSED"; }
+    };
+    const originalCreateElement = globalThis.document.createElement;
+    globalThis.document.createElement = (tag) => (tag === "canvas" ? canvas : originalCreateElement(tag));
+    const OriginalImage = globalThis.Image;
+    globalThis.Image = class {
+      constructor() { this.naturalWidth = 4000; this.naturalHeight = 3000; this.width = 4000; this.height = 3000; }
+      set src(value) { assert.equal(value, bigDataUrl); queueMicrotask(() => this.onload()); }
+    };
+
+    try {
+      const { state } = await import("../../dist/web/js/state.js");
+      const { handleGlobalChange } = await import("../../dist/web/js/events/global-actions.js");
+      state.currentView = "library";
+      delete state.vocab.example;
+      const input = {
+        files: [{ name: "big-photo.jpg" }],
+        dataset: { uploadImage: "example" },
+        value: "selected",
+        closest(selector) { return selector === "[data-upload-image]" ? this : null; },
+      };
+
+      handleGlobalChange({ target: input });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      assert.equal(state.vocab.example.imageUrl, "data:image/jpeg;base64,COMPRESSED");
+      // Downscaled to the 1024 px budget (4000 × 0.256) and drawn as JPEG.
+      assert.equal(canvas.width, 1024);
+      assert.equal(canvas.height, 768);
+      assert.equal(drawn.length, 1);
+      assert.equal(input.value, "");
+    } finally {
+      globalThis.document.createElement = originalCreateElement;
+      globalThis.Image = OriginalImage;
+    }
+  });
+
   it("requests Pocket vocabulary exports through the local backend", async () => {
     const originalFetch = globalThis.fetch;
     let request;
