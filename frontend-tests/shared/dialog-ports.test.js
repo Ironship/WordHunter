@@ -485,6 +485,14 @@ describe("argos download dialog renderer (events/settings.ts)", () => {
         resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
       },
       "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
+      "../ai-model-discovery.js": {
+        countAiModelMatches: (models) => models.length,
+        filterAiModels: (models) => models,
+        isAiModelCommitKey: (event) => event.key === "Enter" || event.keyCode === 13,
+        getCachedAiModels: () => [],
+        isAiModelCacheFresh: () => false,
+        requestAiModels: async () => []
+      },
       "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
       "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
@@ -770,6 +778,14 @@ describe("settings view renderer (events/settings.ts)", () => {
         resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
       },
       "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
+      "../ai-model-discovery.js": {
+        countAiModelMatches: (models) => models.length,
+        filterAiModels: (models) => models,
+        isAiModelCommitKey: (event) => event.key === "Enter" || event.keyCode === 13,
+        getCachedAiModels: () => [],
+        isAiModelCacheFresh: () => false,
+        requestAiModels: async () => []
+      },
       "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
       "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
     }, { document, HTMLElement: HTMLElementInstance });
@@ -862,6 +878,10 @@ describe("settings view renderer (events/settings.ts)", () => {
       "pref-ai-endpoint",
       "pref-ai-model-row",
       "pref-ai-model",
+      "pref-ai-model-search",
+      "pref-ai-model-refresh",
+      "pref-ai-model-status",
+      "pref-ai-model-options",
       "pref-ai-key-row",
       "pref-ai-api-key",
       "pref-ai-effort-row",
@@ -887,6 +907,16 @@ describe("settings view renderer (events/settings.ts)", () => {
     assert.match(view.innerHTML, /data-i18n="settings\.translatorEyebrow"/);
     assert.match(view.innerHTML, /id="pref-offline-translator"/);
     assert.match(view.innerHTML, /id="pref-font"/);
+    assert.match(
+      view.innerHTML,
+      /id="pref-ai-model-search"[^>]+data-i18n-attr="placeholder=settings\.aiModelsSearch,aria-label=settings\.aiModelsSearch"/,
+      "the model-search combobox needs an accessible name"
+    );
+    assert.match(
+      view.innerHTML,
+      /id="pref-ai-model-options"[^>]+data-i18n-attr="aria-label=settings\.aiModel"/,
+      "the model listbox needs an accessible name"
+    );
     assert.equal(renderSettingsView(), view, "render must be idempotent");
     assert.equal(document.mainPanel.children.length, 1);
   });
@@ -899,6 +929,39 @@ describe("settings view renderer (events/settings.ts)", () => {
     const prefs = readFileSync(new URL("../../dist/web/js/preferences.js", import.meta.url), "utf8");
     assert.match(prefs, /"pref-ai-key-row"/, "preferences.js must target #pref-ai-key-row");
     assert.doesNotMatch(prefs, /"pref-ai-api-key-row"/, "stale #pref-ai-api-key-row reference");
+  });
+
+  it("sends the saved API key only after the explicit Refresh models action", () => {
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const discoveryCalls = settings.match(/void refreshAiModels\(/g) || [];
+    assert.equal(discoveryCalls.length, 1, "implicit settings events must not probe a provider");
+    assert.match(
+      settings,
+      /controls\.refresh\.addEventListener\("click", \(\) => void refreshAiModels\(true\)\)/
+    );
+    assert.match(settings, /option\.tabIndex = -1/, "listbox options must stay out of the Tab order");
+  });
+
+  it("supports Android IME commit and restores focus after choosing a model", () => {
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    assert.match(settings, /enterkeyhint="done"/);
+    assert.match(
+      settings,
+      /controls\.search\.addEventListener\("search",[\s\S]{0,240}click\(\)/
+    );
+    assert.match(settings, /controls\.model[!?]?\.focus\(\)/);
+  });
+
+  it("keeps chosen-model semantics separate from keyboard highlight", () => {
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const activeSetter = settings.match(/function setActiveAiModelOption[\s\S]*?\n}/)?.[0] || "";
+    assert.doesNotMatch(activeSetter, /aria-selected/);
+  });
+
+  it("cancels discovery when settings closes and recounts a lingering query on focus", () => {
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    assert.match(settings, /if \(view !== "settings"\) \{\s*cancelAiModelRefresh\(\);\s*closeAiModelOptions\(\);/);
+    assert.match(settings, /renderAiModelOptions\(open, open\)/);
   });
 
   it("keeps the settings view out of static HTML and renders it before cacheElements", () => {

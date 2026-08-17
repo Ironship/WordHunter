@@ -135,6 +135,11 @@ declare global {
     aiExplanationEndpoint: string;
     aiExplanationApiKey: string;
     aiExplanationModel: string;
+    aiExplanationModelsCache: {
+      endpoint: string;
+      models: string[];
+      fetchedAt: number;
+    } | null;
     aiExplanationEffort: string;
     aiExplanationAutoTrigger: boolean;
     ankiExportStatuses: WhVocabStatus[];

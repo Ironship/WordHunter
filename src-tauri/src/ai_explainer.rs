@@ -21,13 +21,24 @@ const MAX_IMAGE_DATA_URL_LEN: usize = 12 * 1024 * 1024;
 // Generous budget: reasoning models (GLM, Qwen-Thinking, ...) spend tokens
 // on `reasoning_content` before the actual explanation lands in `content`.
 const MAX_EXPLANATION_TOKENS: u32 = 1500;
+const MAX_MODELS_RESPONSE_BYTES: u64 = 1024 * 1024;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const READ_TIMEOUT: Duration = Duration::from_secs(180);
+const MODELS_TIMEOUT: Duration = Duration::from_secs(15);
 
 static AI_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     ureq::AgentBuilder::new()
         .timeout_connect(CONNECT_TIMEOUT)
         .timeout_read(READ_TIMEOUT)
+        .build()
+});
+
+static MODELS_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
+    ureq::AgentBuilder::new()
+        .timeout(MODELS_TIMEOUT)
+        .timeout_connect(CONNECT_TIMEOUT)
+        .timeout_read(MODELS_TIMEOUT)
+        .redirects(0)
         .build()
 });
 
@@ -43,6 +54,24 @@ fn validate_endpoint(endpoint: &str) -> Result<(), String> {
         ),
         _ => Err("AI endpoint must use http or https".to_string()),
     }
+}
+
+/// Derive the OpenAI-compatible model catalog without changing the provider,
+/// port or API prefix. Unknown inference paths are rejected rather than
+/// guessed, so credentials cannot be sent to a surprising URL.
+fn derive_models_endpoint(endpoint: &str) -> Result<String, String> {
+    validate_endpoint(endpoint)?;
+    let mut parsed =
+        Url::parse(endpoint).map_err(|_| "AI endpoint is not a valid URL".to_string())?;
+    let path = parsed.path().trim_end_matches('/');
+    let base = path
+        .strip_suffix("/chat/completions")
+        .or_else(|| path.strip_suffix("/responses"))
+        .ok_or_else(|| "AI endpoint does not expose a standard model-list path".to_string())?;
+    parsed.set_path(&format!("{base}/models"));
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    Ok(parsed.to_string())
 }
 
 fn is_loopback_host(host: &str) -> bool {
@@ -112,6 +141,11 @@ pub(crate) struct PreparedRequest {
     endpoint: String,
     api_key: String,
     body: Value,
+}
+
+pub(crate) struct PreparedModelsRequest {
+    endpoint: String,
+    api_key: String,
 }
 
 pub(crate) fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedRequest, String> {
@@ -268,6 +302,71 @@ pub(crate) fn send_prepared_request(prepared: &PreparedRequest) -> Result<ureq::
         })
 }
 
+pub(crate) fn prepare_models_request(payload: &Value) -> Result<PreparedModelsRequest, String> {
+    let endpoint = payload
+        .get("endpoint")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim();
+    let api_key = payload
+        .get("apiKey")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .trim();
+    Ok(PreparedModelsRequest {
+        endpoint: derive_models_endpoint(endpoint)?,
+        api_key: api_key.to_string(),
+    })
+}
+
+pub(crate) fn send_models_request(
+    prepared: &PreparedModelsRequest,
+) -> Result<ureq::Response, String> {
+    let mut request = MODELS_AGENT
+        .get(&prepared.endpoint)
+        .set("User-Agent", USER_AGENT)
+        .set("Accept", "application/json");
+    if !prepared.api_key.is_empty() {
+        request = request.set("Authorization", &format!("Bearer {}", prepared.api_key));
+    }
+    let response = request.call().map_err(|error| match error {
+        ureq::Error::Status(code, _) => format!("AI models endpoint returned HTTP {code}"),
+        ureq::Error::Transport(error) => format!("AI models endpoint unreachable: {error}"),
+    })?;
+    if !(200..300).contains(&response.status()) {
+        return Err(format!(
+            "AI models endpoint returned HTTP {}",
+            response.status()
+        ));
+    }
+    Ok(response)
+}
+
+pub(crate) fn parse_models_response(response: ureq::Response) -> Result<Value, String> {
+    use std::io::Read as _;
+    let mut bytes = Vec::new();
+    response
+        .into_reader()
+        .take(MAX_MODELS_RESPONSE_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("AI models response could not be read: {error}"))?;
+    if bytes.len() as u64 > MAX_MODELS_RESPONSE_BYTES {
+        return Err("AI models response is too large".to_string());
+    }
+    let value: Value = serde_json::from_slice(&bytes)
+        .map_err(|error| format!("AI models endpoint returned invalid JSON: {error}"))?;
+    if !value.get("data").is_some_and(Value::is_array) {
+        return Err("AI models endpoint returned an invalid model list".to_string());
+    }
+    Ok(value)
+}
+
+#[cfg(test)]
+fn list_models(payload: Value) -> Result<Value, String> {
+    let prepared = prepare_models_request(&payload)?;
+    parse_models_response(send_models_request(&prepared)?)
+}
+
 #[cfg(test)]
 pub fn explain(payload: Value) -> Result<Value, String> {
     let prepared = prepare_request(&payload, false)?;
@@ -328,8 +427,9 @@ pub(crate) fn relay_stream_response(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_user_content, explain, explain_stream, is_loopback_host, prepare_request,
-        validate_endpoint, validate_image,
+        MAX_MODELS_RESPONSE_BYTES, build_user_content, derive_models_endpoint, explain,
+        explain_stream, is_loopback_host, list_models, prepare_request, validate_endpoint,
+        validate_image,
     };
     use serde_json::json;
     use std::io::Write;
@@ -350,6 +450,19 @@ mod tests {
         assert!(validate_endpoint("ftp://example.com/x").is_err());
         assert!(validate_endpoint("not a url").is_err());
         assert!(validate_endpoint("").is_err());
+    }
+
+    #[test]
+    fn models_endpoint_is_derived_only_from_supported_ai_paths() {
+        assert_eq!(
+            derive_models_endpoint("https://opencode.ai/zen/go/v1/chat/completions").unwrap(),
+            "https://opencode.ai/zen/go/v1/models"
+        );
+        assert_eq!(
+            derive_models_endpoint("https://api.openai.com/v1/responses").unwrap(),
+            "https://api.openai.com/v1/models"
+        );
+        assert!(derive_models_endpoint("https://example.com/custom/infer").is_err());
     }
 
     #[test]
@@ -500,6 +613,117 @@ mod tests {
         let value = result.expect("explain should succeed against the mock server");
         assert_eq!(value["engine"], "ai");
         assert!(value["explanation"].as_str().unwrap().contains("czasownik"));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn model_discovery_gets_the_derived_catalog_with_authorization() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let request = read_http_request(&mut stream);
+            assert!(request.starts_with("GET /v1/models HTTP/1.1"), "{request}");
+            assert!(
+                request.contains("Authorization: Bearer model-key"),
+                "{request}"
+            );
+            let body =
+                r#"{"object":"list","data":[{"id":"deepseek-v4-flash"},{"id":"qwen3.5-plus"}]}"#;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let endpoint = format!("http://{address}/v1/chat/completions");
+        let value = list_models(json!({
+            "endpoint": endpoint,
+            "apiKey": "model-key"
+        }))
+        .expect("model discovery should succeed");
+        assert_eq!(value["object"], "list");
+        assert_eq!(value["data"][0]["id"], "deepseek-v4-flash");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn model_discovery_reports_http_status_without_echoing_provider_body() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = read_http_request(&mut stream);
+            let body = "provider echoed private details";
+            let response = format!(
+                "HTTP/1.1 401 Unauthorized\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let error = list_models(json!({
+            "endpoint": format!("http://{address}/v1/chat/completions"),
+            "apiKey": "model-key"
+        }))
+        .expect_err("401 should fail discovery");
+        assert!(error.contains("HTTP 401"), "{error}");
+        assert!(!error.contains("private details"), "{error}");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn model_discovery_does_not_follow_provider_redirects() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = read_http_request(&mut stream);
+            let response = "HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:9/v1/models\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let error = list_models(json!({
+            "endpoint": format!("http://{address}/v1/chat/completions"),
+            "apiKey": "model-key"
+        }))
+        .expect_err("model discovery must not follow redirects");
+        assert!(error.contains("HTTP 302"), "{error}");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn model_discovery_rejects_responses_over_one_megabyte() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let _ = read_http_request(&mut stream);
+            let body = format!(
+                "{{\"data\":[{{\"id\":\"{}\"}}]}}",
+                "x".repeat(MAX_MODELS_RESPONSE_BYTES as usize)
+            );
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+        });
+
+        let error = list_models(json!({
+            "endpoint": format!("http://{address}/v1/chat/completions"),
+            "apiKey": ""
+        }))
+        .expect_err("oversized catalogs must be rejected");
+        assert!(error.contains("too large"), "{error}");
         server.join().unwrap();
     }
 
