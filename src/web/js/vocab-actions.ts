@@ -300,6 +300,7 @@ export function setWordImage(word: string, imageUrl: unknown): void {
   entry.imageUrl = imageUrl;
   entry.updatedAt = new Date().toISOString();
   invalidateVocabListCache();
+  invalidateReviewQueueCache();
   saveState();
   if (state.currentView === "reader") updateReaderSelection();
   else if (state.currentView === "vocabulary" || state.currentView === "flashcards") {
@@ -316,6 +317,7 @@ export function removeWordImage(word: string): void {
   delete entry.imageUrl;
   entry.updatedAt = new Date().toISOString();
   invalidateVocabListCache();
+  invalidateReviewQueueCache();
   saveState();
   if (state.currentView === "reader") updateReaderSelection();
   else if (state.currentView === "vocabulary" || state.currentView === "flashcards") {

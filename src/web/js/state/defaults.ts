@@ -89,6 +89,7 @@ export function createDefaultPreferences(): WhPreferences {
       aiExplanationEndpoint: "https://opencode.ai/zen/go/v1/chat/completions",
       aiExplanationApiKey: "",
       aiExplanationModel: "deepseek-v4-flash",
+      aiExplanationModelsCache: null,
       aiExplanationEffort: "",
       aiExplanationAutoTrigger: false,
       ankiExportStatuses: ["learning"],
