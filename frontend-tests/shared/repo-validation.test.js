@@ -611,6 +611,10 @@ describe("repository validation wiring", () => {
     // full release history the desktop contract pins (1.0.5~rc entries).
     assert.equal(flatpak, template);
     assert.match(flatpak, /<release version="1\.0\.10"/);
+    // AppStream sorts `1.0.13-rc.5` after stable `1.0.13`, which makes the
+    // release list invalid. Tilde keeps historical candidates below stable.
+    assert.doesNotMatch(flatpak, /<release version="1\.0\.13-rc\./);
+    assert.match(flatpak, /<release version="1\.0\.13~rc\.5"[^>]*type="development">/);
     assert.match(flatpak, /<release version="1\.0\.5~rc\.5"[^>]*type="development">/);
     assert.match(flatpak, /<release version="1\.0\.5~rc\.4"[^>]*type="development">/);
   });
