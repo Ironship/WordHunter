@@ -75,11 +75,20 @@ test("mutation sites invalidate the suggest index and the review-queue memo", ()
   const vocabActions = readFileSync(new URL("../../src/web/js/vocab-actions.ts", import.meta.url), "utf8");
   const vocabularyView = readFileSync(new URL("../../src/web/js/views/vocabulary.ts", import.meta.url), "utf8");
   const wordEditor = readFileSync(new URL("../../src/web/js/events/word-editor.ts", import.meta.url), "utf8");
+  const setWordImage = vocabActions.slice(
+    vocabActions.indexOf("export function setWordImage"),
+    vocabActions.indexOf("export function removeWordImage")
+  );
+  const removeWordImage = vocabActions.slice(vocabActions.indexOf("export function removeWordImage"));
 
   // deleteWord: in-place delete -> both caches invalidated.
   assert.match(vocabActions, /export function deleteWord[\s\S]*?invalidateSuggestIndex\(\);[\s\S]*?invalidateReviewQueueCache\(\);/);
   // setWordStatus: queue depends on statuses -> memo invalidated.
   assert.match(vocabActions, /export function setWordStatus[\s\S]*?invalidateReviewQueueCache\(\);/);
+  // The review queue caches entry snapshots, so image mutations must evict it
+  // before renderReview or the flashcard immediately redraws stale content.
+  assert.match(setWordImage, /invalidateReviewQueueCache\(\);[\s\S]*?renderReview\(\);/);
+  assert.match(removeWordImage, /invalidateReviewQueueCache\(\);[\s\S]*?renderReview\(\);/);
   // selectWord + autoLearnOnClick: fresh entry -> learning feeds the queue.
   assert.match(vocabActions, /autoLearnOnClick[\s\S]*?setEntryStatus\(entry, "learning"\)[\s\S]*?invalidateReviewQueueCache\(\);/);
   // getOrCreateEntry: in-place add -> suggest index invalidated.
