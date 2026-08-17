@@ -139,6 +139,7 @@ fn method_not_allowed(method: &Method, path: &str) -> bool {
             | "/__argos/install"
             | "/__srs/review"
             | "/__translate/external"
+            | "/__ai/models"
             | "/__ai/explain"
             | "/__ai/explain_stream"
             | "/__text/vocab_index"
@@ -615,6 +616,21 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 match external_translator::translate(payload) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(err) => response::error_response(request, 400, &err),
+                }
+            }
+            "/__ai/models" => {
+                let payload = read_json_or_400!(request);
+                let prepared = match ai_explainer::prepare_models_request(&payload) {
+                    Ok(prepared) => prepared,
+                    Err(err) => return response::error_response(request, 400, &err),
+                };
+                let upstream = match ai_explainer::send_models_request(&prepared) {
+                    Ok(upstream) => upstream,
+                    Err(err) => return response::error_response(request, 502, &err),
+                };
+                match ai_explainer::parse_models_response(upstream) {
+                    Ok(payload) => response::json_response(request, payload),
+                    Err(err) => response::error_response(request, 502, &err),
                 }
             }
             "/__ai/explain" => {

@@ -212,7 +212,14 @@ describe("Android Pocket layout", () => {
       width: "44px",
       "min-width": "44px",
       height: "44px",
-      "min-height": "44px"
+      "min-height": "44px",
+      background: "transparent",
+      color: "transparent"
+    });
+    assertDeclarations(css, ".pocket-mode .word-image-remove::before", {
+      width: "32px",
+      height: "32px",
+      background: "var(--red)"
     });
     assertDeclarations(css, ".pocket-mode .in-text-review .sm2-grades", {
       "grid-template-columns": "repeat(5, minmax(0, 1fr))",
