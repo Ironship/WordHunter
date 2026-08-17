@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.0.13" date="2026-08-17">
+      <description>
+        <ul>
+          <li>Adds searchable model discovery for OpenAI-compatible AI services while preserving manual model entry.</li>
+          <li>Fixes Android image selection and immediate flashcard refresh, with compressed uploads and refined Pocket controls.</li>
+          <li>Improves flashcard AI-note persistence, shuffled review sessions, Android navigation, and backend resilience.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.13-rc.5" date="2026-08-13" type="development">
       <description>
         <ul>
