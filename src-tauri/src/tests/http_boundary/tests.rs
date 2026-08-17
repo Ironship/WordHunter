@@ -139,6 +139,31 @@ fn method_and_route_selection_are_exact() {
 }
 
 #[test]
+fn ai_model_discovery_route_is_protected_and_method_exact() {
+    let wrong_method = send_request("GET", "/__ai/models", None, None);
+    assert_eq!(wrong_method.status, 405);
+
+    let missing_token = send_request(
+        "POST",
+        "/__ai/models",
+        None,
+        Some(br#"{"endpoint":"https://example.com/v1/chat/completions"}"#),
+    );
+    assert_eq!(missing_token.status, 403);
+
+    // A valid token passes the boundary harness and reaches its intentionally
+    // unimplemented POST fallback. Request preparation is covered in
+    // ai_explainer's model-endpoint tests.
+    let accepted = send_request(
+        "POST",
+        "/__ai/models",
+        Some(TOKEN),
+        Some(br#"{"endpoint":"https://example.com/v1/chat/completions"}"#),
+    );
+    assert_eq!(accepted.status, 404);
+}
+
+#[test]
 fn malformed_and_empty_json_bodies_return_http_400() {
     // /__text/tokenize (the only JSON-reading route the plain boundary
     // harness used to dispatch) is gone since #114, so the malformed-body
