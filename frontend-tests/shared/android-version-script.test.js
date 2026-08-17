@@ -70,8 +70,8 @@ describe("android-version.mjs portable version identity (F-Droid/CI patcher)", (
   });
 
   it("pins the tauri.conf.json contract the identity derives from", () => {
-    assert.equal(tauriConfig.version, "1.0.13-rc.1");
-    assert.equal(androidVersionFor(tauriConfig.version).code, 101001301);
+    assert.equal(tauriConfig.version, "1.0.13");
+    assert.equal(androidVersionFor(tauriConfig.version).code, 101001399);
   });
 
   it("pins tauri.android.conf.json bundle.android.versionCode — the value the Tauri CLI writes into tauri.properties", () => {

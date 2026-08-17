@@ -1,0 +1,5 @@
+Word Hunter 1.0.13
+
+Searchable AI model discovery, reliable Android image selection and flashcard
+refresh, saved AI explanations, shuffled reviews, compressed image uploads,
+and stronger backend reliability.
