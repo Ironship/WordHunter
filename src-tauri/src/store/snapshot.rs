@@ -820,6 +820,23 @@ mod tests {
     }
 
     #[test]
+    fn delta_save_rejects_missing_records_without_leaving_a_journal() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        let result = store.bulk_save(json!({
+            "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
+            "delta": true,
+            "fullKeys": FULL_KEYS_TWO
+        }));
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "delta payload is missing records");
+        let records = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(records["vocab:de:wort"].data["status"], "learning");
+        assert!(!store.save_journal_path().exists());
+    }
+
+    #[test]
     fn delta_save_journal_recovery_replays() {
         let dir = tempfile::tempdir().unwrap();
         let store = store_at(&dir);

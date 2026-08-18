@@ -388,6 +388,22 @@ describe("persistence lifecycle", () => {
     assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
   });
 
+  it("replays a pending Android teardown flush after the durable store load succeeds", async () => {
+    const harness = await loadAppHarness({
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+    });
+    harness.window.__bridgeStatePromise = Promise.resolve({ preferences: {}, profiles: {} });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(
+      harness.calls.includes('replay:{"delta":true,"fullKeys":[]}'),
+      "the pending delta is replayed only after the durable snapshot resolves"
+    );
+    assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
+  });
+
   it("allows large Android stores up to 120 seconds to load", async () => {
     let timeoutMs = null;
     const harness = await loadAppHarness({
@@ -1346,7 +1362,7 @@ describe("persistence lifecycle", () => {
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
     assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
     assert.match(handlers, /bootstrap_script\([\s\S]*(Some|None)/);
-    assert.match(bootstrapTemplate, /storeLoadController[\s\S]*12000/);
+    assert.match(bootstrapTemplate, /storeLoadController[\s\S]*120000/);
     assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
     assert.match(boot, /Startup timed out before the application became ready/);
     assert.match(app, /clearTimeout\(window\.wordHunterBootTimeout\)/);
