@@ -1,6 +1,14 @@
-word-hunter (1.0.13-rc.3) unstable; urgency=medium
+word-hunter (1.0.13) unstable; urgency=medium
 
-  * Word Hunter 1.0.13-rc.3 stable release.
+  * Searchable AI model discovery for OpenAI-compatible services.
+  * Reliable Android image selection, flashcard refresh, and compressed uploads.
+  * Improved AI notes, review ordering, Android controls, and backend resilience.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Mon, 17 Aug 2026 23:51:13 +0200
+
+word-hunter (1.0.13-rc.5) unstable; urgency=medium
+
+  * Word Hunter 1.0.13-rc.5 stable release.
 
  -- Word Hunter maintainers <maintainers@wordhunter.app>  Thu, 13 Aug 2026 12:00:00 +0200
 

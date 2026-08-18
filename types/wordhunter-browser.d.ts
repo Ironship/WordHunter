@@ -135,6 +135,11 @@ declare global {
     aiExplanationEndpoint: string;
     aiExplanationApiKey: string;
     aiExplanationModel: string;
+    aiExplanationModelsCache: {
+      endpoint: string;
+      models: string[];
+      fetchedAt: number;
+    } | null;
     aiExplanationEffort: string;
     aiExplanationAutoTrigger: boolean;
     ankiExportStatuses: WhVocabStatus[];
@@ -448,7 +453,7 @@ interface WhDomCache {
     __bridgeStatePromise?: Promise<WhBridgeSnapshot>;
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;
-    buildPendingDeltaEnvelope?: () => { payload: string; session: string; sequence: number };
+    buildPendingDeltaEnvelope?: () => { payload: string; session: string; sequence: number } | null;
     hasPendingChanges?: () => boolean;
     flushAllPendingFrontendState?: () => Promise<void>;
     requestWordHunterClose?: () => void;
