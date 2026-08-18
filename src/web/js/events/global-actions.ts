@@ -109,12 +109,55 @@ function handleReviewButton(reviewButton: HTMLElement): void {
   }
 }
 
+const UPLOAD_IMAGE_MAX_DIMENSION = 1024;
+const UPLOAD_IMAGE_JPEG_QUALITY = 0.85;
+// Keep uploads at-or-below ~300 KB binary (~400 KB base64) untouched so small
+// PNGs keep transparency; anything bigger is downscaled + re-encoded as JPEG.
+const UPLOAD_IMAGE_PASSTHROUGH_DATAURL_CHARS = 400 * 1024;
+
+function compressImageDataUrl(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const sourceWidth = image.naturalWidth || image.width || 1;
+        const sourceHeight = image.naturalHeight || image.height || 1;
+        const scale = Math.min(1, UPLOAD_IMAGE_MAX_DIMENSION / Math.max(sourceWidth, sourceHeight));
+        const width = Math.max(1, Math.round(sourceWidth * scale));
+        const height = Math.max(1, Math.round(sourceHeight * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          resolve(dataUrl);
+          return;
+        }
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", UPLOAD_IMAGE_JPEG_QUALITY));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    image.onerror = () => resolve(dataUrl);
+    image.src = dataUrl;
+  });
+}
+
 function handleUploadImageInput(uploadFileInput: HTMLInputElement): void {
   if (!uploadFileInput.files?.[0]) return;
   const word = uploadFileInput.dataset.uploadImage;
   const file = uploadFileInput.files[0];
   const reader = new FileReader();
-  reader.onload = (event: ProgressEvent<FileReader>) => { setWordImage(word, event.target?.result); };
+  reader.onload = (event: ProgressEvent<FileReader>) => {
+    const raw = event.target?.result;
+    if (typeof raw !== "string") return;
+    if (raw.length <= UPLOAD_IMAGE_PASSTHROUGH_DATAURL_CHARS) {
+      setWordImage(word, raw);
+      return;
+    }
+    void compressImageDataUrl(raw).then((compressed) => setWordImage(word, compressed));
+  };
   reader.readAsDataURL(file);
   uploadFileInput.value = "";
 }

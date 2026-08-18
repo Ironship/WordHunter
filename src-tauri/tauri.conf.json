@@ -1,7 +1,7 @@
 {
   "$schema": "./gen/schemas/desktop-schema.json",
   "productName": "Word Hunter",
-  "version": "1.0.13-rc.3",
+  "version": "1.0.13",
   "identifier": "com.wordhunter.app",
   "build": {
     "frontendDist": "../dist/web"

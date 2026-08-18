@@ -1,0 +1,4 @@
+Word Hunter 1.0.13-rc.4
+
+Android image adding fixed, flashcard AI explanations saved to the
+word note, daily review queue shuffled, oversized uploads compressed.

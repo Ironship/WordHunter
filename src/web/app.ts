@@ -78,8 +78,11 @@ function flushPendingStateBeforeExit() {
     // never reach the backend (issue #137). Persist the save delta to
     // localStorage synchronously instead; the next boot replays it through
     // the normal save path (recoverPendingFlush).
-    if (typeof window.hasPendingChanges === "function" && window.hasPendingChanges()) {
-      flushPendingDeltaToLocalStorage(window.buildPendingDeltaEnvelope());
+    if (window.__bridgeState != null
+      && typeof window.hasPendingChanges === "function"
+      && window.hasPendingChanges()) {
+      const envelope = window.buildPendingDeltaEnvelope();
+      if (envelope) flushPendingDeltaToLocalStorage(envelope);
     }
     return;
   }
@@ -87,8 +90,9 @@ function flushPendingStateBeforeExit() {
 }
 
 // Replay a pending Android teardown flush into the backend once the boot
-// snapshot has been applied (or after the load failed — the delta in
-// localStorage may then be the only copy of the last mutations).
+// snapshot has been applied. If the durable load fails, keep the delta in
+// localStorage for a later boot; replaying fullKeys against an unknown store
+// can tombstone records that the temporary frontend state never loaded.
 function recoverPendingFlush(): void {
   const pending = readPendingDelta();
   if (pending === null) return;
@@ -98,7 +102,9 @@ function recoverPendingFlush(): void {
       .catch((error) => console.error("pending-flush replay failed; will retry next boot", error));
   };
   if (window.__bridgeStatePromise) {
-    void window.__bridgeStatePromise.then(replay, replay);
+    void window.__bridgeStatePromise.then(replay).catch((error) => {
+      console.error("pending-flush replay deferred until store load succeeds", error);
+    });
   } else {
     replay();
   }
@@ -181,7 +187,7 @@ function startBridgeStateLoad(): void {
   if (!window.__qtBridge || window.__bridgeState || bridgeStateLoadStarted) return;
   bridgeStateLoadStarted = true;
   const promise = window.__bridgeStatePromise
-    ?? fetchWithTimeout("/__store/load", { cache: "no-store", headers: { "X-WH-Token": window.WH_TOKEN || "" } }, 12_000)
+    ?? fetchWithTimeout("/__store/load", { cache: "no-store", headers: { "X-WH-Token": window.WH_TOKEN || "" } }, 120_000)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
         return response.json();
