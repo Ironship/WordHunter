@@ -344,6 +344,8 @@ fn bootstrap_starts_snapshot_loading_when_state_is_not_inlined() {
     let script = handlers::bootstrap_script("token", None, false);
 
     assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
+    assert!(script.contains("storeLoadController.abort(); }, 120000)"));
+    assert!(script.contains("Store load timed out after 120 seconds"));
     assert!(!script.contains("window.__bridgeState = null"));
 }
 

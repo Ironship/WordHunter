@@ -453,7 +453,7 @@ interface WhDomCache {
     __bridgeStatePromise?: Promise<WhBridgeSnapshot>;
     WordHunterAndroid?: WhAndroidBridge;
     flushPendingSave?: () => void;
-    buildPendingDeltaEnvelope?: () => { payload: string; session: string; sequence: number };
+    buildPendingDeltaEnvelope?: () => { payload: string; session: string; sequence: number } | null;
     hasPendingChanges?: () => boolean;
     flushAllPendingFrontendState?: () => Promise<void>;
     requestWordHunterClose?: () => void;
