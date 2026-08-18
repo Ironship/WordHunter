@@ -75,6 +75,10 @@ byte_replace("snap/snapcraft.yaml", [(OLD, NEW)])
 
 metainfo = ROOT / "packaging/linux/com.wordhunter.app.metainfo.xml"
 metainfo_data = metainfo.read_text(encoding="utf-8")
+rc_hyphen = f'<release version="{OLD}"'
+rc_appstream = f'<release version="{NEW}~rc.5"'
+if rc_hyphen in metainfo_data:
+    metainfo_data = metainfo_data.replace(rc_hyphen, rc_appstream, 1)
 release_anchor = "  <releases>\n"
 stable_entry = f"""  <releases>
     <release version=\"{NEW}\" date=\"{RELEASE_DATE}\">
