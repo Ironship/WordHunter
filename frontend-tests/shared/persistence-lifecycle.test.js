@@ -67,11 +67,13 @@ function cssDeclarations(source, selectorPattern) {
 
 async function loadAppHarness({
   applyPreferences = () => {},
+  bridgeFetch = async () => ({ ok: true, json: async () => ({}) }),
   hydrateActiveLibraryTexts = async () => {},
   hydrateCurrentReaderText = async () => true,
   loadBooksCatalog = async () => {},
   loadLocale = async () => {},
   pendingDelta = null,
+  qtBridge = false,
   hasPending = false,
   deltaEnvelope = { payload: "{}", session: "harness", sequence: 0 }
 } = {}) {
@@ -92,7 +94,7 @@ async function loadAppHarness({
     }
   };
   const window = fakeEventTarget({
-    __qtBridge: false,
+    __qtBridge: qtBridge,
     flushPendingSave() { calls.push("flush-save"); },
     hasPendingChanges() { return hasPending; },
     buildPendingDeltaEnvelope() { calls.push("build-envelope"); return deltaEnvelope; },
@@ -152,7 +154,7 @@ async function loadAppHarness({
     "./js/events/word-editor.js": { renderAddWordDialog: noOp },
 "./js/events/settings.js": { renderArgosDownloadDialog: noOp, renderSettingsView: noOp },
     "./js/events/book-import.js": { renderImportPanel: noOp },    "./js/book-actions/edit-modal.js": { renderEditBookDialog: noOp },
-    "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+    "./js/request.js": { fetchWithTimeout: bridgeFetch },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,
@@ -320,6 +322,7 @@ describe("persistence lifecycle", () => {
       deltaEnvelope: { payload: '{"delta":true,"fullKeys":[]}', session: "s1", sequence: 3 }
     });
     harness.setAndroid(true);
+    harness.window.__bridgeState = {};
 
     harness.window.emit("pagehide");
 
@@ -332,6 +335,42 @@ describe("persistence lifecycle", () => {
       !harness.calls.includes("keepalive-save"),
       "the multi-MB payload must not go through a keepalive fetch"
     );
+  });
+
+  it("does not freeze an Android teardown delta before the bridge snapshot is applied", async () => {
+    const harness = await loadAppHarness({
+      hasPending: true,
+      deltaEnvelope: { payload: '{"delta":true,"fullKeys":[]}', session: "s1", sequence: 3 }
+    });
+    harness.setAndroid(true);
+    delete harness.window.__bridgeState;
+
+    harness.window.emit("pagehide");
+
+    assert.deepEqual(harness.calls, ["flush-buffers"]);
+  });
+
+  it("refuses to build a destructive pending delta before the bridge snapshot is applied", async () => {
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: (state) => state,
+        buildDeltaSavePayload: () => ({ delta: true, fullKeys: [], records: {} }),
+        saveToLocalStorage() {},
+        saveWithRetry: async () => ({}),
+        saveSyncXhr() {},
+        readPendingDelta() { return null; },
+        clearPendingDelta() {}
+      }
+    }, {
+      window: { __qtBridge: true, __bridgeStatePromise: Promise.resolve({}), dispatchEvent() {} },
+      CustomEvent,
+      setTimeout,
+      clearTimeout,
+      console
+    });
+    const autosave = createAutosave(() => ({ preferences: {}, profiles: { de: { vocab: {} } } }));
+
+    assert.equal(autosave.buildPendingDeltaEnvelope(), null);
   });
 
   it("replays a pending Android teardown flush through the normal save path at boot", async () => {
@@ -347,6 +386,34 @@ describe("persistence lifecycle", () => {
       "the pending delta is replayed through the normal save path"
     );
     assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
+  });
+
+  it("allows large Android stores up to 120 seconds to load", async () => {
+    let timeoutMs = null;
+    const harness = await loadAppHarness({
+      qtBridge: true,
+      bridgeFetch: async (_url, _options, timeout) => {
+        timeoutMs = timeout;
+        return { ok: true, json: async () => ({}) };
+      }
+    });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+
+    assert.equal(timeoutMs, 120_000);
+  });
+
+  it("keeps a pending delta untouched when the durable store load fails", async () => {
+    const harness = await loadAppHarness({
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+    });
+    harness.window.__bridgeStatePromise = Promise.reject(new Error("store load timeout"));
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(harness.calls.some((call) => call.startsWith("replay:")), false);
+    assert.equal(harness.calls.includes("clear-pending"), false);
   });
 
   it("clears a pending delta only when a same-session save built after the freeze supersedes it", async () => {

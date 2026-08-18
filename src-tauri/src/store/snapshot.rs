@@ -202,8 +202,19 @@ impl Store {
             .unwrap_or_else(|e| e.into_inner())
             .clone();
         let saved_at = record_files::now_millis();
-        let mut incoming = record_files::payload_to_records(&payload, self.device_id(), saved_at);
+        // Validate the effective records and fullKeys before persisting the
+        // recovery journal. A malformed delta must not leave a journal that
+        // every later startup/save will try (and fail) to replay.
+        let effective = if payload.get("delta").and_then(Value::as_bool) == Some(true) {
+            payload
+                .get("records")
+                .ok_or_else(|| "delta payload is missing records".to_string())?
+        } else {
+            &payload
+        };
+        let mut incoming = record_files::payload_to_records(effective, self.device_id(), saved_at);
         self.hydrate_text_records(&mut incoming)?;
+        full_keys_from_payload(&payload, &incoming)?;
         let journal = self.save_journal_path();
         durable::write_json_atomic(
             &journal,
@@ -805,6 +816,7 @@ mod tests {
         // Nothing was applied.
         let records = record_files::load_records(dir.path()).unwrap();
         assert_eq!(records["vocab:de:wort"].data["status"], "learning");
+        assert!(!store.save_journal_path().exists());
     }
 
     #[test]
