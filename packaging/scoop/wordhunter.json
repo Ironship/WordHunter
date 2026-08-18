@@ -1,12 +1,12 @@
 {
-    "version": "1.0.11",
+    "version": "1.0.13",
     "description": "Local-first reader, vocabulary trainer, and language-learning workspace",
     "homepage": "https://ironship.github.io/WordHunter-site/",
     "license": "AGPL-3.0-or-later",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.11/Word.Hunter.portable.zip",
-            "hash": "681574154a8d76f6914ae04707c7f41ba129e9645f98b1835905793e542afcc8"
+            "url": "https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/Word.Hunter.portable.zip",
+            "hash": "858ec26e2f5ff93932e4618a169aea9c2b642ea60caa0ccaf64451397cb31a99"
         }
     },
     "shortcuts": [
