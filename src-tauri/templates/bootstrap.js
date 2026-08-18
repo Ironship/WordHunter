@@ -9,7 +9,7 @@
     window.__bridgeState = bridgeSnapshot;
   } else {
     const storeLoadController = new AbortController();
-    const storeLoadTimeout = setTimeout(function() { storeLoadController.abort(); }, 12000);
+    const storeLoadTimeout = setTimeout(function() { storeLoadController.abort(); }, 120000);
     window.__bridgeStatePromise = origFetch('/__store/load', {
       cache: 'no-store',
       headers: {
@@ -20,7 +20,7 @@
       if (!response.ok) throw new Error('Store load failed: HTTP ' + response.status);
       return response.json();
     }).catch(function(error) {
-      if (storeLoadController.signal.aborted) throw new Error('Store load timed out after 12 seconds');
+      if (storeLoadController.signal.aborted) throw new Error('Store load timed out after 120 seconds');
       throw error;
     }).finally(function() { clearTimeout(storeLoadTimeout); });
   }

@@ -67,6 +67,12 @@ export function createAutosave(getState: () => WhAppState) {
   type DirtyContext = { kind: "vocab" | "word" | "profile" | "books" | "texts" | "text"; lang?: string };
   const dirtyContexts = new WeakMap<object, DirtyContext>();
 
+  function isBridgeSnapshotPending(): boolean {
+    return Boolean(window.__qtBridge)
+      && (window.__bridgeState === null
+        || (window.__bridgeState === undefined && window.__bridgeStatePromise !== undefined));
+  }
+
   function hasPendingChanges(): boolean {
     return lastMutationAt > lastSaveSucceededAt
       || saveInFlight
@@ -132,14 +138,14 @@ export function createAutosave(getState: () => WhAppState) {
         return Promise.reject(error);
       }
     }
-    if (window.__bridgeState === null) {
+    if (isBridgeSnapshotPending()) {
       // The backend snapshot has not been applied yet: on Android it is
       // fetched asynchronously after boot. Sending a delta/full payload now
       // would tombstone the store with an effectively empty state. Buffer
       // locally; once the snapshot lands, markDurableStateReplaced flags
       // everything dirty and the next save pushes the full state through.
-      // (In tests __bridgeState is undefined, which deliberately bypasses
-      // this guard; at runtime the bootstrap always sets it to null first.)
+      // The bootstrap leaves __bridgeState undefined until the async snapshot
+      // lands, so both null and undefined must stay behind this guard.
       try {
         saveToLocalStorage(current);
         lastSaveSucceededAt = Date.now();
@@ -442,14 +448,19 @@ export function createAutosave(getState: () => WhAppState) {
       if (!hasPendingChanges()) return;
       const current = rawState();
       syncProfilePreferences();
-      if (window.__qtBridge && window.__bridgeState === null) saveToLocalStorage(current);
+      if (isBridgeSnapshotPending()) saveToLocalStorage(current);
       else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
       else saveToLocalStorage(current);
     },
     // Synchronous serialization of the save delta for the Android teardown
     // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
     // tracking as doSave so the replayed payload merges cleanly on next boot.
-    buildPendingDeltaEnvelope(): PendingDelta {
+    buildPendingDeltaEnvelope(): PendingDelta | null {
+      // Android can hide/tear down the WebView while the durable bridge
+      // snapshot is still loading. The temporary frontend state is incomplete
+      // at that point; freezing its fullKeys would make the next boot replay
+      // tombstone every durable record that has not arrived yet.
+      if (isBridgeSnapshotPending()) return null;
       const current = rawState();
       return {
         payload: JSON.stringify(
