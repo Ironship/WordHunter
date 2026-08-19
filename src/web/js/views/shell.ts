@@ -11,7 +11,13 @@ export function renderShell(): void {
   const hasSelectedReaderWord = state.currentView === "reader" && Boolean(state.selectedWord);
   document.documentElement.classList.toggle("has-selected-word", hasSelectedReaderWord);
   if (!hasSelectedReaderWord) document.documentElement.classList.remove("pocket-word-panel-open");
-  els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.currentView));
+  els.navItems.forEach((button) => {
+    const isActive = button.dataset.view === state.currentView;
+    button.classList.toggle("active", isActive);
+    // A11y (Wave 1B): announce which view is current to assistive tech.
+    if (isActive) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
   els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.currentView}-view`));
   const activeView = els.views.find((view) => view.id === `${state.currentView}-view`);
   const titleKey = activeView?.dataset.titleKey;

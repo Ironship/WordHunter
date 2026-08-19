@@ -3767,6 +3767,40 @@ textarea.vocab-translation-input {
   outline-offset: 2px;
 }
 
+/* Skip-to-content link (accessibility): visually hidden until keyboard
+   focus, then pinned to the top-left above the sidebar and topbar. Kept in
+   the tab order so keyboard users can jump straight to #page-title. */
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: var(--z-overlay);
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  background: var(--control-accent);
+  color: var(--control-accent-ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  /* Hidden from sight (but not the tab order) until focused. */
+  width: 1px;
+  height: 1px;
+  margin: -1px 0 0 -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+
 /* Current page number in Discover pagination. */
 .page-label {
   color: var(--muted);

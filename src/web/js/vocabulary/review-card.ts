@@ -408,6 +408,10 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
     hideReviewAnswer();
     reviewQueueCache = null;
     renderReview();
+    // A11y (Wave 1B): grading replaced the card via innerHTML, so focus was
+    // dropped on body. Move it to the next card's reveal button (or the
+    // end-of-session summary button) so keyboard review can continue.
+    focusAfterReviewRender();
   } finally {
     reviewGradePending = false;
     els.reviewCard?.removeAttribute("aria-busy");
@@ -415,6 +419,28 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
       if (button instanceof HTMLButtonElement) button.disabled = false;
     });
   }
+}
+
+/**
+ * Restore focus after a review re-render (the graded card's DOM was replaced).
+ * Prefers the "show answer" toggle so a keyboard-only session continues
+ * 1-5 grade → Enter reveal → 1-5 grade; falls back to the end-of-session
+ * summary button and finally to the card container.
+ */
+function focusAfterReviewRender(): void {
+  if (els.reviewCard instanceof HTMLElement) {
+    const toggle = els.reviewCard.querySelector<HTMLButtonElement>('[data-review-action="toggle"]');
+    if (toggle instanceof HTMLButtonElement && !toggle.disabled) {
+      toggle.focus();
+      return;
+    }
+  }
+  const done = document.getElementById("review-session-summary-done");
+  if (done instanceof HTMLButtonElement) {
+    done.focus();
+    return;
+  }
+  if (els.reviewCard instanceof HTMLElement) els.reviewCard.focus();
 }
 
 export function removeFromSrs(word: string): void {

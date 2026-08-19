@@ -1,6 +1,7 @@
 // Render orchestrator.
 import { state, saveUiState, getLastReadTextId } from "./state.js";
 import { renderShell } from "./views/shell.js";
+import { els } from "./dom.js";
 import { renderLibrary } from "./views/library.js";
 import { renderReader, getTextById } from "./reader/renderer.js";
 import { updateReaderSelection } from "./reader/selection.js";
@@ -105,6 +106,11 @@ export function setView(viewName: string): void {
   renderShell();
   renderView(viewName);
   completeViewRender(viewName);
+  // A11y (Wave 1B): after the view switch, move focus to the new view's
+  // heading (#page-title is tabindex=-1, the skip-link target) so a keyboard /
+  // screen-reader user lands on an announced, known position instead of the
+  // body. renderShell() has already updated the title text by this point.
+  if (els.pageTitle) els.pageTitle.focus();
   window.dispatchEvent(new CustomEvent("wordhunter:view-changed", { detail: { view: viewName } }));
 }
 

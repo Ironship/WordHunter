@@ -108,14 +108,63 @@ function discoverPayload(discover: Partial<WhDiscoverState> | undefined): WhDisc
   return { query, source, sort, level, page };
 }
 
+/** True when the browser rejected a storage write for exceeding its quota. */
+function isQuotaExceeded(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    return error.name === "QuotaExceededError" || error.code === 22;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return /quota/i.test(message);
+}
+
 /** Save to localStorage. */
 export function saveToLocalStorage(rawState: WhSaveStateInput): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(withSchemaVersion(rawState)));
-  } catch (e) {
-    console.error("localStorage save failed", e);
-    throw e;
+  } catch (error) {
+    // P2-10: a full-state write (large vocabulary + all book texts) can
+    // exceed the localStorage quota. Degrade to a prefs-only envelope on the
+    // same key instead of failing outright — loadState() merges the stored
+    // envelope over createDefaultState(), so the locale, theme, language and
+    // the rest of the preferences survive the quota error (and the buffered
+    // writes before a bridge snapshot lands never drop the user's prefs).
+    if (isQuotaExceeded(error)) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(buildPreferencesOnlyEnvelope(rawState)));
+        console.warn("localStorage quota exceeded; persisted preferences only", error);
+        return;
+      } catch (fallbackError) {
+        console.error("localStorage persistence failed (full and prefs-only fallback)", error, fallbackError);
+      }
+    }
+    console.error("localStorage save failed", error);
+    throw error;
   }
+}
+
+/**
+ * Minimal localStorage envelope for the QuotaExceeded fallback: preferences
+ * plus each profile's preferences only — the small slice of the state that
+ * untracked quota pressure should never be allowed to destroy.
+ */
+function buildPreferencesOnlyEnvelope(rawState: WhSaveStateInput): WhRecord {
+  const plain = toPlain(rawState);
+  const envelope: WhRecord = { schemaVersion: STATE_SCHEMA_VERSION };
+  if (plain?.preferences && typeof plain.preferences === "object") {
+    envelope.preferences = plain.preferences as WhRecord;
+  }
+  const profiles = plain?.profiles;
+  if (profiles && typeof profiles === "object") {
+    envelope.profiles = Object.fromEntries(
+      Object.entries(profiles as WhRecord).map(([lang, profile]) => {
+        const prefs = profile && typeof profile === "object"
+          ? (profile as WhRecord).preferences
+          : undefined;
+        return [lang, prefs && typeof prefs === "object" ? { preferences: prefs } : undefined];
+      }).filter((entry) => entry[1] !== undefined)
+    );
+  }
+  return envelope;
 }
 
 // Android teardown flush: the keepalive fetch is capped at 64 KiB while the
