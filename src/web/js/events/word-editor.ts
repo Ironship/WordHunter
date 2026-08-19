@@ -75,6 +75,22 @@ export function renderAddWordDialog(): HTMLDialogElement {
 
 let addWordStatusButtons: HTMLButtonElement[] = [];
 
+/**
+ * Re-localizes the add/edit-word dialog after the locale changes (post-boot
+ * bridge snapshot #275, or a settings switch). The dialog's static labels
+ * carry data-i18n and are refreshed by applyTranslations(), but the status
+ * buttons are rendered once at bind time with statusLabel(...) — inside the
+ * escaped template, not as data-i18n — so they must be rebuilt here to pick
+ * up the new locale (#274). The currently active status survives the rebuild.
+ */
+export function refreshAddWordDialogLocalization(): void {
+  const activeStatus = addWordStatusButtons
+    .find((btn) => btn.classList.contains("active"))
+    ?.dataset.addWordStatus;
+  renderAddWordStatusButtons();
+  if (activeStatus) setAddWordStatus(activeStatus);
+}
+
 function renderAddWordStatusButtons() {
   const container = document.getElementById("add-word-status-buttons");
   if (!container) return;

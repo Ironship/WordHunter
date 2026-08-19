@@ -46,6 +46,7 @@ run node scripts/validate-json-i18n.mjs
 run npm run check:frontend
 run node --experimental-vm-modules --test frontend-tests/shared/*.test.js frontend-tests/desktop/*.test.js frontend-tests/android/*.test.js
 run ./scripts/update-flatpak-cargo-sources.sh --check
+run ./scripts/check-version-sinks.sh
 if [[ "${WORDHUNTER_VALIDATE_LICENSES:-1}" != "0" ]]; then
   run ./scripts/update-third-party-licenses.sh --check
 else

@@ -6,7 +6,7 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, statusLabel } from "../utils.js";
 import { icon, statusIcon } from "../icons.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constants.js";
-import { t } from "../i18n.js";
+import { t, plural } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
 import { appendAiExplanationToNote } from "../ai-note-append.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
@@ -676,7 +676,7 @@ export function updateWordStatusInReader(word: string, status: VocabStatus, opti
     const stats = session.stats!;
     renderTrackingSummary(stats);
     if (els.uniqueSummary) {
-      els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
+      els.uniqueSummary.textContent = plural("reader.uniqueSummary", stats.unique, { n: stats.unique });
     }
   }
 }

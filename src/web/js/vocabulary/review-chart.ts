@@ -14,7 +14,7 @@
 import { state } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
-import { t as rawT } from "../i18n.js";
+import { t as rawT, plural as rawPlural } from "../i18n.js";
 import { renderContributionHeatmap } from "../views/heatmap.js";
 import { buildEaseFactorBins, buildHeatmapActivityCounts, drawBarChart, drawChartBar, updateColors, text as ink, muted, blue, green, red, panelBg, projectDueBuckets } from "../graphs/helpers.js";
 import type { ChartContext, VocabEntry } from "../graphs/helpers.js";
@@ -34,6 +34,7 @@ interface ReviewElements {
 
 const reviewEls = els as ReviewElements;
 const t = rawT as (key: string, vars?: TranslationVars) => string;
+const plural = rawPlural as (baseKey: string, count: number, vars?: TranslationVars) => string;
 
 function diffDays(fromISO: string, toISO: string): number {
   // Interpret date-only strings as UTC midnight so the day difference is stable
@@ -165,7 +166,7 @@ export function renderReviewUpcoming(srsEntries: readonly ReviewEntry[], today: 
     if (delta < 0) when = t("vocab.upcomingOverdue", { days: -delta });
     else if (delta === 0) when = t("vocab.upcomingToday");
     else if (delta === 1) when = t("vocab.upcomingTomorrow");
-    else when = t("vocab.upcomingInDays", { days: delta });
+    else when = plural("vocab.upcomingInDays", delta, { days: delta });
     const due = delta <= 0 ? " due" : "";
     return `<li class="upcoming-row${due}">
       <div class="upcoming-main">

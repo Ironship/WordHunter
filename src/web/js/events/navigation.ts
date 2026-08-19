@@ -147,6 +147,16 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
     return;
   }
 
+  // Escape inside a reader word-panel field returns focus to the text token
+  // (handleReaderKeys owns that refocus) instead of a bare blur, so the
+  // global in-field Escape handler below must not swallow it first.
+  if (state.currentView === "reader" && key === "escape" && inField) {
+    const escapeTarget = event.target instanceof HTMLElement
+      ? event.target
+      : (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    if (escapeTarget?.closest("#word-panel") && handleReaderKeys(event, key)) return;
+  }
+
   if ((inField || key === "escape") && handleGlobalKeys(event, key, inField)) return;
   if (document.querySelector("dialog[open]")) return;
   if (event.repeat && !["arrowleft", "arrowright", "arrowup", "arrowdown", "pageup", "pagedown"].includes(key)) return;

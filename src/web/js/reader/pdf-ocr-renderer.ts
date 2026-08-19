@@ -5,7 +5,7 @@
 import { getVocabularyRevision, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
-import { t as rawT } from "../i18n.js";
+import { t as rawT, plural as rawPlural } from "../i18n.js";
 import { classifyTokenOccurrences, normalizeWord, tokenizeText } from "../tokenizer_v2.js";
 import type { TextToken } from "../tokenizer_v2.js";
 import { restoreReaderPagePosition } from "./scroll.js";
@@ -67,6 +67,7 @@ interface ReaderElements {
 
 const readerEls = els as ReaderElements;
 const t = rawT as (key: string, vars?: TranslationVars) => string;
+const plural = rawPlural as (baseKey: string, count: number, vars?: TranslationVars) => string;
 
 const PDF_OCR_LAYOUT_FONT = `"Times New Roman", Georgia, serif`;
 const PDF_TEXT_LAYER_BOUNDS_VERSION = "text-glyph-v2";
@@ -166,7 +167,7 @@ export function renderPdfOcrReader(current: PdfOcrDocument, savedPos: unknown): 
   ) as ReaderSession;
   const stats = session.stats!;
   renderTrackingSummary(stats);
-  readerEls.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
+  readerEls.uniqueSummary.textContent = plural("reader.uniqueSummary", stats.unique, { n: stats.unique });
 
   const totalPages = Math.max(1, pages.length);
   cacheTotalPages(current.id, totalPages);
@@ -323,7 +324,7 @@ function renderPdfOcrTextTokens(
     const selected = state.selectedWord === dataWord ? "selected" : "";
     const color = status === "learning" ? getLearningColor(entry, state.preferences) : "";
     const style = color ? ` style="--token-learning-bg:${color}"` : "";
-    html += `<button class="word-token status-${status} ${selected}" type="button" data-word="${escapeAttribute(dataWord)}" data-display-word="${escapeAttribute(raw)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
+    html += `<button class="word-token status-${status} ${selected}" type="button" tabindex="-1" data-word="${escapeAttribute(dataWord)}" data-display-word="${escapeAttribute(raw)}" data-word-index="${globalOffset + wordCount}" data-char-offset="${charOffset}"${style}>${escapeHtml(raw)}</button>`;
     wordCount += 1;
     charOffset += raw.length;
   }
@@ -655,5 +656,5 @@ function renderPdfOcrWord(
   const indexAttribute = Number.isInteger(globalIndex) ? ` data-word-index="${globalIndex}"` : "";
   const pageIndexAttribute = Number.isInteger(pageWordIndex) ? ` data-pdf-page-word-index="${pageWordIndex}"` : "";
   const charOffsetAttribute = Number.isInteger(charOffset) ? ` data-char-offset="${charOffset}"` : "";
-  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" data-word="${escapeAttribute(word)}" data-display-word="${escapeAttribute(raw)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
+  return `<button class="word-token pdf-ocr-word status-${status} ${selected}" type="button" tabindex="-1" data-word="${escapeAttribute(word)}" data-display-word="${escapeAttribute(raw)}"${indexAttribute}${pageIndexAttribute}${charOffsetAttribute} style="${style}" aria-label="${escapeAttribute(raw)}"></button>`;
 }

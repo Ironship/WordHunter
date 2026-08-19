@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="platforms/android-pocket.css?v=20260715-panel-controls">
 </head>
 <body>
+  <a class="skip-link" href="#page-title" data-i18n="app.skipToContent">Skip to content</a>
   <div class="app-shell">
     <button type="button" id="pocket-navigation-toggle" class="icon-button pocket-navigation-toggle" aria-expanded="false" aria-controls="app-navigation" data-i18n-attr="title=app.navAriaLabel,aria-label=app.navAriaLabel" aria-label="Navigation">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -128,7 +129,7 @@
       <header class="topbar">
         <div>
           <p class="eyebrow" data-i18n="app.section">Reading</p>
-          <h1 id="page-title" data-i18n="nav.library">Library</h1>
+          <h1 id="page-title" tabindex="-1" data-i18n="nav.library">Library</h1>
         </div>
         <div class="topbar-actions">
           <span class="metric-pill metric-known" id="pill-known" data-i18n-attr="title=topbar.knownTooltip"></span>
@@ -217,11 +218,11 @@
                 </div>
               </div>
             </div>
-            <article class="reader-text" id="reader-text" tabindex="0"></article>
+            <section class="reader-text" id="reader-text" tabindex="0" data-i18n-attr="aria-label=reader.textAriaLabel" aria-label="Reading area"></section>
             <div id="reader-bookmark-tabs" class="reader-bookmark-tabs" data-i18n-attr="aria-label=reader.bookmarks" hidden></div>
           </section>
 
-          <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
+          <div id="reader-sidebar-resizer" class="reader-sidebar-resizer" role="separator" aria-orientation="vertical" tabindex="0" aria-valuemin="300" aria-valuemax="720" aria-valuenow="380" data-i18n-attr="aria-label=reader.resizeWordPanel"></div>
           <div class="reader-sidebar-wrapper" data-pocket-sheet-state="collapsed">
             <button type="button" id="pocket-word-panel-sheet-handle" class="pocket-word-panel-sheet-handle" aria-controls="word-panel" aria-expanded="false" data-i18n-attr="aria-label=reader.expandWordPanel,title=reader.expandWordPanel">
               <span aria-hidden="true"></span>
