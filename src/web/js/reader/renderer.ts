@@ -7,7 +7,7 @@
 import { getVocabularyRevision, state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, calcStatsPcts } from "../utils.js";
-import { t } from "../i18n.js";
+import { t, plural } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { findBookById, getAllBooks, bookTexts } from "../books.js";
 import { openAndroidUrl } from "../platform.js";
@@ -264,7 +264,7 @@ export function renderReader(): void {
       analyzeReaderSession(session, state.vocab, language, getVocabularyRevision());
       const stats = session.stats;
       renderTrackingSummary(stats);
-      els.uniqueSummary.textContent = t("reader.uniqueSummary", { n: stats.unique });
+      els.uniqueSummary.textContent = plural("reader.uniqueSummary", stats.unique, { n: stats.unique });
 
       const wordsPerPage = effectiveWordsPerPage(Number(state.preferences.wordsPerPage) || 1000);
       const totalPages = computeTotalPages(session.totalWords, wordsPerPage);

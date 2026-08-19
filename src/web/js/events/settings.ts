@@ -2,6 +2,7 @@ import { applyBridgeSnapshotToState, flushAllPendingFrontendState, getDurableSta
 import { els } from "../dom.js";
 import { t, loadLocale, applyTranslations } from "../i18n.js";
 import { render } from "../render.js";
+import { refreshAddWordDialogLocalization } from "./word-editor.js";
 import { renderLibrary } from "../views/library.js";
 import { getTextById, renderReader } from "../reader/renderer.js";
 import { renderWordPanel } from "../reader/word-panel.js";
@@ -1252,6 +1253,10 @@ export function bindSettingsEvents() {
       saveState();
       await loadLocale(value);
       applyTranslations();
+      // The word-editor status buttons are rendered text, not data-i18n;
+      // rebuild them so an already-built dialog never keeps the old locale
+      // (issue #274).
+      refreshAddWordDialogLocalization();
       applyPlatformUi();
       applyPreferences();
       syncSettingsControls();

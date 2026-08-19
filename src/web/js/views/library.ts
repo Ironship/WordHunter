@@ -667,6 +667,10 @@ export function renderLibraryPanel(): HTMLElement {
   resizer.className = "panel-sidebar-resizer";
   resizer.setAttribute("role", "separator");
   resizer.setAttribute("aria-orientation", "vertical");
+  resizer.tabIndex = 0;
+  resizer.setAttribute("aria-valuemin", "280");
+  resizer.setAttribute("aria-valuemax", "600");
+  resizer.setAttribute("aria-valuenow", "360");
   resizer.setAttribute("data-i18n-attr", "aria-label=library.resizeImportPanel");
 
   const importPanel = grid.querySelector<HTMLElement>(".import-panel");
