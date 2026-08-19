@@ -2494,6 +2494,11 @@ html[data-max-width="full"] .reader-text {
 .empty-state {
   display: grid;
   gap: 0.5rem;
+  place-items: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .word-title {
@@ -3323,6 +3328,9 @@ textarea.vocab-translation-input {
   width: 340px;
   overflow: hidden;
   background: var(--panel);
+  background-image: linear-gradient(90deg, rgba(0,0,0,0.08), transparent 28px);
+  background-repeat: no-repeat;
+  background-size: 28px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
@@ -3350,6 +3358,10 @@ textarea.vocab-translation-input {
   right: 0;
   z-index: var(--z-floating);
   text-align: center;
+  background: var(--panel-strong);
+  background-image: linear-gradient(90deg, rgba(0,0,0,0.07), transparent 24px);
+  background-repeat: no-repeat;
+  background-size: 24px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
@@ -3592,6 +3604,9 @@ textarea.vocab-translation-input {
   font-size: 0.83rem;
   font-weight: 600;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+  justify-content: center;
 }
 
 .metric-pill.metric-known {
