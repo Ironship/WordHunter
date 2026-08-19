@@ -246,7 +246,7 @@ export function renderLibrary(): void {
     });
 
   if (!books.length) {
-    bookList.innerHTML = `<div class="empty-row">${escapeHtml(t("library.empty"))}</div>`;
+    bookList.innerHTML = `<div class="empty-row">${escapeHtml(t("library.empty"))}<button type="button" class="secondary-button empty-cta" data-open-view="discover">${escapeHtml(t("nav.discover"))}</button></div>`;
     return;
   }
 

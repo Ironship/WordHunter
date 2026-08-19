@@ -54,11 +54,13 @@ const DUP_GROUP_PIN = 48;
 
 /* T5: stylesheet size budget — pins the SOURCE file sizes (not dist/), which
    is what the #129 P3 audit measured. Pins = audit baseline + ~2% headroom.
-   Last growth: styles.css and android-pocket.css grew in #215 (2026-08, P0-P2
-   inline-style sweep); theme.css last changed in #173. The audit's
-   "pocket-reader.css" (6371 B) is theme.css — no such file exists on main. */
+   Last growth: Wave C (2026-08, non-sec visual/perf) — ignored-word dash
+   (WCAG 1.4.1), empty-state CTAs, graph-card nth-child stagger + learning-lvl
+   color classes in styles.css. android-pocket.css grew in #215; theme.css last
+   changed in #173. The audit's "pocket-reader.css" (6371 B) is theme.css — no
+   such file exists on main. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 110050],
+  ["src/web/styles.css", 113100],
   ["src/web/platforms/android-pocket.css", 33500],
   ["src/web/theme.css", 6500]
 ]);

@@ -608,6 +608,7 @@ export function renderWordPanel(currentText: WhText): void {
         <p class="eyebrow">${escapeHtml(t("reader.wordPanelEyebrow"))}</p>
         <h2>${escapeHtml(t("reader.wordPanelHeading"))}</h2>
         <p>${escapeHtml(t("reader.wordPanelHint"))}</p>
+        <button type="button" class="secondary-button" data-open-view="library">${escapeHtml(t("nav.library"))}</button>
       </div>
     `;
     return;
