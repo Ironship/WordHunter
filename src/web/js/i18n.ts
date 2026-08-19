@@ -11,6 +11,13 @@ type TranslationDictionary = Record<string, unknown>;
 
 let dict: TranslationDictionary = {};
 
+// Monotonic load sequence. The boot locale choice (#275) can race the bridge
+// snapshot: the app boots against navigator.language, then the persisted
+// locale arrives and must win even when its fetch is slower than the boot
+// fetch. A stale response (an older load resolving last) would otherwise
+// overwrite the newer dictionary — only the newest request applies its dict.
+let loadRequestSeq = 0;
+
 export function getLocale() {
   return currentLocale;
 }
@@ -28,19 +35,29 @@ export function initialLocale(savedLocale?: string, navigatorLanguage?: string):
 
 export async function loadLocale(locale: string) {
   const code = SUPPORTED.includes(locale) ? locale : FALLBACK;
+  const seq = ++loadRequestSeq;
   try {
     const response = await fetchWithTimeout(`i18n/${code}.json`, { cache: "no-cache" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    dict = await response.json();
+    const nextDict = await response.json();
+    // A newer loadLocale has started since this fetch began — its dictionary
+    // supersedes this one, so do not apply a stale translation set.
+    if (seq !== loadRequestSeq) return;
+    dict = nextDict;
     currentLocale = code;
     document.documentElement.lang = code;
   } catch (error) {
     console.warn("Failed to load translations:", error);
+    if (seq !== loadRequestSeq) return;
     if (code !== FALLBACK) await loadLocale(FALLBACK);
   }
 }
 
 export function t(key: string, vars?: TranslationVariables) {
+  return tWithDict(dict, key, vars);
+}
+
+export function tWithDict(dict: TranslationDictionary, key: string, vars?: TranslationVariables) {
   const value = key.split(".").reduce<unknown>(
     (acc, part) => (acc && typeof acc === "object" ? (acc as TranslationDictionary)[part] : undefined),
     dict
@@ -48,6 +65,59 @@ export function t(key: string, vars?: TranslationVariables) {
   if (typeof value !== "string") return key;
   if (!vars) return value;
   return value.replace(/\{(\w+)\}/g, (_, name) => (vars[name] !== undefined ? String(vars[name]) : `{${name}}`));
+}
+
+/**
+ * Plural-aware translation (issue #268). The dictionary carries suffixed
+ * variants of count-bearing keys — `<key>_zero`, `<key>_one`, `<key>_few`,
+ * `<key>_many`, `<key>_other` — and the category is chosen by
+ * `Intl.PluralRules` for the active locale (EN needs one/other, PL/RU/UK
+ * need one/few/many/other). A missing suffixed variant falls back to the
+ * plain `<key>`, so locales without a given form keep working.
+ */
+export type PluralCategory = "zero" | "one" | "two" | "few" | "many" | "other";
+
+let pluralRules: Intl.PluralRules | null = null;
+let pluralRulesLocale = "";
+
+export function selectPluralCategory(count: number, locale = currentLocale): PluralCategory {
+  if (typeof Intl === "undefined" || typeof Intl.PluralRules !== "function") {
+    return count === 1 ? "one" : "other";
+  }
+  if (pluralRulesLocale !== locale) {
+    try {
+      pluralRules = new Intl.PluralRules(locale);
+      pluralRulesLocale = locale;
+    } catch {
+      pluralRules = null;
+      pluralRulesLocale = "";
+    }
+  }
+  if (pluralRules) {
+    try {
+      const category = pluralRules.select(count) as PluralCategory;
+      if (category) return category;
+    } catch {
+      // Fall through to the English-like approximation.
+    }
+  }
+  return count === 1 ? "one" : "other";
+}
+
+export function plural(baseKey: string, count: number, vars?: TranslationVariables) {
+  return pluralWithDict(dict, baseKey, count, vars);
+}
+
+export function pluralWithDict(
+  dict: TranslationDictionary,
+  baseKey: string,
+  count: number,
+  vars?: TranslationVariables,
+  locale = currentLocale
+) {
+  const pluralKey = `${baseKey}_${selectPluralCategory(count, locale)}`;
+  const value = tWithDict(dict, pluralKey, vars);
+  return value !== pluralKey ? value : tWithDict(dict, baseKey, vars);
 }
 
 // Applies translations to static HTML. Attributes:

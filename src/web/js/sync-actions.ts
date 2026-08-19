@@ -3,7 +3,7 @@ import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
 import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { showConfirmDialog } from "./dialog-backdrop.js";
-import { t } from "./i18n.js";
+import { t, plural } from "./i18n.js";
 import { render, ensureCurrentText } from "./render.js";
 import { getOrCreateEntry, hideReviewAnswer } from "./views/vocabulary.js";
 import { getVocabularyTextById, loadTextVocabularyIndex } from "./text-vocab.js";
@@ -740,7 +740,7 @@ export async function exportAnkiTsv(): Promise<void> {
       return;
     }
     if (await nativeSave(result.content, result.filename, result.mime)) {
-      showToast(t("toast.exportReadyCount", { n: result.count || 0 }));
+      showToast(plural("toast.exportReadyCount", result.count || 0, { n: result.count || 0 }));
     } else {
       showToast(t("toast.exportCancelled"));
     }

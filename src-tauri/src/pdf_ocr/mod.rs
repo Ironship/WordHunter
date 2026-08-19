@@ -942,7 +942,8 @@ mod tests {
     fn cpu_fallback_attempt_gets_a_fresh_deadline() {
         let temp = tempfile::tempdir().unwrap();
         let invocations = temp.path().join("invocations.txt");
-        let runner = write_deadline_runner(temp.path(), &invocations);
+        let release = temp.path().join("release.txt");
+        let runner = write_deadline_runner(temp.path(), &invocations, &release);
         let input_path = temp.path().join("input.pdf");
         let pages_dir = temp.path().join("pages");
         let json_path = temp.path().join("ocr.json");
@@ -950,25 +951,32 @@ mod tests {
         fs::create_dir_all(&pages_dir).unwrap();
         let jobs = Mutex::new(OcrJobState::default());
 
-        // Scripted clock: reads #1 and #2 return `t0` (the moment the auto
-        // attempt starts); every later read jumps 2 hours ahead. The auto
-        // attempt consumes exactly two reads — its deadline (#1) and the
-        // first loop check (#2), which always fires because the fake runner
-        // process cannot have exited yet — and then fails immediately. The
-        // cpu fallback's reads all see the jumped time: with a fresh
-        // per-attempt deadline its own deadline is computed from the jumped
-        // time, so the loop finishes. With the old shared-deadline code the
-        // cpu fallback inherits the auto deadline (t0 + 3s in tests), the
-        // jumped time is already past it, and the loop kills the attempt with
-        // a fatal timeout -> the test fails.
+        // Deterministic rendezvous instead of counting clock reads: the auto
+        // attempt's fake runner refuses to exit until `release.txt` exists,
+        // so while the attempt is polling, its child is guaranteed to be
+        // alive. Clock read #1 is the auto attempt's deadline (`t0` + 3s in
+        // tests); read #2 is the auto loop's first deadline check — by
+        // contract the child cannot have exited yet (no release marker), so
+        // that read always happens. It creates the release marker (letting
+        // the auto child fail fast with exit code 1) and still returns `t0`,
+        // so the auto attempt survives its own check. Every later read —
+        // starting with the cpu fallback's deadline — sees `t0 + 2h`: a
+        // fresh per-attempt deadline is computed from the jumped time and
+        // the cpu loop finishes, while the old shared-deadline code would
+        // inherit the auto deadline (`t0 + 3s`), already in the past, and
+        // kill the cpu attempt with a fatal timeout -> the test fails.
         let t0 = Instant::now();
+        let release_for_clock = release.clone();
         let clock_calls = std::sync::atomic::AtomicUsize::new(0);
         let clock = move || {
             let call = clock_calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-            if call <= 2 {
-                t0
-            } else {
-                t0 + Duration::from_secs(7200)
+            match call {
+                1 => t0,
+                2 => {
+                    let _ = fs::write(&release_for_clock, b"go");
+                    t0
+                }
+                _ => t0 + Duration::from_secs(7200),
             }
         };
 
@@ -992,13 +1000,17 @@ mod tests {
         assert_eq!(devices.lines().collect::<Vec<_>>(), ["auto", "cpu"]);
     }
 
-    /// Fake OCR runner whose `auto` attempt fails immediately and whose `cpu`
-    /// attempt succeeds after ~1s, recording each requested device into
-    /// `invocations`. Combined with the scripted 2-hour clock jump in
-    /// `cpu_fallback_attempt_gets_a_fresh_deadline`, a shared deadline kills
-    /// the `cpu` fallback while a fresh per-attempt deadline lets it finish.
+    /// Fake OCR runner used by `cpu_fallback_attempt_gets_a_fresh_deadline`.
+    /// The `auto` attempt records the device, then holds until `release`
+    /// exists (a tight poll, so it exits within milliseconds of the marker
+    /// appearing) and fails with exit code 1; the `cpu` attempt records the
+    /// device, sleeps ~1s and succeeds. Because the auto child cannot exit
+    /// before the test's scripted clock creates the release marker on read
+    /// #2, the auto attempt is always mid-poll when the jump takes effect —
+    /// no racing on how many loop checks happen before the process exit is
+    /// observed.
     #[cfg(windows)]
-    fn write_deadline_runner(dir: &Path, invocations: &Path) -> PathBuf {
+    fn write_deadline_runner(dir: &Path, invocations: &Path, release: &Path) -> PathBuf {
         let path = dir.join("fake-runner.cmd");
         let script = format!(
             "@echo off\r\n\
@@ -1011,19 +1023,24 @@ mod tests {
              goto :loop\r\n\
              :run\r\n\
              >>\"{}\" echo %device%\r\n\
-             if \"%device%\"==\"auto\" (\r\n\
-               exit /b 1\r\n\
-             )\r\n\
+             if \"%device%\"==\"cpu\" goto :cpu\r\n\
+             :wait\r\n\
+             if exist \"{}\" goto :done\r\n\
+             goto :wait\r\n\
+             :done\r\n\
+             exit /b 1\r\n\
+             :cpu\r\n\
              ping -n 2 127.0.0.1 >nul\r\n\
              exit /b 0",
-            invocations.display()
+            invocations.display(),
+            release.display()
         );
         fs::write(&path, script).unwrap();
         path
     }
 
     #[cfg(not(windows))]
-    fn write_deadline_runner(dir: &Path, invocations: &Path) -> PathBuf {
+    fn write_deadline_runner(dir: &Path, invocations: &Path, release: &Path) -> PathBuf {
         let path = dir.join("fake-runner.sh");
         let script = format!(
             "#!/bin/sh\n\
@@ -1036,12 +1053,16 @@ mod tests {
                shift\n\
              done\n\
              printf '%s\\n' \"$device\" >> '{}'\n\
-             if [ \"$device\" = auto ]; then\n\
-               exit 1\n\
+             if [ \"$device\" = cpu ]; then\n\
+               sleep 1\n\
+               exit 0\n\
              fi\n\
-             sleep 1\n\
-             exit 0",
-            invocations.display()
+             while [ ! -f '{}' ]; do\n\
+               :\n\
+             done\n\
+             exit 1",
+            invocations.display(),
+            release.display()
         );
         fs::write(&path, script).unwrap();
         #[cfg(unix)]

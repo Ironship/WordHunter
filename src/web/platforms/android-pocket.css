@@ -105,6 +105,15 @@ html.pocket-mode {
   height: 44px;
 }
 
+/* Keyboard focus on the blue (--sidebar-bg) pocket chrome: the global
+   --focus-ring equals --sidebar-bg in the familiar-light theme, so a 3px
+   outline would be invisible against the toolbar. Use the high-contrast
+   sidebar accent so the ring always stands out. */
+.pocket-mode #reader-view .toolbar-buttons button:focus-visible,
+.pocket-mode #reader-find-toggle:focus-visible {
+  outline-color: var(--sidebar-active-accent);
+}
+
 .pocket-mode input.color-picker-lg {
   width: var(--color-picker-size);
   min-width: var(--color-picker-size);
