@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.0~rc.1" date="2026-08-20" type="development">
+      <description>
+        <ul>
+          <li>Keeps the chosen language at startup and restores keyboard and screen-reader focus.</li>
+          <li>Makes OCR fallback more reliable and sharpens the review-heatmap labels and legend.</li>
+          <li>Increases contrast and touch-target sizes and rotates storage journals to stay healthy.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.13" date="2026-08-18">
       <description>
         <ul>
