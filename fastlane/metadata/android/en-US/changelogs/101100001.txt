@@ -1,0 +1,5 @@
+Word Hunter 1.1.0-rc.1
+
+Keeps your chosen language at startup, keyboard and screen-reader focus
+restored, more reliable OCR fallback, sharper review heatmap, larger
+contrast and touch targets, and rotating storage journals.

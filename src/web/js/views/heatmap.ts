@@ -1,6 +1,7 @@
 // GitHub-style contribution heatmap renderer shared between Graphs and Flashcards views.
 // Produces identical markup/styling; callers supply the data source and tooltip.
 import { t as rawT } from "../i18n.js";
+import { todayISO } from "../sm2.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
@@ -42,6 +43,33 @@ export function buildContributionMonthLabels(weeks: readonly HeatmapDay[][], wee
   return months;
 }
 
+/**
+ * Builds the heatmap's week/day grid between two LOCAL dates. Each cell's
+ * `date` is the LOCAL calendar day (issue #268) — the counts from
+ * `buildHeatmapActivityCounts` are keyed by local day too, and
+ * `toISOString().slice(0, 10)` would shift them by the UTC offset (an
+ * 00:30 review in UTC+2 lands on the previous UTC day, a 23:30 review in
+ * UTC-5 on the next one), so the activity would land on the wrong cells.
+ */
+export function buildContributionWeeks(
+  startDate: Date,
+  endDate: Date,
+  getValue?: (isoDate: string) => number | undefined
+): HeatmapDay[][] {
+  const weeks: HeatmapDay[][] = [];
+  let d = new Date(startDate);
+  while (d <= endDate) {
+    const week: HeatmapDay[] = [];
+    for (let dow = 0; dow < 7; dow++) {
+      const key = todayISO(d);
+      week.push({ date: key, count: getValue ? getValue(key) || 0 : 0 });
+      d.setDate(d.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
 export function renderContributionHeatmap(target: HTMLElement, options: ContributionHeatmapOptions = {}): void {
   const {
     getValue,        // (isoDate: string) => number
@@ -57,17 +85,7 @@ export function renderContributionHeatmap(target: HTMLElement, options: Contribu
   const startDate = new Date(endDate);
   startDate.setDate(startDate.getDate() - startDate.getDay() - (weeksToShow - 1) * 7);
 
-  const weeks: HeatmapDay[][] = [];
-  let d = new Date(startDate);
-  while (d <= endDate) {
-    const week: HeatmapDay[] = [];
-    for (let dow = 0; dow < 7; dow++) {
-      const key = d.toISOString().slice(0, 10);
-      week.push({ date: key, count: getValue ? getValue(key) || 0 : 0 });
-      d.setDate(d.getDate() + 1);
-    }
-    weeks.push(week);
-  }
+  const weeks = buildContributionWeeks(startDate, endDate, getValue);
 
   const maxCount = Math.max(1, ...weeks.flatMap(w => w.map(day => day.count)));
   const levels = [

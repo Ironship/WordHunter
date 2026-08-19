@@ -15,7 +15,7 @@ import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
 import { fetchWithTimeout } from "./js/request.js";
 import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
 import { renderMoveBookDialog } from "./js/events/move-book.js";
-import { renderAddWordDialog } from "./js/events/word-editor.js";
+import { renderAddWordDialog, refreshAddWordDialogLocalization } from "./js/events/word-editor.js";
 import { renderArgosDownloadDialog, renderSettingsView } from "./js/events/settings.js";
 import { renderUpdateDialog } from "./js/update-checker.js";
 import { renderLanguageOnboardingDialog } from "./js/onboarding.js";
@@ -167,10 +167,8 @@ window.addEventListener("wordhunter:state-save-error", () => {
 window.addEventListener("wordhunter:state-replaced", () => {
   applyPreferences();
   syncSettingsControls();
+  void reconcileLocaleAfterStateReplace();
   if (document.documentElement.classList.contains("app-booting")) return;
-  if (getLocale() !== state.preferences?.locale) {
-    void loadLocale(initialLocale(state.preferences?.locale, typeof navigator !== "undefined" ? navigator.language : "")).then(() => applyTranslations());
-  }
   ensureCurrentText();
   render();
 });
@@ -194,13 +192,45 @@ function startBridgeStateLoad(): void {
       });
   window.__bridgeStatePromise = promise;
   void promise
-    .then((snapshot) => {
+    .then(async (snapshot) => {
       applyBridgeSnapshotToState(snapshot);
       delete window.__bridgeStatePromise;
+      // The persisted locale is authoritative only after the snapshot lands
+      // (issue #275): the boot already ran loadLocale against the default /
+      // navigator choice while the store was still loading, so re-reconcile
+      // here. Translations are re-applied and the TS-rendered word-editor
+      // dialog is rebuilt so it never keeps boot-time text (issue #274).
+      // During boot the state-replaced handler already scheduled the same
+      // reconcile, so loadLocale's latest-wins guard keeps this subsumed.
+      applyPreferences();
+      await reconcileLocaleAfterStateReplace();
     })
     .catch((error) => {
       reportClientError(`Store load failed: ${error?.stack || error}`, error);
     });
+}
+
+// Reconcile the UI language to the persisted preference (issue #275). The
+// bridge snapshot can land after the boot locale was chosen from
+// navigator.language, leaving translated UI in one language while the
+// preference selects read another. The persisted locale always wins here;
+// translations are re-applied and the word-editor dialog (status buttons are
+// rendered text, not data-i18n) is rebuilt in the new locale (#274). This is
+// idempotent and safe to run repeatedly — loadLocale inside i18n.ts adopts a
+// latest-wins policy so an older in-flight dictionary never clobbers a newer
+// request.
+function reconcileLocaleAfterStateReplace(): Promise<void> {
+  const saved = state.preferences?.locale;
+  const target = initialLocale(
+    typeof saved === "string" && saved !== "" ? saved : undefined,
+    typeof navigator !== "undefined" ? navigator.language : ""
+  );
+  if (getLocale() === target) return Promise.resolve();
+  return loadLocale(target).then(() => {
+    applyTranslations();
+    refreshAddWordDialogLocalization();
+    syncSettingsControls();
+  });
 }
 
 function showLanguageOnboardingIfNeeded() {

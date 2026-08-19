@@ -1,6 +1,6 @@
 import { state, saveState } from "../state.js";
 import { els } from "../dom.js";
-import { t } from "../i18n.js";
+import { t, plural } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { renderLibrary } from "../views/library.js";
 import { runDiscoverSearch, getDiscoverHandlers, updateAddSelectedDisabled } from "../views/discover.js";
@@ -70,9 +70,12 @@ export function bindDiscoverEvents() {
     const result = await discoverHandlers.addSelected();
     updateAddSelectedDisabled();
     if (result.added === result.selected) {
-      showToast(t("toast.addedMany", { n: result.added }));
+      showToast(plural("toast.addedMany", result.added, { n: result.added }));
     } else if (result.added > 0) {
-      showToast(t("toast.addedManyWithSkipped", { added: result.added, skipped: result.selected - result.added }));
+      showToast(plural("toast.addedManyWithSkipped", result.added, {
+        added: result.added,
+        skipped: result.selected - result.added
+      }));
     } else {
       showToast(t("toast.addedNone"));
     }

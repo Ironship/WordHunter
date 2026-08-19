@@ -68,7 +68,7 @@ function buildGraphsSummaryText(): string {
     `Average ease factor: ${avgEase}`,
     `Interval distribution in days: ${Object.entries(intervals).map(([bucket, count]) => `${bucket}d:${count}`).join(", ")}`,
     `Activity: ${activeDays} active days in the last 30 days, ${totalActivity} total recorded activity events`,
-    `First recorded activity: ${activity.firstTime !== Infinity ? new Date(activity.firstTime).toISOString().slice(0, 10) : "none"}`
+    `First recorded activity: ${activity.firstTime !== Infinity ? todayISO(new Date(activity.firstTime)) : "none"}`
   ].join("\n");
 }
 

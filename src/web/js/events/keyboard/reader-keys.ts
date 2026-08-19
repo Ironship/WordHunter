@@ -40,6 +40,17 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   const exactCtrl = event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
   if (key === "escape") {
     const active = document.activeElement;
+    // Escape from inside the word panel (fields or buttons) returns focus to
+    // the reader token so keyboard reading can resume (a11y, Wave 1B).
+    if (active instanceof HTMLElement && active.closest?.("#word-panel")) {
+      const token = findCurrentReaderToken(readerTokens());
+      if (token) {
+        event.preventDefault();
+        token.focus();
+        window.lastActiveToken = token;
+        return true;
+      }
+    }
     if (active instanceof HTMLElement && active.classList.contains("word-token")) active.blur();
     if (document.activeElement instanceof HTMLSelectElement) {
       event.preventDefault();
@@ -176,7 +187,7 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
   }
 
   const activeToken = document.activeElement;
-  if ((key === "arrowup" || key === "arrowdown") && exactCtrl && activeToken instanceof HTMLButtonElement && activeToken.classList.contains("word-token")) {
+  if ((key === "arrowup" || key === "arrowdown") && activeToken instanceof HTMLButtonElement && activeToken.classList.contains("word-token") && (exactCtrl || plainKey)) {
     event.preventDefault();
     const tokens = readerTokens();
     const index = tokens.indexOf(activeToken);
