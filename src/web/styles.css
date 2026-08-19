@@ -3328,7 +3328,7 @@ textarea.vocab-translation-input {
   width: 340px;
   overflow: hidden;
   background: var(--panel);
-  background-image: linear-gradient(90deg, rgba(0,0,0,0.08), transparent 28px);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 12%, transparent), transparent 28px);
   background-repeat: no-repeat;
   background-size: 28px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
@@ -3359,7 +3359,7 @@ textarea.vocab-translation-input {
   z-index: var(--z-floating);
   text-align: center;
   background: var(--panel-strong);
-  background-image: linear-gradient(90deg, rgba(0,0,0,0.07), transparent 24px);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 10%, transparent), transparent 24px);
   background-repeat: no-repeat;
   background-size: 24px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);

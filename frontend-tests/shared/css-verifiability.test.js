@@ -58,7 +58,7 @@ const DUP_GROUP_PIN = 48;
    inline-style sweep); theme.css last changed in #173. The audit's
    "pocket-reader.css" (6371 B) is theme.css — no such file exists on main. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 110000],
+  ["src/web/styles.css", 110050],
   ["src/web/platforms/android-pocket.css", 33500],
   ["src/web/theme.css", 6500]
 ]);
