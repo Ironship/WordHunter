@@ -691,6 +691,25 @@ kbd {
 .graph-cell-wide canvas { aspect-ratio: auto; height: clamp(260px, 30vw, 360px); }
 .chart-reveal { animation: chart-canvas-reveal 0.68s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--chart-delay, 0ms); transform-origin: 50% 100%; }
 
+/* Graph card/reveal stagger without inline styles: cell order is fixed by
+ * GRAPH_CONTAINERS, so nth-child supplies the per-cell index + delay. */
+.graph-cell:nth-child(1) { --graph-index: 0; }
+.graph-cell:nth-child(2) { --graph-index: 1; }
+.graph-cell:nth-child(3) { --graph-index: 2; }
+.graph-cell:nth-child(4) { --graph-index: 3; }
+.graph-cell:nth-child(5) { --graph-index: 4; }
+.graph-cell:nth-child(6) { --graph-index: 5; }
+.graph-cell:nth-child(7) { --graph-index: 6; }
+.graph-cell:nth-child(8) { --graph-index: 7; }
+.graph-cell:nth-child(9) { --graph-index: 8; }
+.graph-cell:nth-child(10) { --graph-index: 9; }
+.graph-cell:nth-child(1) canvas { --chart-delay: 0ms; }
+.graph-cell:nth-child(2) canvas { --chart-delay: 45ms; }
+.graph-cell:nth-child(3) canvas { --chart-delay: 90ms; }
+.graph-cell:nth-child(4) canvas { --chart-delay: 135ms; }
+.graph-cell:nth-child(5) canvas { --chart-delay: 180ms; }
+.graph-cell:nth-child(n + 6) canvas { --chart-delay: 225ms; }
+
 .graphs-stats { padding: 0.75rem 1.25rem 0.5rem; }
 .graphs-stats-row { display: flex; gap: 1rem; flex-wrap: wrap; }
 .graph-stat-box { flex: 1; min-width: 120px; background: linear-gradient(145deg, var(--panel), var(--panel-strong)); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem 1rem; text-align: center; box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 5%, transparent); animation: graph-stat-enter 0.48s cubic-bezier(0.16, 1, 0.3, 1) both; }
@@ -2139,6 +2158,15 @@ html[data-max-width="full"] .reader-text {
   box-shadow: inset 0 -0.28em var(--token-learning-bg, var(--blue-soft));
 }
 
+/* Dynamic learning colors: `learning-lvl-N` classes (set by the reader when
+ * dynamicLearningColors is on) resolve --token-learning-bg to the Nth
+ * configured learning color, so tokens need no per-token inline style. */
+.word-token.status-learning.learning-lvl-1 { --token-learning-bg: var(--learning-lvl-1-bg, var(--blue-soft)); }
+.word-token.status-learning.learning-lvl-2 { --token-learning-bg: var(--learning-lvl-2-bg, var(--blue-soft)); }
+.word-token.status-learning.learning-lvl-3 { --token-learning-bg: var(--learning-lvl-3-bg, var(--blue-soft)); }
+.word-token.status-learning.learning-lvl-4 { --token-learning-bg: var(--learning-lvl-4-bg, var(--blue-soft)); }
+.word-token.status-learning.learning-lvl-5 { --token-learning-bg: var(--learning-lvl-5-bg, var(--blue-soft)); }
+
 .in-text-review {
   display: grid;
   gap: 0.65rem;
@@ -2153,6 +2181,11 @@ html[data-max-width="full"] .reader-text {
 .word-token.status-ignored {
   color: var(--muted);
   box-shadow: inset 0 -0.28em var(--token-ignored-bg, rgba(0, 0, 0, 0.08));
+  /* WCAG 1.4.1: ignored must not rely on the (near-invisible) underline color
+     alone — a strikethrough dash keeps it distinguishable without color. */
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent);
 }
 
 :root.no-token-highlight .word-token {
@@ -3530,6 +3563,14 @@ textarea.vocab-translation-input {
 .empty-row {
   padding: 1.25rem;
   color: var(--muted);
+}
+
+/* Empty-state CTA (P2-5): centers a button under the empty-row message so
+   "no results" states always offer a next action. */
+.empty-row .empty-cta {
+  display: block;
+  margin: 0.75rem auto 0;
+  width: fit-content;
 }
 
 @media (max-width: 1080px) {

@@ -172,7 +172,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     if (sessionStats.total > 0) {
       renderSessionSummary();
     } else {
-      els.reviewCard.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("vocab.reviewEyebrow"))}</p><h3>${escapeHtml(t("vocab.reviewEmptyHeading"))}</h3><p>${escapeHtml(t("vocab.reviewEmptyHint"))}</p></div>`;
+      els.reviewCard.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("vocab.reviewEyebrow"))}</p><h3>${escapeHtml(t("vocab.reviewEmptyHeading"))}</h3><p>${escapeHtml(t("vocab.reviewEmptyHint"))}</p><button type="button" class="secondary-button" data-open-view="reader">${escapeHtml(t("nav.reader"))}</button></div>`;
     }
     return;
   }
