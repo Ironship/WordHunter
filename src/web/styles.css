@@ -866,7 +866,7 @@ body.is-resizing-panel * {
 
 /* Source link in the reader meta (e.g. the YouTube video of an import) */
 .reader-source-link {
-  color: var(--accent, #4a6cf7);
+  color: var(--accent-ink, #315bd6);
   text-decoration: none;
   font-size: 0.85rem;
   margin-left: 0.35rem;
@@ -3907,11 +3907,26 @@ textarea.vocab-translation-input {
 
 :root.touch-controls-mode:not(.pocket-mode) .icon-button,
 :root.touch-controls-mode:not(.pocket-mode) button.icon-button,
-:root.touch-controls-mode:not(.pocket-mode) #theme-toggle {
+:root.touch-controls-mode:not(.pocket-mode) #theme-toggle,
+:root.touch-controls-mode:not(.pocket-mode) .round-icon-btn-28,
+:root.touch-controls-mode:not(.pocket-mode) .round-icon-btn-24 {
   width: 46px;
   min-width: 46px;
   height: 46px;
   min-height: 46px !important;
+  padding: 0 !important;
+}
+
+/* The vocab table's right-sticky actions column is capped at 340 px wide
+   (overflow:hidden) and holds six icon buttons — give it the exact 44 px
+   target (not the 46 px icon-button bump) so the row still fits. Its own
+   per-cell sizing (.vocab-table … .icon-button, 0,4,1) beats the generic
+   icon-button bump, so this dedicated rule is required. */
+:root.touch-controls-mode:not(.pocket-mode) .vocab-table td:last-child .row-actions .icon-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0 !important;
 }
 
