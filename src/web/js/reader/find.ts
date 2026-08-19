@@ -196,12 +196,37 @@ function openReaderFind(): boolean {
 
 function closeReaderFind(): void {
   const bar = document.getElementById("reader-find-bar");
+  const input = els.readerFindInput;
+  const active = document.activeElement;
+  // Capture before hiding the bar: once it is hidden the focused input is
+  // blurred by the browser and document.activeElement is no longer usable.
+  const activeIsInBar =
+    active instanceof Node && (active === input || Boolean(bar && bar.contains(active)));
+  const wasFocusInBar = Boolean(bar && activeIsInBar);
   if (bar) bar.hidden = true;
   findGeneration += 1;
   findMatches = [];
   findIndex = -1;
   findQuery = "";
   clearPageHighlights();
+  // A11y (Wave 1B): the find bar stole focus from the reading position when
+  // it opened; give it back when it closes so keyboard users don't lose their
+  // place (Escape and the close button both land here).
+  if (wasFocusInBar) restoreReaderFindFocus();
+}
+
+/**
+ * Return focus to the reader token the user was on before opening find.
+ * Falls back to the reader region (tabindex=0) when no live token is
+ * available, so focus never falls to the body.
+ */
+function restoreReaderFindFocus(): void {
+  const last = window.lastActiveToken;
+  if (last instanceof HTMLButtonElement && document.body.contains(last) && last.classList.contains("word-token")) {
+    last.focus();
+    return;
+  }
+  if (els.readerText) els.readerText.focus();
 }
 
 export function findNextMatch(): boolean {
@@ -232,8 +257,8 @@ export function bindReaderFindEvents(): void {
       else if (!findNextMatch()) runFind(true);
     } else if (event.key === "Escape") {
       event.preventDefault();
+      // closeReaderFind() restores focus to the last reader token.
       closeReaderFind();
-      input.blur();
     }
   });
   els.readerFindNext?.addEventListener("click", () => findNextMatch());

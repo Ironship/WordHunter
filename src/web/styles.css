@@ -671,15 +671,15 @@ kbd {
 
 .graphs-heatmap { padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
 .heatmap-wrap { display: flex; gap: 4px; align-items: flex-start; min-width: -webkit-fill-available; min-width: fit-content; }
-.heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-top: 20px; font-size: 0.625rem; color: var(--muted); line-height: 14px; }
+.heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-top: 20px; font-size: 0.6875rem; color: var(--muted); line-height: 14px; }
 .heatmap-grid-area { position: relative; }
-.heatmap-months { display: flex; gap: 0; font-size: 0.625rem; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
+.heatmap-months { display: flex; gap: 0; font-size: 0.6875rem; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
 .heatmap-months span { min-width: 0; overflow: visible; }
 .heatmap-grid { display: flex; gap: 3px; }
 .heatmap-week { display: flex; flex-direction: column; gap: 3px; }
 .heatmap-cell { width: 14px; height: 14px; border-radius: 4px; background: var(--panel-strong); cursor: default; transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease; animation: heatmap-cell-enter 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--heatmap-delay, 0ms); }
 .heatmap-cell:hover { transform: translateY(-2px) scale(1.32); filter: saturate(1.15) brightness(1.06); outline: 2px solid color-mix(in srgb, var(--control-accent) 55%, transparent); z-index: var(--z-raised); }
-.heatmap-legend { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0 0; font-size: 0.625rem; color: var(--muted); }
+.heatmap-legend { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0 0; font-size: 0.6875rem; color: var(--muted); }
 .heatmap-legend-cell { width: 14px; height: 14px; border-radius: 3px; }
 
 .graphs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.25rem; padding: 1.25rem; }
@@ -866,7 +866,7 @@ body.is-resizing-panel * {
 
 /* Source link in the reader meta (e.g. the YouTube video of an import) */
 .reader-source-link {
-  color: var(--accent, #4a6cf7);
+  color: var(--accent-ink, #315bd6);
   text-decoration: none;
   font-size: 0.85rem;
   margin-left: 0.35rem;
@@ -2494,6 +2494,11 @@ html[data-max-width="full"] .reader-text {
 .empty-state {
   display: grid;
   gap: 0.5rem;
+  place-items: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .word-title {
@@ -3323,6 +3328,9 @@ textarea.vocab-translation-input {
   width: 340px;
   overflow: hidden;
   background: var(--panel);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 12%, transparent), transparent 28px);
+  background-repeat: no-repeat;
+  background-size: 28px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
@@ -3350,6 +3358,10 @@ textarea.vocab-translation-input {
   right: 0;
   z-index: var(--z-floating);
   text-align: center;
+  background: var(--panel-strong);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 10%, transparent), transparent 24px);
+  background-repeat: no-repeat;
+  background-size: 24px 100%;
   box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
 }
 
@@ -3592,6 +3604,9 @@ textarea.vocab-translation-input {
   font-size: 0.83rem;
   font-weight: 600;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5rem;
+  justify-content: center;
 }
 
 .metric-pill.metric-known {
@@ -3767,6 +3782,40 @@ textarea.vocab-translation-input {
   outline-offset: 2px;
 }
 
+/* Skip-to-content link (accessibility): visually hidden until keyboard
+   focus, then pinned to the top-left above the sidebar and topbar. Kept in
+   the tab order so keyboard users can jump straight to #page-title. */
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: var(--z-overlay);
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  background: var(--control-accent);
+  color: var(--control-accent-ink);
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+  /* Hidden from sight (but not the tab order) until focused. */
+  width: 1px;
+  height: 1px;
+  margin: -1px 0 0 -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
+
 /* Current page number in Discover pagination. */
 .page-label {
   color: var(--muted);
@@ -3873,11 +3922,26 @@ textarea.vocab-translation-input {
 
 :root.touch-controls-mode:not(.pocket-mode) .icon-button,
 :root.touch-controls-mode:not(.pocket-mode) button.icon-button,
-:root.touch-controls-mode:not(.pocket-mode) #theme-toggle {
+:root.touch-controls-mode:not(.pocket-mode) #theme-toggle,
+:root.touch-controls-mode:not(.pocket-mode) .round-icon-btn-28,
+:root.touch-controls-mode:not(.pocket-mode) .round-icon-btn-24 {
   width: 46px;
   min-width: 46px;
   height: 46px;
   min-height: 46px !important;
+  padding: 0 !important;
+}
+
+/* The vocab table's right-sticky actions column is capped at 340 px wide
+   (overflow:hidden) and holds six icon buttons — give it the exact 44 px
+   target (not the 46 px icon-button bump) so the row still fits. Its own
+   per-cell sizing (.vocab-table … .icon-button, 0,4,1) beats the generic
+   icon-button bump, so this dedicated rule is required. */
+:root.touch-controls-mode:not(.pocket-mode) .vocab-table td:last-child .row-actions .icon-button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 0 !important;
 }
 

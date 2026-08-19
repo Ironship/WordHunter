@@ -58,8 +58,8 @@ const DUP_GROUP_PIN = 48;
    inline-style sweep); theme.css last changed in #173. The audit's
    "pocket-reader.css" (6371 B) is theme.css — no such file exists on main. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 109300],
-  ["src/web/platforms/android-pocket.css", 33000],
+  ["src/web/styles.css", 110050],
+  ["src/web/platforms/android-pocket.css", 33500],
   ["src/web/theme.css", 6500]
 ]);
 
@@ -68,8 +68,9 @@ const CSS_SIZE_PIN = new Map([
    now at 868, 900, 902, 2792, 2842. Adding a 6th fallback requires updating
    this pin and the #129 audit together. */
 const VAR_HEX_FALLBACK_PIN = new Map([
-  ["var(--accent, #4a6cf7)", 3],
+  ["var(--accent, #4a6cf7)", 2],
   ["var(--accent, #4f7cff)", 1],
+  ["var(--accent-ink, #315bd6)", 1],
   ["var(--bg, #0d1114)", 1]
 ]);
 
