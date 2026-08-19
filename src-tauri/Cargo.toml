@@ -41,7 +41,7 @@ tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
 tiny_http = { path = "vendor/tiny_http" }
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "net", "io-util", "sync"] }
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
 ureq = { version = "2", features = ["json"] }

@@ -7,7 +7,7 @@ pub mod transfer;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 const UI_STATE_FILE: &str = "ui-state.json";
 const MAX_UI_STATE_BYTES: usize = 2 * 1024 * 1024;
@@ -49,8 +49,10 @@ pub struct Store {
     // In-memory copy of all record files. Saves re-load the records tree
     // only once (after startup or after an external mutation); every commit
     // refreshes it from the merged output. Large stores take seconds to
-    // scan, so this cache is what keeps delta saves fast.
-    records_cache: Mutex<Option<BTreeMap<String, record_files::SyncRecord>>>,
+    // scan, so this cache is what keeps delta saves fast. Stored as an
+    // `Arc` so readers take an O(1) reference instead of cloning the whole
+    // tree on every save.
+    records_cache: Mutex<Option<Arc<BTreeMap<String, record_files::SyncRecord>>>>,
     device_id: String,
     startup_instant: std::time::Instant,
 }
@@ -110,20 +112,22 @@ impl Store {
     }
 
     /// The records tree as an in-memory map, loading it from disk once when
-    /// it is not cached yet.
+    /// it is not cached yet. Returns an `Arc` so callers share the cached
+    /// tree without cloning it (O(1)); mutation happens only through
+    /// `set_records_cache`, never through the returned reference.
     pub(crate) fn records_cache_or_load(
         &self,
-    ) -> Result<BTreeMap<String, record_files::SyncRecord>, String> {
+    ) -> Result<Arc<BTreeMap<String, record_files::SyncRecord>>, String> {
         let mut cache = self.records_cache.lock().unwrap_or_else(|e| e.into_inner());
         if cache.is_none() {
-            *cache = Some(record_files::load_records(&self.dir())?);
+            *cache = Some(Arc::new(record_files::load_records(&self.dir())?));
         }
-        Ok(cache.clone().unwrap_or_default())
+        Ok(Arc::clone(cache.as_ref().expect("cache is populated above")))
     }
 
     /// Replace the in-memory record cache with the committed state.
     pub(crate) fn set_records_cache(&self, records: BTreeMap<String, record_files::SyncRecord>) {
-        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = Some(records);
+        *self.records_cache.lock().unwrap_or_else(|e| e.into_inner()) = Some(Arc::new(records));
     }
 
     pub fn load_ui_state(&self) -> serde_json::Value {
