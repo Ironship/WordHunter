@@ -11,6 +11,15 @@ use super::record_files;
 const SNAPSHOT_SCHEMA_VERSION: u64 = 2;
 const SAVE_JOURNAL_FORMAT: u64 = 2;
 
+// Upper bound for a single save-journal in bytes (the .tmp variant included).
+// The journal is normally written and removed within one save; but a stale,
+// oversized or corrupted journal must never be read fully into memory on every
+// startup/snapshot. Files above this cap are rotated to *.bad instead of being
+// recovered, and a save that would produce a larger journal is rejected before
+// anything is persisted. Mirrors the UI-state bound in store/mod.rs
+// (MAX_UI_STATE_BYTES); the value matches MAX_EBOOK_BYTES for user-supplied blobs.
+const MAX_SAVE_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum PendingRecovery {
     None,
@@ -50,6 +59,15 @@ impl Store {
         }
         for path in [journal.as_path(), temp.as_path()] {
             if !path.exists() {
+                continue;
+            }
+            // Rotate journals that are far too large to be a legitimate pending
+            // save instead of reading them fully into memory at every startup.
+            let size = std::fs::metadata(path)
+                .map_err(|e| format!("could not inspect interrupted save journal: {e}"))?
+                .len();
+            if size > MAX_SAVE_JOURNAL_BYTES {
+                quarantine_journal(path)?;
                 continue;
             }
             let payload = std::fs::read(path)
@@ -216,12 +234,18 @@ impl Store {
         self.hydrate_text_records(&mut incoming)?;
         full_keys_from_payload(&payload, &incoming)?;
         let journal = self.save_journal_path();
-        durable::write_json_atomic(
-            &journal,
-            &encode_save_journal(&payload, &base, saved_at),
-            false,
-            false,
-        )?;
+        let journal_bytes = serde_json::to_vec(&encode_save_journal(&payload, &base, saved_at))
+            .map_err(|e| format!("could not encode save journal: {e}"))?;
+        if journal_bytes.len() as u64 > MAX_SAVE_JOURNAL_BYTES {
+            // Refuse to persist a journal that later startup recovery would
+            // refuse to read. Nothing is written, so the save simply fails.
+            return Err(format!(
+                "save payload too large: {} bytes exceeds the {} byte save-journal limit",
+                journal_bytes.len(),
+                MAX_SAVE_JOURNAL_BYTES
+            ));
+        }
+        durable::write_file_atomic(&journal, &journal_bytes, false)?;
 
         let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
         remove_if_exists(journal)?;
@@ -855,6 +879,63 @@ mod tests {
         let snapshot = store2.snapshot();
         assert_eq!(snapshot["vocab"]["de"]["vocab"]["wort"]["status"], "known");
         assert!(!store2.save_journal_path().exists());
+    }
+
+    #[test]
+    fn recovery_rotates_oversized_journal_instead_of_reading_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+
+        // A leftover journal that could not possibly be a legitimate pending
+        // save (larger than the journal limit) must be rotated to *.bad rather
+        // than read fully into memory on every startup.
+        let journal = store.save_journal_path();
+        let oversized = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&journal)
+            .unwrap();
+        oversized
+            .set_len(MAX_SAVE_JOURNAL_BYTES + 1)
+            .expect("set oversize journal length");
+
+        store.recover_pending_save().unwrap();
+        assert!(!journal.exists());
+        assert!(dir.path().join("save-journal.bad").exists());
+        // Existing data was left untouched by the rotation.
+        let snapshot = store.snapshot();
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
+            "word"
+        );
+    }
+
+    #[test]
+    fn bulk_save_rejects_oversize_journal_without_writing_anything() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+
+        // A save whose journal would exceed the limit must fail cleanly before
+        // anything is persisted (no journal, no temp, no partial records).
+        let mut big = payload("Wort");
+        big["prefs"]["blob"] =
+            json!("x".repeat((MAX_SAVE_JOURNAL_BYTES as usize) + 1));
+        let result = store.bulk_save(big);
+        let message = result.unwrap_err();
+        assert!(
+            message.contains("too large"),
+            "unexpected error message: {message}"
+        );
+        assert!(!store.save_journal_path().exists());
+        assert!(!store.save_journal_path().with_extension("tmp").exists());
+        let snapshot = store.snapshot();
+        assert_eq!(
+            snapshot["vocab"]["de"]["vocab"]["wort"]["translation"],
+            "word"
+        );
     }
 
     /// Bridges the pre-fix `bulk_save -> Result<(), String>` signature so the
