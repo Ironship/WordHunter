@@ -3,7 +3,9 @@ mod epub;
 pub(crate) mod text;
 
 use base64::Engine;
+use serde::Deserialize;
 use serde_json::{Value, json};
+use std::borrow::Cow;
 use std::path::Path;
 
 use self::calibre::convert_with_calibre;
@@ -15,6 +17,23 @@ const MAX_EBOOK_BYTES: usize = 64 * 1024 * 1024;
 pub(crate) use self::epub::epub_href;
 #[cfg(test)]
 pub(crate) use self::text::strip_xhtml_to_text;
+
+/// Borrowed view of the ebook-import request body.
+///
+/// The `data` field is a base64-encoded payload that can be tens of MiB (a
+/// 64 MiB ebook is ~85 MiB of base64). Deserializing straight from the raw
+/// request buffer keeps those strings zero-copy (`Cow::Borrowed`), so we never
+/// build an intermediate `serde_json::Value` that would duplicate the payload
+/// in memory — the ebook endpoint used to hold the raw body *and* the parsed
+/// base64 string at the same time (a ~2x double-buffer on the 384 MiB-class
+/// import limit). Escaped strings still fall back to `Cow::Owned` safely.
+#[derive(Deserialize)]
+pub(crate) struct EbookImportRequest<'a> {
+    #[serde(borrow)]
+    filename: Cow<'a, str>,
+    #[serde(borrow)]
+    data: Cow<'a, str>,
+}
 
 fn decode_ebook_payload_with_limit(data_url: &str, max_bytes: usize) -> Result<Vec<u8>, String> {
     let encoded = data_url
@@ -34,12 +53,38 @@ fn decode_ebook_payload_with_limit(data_url: &str, max_bytes: usize) -> Result<V
     Ok(data)
 }
 
+/// Parse and import an ebook from a raw `{filename, data}` JSON request body.
+///
+/// The router first streams the body into a `Vec<u8>` via
+/// `response::read_body_limited`, then `parse_import_body` deserializes it
+/// directly into a borrowing struct — no intermediate `serde_json::Value`, so
+/// a tens-of-MiB base64 payload is never duplicated in memory. `Err` from
+/// `parse_import_body` means malformed/empty JSON (HTTP 400) while `Err` from
+/// `import_request` is an import failure (HTTP 422).
+pub(crate) fn parse_import_body(body: &[u8]) -> Result<EbookImportRequest<'_>, String> {
+    if body.is_empty() {
+        return Ok(EbookImportRequest {
+            filename: Cow::Borrowed(""),
+            data: Cow::Borrowed(""),
+        });
+    }
+    serde_json::from_slice(body).map_err(|e| format!("invalid JSON body: {e}"))
+}
+
+pub(crate) fn import_request(request: &EbookImportRequest<'_>) -> Result<Value, String> {
+    import_parts(request.filename.as_ref(), request.data.as_ref())
+}
+
 pub fn import(payload: Value) -> Result<Value, String> {
     let filename = payload
         .get("filename")
         .and_then(Value::as_str)
         .unwrap_or("");
     let data_url = payload.get("data").and_then(Value::as_str).unwrap_or("");
+    import_parts(filename, data_url)
+}
+
+fn import_parts(filename: &str, data_url: &str) -> Result<Value, String> {
     let data = decode_ebook_payload_with_limit(data_url, MAX_EBOOK_BYTES)?;
     let suffix = Path::new(filename)
         .extension()
