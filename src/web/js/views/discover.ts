@@ -205,7 +205,7 @@ function renderResults(data?: DiscoverSearchResult): void {
     const showCover = state.preferences?.showCovers !== false;
     const coverBlock = showCover
       ? (cover
-        ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+        ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy"></div>`
         : `<div class="book-cover" aria-hidden="true"><div class="img-placeholder"></div></div>`)
       : "";
 
