@@ -929,8 +929,7 @@ mod tests {
         // A save whose journal would exceed the limit must fail cleanly before
         // anything is persisted (no journal, no temp, no partial records).
         let mut big = payload("Wort");
-        big["prefs"]["blob"] =
-            json!("x".repeat((MAX_SAVE_JOURNAL_BYTES as usize) + 1));
+        big["prefs"]["blob"] = json!("x".repeat((MAX_SAVE_JOURNAL_BYTES as usize) + 1));
         let result = store.bulk_save(big);
         let message = result.unwrap_err();
         assert!(
