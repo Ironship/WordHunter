@@ -14,6 +14,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
+// settings.js (behaviour) imports the Settings view markup from its own
+// module (split 93a1828), so the dialog/settings renderer tests feed the
+// real template string through the mock to keep asserting production markup.
+const { SETTINGS_VIEW_HTML } = await import("../../dist/web/js/events/settings-view-template.js");
+
 const read = (path) => readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
 
 async function evaluateWithMocks(file, importValues, globals = {}) {
@@ -494,7 +499,9 @@ describe("argos download dialog renderer (events/settings.ts)", () => {
         requestAiModels: async () => []
       },
       "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
-      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
+      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks },
+      "./word-editor.js": { refreshAddWordDialogLocalization: () => {} },
+      "./settings-view-template.js": { SETTINGS_VIEW_HTML }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
     const dialog = renderArgosDownloadDialog();
@@ -787,7 +794,9 @@ describe("settings view renderer (events/settings.ts)", () => {
         requestAiModels: async () => []
       },
       "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
-      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks }
+      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks },
+      "./word-editor.js": { refreshAddWordDialogLocalization: () => {} },
+      "./settings-view-template.js": { SETTINGS_VIEW_HTML }
     }, { document, HTMLElement: HTMLElementInstance });
 
     const view = renderSettingsView();

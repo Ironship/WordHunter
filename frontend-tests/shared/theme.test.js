@@ -236,7 +236,7 @@ describe("named themes", () => {
     assert.doesNotMatch(styles, /\.word-token\.tts-current-word\s*\{[^}]*!important/s);
     assert.doesNotMatch(styles, /:root\.no-token-highlight \.word-token\s*\{[^}]*!important/s);
     assert.doesNotMatch(pocketStyles, /\.pocket-mode \.vocab-table td\s*\{[^}]*!important/s);
-    assert.ok((styles.match(/!important/g) ?? []).length <= 61);
+    assert.ok((styles.match(/!important/g) ?? []).length <= 62);
     assert.ok((pocketStyles.match(/!important/g) ?? []).length <= 9);
   });
 

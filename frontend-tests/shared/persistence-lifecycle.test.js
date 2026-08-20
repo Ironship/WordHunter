@@ -151,7 +151,7 @@ async function loadAppHarness({
     "./js/youglish.js": { refreshYouGlishTheme: noOp },
     "./js/reader/bookmarks.js": { renderBookmarksDialog: noOp },
     "./js/events/move-book.js": { renderMoveBookDialog: noOp },
-    "./js/events/word-editor.js": { renderAddWordDialog: noOp },
+    "./js/events/word-editor.js": { renderAddWordDialog: noOp, refreshAddWordDialogLocalization: noOp },
 "./js/events/settings.js": { renderArgosDownloadDialog: noOp, renderSettingsView: noOp },
     "./js/events/book-import.js": { renderImportPanel: noOp },    "./js/book-actions/edit-modal.js": { renderEditBookDialog: noOp },
     "./js/request.js": { fetchWithTimeout: bridgeFetch },
@@ -1472,7 +1472,7 @@ describe("persistence lifecycle", () => {
       buildDeltaSavePayload: (_raw, _langs, _texts) => ({ delta: true, fullKeys: [], records: {} }),
       "./toast.js": { showToast: (message) => toasts.push(message) },
       "./dialog-backdrop.js": { showConfirmDialog: async () => true },
-      "./i18n.js": { t: (key) => key },
+      "./i18n.js": { t: (key) => key, plural: (key) => key },
       "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
       "./render.js": {
         render: () => downstreamCalls.push("render"),
