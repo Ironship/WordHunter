@@ -61,9 +61,14 @@ const DUP_GROUP_PIN = 48;
    such file exists on main.
    De-AI wave (2026-08, exp/theme-deai-rc3, NOT merged): per-card ⋯ overflow
    menu CSS + borderless import/export surfaces + less-saturated card stats —
-   approx +1.7 KB net across 5 UI touches; pins re-baselined to fit. */
+   approx +1.7 KB net across 5 UI touches; pins re-baselined to fit.
+   De-AI wave 2 (2026-08, exp/theme-deai-rc3, NOT merged): one radius scale
+   (--radius-control 3px controls / --radius 4px panels, tags chip-ified),
+   Graphs/Discover/Settings de-cardified onto flat surfaces with hairline
+   separators, compact .button-xs defined for the first time. ~+0.5 KB net
+   (most changes folded into existing rules), pins re-baselined again. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 114300],
+  ["src/web/styles.css", 114800],
   ["src/web/platforms/android-pocket.css", 33500],
   ["src/web/theme.css", 6500]
 ]);
