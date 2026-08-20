@@ -166,9 +166,10 @@ function renderResults(data?: DiscoverSearchResult): void {
   if (!els.discoverResults) return;
   updateAddSelectedDisabled();
   if (!lastResults.length) {
+    const focusCta = `<button type="button" class="secondary-button empty-cta" data-discover-focus-query>${escapeHtml(t("discover.submit"))}</button>`;
     els.discoverResults.innerHTML = state.discover.query
-      ? `<div class="empty-row">${escapeHtml(t("discover.noResults"))}</div>`
-      : `<div class="empty-row">${escapeHtml(t("discover.emptyPrompt"))}</div>`;
+      ? `<div class="empty-row">${escapeHtml(t("discover.noResults"))}${focusCta}</div>`
+      : `<div class="empty-row">${escapeHtml(t("discover.emptyPrompt"))}${focusCta}</div>`;
     els.discoverToolbar.hidden = true;
     els.discoverPagination.innerHTML = "";
     return;
@@ -204,7 +205,7 @@ function renderResults(data?: DiscoverSearchResult): void {
     const showCover = state.preferences?.showCovers !== false;
     const coverBlock = showCover
       ? (cover
-        ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'"></div>`
+        ? `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(cover)}" alt="" loading="lazy"></div>`
         : `<div class="book-cover" aria-hidden="true"><div class="img-placeholder"></div></div>`)
       : "";
 
@@ -335,6 +336,12 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
     if (addButton) {
       addButton.disabled = true;
       await addOne(addButton.dataset.discoverAdd);
+      return;
+    }
+
+    // Empty-state CTA — jump the user straight into the search box.
+    if (event.target.closest("[data-discover-focus-query]")) {
+      els.discoverQuery?.focus();
       return;
     }
 

@@ -438,7 +438,7 @@ describe("render performance guards", () => {
     const chart = (name) => () => chartCalls.push(name);
     const noOp = () => {};
     const { renderGraphs } = await evaluateWithMocks("../../dist/web/js/views/graphs.js", {
-      "../state.js": { state, saveState: noOp },
+      "../state.js": { state, saveState: noOp, getVocabularyRevision: () => 0 },
       "../i18n.js": { t: (key) => key },
       "../graphs/helpers.js": {
         updateColors: noOp,

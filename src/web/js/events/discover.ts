@@ -59,6 +59,16 @@ export function bindDiscoverEvents() {
   els.discoverResults.addEventListener("click", discoverHandlers.onResultsClick);
   els.discoverPagination.addEventListener("click", discoverHandlers.onResultsClick);
   els.discoverResults.addEventListener("change", discoverHandlers.onResultsChange);
+  // Cover-art failures are handled by delegation: `error` on <img> does not
+  // bubble, so catch it once in the capture phase on the results container
+  // (bound at boot, survives renderResults() innerHTML swaps) instead of an
+  // inline onerror attribute baked into the rendered markup.
+  els.discoverResults.addEventListener("error", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (!target || target.tagName !== "IMG") return;
+    const cover = target.closest<HTMLElement>(".book-cover");
+    if (cover) cover.style.display = "none";
+  }, true);
   els.discoverSelectAll.addEventListener("click", () => discoverHandlers.toggleAll(true));
   els.discoverClear.addEventListener("click", () => discoverHandlers.toggleAll(false));
   els.discoverAddSelected.addEventListener("click", async () => {

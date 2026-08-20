@@ -278,8 +278,16 @@ impl Store {
         record_files::prepare_local_records(&mut incoming, base, &current, self.device_id(), now);
         let incoming_fingerprints = record_files::fingerprints(&incoming);
         let full_keys = full_keys_from_payload(payload, &incoming)?;
-        let merged =
-            record_files::merge_records(base, incoming, current, self.device_id(), now, &full_keys);
+        // `merge_records` consumes the current tree; the `Arc` from the cache
+        // is shared, so clone its contents only at this single mutation point.
+        let merged = record_files::merge_records(
+            base,
+            incoming,
+            (*current).clone(),
+            self.device_id(),
+            now,
+            &full_keys,
+        );
         // Write only the records that actually changed since the last
         // acknowledged base; unchanged keys already hold identical content
         // on disk. This avoids re-opening hundreds of record files per save.
@@ -921,8 +929,7 @@ mod tests {
         // A save whose journal would exceed the limit must fail cleanly before
         // anything is persisted (no journal, no temp, no partial records).
         let mut big = payload("Wort");
-        big["prefs"]["blob"] =
-            json!("x".repeat((MAX_SAVE_JOURNAL_BYTES as usize) + 1));
+        big["prefs"]["blob"] = json!("x".repeat((MAX_SAVE_JOURNAL_BYTES as usize) + 1));
         let result = store.bulk_save(big);
         let message = result.unwrap_err();
         assert!(

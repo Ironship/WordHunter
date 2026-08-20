@@ -34,7 +34,7 @@ pub fn import_bytes(
     _jobs: &Mutex<OcrJobState>,
 ) -> Result<Value, String> {
     if data.len() > MAX_PDF_BYTES {
-        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
+        return Err("PDF is too large for Pocket import (max 400 MB)".to_string());
     }
     import_decoded(payload, &data, store)
 }
@@ -123,13 +123,13 @@ fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {
         .map(|(_, data)| data)
         .unwrap_or(data_url);
     if encoded.len() > MAX_PDF_BYTES.saturating_mul(4) / 3 + 4 {
-        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
+        return Err("PDF is too large for Pocket import (max 400 MB)".to_string());
     }
     let data = base64::engine::general_purpose::STANDARD
         .decode(encoded)
         .map_err(|e| e.to_string())?;
     if data.len() > MAX_PDF_BYTES {
-        return Err("PDF is too large for Pocket import (max 128 MB)".to_string());
+        return Err("PDF is too large for Pocket import (max 400 MB)".to_string());
     }
     Ok(data)
 }

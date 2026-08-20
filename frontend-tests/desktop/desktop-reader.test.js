@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
-const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+// settings.js holds the behaviour; the rendered markup moved to
+// settings-view-template.js (split 93a1828). Both ship to dist, so audit both.
+const settingsSource = [
+  new URL("../../dist/web/js/events/settings.js", import.meta.url),
+  new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
+].map((url) => readFileSync(url, "utf8")).join("\n");
 const css = ["theme.css", "styles.css"]
   .map((file) => readFileSync(new URL(`../../dist/web/${file}`, import.meta.url), "utf8"))
   .join("\n");

@@ -8,8 +8,13 @@ const ANDROID_SERVER_PORT: u16 = 38619;
 
 pub(crate) fn setup(app: &mut tauri::App) -> SetupResult {
     eprintln!("WordHunter Android setup: starting backend on 127.0.0.1:{ANDROID_SERVER_PORT}");
-    // SAFETY: Android setup runs before WordHunter starts backend worker threads.
-    unsafe { std::env::set_var("APPDATA", app.path().app_data_dir()?) };
+    // Pin the data directory without mutating the process environment:
+    // std::env::set_var is unsafe in edition 2024 and would race with
+    // std::env::var reads on the tauri worker threads that already exist
+    // by this point. The override is installed before any Store is created
+    // and paths::appdata_dir() consults it ahead of APPDATA, so the
+    // Android data-dir contract is preserved race-free.
+    crate::paths::with_app_data_override(app.path().app_data_dir()?);
     let store = std::sync::Arc::new(Store::new(APP_NAME).map_err(boxed_string)?);
     let recovery_store = std::sync::Arc::clone(&store);
     std::thread::spawn(move || {
