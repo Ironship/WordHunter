@@ -849,12 +849,23 @@ kbd {
 }
 
 .transfer-note {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel-strong);
-  color: var(--ink);
-  padding: 0.9rem 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.25rem 0 0.5rem;
   line-height: 1.55;
+}
+
+/* De-AI wave: fewer frames in the import/export surfaces. */
+#export-view .data-action-row,
+#settings-view .data-action-row,
+.import-panel .youtube-import-section {
+  border-top-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.import-panel .panel-header {
+  border-bottom: 0;
 }
 
 body.is-resizing-panel,
@@ -1376,8 +1387,8 @@ button:disabled {
 }
 
 .card-stat strong {
-  font-size: 0.95rem;
-  font-weight: 800;
+  font-size: 0.85rem;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1394,14 +1405,16 @@ button:disabled {
 
 .card-stat-label {
   color: currentColor;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.66rem;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.card-stat-known { color: var(--green); }
-.card-stat-learning { color: var(--blue); }
-.card-stat-new { color: var(--amber); }
+/* Status tints capped down (less saturated) so the numbers read as
+   secondary info, not brand-colored badges. */
+.card-stat-known { color: color-mix(in srgb, var(--green) 80%, var(--muted)); }
+.card-stat-learning { color: color-mix(in srgb, var(--blue) 80%, var(--muted)); }
+.card-stat-new { color: color-mix(in srgb, var(--amber) 80%, var(--muted)); }
 .card-stat-unique { color: var(--muted); }
 .card-stat-unique strong { color: var(--ink); }
 .card-stat-total { color: var(--muted); }
@@ -1412,6 +1425,79 @@ button:disabled {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: auto;
+}
+
+/* Per-card ⋯ overflow menu for secondary book actions. */
+.book-card-menu-anchor {
+  position: relative;
+}
+.book-card-menu-anchor .book-card-menu-toggle {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+}
+.book-card-menu-anchor .book-card-menu-toggle:hover {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+}
+.book-card-menu-dots {
+  font-size: 1.1rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  padding-inline: 0.1rem;
+}
+.book-card-menu {
+  position: absolute;
+  z-index: var(--z-floating);
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 200px;
+  padding: 0.35rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.1rem;
+}
+.book-card-menu[hidden] {
+  display: none;
+}
+.book-card-menu .book-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.book-card-menu .book-menu-item:hover,
+.book-card-menu .book-menu-item:focus-visible {
+  background: var(--panel-strong);
+  color: var(--ink);
+}
+.book-card-menu .book-menu-item.danger {
+  color: var(--red);
+}
+.book-card-menu .book-menu-item.danger:hover,
+.book-card-menu .book-menu-item.danger:focus-visible {
+  background: var(--red-soft);
+}
+.book-card-menu .book-menu-item svg {
+  flex: 0 0 auto;
+  display: block;
 }
 
 .primary-button,
@@ -2863,7 +2949,7 @@ html[data-max-width="full"] .reader-text {
   gap: 1rem;
   padding: 1.5rem;
   border: 1px solid color-mix(in srgb, var(--control-accent) 28%, var(--line));
-  border-radius: 20px;
+  border-radius: 8px;
   background:
     radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--control-accent) 12%, transparent), transparent 58%),
     var(--panel);
@@ -2894,7 +2980,7 @@ html[data-max-width="full"] .reader-text {
   padding: 20px 12px 10px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--control-accent) 38%, var(--line));
-  border-radius: 10px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--panel) 78%, var(--bg));
   box-shadow: 0 8px 24px color-mix(in srgb, var(--control-accent) 14%, transparent);
 }
@@ -3632,15 +3718,15 @@ textarea.vocab-translation-input {
   }
 }
 
-/* Topbar status pills */
+/* Topbar status counters — flat text+icon, no capsule background. */
 .metric-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0.2rem 0.75rem;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--panel);
+  gap: 0.3rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 0.83rem;
   font-weight: 600;
@@ -3651,26 +3737,20 @@ textarea.vocab-translation-input {
 }
 
 .metric-pill.metric-known {
-  border-color: transparent;
-  background: var(--green-soft);
   color: var(--green);
 }
 
 .metric-pill.metric-learning {
-  border-color: transparent;
-  background: var(--blue-soft);
   color: var(--blue);
 }
 
 .metric-pill.metric-new {
-  border-color: transparent;
-  background: var(--purple-soft);
   color: var(--purple);
 }
 
 .metric-pill#overall-count {
-  border-color: var(--line);
-  background: var(--panel-strong);
+  color: var(--ink);
+  font-weight: 700;
 }
 
 /* Tags */
@@ -3765,7 +3845,7 @@ textarea.vocab-translation-input {
 .ai-model-options {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 8px;
   display: grid;
   max-height: 240px;
   overflow-y: auto;
@@ -3775,7 +3855,7 @@ textarea.vocab-translation-input {
 .ai-model-option {
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 6px;
   color: inherit;
   cursor: pointer;
   font: inherit;
