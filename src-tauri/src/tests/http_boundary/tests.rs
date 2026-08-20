@@ -320,9 +320,8 @@ fn proxy_rejects_lookalike_host_without_network_access() {
 
 #[test]
 fn bootstrap_escapes_javascript_and_proxy_url_values() {
-    let snapshot = serde_json::json!({ "prefs": { "theme": "</script>\u{2028}" } });
     let script =
-        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", Some(&snapshot), false);
+        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", false);
     let token_line = script
         .lines()
         .find(|line| line.contains("window.WH_TOKEN"))
@@ -335,13 +334,12 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
     );
     assert!(!script.contains("</script>"));
     assert!(script.contains("window.WH_IMAGE_OCR_AVAILABLE = false"));
-    assert!(script.contains(r#""theme":"<\/script>\u2028""#));
     assert!(script.contains("'/__proxy?url=' + encodeURIComponent(url)"));
 }
 
 #[test]
-fn bootstrap_starts_snapshot_loading_when_state_is_not_inlined() {
-    let script = handlers::bootstrap_script("token", None, false);
+fn bootstrap_defers_snapshot_load_to_store_endpoint() {
+    let script = handlers::bootstrap_script("token", false);
 
     assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
     assert!(script.contains("storeLoadController.abort(); }, 120000)"));
