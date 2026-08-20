@@ -172,7 +172,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     if (sessionStats.total > 0) {
       renderSessionSummary();
     } else {
-      els.reviewCard.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("vocab.reviewEyebrow"))}</p><h3>${escapeHtml(t("vocab.reviewEmptyHeading"))}</h3><p>${escapeHtml(t("vocab.reviewEmptyHint"))}</p></div>`;
+      els.reviewCard.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("vocab.reviewEyebrow"))}</p><h3>${escapeHtml(t("vocab.reviewEmptyHeading"))}</h3><p>${escapeHtml(t("vocab.reviewEmptyHint"))}</p><button type="button" class="secondary-button" data-open-view="reader">${escapeHtml(t("nav.reader"))}</button></div>`;
     }
     return;
   }
@@ -428,19 +428,24 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
  * summary button and finally to the card container.
  */
 function focusAfterReviewRender(): void {
-  if (els.reviewCard instanceof HTMLElement) {
-    const toggle = els.reviewCard.querySelector<HTMLButtonElement>('[data-review-action="toggle"]');
-    if (toggle instanceof HTMLButtonElement && !toggle.disabled) {
+  const card = els.reviewCard;
+  // Guard with feature checks instead of `instanceof HTMLElement`: headless
+  // tests stub els.reviewCard as a plain object and the DOM globals may not
+  // exist there (ReferenceError), while in the browser HTMLElement is always
+  // present. A `focus` method is exactly the capability we need either way.
+  if (card && typeof (card as HTMLElement).focus === "function") {
+    const toggle = card.querySelector<HTMLElement>('[data-review-action="toggle"]');
+    if (toggle && typeof toggle.focus === "function" && !(toggle as HTMLButtonElement).disabled) {
       toggle.focus();
       return;
     }
   }
   const done = document.getElementById("review-session-summary-done");
-  if (done instanceof HTMLButtonElement) {
+  if (done && typeof done.focus === "function") {
     done.focus();
     return;
   }
-  if (els.reviewCard instanceof HTMLElement) els.reviewCard.focus();
+  if (card && typeof (card as HTMLElement).focus === "function") card.focus();
 }
 
 export function removeFromSrs(word: string): void {

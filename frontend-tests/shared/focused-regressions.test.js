@@ -1724,7 +1724,7 @@ describe("focused frontend regressions", () => {
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: noOp },
       "./dialog-backdrop.js": { showConfirmDialog: async () => false },
-      "./i18n.js": { t: (key) => key },
+      "./i18n.js": { t: (key) => key, plural: (key) => key },
       "./render.js": { render: noOp, ensureCurrentText: noOp },
       "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
       "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
@@ -1856,7 +1856,7 @@ describe("focused frontend regressions", () => {
       "./api.js": { buildSavePayload: (value) => value },
       "./toast.js": { showToast: (message, kind) => toasts.push({ message, kind }) },
       "./dialog-backdrop.js": { showConfirmDialog: async () => false },
-      "./i18n.js": { t: (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key) },
+      "./i18n.js": { t: (key, vars) => (vars ? `${key}:${JSON.stringify(vars)}` : key), plural: (key) => key },
       "./render.js": { render: noOp, ensureCurrentText: noOp },
       "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
       "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
@@ -1969,7 +1969,7 @@ async function evaluateWordPanel({
       IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3,
       STATUS_ORDER: ["new", "learning", "known", "ignored"]
     },
-    "../i18n.js": { t: (key) => key },
+    "../i18n.js": { t: (key) => key, plural: (key) => key },
     "../views/vocabulary.js": {
       getOrCreateEntry(word) {
         return state.vocab[word] || { status: "new", translation: "", note: "", imageUrl: "", examples: [] };

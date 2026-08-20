@@ -1,5 +1,5 @@
 // Statistics graphs view — orchestrator, re-exports from sub-modules.
-import { state, saveState } from "../state.js";
+import { state, saveState, getVocabularyRevision } from "../state.js";
 import { t as rawT } from "../i18n.js";
 import { updateColors, setGraphsLoading, renderHeatmap, renderStatsSummary } from "../graphs/helpers.js";
 import type { ChartOptions, VocabEntry } from "../graphs/helpers.js";
@@ -13,6 +13,7 @@ import type { ChartRenderer } from "../graphs/charts.js";
 
 type TranslationVars = Record<string, string | number | boolean | null | undefined>;
 type GraphContainer = { id: string; fn: ChartRenderer; wide?: boolean };
+type GraphsViewportKey = string;
 
 const t = rawT as (key: string, vars?: TranslationVars) => string;
 
@@ -31,6 +32,20 @@ const GRAPH_CONTAINERS: GraphContainer[] = [
 
 let graphRenderToken = 0;
 let graphsAiBound = false;
+
+/**
+ * Memo per range (perf): once the full chart batch completed for a given
+ * range + vocabulary revision + viewport, re-entering the graphs view with an
+ * unchanged key skips the expensive redraw+reveal of every canvas. Any vocab
+ * mutation, range toggle or window resize invalidates it (fresh render).
+ */
+let lastGraphsRender: { range: "all" | "recent"; vocabRevision: number; viewport: GraphsViewportKey } | null = null;
+
+function graphsViewportKey(): GraphsViewportKey {
+  const width = typeof window !== "undefined" ? window.innerWidth : 0;
+  const height = typeof window !== "undefined" ? window.innerHeight : 0;
+  return `${width || 0}x${height || 0}`;
+}
 
 /**
  * "Explain with AI" button for the graphs view: visible only when the AI is
@@ -64,19 +79,21 @@ function ensureGraphCanvases(el: HTMLElement, containers: readonly GraphContaine
   const hasAllCanvases = containers.every((c) => document.getElementById(c.id));
   if (el.dataset.graphSignature === signature && hasAllCanvases) return false;
 
-  el.innerHTML = containers.map((c, index) => (
-    `<div class="graph-cell${c.wide ? " graph-cell-wide" : ""}" style="--graph-index:${index}"><canvas id="${c.id}"></canvas></div>`
+  // Cell order is fixed (GRAPH_CONTAINERS), so the card/reveal stagger
+  // `--graph-index` / `--chart-delay` is declared in CSS via nth-child
+  // instead of an inline style.
+  el.innerHTML = containers.map((c) => (
+    `<div class="graph-cell${c.wide ? " graph-cell-wide" : ""}"><canvas id="${c.id}"></canvas></div>`
   )).join("");
   el.dataset.graphSignature = signature;
   delete el.dataset.graphRendered;
   return true;
 }
 
-function revealGraphCanvas(id: string, index: number): void {
+function revealGraphCanvas(id: string): void {
   const graphCanvas = document.getElementById(id);
   if (!graphCanvas?.classList) return;
   graphCanvas.classList.remove("chart-reveal");
-  graphCanvas.style?.setProperty?.("--chart-delay", `${Math.min(index, 5) * 45}ms`);
   void graphCanvas.offsetWidth;
   graphCanvas.classList.add("chart-reveal");
 }
@@ -90,7 +107,7 @@ export function renderGraphs() {
   if (!el) return;
   const graphArea: HTMLElement = el;
   const rangeSelect = document.getElementById("graphs-range") as HTMLSelectElement | null;
-  const graphRange = state.preferences?.graphRange === "all" ? "all" : "recent";
+  const graphRange: "all" | "recent" = state.preferences?.graphRange === "all" ? "all" : "recent";
   if (rangeSelect) {
     rangeSelect.value = graphRange;
     rangeSelect.onchange = () => {
@@ -104,9 +121,28 @@ export function renderGraphs() {
   if (!Object.keys(state.vocab).length) {
     delete graphArea.dataset.graphSignature;
     delete graphArea.dataset.graphRendered;
-    graphArea.innerHTML = `<div class="empty-state p-3"><p>${t("graphs.empty")}</p></div>`;
+    lastGraphsRender = null;
+    graphArea.innerHTML = `<div class="empty-state p-3"><p>${t("graphs.empty")}</p><button type="button" class="secondary-button" data-open-view="library">${t("nav.library")}</button></div>`;
     const heat = document.getElementById("graphs-heatmap");
     if (heat) heat.innerHTML = "";
+    setGraphsLoading(false);
+    return;
+  }
+
+  const memoKey = {
+    range: graphRange,
+    vocabRevision: getVocabularyRevision(),
+    viewport: graphsViewportKey()
+  };
+
+  // Same range + unchanged vocabulary + same viewport: the charts on these
+  // canvases are already correct — skip redraw + reveal entirely.
+  if (lastGraphsRender
+    && lastGraphsRender.range === memoKey.range
+    && lastGraphsRender.vocabRevision === memoKey.vocabRevision
+    && lastGraphsRender.viewport === memoKey.viewport
+    && GRAPH_CONTAINERS.every((c) => document.getElementById(c.id))) {
+    graphArea.dataset.graphRendered = "1";
     setGraphsLoading(false);
     return;
   }
@@ -123,7 +159,7 @@ export function renderGraphs() {
       const c = GRAPH_CONTAINERS[idx++];
       if (document.getElementById(c.id)) {
         c.fn(_chartEntries, graphOptions);
-        revealGraphCanvas(c.id, idx - 1);
+        revealGraphCanvas(c.id);
       }
     }
 
@@ -131,6 +167,9 @@ export function renderGraphs() {
       renderHeatmap(_chartEntries, graphOptions);
       renderStatsSummary(_chartEntries);
       graphArea.dataset.graphRendered = "1";
+      // Commit the memo only after the full batch actually completed, so a
+      // mid-batch navigation never leaves a stale-but-flagged render behind.
+      lastGraphsRender = memoKey;
       setGraphsLoading(false);
       return;
     }

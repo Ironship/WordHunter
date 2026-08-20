@@ -12,7 +12,7 @@ import { renderWordPanel } from "./word-panel.js";
 import { updateReaderSelection } from "./selection.js";
 import { paginationHtml } from "./pagination.js";
 import { applyPendingReaderPageFocus, applyPendingReaderWordFocus } from "./focus.js";
-import { getLearningColor } from "../reader-colors.js";
+import { getSrsLevel } from "../reader-colors.js";
 import { renderInlineBookmarkIndicators } from "./bookmarks.js";
 import type { TextToken, TokenClassification } from "../tokenizer_v2.js";
 
@@ -82,9 +82,15 @@ export function renderPlainText({ current, tokens, globalWordIndexes, globalChar
       const selected = state.selectedWord === classification.key || state.selectedWord === word ? "selected" : "";
       const globalIdx = globalWordIndexes[pageStartIndex + i];
       const charOffset = globalCharOffsets[pageStartIndex + i];
-      const color = classification.status === "learning" ? getLearningColor(entry, state.preferences) : "";
-      const style = color ? ` style="--token-learning-bg:${color}"` : "";
-      htmlChunk += `<button class="word-token status-${classification.status} ${selected}" type="button" tabindex="-1" data-word="${escapeHtml(classification.key)}" data-display-word="${escapeHtml(part.value)}" data-word-index="${globalIdx}" data-char-offset="${charOffset}"${style}>${escapeHtml(part.value)}</button>`;
+      // Dynamic learning colors (Wave perf): emit a level class instead of an
+      // inline `--token-learning-bg` style per token — the CSS maps each
+      // `learning-lvl-N` class to the Nth configured learning color variable.
+      const learningLevel = classification.status === "learning"
+        && state.preferences?.dynamicLearningColors === true
+        ? getSrsLevel(entry)
+        : 0;
+      const levelClass = learningLevel > 0 ? ` learning-lvl-${learningLevel}` : "";
+      htmlChunk += `<button class="word-token status-${classification.status}${levelClass} ${selected}" type="button" tabindex="-1" data-word="${escapeHtml(classification.key)}" data-display-word="${escapeHtml(part.value)}" data-word-index="${globalIdx}" data-char-offset="${charOffset}">${escapeHtml(part.value)}</button>`;
       i += 1;
       tokensProcessed += 1;
     }

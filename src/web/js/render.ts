@@ -110,7 +110,9 @@ export function setView(viewName: string): void {
   // heading (#page-title is tabindex=-1, the skip-link target) so a keyboard /
   // screen-reader user lands on an announced, known position instead of the
   // body. renderShell() has already updated the title text by this point.
-  if (els.pageTitle) els.pageTitle.focus();
+  // `?.` keeps this no-op in headless tests/Hermes where els.pageTitle is a
+  // bare stub without a focus() method.
+  els.pageTitle?.focus?.();
   window.dispatchEvent(new CustomEvent("wordhunter:view-changed", { detail: { view: viewName } }));
 }
 

@@ -26,6 +26,7 @@ ctrlc = { version = "3", features = ["termination"] }
 encoding_rs = "0.8"
 html-escape = "0.2"
 include_dir = "0.7"
+libc = "0.2"
 mime_guess = "2"
 pdf-extract = "0.12"
 percent-encoding = "2"
@@ -41,7 +42,7 @@ tauri = { version = "2.11.3", features = [] }
 tempfile = "3"
 time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
 tiny_http = { path = "vendor/tiny_http" }
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "net", "io-util", "sync"] }
 unicode-normalization = "0.1"
 unicode-segmentation = "1"
 ureq = { version = "2", features = ["json"] }

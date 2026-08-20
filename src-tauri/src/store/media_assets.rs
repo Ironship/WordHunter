@@ -453,6 +453,15 @@ fn display_relative(root: &Path, path: &Path) -> Result<String, String> {
     Ok(parts.join("/"))
 }
 
+/// Join `root` with a package-relative path, rejecting any traversal via `..`
+/// or symlinked path components at check time.
+///
+/// The per-component `symlink_metadata` checks run *before* the caller opens
+/// the returned path, so there is a small TOCTOU window: a local attacker
+/// could swap a just-checked directory for a symlink before the file is
+/// written. The persistence writers that consume this result
+/// (`store::durable::create_no_follow`, O_NOFOLLOW) make a symlink planted at
+/// the final path component fail the open instead of redirecting the write.
 pub(crate) fn safe_join(root: &Path, relative: &str) -> Result<PathBuf, String> {
     let mut path = root.to_path_buf();
     for component in Path::new(relative).components() {
