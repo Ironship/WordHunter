@@ -2303,9 +2303,12 @@ fn upsert_profile_book(profiles: &mut Map<String, Value>, lang: &str, book: Valu
 }
 
 #[cfg(test)]
+#[path = "tests/record_files_helpers.rs"]
+mod record_files_helpers;
+
+#[cfg(test)]
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
-    use std::path::{Path, PathBuf};
 
     use serde_json::{Value, json};
 
@@ -2319,58 +2322,10 @@ mod tests {
         text_content, tombstone_all, value_id, write_record, write_records,
     };
 
-    fn causal(entries: &[(&str, u64)]) -> BTreeMap<String, u64> {
-        entries
-            .iter()
-            .map(|(device, counter)| ((*device).to_string(), *counter))
-            .collect()
-    }
-
-    fn user_book_payload(user_books: Value) -> Value {
-        json!({
-            "texts": [],
-            "prefs": { "learningLanguage": "de" },
-            "hiddenBooks": [],
-            "vocab": {
-                "de": {
-                    "preferences": {},
-                    "userBooks": user_books,
-                    "hiddenBuiltInBooks": [],
-                    "archivedBookIds": [],
-                    "vocab": {}
-                }
-            }
-        })
-    }
-
-    fn user_book_count(payload: &Value) -> usize {
-        payload["vocab"]["de"]
-            .get("userBooks")
-            .and_then(Value::as_array)
-            .map(Vec::len)
-            .unwrap_or(0)
-    }
-
-    fn vocab_payload(words: &[&str]) -> Value {
-        let vocab = words
-            .iter()
-            .map(|word| ((*word).to_string(), json!({ "status": "known" })))
-            .collect::<serde_json::Map<_, _>>();
-        json!({
-            "texts": [],
-            "prefs": { "learningLanguage": "de" },
-            "hiddenBooks": [],
-            "vocab": {
-                "de": {
-                    "preferences": {},
-                    "userBooks": [],
-                    "hiddenBuiltInBooks": [],
-                    "archivedBookIds": [],
-                    "vocab": vocab
-                }
-            }
-        })
-    }
+    use super::record_files_helpers::{
+        causal, fnv1a_name, single_pref_record, user_book_count, user_book_payload, vocab_payload,
+        write_legacy_fnv_record,
+    };
 
     #[test]
     fn vocab_record_keys_are_case_insensitive_and_keep_display_spelling() {
@@ -4043,40 +3998,6 @@ mod tests {
 
         assert!(error.contains("newer unsupported record"));
         assert_eq!(std::fs::read(&backup).unwrap(), future);
-    }
-
-    /// FNV-1a 64-bit filename scheme used by builds before the SHA-256
-    /// migration; kept in tests to prove dual-read and on-disk migration.
-    fn fnv1a_name(key: &str) -> String {
-        let mut hash: u64 = 0xcbf29ce484222325;
-        for byte in key.as_bytes() {
-            hash ^= u64::from(*byte);
-            hash = hash.wrapping_mul(0x100000001b3);
-        }
-        format!("{hash:016x}")
-    }
-
-    fn write_legacy_fnv_record(dir: &Path, record: &SyncRecord) -> PathBuf {
-        let path = records_root(dir)
-            .join(kind_dir(&record.kind))
-            .join(format!("{}.yaml", fnv1a_name(&record.key)));
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, serde_yaml::to_string(&record_value(record)).unwrap()).unwrap();
-        path
-    }
-
-    fn single_pref_record() -> SyncRecord {
-        let records = payload_to_records(
-            &json!({
-                "texts": [],
-                "prefs": { "theme": "dark" },
-                "hiddenBooks": [],
-                "vocab": {}
-            }),
-            "device-a",
-            1,
-        );
-        records.values().next().unwrap().clone()
     }
 
     #[test]
