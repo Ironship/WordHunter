@@ -366,7 +366,8 @@
     "uploadOwnImage": "Eigenes Bild",
     "shortcut": {},
     "confirmDeleteWord": "Dieses Wort und seinen Lernfortschritt löschen?",
-    "wordRequired": "Geben Sie zuerst das Wort ein."
+    "wordRequired": "Geben Sie zuerst das Wort ein.",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "Online-Ressourcen",
@@ -1033,7 +1034,6 @@
     "range": "Zeitraum",
     "rangeRecent": "Aktuell",
     "rangeAll": "Gesamtzeitraum",
-    "aiExplain": "Mit KI erklären",
     "aiExplainNotConfigured": "KI ist nicht konfiguriert. Füge zuerst deine API-Einstellungen hinzu.",
     "fsrsTitle": "FSRS: Stabilität vs Schwierigkeit",
     "monthLabels": "Jan|Feb|Mär|Apr|Mai|Jun|Jul|Aug|Sep|Okt|Nov|Dez",

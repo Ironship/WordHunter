@@ -366,7 +366,8 @@
     "uploadOwnImage": "Imagen propia",
     "shortcut": {},
     "confirmDeleteWord": "¿Eliminar esta palabra y su progreso de aprendizaje?",
-    "wordRequired": "Escribe primero la palabra."
+    "wordRequired": "Escribe primero la palabra.",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "Recursos en línea",
@@ -1033,7 +1034,6 @@
     "range": "Rango",
     "rangeRecent": "Reciente",
     "rangeAll": "Todo el tiempo",
-    "aiExplain": "Explicar con IA",
     "aiExplainNotConfigured": "La IA no está configurada. Añade primero los ajustes de API.",
     "fsrsTitle": "FSRS: Estabilidad vs Dificultad",
     "monthLabels": "Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic",

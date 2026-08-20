@@ -139,7 +139,9 @@ export function renderVocabulary(resetLimit = true): void {
     });
 
   if (!filteredVocabEntries.length) {
-    els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(t("vocab.empty"))}<button type="button" class="ghost-button empty-cta" data-open-view="discover">${escapeHtml(t("nav.discover"))}</button></td></tr>`;
+    const hasFilter = Boolean(state.filters.vocabQuery || getSelectedVocabStatuses().length < 4 || textIndex);
+    const msg = hasFilter ? t("vocab.noResults") : t("vocab.empty");
+    els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(msg)}</td></tr>`;
     return;
   }
 

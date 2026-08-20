@@ -366,7 +366,8 @@
     "uploadOwnImage": "Image personnelle",
     "shortcut": {},
     "confirmDeleteWord": "Supprimer ce mot et sa progression d'apprentissage ?",
-    "wordRequired": "Saisissez d'abord le mot."
+    "wordRequired": "Saisissez d'abord le mot.",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "Ressources en ligne",
@@ -1033,7 +1034,6 @@
     "range": "Période",
     "rangeRecent": "Récent",
     "rangeAll": "Tout",
-    "aiExplain": "Expliquer avec l'IA",
     "aiExplainNotConfigured": "L'IA n'est pas configurée. Ajoutez d'abord vos paramètres API.",
     "fsrsTitle": "FSRS: Stabilité vs Difficulté",
     "monthLabels": "Jan|Fév|Mar|Avr|Mai|Juin|Juil|Aoû|Sep|Oct|Nov|Déc",

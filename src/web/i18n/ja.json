@@ -366,7 +366,8 @@
     "uploadOwnImage": "画像をアップロード",
     "shortcut": {},
     "confirmDeleteWord": "この単語と学習の進捗を削除しますか？",
-    "wordRequired": "先に単語を入力してください。"
+    "wordRequired": "先に単語を入力してください。",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "オンラインリソース",
@@ -1007,7 +1008,6 @@
     "range": "範囲",
     "rangeRecent": "最近",
     "rangeAll": "全期間",
-    "aiExplain": "AIで解説",
     "aiExplainNotConfigured": "AIが設定されていません。先にAPI設定を追加してください。",
     "fsrsTitle": "FSRS：安定性vs難易度",
     "monthLabels": "1月|2月|3月|4月|5月|6月|7月|8月|9月|10月|11月|12月",

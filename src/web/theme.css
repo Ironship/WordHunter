@@ -189,6 +189,7 @@
   --control-accent: #65c8f5;
   --control-accent-soft: #123b52;
   --control-accent-ink: #00395d;
+  --red-ink: #0d1114;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
@@ -227,6 +228,7 @@
   --control-accent: #ff9b77;
   --control-accent-soft: #48251a;
   --control-accent-ink: #2c001e;
+  --red-ink: #0d1114;
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
   color-scheme: dark;
 }

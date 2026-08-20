@@ -3,8 +3,10 @@
   --reader-line-height: 1.82;
   --reader-font-size: 1.125rem;
   --ui-scale: 1;
-  /* Z-index scale — every z-index declaration must reference these variables
-     (pinned by frontend-tests/shared/css-verifiability.test.js). */
+  /* Z-index scale — every z-index declaration must use these tokens, never
+     bare numbers (pinned by frontend-tests/shared/css-verifiability.test.js).
+     Layers, low→high: base/raised (static) < chrome < floating (fixed bars)
+     < panel < tabs < toolbar < loading < toast < overlay < boot < tooltip. */
   --z-base: 0;
   --z-raised: 1;
   --z-chrome: 2;
@@ -464,6 +466,11 @@ kbd {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.word-actions {
+  overflow: visible;
 }
 
 .tag,
@@ -677,10 +684,10 @@ kbd {
 .heatmap-months span { min-width: 0; overflow: visible; }
 .heatmap-grid { display: flex; gap: 3px; }
 .heatmap-week { display: flex; flex-direction: column; gap: 3px; }
-.heatmap-cell { width: 14px; height: 14px; border-radius: 4px; background: var(--panel-strong); cursor: default; transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease; animation: heatmap-cell-enter 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--heatmap-delay, 0ms); }
+.heatmap-cell { width: 14px; height: 14px; border-radius: var(--radius-control); background: var(--panel-strong); cursor: default; transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease; animation: heatmap-cell-enter 0.38s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--heatmap-delay, 0ms); }
 .heatmap-cell:hover { transform: translateY(-2px) scale(1.32); filter: saturate(1.15) brightness(1.06); outline: 2px solid color-mix(in srgb, var(--control-accent) 55%, transparent); z-index: var(--z-raised); }
 .heatmap-legend { display: flex; align-items: center; gap: 4px; padding: 0.5rem 0 0; font-size: 0.6875rem; color: var(--muted); }
-.heatmap-legend-cell { width: 14px; height: 14px; border-radius: 3px; }
+.heatmap-legend-cell { width: 14px; height: 14px; border-radius: var(--radius-control); }
 
 .graphs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 0 1.5rem; padding: 0 1.25rem 1.25rem; }
 .graph-cell { position: relative; padding: 0.35rem 0 0.9rem; min-height: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); }
@@ -930,9 +937,9 @@ body.is-resizing-panel * {
 }
 /* Highlighted find matches in the reader text */
 .word-token.find-match {
-  background: color-mix(in srgb, var(--accent, #4a6cf7) 38%, transparent);
+  background: color-mix(in srgb, var(--accent, #4f7cff) 38%, transparent);
   border-radius: 3px;
-  box-shadow: 0 0 0 1px var(--accent, #4a6cf7);
+  box-shadow: 0 0 0 1px var(--accent, #4f7cff);
 }
 
 .panel-header.stacked {
@@ -1733,7 +1740,7 @@ button.icon-button {
 }
 
 .settings-body details {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   padding-top: 0.75rem;
 }
 
@@ -2473,12 +2480,15 @@ html[data-max-width="full"] .reader-text {
   gap: 1rem;
   max-height: calc(100vh - 2rem);
   overflow: auto;
+  min-width: 0;
 }
 
 .word-panel {
   padding: 1rem;
   border-color: var(--word-panel-status-border, var(--line));
   background: var(--word-panel-status-bg, var(--panel));
+  min-width: 0;
+  overflow: visible;
 }
 
 #translator-ai-result {
@@ -2697,7 +2707,7 @@ html[data-max-width="full"] .reader-text {
 .context-box {
   border-left: 4px solid var(--green);
   background: var(--panel-strong);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
   padding: 0.85rem;
   color: var(--ink);
 }
@@ -3447,10 +3457,7 @@ textarea.vocab-translation-input {
   width: 340px;
   overflow: hidden;
   background: var(--panel);
-  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 12%, transparent), transparent 28px);
-  background-repeat: no-repeat;
-  background-size: 28px 100%;
-  box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
+  border-left: 1px solid var(--line);
 }
 
 .vocab-table td:last-child .row-actions {
@@ -3478,10 +3485,7 @@ textarea.vocab-translation-input {
   z-index: var(--z-floating);
   text-align: center;
   background: var(--panel-strong);
-  background-image: linear-gradient(90deg, color-mix(in srgb, var(--ink) 10%, transparent), transparent 24px);
-  background-repeat: no-repeat;
-  background-size: 24px 100%;
-  box-shadow: -12px 0 18px -16px rgba(0, 0, 0, 0.45);
+  border-left: 1px solid var(--line);
 }
 
 .status-chip.status-new {
@@ -4236,7 +4240,7 @@ textarea.vocab-translation-input {
 .discover-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(280px, 360px); align-items: start; }
 .discover-search { display: flex; gap: .6rem; padding: 1rem; align-items: flex-end; flex-wrap: wrap; }
 .discover-search .grow { flex: 1 1 240px; }
-.discover-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .6rem 1rem; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel-strong); flex-wrap: wrap; }
+.discover-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .6rem 1rem; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); background: var(--panel-strong); flex-wrap: wrap; }
 .discover-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .85rem; padding: 1rem; }
 :root.no-covers .discover-card.book-card.has-cover { grid-template-columns: 1fr; }
 .discover-card.selected { outline: 2px solid var(--control-accent); border-color: var(--control-accent); }
@@ -4467,7 +4471,7 @@ dialog {
   width: 100%;
 }
 .graphs-ai-summary:has([data-graphs-ai-explanation]:not([hidden])) {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
 }
 
 /* =====================================================================
@@ -4608,8 +4612,8 @@ dialog {
 .center-p-1 { text-align: center; padding: 1rem; }
 .chart-placeholder { width:100%;height:160px;display:block; }
 .chip { font-size: 0.85rem; padding: 0.4rem 0.6rem; display: flex; align-items: center; gap: 0.3rem; }
-.cover-thumb { width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none; }
-.cover-thumb-block { width: 1.5rem; height: 1.5rem; border-radius: 4px; object-fit: cover; flex-shrink: 0; display: block; pointer-events: none; }
+.cover-thumb { width: 1.5rem; height: 1.5rem; border-radius: var(--radius-control); object-fit: cover; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none; }
+.cover-thumb-block { width: 1.5rem; height: 1.5rem; border-radius: var(--radius-control); object-fit: cover; flex-shrink: 0; display: block; pointer-events: none; }
 .dialog-500 { width: 90vw; max-width: 500px; }
 .dialog-680 { width: 92vw; max-width: 680px; }
 .dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid var(--line); }
@@ -4724,8 +4728,21 @@ dialog {
   width: 0.95rem;
   height: 0.95rem;
 }
+.ai-inline-icon {
+  width: 14px;
+  height: 14px;
+}
 .book-meta-detail {
   color: var(--muted);
   font-size: 0.8rem;
   margin: 0.2rem 0 0;
+}
+
+/* === De-AI wave 2 continuation (FIX-C) — import sidebar, flat on desktop.
+   Mirrors the transfer/export surfaces; Android keeps its drawer chrome. */
+:root:not(.pocket-mode) .import-panel {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
