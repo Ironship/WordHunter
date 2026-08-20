@@ -12,14 +12,39 @@ fn env_path(name: &str) -> Option<PathBuf> {
 
 // APPDATA is a Windows concept; on Linux/macOS it is at best a Wine/Proton
 // artifact and must never win over the XDG base directories (issue #135,
-// bullet 1). Android is the one exception: platform/android.rs sets APPDATA
-// from tauri's app_data_dir during setup (Android has neither XDG nor HOME
-// for app processes), so the mobile build must honor it here.
-// config_dir() and default_data_dir() both route their APPDATA lookup
-// through this single gate, so no per-call-site cfg is needed.
+// bullet 1). Android is the one exception: platform/android.rs pins the
+// app-data dir via with_app_data_override() during setup (Android has
+// neither XDG nor HOME for app processes), so the mobile build must honor
+// it here. config_dir() and default_data_dir() both route their APPDATA
+// lookup through this single gate, so no per-call-site cfg is needed.
+//
+// The override is consulted before the APPDATA env var so Android never
+// has to mutate the process environment (std::env::set_var is unsafe in
+// edition 2024 and races with concurrent env reads from worker threads).
+#[cfg(any(windows, target_os = "android"))]
+static APP_DATA_OVERRIDE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+/// Pin the app-data directory used by `data_dir()` and `config_dir()`.
+///
+/// Android setup calls this with tauri's `app_data_dir()` instead of
+/// `unsafe std::env::set_var("APPDATA", ...)`. The env mutation is unsafe
+/// in edition 2024 and would race with `std::env::var` reads issued from
+/// the tauri worker threads that already exist by the time setup runs.
+/// The override is installed before any `Store` exists, and `OnceLock` is
+/// read-only afterwards, so the pin is race-free by construction. It only
+/// ever takes effect where an override is installed (Android); the Windows
+/// APPDATA env-var behaviour is unchanged.
+#[cfg(target_os = "android")]
+pub(crate) fn with_app_data_override(dir: PathBuf) {
+    let _ = APP_DATA_OVERRIDE.set(dir);
+}
+
 #[cfg(any(windows, target_os = "android"))]
 fn appdata_dir() -> Option<PathBuf> {
-    env_path("APPDATA")
+    APP_DATA_OVERRIDE
+        .get()
+        .cloned()
+        .or_else(|| env_path("APPDATA"))
 }
 
 #[cfg(not(any(windows, target_os = "android")))]

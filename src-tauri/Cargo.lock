@@ -6021,6 +6021,7 @@ dependencies = [
  "gtk",
  "html-escape",
  "include_dir",
+ "libc",
  "mime_guess",
  "open",
  "pdf-extract",

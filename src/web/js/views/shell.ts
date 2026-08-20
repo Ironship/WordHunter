@@ -1,10 +1,18 @@
 // Status bar and view switcher renderer. UI only, no state mutation.
-import { state, initialVocabKeys } from "../state.js";
+import { state, initialVocabKeys, getVocabularyRevision } from "../state.js";
 import { STATUS_ORDER } from "../constants.js";
 import { els } from "../dom.js";
 import { t } from "../i18n.js";
 
 type StatusTotals = Record<WhVocabStatus | "total" | "session", number>;
+
+/**
+ * Incremental countByStatus cache (perf): the totals only change when a vocab
+ * mutation happens, and every such mutation bumps the vocabulary revision —
+ * so renderShell (run on every view switch) is O(1) instead of O(n) over the
+ * whole vocabulary unless something actually changed.
+ */
+let cachedPillTotals: { revision: number; totals: StatusTotals } | null = null;
 
 export function renderShell(): void {
   document.documentElement.dataset.view = state.currentView;
@@ -31,6 +39,10 @@ export function renderShell(): void {
 }
 
 function countByStatus(): StatusTotals {
+  const revision = getVocabularyRevision();
+  if (cachedPillTotals && cachedPillTotals.revision === revision) {
+    return cachedPillTotals.totals;
+  }
   const totals: StatusTotals = { total: 0, new: 0, learning: 0, known: 0, ignored: 0, session: 0 };
   Object.entries(state.vocab).forEach(([word, entry]) => {
     const status = STATUS_ORDER.includes(entry.status) ? entry.status : "new";
@@ -40,5 +52,6 @@ function countByStatus(): StatusTotals {
       totals.session += 1;
     }
   });
+  cachedPillTotals = { revision, totals };
   return totals;
 }

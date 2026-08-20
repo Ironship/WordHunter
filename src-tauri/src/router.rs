@@ -18,10 +18,9 @@ macro_rules! read_json_or_400 {
         match response::read_json_limited(&mut $request, MAX_JSON_REQUEST_BODY) {
             Ok(payload) => payload,
             Err(error) => {
-                let status = if error.contains("too large") {
-                    413
-                } else {
-                    400
+                let status = match &error {
+                    response::BodyError::TooLarge { .. } => 413,
+                    _ => 400,
                 };
                 return response::error_response(
                     $request,
@@ -38,12 +37,11 @@ macro_rules! read_json_limited_or_error {
         match response::read_json_limited(&mut $request, $max_bytes) {
             Ok(payload) => payload,
             Err(error) => {
-                let status = if error.contains("too large") {
-                    413
-                } else {
-                    400
+                let status = match &error {
+                    response::BodyError::TooLarge { .. } => 413,
+                    _ => 400,
                 };
-                return response::error_response($request, status, &error);
+                return response::error_response($request, status, &error.to_string());
             }
         }
     };
@@ -327,7 +325,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Post, "/__log_error") => {
             let body = match response::read_body_limited(&mut request, MAX_LOG_BODY) {
                 Ok(body) => body,
-                Err(error) => return response::error_response(request, 413, &error),
+                Err(error) => return response::error_response(request, 413, &error.to_string()),
             };
             let text = String::from_utf8_lossy(&body);
             eprintln!("{text}");
@@ -495,8 +493,25 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 }
             }
             "/__import/ebook" => {
-                let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                match ebook::import(payload) {
+                let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY)
+                {
+                    Ok(body) => body,
+                    Err(error) => {
+                        let status = match &error {
+                            response::BodyError::TooLarge { .. } => 413,
+                            _ => 400,
+                        };
+                        return response::error_response(request, status, &error.to_string());
+                    }
+                };
+                // Deserialize into a borrowing struct instead of a
+                // `serde_json::Value` so a large base64 `data` field is not
+                // duplicated in memory alongside the raw body (F13).
+                let request_body = match ebook::parse_import_body(&body) {
+                    Ok(request_body) => request_body,
+                    Err(error) => return response::error_response(request, 400, &error),
+                };
+                match ebook::import_request(&request_body) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(error) => response::error_response(request, 422, &error),
                 }
@@ -521,7 +536,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 };
                 let data = match response::read_body_limited(&mut request, MAX_RAW_PDF_BODY) {
                     Ok(data) => data,
-                    Err(error) => return response::error_response(request, 413, &error),
+                    Err(error) => {
+                        return response::error_response(request, 413, &error.to_string());
+                    }
                 };
                 let max_pages = params
                     .get("max_pages")
@@ -568,7 +585,9 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                     .to_string();
                 let data = match response::read_body_limited(&mut request, MAX_RAW_OCR_IMAGE_BODY) {
                     Ok(data) => data,
-                    Err(error) => return response::error_response(request, 413, &error),
+                    Err(error) => {
+                        return response::error_response(request, 413, &error.to_string());
+                    }
                 };
                 let payload = json!({
                     "book_id": params.get("book_id").cloned().unwrap_or_default(),
