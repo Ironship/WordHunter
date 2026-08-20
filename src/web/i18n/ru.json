@@ -366,7 +366,8 @@
     "uploadOwnImage": "Своё изображение",
     "shortcut": {},
     "confirmDeleteWord": "Удалить это слово и прогресс его изучения?",
-    "wordRequired": "Сначала введите слово."
+    "wordRequired": "Сначала введите слово.",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "Онлайн ресурсы",
@@ -1033,7 +1034,6 @@
     "range": "Диапазон",
     "rangeRecent": "Недавние",
     "rangeAll": "За всё время",
-    "aiExplain": "Объяснить с ИИ",
     "aiExplainNotConfigured": "ИИ не настроен. Сначала добавьте настройки API.",
     "fsrsTitle": "FSRS: Стабильность vs Сложность",
     "monthLabels": "Янв|Фев|Мар|Апр|Май|Июн|Июл|Авг|Сен|Окт|Ноя|Дек",

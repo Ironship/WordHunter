@@ -366,7 +366,8 @@
     "cardCount": "{count} 张卡片",
     "shortcut": {},
     "confirmDeleteWord": "删除这个单词及其学习进度？",
-    "wordRequired": "请先输入单词。"
+    "wordRequired": "请先输入单词。",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "在线资源",
@@ -718,7 +719,6 @@
     "range": "范围",
     "rangeRecent": "近期",
     "rangeAll": "全部时间",
-    "aiExplain": "用 AI 解读",
     "aiExplainNotConfigured": "AI 尚未配置。请先添加 API 设置。",
     "cards": "卡片",
     "fsrsTitle": "稳定性 vs 难度",

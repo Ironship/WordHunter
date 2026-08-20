@@ -253,7 +253,7 @@
     "articleAria": "Rodzajnik dla {word}",
     "translateContext": "Przetłumacz zdanie",
     "contextTranslationLabel": "Tłumaczenie zdania:",
-    "aiExplain": "Wyjaśnij przez AI",
+    "aiExplain": "Wyjaśnij",
     "aiExplainNotConfigured": "Wyjaśnienia AI nie są skonfigurowane. Włącz je w Ustawieniach → Wyjaśnienia AI.",
     "aiExplainError": "Wyjaśnienie AI nie powiodło się. Sprawdź punkt końcowy i model w Ustawieniach → Wyjaśnienia AI.",
     "translationPlaceholder": "np. przemiana",
@@ -366,7 +366,8 @@
     "cardCount": "Liczba fiszek: {count}",
     "shortcut": {},
     "confirmDeleteWord": "Usunąć to słowo wraz z postępem nauki?",
-    "wordRequired": "Najpierw wpisz słowo."
+    "wordRequired": "Najpierw wpisz słowo.",
+    "noResults": "No results for the current filter."
   },
   "discover": {
     "eyebrow": "Zasoby online",
@@ -719,7 +720,6 @@
     "range": "Zakres",
     "rangeRecent": "Ostatnie 12 miesięcy",
     "rangeAll": "Cały okres",
-    "aiExplain": "Objaśnij z AI",
     "aiExplainNotConfigured": "AI nie jest skonfigurowane. Najpierw dodaj ustawienia API.",
     "fsrsTitle": "Stabilność a trudność",
     "monthLabels": "sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru",

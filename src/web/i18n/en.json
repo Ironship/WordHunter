@@ -296,6 +296,8 @@
   "vocab": {
     "eyebrow": "Your words",
     "heading": "Vocabulary list",
+    "empty": "No vocabulary data yet. Start reading to build your word database.",
+    "noResults": "No results for the current filter.",
     "reverseTooltip": "Toggle flashcard mode (Normal / Reverse)",
     "normalOrder": "Foreign → Native",
     "reverseOrder": "Native → Foreign",
@@ -718,7 +720,6 @@
     "range": "Range",
     "rangeRecent": "Recent",
     "rangeAll": "All time",
-    "aiExplain": "Explain with AI",
     "aiExplainNotConfigured": "AI is not configured. Add your API settings first.",
     "cards": "cards",
     "fsrsTitle": "Stability vs Difficulty",
