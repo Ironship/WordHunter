@@ -1,11 +1,10 @@
 use rand::{Rng, distributions::Alphanumeric};
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::net::TcpListener;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use tauri::AppHandle;
-use tiny_http::Server;
+use tiny_http::{Request, Server};
 
 use crate::store::Store;
 
@@ -13,25 +12,83 @@ const MAX_REGULAR_REQUEST_WORKERS: usize = 10;
 const MAX_STORE_REQUEST_WORKERS: usize = 4;
 const MAX_CONTROL_REQUEST_WORKERS: usize = 2;
 
-struct RequestPermit {
-    active: Arc<AtomicUsize>,
+/// Bounded FIFO queue shared by a fixed set of worker threads.
+///
+/// `try_push` rejects (returning the item) once `capacity` items are queued,
+/// so the HTTP accept loop can answer 503 instead of spawning a thread per
+/// request or queueing without bound. `pop` blocks until work is available.
+struct BoundedWorkQueue<T> {
+    queue: Mutex<VecDeque<T>>,
+    not_empty: Condvar,
+    capacity: usize,
 }
 
-impl Drop for RequestPermit {
-    fn drop(&mut self) {
-        self.active.fetch_sub(1, Ordering::Relaxed);
+impl<T> BoundedWorkQueue<T> {
+    fn new(capacity: usize) -> Self {
+        assert!(capacity > 0, "worker pool capacity must be non-zero");
+        Self {
+            queue: Mutex::new(VecDeque::with_capacity(capacity)),
+            not_empty: Condvar::new(),
+            capacity,
+        }
+    }
+
+    /// Enqueue a unit of work, or hand it back when the lane is at capacity.
+    fn try_push(&self, item: T) -> Result<(), T> {
+        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        if queue.len() >= self.capacity {
+            return Err(item);
+        }
+        queue.push_back(item);
+        self.not_empty.notify_one();
+        Ok(())
+    }
+
+    /// Block until work is available, then take the oldest item.
+    fn pop(&self) -> T {
+        let mut queue = self.queue.lock().unwrap_or_else(|error| error.into_inner());
+        loop {
+            if let Some(item) = queue.pop_front() {
+                return item;
+            }
+            queue = self
+                .not_empty
+                .wait(queue)
+                .unwrap_or_else(|error| error.into_inner());
+        }
     }
 }
 
-fn try_acquire_request_permit(active: &Arc<AtomicUsize>, limit: usize) -> Option<RequestPermit> {
-    active
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |count| {
-            (count < limit).then_some(count + 1)
-        })
-        .ok()
-        .map(|_| RequestPermit {
-            active: Arc::clone(active),
-        })
+/// Spawn `count` fixed worker threads that drain `queue` and dispatch each
+/// request to the router. This replaces the previous thread-per-request
+/// model: no OS thread is created or destroyed per request, only once up
+/// front (10 + 4 + 2 lanes = 16 workers total).
+fn spawn_request_workers(
+    queue: Arc<BoundedWorkQueue<Request>>,
+    state: Arc<ServerState>,
+    count: usize,
+) {
+    for _ in 0..count {
+        let queue = Arc::clone(&queue);
+        let state = Arc::clone(&state);
+        thread::spawn(move || {
+            loop {
+                let request = queue.pop();
+                // A fixed pool cannot self-heal a panicked worker the way the
+                // old thread-per-request model did (a fresh thread was spawned
+                // per request). Contain handler panics here so one bad request
+                // never permanently removes a worker from its lane.
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    crate::router::handle_request(request, Arc::clone(&state))
+                }));
+                match result {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => eprintln!("request failed: {error}"),
+                    Err(_) => eprintln!("request handler panicked"),
+                }
+            }
+        });
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -127,9 +184,12 @@ pub fn make_token() -> String {
         .collect()
 }
 
-/// Bind a `TinyHTTP` server on a random port and spawn a worker thread pool.
+/// Bind a `TinyHTTP` server on a random port and spawn a fixed worker pool.
 ///
-/// Each incoming request is dispatched to `crate::router::handle_request` with the shared state.
+/// Requests are dispatched to `crate::router::handle_request` with the shared
+/// state by 16 pre-spawned workers (10 regular + 4 store + 2 control lanes);
+/// no thread is created per request. Lanes keep the queue capacity (10/4/2)
+/// separate so long-running jobs cannot starve interactive control routes.
 #[cfg(not(target_os = "android"))]
 pub fn start_server(
     store: Arc<Store>,
@@ -178,27 +238,42 @@ fn start_server_from_listener(
         exports: Mutex::new(std::collections::HashMap::new()),
     });
 
+    // Fixed worker pools, one per request lane (10 + 4 + 2 = 16 workers).
+    // Workers are spawned once here instead of thread-per-request, and each
+    // lane keeps its own bounded queue so Control/Store capacity stays
+    // available while Regular lanes (e.g. long TTS/OCR jobs) are saturated.
+    let regular = Arc::new(BoundedWorkQueue::new(MAX_REGULAR_REQUEST_WORKERS));
+    let store = Arc::new(BoundedWorkQueue::new(MAX_STORE_REQUEST_WORKERS));
+    let control = Arc::new(BoundedWorkQueue::new(MAX_CONTROL_REQUEST_WORKERS));
+    spawn_request_workers(
+        Arc::clone(&regular),
+        Arc::clone(&state),
+        MAX_REGULAR_REQUEST_WORKERS,
+    );
+    spawn_request_workers(
+        Arc::clone(&store),
+        Arc::clone(&state),
+        MAX_STORE_REQUEST_WORKERS,
+    );
+    spawn_request_workers(
+        Arc::clone(&control),
+        Arc::clone(&state),
+        MAX_CONTROL_REQUEST_WORKERS,
+    );
+
+    // Accept loop: hand each request to its lane's pool, rejecting with 503
+    // when the lane queue is full — the same backpressure as the old permits,
+    // but without creating a thread per request.
     thread::spawn(move || {
-        let regular = Arc::new(AtomicUsize::new(0));
-        let store_requests = Arc::new(AtomicUsize::new(0));
-        let control = Arc::new(AtomicUsize::new(0));
         for request in server.incoming_requests() {
-            let (active, limit) = match request_lane(request.url()) {
-                RequestLane::Regular => (&regular, MAX_REGULAR_REQUEST_WORKERS),
-                RequestLane::Store => (&store_requests, MAX_STORE_REQUEST_WORKERS),
-                RequestLane::Control => (&control, MAX_CONTROL_REQUEST_WORKERS),
+            let pool = match request_lane(request.url()) {
+                RequestLane::Regular => regular.as_ref(),
+                RequestLane::Store => store.as_ref(),
+                RequestLane::Control => control.as_ref(),
             };
-            let Some(permit) = try_acquire_request_permit(active, limit) else {
+            if let Err(request) = pool.try_push(request) {
                 let _ = crate::response::error_response(request, 503, "server is busy; retry");
-                continue;
-            };
-            let state = Arc::clone(&state);
-            thread::spawn(move || {
-                let _permit = permit;
-                if let Err(err) = crate::router::handle_request(request, state) {
-                    eprintln!("request failed: {err}");
-                }
-            });
+            }
         }
     });
 
@@ -224,11 +299,31 @@ mod request_lane_tests {
     }
 
     #[test]
-    fn permit_rejects_at_capacity_and_recovers_after_release() {
-        let active = Arc::new(AtomicUsize::new(0));
-        let permit = try_acquire_request_permit(&active, 1).expect("first permit");
-        assert!(try_acquire_request_permit(&active, 1).is_none());
-        drop(permit);
-        assert!(try_acquire_request_permit(&active, 1).is_some());
+    fn lane_queue_rejects_at_capacity_and_recovers_after_drain() {
+        let queue = BoundedWorkQueue::new(2);
+        assert!(queue.try_push(1).is_ok());
+        assert!(queue.try_push(2).is_ok());
+        assert_eq!(queue.try_push(3), Err(3));
+        assert_eq!(queue.pop(), 1);
+        assert!(queue.try_push(4).is_ok());
+        assert_eq!(queue.pop(), 2);
+        assert_eq!(queue.pop(), 4);
+    }
+
+    #[test]
+    fn lane_queue_is_fifo_and_wakes_waiting_workers() {
+        let queue = std::sync::Arc::new(BoundedWorkQueue::new(4));
+        let queue_a = std::sync::Arc::clone(&queue);
+        let queue_b = std::sync::Arc::clone(&queue);
+        let a = std::thread::spawn(move || queue_a.pop());
+        let b = std::thread::spawn(move || queue_b.pop());
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        assert!(queue.try_push(10).is_ok());
+        assert!(queue.try_push(20).is_ok());
+        let a = a.join().expect("worker a");
+        let b = b.join().expect("worker b");
+        let mut got = vec![a, b];
+        got.sort_unstable();
+        assert_eq!(got, vec![10, 20]);
     }
 }
