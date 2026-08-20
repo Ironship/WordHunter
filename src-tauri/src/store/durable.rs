@@ -261,7 +261,7 @@ mod no_follow_tests {
 
         let error =
             create_no_follow(&link).expect_err("open with O_NOFOLLOW must refuse a symlink");
-        assert_eq!(error.kind(), std::io::ErrorKind::FilesystemLoop, "{error}");
+        assert_eq!(error.raw_os_error(), Some(libc::ELOOP), "{error}");
         // The write must not have been redirected through the symlink.
         assert_eq!(
             std::fs::read_to_string(&real).unwrap(),
