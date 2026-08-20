@@ -493,7 +493,8 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 }
             }
             "/__import/ebook" => {
-                let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY) {
+                let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY)
+                {
                     Ok(body) => body,
                     Err(error) => {
                         let status = match &error {

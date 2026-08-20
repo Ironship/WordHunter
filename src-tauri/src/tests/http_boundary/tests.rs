@@ -320,8 +320,7 @@ fn proxy_rejects_lookalike_host_without_network_access() {
 
 #[test]
 fn bootstrap_escapes_javascript_and_proxy_url_values() {
-    let script =
-        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", false);
+    let script = handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", false);
     let token_line = script
         .lines()
         .find(|line| line.contains("window.WH_TOKEN"))

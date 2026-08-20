@@ -122,7 +122,9 @@ impl Store {
         if cache.is_none() {
             *cache = Some(Arc::new(record_files::load_records(&self.dir())?));
         }
-        Ok(Arc::clone(cache.as_ref().expect("cache is populated above")))
+        Ok(Arc::clone(
+            cache.as_ref().expect("cache is populated above"),
+        ))
     }
 
     /// Replace the in-memory record cache with the committed state.

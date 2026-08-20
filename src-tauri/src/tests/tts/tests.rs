@@ -1,4 +1,7 @@
-use super::{ACTIVE_SYNTHESIS, MAX_CONCURRENT_SYNTHESIS, SynthesisPermit, cached_with, rate_for, runtime, voice_for};
+use super::{
+    ACTIVE_SYNTHESIS, MAX_CONCURRENT_SYNTHESIS, SynthesisPermit, cached_with, rate_for, runtime,
+    voice_for,
+};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -144,7 +147,9 @@ fn synthesis_slot_is_atomic_across_parallel_threads() {
     let observed = observed.lock().unwrap();
     assert_eq!(observed.len(), 2, "both workers sampled the counter");
     assert!(
-        observed.iter().all(|&value| value == MAX_CONCURRENT_SYNTHESIS),
+        observed
+            .iter()
+            .all(|&value| value == MAX_CONCURRENT_SYNTHESIS),
         "both parallel permits held at once, counter must be exactly \
          MAX_CONCURRENT_SYNTHESIS, got {observed:?}"
     );
