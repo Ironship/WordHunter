@@ -285,10 +285,8 @@
               </label>
               <label class="translator-field">
                 <span data-i18n="translator.result">Translation</span>
-                <div class="row-stretch-flex-1">
-                  <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" class="flex-1"></textarea>
-                  <button type="button" id="translator-copy" class="secondary-button self-end-noshrink" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy">Copy</button>
-                </div>
+                <textarea id="translator-result" readonly spellcheck="false" data-i18n-attr="placeholder=translator.resultPlaceholder" class="flex-1"></textarea>
+                <button type="button" id="translator-copy" class="secondary-button self-end-noshrink" data-i18n="translator.copy" data-i18n-attr="title=translator.copy,aria-label=translator.copy">Copy</button>
               </label>
             </div>
             <div class="translator-actions">
@@ -442,8 +440,9 @@
                   <span class="shortcut-badge">/</span>
                 </div>
               </label>
-              <button class="primary-button icon-button" type="submit" data-i18n-attr="title=discover.submit,aria-label=discover.submit" aria-label="Search" title="Search">
+              <button class="primary-button" type="submit" data-i18n-attr="title=discover.submit,aria-label=discover.submit">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span data-i18n="discover.submit">Search</span>
               </button>
             </form>
             <div class="discover-toolbar" id="discover-toolbar" hidden>
