@@ -905,7 +905,7 @@ body.is-resizing-panel * {
 
 /* Source link in the reader meta (e.g. the YouTube video of an import) */
 .reader-source-link {
-  color: var(--accent-ink, #315bd6);
+  color: var(--accent-ink, #2f54a3);
   text-decoration: none;
   font-size: 0.85rem;
   margin-left: 0.35rem;
@@ -937,9 +937,9 @@ body.is-resizing-panel * {
 }
 /* Highlighted find matches in the reader text */
 .word-token.find-match {
-  background: color-mix(in srgb, var(--accent, #4f7cff) 38%, transparent);
+  background: color-mix(in srgb, var(--accent, #3f6fb5) 38%, transparent);
   border-radius: 3px;
-  box-shadow: 0 0 0 1px var(--accent, #4f7cff);
+  box-shadow: 0 0 0 1px var(--accent, #3f6fb5);
 }
 
 .panel-header.stacked {
@@ -2924,7 +2924,7 @@ html[data-max-width="full"] .reader-text {
 .loading-bar-fill {
   width: 35%;
   height: 100%;
-  background: var(--accent, #4f7cff);
+  background: var(--accent, #3f6fb5);
   border-radius: 4px;
   animation: loading-slide 1.4s ease-in-out infinite;
   will-change: transform;
@@ -3352,7 +3352,7 @@ button.reader-bookmark-location {
 
 .vocab-table {
   width: 100%;
-  min-width: 1260px;
+  min-width: 1296px;
   table-layout: fixed;
   border-collapse: collapse;
 }
@@ -3374,7 +3374,7 @@ button.reader-bookmark-location {
 .vocab-table th:nth-child(2) { width: 120px; }
 .vocab-table th:nth-child(3) { width: 220px; }
 .vocab-table th:nth-child(4) { width: 320px; }
-.vocab-table th:nth-child(5) { width: 340px; }
+.vocab-table th:nth-child(5) { width: 376px; }
 
 .vocab-table td:nth-child(1) {
   max-width: 0;
@@ -3454,7 +3454,7 @@ textarea.vocab-translation-input {
   right: 0;
   z-index: var(--z-chrome);
   white-space: nowrap;
-  width: 340px;
+  width: 376px;
   overflow: hidden;
   background: var(--panel);
   border-left: 1px solid var(--line);
@@ -3682,6 +3682,19 @@ textarea.vocab-translation-input {
 
   .reader-sidebar-resizer,
   .panel-sidebar-resizer { display: none; }
+
+  /* FIX-D3: narrow window — the Example column yields to the pinned Actions
+     column. Below the single-column breakpoint the example is dropped and the
+     table fits the viewport (min-width: 0) so the example can never slide
+     under the sticky Actions cell on scroll. */
+  .vocab-table th:nth-child(4),
+  .vocab-table td:nth-child(4) {
+    display: none;
+  }
+
+  .table-wrap .vocab-table {
+    min-width: 0;
+  }
 }
 
 @media (max-width: 780px) {
@@ -4057,8 +4070,8 @@ textarea.vocab-translation-input {
   padding: 0 !important;
 }
 
-/* The vocab table's right-sticky actions column is capped at 340 px wide
-   (overflow:hidden) and holds six icon buttons — give it the exact 44 px
+/* The vocab table's right-sticky actions column is capped at 376 px wide
+   (overflow:hidden) and holds seven icon buttons — give it the exact 44 px
    target (not the 46 px icon-button bump) so the row still fits. Its own
    per-cell sizing (.vocab-table … .icon-button, 0,4,1) beats the generic
    icon-button bump, so this dedicated rule is required. */
@@ -4718,8 +4731,8 @@ dialog {
   border-bottom: 0;
 }
 .button-xs {
-  height: 28px;
-  min-height: 28px;
+  height: 38px;
+  min-height: 38px;
   padding: 0 0.6rem;
   font-size: 0.82rem;
   border-radius: var(--radius-control);
