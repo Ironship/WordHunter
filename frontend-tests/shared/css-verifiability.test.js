@@ -77,9 +77,14 @@ const DUP_GROUP_PIN = 49;
    8px radii -> var(--radius) (9 spots, panel 8->4px), red #tts-stop-text restored,
    familiar-light focus patch extended to nav drawer + pocket toggle. +~1.5 KB:
    token text is longer than the 3-char literals, plus the two added rules/comments.
-   Pin re-baselined for android-pocket.css only (styles.css untouched by FIX-B). */
+   Pin re-baselined for android-pocket.css only (styles.css untouched by FIX-B).
+   FIX-D3 (2026-08, exp/theme-deai-rc3): vocab-table responsiveness — Example
+   column hidden below 1080px (display:none + .table-wrap .vocab-table min-width:0
+   media block) so the pinned Actions cell is never overlapped; Actions cell
+   widened 340->376px so all 7 x 44px action buttons fit without clipping. +~450 B
+   on styles.css, pin re-baselined. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 115500],
+  ["src/web/styles.css", 116000],
   ["src/web/platforms/android-pocket.css", 35000],
   ["src/web/theme.css", 6500]
 ]);
@@ -90,10 +95,13 @@ const CSS_SIZE_PIN = new Map([
    this pin and the #129 audit together.
    FIX-A (2026-08, exp/theme-deai-rc3): the two stale --accent fallbacks
    #4a6cf7 -> #4f7cff (theme.css --accent is #4f7cff), so only #4f7cff
-   remains (now 3x: find-match bg/shadow + line 2917). Updating the pin. */
+   remains (now 3x: find-match bg/shadow + line 2917). Updating the pin.
+   FIX-D5 (2026-08, exp/theme-deai-rc3): palette de-AI toning — classic
+   --accent desaturated #4f7cff -> #3f6fb5, --accent-ink #315bd6 -> #2f54a3
+   (3x accent + 1x accent-ink fallbacks updated to match theme.css). */
 const VAR_HEX_FALLBACK_PIN = new Map([
-  ["var(--accent, #4f7cff)", 3],
-  ["var(--accent-ink, #315bd6)", 1],
+  ["var(--accent, #3f6fb5)", 3],
+  ["var(--accent-ink, #2f54a3)", 1],
   ["var(--bg, #0d1114)", 1]
 ]);
 

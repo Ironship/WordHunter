@@ -908,14 +908,14 @@ describe("desktop reader markup and style contracts", () => {
 
   it("defines sticky desktop vocabulary action columns with Pocket overrides", () => {
     const table = cssDeclarations(css, ".vocab-table");
-    assert.equal(table["min-width"], "1260px");
+    assert.equal(table["min-width"], "1296px");
     assert.equal(table["table-layout"], "fixed");
     assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(4)").width, "320px");
-    assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(5)").width, "340px");
+    assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(5)").width, "376px");
     const actions = cssDeclarations(css, ".vocab-table td:last-child");
     assert.equal(actions.position, "sticky");
     assert.equal(actions.right, "0");
-    assert.equal(actions.width, "340px");
+    assert.equal(actions.width, "376px");
     assert.equal(cssDeclarations(css, ".vocab-table th:last-child").position, "sticky");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table td:last-child").position, "static");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table th:last-child").right, "auto");
