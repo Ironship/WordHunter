@@ -5,55 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="description" data-i18n-attr="content=app.description" content="Word Hunter — local Rust/Tauri reader, vocabulary trainer, and offline translator.">
   <title data-i18n="app.title">Word Hunter</title>
-  <script>
-    /* Boot-flash guard (P3-1): resolve the saved theme before the first paint
-       so the boot background / meta theme-color never flash the hard-coded
-       dark default for light-theme users. Mirrors boot.ts applyBootTheme();
-       boot.js re-applies the same values and owns the rest of startup. */
-    (function () {
-      try {
-        var saved = window.__bridgeState ||
-          JSON.parse(localStorage.getItem("wordHunterStateV2") || "null");
-        var prefs = null;
-        if (saved && typeof saved === "object" && saved.prefs && typeof saved.prefs === "object") {
-          prefs = saved.prefs;
-        } else if (saved && typeof saved === "object" && saved.preferences && typeof saved.preferences === "object") {
-          prefs = saved.preferences;
-        }
-        var aliases = { auto: "classic-auto", light: "classic-light", dark: "classic-dark" };
-        var savedTheme = prefs && typeof prefs.theme === "string" ? prefs.theme : "";
-        var theme = aliases[savedTheme] || savedTheme || "";
-        if (!theme && prefs && typeof prefs.darkMode === "boolean") {
-          theme = prefs.darkMode ? "classic-dark" : "classic-light";
-        }
-        var valid = ["familiar", "alternative-familiar", "classic-auto", "classic-light", "classic-dark"];
-        if (valid.indexOf(theme) === -1) theme = "familiar";
-        var systemDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches === true;
-        var family = theme === "familiar" || theme === "alternative-familiar" ? theme : "classic";
-        var pocket = /[?&]platform=android/.test(location.search) ||
-          "WordHunterAndroid" in window ||
-          /\bAndroid\b/i.test(navigator.userAgent || "");
-        var forceDesktopDark = !pocket && family !== "classic";
-        var mode = theme === "classic-dark" || forceDesktopDark ||
-          ((theme === "classic-auto" || family !== "classic") && systemDark)
-          ? "dark" : "light";
-        var color = family === "familiar"
-          ? (mode === "dark" ? "#00395d" : "#0067a8")
-          : family === "alternative-familiar"
-            ? (mode === "dark" ? "#2c001e" : "#5e2750")
-            : (mode === "dark" ? "#0d1114" : "#f7f9f6");
-        var root = document.documentElement;
-        root.dataset.theme = mode;
-        root.dataset.themePref = theme;
-        root.dataset.colorTheme = family;
-        root.style.setProperty("--boot-bg", color);
-        root.style.background = color;
-        root.style.colorScheme = mode;
-        var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute("content", color);
-      } catch (e) { /* keep the safe static boot default */ }
-    })();
-  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <meta name="theme-color" content="#00395d">
