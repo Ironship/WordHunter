@@ -8,6 +8,8 @@ import { icon } from "../icons.js";
 import { normalizeSearchVariants, normalizeVocabularyWord } from "../tokenizer_v2.js";
 import { t } from "../i18n.js";
 import { getTextVocabularyIndex, getVocabularyTextOptions, entryAppearsInText } from "../text-vocab.js";
+import type { VocabularyTextOption } from "../text-vocab.js";
+import { getAllBooks } from "../books.js";
 import { isVocabStatus, VOCAB_STATUS_FILTERS } from "../events/vocab-status.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { formatHeadword } from "./article.js";
@@ -28,6 +30,34 @@ let cachedVocabBase: { source: WhVocabulary; keyCount: number; entries: VocabLis
 
 export function invalidateVocabListCache(): void {
   cachedVocabBase = null;
+}
+
+/**
+ * Cached text-filter <select> options (perf): the option list only depends on
+ * the book catalog + custom texts (id + title), not on vocab, so rebuild the
+ * <select> DOM only when that signature actually changes instead of on every
+ * renderVocabulary pass.
+ */
+let cachedVocabTextSelect: { signature: string; options: VocabularyTextOption[]; html: string } | null = null;
+
+function vocabTextSelectSignature(): string {
+  const books = getAllBooks().map((book) => `${book.id}:${book.title}`).join("\u0001");
+  const customs = (state.customTexts || []).map((text) => `${text.id || ""}:${text.title || ""}`).join("\u0001");
+  return `${books}\u0002${customs}`;
+}
+
+function getVocabTextSelect(): { options: VocabularyTextOption[]; html: string } {
+  const signature = vocabTextSelectSignature();
+  if (cachedVocabTextSelect && cachedVocabTextSelect.signature === signature) {
+    return cachedVocabTextSelect;
+  }
+  const options = getVocabularyTextOptions();
+  const html = [
+    `<option value="all">${escapeHtml(t("vocab.allTexts"))}</option>`,
+    ...options.map((item) => `<option value="${escapeAttribute(item.id)}">${escapeHtml(item.title)}</option>`)
+  ].join("");
+  cachedVocabTextSelect = { signature, options, html };
+  return cachedVocabTextSelect;
 }
 
 function getVocabBase(): VocabListEntry[] {
@@ -61,16 +91,15 @@ function syncVocabStatusCheckboxes(): void {
 
 function syncVocabTextFilter() {
   if (!els.vocabTextFilter) return null;
-  const options = getVocabularyTextOptions();
+  const { options, html } = getVocabTextSelect();
   const ids = new Set(options.map((item) => item.id));
   if (state.filters.vocabTextId && state.filters.vocabTextId !== "all" && !ids.has(state.filters.vocabTextId)) {
     state.filters.vocabTextId = "all";
   }
   const selected = state.filters.vocabTextId || "all";
-  els.vocabTextFilter.innerHTML = [
-    `<option value="all">${escapeHtml(t("vocab.allTexts"))}</option>`,
-    ...options.map((item) => `<option value="${escapeAttribute(item.id)}">${escapeHtml(item.title)}</option>`)
-  ].join("");
+  if (els.vocabTextFilter.innerHTML !== html) {
+    els.vocabTextFilter.innerHTML = html;
+  }
   els.vocabTextFilter.value = selected;
   return selected === "all" ? null : getTextVocabularyIndex(selected);
 }
@@ -110,7 +139,7 @@ export function renderVocabulary(resetLimit = true): void {
     });
 
   if (!filteredVocabEntries.length) {
-    els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(t("vocab.empty"))}</td></tr>`;
+    els.vocabTableBody.innerHTML = `<tr><td colspan="5" class="empty-row">${escapeHtml(t("vocab.empty"))}<button type="button" class="ghost-button empty-cta" data-open-view="discover">${escapeHtml(t("nav.discover"))}</button></td></tr>`;
     return;
   }
 

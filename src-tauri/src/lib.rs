@@ -83,7 +83,11 @@ pub fn run() {
             .setup(platform::setup)
             .build(tauri::generate_context!()),
     ) else {
-        return;
+        // Startup failure (store could not be opened, the backend could
+        // not bind its port, or the webview window could not be built):
+        // propagate a non-zero exit code so scripts / service managers see
+        // the process deliberately failed instead of a clean exit(0).
+        std::process::exit(1);
     };
 
     // SIGTERM/SIGINT (kill, session end, Ctrl+C in a terminal) normally

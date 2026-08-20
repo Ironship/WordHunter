@@ -26,12 +26,16 @@ describe("selected-word panel", () => {
     const dom = read("dist/web/js/dom.js");
     const preferences = read("dist/web/js/preferences.js");
     const settings = read("dist/web/js/events/settings.js");
+    // The settings view markup (incl. the word-panel items setting) lives in
+    // settings-view-template.js since the 93a1828 split; settings.js keeps
+    // only the behaviour.
+    const template = read("dist/web/js/events/settings-view-template.js");
 
     assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);
     assert.ok(html.indexOf('id="pocket-word-panel-sheet-handle"') < html.indexOf('id="word-panel"'));
     // The word-panel items settings live in the settings renderer (#127 P3).
-    assert.match(settings, /<details class="word-panel-items-setting">[\s\S]*<summary id="word-panel-items-heading"/);
-    assert.match(settings, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
+    assert.match(template, /<details class="word-panel-items-setting">[\s\S]*<summary id="word-panel-items-heading"/);
+    assert.match(template, /<ol id="pref-selected-word-panel-items"[^>]+aria-labelledby="word-panel-items-heading"[^>]+aria-describedby="word-panel-items-hint"/);
     assert.match(dom, /lazySettingsEl\("prefSelectedWordPanelItems", "pref-selected-word-panel-items"\)/);
     assert.match(preferences, /data-word-panel-item-visible/);
     assert.match(preferences, /data-word-panel-item-move/);
@@ -40,7 +44,7 @@ describe("selected-word panel", () => {
     assert.match(settings, /state\.preferences\.selectedWordPanelItems = normalizeSelectedWordPanelItems\(items\)/);
     assert.match(settings, /window\.flushWordFieldSave\?\.\(\)/);
     assert.match(settings, /saveState\(\)[\s\S]*syncSettingsControls\(\)[\s\S]*renderWordPanel\(currentText\)/);
-    assert.match(settings, /applyTranslations\(\);\s*applyPlatformUi\(\);/);
+    assert.match(settings, /applyTranslations\(\);[\s\S]{0,260}refreshAddWordDialogLocalization\(\);[\s\S]{0,60}applyPlatformUi\(\);/);
   });
 
   it("renders only configured visible items in order and coalesces actions", () => {

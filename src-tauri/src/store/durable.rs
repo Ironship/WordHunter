@@ -1,5 +1,36 @@
 use std::path::Path;
 
+/// Create (or truncate) a file for writing without ever following a symlink
+/// at `path` itself.
+///
+/// On Unix this uses `O_NOFOLLOW`: a symlink planted at `path` between a
+/// caller's `safe_join`/`symlink_metadata` check and this open makes the open
+/// fail with `ELOOP` instead of redirecting the write. Plain `File::create`
+/// would happily write through the symlink (F14 TOCTOU gap). Non-Unix targets
+/// keep the plain create — Windows symlinks require elevation/dev-mode, and
+/// `O_NOFOLLOW` does not exist there.
+///
+/// Note `O_NOFOLLOW` guards only the final path component. A symlink swapped
+/// in for a *parent directory* still redirects the write; callers own and
+/// create the parent dirs under the app-data root, and an attacker able to
+/// write into those already owns the user's data, so this residual window is
+/// accepted and documented rather than chased with hashed-path schemes.
+#[cfg(unix)]
+fn create_no_follow(path: &Path) -> std::io::Result<std::fs::File> {
+    use std::os::unix::fs::OpenOptionsExt;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn create_no_follow(path: &Path) -> std::io::Result<std::fs::File> {
+    std::fs::File::create(path)
+}
+
 pub(crate) fn recover_replace(path: &Path) -> Result<(), String> {
     let tmp = path.with_extension("tmp");
     let backup = path.with_extension("bak");
@@ -41,7 +72,7 @@ pub(crate) fn write_file_atomic(
     }
     {
         use std::io::Write;
-        let mut file = std::fs::File::create(&tmp)
+        let mut file = create_no_follow(&tmp)
             .map_err(|e| format!("could not create temp {}: {e}", tmp.display()))?;
         file.write_all(bytes)
             .map_err(|e| format!("could not write temp {}: {e}", tmp.display()))?;
@@ -98,7 +129,7 @@ pub(crate) fn copy_file_atomic(
     {
         let mut input = std::fs::File::open(source)
             .map_err(|e| format!("could not read source {}: {e}", source.display()))?;
-        let mut output = std::fs::File::create(&tmp)
+        let mut output = create_no_follow(&tmp)
             .map_err(|e| format!("could not create temp {}: {e}", tmp.display()))?;
         std::io::copy(&mut input, &mut output)
             .map_err(|e| format!("could not copy source {}: {e}", source.display()))?;
@@ -214,4 +245,27 @@ fn copy_file_synced(source: &Path, target: &Path) -> Result<(), String> {
     })?;
     sync_file(target)?;
     sync_parent(target)
+}
+
+#[cfg(all(unix, test))]
+mod no_follow_tests {
+    use super::*;
+
+    #[test]
+    fn create_no_follow_refuses_symlinked_final_component() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let real = dir.path().join("real.txt");
+        std::fs::write(&real, b"real target content").unwrap();
+        let link = dir.path().join("link.txt");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+
+        let error =
+            create_no_follow(&link).expect_err("open with O_NOFOLLOW must refuse a symlink");
+        assert_eq!(error.raw_os_error(), Some(libc::ELOOP), "{error}");
+        // The write must not have been redirected through the symlink.
+        assert_eq!(
+            std::fs::read_to_string(&real).unwrap(),
+            "real target content"
+        );
+    }
 }

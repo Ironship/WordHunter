@@ -98,6 +98,22 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in tiny-http by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
+### Word Hunter vendor patches
+
+This copy of tiny-http is vendored into Word Hunter (see `src-tauri/Cargo.toml` →
+`tiny_http = { path = "vendor/tiny_http" }`) to carry local fixes that have not
+landed upstream. Tracked fixes:
+
+* **Keep the backend alive on transient accept errors** (`src/lib.rs`, issue #267)
+  New in 1.0.11. The accept loop now logs and retries transient accept failures
+  (EMFILE, ECONNABORTED, interrupted syscall) instead of forwarding the error and
+  shutting the whole backend down mid-session. The `close` flag still ends the
+  accept thread. Same failure class as the listener read-timeout bug
+  ("No text source found").
+
+Vendored from tiny_http 0.12.0 (crates.io) in release 1.0.11; patch history is in
+`git log --follow -- src-tauri/vendor/tiny_http/`.
+
 <!-- Links and Badges -->
 [crate_img]: https://img.shields.io/crates/v/tiny_http.svg?logo=rust "Crate Page"
 [crate]: https://crates.io/crates/tiny_http "Crate Link"

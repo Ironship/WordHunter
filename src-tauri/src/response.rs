@@ -31,27 +31,63 @@ pub fn valid_token(request: &Request, token: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// A request-body read/parse failure, classified so router code can pick an
+/// HTTP status without string-matching error messages. Display preserves the
+/// historical message text the frontend and error responses surface.
+#[derive(Debug)]
+pub enum BodyError {
+    /// Payload exceeded the endpoint's size limit -> HTTP 413.
+    TooLarge { max_bytes: usize },
+    /// The payload is not valid JSON -> HTTP 400.
+    InvalidJson(String),
+    /// Transport-level read failure -> HTTP 400/413 by the caller.
+    Io(String),
+}
+
+impl std::fmt::Display for BodyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BodyError::TooLarge { max_bytes } => {
+                write!(f, "request body is too large (max {max_bytes} bytes)")
+            }
+            BodyError::InvalidJson(message) | BodyError::Io(message) => f.write_str(message),
+        }
+    }
+}
+
+impl std::error::Error for BodyError {}
+
 /// Read at most `max_bytes` from a request body, rejecting oversized payloads
 /// before JSON parsing duplicates their memory.
-pub fn read_body_limited(request: &mut Request, max_bytes: usize) -> Result<Vec<u8>, String> {
+///
+/// When the client sends a `Content-Length` (as `fetch()` always does) the
+/// buffer is pre-sized to that length, so `read_to_end` does not re-double the
+/// allocation on growth — avoiding a transient peak of ~2x for very large
+/// bodies (e.g. the 384 MiB-class base64 ebook import payloads).
+pub fn read_body_limited(request: &mut Request, max_bytes: usize) -> Result<Vec<u8>, BodyError> {
     let mut body = Vec::new();
+    if let Some(length) = request.body_length() {
+        let reserve = length.min(max_bytes.saturating_add(1));
+        body.try_reserve(reserve)
+            .map_err(|e| BodyError::Io(e.to_string()))?;
+    }
     request
         .as_reader()
         .take((max_bytes as u64).saturating_add(1))
         .read_to_end(&mut body)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| BodyError::Io(e.to_string()))?;
     if body.len() > max_bytes {
-        return Err(format!("request body is too large (max {max_bytes} bytes)"));
+        return Err(BodyError::TooLarge { max_bytes });
     }
     Ok(body)
 }
 
-pub fn read_json_limited(request: &mut Request, max_bytes: usize) -> Result<Value, String> {
+pub fn read_json_limited(request: &mut Request, max_bytes: usize) -> Result<Value, BodyError> {
     let body = read_body_limited(request, max_bytes)?;
     if body.is_empty() {
         return Ok(json!({}));
     }
-    serde_json::from_slice(&body).map_err(|e| e.to_string())
+    serde_json::from_slice(&body).map_err(|e| BodyError::InvalidJson(e.to_string()))
 }
 
 /// Respond with a JSON payload (HTTP 200).

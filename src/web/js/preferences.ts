@@ -172,6 +172,15 @@ export function applyPreferences(): Promise<void> {
   document.documentElement.style.setProperty("--token-learning-bg", prefs.colorLearning || "#ffb84d");
   document.documentElement.style.setProperty("--token-known-bg", prefs.colorKnown || "#8ce99a");
   document.documentElement.style.setProperty("--token-ignored-bg", prefs.colorIgnored || "#ced4da");
+  // Per-SRS-level learning colors (dynamic learning colors): one CSS variable
+  // per level so the reader can color tokens with a `learning-lvl-N` class
+  // instead of a per-token inline style.
+  const learningColors = normalizeLearningColors(prefs.learningColors);
+  document.documentElement.style.setProperty("--learning-lvl-1-bg", learningColors[0]);
+  document.documentElement.style.setProperty("--learning-lvl-2-bg", learningColors[1]);
+  document.documentElement.style.setProperty("--learning-lvl-3-bg", learningColors[2]);
+  document.documentElement.style.setProperty("--learning-lvl-4-bg", learningColors[3]);
+  document.documentElement.style.setProperty("--learning-lvl-5-bg", learningColors[4]);
   document.documentElement.classList.toggle("no-token-highlight", prefs.highlightTokens === false);
   document.documentElement.classList.toggle("no-highlight-known-ignored", prefs.hideKnownIgnored === true);
   document.documentElement.classList.toggle("no-card-stats", prefs.showCardStats === false);

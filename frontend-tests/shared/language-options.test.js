@@ -6,7 +6,10 @@ const { APP_LOCALES, LEARNING_LANGUAGES } = await import("../../dist/web/js/cons
 const { normalizeState } = await import("../../dist/web/js/state/normalize.js");
 
 const html = fs.readFileSync("dist/web/index.html", "utf8");
-const settingsSource = fs.readFileSync("dist/web/js/events/settings.js", "utf8");
+// settings.js (behaviour) + settings-view-template.js (markup, split 93a1828).
+const settingsSource = ["dist/web/js/events/settings.js", "dist/web/js/events/settings-view-template.js"]
+  .map((file) => fs.readFileSync(file, "utf8"))
+  .join("\n");
 const onboardingSource = fs.readFileSync("dist/web/js/onboarding.js", "utf8");
 const discoverView = fs.readFileSync("dist/web/js/views/discover.js", "utf8");
 const discoverEvents = fs.readFileSync("dist/web/js/events/discover.js", "utf8");
