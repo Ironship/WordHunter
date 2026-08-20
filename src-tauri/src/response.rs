@@ -59,8 +59,18 @@ impl std::error::Error for BodyError {}
 
 /// Read at most `max_bytes` from a request body, rejecting oversized payloads
 /// before JSON parsing duplicates their memory.
+///
+/// When the client sends a `Content-Length` (as `fetch()` always does) the
+/// buffer is pre-sized to that length, so `read_to_end` does not re-double the
+/// allocation on growth — avoiding a transient peak of ~2x for very large
+/// bodies (e.g. the 384 MiB-class base64 ebook import payloads).
 pub fn read_body_limited(request: &mut Request, max_bytes: usize) -> Result<Vec<u8>, BodyError> {
     let mut body = Vec::new();
+    if let Some(length) = request.body_length() {
+        let reserve = length.min(max_bytes.saturating_add(1));
+        body.try_reserve(reserve)
+            .map_err(|e| BodyError::Io(e.to_string()))?;
+    }
     request
         .as_reader()
         .take((max_bytes as u64).saturating_add(1))

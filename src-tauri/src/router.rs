@@ -493,8 +493,24 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 }
             }
             "/__import/ebook" => {
-                let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                match ebook::import(payload) {
+                let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY) {
+                    Ok(body) => body,
+                    Err(error) => {
+                        let status = match &error {
+                            response::BodyError::TooLarge { .. } => 413,
+                            _ => 400,
+                        };
+                        return response::error_response(request, status, &error.to_string());
+                    }
+                };
+                // Deserialize into a borrowing struct instead of a
+                // `serde_json::Value` so a large base64 `data` field is not
+                // duplicated in memory alongside the raw body (F13).
+                let request_body = match ebook::parse_import_body(&body) {
+                    Ok(request_body) => request_body,
+                    Err(error) => return response::error_response(request, 400, &error),
+                };
+                match ebook::import_request(&request_body) {
                     Ok(payload) => response::json_response(request, payload),
                     Err(error) => response::error_response(request, 422, &error),
                 }
