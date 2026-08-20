@@ -943,7 +943,11 @@ describe("settings view renderer (events/settings.ts)", () => {
   });
 
   it("supports Android IME commit and restores focus after choosing a model", () => {
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    // settings.js (behaviour) + settings-view-template.js (markup, split 93a1828).
+    const settings = [
+      new URL("../../dist/web/js/events/settings.js", import.meta.url),
+      new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
+    ].map((url) => readFileSync(url, "utf8")).join("\n");
     assert.match(settings, /enterkeyhint="done"/);
     assert.match(
       settings,

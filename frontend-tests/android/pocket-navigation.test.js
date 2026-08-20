@@ -77,7 +77,13 @@ function elementSource(html, tagName) {
   return html.slice(open.index, end);
 }
 
-const settingsSource = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+// The settings view markup lives in settings-view-template.js (module split,
+// 93a1828) while settings.js keeps the behaviour; both ship to dist as separate
+// modules, so tests that audit the rendered markup read them together.
+const settingsSource = [
+  new URL("../../dist/web/js/events/settings.js", import.meta.url),
+  new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
+].map((url) => readFileSync(url, "utf8")).join("\n");
 
 describe("Android Pocket navigation", () => {
   it("declares settings and onboarding language controls", () => {
