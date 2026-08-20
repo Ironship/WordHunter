@@ -58,9 +58,12 @@ const DUP_GROUP_PIN = 48;
    (WCAG 1.4.1), empty-state CTAs, graph-card nth-child stagger + learning-lvl
    color classes in styles.css. android-pocket.css grew in #215; theme.css last
    changed in #173. The audit's "pocket-reader.css" (6371 B) is theme.css — no
-   such file exists on main. */
+   such file exists on main.
+   De-AI wave (2026-08, exp/theme-deai-rc3, NOT merged): per-card ⋯ overflow
+   menu CSS + borderless import/export surfaces + less-saturated card stats —
+   approx +1.7 KB net across 5 UI touches; pins re-baselined to fit. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 113100],
+  ["src/web/styles.css", 114300],
   ["src/web/platforms/android-pocket.css", 33500],
   ["src/web/theme.css", 6500]
 ]);
