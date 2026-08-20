@@ -214,7 +214,10 @@ function renderResults(data?: DiscoverSearchResult): void {
     if (book.source === "wikinews") sourceTag = t("discover.sourceWikinews");
     if (book.source === "wikisource") sourceTag = t("discover.sourceWikisource");
 
-    const downloads = book.download_count ? `<span class="tag tag-soft">${escapeHtml(t("discover.downloads", { n: book.download_count.toLocaleString(localeTag) }))}</span>` : "";
+    const extraMeta = [
+      langs ? escapeHtml(langs) : "",
+      book.download_count ? escapeHtml(t("discover.downloads", { n: book.download_count.toLocaleString(localeTag) })) : ""
+    ].filter(Boolean).join(" · ");
 
     return `
       <article class="discover-card book-card${showCover ? " has-cover" : ""}${isSelected ? " selected" : ""}" data-id="${escapeAttribute(id)}">
@@ -222,13 +225,12 @@ function renderResults(data?: DiscoverSearchResult): void {
         <div class="book-card-body">
           <div class="book-meta">
             <span class="tag">${sourceTag}</span>
-            ${langs ? `<span class="tag tag-soft">${escapeHtml(langs)}</span>` : ""}
-            ${downloads}
           </div>
           <div>
             <h3>${escapeHtml(book.title || "—")}</h3>
             <p>${escapeHtml(author)}${authorYears ? ` · ${escapeHtml(authorYears)}` : ""}</p>
           </div>
+          ${extraMeta ? `<p class="book-meta-detail">${extraMeta}</p>` : ""}
           ${summary ? `<p class="book-summary">${escapeHtml(summary.slice(0, 200))}${summary.length > 200 ? "…" : ""}</p>` : ""}
           <div class="book-actions row-between-g-05">
             <label class="discover-check m-0">
@@ -236,11 +238,12 @@ function renderResults(data?: DiscoverSearchResult): void {
               <span>${escapeHtml(t("discover.selectLabel"))}</span>
             </label>
             <div class="flex-gap-05">
-              <button class="primary-button icon-button" type="button" data-discover-add="${escapeAttribute(id)}" ${inLibrary ? "disabled" : ""} title="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}" aria-label="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}">
+              <button class="secondary-button button-xs" type="button" data-discover-add="${escapeAttribute(id)}" ${inLibrary ? "disabled" : ""} title="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}" aria-label="${escapeAttribute(inLibrary ? t("discover.added") : t("discover.add"))}">
                 ${inLibrary
                   ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>`
                   : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>`
                 }
+                <span>${escapeHtml(t(inLibrary ? "discover.added" : "discover.add"))}</span>
               </button>
             </div>
           </div>
