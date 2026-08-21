@@ -1040,7 +1040,10 @@
     "textLabel": "Tekst (obrazy można wklejać skrótem Ctrl/Cmd+V)",
     "cancel": "Anuluj",
     "save": "Zapisz",
-    "coverPreviewAlt": "Podgląd okładki"
+    "coverPreviewAlt": "Podgląd okładki",
+    "formatBold": "Pogrubienie (**tekst**)",
+    "formatItalic": "Kursywa (*tekst*)",
+    "formatHint": "**pogrubienie** · *kursywa* — znaczniki są ukryte w Czytniku"
   },
   "moveBook": {
     "title": "Przenieś książkę",

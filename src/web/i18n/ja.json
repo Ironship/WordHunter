@@ -987,7 +987,10 @@
     "cancel": "キャンセル",
     "save": "保存",
     "coverPreviewAlt": "表紙プレビュー",
-    "levelLabel": "レベル"
+    "levelLabel": "レベル",
+    "formatBold": "太字 (**テキスト**)",
+    "formatItalic": "斜体 (*テキスト*)",
+    "formatHint": "**太字** · *斜体* — 記号はリーダーで非表示になります"
   },
   "moveBook": {
     "title": "本の移動",

@@ -1,6 +1,7 @@
 import { buildDeltaSavePayload, buildSavePayload, clearPendingDelta, readPendingDelta, saveToLocalStorage, saveWithRetry, saveSyncXhr, type PendingDelta } from "../api.js";
 
 type SaveResult = WhBridgeSaveResult | void;
+type SaveOptions = { withSnapshot?: boolean };
 
 const TRANSIENT_ROOT_KEYS = new Set<PropertyKey>([
   "dataDirectory",
@@ -126,7 +127,7 @@ export function createAutosave(getState: () => WhAppState) {
     if (Object.hasOwn(result, "recoveryStatus")) current.recoveryStatus = result.recoveryStatus;
   }
 
-  function doSave(): Promise<SaveResult> {
+  function doSave(options: SaveOptions = {}): Promise<SaveResult> {
     const current = rawState();
     syncProfilePreferences();
     if (!window.__qtBridge) {
@@ -205,7 +206,7 @@ export function createAutosave(getState: () => WhAppState) {
     const payload = unattributedMutationsPending
       ? buildSavePayload(current)
       : buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds);
-    savePromise = saveWithRetry(JSON.stringify(payload), 3).then(markSucceeded).catch(async (error) => {
+    savePromise = saveWithRetry(JSON.stringify(payload), 3, options).then(markSucceeded).catch(async (error) => {
       // The backend may reject a delta payload (validation edge or an older
       // server build). Retry once with a full snapshot — but only for an
       // HTTP 4xx rejection, never for network failures. A delta rejection
@@ -213,7 +214,7 @@ export function createAutosave(getState: () => WhAppState) {
       const status = (error as Error & { status?: number })?.status ?? 0;
       if (status >= 400 && status < 500) {
         try {
-          const fullResult = await saveWithRetry(JSON.stringify(buildSavePayload(current)), 3);
+          const fullResult = await saveWithRetry(JSON.stringify(buildSavePayload(current)), 3, options);
           return markSucceeded(fullResult);
         } catch (fallbackError) {
           // fall through to the standard error path
@@ -230,7 +231,7 @@ export function createAutosave(getState: () => WhAppState) {
     return savePromise;
   }
 
-  function saveState(): Promise<SaveResult> {
+  function saveState(options: SaveOptions = {}): Promise<SaveResult> {
     clearTimeout(saveTimer);
     saveTimer = null;
     if (exclusiveWriteActive) {
@@ -245,9 +246,12 @@ export function createAutosave(getState: () => WhAppState) {
     }
     if (saveInFlight) {
       if (mutationSequence > saveStartedMutationSequence) savePending = true;
+      // An older in-flight save carries no snapshot; resolving from it is
+      // safe — the caller falls back to the full-store GET when the result
+      // has no snapshot (bridge-commit).
       return savePromise;
     }
-    return doSave();
+    return doSave(options);
   }
 
   function runExclusiveWrite<T>(

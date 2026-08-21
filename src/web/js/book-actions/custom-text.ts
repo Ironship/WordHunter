@@ -120,7 +120,7 @@ export async function importCustomText(
   upsertCustomText(customText);
 
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("custom text profile save failed", error);
     await reloadBridgeSnapshot().catch((reloadError) => {
@@ -186,7 +186,7 @@ export async function updatePdfOcrPageText(
   invalidateBookId(id);
   upsertCustomText(updated);
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("PDF OCR correction profile save failed", error);
     await reloadBridgeSnapshot().catch((reloadError) => {
@@ -210,7 +210,7 @@ export async function removeCustomText(id: string): Promise<void> {
   clearLastReadTextId(id);
 
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("delete_text profile save failed", error);
     if (window.__qtBridge) {

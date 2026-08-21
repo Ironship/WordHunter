@@ -1994,6 +1994,36 @@ button.icon-button {
   font-family: monospace;
 }
 
+/* Markdown-lite format bar (B / I) + words·chars counter. */
+.edit-book-format-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.edit-book-format-hint {
+  margin-left: auto;
+}
+
+.edit-book-counter {
+  display: block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reader rendering of **bold** / *italic* spans (markers are stripped before
+   tokenization; these classes land on word buttons and gap spans). */
+.word-token.fmt-bold,
+span.fmt-bold {
+  font-weight: 700;
+}
+
+.word-token.fmt-italic,
+span.fmt-italic {
+  font-style: italic;
+}
+
 .edit-book-actions {
   position: sticky;
   bottom: 0;
