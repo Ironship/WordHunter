@@ -51,8 +51,12 @@ const Z_INDEX_WHITELIST = new Set(["0", "1", "2", "3", "4", "5", "10", "50", "10
    budget — baseline 48 (post-utility-sweep baseline; +1 from the #142
    pocket-only-control rules, 2026-08). FIX-C (exp/theme-deai-rc3): +1 — the
    graphs-ai-summary separator now shares the exact hairline (55%) declaration
-   with .settings-grid > .panel + .panel by design (separator unification). */
-const DUP_GROUP_PIN = 49;
+   with .settings-grid > .panel + .panel by design (separator unification).
+   UI audit (2026-08-21, exp/theme-deai-rc3): +2 — radius literal unification
+   (3px/4px/5px -> --radius/--radius-control tokens) merged previously distinct
+   declaration blocks into shared token groups; fewer distinct literals, more
+   identical groups by design. */
+const DUP_GROUP_PIN = 51;
 
 /* T5: stylesheet size budget — pins the SOURCE file sizes (not dist/), which
    is what the #129 P3 audit measured. Pins = audit baseline + ~2% headroom.
@@ -82,9 +86,14 @@ const DUP_GROUP_PIN = 49;
    column hidden below 1080px (display:none + .table-wrap .vocab-table min-width:0
    media block) so the pinned Actions cell is never overlapped; Actions cell
    widened 340->376px so all 7 x 44px action buttons fit without clipping. +~450 B
-   on styles.css, pin re-baselined. */
+   on styles.css, pin re-baselined.
+   UI audit (2026-08-21, exp/theme-deai-rc3): resizer :focus-visible outline
+   (keyboard separators), <780px vocab Actions column yield (376->308px),
+   button-height scale fixes (article-suggestion/smart-suggestion/image-action),
+   flat .ocr-progress-card + gloss-free .review-word, radius literals -> tokens,
+   toast above export overlay. +~270 B net, pin re-baselined. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 116000],
+  ["src/web/styles.css", 117000],
   ["src/web/platforms/android-pocket.css", 35000],
   ["src/web/theme.css", 6500]
 ]);

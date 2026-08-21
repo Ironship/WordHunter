@@ -367,7 +367,7 @@
     "shortcut": {},
     "confirmDeleteWord": "删除这个单词及其学习进度？",
     "wordRequired": "请先输入单词。",
-    "noResults": "No results for the current filter."
+    "noResults": "当前筛选条件下没有结果。"
   },
   "discover": {
     "eyebrow": "在线资源",
