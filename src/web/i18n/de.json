@@ -366,7 +366,8 @@
     "uploadOwnImage": "Eigenes Bild",
     "shortcut": {},
     "confirmDeleteWord": "Dieses Wort und seinen Lernfortschritt löschen?",
-    "wordRequired": "Geben Sie zuerst das Wort ein."
+    "wordRequired": "Geben Sie zuerst das Wort ein.",
+    "noResults": "Keine Ergebnisse für den aktuellen Filter."
   },
   "discover": {
     "eyebrow": "Online-Ressourcen",
@@ -694,8 +695,8 @@
     "contactIssues": "<strong>Fehlerberichte und Ideen:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Lizenz:</strong> AGPL-3.0-or-later. Geschlossene kommerzielle Nutzung abgeleiteten Codes erfordert eine separate schriftliche Lizenz. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 behält die gewählte Sprache beim Start bei, stellt den Fokus für Tastatur und Screenreader wieder her und macht den OCR-Ausweichpfad zuverlässiger. Das Verlaufsdiagramm ist klarer, Kontrast und Touch-Ziele sind größer, und das Speicherjournal wird rotiert, um Daten sauber zu halten.",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 behält die gewählte Sprache beim Start bei, stellt den Fokus für Tastatur und Screenreader wieder her und macht den OCR-Ausweichpfad zuverlässiger. Das Verlaufsdiagramm ist klarer, Kontrast und Touch-Ziele sind größer, und das Speicherjournal wird rotiert, um Daten sauber zu halten.",
+    "version": "1.1.0-rc.3",
     "focusHint1": "Drücke <kbd>Strg</kbd>+<kbd>Eingabe</kbd>, um den Text zu betreten oder zurückzukehren",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> um Wörter zu navigieren",
     "focusHint3": "<kbd>Strg</kbd>+<kbd>Leertaste</kbd> Satz vorlesen",
@@ -954,7 +955,10 @@
     "save": "Speichern",
     "deleteCover": "Titelbild entfernen",
     "coverPreviewAlt": "Cover-Vorschau",
-    "levelLabel": "Niveau"
+    "levelLabel": "Niveau",
+    "formatBold": "Fett (**Text**)",
+    "formatItalic": "Kursiv (*Text*)",
+    "formatHint": "**fett** · *kursiv* — Markierungen sind im Reader unsichtbar"
   },
   "moveBook": {
     "title": "Buch verschieben",
@@ -1033,7 +1037,6 @@
     "range": "Zeitraum",
     "rangeRecent": "Aktuell",
     "rangeAll": "Gesamtzeitraum",
-    "aiExplain": "Mit KI erklären",
     "aiExplainNotConfigured": "KI ist nicht konfiguriert. Füge zuerst deine API-Einstellungen hinzu.",
     "fsrsTitle": "FSRS: Stabilität vs Schwierigkeit",
     "monthLabels": "Jan|Feb|Mär|Apr|Mai|Jun|Jul|Aug|Sep|Okt|Nov|Dez",

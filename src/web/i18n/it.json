@@ -366,7 +366,8 @@
     "uploadOwnImage": "Immagine propria",
     "shortcut": {},
     "confirmDeleteWord": "Eliminare questa parola e i suoi progressi di apprendimento?",
-    "wordRequired": "Inserisci prima la parola."
+    "wordRequired": "Inserisci prima la parola.",
+    "noResults": "Nessun risultato per il filtro attuale."
   },
   "discover": {
     "eyebrow": "Risorse online",
@@ -694,8 +695,8 @@
     "contactIssues": "<strong>Bug e idee:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contatto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licenza:</strong> AGPL-3.0-or-later. L'uso commerciale chiuso di codice derivato richiede una licenza scritta separata. Dettagli: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 mantiene la lingua scelta dall’avvio, ripristina il focus di tastiera e screen reader e rende più affidabile il ripiego OCR. La mappa dei ripassi è più nitida, contrasto e aree touch sono più grandi e il journal di archiviazione ruota per mantenere i dati in salute.",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 mantiene la lingua scelta dall’avvio, ripristina il focus di tastiera e screen reader e rende più affidabile il ripiego OCR. La mappa dei ripassi è più nitida, contrasto e aree touch sono più grandi e il journal di archiviazione ruota per mantenere i dati in salute.",
+    "version": "1.1.0-rc.3",
     "focusHint1": "Premi <kbd>Ctrl</kbd>+<kbd>Invio</kbd> per entrare o tornare nel testo",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> per navigare le parole",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Spazio</kbd> leggi frase",
@@ -954,7 +955,10 @@
     "save": "Salva",
     "deleteCover": "Rimuovi copertina",
     "coverPreviewAlt": "Anteprima copertina",
-    "levelLabel": "Livello"
+    "levelLabel": "Livello",
+    "formatBold": "Grassetto (**testo**)",
+    "formatItalic": "Corsivo (*testo*)",
+    "formatHint": "**grassetto** · *corsivo* — i marcatori sono nascosti nel Reader"
   },
   "moveBook": {
     "title": "Sposta libro",
@@ -1033,7 +1037,6 @@
     "range": "Intervallo",
     "rangeRecent": "Recenti",
     "rangeAll": "Tutto",
-    "aiExplain": "Spiega con l'IA",
     "aiExplainNotConfigured": "L'IA non è configurata. Aggiungi prima le impostazioni API.",
     "fsrsTitle": "FSRS: Stabilità vs Difficoltà",
     "monthLabels": "Gen|Feb|Mar|Apr|Mag|Giu|Lug|Ago|Set|Ott|Nov|Dic",

@@ -219,14 +219,25 @@ export function clearPendingDelta(): void {
   }
 }
 
-/** POST the payload to the backend bridge with retry. */
-export async function saveWithRetry(body: string, maxRetries: number): Promise<WhBridgeSaveResult> {
+/** POST the payload to the backend bridge with retry.
+ *
+ * With `withSnapshot` the request asks `/__store/save?snapshot=1` for the
+ * merged snapshot IN the save response, so callers that would immediately
+ * reload the bridge snapshot (book edits) skip the separate full-store GET
+ * round trip. Without it the endpoint answers 204 and the promise resolves
+ * to `{ ok: true }` exactly as before. */
+export async function saveWithRetry(
+  body: string,
+  maxRetries: number,
+  { withSnapshot = false }: { withSnapshot?: boolean } = {}
+): Promise<WhBridgeSaveResult> {
+  const url = withSnapshot ? "/__store/save?snapshot=1" : "/__store/save";
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       // Do not put a client-side deadline on a full store save. Aborting the
       // fetch does not cancel the backend write; retrying while that write is
       // still running queues duplicate multi-file saves behind the write lock.
-      const response = await fetch("/__store/save", {
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

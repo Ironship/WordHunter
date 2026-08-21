@@ -72,8 +72,8 @@ function restoreLocalUiState(nextState: WhAppState, captured: WhRecord): void {
   if (captured.discover && !nextState.discover) nextState.discover = captured.discover;
 }
 
-export function saveState(): Promise<WhBridgeSaveResult | void> {
-  return autosave.saveState();
+export function saveState(options?: { withSnapshot?: boolean }): Promise<WhBridgeSaveResult | void> {
+  return autosave.saveState(options);
 }
 
 export function saveUiState(): Promise<WhBridgeSaveResult | void> {

@@ -95,7 +95,7 @@ describe("Android Pocket layout", () => {
     assertDeclarations(css, ".pocket-mode .vocab-table tbody", { display: "grid" });
     assertDeclarations(css, ".pocket-mode .vocab-table tr", { "grid-template-columns": "minmax(0, 1fr) auto" });
     assertDeclarations(css, ".pocket-mode .vocab-table td:last-child .row-actions", { "grid-template-columns": "repeat(4, 44px)" });
-    assertDeclarations(css, ".pocket-mode .vocab-table td:last-child .row-actions .icon-button", { "max-width": "44px", "border-radius": "8px" });
+    assertDeclarations(css, ".pocket-mode .vocab-table td:last-child .row-actions .icon-button", { "max-width": "44px", "border-radius": "var(--radius)" });
     assertDeclarations(css, ".pocket-mode #vocabulary-view .panel-header > div:first-child", { display: "none" });
     assertDeclarations(css, ".pocket-mode #vocabulary-view .vocab-export-actions", { "grid-template-columns": "minmax(0, 1fr) 44px 44px" });
     assertDeclarations(css, ".pocket-mode .status-check", { "min-height": "44px" });

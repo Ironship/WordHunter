@@ -1,4 +1,5 @@
 import { state, saveState } from "../state.js";
+import { withElementBusy } from "../loading.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { statusIcon } from "../icons.js";
@@ -228,7 +229,10 @@ export function bindWordEditorEvents() {
 
   if (!addWordConfirm || !addWordDialog) return;
 
+  // Busy spinner on the confirm button for the whole save+render — the same
+  // indicator pattern as every other save/edit control in the app.
   addWordConfirm.addEventListener("click", () => {
+    void withElementBusy(addWordConfirm, async () => {
     const editing = addWordEditing?.value;
     const selectedStatus = getAddWordStatus();
     const now = new Date().toISOString();
@@ -281,7 +285,7 @@ export function bindWordEditorEvents() {
         entry.examples = [example, ...(entry.examples || [])].slice(0, 3);
       }
     }
-    saveState();
+    await saveState();
     renderVocabulary();
     resetAddWordDirty();
     addWordDialog.close();
@@ -290,6 +294,7 @@ export function bindWordEditorEvents() {
         if (state.currentView === "reader" && state.selectedWord === editing) renderReader();
       });
     }
+    });
   });
 
   addWordDialog.addEventListener("keydown", (e) => {

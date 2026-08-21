@@ -366,7 +366,8 @@
     "uploadOwnImage": "Image personnelle",
     "shortcut": {},
     "confirmDeleteWord": "Supprimer ce mot et sa progression d'apprentissage ?",
-    "wordRequired": "Saisissez d'abord le mot."
+    "wordRequired": "Saisissez d'abord le mot.",
+    "noResults": "Aucun résultat pour le filtre actuel."
   },
   "discover": {
     "eyebrow": "Ressources en ligne",
@@ -694,8 +695,8 @@
     "contactIssues": "<strong>Bugs et idées :</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact :</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licence :</strong> AGPL-3.0-or-later. L'utilisation commerciale fermée de code dérivé nécessite une licence écrite séparée. Détails : https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 conserve la langue choisie dès le démarrage, rétablit le focus du clavier et du lecteur d’écran et rend le repli OCR plus fiable. La carte de révision est plus lisible, le contraste et les zones tactiles sont plus grands, et le journal de stockage est archivé pour protéger les données.",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 conserve la langue choisie dès le démarrage, rétablit le focus du clavier et du lecteur d’écran et rend le repli OCR plus fiable. La carte de révision est plus lisible, le contraste et les zones tactiles sont plus grands, et le journal de stockage est archivé pour protéger les données.",
+    "version": "1.1.0-rc.3",
     "focusHint1": "Appuyez sur <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> pour entrer ou revenir dans le texte",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> pour naviguer les mots",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espace</kbd> lire la phrase",
@@ -954,7 +955,10 @@
     "save": "Enregistrer",
     "deleteCover": "Supprimer la couverture",
     "coverPreviewAlt": "Aperçu de la couverture",
-    "levelLabel": "Niveau"
+    "levelLabel": "Niveau",
+    "formatBold": "Gras (**texte**)",
+    "formatItalic": "Italique (*texte*)",
+    "formatHint": "**gras** · *italique* — les marqueurs sont masqués dans le Lecteur"
   },
   "moveBook": {
     "title": "Déplacer le livre",
@@ -1033,7 +1037,6 @@
     "range": "Période",
     "rangeRecent": "Récent",
     "rangeAll": "Tout",
-    "aiExplain": "Expliquer avec l'IA",
     "aiExplainNotConfigured": "L'IA n'est pas configurée. Ajoutez d'abord vos paramètres API.",
     "fsrsTitle": "FSRS: Stabilité vs Difficulté",
     "monthLabels": "Jan|Fév|Mar|Avr|Mai|Juin|Juil|Aoû|Sep|Oct|Nov|Déc",

@@ -409,6 +409,7 @@ describe("add-word dialog renderer (events/word-editor.ts)", () => {
       "../vocabulary/review-card.js": { invalidateReviewQueueCache: () => {} },
       "../reader/smart-suggest.js": { invalidateSuggestIndex: () => {} },
       "../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
+      "../loading.js": { beginElementBusy: () => () => {}, setElementBusy: () => {}, withElementBusy: async (_element, fn) => fn() },
       "./vocab-status.js": { VOCAB_STATUS_FILTERS: [] }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
@@ -681,7 +682,9 @@ describe("import panel renderer (events/book-import.ts)", () => {
         importCustomText: async () => null,
         isEditBookDirty: () => false,
         pasteImageToEditBook: () => {},
-        saveEditedBook: () => {}
+        saveEditedBook: () => {},
+        updateEditBookCounter: () => {},
+        wrapEditBookSelection: () => {}
       },
       "../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
       "../loading.js": { beginElementBusy: () => () => {}, setElementBusy: () => {} },

@@ -253,7 +253,7 @@
     "articleAria": "Rodzajnik dla {word}",
     "translateContext": "Przetłumacz zdanie",
     "contextTranslationLabel": "Tłumaczenie zdania:",
-    "aiExplain": "Wyjaśnij przez AI",
+    "aiExplain": "Wyjaśnij",
     "aiExplainNotConfigured": "Wyjaśnienia AI nie są skonfigurowane. Włącz je w Ustawieniach → Wyjaśnienia AI.",
     "aiExplainError": "Wyjaśnienie AI nie powiodło się. Sprawdź punkt końcowy i model w Ustawieniach → Wyjaśnienia AI.",
     "translationPlaceholder": "np. przemiana",
@@ -366,7 +366,8 @@
     "cardCount": "Liczba fiszek: {count}",
     "shortcut": {},
     "confirmDeleteWord": "Usunąć to słowo wraz z postępem nauki?",
-    "wordRequired": "Najpierw wpisz słowo."
+    "wordRequired": "Najpierw wpisz słowo.",
+    "noResults": "Brak wyników dla bieżącego filtra."
   },
   "discover": {
     "eyebrow": "Zasoby online",
@@ -719,7 +720,6 @@
     "range": "Zakres",
     "rangeRecent": "Ostatnie 12 miesięcy",
     "rangeAll": "Cały okres",
-    "aiExplain": "Objaśnij z AI",
     "aiExplainNotConfigured": "AI nie jest skonfigurowane. Najpierw dodaj ustawienia API.",
     "fsrsTitle": "Stabilność a trudność",
     "monthLabels": "sty|lut|mar|kwi|maj|cze|lip|sie|wrz|paź|lis|gru",
@@ -779,8 +779,8 @@
     "contactIssues": "<strong>Zgłoszenia błędów i propozycje funkcji:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencja:</strong> AGPL-3.0-or-later. Komercyjne wykorzystanie kodu pochodnego w oprogramowaniu o zamkniętym kodzie źródłowym wymaga odrębnej pisemnej licencji. Szczegóły: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 zachowuje wybrany język już od uruchomienia, przywraca fokus klawiatury i czytnika ekranu oraz czyni zapasową ścieżkę OCR bardziej niezawodną. Mapa powtórek jest wyraźniejsza, kontrast i cele dotykowe są większe, a dziennik zapisów jest rotowany, by dane pozostały zdrowe.",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 zachowuje wybrany język już od uruchomienia, przywraca fokus klawiatury i czytnika ekranu oraz czyni zapasową ścieżkę OCR bardziej niezawodną. Mapa powtórek jest wyraźniejsza, kontrast i cele dotykowe są większe, a dziennik zapisów jest rotowany, by dane pozostały zdrowe.",
+    "version": "1.1.0-rc.3",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Naciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby przejść do tekstu lub do niego wrócić",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> – poruszaj się między słowami",
@@ -1040,7 +1040,10 @@
     "textLabel": "Tekst (obrazy można wklejać skrótem Ctrl/Cmd+V)",
     "cancel": "Anuluj",
     "save": "Zapisz",
-    "coverPreviewAlt": "Podgląd okładki"
+    "coverPreviewAlt": "Podgląd okładki",
+    "formatBold": "Pogrubienie (**tekst**)",
+    "formatItalic": "Kursywa (*tekst*)",
+    "formatHint": "**pogrubienie** · *kursywa* — znaczniki są ukryte w Czytniku"
   },
   "moveBook": {
     "title": "Przenieś książkę",

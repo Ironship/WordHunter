@@ -300,20 +300,29 @@ export function renderLibrary(): void {
       : "";
     const lengthHint = !showStats && !statsReady ? `<span class="tag tag-soft">${escapeHtml(t("library.fragment"))}</span>` : "";
     const isUserBook = userBookIds.has(book.id);
-    let removeButton = "";
-    let moveButton = "";
+    // Secondary actions live in a per-card ⋯ overflow menu. The delegated
+    // #book-list / document handlers still drive every [data-action] as-is.
+    let removeItem = "";
+    let moveItem = "";
     if (book.isCustom) {
-      removeButton = `<button class="icon-button danger-button" type="button" data-action="remove-custom" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.removeCustomTitle"))}">${icon("trash", 16)}</button>`;
-      moveButton = `<button class="icon-button" type="button" data-action="move-book" data-iscustom="true" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.moveBook"))}">${icon("swap", 16)}</button>`;
-      const editBtn = `<button class="icon-button" type="button" data-action="edit-custom" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>`;
-      moveButton = editBtn + moveButton;
+      removeItem = bookMenuButton("remove-custom", book.id, icon("trash", 14), t("library.removeCustomTitle"), true);
+      moveItem =
+        bookMenuButton("edit-custom", book.id, icon("edit", 14), t("editBook.title")) +
+        bookMenuButton("move-book", book.id, icon("swap", 14), t("library.moveBook"), false, "true");
     } else if (isUserBook) {
-      removeButton = `<button class="icon-button danger-button" type="button" data-action="remove-user-book" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.removeUserBookTitle"))}">${icon("trash", 16)}</button>`;
-      const editBtn = `<button class="icon-button" type="button" data-action="edit-custom" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("editBook.title"))}">${icon("edit", 16)}</button>`;
-      moveButton = editBtn + `<button class="icon-button" type="button" data-action="move-book" data-iscustom="false" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.moveBook"))}">${icon("swap", 16)}</button>`;
+      removeItem = bookMenuButton("remove-user-book", book.id, icon("trash", 14), t("library.removeUserBookTitle"), true);
+      moveItem =
+        bookMenuButton("edit-custom", book.id, icon("edit", 14), t("editBook.title")) +
+        bookMenuButton("move-book", book.id, icon("swap", 14), t("library.moveBook"), false, "false");
     } else {
-      removeButton = `<button class="icon-button danger-button" type="button" data-action="hide-builtin" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t("library.removeBuiltInTitle"))}">${icon("trash", 16)}</button>`;
+      removeItem = bookMenuButton("hide-builtin", book.id, icon("trash", 14), t("library.removeBuiltInTitle"), true);
     }
+    const archiveItem = bookMenuButton(
+      isArchived ? "unarchive-book" : "archive-book",
+      book.id,
+      icon(isArchived ? "unarchive" : "archive", 14),
+      t(isArchived ? "library.unarchiveTitle" : "library.archiveTitle")
+    );
     const cover = renderBookCover(book);
     const levelTag = book.level && book.level !== "custom"
       ? `<span class="tag tag-level tag-level-${escapeHtml(book.level)}">${escapeHtml(book.level)}</span>`
@@ -327,9 +336,10 @@ export function renderLibrary(): void {
     const metaParts = [book.author, book.year || "", book.pages || ""].map((part) => String(part || "").trim()).filter(Boolean);
     const metaLine = metaParts.length ? `<p class="book-card-meta-line">${escapeHtml(metaParts.join(" · "))}</p>` : "";
     const blurbLine = book.blurb ? `<p class="book-card-blurb">${escapeHtml(book.blurb)}</p>` : "";
-    const gutenbergLink = book.pageUrl && !book.isCustom
-      ? `<a class="icon-button" data-action="open-source" data-id="${escapeAttribute(book.id)}" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 16)}</a>`
+    const gutenbergItem = book.pageUrl && !book.isCustom
+      ? `<a class="book-menu-item" role="menuitem" data-action="open-source" data-id="${escapeAttribute(book.id)}" href="${escapeHtml(book.pageUrl)}" target="_blank" rel="noreferrer" title="${escapeHtml(t("reader.sourceGutenberg"))}">${icon("external", 14)}<span>${escapeHtml(t("reader.sourceGutenberg"))}</span></a>`
       : "";
+    const secondaryItems = gutenbergItem + moveItem + archiveItem + removeItem;
     return `
       <article class="book-card ${cover ? "has-cover" : ""} ${isArchived ? "archived" : ""}" data-book-id="${escapeAttribute(book.id)}" data-level="${escapeHtml(book.level)}">
         ${cover}
@@ -348,14 +358,16 @@ export function renderLibrary(): void {
           ${blurbLine}
           ${statsBlock}
           <div class="book-actions actions-row">
-             <button class="primary-button action-grow" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}">
+            <button class="primary-button action-grow" type="button" data-action="read-sample" data-id="${escapeHtml(book.id)}">
               ${icon("play", 16)}
               ${escapeHtml(t("library.read"))}
             </button>
-            ${gutenbergLink}
-            ${moveButton}
-            <button class="icon-button" type="button" data-action="${isArchived ? "unarchive-book" : "archive-book"}" data-id="${escapeHtml(book.id)}" title="${escapeAttribute(t(isArchived ? "library.unarchiveTitle" : "library.archiveTitle"))}">${icon(isArchived ? "unarchive" : "archive", 16)}</button>
-            ${removeButton}
+            <div class="book-card-menu-anchor">
+              <button class="icon-button book-card-menu-toggle" type="button" data-book-menu-toggle aria-haspopup="menu" aria-expanded="false" title="${escapeAttribute(t("vocab.thActions"))}" aria-label="${escapeAttribute(t("vocab.thActions"))}"><span class="book-card-menu-dots" aria-hidden="true">⋯</span></button>
+              <div class="book-card-menu" role="menu" hidden>
+                ${secondaryItems}
+              </div>
+            </div>
           </div>
         </div>
       </article>
@@ -373,6 +385,16 @@ function renderBookCover(book: LibraryBook): string {
   if (!sources.length) return "";
   const fallback = sources.slice(1).map((src) => escapeAttribute(src)).join("|");
   return `<div class="book-cover" aria-hidden="true"><img src="${escapeAttribute(sources[0])}" onerror="const fallbacks=this.dataset.fallback?.split('|')||[]; if(fallbacks.length) { this.src=fallbacks.shift(); this.dataset.fallback=fallbacks.join('|'); } else { this.parentElement.style.display='none'; }" data-fallback="${fallback}" alt="${escapeHtml(t("library.coverAlt"))}" /></div>`;
+}
+
+/**
+ * Renders one secondary book action as a ⋯-menu item. Keeps the original
+ * data-action / data-id / data-iscustom contract so the existing delegated
+ * handlers (library #book-list and events/move-book.ts) keep working.
+ */
+function bookMenuButton(action: string, id: string, inner: string, label: string, danger = false, iscustom = ""): string {
+  const extra = iscustom ? ` data-iscustom="${escapeAttribute(iscustom)}"` : "";
+  return `<button class="book-menu-item${danger ? " danger" : ""}" role="menuitem" type="button" data-action="${escapeHtml(action)}" data-id="${escapeAttribute(id)}"${extra}>${inner}<span>${escapeHtml(label)}</span></button>`;
 }
 
 function bindLibraryFiltersToggle(): void {
@@ -394,8 +416,46 @@ function bindLibraryFiltersToggle(): void {
   });
 }
 
+/**
+ * ⋯ overflow menu on library book cards: toggle on click, close on outside
+ * click / Escape. Document-delegated so cards re-rendered by renderLibrary()
+ * keep working without rebinding.
+ */
+function bindBookCardMenus(): void {
+  const root = document.documentElement;
+  if (root.dataset.bookCardMenusBound === "true") return;
+  root.dataset.bookCardMenusBound = "true";
+  const closeAll = (): void => {
+    document.querySelectorAll<HTMLElement>(".book-card-menu").forEach((menu) => { menu.hidden = true; });
+    document.querySelectorAll<HTMLButtonElement>("[data-book-menu-toggle]").forEach((btn) => btn.setAttribute("aria-expanded", "false"));
+  };
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const toggle = target?.closest<HTMLButtonElement>("[data-book-menu-toggle]") ?? null;
+    const anchor = toggle?.closest<HTMLElement>(".book-card-menu-anchor") ?? null;
+    if (toggle) {
+      if (!anchor) return;
+      const wasOpen = !(anchor.querySelector<HTMLElement>(".book-card-menu")?.hidden ?? true);
+      closeAll();
+      if (!wasOpen) {
+        const menu = anchor.querySelector<HTMLElement>(".book-card-menu");
+        if (menu) {
+          menu.hidden = false;
+          toggle.setAttribute("aria-expanded", "true");
+        }
+      }
+      return;
+    }
+    closeAll();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAll();
+  });
+}
+
 export function bindLibraryEvents(): void {
   bindLibraryFiltersToggle();
+  bindBookCardMenus();
   bindSidebarResizer(el<HTMLElement>("library-sidebar-resizer"), {
     preference: "librarySidebarWidth", cssVariable: "--library-sidebar-width",
     defaultWidth: 360, minWidth: 280, maxWidth: 600, minMainWidth: 360,
