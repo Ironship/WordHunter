@@ -911,11 +911,22 @@ describe("desktop reader markup and style contracts", () => {
     assert.equal(table["min-width"], "1296px");
     assert.equal(table["table-layout"], "fixed");
     assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(4)").width, "320px");
-    assert.equal(cssDeclarations(css, ".vocab-table th:nth-child(5)").width, "376px");
+    // Desktop base pins the Actions column at 376px (7 x ~44px buttons).
+    // UI audit 2026-08-21: below the 780px single-column shell breakpoint the
+    // pinned column yields to 308px so it never covers half a narrow viewport.
+    // cssDeclarations merges across @media (last wins), so base vs yield are
+    // asserted per-rule here: first match = desktop base, last = narrow yield.
+    const thActions = cssRules(css).filter((rule) => rule.selectors.includes(".vocab-table th:nth-child(5)"));
+    const tdActions = cssRules(css).filter((rule) => rule.selectors.includes(".vocab-table td:last-child"));
+    assert.equal(thActions.length, 2);
+    assert.equal(tdActions.length, 2);
+    assert.equal(thActions[0].declarations.width, "376px");
+    assert.equal(tdActions[0].declarations.width, "376px");
+    assert.equal(thActions.at(-1).declarations.width, "308px");
+    assert.equal(tdActions.at(-1).declarations.width, "308px");
     const actions = cssDeclarations(css, ".vocab-table td:last-child");
     assert.equal(actions.position, "sticky");
     assert.equal(actions.right, "0");
-    assert.equal(actions.width, "376px");
     assert.equal(cssDeclarations(css, ".vocab-table th:last-child").position, "sticky");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table td:last-child").position, "static");
     assert.equal(cssDeclarations(pocketCss, ".pocket-mode .vocab-table th:last-child").right, "auto");

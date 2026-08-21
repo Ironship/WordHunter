@@ -367,7 +367,7 @@
     "shortcut": {},
     "confirmDeleteWord": "この単語と学習の進捗を削除しますか？",
     "wordRequired": "先に単語を入力してください。",
-    "noResults": "No results for the current filter."
+    "noResults": "現在のフィルターに一致する結果はありません。"
   },
   "discover": {
     "eyebrow": "オンラインリソース",

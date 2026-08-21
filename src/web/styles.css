@@ -6,7 +6,9 @@
   /* Z-index scale — every z-index declaration must use these tokens, never
      bare numbers (pinned by frontend-tests/shared/css-verifiability.test.js).
      Layers, low→high: base/raised (static) < chrome < floating (fixed bars)
-     < panel < tabs < toolbar < loading < toast < overlay < boot < tooltip. */
+     < panel < tabs < toolbar < loading < overlay < toast < boot < tooltip.
+     Toast sits ABOVE the fullscreen export overlay so progress toasts stay
+     visible while an export covers the viewport. */
   --z-base: 0;
   --z-raised: 1;
   --z-chrome: 2;
@@ -15,8 +17,8 @@
   --z-tabs: 5;
   --z-toolbar: 8;
   --z-loading: 10;
-  --z-toast: 20;
   --z-overlay: 220;
+  --z-toast: 230;
   --z-boot: 999;
   --z-boot-logo: 1000;
   --z-tooltip: 9999;
@@ -219,7 +221,7 @@ a {
 code {
   background: var(--panel-strong);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: var(--radius);
   padding: 0.08rem 0.3rem;
 }
 
@@ -234,7 +236,7 @@ kbd {
   background: var(--panel-strong);
   border: 1px solid var(--line);
   border-bottom-width: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   min-width: 1.5rem;
   text-align: center;
 }
@@ -650,7 +652,7 @@ kbd {
 .translator-progress {
   width: 100%;
   height: 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   background: var(--line);
   overflow: hidden;
   margin-top: 0.5rem;
@@ -666,7 +668,7 @@ kbd {
   width: 30%;
   height: 100%;
   background: linear-gradient(90deg, var(--control-accent), var(--accent), var(--control-accent));
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   animation: loading-slide 1.2s ease-in-out infinite;
   will-change: transform;
   backface-visibility: hidden;
@@ -743,7 +745,7 @@ kbd {
 .review-chart-frame { width: min(100%, 860px); margin: 0 auto; overflow: hidden; }
 .review-chart-fullwidth canvas { display: block; width: 100%; max-width: 100%; border-radius: var(--radius); }
 .review-heatmap { width: 100%; padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
-.image-action-button { font-size: 0.75rem; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem; justify-content: center; }
+.image-action-button { height: 38px; font-size: 0.75rem; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem; justify-content: center; }
 .word-image-search .image-action-button { width: 100%; }
 .word-image-remove {
   position: absolute;
@@ -853,6 +855,14 @@ kbd {
   background: var(--control-accent);
 }
 
+/* Keyboard users tabbing to the separator (role="separator", tabindex="0")
+   need the same visible focus the global button rule provides. */
+.reader-sidebar-resizer:focus-visible,
+.panel-sidebar-resizer:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .settings-grid {
   grid-template-columns: 1fr;
 }
@@ -938,7 +948,7 @@ body.is-resizing-panel * {
 /* Highlighted find matches in the reader text */
 .word-token.find-match {
   background: color-mix(in srgb, var(--accent, #3f6fb5) 38%, transparent);
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   box-shadow: 0 0 0 1px var(--accent, #3f6fb5);
 }
 
@@ -1926,7 +1936,7 @@ button.icon-button {
   height: 96px;
   object-fit: cover;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--panel-strong);
 }
 
@@ -2190,7 +2200,7 @@ html[data-max-width="full"] .reader-text {
 .word-token {
   display: inline;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--radius);
   background: transparent;
   color: inherit;
   padding: 0.02rem 0.08rem;
@@ -2410,7 +2420,7 @@ html[data-max-width="full"] .reader-text {
   min-width: 3px;
   min-height: 3px;
   overflow: visible;
-  border-radius: 5px;
+  border-radius: var(--radius);
   background: transparent !important;
   box-shadow: none !important;
   color: transparent !important;
@@ -2508,7 +2518,7 @@ html[data-max-width="full"] .reader-text {
 
 .ai-explanation code {
   background: color-mix(in srgb, var(--muted) 15%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius);
   padding: 0.05rem 0.3rem;
   font-size: 0.9em;
 }
@@ -2668,7 +2678,7 @@ html[data-max-width="full"] .reader-text {
 
 .word-article-input,
 .article-suggestion-button {
-  min-height: 44px;
+  min-height: 38px;
 }
 
 .word-article-input {
@@ -2693,8 +2703,8 @@ html[data-max-width="full"] .reader-text {
 }
 
 .smart-suggestion > button {
-  height: auto;
-  min-height: 32px;
+  height: 38px;
+  min-height: 38px;
   padding: 0.3rem 0.55rem;
   font-size: 0.8rem;
 }
@@ -2916,7 +2926,7 @@ html[data-max-width="full"] .reader-text {
 .loading-bar {
   width: min(420px, 80%);
   height: 6px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--line);
   overflow: hidden;
   margin-top: 0.4rem;
@@ -2925,7 +2935,7 @@ html[data-max-width="full"] .reader-text {
   width: 35%;
   height: 100%;
   background: var(--accent, #3f6fb5);
-  border-radius: 4px;
+  border-radius: var(--radius);
   animation: loading-slide 1.4s ease-in-out infinite;
   will-change: transform;
   backface-visibility: hidden;
@@ -2960,9 +2970,7 @@ html[data-max-width="full"] .reader-text {
   padding: 1.5rem;
   border: 1px solid color-mix(in srgb, var(--control-accent) 28%, var(--line));
   border-radius: var(--radius);
-  background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--control-accent) 12%, transparent), transparent 58%),
-    var(--panel);
+  background: var(--panel);
   box-shadow: 0 18px 50px color-mix(in srgb, var(--ink) 12%, transparent);
 }
 /* Full-screen backdrop for the package export progress bar. */
@@ -3296,7 +3304,7 @@ button.reader-bookmark-location {
 .reader-bookmark-row-marker {
   width: 8px;
   height: 2.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bookmark-color);
 }
 
@@ -3533,7 +3541,7 @@ textarea.vocab-translation-input {
   border: 2px solid color-mix(in srgb, var(--control-accent) 38%, var(--line));
   border-radius: var(--radius);
   background: var(--panel-strong);
-  box-shadow: 0 18px 45px color-mix(in srgb, var(--ink) 16%, transparent), inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
+  box-shadow: 0 18px 45px color-mix(in srgb, var(--ink) 16%, transparent);
   cursor: pointer;
   text-align: center;
 }
@@ -3642,7 +3650,7 @@ textarea.vocab-translation-input {
   font-size: 1rem;
   line-height: 1;
   padding: 0;
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .toast-close:hover {
@@ -3732,6 +3740,13 @@ textarea.vocab-translation-input {
 
   .book-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Single-column shell: the pinned vocab Actions column (376 px) would eat
+     more than half the viewport here — yield to a 7-button width instead. */
+  .vocab-table th:nth-child(5),
+  .vocab-table td:last-child {
+    width: 308px;
   }
 }
 
@@ -4144,7 +4159,7 @@ textarea.vocab-translation-input {
 .language-select-flag {
   width: 34px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   object-fit: cover;
   box-shadow: 0 0 0 1px var(--line);
 }
@@ -4336,7 +4351,7 @@ textarea.vocab-translation-input {
   min-width: 18px;
   height: 18px;
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: color-mix(in srgb, currentColor 16%, transparent);
   color: inherit;
   font-size: 0.65rem;
@@ -4363,7 +4378,7 @@ textarea.vocab-translation-input {
   opacity: 1;
 }
 
-.word-token:focus { outline: 2px solid var(--control-accent); outline-offset: 2px; border-radius: 4px; background: color-mix(in srgb, var(--control-accent) 12%, transparent); }
+.word-token:focus { outline: 2px solid var(--control-accent); outline-offset: 2px; border-radius: var(--radius); background: color-mix(in srgb, var(--control-accent) 12%, transparent); }
 
 /* Pagination controls */
 .pagination-controls { margin-top: 2rem; display: flex; justify-content: center; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
@@ -4648,7 +4663,7 @@ dialog {
 .hint-italic-center-m-t-05 { font-size: 0.9rem; color: var(--muted); margin-top: 0.5rem; font-style: italic; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; width: 100%; }
 .icon-sidebar { width: 1rem; height: 1rem; color: var(--sidebar-muted); }
 .img-block-center { max-width: 100%; height: auto; display: block; margin: 1rem auto; border-radius: var(--radius); }
-.img-placeholder { width:100%;height:100%;background:var(--line);border-radius:4px; }
+.img-placeholder { width:100%;height:100%;background:var(--line);border-radius:var(--radius); }
 .justify-center-wrap-m-t-05 { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 0.5rem; }
 .justify-end-m-t-1 { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
 .justify-end-wrap-m-t-1 { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
@@ -4707,7 +4722,7 @@ dialog {
 .status-green { color: var(--green); border-color: color-mix(in srgb, var(--green) 42%, var(--line)); background: var(--green-soft); }
 .status-muted { color: var(--muted); border-color: var(--line); }
 .text-accent-ink { color: var(--accent-ink); }
-.thumb-120 { height: 120px; width: 100%; object-fit: cover; border-radius: 4px; }
+.thumb-120 { height: 120px; width: 100%; object-fit: cover; border-radius: var(--radius); }
 .thumb-bordered { max-height: 120px; max-width: 100%; border-radius: var(--radius); border: 1px solid var(--line); }
 .tile-add { cursor: pointer; text-align: center; border: 2px dashed var(--line); padding: 0.25rem; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; width: 180px; }
 .tile-solid { cursor: pointer; text-align: center; border: 1px solid var(--line); padding: 0.25rem; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 180px; }

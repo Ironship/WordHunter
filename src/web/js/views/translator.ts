@@ -383,35 +383,8 @@ export function bindTranslatorEvents(): void {
       scheduleTranslate();
     });
   }
-  const copyButton = document.getElementById("translator-copy");
-  if (copyButton) {
-    copyButton.addEventListener("click", async () => {
-      const text = els.translatorResult?.value || "";
-      if (!text.trim()) return;
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (error) {
-        // Fallback: hidden textarea + execCommand when the async Clipboard API is unavailable.
-        const textarea = document.createElement("textarea");
-        try {
-          textarea.value = text;
-          textarea.setAttribute("readonly", "");
-          textarea.style.position = "fixed";
-          textarea.style.left = "-9999px";
-          document.body.appendChild(textarea);
-          textarea.select();
-          if (!document.execCommand("copy")) throw new Error("copy command rejected");
-        } catch (fallbackError) {
-          console.warn("Could not copy translation result", fallbackError);
-          showToast(t("translator.error"), "error");
-          return;
-        } finally {
-          textarea.remove();
-        }
-      }
-      showToast(t("translator.copyDone"));
-    });
-  }
+  // The translator Copy button was removed from index.html (15e60f1); the old
+  // #translator-copy handler was deleted with it — nothing binds it anymore.
 
   if (els.translatorAiExplain) {
     els.translatorAiExplain.addEventListener("click", async () => {

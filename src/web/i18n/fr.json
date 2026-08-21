@@ -367,7 +367,7 @@
     "shortcut": {},
     "confirmDeleteWord": "Supprimer ce mot et sa progression d'apprentissage ?",
     "wordRequired": "Saisissez d'abord le mot.",
-    "noResults": "No results for the current filter."
+    "noResults": "Aucun résultat pour le filtre actuel."
   },
   "discover": {
     "eyebrow": "Ressources en ligne",
