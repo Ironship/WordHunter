@@ -955,7 +955,10 @@
     "save": "Enregistrer",
     "deleteCover": "Supprimer la couverture",
     "coverPreviewAlt": "Aperçu de la couverture",
-    "levelLabel": "Niveau"
+    "levelLabel": "Niveau",
+    "formatBold": "Gras (**texte**)",
+    "formatItalic": "Italique (*texte*)",
+    "formatHint": "**gras** · *italique* — les marqueurs sont masqués dans le Lecteur"
   },
   "moveBook": {
     "title": "Déplacer le livre",

@@ -296,7 +296,7 @@
   "vocab": {
     "eyebrow": "Your words",
     "heading": "Vocabulary list",
-    "empty": "No vocabulary data yet. Start reading to build your word database.",
+    "empty": "Nothing matches the current filter.",
     "noResults": "No results for the current filter.",
     "reverseTooltip": "Toggle flashcard mode (Normal / Reverse)",
     "normalOrder": "Foreign → Native",
@@ -326,7 +326,6 @@
     "addWordConfirm": "Add",
     "editWordTitle": "Edit word",
     "editWordConfirm": "Save",
-    "empty": "Nothing matches the current filter.",
     "btnLearning": "Learning",
     "btnKnown": "Known",
     "btnDelete": "Delete",
@@ -1041,7 +1040,10 @@
     "textLabel": "Text (You can paste images with Ctrl+V)",
     "cancel": "Cancel",
     "save": "Save",
-    "coverPreviewAlt": "Cover preview"
+    "coverPreviewAlt": "Cover preview",
+    "formatBold": "Bold (**text**)",
+    "formatItalic": "Italic (*text*)",
+    "formatHint": "**bold** · *italic* — markers are hidden in the Reader"
   },
   "moveBook": {
     "title": "Move Book",

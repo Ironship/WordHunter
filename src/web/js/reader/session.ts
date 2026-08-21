@@ -1,5 +1,6 @@
-import { classifyTokenOccurrences, getTokenStatsFromClassifications, tokenizeText } from "../tokenizer_v2.js";
+import { classifyTokenOccurrences, getTokenStatsFromClassifications, tokenizeTextWithFormats } from "../tokenizer_v2.js";
 import type { TextStats, TextToken, TokenClassification, Vocabulary } from "../tokenizer_v2.js";
+import type { WhFormatSpan } from "./format-markers.js";
 
 export interface ReaderSession {
   id: string | undefined;
@@ -9,8 +10,15 @@ export interface ReaderSession {
   tokens: TextToken[];
   globalWordIndexes: number[];
   globalCharOffsets: number[];
+  /** Absolute char offset of EVERY token (words and gaps) in the stripped
+   *  text — lets the renderer map format spans onto any token. */
+  tokenCharOffsets: number[];
   wordTokenIndexes: number[];
   totalWords: number;
+  /** Markdown-lite format spans (bold and italic) in the stripped-text
+   *  coordinate system (the same coordinates globalCharOffsets uses);
+   *  empty for unformatted text. */
+  formatSpans: WhFormatSpan[];
   analysisRevision: number;
   classifications: Map<number, TokenClassification> | null;
   stats: TextStats | null;
@@ -28,13 +36,15 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
     return cachedSession;
   }
 
-  const tokens = tokenizeText(text, language, algorithm);
+  const { tokens, spans: formatSpans } = tokenizeTextWithFormats(text, language, algorithm);
   const globalWordIndexes = new Array(tokens.length).fill(-1);
   const globalCharOffsets = new Array(tokens.length).fill(-1);
+  const tokenCharOffsets = new Array<number>(tokens.length).fill(0);
   const wordTokenIndexes: number[] = [];
   let totalWords = 0;
   let charOffset = 0;
   for (let index = 0; index < tokens.length; index += 1) {
+    tokenCharOffsets[index] = charOffset;
     if (tokens[index].type === "word") {
       wordTokenIndexes.push(index);
       globalWordIndexes[index] = totalWords++;
@@ -52,8 +62,10 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
     tokens,
     globalWordIndexes,
     globalCharOffsets,
+    tokenCharOffsets,
     wordTokenIndexes,
     totalWords,
+    formatSpans,
     analysisRevision: -1,
     classifications: null,
     stats: null

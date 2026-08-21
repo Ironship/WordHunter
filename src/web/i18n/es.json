@@ -955,7 +955,10 @@
     "save": "Guardar",
     "deleteCover": "Quitar portada",
     "coverPreviewAlt": "Vista previa de la portada",
-    "levelLabel": "Nivel"
+    "levelLabel": "Nivel",
+    "formatBold": "Negrita (**texto**)",
+    "formatItalic": "Cursiva (*texto*)",
+    "formatHint": "**negrita** · *cursiva* — los marcadores se ocultan en el Lector"
   },
   "moveBook": {
     "title": "Mover libro",

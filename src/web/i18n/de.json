@@ -955,7 +955,10 @@
     "save": "Speichern",
     "deleteCover": "Titelbild entfernen",
     "coverPreviewAlt": "Cover-Vorschau",
-    "levelLabel": "Niveau"
+    "levelLabel": "Niveau",
+    "formatBold": "Fett (**Text**)",
+    "formatItalic": "Kursiv (*Text*)",
+    "formatHint": "**fett** · *kursiv* — Markierungen sind im Reader unsichtbar"
   },
   "moveBook": {
     "title": "Buch verschieben",

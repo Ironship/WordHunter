@@ -955,7 +955,10 @@
     "save": "Salva",
     "deleteCover": "Rimuovi copertina",
     "coverPreviewAlt": "Anteprima copertina",
-    "levelLabel": "Livello"
+    "levelLabel": "Livello",
+    "formatBold": "Grassetto (**testo**)",
+    "formatItalic": "Corsivo (*testo*)",
+    "formatHint": "**grassetto** · *corsivo* — i marcatori sono nascosti nel Reader"
   },
   "moveBook": {
     "title": "Sposta libro",

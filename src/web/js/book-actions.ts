@@ -106,7 +106,9 @@ export {
   openEditBookModal,
   cancelEditBook,
   saveEditedBook,
-  pasteImageToEditBook
+  pasteImageToEditBook,
+  updateEditBookCounter,
+  wrapEditBookSelection
 } from "./book-actions/edit-modal.js";
 
 export {

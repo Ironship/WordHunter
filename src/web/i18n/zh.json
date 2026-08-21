@@ -1040,7 +1040,10 @@
     "textLabel": "文本（可以用 Ctrl+V 粘贴图像）",
     "cancel": "取消",
     "save": "保存",
-    "coverPreviewAlt": "封面预览"
+    "coverPreviewAlt": "封面预览",
+    "formatBold": "加粗 (**文本**)",
+    "formatItalic": "斜体 (*文本*)",
+    "formatHint": "**加粗** · *斜体* — 标记在阅读器中隐藏"
   },
   "moveBook": {
     "title": "移动书籍",
