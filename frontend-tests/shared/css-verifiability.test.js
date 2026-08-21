@@ -49,8 +49,14 @@ const Z_INDEX_WHITELIST = new Set(["0", "1", "2", "3", "4", "5", "10", "50", "10
 
 /* T4: identical-declaration groups (>=2 rules sharing one declaration block)
    budget — baseline 48 (post-utility-sweep baseline; +1 from the #142
-   pocket-only-control rules, 2026-08). */
-const DUP_GROUP_PIN = 48;
+   pocket-only-control rules, 2026-08). FIX-C (exp/theme-deai-rc3): +1 — the
+   graphs-ai-summary separator now shares the exact hairline (55%) declaration
+   with .settings-grid > .panel + .panel by design (separator unification).
+   UI audit (2026-08-21, exp/theme-deai-rc3): +2 — radius literal unification
+   (3px/4px/5px -> --radius/--radius-control tokens) merged previously distinct
+   declaration blocks into shared token groups; fewer distinct literals, more
+   identical groups by design. */
+const DUP_GROUP_PIN = 51;
 
 /* T5: stylesheet size budget — pins the SOURCE file sizes (not dist/), which
    is what the #129 P3 audit measured. Pins = audit baseline + ~2% headroom.
@@ -58,21 +64,53 @@ const DUP_GROUP_PIN = 48;
    (WCAG 1.4.1), empty-state CTAs, graph-card nth-child stagger + learning-lvl
    color classes in styles.css. android-pocket.css grew in #215; theme.css last
    changed in #173. The audit's "pocket-reader.css" (6371 B) is theme.css — no
-   such file exists on main. */
+   such file exists on main.
+   De-AI wave (2026-08, exp/theme-deai-rc3, NOT merged): per-card ⋯ overflow
+   menu CSS + borderless import/export surfaces + less-saturated card stats —
+   approx +1.7 KB net across 5 UI touches; pins re-baselined to fit.
+   De-AI wave 2 (2026-08, exp/theme-deai-rc3, NOT merged): one radius scale
+   (--radius-control 3px controls / --radius 4px panels, tags chip-ified),
+   Graphs/Discover/Settings de-cardified onto flat surfaces with hairline
+   separators, compact .button-xs defined for the first time. ~+0.5 KB net
+   (most changes folded into existing rules), pins re-baselined again.
+   De-AI wave 2 continuation / FIX-C (2026-08, exp/theme-deai-rc3, NOT merged):
+   graphs-ai-summary + settings details + discover-toolbar separators unified to
+   hairline 55%, library import-panel flattened on desktop (borderless like the
+   export surface), z-index scale comment expanded. +~0.5 KB net on styles.css.
+   FIX-B (2026-08, exp/theme-deai-rc3, NOT merged): android-pocket.css — hardcoded
+   8px radii -> var(--radius) (9 spots, panel 8->4px), red #tts-stop-text restored,
+   familiar-light focus patch extended to nav drawer + pocket toggle. +~1.5 KB:
+   token text is longer than the 3-char literals, plus the two added rules/comments.
+   Pin re-baselined for android-pocket.css only (styles.css untouched by FIX-B).
+   FIX-D3 (2026-08, exp/theme-deai-rc3): vocab-table responsiveness — Example
+   column hidden below 1080px (display:none + .table-wrap .vocab-table min-width:0
+   media block) so the pinned Actions cell is never overlapped; Actions cell
+   widened 340->376px so all 7 x 44px action buttons fit without clipping. +~450 B
+   on styles.css, pin re-baselined.
+   UI audit (2026-08-21, exp/theme-deai-rc3): resizer :focus-visible outline
+   (keyboard separators), <780px vocab Actions column yield (376->308px),
+   button-height scale fixes (article-suggestion/smart-suggestion/image-action),
+   flat .ocr-progress-card + gloss-free .review-word, radius literals -> tokens,
+   toast above export overlay. +~270 B net, pin re-baselined. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 113100],
-  ["src/web/platforms/android-pocket.css", 33500],
+  ["src/web/styles.css", 117000],
+  ["src/web/platforms/android-pocket.css", 35000],
   ["src/web/theme.css", 6500]
 ]);
 
 /* T6: var(--x, #hex) fallbacks are a conscious decision — exactly 5 in
    styles.css. Audit lines 853, 885, 887, 2777, 2827 (pre-#219/#220 base);
    now at 868, 900, 902, 2792, 2842. Adding a 6th fallback requires updating
-   this pin and the #129 audit together. */
+   this pin and the #129 audit together.
+   FIX-A (2026-08, exp/theme-deai-rc3): the two stale --accent fallbacks
+   #4a6cf7 -> #4f7cff (theme.css --accent is #4f7cff), so only #4f7cff
+   remains (now 3x: find-match bg/shadow + line 2917). Updating the pin.
+   FIX-D5 (2026-08, exp/theme-deai-rc3): palette de-AI toning — classic
+   --accent desaturated #4f7cff -> #3f6fb5, --accent-ink #315bd6 -> #2f54a3
+   (3x accent + 1x accent-ink fallbacks updated to match theme.css). */
 const VAR_HEX_FALLBACK_PIN = new Map([
-  ["var(--accent, #4a6cf7)", 2],
-  ["var(--accent, #4f7cff)", 1],
-  ["var(--accent-ink, #315bd6)", 1],
+  ["var(--accent, #3f6fb5)", 3],
+  ["var(--accent-ink, #2f54a3)", 1],
   ["var(--bg, #0d1114)", 1]
 ]);
 

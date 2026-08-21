@@ -9,7 +9,9 @@ import {
   importCustomText,
   isEditBookDirty,
   pasteImageToEditBook,
-  saveEditedBook
+  saveEditedBook,
+  updateEditBookCounter,
+  wrapEditBookSelection
 } from "../book-actions.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { beginElementBusy, setElementBusy } from "../loading.js";
@@ -1175,6 +1177,14 @@ function bindEditBookEvents() {
   const editBookText = document.getElementById("edit-book-text") as HTMLTextAreaElement | null;
   if (editBookCancel) editBookCancel.addEventListener("click", () => cancelEditBook());
   if (editBookSave) editBookSave.addEventListener("click", () => saveEditedBook());
+
+  const fmtBold = document.getElementById("edit-book-fmt-bold");
+  const fmtItalic = document.getElementById("edit-book-fmt-italic");
+  if (fmtBold) fmtBold.addEventListener("click", () => wrapEditBookSelection("**"));
+  if (fmtItalic) fmtItalic.addEventListener("click", () => wrapEditBookSelection("*"));
+  if (editBookText) {
+    editBookText.addEventListener("input", updateEditBookCounter);
+  }
 
   if (editBookDialog) {
     editBookDialog.addEventListener("keydown", (e) => {

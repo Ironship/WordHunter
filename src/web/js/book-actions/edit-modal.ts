@@ -74,7 +74,13 @@ export function renderEditBookDialog(): HTMLDialogElement {
       </div>
       <label class="setting-row edit-book-field edit-book-text-field">
         <span data-i18n="editBook.textLabel">Text (You can paste images with Ctrl+V)</span>
+        <div class="edit-book-format-bar">
+          <button id="edit-book-fmt-bold" class="icon-button" type="button" data-i18n-attr="title=editBook.formatBold" title="Bold (**text**)"><strong>B</strong></button>
+          <button id="edit-book-fmt-italic" class="icon-button" type="button" data-i18n-attr="title=editBook.formatItalic" title="Italic (*text*)"><em>I</em></button>
+          <span class="edit-book-format-hint fs-085-muted" data-i18n="editBook.formatHint">**bold** · *italic* — markers are hidden in the Reader</span>
+        </div>
         <textarea id="edit-book-text" class="input" spellcheck="false"></textarea>
+        <span id="edit-book-text-counter" class="fs-085-muted edit-book-counter" aria-live="off"></span>
       </label>
       <div class="edit-book-actions">
         <button id="edit-book-cancel" class="secondary-button" data-i18n="editBook.cancel">Cancel</button>
@@ -174,6 +180,7 @@ export async function openEditBookModal(id: string): Promise<void> {
     textArea.value = customText ? customBody : bookTexts.get(id) || "";
     textArea.readOnly = editingBookKind !== "custom" || Array.isArray(customText?.pdfOcrPages);
   }
+  updateEditBookCounter();
 
   const coverUrl = typeof book.coverDataUrl === "string" ? book.coverDataUrl : "";
   pendingEditCoverDataUrl = coverUrl;
@@ -224,11 +231,11 @@ export async function saveEditedBook(): Promise<void> {
   const textArea = editBookEl<HTMLTextAreaElement>("edit-book-text");
   const dialog = editBookEl<HTMLDialogElement>("edit-book-dialog");
   if (cancelButton) cancelButton.disabled = true;
-  if (saveButton) saveButton.disabled = true;
+  if (saveButton) { saveButton.disabled = true; saveButton.classList.add("is-busy"); }
   if (!customText && !userBook) {
     editBookSaveRunning = false;
     if (cancelButton) cancelButton.disabled = false;
-    if (saveButton) saveButton.disabled = false;
+    if (saveButton) { saveButton.disabled = false; saveButton.classList.remove("is-busy"); }
     return;
   }
 
@@ -238,7 +245,7 @@ export async function saveEditedBook(): Promise<void> {
     showToast(t("toast.emptyFields"));
     editBookSaveRunning = false;
     if (cancelButton) cancelButton.disabled = false;
-    if (saveButton) saveButton.disabled = false;
+    if (saveButton) { saveButton.disabled = false; saveButton.classList.remove("is-busy"); }
     return;
   }
 
@@ -259,7 +266,7 @@ export async function saveEditedBook(): Promise<void> {
       showToast(t("toast.saveUnavailable"), "error");
       editBookSaveRunning = false;
       if (cancelButton) cancelButton.disabled = false;
-      if (saveButton) saveButton.disabled = false;
+      if (saveButton) { saveButton.disabled = false; saveButton.classList.remove("is-busy"); }
       return;
     }
     Object.assign(customText, nextCustomText);
@@ -278,7 +285,7 @@ export async function saveEditedBook(): Promise<void> {
   invalidateBookId(targetBookId);
 
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("save edited book failed", error);
     await reloadBridgeSnapshot().catch((reloadError) => {
@@ -287,7 +294,7 @@ export async function saveEditedBook(): Promise<void> {
     showToast(t("toast.saveUnavailable"), "error");
     editBookSaveRunning = false;
     if (cancelButton) cancelButton.disabled = false;
-    if (saveButton) saveButton.disabled = false;
+    if (saveButton) { saveButton.disabled = false; saveButton.classList.remove("is-busy"); }
     return;
   }
   renderLibrary();
@@ -303,7 +310,52 @@ export async function saveEditedBook(): Promise<void> {
   editingBookKind = null;
   editBookSaveRunning = false;
   if (cancelButton) cancelButton.disabled = false;
-  if (saveButton) saveButton.disabled = false;
+  if (saveButton) { saveButton.disabled = false; saveButton.classList.remove("is-busy"); }
+}
+
+/** Wraps the textarea selection with a markdown-lite marker (`**` or `*`).
+ *  No selection wraps/unwrap the word at the cursor. Keyboard-driven from
+ *  the format bar; markers are stripped before tokenization (format-markers). */
+export function wrapEditBookSelection(marker: "**" | "*"): void {
+  const textarea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+  if (!textarea || textarea.readOnly) return;
+  const { selectionStart, selectionEnd, value } = textarea;
+  // Unwrap when the exact selection is already fully wrapped.
+  if (value.slice(selectionStart - marker.length, selectionStart) === marker
+    && value.slice(selectionEnd, selectionEnd + marker.length) === marker) {
+    textarea.value = value.slice(0, selectionStart - marker.length)
+      + value.slice(selectionStart, selectionEnd)
+      + value.slice(selectionEnd + marker.length);
+    textarea.selectionStart = selectionStart - marker.length;
+    textarea.selectionEnd = selectionEnd - marker.length;
+  } else if (selectionStart !== selectionEnd) {
+    textarea.value = value.slice(0, selectionStart) + marker
+      + value.slice(selectionStart, selectionEnd) + marker
+      + value.slice(selectionEnd);
+    textarea.selectionStart = selectionStart + marker.length;
+    textarea.selectionEnd = selectionEnd + marker.length;
+  } else {
+    textarea.value = value.slice(0, selectionStart) + marker + marker + value.slice(selectionEnd);
+    textarea.selectionStart = selectionStart + marker.length;
+    textarea.selectionEnd = selectionStart + marker.length;
+  }
+  textarea.focus();
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+const WORD_COUNT_RE = /\S+/g;
+
+/** Lightweight words+chars counter shown under the edit textarea. */
+export function updateEditBookCounter(): void {
+  const counter = editBookEl<HTMLElement>("edit-book-text-counter");
+  const textarea = editBookEl<HTMLTextAreaElement>("edit-book-text");
+  if (!counter || !textarea) return;
+  const text = textarea.value;
+  const chars = text.length;
+  WORD_COUNT_RE.lastIndex = 0;
+  let words = 0;
+  while (WORD_COUNT_RE.exec(text)) words += 1;
+  counter.textContent = `${words} · ${chars}`;
 }
 
 export async function pasteImageToEditBook(file: File): Promise<void> {

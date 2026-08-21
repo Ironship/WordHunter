@@ -302,8 +302,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
         ${icon("video", 16)}
         <span class="shortcut-badge">Y</span>
       </button>
-      <button class="secondary-button" type="button" data-review-action="ai-explain" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.aiExplain"))}" aria-label="${escapeAttribute(t("reader.aiExplain"))}">
-        ${icon("sparkles", 16)}
+      <button class="secondary-button button-xs" type="button" data-review-action="ai-explain" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t("reader.aiExplain"))}" aria-label="${escapeAttribute(t("reader.aiExplain"))}">
+        ${icon("sparkles", 14)} ${escapeHtml(t("reader.aiExplain"))}
         <span class="shortcut-badge">Ctrl+E</span>
       </button>
       <button class="secondary-button" type="button" data-review-action="toggle" data-word="${escapeAttribute(card.key)}" aria-expanded="${reviewAnswerVisible}" aria-controls="review-card-answer">

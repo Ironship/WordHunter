@@ -49,7 +49,7 @@
         .flag-icon { width: 1.5rem; height: 1.5rem; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
         select {
             background: var(--panel-strong); color: var(--ink);
-            border: 1px solid var(--line); border-radius: 6px;
+            border: 1px solid var(--line); border-radius: var(--radius-control);
             padding: 0.5rem 0.75rem; width: 100%;
             outline: none; cursor: pointer; font-size: 0.95rem;
             appearance: none;
@@ -62,7 +62,7 @@
         .editor-box { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; min-height: 0; }
         textarea {
             flex: 1; width: 100%; background: var(--panel-strong); color: var(--ink);
-            border: 1px solid var(--line); border-radius: 6px; padding: 1rem;
+            border: 1px solid var(--line); border-radius: var(--radius-control); padding: 1rem;
             font-size: 1.05rem; resize: none; outline: none;
             line-height: 1.55; font-family: inherit;
         }
@@ -75,7 +75,7 @@
             display: inline-flex; align-items: center; justify-content: center;
             gap: 0.5rem; height: 38px; padding: 0 1.5rem;
             background: var(--popup-accent); color: var(--popup-accent-ink);
-            border: 1px solid var(--popup-accent); border-radius: 6px;
+            border: 1px solid var(--popup-accent); border-radius: var(--radius-control);
             font-size: 0.9rem; font-weight: 500; cursor: pointer;
         }
         .primary-button:hover { background: var(--popup-accent-hover); border-color: var(--popup-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }

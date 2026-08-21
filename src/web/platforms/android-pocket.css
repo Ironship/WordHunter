@@ -107,10 +107,15 @@ html.pocket-mode {
 
 /* Keyboard focus on the blue (--sidebar-bg) pocket chrome: the global
    --focus-ring equals --sidebar-bg in the familiar-light theme, so a 3px
-   outline would be invisible against the toolbar. Use the high-contrast
-   sidebar accent so the ring always stands out. */
+   outline would be invisible against the toolbar, the nav drawer and the
+   pocket navigation toggle. Use the high-contrast sidebar accent so the
+   ring always stands out. Applies the same treatment to #app-navigation
+   .nav-item rows and #pocket-navigation-toggle that the toolbar buttons
+   get; the reader's own nav toggle is a .toolbar-buttons button. */
 .pocket-mode #reader-view .toolbar-buttons button:focus-visible,
-.pocket-mode #reader-find-toggle:focus-visible {
+.pocket-mode #reader-find-toggle:focus-visible,
+.pocket-mode #app-navigation .nav-item:focus-visible,
+.pocket-mode #pocket-navigation-toggle:focus-visible {
   outline-color: var(--sidebar-active-accent);
 }
 
@@ -225,7 +230,7 @@ html.pocket-mode {
   max-width: 100%;
   min-height: 56px;
   padding: 0.7rem 0.8rem;
-  border-radius: 8px;
+  border-radius: var(--radius);
   text-align: left;
   font-size: 1rem;
   line-height: 1.15;
@@ -266,7 +271,7 @@ html.pocket-mode {
   height: 56px;
   color: var(--sidebar-nav-ink);
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--sidebar-bg);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
 }
@@ -348,7 +353,7 @@ html.pocket-mode {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  border-radius: 8px;
+  border-radius: var(--radius);
   box-shadow: none;
 }
 
@@ -409,7 +414,7 @@ html.pocket-mode {
   min-width: 42px;
   height: 104px;
   padding: 1.85rem 0.25rem 0.5rem;
-  border-radius: 8px 0 0 8px;
+  border-radius: var(--radius) 0 0 var(--radius);
   writing-mode: vertical-rl;
   text-orientation: mixed;
   align-items: center;
@@ -450,7 +455,7 @@ html.pocket-mode {
   max-width: calc(100vw - 1.25rem);
   overflow: auto;
   overscroll-behavior: contain;
-  border-radius: 8px 0 0 8px;
+  border-radius: var(--radius) 0 0 var(--radius);
   box-shadow: -16px 0 36px rgba(0, 0, 0, 0.26);
   transform: translateX(calc(100% + 1rem));
   visibility: hidden;
@@ -675,9 +680,26 @@ html.pocket-mode {
 .pocket-mode #reader-view .toolbar-buttons button {
   color: var(--sidebar-nav-ink);
   border-color: transparent;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: transparent;
   box-shadow: none;
+}
+
+/* #tts-stop-text is a danger-button, but the neutral .toolbar-buttons button
+   rule above out-specifies .danger-button (0,1,1) and washes its red look out.
+   Restore the red stop variant with a pocket-scoped selector that outranks
+   both that rule (1,3,1) and the shared :hover colors, so the stop control
+   reads as an active danger action on the dark toolbar. */
+.pocket-mode #reader-view .toolbar-buttons #tts-stop-text {
+  color: var(--red);
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+
+.pocket-mode #reader-view .toolbar-buttons #tts-stop-text:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--panel);
 }
 
 /* The find (lupa) toggle leaves the six-column bottom grid and floats at the
@@ -864,7 +886,7 @@ html.pocket-mode {
   gap: 0.55rem;
   padding: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -939,7 +961,7 @@ html.pocket-mode {
   min-width: 44px;
   max-width: 44px;
   height: 44px;
-  border-radius: 8px;
+  border-radius: var(--radius);
 }
 
 .pocket-mode .reader-text {
@@ -1028,7 +1050,7 @@ html.pocket-mode {
   padding: 0.45rem;
   flex-wrap: nowrap;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel-strong);
   box-shadow: none;
 }
@@ -1059,6 +1081,12 @@ html.pocket-mode {
   display: none;
 }
 
+/* The draggable word-panel sheet keeps a larger pull-up radius (12px outer /
+   10px offset "cards") than the --radius (4px)/--radius-control (3px) scale.
+   It is an elevated, Android-only floating sheet (desktop hides this chrome;
+   see .reader-sidebar-wrapper display:none above) where the softer corners
+   track the sheet's elevation shadow — intentionally outside the flat panel
+   scale, not an oversight. */
 .pocket-mode.has-selected-word.pocket-word-panel-open #reader-view.active .reader-sidebar-wrapper {
   position: fixed;
   z-index: var(--z-pocket-sheet);

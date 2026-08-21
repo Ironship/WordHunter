@@ -366,7 +366,8 @@
     "uploadOwnImage": "Imagen propia",
     "shortcut": {},
     "confirmDeleteWord": "¿Eliminar esta palabra y su progreso de aprendizaje?",
-    "wordRequired": "Escribe primero la palabra."
+    "wordRequired": "Escribe primero la palabra.",
+    "noResults": "No hay resultados para el filtro actual."
   },
   "discover": {
     "eyebrow": "Recursos en línea",
@@ -694,8 +695,8 @@
     "contactIssues": "<strong>Errores e ideas:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contacto:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencia:</strong> AGPL-3.0-or-later. El uso comercial cerrado de código derivado requiere una licencia escrita separada. Detalles: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 conserva el idioma elegido desde el arranque, restablece el foco del teclado y del lector de pantalla y hace más fiable el modo alternativo de OCR. El mapa de repasos es más claro, el contraste y los objetivos táctiles son mayores y el diario de almacenamiento rota para mantener los datos sanos.",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 conserva el idioma elegido desde el arranque, restablece el foco del teclado y del lector de pantalla y hace más fiable el modo alternativo de OCR. El mapa de repasos es más claro, el contraste y los objetivos táctiles son mayores y el diario de almacenamiento rota para mantener los datos sanos.",
+    "version": "1.1.0-rc.3",
     "focusHint1": "Pulsa <kbd>Ctrl</kbd>+<kbd>Enter</kbd> para entrar o volver al texto",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> para navegar palabras",
     "focusHint3": "<kbd>Ctrl</kbd>+<kbd>Espacio</kbd> leer oración",
@@ -954,7 +955,10 @@
     "save": "Guardar",
     "deleteCover": "Quitar portada",
     "coverPreviewAlt": "Vista previa de la portada",
-    "levelLabel": "Nivel"
+    "levelLabel": "Nivel",
+    "formatBold": "Negrita (**texto**)",
+    "formatItalic": "Cursiva (*texto*)",
+    "formatHint": "**negrita** · *cursiva* — los marcadores se ocultan en el Lector"
   },
   "moveBook": {
     "title": "Mover libro",
@@ -1033,7 +1037,6 @@
     "range": "Rango",
     "rangeRecent": "Reciente",
     "rangeAll": "Todo el tiempo",
-    "aiExplain": "Explicar con IA",
     "aiExplainNotConfigured": "La IA no está configurada. Añade primero los ajustes de API.",
     "fsrsTitle": "FSRS: Estabilidad vs Dificultad",
     "monthLabels": "Ene|Feb|Mar|Abr|May|Jun|Jul|Ago|Sep|Oct|Nov|Dic",

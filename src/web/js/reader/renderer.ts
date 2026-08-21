@@ -295,6 +295,8 @@ export function renderReader(): void {
         tokens,
         globalWordIndexes: session.globalWordIndexes,
         globalCharOffsets: session.globalCharOffsets,
+        formatSpans: session.formatSpans,
+        tokenCharOffsets: session.tokenCharOffsets,
         classifications: session.classifications,
         pageStartIndex,
         pageEndIndex,

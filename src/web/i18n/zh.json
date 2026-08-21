@@ -366,7 +366,8 @@
     "cardCount": "{count} 张卡片",
     "shortcut": {},
     "confirmDeleteWord": "删除这个单词及其学习进度？",
-    "wordRequired": "请先输入单词。"
+    "wordRequired": "请先输入单词。",
+    "noResults": "当前筛选条件下没有结果。"
   },
   "discover": {
     "eyebrow": "在线资源",
@@ -718,7 +719,6 @@
     "range": "范围",
     "rangeRecent": "近期",
     "rangeAll": "全部时间",
-    "aiExplain": "用 AI 解读",
     "aiExplainNotConfigured": "AI 尚未配置。请先添加 API 设置。",
     "cards": "卡片",
     "fsrsTitle": "稳定性 vs 难度",
@@ -779,8 +779,8 @@
     "contactIssues": "<strong>错误报告与功能请求：</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>联系：</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>许可：</strong> AGPL-3.0-or-later。衍生代码的闭源商业使用需要单独的书面许可。详情：https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.1 在启动时保留所选语言，恢复键盘和屏幕阅读器的焦点，并让 OCR 回退更可靠。复习热力图更清晰，对比度和触摸目标更大，存储日志轮转以保持数据健康。",
-    "version": "1.1.0-rc.1",
+    "whatsNew": "1.1.0-rc.3 在启动时保留所选语言，恢复键盘和屏幕阅读器的焦点，并让 OCR 回退更可靠。复习热力图更清晰，对比度和触摸目标更大，存储日志轮转以保持数据健康。",
+    "version": "1.1.0-rc.3",
     "tipsEyebrow": "文档",
     "focusHint1": "按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 进入或返回文本",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> 在单词间导航",
@@ -1040,7 +1040,10 @@
     "textLabel": "文本（可以用 Ctrl+V 粘贴图像）",
     "cancel": "取消",
     "save": "保存",
-    "coverPreviewAlt": "封面预览"
+    "coverPreviewAlt": "封面预览",
+    "formatBold": "加粗 (**文本**)",
+    "formatItalic": "斜体 (*文本*)",
+    "formatHint": "**加粗** · *斜体* — 标记在阅读器中隐藏"
   },
   "moveBook": {
     "title": "移动书籍",

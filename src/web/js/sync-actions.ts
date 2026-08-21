@@ -617,7 +617,7 @@ export async function clearWords(): Promise<void> {
   resetInitialVocabKeys();
   hideReviewAnswer();
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("clear words save failed", error);
     await reloadBridgeSnapshot().catch((reloadError) => {
@@ -656,7 +656,7 @@ export async function clearLibrary(): Promise<void> {
   removeUnreferencedBookState(state, [...removedTextIds, ...removedUserBookIds]);
   [...removedTextIds, ...removedUserBookIds].forEach(clearBookTextCache);
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("clear library save failed", error);
     await reloadBridgeSnapshot().catch((reloadError) => {
@@ -780,7 +780,7 @@ export function importAnkiTsv(event: unknown): void {
         entry.updatedAt = new Date().toISOString();
         importedCount++;
       }
-      await saveStateAndReloadBridge();
+      await saveStateAndReloadBridge({ withSnapshot: true });
       render();
       showToast(t("toast.importDoneCount", { count: importedCount }));
     } catch (error) {

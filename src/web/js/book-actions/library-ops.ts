@@ -117,7 +117,7 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   }
 
   try {
-    await saveStateAndReloadBridge();
+    await saveStateAndReloadBridge({ withSnapshot: true });
   } catch (error) {
     console.warn("move book profile save failed", error);
     let recovered = false;

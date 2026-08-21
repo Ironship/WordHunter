@@ -1,5 +1,6 @@
 // Text tokenization and statistics. Independent of global state.
 import { vocabularyWordKey } from "./vocabulary/article.js";
+import { stripFormatMarkers, type WhFormatSpan } from "./reader/format-markers.js";
 
 export type TokenType = "text" | "word" | "image";
 
@@ -66,11 +67,11 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
   if (!text) return [];
   const parts: TextToken[] = [];
   const mode = resolveTokenizerAlgorithm(algorithm);
-  
+
   const imgPattern = /\[IMG:[^\]]+\]/g;
   let lastIndex = 0;
   let match = imgPattern.exec(text);
-  
+
   const processTextBlock = (block: string) => {
     if (!block) return;
     if (mode === "classic") pushClassicTokens(block, parts);
@@ -88,7 +89,7 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
   if (lastIndex < text.length) {
     processTextBlock(text.slice(lastIndex));
   }
-  
+
   const merged: TextToken[] = [];
   for (const p of parts) {
     if (merged.length > 0 && merged[merged.length-1].type === "text" && p.type === "text") {
@@ -100,13 +101,32 @@ export function tokenizeText(text: string, lang = "en", algorithm = "modern"): T
   return merged;
 }
 
+export interface TokenizeWithFormatsResult {
+  tokens: TextToken[];
+  /** Format spans positioned in the STRIPPED text — the same coordinate
+   *  system as the returned tokens (and globalCharOffsets downstream). */
+  spans: WhFormatSpan[];
+}
+
+/** tokenizeText with **bold** / *italic* support: markers are stripped before
+ *  segmentation so word identity, offsets and TTS extraction never see them.
+ *  Plain tokenizeText stays marker-agnostic for callers that do not render
+ *  formatting (PDF-OCR pages, sentence extraction). */
+export function tokenizeTextWithFormats(text: string, lang = "en", algorithm = "modern"): TokenizeWithFormatsResult {
+  const { plain, spans } = stripFormatMarkers(text);
+  return { tokens: tokenizeText(plain, lang, algorithm), spans };
+}
+
 
 export function normalizeWord(value: unknown): string {
   return String(value || "")
     .normalize("NFC")
     .toLowerCase()
     .replace(/[‘’]/g, "'")
-    .replace(/[„“”".,!?;:()[\]{}<>«»]/g, "")
+    // `*` is stripped too: a stray format-marker character must never leak
+    // into a vocabulary identity (format markers are normally removed before
+    // tokenization; this is the belt-and-braces guard).
+    .replace(/[„“”".,!?;:()*\[\]{}<>«»]/g, "")
     .trim()
     .normalize("NFC");
 }
