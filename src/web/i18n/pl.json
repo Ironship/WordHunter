@@ -100,6 +100,8 @@
     "fragment": "fragment",
     "uniqueWordsLabel": "unikalne słowa",
     "sourceGutenberg": "Gutenberg #{id}",
+    "sourceWikipedia": "Wikipedia",
+    "sourceWikinews": "Wikinews",
     "sourceGutenbergNoId": "Gutenberg",
     "coverAlt": "Okładka",
     "shortcut": {}
@@ -412,6 +414,8 @@
     "died": "zm. {year}",
     "source": "Źródło",
     "sourceGutenberg": "Gutenberg",
+    "sourceWikipedia": "Wikipedia",
+    "sourceWikinews": "Wikinews",
     "shortcut": {}
   },
   "settings": {
@@ -777,8 +781,8 @@
     "contactIssues": "<strong>Zgłoszenia błędów i propozycje funkcji:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencja:</strong> AGPL-3.0-or-later. Komercyjne wykorzystanie kodu pochodnego w oprogramowaniu o zamkniętym kodzie źródłowym wymaga odrębnej pisemnej licencji. Szczegóły: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.4 utrzymuje czytany tekst w polu widzenia podczas czytania na głos, dodaje przycisk tasowania dzisiejszych fiszek, maskuje niemieckie czasowniki rozdzielnie złożone na kartach (issue #278), pokazuje wskaźnik pracy podczas usuwania książek, pyta o języki tylko przy pierwszym uruchomieniu, dodaje fonty przyjazne osobom z dysleksją i skupia Discovery na Project Gutenberg.",
-    "version": "1.1.0-rc.4",
+    "whatsNew": "1.1.0-rc.5 przywraca Wikipedię i Wikinews w Discovery (tylko Wikisource pozostaje usunięte), naprawia zasłanianie wyszukiwania w czytniku, skoki zakładek, dryf podświetlenia TTS i przycisk oka, poprawia pozycję tasowania fiszek, skraca usuwanie książek i porządkuje opisy wydań.",
+    "version": "1.1.0-rc.5",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Naciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby przejść do tekstu lub do niego wrócić",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> – poruszaj się między słowami",
@@ -923,6 +927,7 @@
     "backupCreated": "Przed wyczyszczeniem danych utworzono kopię zapasową.",
     "backupRequired": "Tworzenie kopii zapasowej anulowano lub zakończyło się niepowodzeniem, dlatego danych nie wyczyszczono.",
     "saveUnavailable": "Nie udało się zapisać zmian. Sprawdź wolne miejsce i pozostaw aplikację Word Hunter otwartą.",
+    "deleteStillRunning": "Usuwanie trwa dłużej niż oczekiwano. Operacja działa dalej w tle.",
     "fileLoaded": "Wczytano plik: {name}",
     "fileError": "Nie udało się odczytać pliku.",
     "backupTooLarge": "Kopia zapasowa jest za duża do zaimportowania (maks. {mb} MB).",

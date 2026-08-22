@@ -97,12 +97,17 @@ describe("learning colors", () => {
     }
   });
 
-  it("migrates removed wiki discovery sources to gutenberg on load", () => {
-    for (const legacy of ["wikipedia", "wikinews", "wikisource"]) {
+  it("keeps wikipedia/wikinews sources and migrates only the removed wikisource to gutenberg", () => {
+    // rc.4 review decision: ONLY Wikisource was removed; Wikipedia and
+    // Wikinews selections must survive normalization untouched.
+    for (const kept of ["wikipedia", "wikinews"]) {
       const raw = createDefaultState();
-      raw.discover.source = legacy;
-      assert.equal(normalizeState(raw).discover.source, "gutenberg");
+      raw.discover.source = kept;
+      assert.equal(normalizeState(raw).discover.source, kept);
     }
+    const legacy = createDefaultState();
+    legacy.discover.source = "wikisource";
+    assert.equal(normalizeState(legacy).discover.source, "gutenberg");
     const raw = createDefaultState();
     assert.equal(normalizeState(raw).discover.source, "gutenberg");
   });

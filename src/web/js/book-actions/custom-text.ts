@@ -1,7 +1,7 @@
 /**
  * Custom text import/removal and slug helper.
  */
-import { state, clearLastReadTextId } from "../state.js";
+import { state, saveState, clearLastReadTextId } from "../state.js";
 import { showToast as displayToast } from "../toast.js";
 import { bookTexts, clearBookTextCache } from "../books.js";
 import { invalidateBookId } from "../vocab-index-client.js";
@@ -210,7 +210,10 @@ export async function removeCustomText(id: string): Promise<void> {
   clearLastReadTextId(id);
 
   try {
-    await saveStateAndReloadBridge({ withSnapshot: true });
+    // Plain durable save: a deletion must not pay the extra full-store
+    // snapshot download (`withSnapshot`) — on large libraries that turned a
+    // quick removal into a multi-second dialog hang.
+    await saveState();
   } catch (error) {
     console.warn("delete_text profile save failed", error);
     if (window.__qtBridge) {
