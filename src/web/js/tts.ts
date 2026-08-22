@@ -22,7 +22,16 @@ const TTS_BACKGROUND_RESUME_WINDOW_MS = 60_000;
 // unnoticed (boundary events alone miss manual scrolls and layout shifts).
 const TTS_VISIBILITY_WATCHDOG_MS = 800;
 const TTS_RESYNC_LOOKAHEAD_RUNS = 3;
-const TTS_RESYNC_WINDOW_TOKENS = 80;
+// Resync may only jump ahead inside a small neighborhood. rc.4 used 80, which
+// let one bad match walk the outline far from the spoken position; every
+// later boundary event then compounded the error across the whole book.
+const TTS_RESYNC_WINDOW_TOKENS = 24;
+// Exact-match search stays local too: a spoken word that does not appear
+// within the next few DOM tokens must not be chased through the whole page.
+const TTS_LOCAL_MATCH_WINDOW = 12;
+// A repeated failure inside one sentence means the audio text and the DOM
+// tokens diverged — stop guessing instead of skipping further ahead.
+const TTS_MAX_RESYNCS_PER_SENTENCE = 2;
 
 let ttsVisibilityWatchdog = 0;
 
@@ -30,6 +39,12 @@ function startTtsVisibilityWatchdog(): void {
   if (ttsVisibilityWatchdog || typeof window.setInterval !== "function") return;
   ttsVisibilityWatchdog = window.setInterval(() => {
     if (!speaking || !currentTtsWordToken) return;
+    // A page re-render replaces the DOM mid-flight; scrolling to a token from
+    // the old render would yank the viewport during pagination.
+    if (typeof document.getElementById === "function") {
+      const container = document.getElementById("reader-text");
+      if (container?.dataset.rendering === "1") return;
+    }
     keepReaderTokenVisible(currentTtsWordToken);
   }, TTS_VISIBILITY_WATCHDOG_MS);
 }
@@ -61,6 +76,13 @@ interface TtsWordTracker {
   tokens: Array<{ element: Element; word: string }>;
   tokenIndex: number;
   sentenceRuns: TtsWordRun[];
+  // Index of the run currently being spoken (advanced by boundary events and
+  // by matched words) — resync looks only at upcoming runs, never at words
+  // that were already spoken earlier in the sentence.
+  sentenceRunIndex: number;
+  // Resync attempts spent on the current sentence; capped so a diverging
+  // audio/DOM pair cannot walk the highlight across the page.
+  resyncsThisSentence: number;
 }
 
 export interface SpeakTextOptions {
@@ -766,44 +788,78 @@ function createTtsWordTracker(
   return {
     tokens,
     tokenIndex: exactStart ?? findTtsTokenStart(tokens, getTtsWordRuns(textToRead).map((run) => run.word)),
-    sentenceRuns: []
+    sentenceRuns: [],
+    sentenceRunIndex: 0,
+    resyncsThisSentence: 0
   };
 }
 
 function beginTtsSentenceHighlight(tracker: TtsWordTracker | null | undefined, sentence: string): void {
   if (!tracker) return;
   tracker.sentenceRuns = getTtsWordRuns(sentence);
+  tracker.sentenceRunIndex = 0;
+  tracker.resyncsThisSentence = 0;
 }
 
 function highlightTtsBoundary(tracker: TtsWordTracker | null | undefined, charIndex: number): void {
   if (!tracker?.sentenceRuns?.length) return;
-  const run = tracker.sentenceRuns.find((item) => charIndex >= item.start && charIndex < item.end)
-    || [...tracker.sentenceRuns].reverse().find((item) => charIndex >= item.start);
-  if (!run) return;
-  highlightNextTtsWord(tracker, run.word);
+  const runs = tracker.sentenceRuns;
+  let runIndex = runs.findIndex((item) => charIndex >= item.start && charIndex < item.end);
+  if (runIndex === -1) {
+    // Some engines report cumulative or overshooting offsets. Clamping keeps
+    // a stray charIndex from skipping to the last word of the sentence on
+    // every event; an offset before the first run keeps the current position.
+    runIndex = charIndex < runs[0].start
+      ? Math.min(tracker.sentenceRunIndex, runs.length - 1)
+      : runs.length - 1;
+  }
+  tracker.sentenceRunIndex = runIndex;
+  highlightNextTtsWord(tracker, runs[runIndex].word);
 }
 
 function highlightNextTtsWord(tracker: TtsWordTracker, word: string): void {
   const target = normalizeWord(word);
   if (!target) return;
-  for (let index = tracker.tokenIndex; index < tracker.tokens.length; index++) {
+  // Exact matches are only valid near the current position; scanning the
+  // whole remainder would jump onto a later repetition of a common word.
+  const windowEnd = Math.min(tracker.tokens.length, tracker.tokenIndex + TTS_LOCAL_MATCH_WINDOW);
+  for (let index = tracker.tokenIndex; index < windowEnd; index++) {
     if (tracker.tokens[index].word !== target) continue;
     setCurrentTtsWordToken(tracker.tokens[index].element);
     tracker.tokenIndex = index + 1;
+    advanceSentenceRun(tracker, target);
     return;
   }
   resyncTtsHighlight(tracker);
 }
 
+// Move the run cursor past the run that was just spoken so resync's
+// "upcoming words" never include audio the listener has already heard.
+function advanceSentenceRun(tracker: TtsWordTracker, matchedWord: string): void {
+  const runs = tracker.sentenceRuns;
+  while (
+    tracker.sentenceRunIndex < runs.length
+    && normalizeWord(runs[tracker.sentenceRunIndex].word) !== matchedWord
+  ) {
+    tracker.sentenceRunIndex += 1;
+  }
+  if (tracker.sentenceRunIndex < runs.length) tracker.sentenceRunIndex += 1;
+}
+
 // A spoken word can fail to match any DOM token (numbers, abbreviations,
 // tokenizer drift). Without recovery the highlight freezes somewhere
 // off-screen while the audio keeps going and nothing scrolls anymore.
-// Look ahead at the upcoming words of the current sentence and jump to the
-// first token matching one of them so tracking resumes.
+// Look ahead at the upcoming runs OF THE CURRENT POSITION and jump to the
+// first token matching one of them. The jump is bounded (small window, hard
+// per-sentence cap) so a wrong guess stays local instead of drifting across
+// the book — rc.4 scanned from the sentence start with an 80-token window,
+// which let repeated common words pull the outline far ahead of the audio.
 function resyncTtsHighlight(tracker: TtsWordTracker): void {
+  if (tracker.resyncsThisSentence >= TTS_MAX_RESYNCS_PER_SENTENCE) return;
   const upcoming: string[] = [];
-  for (const run of tracker.sentenceRuns) {
-    const normalized = normalizeWord(run.word);
+  const runs = tracker.sentenceRuns;
+  for (let i = tracker.sentenceRunIndex; i < runs.length; i++) {
+    const normalized = normalizeWord(runs[i].word);
     if (normalized && !upcoming.includes(normalized)) upcoming.push(normalized);
     if (upcoming.length >= TTS_RESYNC_LOOKAHEAD_RUNS) break;
   }
@@ -813,6 +869,7 @@ function resyncTtsHighlight(tracker: TtsWordTracker): void {
     if (!upcoming.includes(tracker.tokens[index].word)) continue;
     setCurrentTtsWordToken(tracker.tokens[index].element);
     tracker.tokenIndex = index + 1;
+    tracker.resyncsThisSentence += 1;
     return;
   }
 }

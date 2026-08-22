@@ -466,6 +466,10 @@ export function bindLibraryEvents(): void {
   const deleteConfirm = document.getElementById("delete-book-confirm") as HTMLButtonElement | null;
   let pendingDelete: (() => unknown) | null = null;
   let deleteInFlight = false;
+  // Durable saves can take a while on large stores, but they must never pin
+  // the dialog forever: after this grace period the UI is released with an
+  // explanatory toast while the save keeps running in the background.
+  const DELETE_BUSY_TIMEOUT_MS = 20_000;
   const closeDeleteDialog = () => {
     // Removing can take a while on large stores; while the busy indicator is
     // active the dialog stays pinned so the operation cannot be dismissed
@@ -495,17 +499,35 @@ export function bindLibraryEvents(): void {
     deleteInFlight = true;
     const releaseConfirmBusy = beginElementBusy(deleteConfirm, { disable: true });
     const releaseCancelBusy = beginElementBusy(deleteCancel, { disable: true });
+    let releaseUi: () => void;
+    let timedOut = false;
+    // Test harnesses may not provide window.setTimeout; the guard is a
+    // safety net, so it is simply skipped in that case.
+    const timeoutHandle = typeof window.setTimeout === "function"
+      ? window.setTimeout(() => {
+        timedOut = true;
+        console.warn("book removal is taking unusually long; releasing the dialog");
+        showToast(translate("toast.deleteStillRunning"));
+        releaseUi();
+      }, DELETE_BUSY_TIMEOUT_MS)
+      : 0;
+    releaseUi = () => {
+      if (timeoutHandle) window.clearTimeout(timeoutHandle);
+      releaseConfirmBusy();
+      releaseCancelBusy();
+      deleteInFlight = false;
+      pendingDelete = null;
+      deleteDialog?.close();
+    };
     // .then(remove) defers the call so a synchronous throw from a remover is
     // captured as a rejection instead of leaving the dialog stuck in busy.
     void Promise.resolve()
       .then(remove)
       .catch((error) => console.warn("book removal failed", error))
       .finally(() => {
-        releaseConfirmBusy();
-        releaseCancelBusy();
-        deleteInFlight = false;
-        pendingDelete = null;
-        deleteDialog?.close();
+        // The timeout guard already released the UI for this attempt; the
+        // late settle must not close a dialog opened for another removal.
+        if (!timedOut) releaseUi();
       });
   });
   deleteDialog?.addEventListener("cancel", (event) => { event.preventDefault(); closeDeleteDialog(); });

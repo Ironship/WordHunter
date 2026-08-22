@@ -36,6 +36,8 @@ export function bindDiscoverEvents() {
 
     const isGutenberg = state.discover.source === "gutenberg";
     if (els.discoverLevel) els.discoverLevel.disabled = !isGutenberg;
+    // Sort select stays disabled on Wikipedia (MediaWiki orders results itself).
+    if (els.discoverSort) els.discoverSort.disabled = state.discover.source === "wikipedia";
 
     runDiscoverSearch();
   });

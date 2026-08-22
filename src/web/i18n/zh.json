@@ -100,6 +100,8 @@
     "uniqueWordsLabel": "不同单词",
     "removeBuiltInTitle": "隐藏内置书籍",
     "sourceGutenberg": "Gutenberg #{id}",
+    "sourceWikipedia": "维基百科",
+    "sourceWikinews": "维基新闻",
     "sourceGutenbergNoId": "Gutenberg",
     "coverAlt": "封面",
     "shortcut": {}
@@ -412,6 +414,8 @@
     "died": "卒于 {year}",
     "source": "来源",
     "sourceGutenberg": "Gutenberg",
+    "sourceWikipedia": "维基百科",
+    "sourceWikinews": "维基新闻",
     "shortcut": {}
   },
   "settings": {
@@ -777,8 +781,8 @@
     "contactIssues": "<strong>错误报告与功能请求：</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>联系：</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>许可：</strong> AGPL-3.0-or-later。衍生代码的闭源商业使用需要单独的书面许可。详情：https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.4 让朗读文本保持在视野内，为今天的闪卡添加洗牌按钮，在卡片上遮罩德语可分动词（issue #278），删除书籍时显示忙碌指示器，仅在首次启动时询问语言，内置适合阅读障碍的字体，并让发现页专注于 Gutenberg。",
-    "version": "1.1.0-rc.4",
+    "whatsNew": "1.1.0-rc.5 在发现页恢复维基百科和维基新闻（仅移除维基文库），修复阅读器搜索遮挡、书签跳转、TTS高亮漂移和眼睛切换，重新定位洗牌按钮，缩短删除时间并清理发布说明。",
+    "version": "1.1.0-rc.5",
     "tipsEyebrow": "文档",
     "focusHint1": "按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 进入或返回文本",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> 在单词间导航",
@@ -923,6 +927,7 @@
     "backupCreated": "清除数据前已创建备份。",
     "backupRequired": "备份已取消或失败，因此未清除数据。",
     "saveUnavailable": "无法保存更改。请检查可用存储空间并保持 Word Hunter 打开。",
+    "deleteStillRunning": "删除耗时超出预期。操作仍在后台继续。",
     "fileLoaded": "已加载文件：{name}",
     "fileError": "无法读取该文件。",
     "backupTooLarge": "备份过大，无法导入（最大 {mb} MB）。",

@@ -100,12 +100,12 @@ const globallyIdenticalEnglishAllowlist = new Set([
 // that is legitimately identical in German must not hide copied English in
 // Japanese or Chinese.
 const localeSpecificIdenticalEnglishAllowlist = {
-  "de.json": new Set(["app.navAriaLabel", "editBook.tagsLabel", "import.heading", "import.tags", "import.text", "library.archiveFilter", "library.coverAlt", "nav.export", "reader.textLabel", "settings.aiEffortMinimal", "settings.lineNormal", "settings.reviewGraphHeatmap", "settings.wordPanelItems.status", "vocab.exportVisible", "vocab.status", "vocab.thStatus"]),
-  "es.json": new Set(["discover.sortPopular", "reader.bookmarkColor", "settings.lineNormal", "vocab.repetitionsAbbr"]),
-  "fr.json": new Set(["app.navAriaLabel", "discover.source", "editBook.tagsLabel", "help.tipsEyebrow", "languages.la", "library.fragment", "reader.articleLabel", "reader.bookmarkPage", "reader.bookmarkTabTitle", "reader.imageAlt", "reader.noteLabel", "reader.source", "settings.aiEffortMax", "settings.aiEffortMinimal", "settings.lineCompact", "settings.reviewGraphHeatmap", "settings.wordPanelItems.article", "settings.wordPanelItems.image", "settings.wordPanelItems.note", "vocab.exportVisible", "vocab.thActions"]),
-  "it.json": new Set(["library.sourceWikisource"]),
+  "de.json": new Set(["app.navAriaLabel", "discover.sourceWikinews", "discover.sourceWikipedia", "editBook.tagsLabel", "import.heading", "import.tags", "import.text", "library.archiveFilter", "library.coverAlt", "library.sourceWikinews", "library.sourceWikipedia", "nav.export", "reader.textLabel", "settings.aiEffortMinimal", "settings.lineNormal", "settings.reviewGraphHeatmap", "settings.wordPanelItems.status", "vocab.exportVisible", "vocab.status", "vocab.thStatus"]),
+  "es.json": new Set(["discover.sortPopular", "discover.sourceWikipedia", "library.sourceWikipedia", "reader.bookmarkColor", "settings.lineNormal", "vocab.repetitionsAbbr"]),
+  "fr.json": new Set(["app.navAriaLabel", "discover.source", "discover.sourceWikinews", "editBook.tagsLabel", "help.tipsEyebrow", "languages.la", "library.fragment", "library.sourceWikinews", "reader.articleLabel", "reader.bookmarkPage", "reader.bookmarkTabTitle", "reader.imageAlt", "reader.noteLabel", "reader.source", "settings.aiEffortMax", "settings.aiEffortMinimal", "settings.lineCompact", "settings.reviewGraphHeatmap", "settings.wordPanelItems.article", "settings.wordPanelItems.image", "settings.wordPanelItems.note", "vocab.exportVisible", "vocab.thActions"]),
+  "it.json": new Set(["discover.sourceWikipedia", "library.sourceWikipedia"]),
   "ja.json": new Set(["reader.keyEnter"]),
-  "pl.json": new Set(["import.heading", "library.archiveFilter", "library.fragment", "reader.keyEnter", "settings.aiModel", "settings.wordPanelItems.status", "vocab.status", "vocab.thStatus"]),
+  "pl.json": new Set(["discover.sourceWikinews", "discover.sourceWikipedia", "import.heading", "library.archiveFilter", "library.fragment", "library.sourceWikinews", "library.sourceWikipedia", "reader.keyEnter", "settings.aiModel", "settings.wordPanelItems.status", "vocab.status", "vocab.thStatus"]),
   "ru.json": new Set(["reader.keyPageDown", "reader.keyPageUp"]),
   "uk.json": new Set(["reader.keyEnter", "reader.keyPageDown", "reader.keyPageUp"]),
   "zh.json": new Set(["reader.keyPageDown", "reader.keyPageUp"])
