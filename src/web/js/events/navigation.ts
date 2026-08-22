@@ -3,6 +3,7 @@ import { els } from "../dom.js";
 import { setView } from "../render.js";
 import { updatePreferenceValue, applyPreferences, themeLabel } from "../preferences.js";
 import { renderReview } from "../views/vocabulary.js";
+import { shuffleTodayReviewQueue } from "../vocabulary/review-card.js";
 import { showToast } from "../toast.js";
 import { t } from "../i18n.js";
 import { handleGlobalKeys, openReaderView } from "./keyboard/global-keys.js";
@@ -81,6 +82,10 @@ export function bindNavigationEvents() {
   els.reviewReverseToggle?.addEventListener("click", () => {
     state.preferences.reviewReverse = !state.preferences.reviewReverse;
     saveState();
+    renderReview();
+  });
+  els.reviewShuffleToggle?.addEventListener("click", () => {
+    shuffleTodayReviewQueue();
     renderReview();
   });
 }

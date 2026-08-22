@@ -1,0 +1,6 @@
+Word Hunter 1.1.0-rc.4
+
+Reading aloud now keeps the highlighted word in view, flashcards gained a
+shuffle button and mask German separable verbs, deleting books shows a busy
+indicator, the language prompt appears only once, reader fonts include
+dyslexia-friendly options, and Discovery focuses on Gutenberg.

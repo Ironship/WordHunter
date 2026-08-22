@@ -93,7 +93,7 @@ const DUP_GROUP_PIN = 51;
    flat .ocr-progress-card + gloss-free .review-word, radius literals -> tokens,
    toast above export overlay. +~270 B net, pin re-baselined. */
 const CSS_SIZE_PIN = new Map([
-  ["src/web/styles.css", 117000],
+  ["src/web/styles.css", 118500],
   ["src/web/platforms/android-pocket.css", 35000],
   ["src/web/theme.css", 6500]
 ]);

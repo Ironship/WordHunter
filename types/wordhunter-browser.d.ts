@@ -432,6 +432,7 @@ interface WhDomCache {
     reviewChart?: HTMLElement | null;
     reviewReverseLabel?: HTMLElement | null;
     reviewReverseToggle?: HTMLElement | null;
+    reviewShuffleToggle?: HTMLElement | null;
     reviewUpcoming?: HTMLElement | null;
     themeToggle?: HTMLElement | null;
     trackingSummary?: HTMLElement | null;

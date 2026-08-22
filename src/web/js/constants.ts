@@ -45,7 +45,9 @@ export const DEFAULT_SELECTED_WORD_PANEL_ITEMS: readonly WhSelectedWordPanelItem
 export const FONT_STACKS: Record<string, string> = {
   serif: 'Georgia, "Times New Roman", serif',
   sans: '"Segoe UI", Tahoma, Arial, sans-serif',
-  mono: '"JetBrains Mono", "Consolas", monospace'
+  mono: '"JetBrains Mono", "Consolas", monospace',
+  atkinson: '"Atkinson Hyperlegible", Georgia, sans-serif',
+  dyslexic: '"OpenDyslexic", "Atkinson Hyperlegible", Georgia, sans-serif'
 };
 
 export const LINE_HEIGHTS: Record<string, number> = {

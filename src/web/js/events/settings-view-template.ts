@@ -166,6 +166,8 @@ export const SETTINGS_VIEW_HTML = `
                   <option value="serif" data-i18n="settings.fontSerif">Serif (Georgia)</option>
                   <option value="sans" data-i18n="settings.fontSans">Sans-serif (Segoe UI)</option>
                   <option value="mono" data-i18n="settings.fontMono">Monospace (mono)</option>
+                  <option value="atkinson" data-i18n="settings.fontAtkinson">Atkinson Hyperlegible</option>
+                  <option value="dyslexic" data-i18n="settings.fontDyslexic">OpenDyslexic (dyslexia-friendly)</option>
                 </select>
               </label>
               <label class="setting-row">

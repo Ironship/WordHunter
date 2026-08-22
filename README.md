@@ -30,30 +30,35 @@ data.
 ## Download and install
 
 The recommended version for new users is
-**[Word Hunter 1.0.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.10)**.
+**[Word Hunter 1.0.13](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.13)**.
 Choose your platform below. All direct downloads come from the official GitHub
 Release.
 
-Version 1.0.10 adds contextual AI explanations for words and phrases
-(streamed from any OpenAI-compatible endpoint, with optional automatic
-explanations and per-word notes), incremental saves that write only the
-changed records instead of a full snapshot, and UI fixes including disabled
-spellcheck in foreign-language fields. Existing vocabulary migrates
-automatically.
+Version 1.0.13 brings searchable AI model discovery, persistent flashcard
+images on Android, shuffled daily review queues, AI explanations saved into
+word notes, and a round of Android startup and storage reliability fixes.
 
 | Platform | Recommended download | Other supported option |
 | --- | --- | --- |
-| **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.portable.zip) |
-| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/Word.Hunter.Pocket.release.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
-| **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-aarch64.dmg) | Intel Macs and iOS are not supported. |
-| **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/WordHunter-1.0.10-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/word-hunter_1.0.10_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
+| **Windows** | [Installer (`.exe`)](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/Word.Hunter.Setup.exe) | [Portable ZIP](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/Word.Hunter.portable.zip) |
+| **Android** | [Word Hunter Pocket APK](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/Word.Hunter.Pocket.release.apk) | [F-Droid: packaging requested](https://gitlab.com/fdroid/rfp/-/work_items/4109) · Android may ask you to allow installation from your browser or file manager. |
+| **macOS** | [Apple Silicon DMG](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/WordHunter-1.0.13-aarch64.dmg) | Intel Macs and iOS are not supported. |
+| **Linux** | [Flatpak bundle](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/WordHunter.flatpak) | [AppImage](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/WordHunter-1.0.13-x86_64.AppImage) · [DEB](https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.13/word-hunter_1.0.13_amd64.deb) · [Homebrew tap](https://github.com/Ironship/homebrew-wordhunter) |
+
+> [!TIP]
+> **Testing prereleases?** The current release candidate is
+> **[1.1.0-rc.4](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.4)**
+> (read-along view tracking, flashcard shuffle, German separable-verb masking,
+> deletion progress indicator, first-run language prompt fix, dyslexia-friendly
+> reader fonts, Gutenberg-focused Discovery). See
+> `docs/releases/1.1.0-rc.4.md` for details.
 
 > [!NOTE]
 > **F-Droid:** Word Hunter Pocket is not available on F-Droid yet, but a
 > source-built packaging request is open at
 > [fdroid/rfp#4109 (app ID `com.wordhunter.pocket`)](https://gitlab.com/fdroid/rfp/-/work_items/4109) —
-> requested 2026-07-12, upstream status last updated 2026-08-03 (stable 1.0.10,
-> Android versionCode 101001099). Track the request there; the direct APK
+> requested 2026-07-12, upstream status last updated 2026-08-03 (stable 1.0.13,
+> Android versionCode 101001399). Track the request there; the direct APK
 > download above remains the quickest way to install meanwhile.
 
 <details>
@@ -73,11 +78,11 @@ brew install --cask Ironship/wordhunter/wordhunter
 flatpak install --user ./WordHunter.flatpak
 
 # Linux — run a downloaded AppImage
-chmod +x WordHunter-1.0.10-x86_64.AppImage
-./WordHunter-1.0.10-x86_64.AppImage
+chmod +x WordHunter-1.0.13-x86_64.AppImage
+./WordHunter-1.0.13-x86_64.AppImage
 
 # Debian/Ubuntu — install the downloaded DEB
-sudo apt install ./word-hunter_1.0.10_amd64.deb
+sudo apt install ./word-hunter_1.0.13_amd64.deb
 ```
 
 > **Linux system requirement:** WebKitGTK **4.1** (≥ 2.40) — e.g. Ubuntu 22.04+, Debian 12+, Fedora 38+. The DEB declares `libwebkit2gtk-4.1-0` as a dependency; on older distros the app cannot start. For PDF backgrounds and MOBI/AZW imports also install `poppler-utils` and (for MOBI/AZW) Calibre.
@@ -112,10 +117,15 @@ You can start locally and move data later with a ZIP transfer package from the
 
 ## Why Word Hunter
 
-- Read pasted text, PDFs, EPUB files, subtitles, URLs, and built-in books.
+- Read pasted text, PDFs, EPUB files, subtitles, URLs, and public-domain books
+  from Project Gutenberg.
 - Keep vocabulary status, translation, notes, examples, and source context in
   one record.
-- Review with spaced repetition, pronunciation, keyboard shortcuts, and TTS.
+- Review with spaced repetition, pronunciation, keyboard shortcuts, TTS,
+  shuffling for today's queue, and reverse cards.
+- Choose a comfortable reader font, including dyslexia-friendly bundled options
+  (Atkinson Hyperlegible, OpenDyslexic).
+- Follow read-along narration: the word being spoken stays in view.
 - Use OCR and PDF text layers locally in desktop packages.
 - Read and review on Android with the Pocket interface.
 - Move books, images, vocabulary, settings, and progress with explicit ZIP
@@ -131,20 +141,33 @@ You can start locally and move data later with a ZIP transfer package from the
 
 ## Release status
 
-- **Stable:** [1.0.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.10)
-- **Prerelease:** none. Version 1.0.10 is the current stable release.
+- **Stable:** [1.0.13](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.13)
+- **Prerelease:** [1.1.0-rc.4](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.4)
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
 
 - Versions older than `1.0.0` predate the current storage compatibility
   baseline. Export a backup before upgrading.
-- Version 1.0.10 no longer reads or writes old Syncthing folders. To move
+- Older installations no longer read or write legacy Syncthing folders. To move
   data, export a ZIP transfer package on the source device and import it on
   the target.
-- If Android reports an incompatible signature when moving from an early 1.0.7
-  test APK, export a backup before uninstalling.
-  Uninstalling an Android app clears its local app data.
+
+**Android: "App not installed"**
+
+When installing an APK over an existing Word Hunter Pocket fails with
+"App not installed", it is almost always one of two things:
+
+1. **Signature mismatch.** The new APK was signed with a different key than the
+   installed one (for example a CI/debug build over an official release or the
+   other way around). Android refuses cross-signature updates. Export a backup,
+   uninstall, then install the new APK; importing the backup restores your data.
+   Official release APKs are signed with one protected keystore and stay
+   update-compatible with each other.
+2. **Version downgrade.** The downloaded build has a lower `versionCode` than
+   the installed one — for example installing an old 1.0.x APK over a newer
+   prerelease. Install a build that is at least as new as the installed one
+   (release candidates of the same version always sort above it).
 
 </details>
 
@@ -237,7 +260,10 @@ import them through the desktop version (local OCR runtime).
 
 The reader highlights vocabulary by status directly in the text. Clicking a word
 opens the word panel with status buttons, translation, notes, context, dictionary
-actions, TTS, image hints, and in-text review controls.
+actions, TTS, image hints, and in-text review controls. During read-aloud
+playback, the highlighted word is kept inside the viewport so you always see
+what is being spoken. Reader font and size are adjustable; both bundled
+dyslexia-friendly fonts ship with the app and work offline.
 
 <img src="docs/screenshots/pc-reader.png" width="860" alt="Word Hunter desktop reader with highlighted words and word panel">
 
@@ -259,7 +285,10 @@ filtering, editing, exporting, and cleaning vocabulary.
 
 Flashcards use the same vocabulary records as the reader. Word Hunter supports
 spaced repetition, due queues, review history, pronunciation, dictionary
-actions, reverse cards, and rating buttons.
+actions, reverse cards, rating buttons, and one-tap shuffling of today's queue.
+On reverse cards the headword — including German separable verbs such as
+"rief … an" — is masked inside the example sentence so the context stays
+usable without giving the answer away.
 
 <img src="docs/screenshots/pc-flashcards.png" width="860" alt="Word Hunter desktop flashcard review with SRS queue">
 
@@ -350,6 +379,22 @@ It runs `git diff --check`, JSON/i18n parsing, Stylelint, a deterministic
 TypeScript frontend build and type check, frontend tests against `dist/web`, Flatpak
 `cargo-sources.json` drift detection, Rust formatting, Rust tests for the main
 Tauri crate and OCR runner, and blocking `cargo clippy` checks by default.
+
+### Continuous integration
+
+Three GitHub Actions pipelines cover the repository:
+
+| Pipeline | Trigger | Purpose |
+| --- | --- | --- |
+| `validate.yml` | every PR, pushes to `main` / `feat/**` / `release/**`, manual | the core gate (same checks as `scripts/validate.sh`) |
+| `packaging-validation.yml` | PRs, pushes to `main`, manual — path-scoped per job | builds and smoke-tests each store recipe: Snap, Flatpak, AUR, Nix, Scoop, Chocolatey |
+| `artifact-validation.yml` | manual (`Actions → Release artifact validation → Run workflow`) | full release pipeline: signs and validates APK/AAB, Windows installer + portable, macOS DMG, Flatpak, AppImage, DEB, then attaches them to a draft release |
+
+To cut a release: create the release as a **draft** on the target tag, run
+`artifact-validation.yml` with `release_tag=<tag>` (optionally tick
+*Skip the Flatpak build* during Flathub outages). Every platform builds in
+parallel; a single failed platform no longer blocks the others' assets. The
+draft publishes automatically only when all platforms succeed.
 
 ```powershell
 .\scripts\build.bat test         # run shared, desktop, and Android frontend tests
