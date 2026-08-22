@@ -152,24 +152,27 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   return true;
 }
 
-export function removeUserBook(id: string): void {
+// Both removers are awaited by the library delete dialog so it can keep a
+// busy indicator on screen until the durable save (which can take seconds
+// on large stores) settles.
+export async function removeUserBook(id: string): Promise<void> {
   const bookObj = removeUserBookFromActiveProfile(id);
   if (!bookObj) return;
   clearBookTextCache(id);
   forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
-  saveState();
+  await saveState();
   render();
   showToast(t("toast.userBookRemoved"));
 }
 
-export function hideBuiltInBook(id: string): void {
+export async function hideBuiltInBook(id: string): Promise<void> {
   if (!hideBuiltInBookId(id)) return;
   clearBookTextCache(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
-  saveState();
+  await saveState();
   render();
   showToast(t("toast.bookHidden"));
 }

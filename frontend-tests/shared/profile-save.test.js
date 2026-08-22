@@ -259,13 +259,13 @@ describe("profile save payload", () => {
   it("round-trips Discover source through bridge snapshots", () => {
     const payload = buildSavePayload({
       preferences: { learningLanguage: "uk" },
-      discover: { query: "kobzar", source: "wikisource", sort: "newest", level: "B1", page: 2 },
+      discover: { query: "kobzar", source: "gutenberg", sort: "newest", level: "B1", page: 2 },
       profiles: { uk: { vocab: {}, customTexts: [] } }
     });
 
     assert.deepEqual(payload.prefs.__discover, {
       query: "kobzar",
-      source: "wikisource",
+      source: "gutenberg",
       sort: "newest",
       level: "B1",
       page: 2
@@ -274,7 +274,7 @@ describe("profile save payload", () => {
     globalThis.window = { __qtBridge: true, __bridgeState: payload };
     const restored = loadState();
 
-    assert.equal(restored.discover.source, "wikisource");
+    assert.equal(restored.discover.source, "gutenberg");
     assert.equal(restored.discover.query, "kobzar");
     assert.equal(restored.discover.page, 2);
     assert.equal(Object.hasOwn(restored.preferences, "__discover"), false);

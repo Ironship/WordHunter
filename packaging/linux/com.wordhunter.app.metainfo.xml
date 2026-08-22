@@ -37,6 +37,9 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.0~rc.4" date="2026-08-21" type="development">
+      <url>https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.4</url>
+    </release>
     <release version="1.1.0~rc.3" date="2026-08-21" type="development">
       <url>https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.3</url>
     </release>

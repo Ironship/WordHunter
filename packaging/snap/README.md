@@ -56,7 +56,7 @@ connections.
 
 ## CI validation
 
-`.github/workflows/snap-validation.yml` is build-only. On an Ubuntu 24.04
+`.github/workflows/packaging-validation.yml` (job `snap`) is build-only. On an Ubuntu 24.04
 GitHub-hosted runner it:
 
 1. builds the Snap with the official Snapcraft build action, pinned to its

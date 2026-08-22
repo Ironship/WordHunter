@@ -96,6 +96,61 @@ describe("learning colors", () => {
       window.__qtBridge = false;
     }
   });
+
+  it("migrates removed wiki discovery sources to gutenberg on load", () => {
+    for (const legacy of ["wikipedia", "wikinews", "wikisource"]) {
+      const raw = createDefaultState();
+      raw.discover.source = legacy;
+      assert.equal(normalizeState(raw).discover.source, "gutenberg");
+    }
+    const raw = createDefaultState();
+    assert.equal(normalizeState(raw).discover.source, "gutenberg");
+  });
+
+  it("keeps a confirmed language onboarding flag when applying older sync snapshots", () => {
+    const original = structuredClone(state._raw || state);
+    window.__qtBridge = true;
+    try {
+      // The user confirmed the language dialog while the store snapshot was
+      // still loading; the late snapshot must not flip the flag back to false
+      // and re-show the dialog on every launch.
+      state.preferences.languageOnboardingDone = true;
+
+      const remotePrefs = { ...original.preferences };
+      delete remotePrefs.languageOnboardingDone;
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs: remotePrefs,
+        vocab: structuredClone(original.profiles),
+        texts: [],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      assert.equal(state.preferences.languageOnboardingDone, true);
+
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs: { ...remotePrefs, languageOnboardingDone: false },
+        vocab: structuredClone(original.profiles),
+        texts: [],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      assert.equal(state.preferences.languageOnboardingDone, true);
+
+      // A snapshot that itself carries the confirmation must not regress either.
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs: { ...original.preferences, languageOnboardingDone: true },
+        vocab: structuredClone(original.profiles),
+        texts: [],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      assert.equal(state.preferences.languageOnboardingDone, true);
+    } finally {
+      replaceState(original, { save: false });
+      delete window.__bridgeState;
+      window.__qtBridge = false;
+    }
+  });
 });
 
 describe("in-text SRS grading", () => {
@@ -181,6 +236,63 @@ describe("in-text SRS grading", () => {
       renderReview();
       assert.match(els.reviewCard.innerHTML, /„_____ arrive\.”/i);
       assert.doesNotMatch(els.reviewCard.innerHTML, /L['’]_____/i);
+    } finally {
+      hideReviewAnswer();
+      els.reviewCard = previousCard;
+      state.vocab = previousVocab;
+      state.preferences.reviewReverse = previousReverse;
+    }
+  });
+
+  it("masks German separable verbs across the clause on reverse cards (issue #278)", () => {
+    const previousCard = els.reviewCard;
+    const previousVocab = state.vocab;
+    const previousReverse = state.preferences.reviewReverse;
+    els.reviewCard = { innerHTML: "" };
+    state.vocab = {
+      "rufe an": {
+        status: "learning",
+        translation: "to call",
+        examples: ["Ich rufe dich morgen an."],
+        nextDate: "2000-01-01"
+      }
+    };
+    state.reviewIndex = 0;
+
+    try {
+      hideReviewAnswer();
+      state.preferences.reviewReverse = true;
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /„Ich _____ dich morgen _____\.”/);
+      // Only the sentence must be masked; toolbar buttons keep the headword
+      // for dictionary/TTS actions.
+      assert.doesNotMatch(els.reviewCard.innerHTML, /„[^”]*rufe/i);
+
+      // Past-tense forms are stored the same two-part way:
+      state.vocab = {
+        "rief an": {
+          status: "learning",
+          translation: "to call",
+          examples: ["Gestern rief ich dich spät an."],
+          nextDate: "2000-01-01"
+        }
+      };
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /„Gestern _____ ich dich spät _____\.”/);
+      assert.doesNotMatch(els.reviewCard.innerHTML, /„[^”]*rief/i);
+
+      // Words between the parts stay visible; a bare prefix inside another
+      // word (Einkaufszentrum) is not treated as the verb prefix.
+      state.vocab = {
+        "kauf ein": {
+          status: "learning",
+          translation: "to buy",
+          examples: ["Wir kaufen heute im neuen Einkaufszentrum ein."],
+          nextDate: "2000-01-01"
+        }
+      };
+      renderReview();
+      assert.match(els.reviewCard.innerHTML, /„Wir _____ heute im neuen Einkaufszentrum _____\.”/);
     } finally {
       hideReviewAnswer();
       els.reviewCard = previousCard;

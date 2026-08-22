@@ -182,7 +182,7 @@ export function normalizeSearchVariants(value: unknown): string[] {
   return Array.from(new Set([raw, german, ascii]));
 }
 
-const GERMAN_SEPARABLE_PREFIXES = new Set([
+export const GERMAN_SEPARABLE_PREFIXES = new Set([
   "ab", "an", "auf", "aus", "bei", "ein", "fest", "her", "herein", "hin", "hinaus",
   "los", "mit", "nach", "vor", "vorbei", "weg", "weiter", "zu", "zurück", "zusammen",
   "dran", "drauf", "raus", "rein", "rüber", "runter"

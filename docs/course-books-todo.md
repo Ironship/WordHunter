@@ -1,4 +1,6 @@
-# A1-B2 Graded Readers
+# Course books roadmap
+
+Status checklist for the built-in A1–B2 graded readers.
 
 ## Goal
 

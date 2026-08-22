@@ -62,6 +62,7 @@ export function cacheElements() {
   els.reviewUpcoming = byId("review-upcoming");
   els.reviewReverseToggle = byId("review-reverse-toggle");
   els.reviewReverseLabel = byId("review-reverse-label");
+  els.reviewShuffleToggle = byId("review-shuffle-toggle");
 
   els.exportAnkiTsv = byId("export-anki-tsv");
   els.importAnkiTsv = byId("import-anki-tsv");

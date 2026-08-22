@@ -18,6 +18,27 @@ let androidTtsBroken = false;
 const MAX_TTS_SEGMENT_LENGTH = 500;
 const TTS_WORD_CLASS = "tts-current-word";
 const TTS_BACKGROUND_RESUME_WINDOW_MS = 60_000;
+// While reading aloud, the highlighted word must never leave the viewport
+// unnoticed (boundary events alone miss manual scrolls and layout shifts).
+const TTS_VISIBILITY_WATCHDOG_MS = 800;
+const TTS_RESYNC_LOOKAHEAD_RUNS = 3;
+const TTS_RESYNC_WINDOW_TOKENS = 80;
+
+let ttsVisibilityWatchdog = 0;
+
+function startTtsVisibilityWatchdog(): void {
+  if (ttsVisibilityWatchdog || typeof window.setInterval !== "function") return;
+  ttsVisibilityWatchdog = window.setInterval(() => {
+    if (!speaking || !currentTtsWordToken) return;
+    keepReaderTokenVisible(currentTtsWordToken);
+  }, TTS_VISIBILITY_WATCHDOG_MS);
+}
+
+function stopTtsVisibilityWatchdog(): void {
+  if (!ttsVisibilityWatchdog) return;
+  if (typeof window.clearInterval === "function") window.clearInterval(ttsVisibilityWatchdog);
+  ttsVisibilityWatchdog = 0;
+}
 
 interface TtsPausedChain {
   sentences: string[];
@@ -286,6 +307,7 @@ export function stopSpeaking(): void {
   }
   clearHighlights();
   endAndroidTtsSession();
+  stopTtsVisibilityWatchdog();
   if (onFinishCallback) {
     onFinishCallback();
     onFinishCallback = null;
@@ -312,6 +334,7 @@ export async function speakText(
   );
   
   speaking = true;
+  if (tracker) startTtsVisibilityWatchdog();
 
   if (!androidTtsBroken && getAndroidTtsBridge()) {
     const ready = await waitForAndroidTtsReady();
@@ -372,6 +395,7 @@ if (typeof document !== "undefined") {
     if (!container && chain.index > 0) return;
     onFinishCallback = chain.onFinish;
     speaking = true;
+    if (chain.tracker) startTtsVisibilityWatchdog();
     readNextSentenceAndroid(chain.sentences, chain.index, container, chain.tracker);
   });
 }
@@ -764,6 +788,29 @@ function highlightNextTtsWord(tracker: TtsWordTracker, word: string): void {
   if (!target) return;
   for (let index = tracker.tokenIndex; index < tracker.tokens.length; index++) {
     if (tracker.tokens[index].word !== target) continue;
+    setCurrentTtsWordToken(tracker.tokens[index].element);
+    tracker.tokenIndex = index + 1;
+    return;
+  }
+  resyncTtsHighlight(tracker);
+}
+
+// A spoken word can fail to match any DOM token (numbers, abbreviations,
+// tokenizer drift). Without recovery the highlight freezes somewhere
+// off-screen while the audio keeps going and nothing scrolls anymore.
+// Look ahead at the upcoming words of the current sentence and jump to the
+// first token matching one of them so tracking resumes.
+function resyncTtsHighlight(tracker: TtsWordTracker): void {
+  const upcoming: string[] = [];
+  for (const run of tracker.sentenceRuns) {
+    const normalized = normalizeWord(run.word);
+    if (normalized && !upcoming.includes(normalized)) upcoming.push(normalized);
+    if (upcoming.length >= TTS_RESYNC_LOOKAHEAD_RUNS) break;
+  }
+  if (!upcoming.length) return;
+  const windowEnd = Math.min(tracker.tokens.length, tracker.tokenIndex + TTS_RESYNC_WINDOW_TOKENS);
+  for (let index = tracker.tokenIndex + 1; index < windowEnd; index++) {
+    if (!upcoming.includes(tracker.tokens[index].word)) continue;
     setCurrentTtsWordToken(tracker.tokens[index].element);
     tracker.tokenIndex = index + 1;
     return;
