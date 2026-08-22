@@ -14,8 +14,6 @@ import { t as translate } from "../i18n.js";
 import { renderLibrary } from "../views/library.js";
 import { importCustomText } from "./custom-text.js";
 import { addUserBookToActiveProfile, findCustomText, hasUserBook } from "./profile-library.js";
-import { mediaWikiBookId } from "../discover/mediawiki.js";
-import type { MediaWikiSource } from "../discover/mediawiki.js";
 
 const t = translate as (key: string, vars?: WhRecord) => string;
 
@@ -129,11 +127,7 @@ async function fetchTextWithFallback(url: string): Promise<string> {
 export async function addUserBook(result: unknown, { silent }: { silent?: boolean } = {}): Promise<boolean> {
   const book = asRecord(result);
   if (!book) throw new TypeError("Discover result must be an object");
-  const source = stringProperty(book, "source");
-  const isGutenberg = !source || source === "gutenberg";
   const title = cleanCatalogTitle(book.title) || t("library.untitled");
-
-  if (!isGutenberg) return addMediaWikiBook(book, title);
 
   const gutenbergId = String(book.id);
   const id = `user-${gutenbergId}`;
@@ -165,66 +159,4 @@ export async function addUserBook(result: unknown, { silent }: { silent?: boolea
   loadBookText(newBook).catch(() => {});
   renderLibrary();
   return true;
-}
-
-async function addMediaWikiBook(result: UnknownRecord, title: string): Promise<boolean> {
-  const languages = Array.isArray(result.languages) ? result.languages : [];
-  const firstLanguage = typeof languages[0] === "string" ? languages[0] : "";
-  const apiLang = stringProperty(result, "apiLang") || firstLanguage || "en";
-  const domain = stringProperty(result, "domain");
-  const mediaWikiId = String(result.mwId);
-  const rawSource = stringProperty(result, "source");
-  const mediaWikiSource: MediaWikiSource = rawSource === "wikinews" || rawSource === "wikisource"
-    ? rawSource
-    : "wikipedia";
-  const resultId = mediaWikiBookId(
-    mediaWikiSource,
-    apiLang,
-    mediaWikiId,
-    state.preferences.learningLanguage
-  );
-  const sourceUrl = `https://${apiLang}.${domain}/?curid=${mediaWikiId}`;
-  const exists = state.customTexts.some((book) => String(book.id) === resultId || book.sourceUrl === sourceUrl)
-    || state.userBooks.some((book) => String(book.id) === resultId || book.sourceUrl === sourceUrl);
-  if (exists) return false;
-
-  showToast(t("toast.fetchingTxt", { title }));
-  try {
-    const apiUrl = `https://${apiLang}.${domain}/w/api.php?action=query&prop=extracts&explaintext=1&pageids=${mediaWikiId}&format=json&origin=*`;
-    const { fetchWithTimeout } = await import("../request.js");
-    const res = await fetchWithTimeout(apiUrl, {}, 20_000);
-    const data: unknown = await res.json();
-    const dataRecord = asRecord(data);
-    const query = asRecord(dataRecord?.query);
-    const pages = asRecord(query?.pages);
-    const page = asRecord(pages?.[mediaWikiId]);
-    const extract = page ? stringProperty(page, "extract") : "";
-    if (!extract) throw new Error("No text found");
-
-    const sourceName = mediaWikiSourceName(result.source);
-
-    const importedId = await importCustomText(title, extract, {
-      id: resultId,
-      author: sourceName,
-      source: sourceName,
-      sourceUrl,
-      level: "custom",
-      coverDataUrl: stringProperty(result, "coverDataUrl")
-    }, false);
-    if (!importedId) return false;
-
-    const { renderDiscover } = await import("../views/discover.js");
-    renderDiscover();
-    return true;
-  } catch (e) {
-    console.warn(e);
-    showToast(t("toast.fetchTxtFailed"));
-    return false;
-  }
-}
-
-function mediaWikiSourceName(source: unknown): string {
-  if (source === "wikinews") return t("discover.sourceWikinews");
-  if (source === "wikisource") return t("discover.sourceWikisource");
-  return t("discover.sourceWikipedia");
 }

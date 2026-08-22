@@ -233,11 +233,29 @@ function reconcileLocaleAfterStateReplace(): Promise<void> {
   });
 }
 
+let languageOnboardingPresented = false;
 function showLanguageOnboardingIfNeeded() {
-  if (!isAndroidPlatform() || state.preferences.languageOnboardingDone === true) return;
+  if (!isAndroidPlatform()) return;
+  // The persisted languageOnboardingDone flag lives in the bridge store, but
+  // boot reaches this point before /__store/load resolves. Deciding now would
+  // read the default (false) and re-show the dialog on every launch/reload
+  // even after the user confirmed it once — so defer until the snapshot has
+  // been applied (or failed).
+  if (window.__bridgeStatePromise) {
+    void window.__bridgeStatePromise
+      .then(() => showLanguageOnboardingIfNeeded())
+      .catch(() => presentLanguageOnboarding());
+    return;
+  }
+  presentLanguageOnboarding();
+}
+
+function presentLanguageOnboarding() {
+  if (languageOnboardingPresented || state.preferences.languageOnboardingDone === true) return;
   const dialog = document.getElementById("language-onboarding-dialog");
   const doneButton = document.getElementById("language-onboarding-done");
   if (!(dialog instanceof HTMLDialogElement) || !(doneButton instanceof HTMLButtonElement)) return;
+  languageOnboardingPresented = true;
   // The renderer seeds the selects at boot; re-sync in case the bridge
   // snapshot changed the preferences between boot and first show.
   const localeSelect = document.getElementById("pref-locale-onboarding") as HTMLSelectElement | null;

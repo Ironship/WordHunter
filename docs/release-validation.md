@@ -1,4 +1,6 @@
-# Release Validation
+# Release validation
+
+How the repository gate, packaging pipelines, and release artifact validation fit together.
 
 ## Validation Tiers
 
@@ -92,21 +94,22 @@ the draft does not rebuild the same artifacts a second time.
 Store-specific recipes have independent GitHub Actions checks so their tools
 and target operating systems stay outside the normal repository gate:
 
-- `.github/workflows/package-store-validation.yml` validates the Chocolatey
-  package lifecycle on a disposable Windows runner;
-- `.github/workflows/snap-validation.yml` builds a strict Snap from the pinned
-  stable DEB, inspects its payload, installs it only on the disposable Ubuntu
-  runner, and performs a GUI smoke test;
-- `.github/workflows/aur-validation.yml` builds `wordhunter-bin` from the pinned
-  stable AppImage in an Arch Linux container, inspects and installs the package,
-  exercises its bundled tools and GUI, and removes it again; and
-- `.github/workflows/nix-validation.yml` builds the pinned AppImage wrapper with
-  an exact `nixpkgs` revision, validates desktop metadata, and exercises the OCR
-  helper and GUI on a disposable
-  runner.
+`.github/workflows/packaging-validation.yml` consolidates every store recipe
+into path-scoped jobs that run only when their own area changes:
 
-Each store workflow is path-scoped to its own recipe. Prerelease version bumps
-do not validate or rewrite stable Scoop and Chocolatey manifests.
+- job `chocolatey` — package lifecycle on a disposable Windows runner;
+- job `scoop` — manifest and portable-archive checks;
+- job `snap` — builds a strict Snap from the pinned stable DEB, inspects its
+  payload, installs it on the disposable Ubuntu runner, and performs a GUI
+  smoke test;
+- job `aur` — builds `wordhunter-bin` from the pinned stable AppImage in an
+  Arch Linux container, inspects, installs, exercises tools and GUI, removes;
+- job `nix` — builds the pinned AppImage wrapper at an exact `nixpkgs`
+  revision, validates desktop metadata, and exercises OCR helper + GUI;
+- job `flatpak` — full Flatpak build, inspection, and GUI smoke test.
+
+A manual dispatch always runs every job. Prerelease version bumps do not
+validate or rewrite stable Scoop and Chocolatey manifests.
 
 The Snap, AUR, and Nix workflows are validation-only. They do not read store
 credentials, reserve package names, publish releases, or claim that Word Hunter

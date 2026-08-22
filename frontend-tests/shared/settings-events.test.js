@@ -158,7 +158,7 @@ describe("settings bridge snapshots", () => {
       readerPages: { "de-custom-local": 4 },
       readerScrolls: { "de-custom-local": { scrollTop: 120, readerPage: 4 } },
       filters: { ...createDefaultState().filters, libraryQuery: "local" },
-      discover: { query: "kept", source: "wikisource", sort: "newest", level: "B1", page: 3 }
+      discover: { query: "kept", source: "gutenberg", sort: "newest", level: "B1", page: 3 }
     });
 
     applyBridgeSnapshot({

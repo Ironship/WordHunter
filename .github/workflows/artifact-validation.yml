@@ -7,6 +7,11 @@ on:
         description: Existing draft release tag to receive validated artifacts
         required: false
         type: string
+      skip_flatpak:
+        description: Skip the Flatpak build (use when Flathub is having an outage)
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -272,13 +277,25 @@ jobs:
   flatpak:
     name: Flatpak bundle and installed file list
     needs: frontend-validation
-    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' }}
+    # The Flatpak job is deliberately non-blocking for the release: when it
+    # fails (Flathub outages are the usual cause), publish-release still
+    # attaches every other platform's assets to the draft.
+    if: ${{ !cancelled() && needs.frontend-validation.result == 'success' && inputs.skip_flatpak != true }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Verify Flatpak cargo sources are up to date
+        run: ./scripts/update-flatpak-cargo-sources.sh --check
+
+      - name: AppStream metainfo must match the packaging template
+        run: |
+          set -euo pipefail
+          diff -u packaging/linux/com.wordhunter.app.metainfo.xml \
+            flatpak/com.wordhunter.app.metainfo.xml
 
       - name: Set up Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -293,7 +310,25 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Build frontend, then build and inspect Flatpak bundle
-        run: ./scripts/build-flatpak.sh
+        # Flathub's CDN intermittently answers HTTP 404 while pulling runtime
+        # extensions (org.freedesktop.Sdk.Extension.rust-stable//25.08 was the
+        # 1.1.0-rc.4 case). Retry the full recipe before giving up so a
+        # transient CDN hiccup does not fail the release.
+        run: |
+          attempt=1
+          while :; do
+            if ./scripts/build-flatpak.sh; then
+              exit 0
+            fi
+            status=$?
+            if [ "$attempt" -ge 3 ]; then
+              echo "::error::Flatpak build failed $attempt times (last exit $status)." >&2
+              exit "$status"
+            fi
+            echo "::warning::Flatpak build attempt $attempt failed (exit $status); retrying in 60 s."
+            sleep 60
+            attempt=$((attempt + 1))
+          done
 
       - name: Reinspect Flatpak bundle at the CI boundary
         run: node scripts/inspect-artifact.mjs flatpak outputs/WordHunter.flatpak
@@ -541,7 +576,10 @@ jobs:
 
   publish-release:
     name: Attach validated artifacts to draft release
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' }}
+    # Runs when at least one platform job succeeded, so a single failing
+    # platform (e.g. Flatpak during a Flathub outage) can no longer block the
+    # other platforms' assets from reaching the draft release.
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.release_tag != '' && contains(needs.*.result, 'success') }}
     needs: [android, windows, macos, flatpak, linux-native, linux-native-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -556,22 +594,37 @@ jobs:
           path: release-assets
           merge-multiple: true
 
-      - name: Require the complete release asset set
-        env:
-          LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
-          MACOS_VERSION: ${{ needs.macos.outputs.version }}
+      - name: Select assets that actually built
         run: |
-          for asset in \
-            Word.Hunter.Pocket.release.apk \
-            Word.Hunter.Pocket.release.aab \
-            Word.Hunter.portable.zip \
-            Word.Hunter.Setup.exe \
-            WordHunter-${MACOS_VERSION}-aarch64.dmg \
-            WordHunter.flatpak \
-            WordHunter-${LINUX_VERSION}-x86_64.AppImage \
-            word-hunter_${LINUX_VERSION}_amd64.deb; do
-            test -f "release-assets/$asset"
-          done
+          set -euo pipefail
+          shopt -s nullglob
+          assets=(release-assets/*)
+          if [ "${#assets[@]}" -eq 0 ]; then
+            echo "::error::No validated artifacts were produced by any platform." >&2
+            exit 1
+          fi
+
+          # An asset whose platform job succeeded MUST be present — a missing
+          # file there means an upload step lied and the release would be
+          # silently incomplete. Assets from failed/skipped platforms are
+          # simply absent and skipped.
+          require() {
+            if [ "$1" = "success" ] && [ ! -f "release-assets/$2" ]; then
+              echo "::error::Platform succeeded but its required asset is missing: $2" >&2
+              exit 1
+            fi
+          }
+          require "${{ needs.android.result }}" "Word.Hunter.Pocket.release.apk"
+          require "${{ needs.android.result }}" "Word.Hunter.Pocket.release.aab"
+          require "${{ needs.windows.result }}" "Word.Hunter.portable.zip"
+          require "${{ needs.windows.result }}" "Word.Hunter.Setup.exe"
+          require "${{ needs.macos.result }}" "WordHunter-${{ needs.macos.outputs.version }}-aarch64.dmg"
+          require "${{ needs.flatpak.result }}" "WordHunter.flatpak"
+          require "${{ needs.linux-native.result }}" "WordHunter-${{ needs.linux-native.outputs.version }}-x86_64.AppImage"
+          require "${{ needs.linux-native.result }}" "word-hunter_${{ needs.linux-native.outputs.version }}_amd64.deb"
+
+          echo "Attaching ${#assets[@]} asset(s):"
+          printf '  %s\n' "${assets[@]##*/}"
 
       - name: Revalidate the draft release revision
         env:
@@ -592,16 +645,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ inputs.release_tag }}
-          LINUX_VERSION: ${{ needs.linux-native.outputs.version }}
-          MACOS_VERSION: ${{ needs.macos.outputs.version }}
         run: |
-          gh release upload "$RELEASE_TAG" \
-            release-assets/Word.Hunter.Pocket.release.apk \
-            release-assets/Word.Hunter.Pocket.release.aab \
-            release-assets/Word.Hunter.portable.zip \
-            release-assets/Word.Hunter.Setup.exe \
-            "release-assets/WordHunter-${MACOS_VERSION}-aarch64.dmg" \
-            release-assets/WordHunter.flatpak \
-            "release-assets/WordHunter-${LINUX_VERSION}-x86_64.AppImage" \
-            "release-assets/word-hunter_${LINUX_VERSION}_amd64.deb" \
-            --clobber
+          shopt -s nullglob
+          assets=(release-assets/*)
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+
+      - name: Publish the draft when every platform succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          results=(
+            "${{ needs.android.result }}"
+            "${{ needs.windows.result }}"
+            "${{ needs.macos.result }}"
+            "${{ needs.flatpak.result }}"
+            "${{ needs.linux-native.result }}"
+            "${{ needs.linux-native-runtime.result }}"
+          )
+          partial=false
+          for result in "${results[@]}"; do
+            [ "$result" = "success" ] || partial=true
+          done
+          if [ "$partial" = false ]; then
+            gh release edit "$RELEASE_TAG" --draft=false
+            echo "All platforms succeeded — release published."
+          else
+            echo "::warning::Partial success: the release stays DRAFT with the assets built so far."
+            echo "::warning::Fix the failed platform(s), re-run failed jobs (assets merge via --clobber), then publish manually or re-dispatch this workflow."
+          fi

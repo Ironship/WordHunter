@@ -23,7 +23,7 @@ Because this expression wraps upstream native binaries, its metadata declares
 
 ## CI validation
 
-`.github/workflows/nix-validation.yml` installs Nix only on a disposable GitHub
+`.github/workflows/packaging-validation.yml` (job `nix`) installs Nix only on a disposable GitHub
 Actions runner. It pins both the installer action and the exact `nixpkgs`
 revision used for evaluation and building. The workflow:
 

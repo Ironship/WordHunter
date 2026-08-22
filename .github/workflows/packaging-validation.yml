@@ -1,0 +1,926 @@
+# Packaging recipe validation (Snap, Flatpak, AUR, Nixpkg, Scoop, Chocolatey).
+#
+# One consolidated pipeline replaces the former snap-/flatpak-/aur-/nix-/
+# package-store-validation workflows. Each job runs only when its own area
+# changed (see the `changes` job); a manual dispatch always runs everything.
+
+name: Validate packaging recipes
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packaging-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed packaging areas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      flatpak: ${{ steps.set.outputs.flatpak }}
+      snap: ${{ steps.set.outputs.snap }}
+      aur: ${{ steps.set.outputs.aur }}
+      nix: ${{ steps.set.outputs.nix }}
+      stores: ${{ steps.set.outputs.stores }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed areas
+        id: set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BEFORE_IS_ZEROS: ${{ startsWith(github.event.before, '0000000') }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$BEFORE_IS_ZEROS" = "true" ] || [ -z "$BASE_SHA" ]; then
+            echo "::notice::Full validation (dispatch or unknown base)."
+            for area in flatpak snap aur nix stores; do
+              echo "$area=true" >>"$GITHUB_OUTPUT"
+            done
+            exit 0
+          fi
+          files="$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")"
+          printf '%s\n' "$files" | sed 's/^/changed: /' >&2 || true
+          match() { echo "$files" | grep -E -q "$1" && echo true || echo false; }
+          {
+            echo "flatpak=$(match '^(com\.wordhunter\.app\.yml$|flatpak/|packaging/linux/|scripts/build-flatpak\.sh$|scripts/inspect-artifact\.mjs$|scripts/update-flatpak-cargo-sources\.sh$|src-tauri/Cargo\.lock$|src-tauri/ocr-runner/Cargo\.lock$|src-tauri/tauri\.conf\.json$|\.github/workflows/packaging-validation\.yml$)')"
+            echo "snap=$(match '^(snap/|packaging/snap/|src-tauri/tauri\.conf\.json$|\.github/workflows/packaging-validation\.yml$)')"
+            echo "aur=$(match '^(packaging/aur/|\.github/workflows/packaging-validation\.yml$)')"
+            echo "nix=$(match '^(packaging/nix/|\.github/workflows/packaging-validation\.yml$)')"
+            echo "stores=$(match '^(packaging/(scoop|chocolatey)/|\.github/workflows/packaging-validation\.yml$)')"
+          } >>"$GITHUB_OUTPUT"
+
+  flatpak:
+    name: Build, inspect, and smoke-test
+    needs: changes
+    if: ${{ needs.changes.outputs.flatpak == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Verify Flatpak cargo sources are up to date
+        run: ./scripts/update-flatpak-cargo-sources.sh --check
+
+      - name: AppStream metainfo must match the packaging template
+        run: |
+          set -euo pipefail
+          diff -u packaging/linux/com.wordhunter.app.metainfo.xml \
+            flatpak/com.wordhunter.app.metainfo.xml
+
+      - name: Set up Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Flatpak build tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends elfutils flatpak flatpak-builder ostree xvfb
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Build frontend, then build and inspect Flatpak bundle
+        run: ./scripts/build-flatpak.sh
+
+      - name: Reinspect Flatpak bundle at the CI boundary
+        run: node scripts/inspect-artifact.mjs flatpak outputs/WordHunter.flatpak
+
+      - name: Smoke-test Flatpak bundle under Xvfb
+        run: |
+          set -Eeuo pipefail
+          flatpak install --user --noninteractive -y outputs/WordHunter.flatpak
+          set +e
+          GDK_DEBUG=nogl \
+          WEBKIT_DISABLE_COMPOSITING_MODE=1 \
+            xvfb-run -a dbus-run-session -- \
+            timeout --signal=TERM --kill-after=5s 20s \
+            flatpak run --user com.wordhunter.app \
+            >"$RUNNER_TEMP/word-hunter-flatpak-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-flatpak-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi
+
+      - name: Upload validated Flatpak bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: validated-flatpak
+          path: outputs/WordHunter.flatpak
+          if-no-files-found: error
+
+  snap:
+    name: Build, inspect, and smoke-test
+    needs: changes
+    if: ${{ needs.changes.outputs.snap == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Read and validate the application version
+        id: app_version
+        run: |
+          set -Eeuo pipefail
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          test -n "$version"
+          grep -Fx "version: '$version'" snap/snapcraft.yaml
+          grep -Fq "/WordHunter${version}/word-hunter_${version}_amd64.deb" snap/snapcraft.yaml
+          echo "version=$version" >>"$GITHUB_OUTPUT"
+
+      - name: Verify the release asset checksum
+        env:
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          asset_name="word-hunter_${APP_VERSION}_amd64.deb"
+          expected="$(sed -nE 's/^    source-checksum: sha256\/([0-9a-f]{64})$/sha256:\1/p' snap/snapcraft.yaml)"
+          test -n "$expected"
+          actual="$(curl --fail --location --retry 3 \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/Ironship/WordHunter/releases/tags/WordHunter${APP_VERSION}" \
+            | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { const name=process.argv[1]; const asset=JSON.parse(input).assets.find(item => item.name === name); if (!asset?.digest) process.exit(1); process.stdout.write(asset.digest); });' \
+              "$asset_name")"
+          test "$actual" = "$expected"
+
+      - name: Build Snap
+        id: snapcraft
+        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1
+        with:
+          build-info: true
+          snapcraft-channel: 9.x/stable
+
+      - name: Upload build-only artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: word-hunter-snap-${{ github.sha }}
+          path: ${{ steps.snapcraft.outputs.snap }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Install inspection and smoke-test tools
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes \
+            squashfs-tools \
+            xvfb
+
+      - name: Inspect Snap payload
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+          APP_VERSION: ${{ steps.app_version.outputs.version }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "Snap payload inspection failed at line $LINENO: $BASH_COMMAND" >&2' ERR
+          test -f "$SNAP_PATH"
+
+          root="$RUNNER_TEMP/word-hunter-snap-root"
+          rm -rf "$root"
+          unsquashfs -no-progress -d "$root" "$SNAP_PATH"
+
+          test -x "$root/usr/bin/word-hunter-rustified"
+          test -x "$root/usr/bin/dbus-run-session"
+          test -r "$root/usr/share/dbus-1/session.conf"
+          test -f "$root/usr/share/applications/word-hunter.desktop"
+          test -f "$root/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
+          test -f "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          test -f "$root/snap/manifest.yaml"
+          test -f "$root/snap/snapcraft.yaml"
+          test -x "$root/snap/command-chain/gpu-2404-wrapper"
+          test -x "$root/snap/command-chain/desktop-launch"
+          test -x "$root/usr/lib/Word Hunter/ocr-runtime/bin/wordhunter-paddleocr"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libpdfium.so"
+          test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libwebgpu_dawn.so"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/libEGL_mesa.so.0.0.0"
+          test ! -e "$root/usr/lib/x86_64-linux-gnu/dri/swrast_dri.so"
+
+          model_count="$(find "$root/usr/lib/Word Hunter/ocr-runtime/models" \
+            -maxdepth 1 -type f -name '*.onnx' -print | wc -l)"
+          test "$model_count" -ge 3
+
+          grep -Fx 'Exec=word-hunter' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fx 'Icon=${SNAP}/usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png' \
+            "$root/usr/share/applications/word-hunter.desktop"
+          grep -Fq '<launchable type="desktop-id">word-hunter.desktop</launchable>' \
+            "$root/usr/share/metainfo/com.wordhunter.app.metainfo.xml"
+          grep -Fx 'name: word-hunter' "$root/meta/snap.yaml"
+          actual_version="$(sed -nE "s/^version: ['\"]?([^'\"]+)['\"]?$/\1/p" "$root/meta/snap.yaml")"
+          test "$actual_version" = "$APP_VERSION"
+          grep -Fx 'base: core24' "$root/meta/snap.yaml"
+          grep -Fx 'confinement: strict' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: gnome-46-2404' "$root/meta/snap.yaml"
+          grep -Fq 'default-provider: mesa-2404' "$root/meta/snap.yaml"
+          grep -Fq 'snap/command-chain/gpu-2404-wrapper' "$root/meta/snap.yaml"
+          grep -Fq 'webkit2gtk-4.1' "$root/meta/snap.yaml"
+
+      - name: Smoke-test strict Snap
+        env:
+          SNAP_PATH: ${{ steps.snapcraft.outputs.snap }}
+        run: |
+          set -Eeuo pipefail
+          sudo snap install --dangerous "$SNAP_PATH"
+          snap list word-hunter
+          snap connections word-hunter
+          set +e
+          # GitHub-hosted runners live in hosted-compute-agent.service. Enter
+          # the confined app environment before creating the private D-Bus
+          # session, otherwise snapd tries to resolve the runner through that
+          # private bus and rejects its host service cgroup. The CI-only bus
+          # keeps the staged session policy but must not load host service or
+          # local-override directories that strict confinement cannot read.
+          xvfb-run -a \
+            timeout --signal=TERM --kill-after=5s 20s \
+            snap run --shell word-hunter -c \
+            'set -Eeuo pipefail
+            session_config="$SNAP_USER_DATA/dbus-session-ci.conf"
+            sed \
+              -e "/<standard_session_servicedirs/d" \
+              -e "/<include/d" \
+              -e "/<\/busconfig>/i\  <apparmor mode=\"disabled\"/>" \
+              "$SNAP/usr/share/dbus-1/session.conf" >"$session_config"
+            test -s "$session_config"
+            ! grep -Fq "/etc/dbus-1" "$session_config"
+            ! grep -Fq "<standard_session_servicedirs" "$session_config"
+            ! grep -Fq "<include" "$session_config"
+            grep -Fq "<apparmor mode=\"disabled\"/>" "$session_config"
+            export GDK_DEBUG=nogl
+            export WEBKIT_DISABLE_COMPOSITING_MODE=1
+            export WEBKIT_DISABLE_DMABUF_RENDERER=1
+            exec "$SNAP/usr/bin/dbus-run-session" --config-file="$session_config" -- "$SNAP/usr/bin/word-hunter-rustified"' \
+            >"$RUNNER_TEMP/word-hunter-snap-smoke.log" 2>&1
+          status=$?
+          set -e
+
+          cat "$RUNNER_TEMP/word-hunter-snap-smoke.log"
+          if [ "$status" -ne 124 ]; then
+            echo "Word Hunter exited before the 20-second smoke window (status $status)." >&2
+            exit 1
+          fi
+
+  aur:
+    name: makepkg and installed AppImage smoke test
+    needs: changes
+    if: ${{ needs.changes.outputs.aur == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    container:
+      image: archlinux:base-devel-20260712.0.555161@sha256:212b1e518e94ee9c52be55e8a32da75fcf11e7b5610b80b49479e67880102406
+    defaults:
+      run:
+        shell: bash
+    env:
+      AUR_BUILD_DIR: /tmp/wordhunter-aur-build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Read app version
+        run: |
+          set -euo pipefail
+          version="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${version}"
+          printf 'WH_APP_VERSION=%s\n' "${version}" >> "${GITHUB_ENV}"
+
+      - name: Update Arch and install validation tools
+        run: |
+          set -euo pipefail
+          # The pinned base image is ~5 weeks old; a full `pacman -Syu` on shared
+          # runners can take 30-40+ minutes against slow mirrors and has been
+          # observed to exceed the job's effective lifetime. For validation we
+          # only need the tool set, so sync the package database and install the
+          # tools directly instead of upgrading the whole base system.
+          pacman -Sy --noconfirm --disable-download-timeout --needed \
+            appstream \
+            dbus \
+            desktop-file-utils \
+            namcap \
+            sudo \
+            xorg-server-xvfb
+
+      - name: Stage an unprivileged makepkg workspace
+        run: |
+          set -euo pipefail
+          useradd --create-home --shell /bin/bash aur-builder
+          printf '%s\n' 'aur-builder ALL=(ALL:ALL) NOPASSWD: /usr/bin/pacman' \
+            > /etc/sudoers.d/aur-builder
+          chmod 440 /etc/sudoers.d/aur-builder
+
+          install -d -o aur-builder -g aur-builder "${AUR_BUILD_DIR}"
+          cp -a "${GITHUB_WORKSPACE}/packaging/aur/." "${AUR_BUILD_DIR}/"
+          chown -R aur-builder:aur-builder "${AUR_BUILD_DIR}"
+
+      - name: Require committed SRCINFO to match PKGBUILD
+        run: |
+          set -euo pipefail
+          generated="$(mktemp)"
+          runuser -u aur-builder -- bash -c \
+            "cd '${AUR_BUILD_DIR}' && makepkg --printsrcinfo" > "${generated}"
+          diff -u "${AUR_BUILD_DIR}/.SRCINFO" "${generated}"
+
+      - name: Verify the pinned release source
+        run: |
+          set -euo pipefail
+          runuser -u aur-builder -- bash -c \
+            "cd '${AUR_BUILD_DIR}' && makepkg --verifysource"
+
+          # The AppImage sha256 lives only in PKGBUILD/.SRCINFO; fetch the
+          # release asset and cross-check it against that single source of
+          # truth instead of duplicating the digest in this workflow.
+          asset="${AUR_BUILD_DIR}/WordHunter-${WH_APP_VERSION}-x86_64.AppImage"
+          expected="$(sed -n 's/^[[:space:]]*sha256sums_x86_64 = //p' "${AUR_BUILD_DIR}/.SRCINFO")"
+          test -n "${expected}"
+          actual="$(sha256sum "${asset}" | cut -d' ' -f1)"
+          test "${actual}" = "${expected}" || {
+            printf 'AppImage sha256 %s does not match .SRCINFO (%s).\n' \
+              "${actual}" "${expected}" >&2
+            exit 1
+          }
+
+      - name: Build and inspect the Arch package
+        run: |
+          set -euo pipefail
+          runuser -u aur-builder -- bash -c \
+            "set -euo pipefail
+             cd '${AUR_BUILD_DIR}'
+             namcap PKGBUILD | tee namcap-pkgbuild.log
+             if grep -Eq ' E: ' namcap-pkgbuild.log; then
+               echo 'namcap reported a PKGBUILD error.' >&2
+               exit 1
+             fi
+             makepkg --syncdeps --noconfirm --cleanbuild"
+
+          mapfile -t packages < <(
+            find "${AUR_BUILD_DIR}" -maxdepth 1 -type f \
+              -name 'wordhunter-bin-*.pkg.tar.zst' -print
+          )
+          if [[ "${#packages[@]}" -ne 1 ]]; then
+            printf 'Expected one package, found %s\n' "${#packages[@]}" >&2
+            exit 1
+          fi
+          package="${packages[0]}"
+          namcap "${package}" | tee "${AUR_BUILD_DIR}/namcap-package.log"
+          # namcap reports the intentionally extracted AppImage under /opt and
+          # its bundled GTK libraries as package errors. Keep that full report
+          # for maintainer review; the targeted payload, ldd, install, and GUI
+          # assertions below decide whether this binary package is usable.
+          printf 'AUR_PACKAGE=%s\n' "${package}" >> "${GITHUB_ENV}"
+
+      - name: Validate package metadata and contents
+        run: |
+          set -euo pipefail
+          contents="$(mktemp)"
+          metadata="$(mktemp)"
+          bsdtar -tf "${AUR_PACKAGE}" | tee "${contents}"
+          bsdtar -xOf "${AUR_PACKAGE}" .PKGINFO | tee "${metadata}"
+
+          for required in \
+            opt/wordhunter/AppRun \
+            opt/wordhunter/usr/bin/word-hunter-rustified \
+            opt/wordhunter/usr/lib/libcairo.so.2 \
+            opt/wordhunter/usr/lib/libgdk_pixbuf-2.0.so.0 \
+            opt/wordhunter/usr/lib/libpango-1.0.so.0 \
+            opt/wordhunter/usr/lib/librsvg-2.so.2 \
+            usr/bin/wordhunter \
+            usr/share/applications/com.wordhunter.app.desktop \
+            usr/share/icons/hicolor/256x256/apps/com.wordhunter.app.png \
+            usr/share/metainfo/com.wordhunter.app.metainfo.xml; do
+            grep -Fxq "${required}" "${contents}" || {
+              printf 'Package is missing %s\n' "${required}" >&2
+              exit 1
+            }
+          done
+          grep -Eq '^opt/wordhunter/usr/lib/.*/ocr-runtime/bin/wordhunter-paddleocr$' \
+            "${contents}"
+
+          if grep -Eq '\.AppImage$' "${contents}"; then
+            echo 'The package must contain extracted files, not a FUSE-backed AppImage.' >&2
+            exit 1
+          fi
+
+          grep -Fxq 'pkgname = wordhunter-bin' "${metadata}"
+          grep -Fxq "pkgver = ${WH_APP_VERSION}-1" "${metadata}"
+          for dependency in \
+            fontconfig \
+            fribidi \
+            glibc \
+            harfbuzz \
+            hicolor-icon-theme \
+            libglvnd \
+            mesa \
+            xdg-utils; do
+            grep -Fxq "depend = ${dependency}" "${metadata}"
+          done
+          if grep -Eq '^depend = fuse2([<>=].*)?$' "${metadata}"; then
+            echo 'FUSE must not be a package dependency.' >&2
+            exit 1
+          fi
+
+      - name: Install and smoke-test the package
+        run: |
+          set -euo pipefail
+          pacman -U --noconfirm "${AUR_PACKAGE}"
+          test "$(pacman -Q wordhunter-bin)" = "wordhunter-bin ${WH_APP_VERSION}-1"
+          pacman -Qkk wordhunter-bin
+          pacman -Ql wordhunter-bin
+
+          desktop-file-validate /usr/share/applications/com.wordhunter.app.desktop
+          appstreamcli validate --no-net \
+            /usr/share/metainfo/com.wordhunter.app.metainfo.xml
+          desktop=/usr/share/applications/com.wordhunter.app.desktop
+          metainfo=/usr/share/metainfo/com.wordhunter.app.metainfo.xml
+          grep -Fxq 'Exec=wordhunter' "${desktop}" || {
+            echo 'The installed desktop launcher has an unexpected Exec line.' >&2
+            grep -n '^Exec=' "${desktop}" >&2 || true
+            exit 1
+          }
+          grep -Fq '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
+            "${metainfo}" || {
+              echo 'The installed AppStream launchable does not match the desktop file.' >&2
+              grep -n '<launchable' "${metainfo}" >&2 || true
+              exit 1
+            }
+          grep -Fq '<binary>wordhunter</binary>' "${metainfo}" || {
+            echo 'The installed AppStream binary does not match the public launcher.' >&2
+            grep -n '<binary>' "${metainfo}" >&2 || true
+            exit 1
+          }
+          launcher="$(command -v wordhunter || true)"
+          canonical_launcher="$(readlink -f "${launcher}" 2>/dev/null || true)"
+          test "${canonical_launcher}" = '/usr/bin/wordhunter' || {
+            printf 'Unexpected public launcher path: %s (canonical: %s)\n' \
+              "${launcher:-<missing>}" "${canonical_launcher:-<missing>}" >&2
+            exit 1
+          }
+
+          main=/opt/wordhunter/usr/bin/word-hunter-rustified
+          ocr_runner="$(
+            find /opt/wordhunter/usr/lib -type f \
+              -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
+          )"
+          for executable in "${main}" "${ocr_runner}"; do
+            test -x "${executable}" || {
+              printf 'Expected executable is missing or not executable: %s\n' \
+                "${executable:-<empty path>}" >&2
+              exit 1
+            }
+          done
+
+          for executable in "${main}" "${ocr_runner}"; do
+            ldd_output="$(ldd "${executable}" 2>&1 || true)"
+            if grep -F 'not found' <<<"${ldd_output}"; then
+              printf 'Unresolved dynamic dependency in %s\n' "${executable}" >&2
+              exit 1
+            fi
+          done
+          ocr_help="$("${ocr_runner}" --help 2>&1)" || {
+            status=$?
+            printf '%s\nOCR helper --help exited with status %s.\n' \
+              "${ocr_help}" "${status}" >&2
+            exit 1
+          }
+          printf '%s\n' "${ocr_help}"
+          grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}" || {
+            echo 'OCR helper output does not identify wordhunter-paddleocr.' >&2
+            exit 1
+          }
+
+          Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
+            >"${RUNNER_TEMP}/wordhunter-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          cleanup() {
+            kill "${xvfb_pid}" 2>/dev/null || true
+            wait "${xvfb_pid}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for _ in {1..40}; do
+            [[ -S /tmp/.X11-unix/X99 ]] && break
+            sleep 0.25
+          done
+          test -S /tmp/.X11-unix/X99
+
+          set +e
+          runuser -u aur-builder -- env \
+            DISPLAY=:99 \
+            HOME=/home/aur-builder \
+            timeout 20s dbus-run-session -- wordhunter
+          status=$?
+          set -e
+          if [[ "${status}" -ne 124 ]]; then
+            printf 'Word Hunter exited with status %s instead of reaching the smoke-test timeout.\n' \
+              "${status}" >&2
+            exit 1
+          fi
+
+      - name: Remove the package and verify public paths
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if pacman -Q wordhunter-bin >/dev/null 2>&1; then
+            pacman -Rns --noconfirm wordhunter-bin
+          fi
+          test ! -e /usr/bin/wordhunter
+          test ! -e /usr/share/applications/com.wordhunter.app.desktop
+          test ! -e /opt/wordhunter
+
+  nix:
+    name: AppImage wrapper and GUI smoke test
+    needs: changes
+    if: ${{ needs.changes.outputs.nix == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NIXPKGS_COMMIT: 2ed212fb5baa53d54fe7b4d50364ef9ab28c71c7
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Install Nix on the disposable runner
+        uses: cachix/install-nix-action@b4b293eae0b79aac8a161bb32925a5508c9cca93
+        with:
+          nix_path: nixpkgs=https://github.com/NixOS/nixpkgs/archive/2ed212fb5baa53d54fe7b4d50364ef9ab28c71c7.tar.gz
+          enable_kvm: false
+
+      - name: Install desktop validation tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            appstream \
+            dbus-x11 \
+            desktop-file-utils \
+            jq \
+            xvfb
+
+      - name: Evaluate the pinned expression and metadata
+        run: |
+          set -euo pipefail
+          case "${NIX_PATH:-}" in
+            *"${NIXPKGS_COMMIT}"*) ;;
+            *)
+              printf 'NIX_PATH does not contain the pinned nixpkgs revision: %s\n' \
+                "${NIX_PATH:-<unset>}" >&2
+              exit 1
+              ;;
+          esac
+
+          nix-instantiate --parse packaging/nix/package.nix >/dev/null
+          metadata="$({
+            nix-instantiate --eval --strict --json -E '
+              let
+                pkgs = import <nixpkgs> { };
+                package = pkgs.callPackage ./packaging/nix/package.nix { };
+              in
+              {
+                inherit (package) pname version;
+                binaryNativeCode = builtins.elem
+                  pkgs.lib.sourceTypes.binaryNativeCode
+                  package.meta.sourceProvenance;
+                license = package.meta.license.spdxId;
+                mainProgram = package.meta.mainProgram;
+                platformSupported = builtins.elem
+                  builtins.currentSystem
+                  package.meta.platforms;
+              }
+            '
+          })"
+          export WH_APP_VERSION="$(grep -oP '(?<="version": ")[^"]+' src-tauri/tauri.conf.json | head -1)"
+          test -n "${WH_APP_VERSION}"
+          printf '%s\n' "${metadata}" | jq .
+          printf '%s\n' "${metadata}" | jq -e '
+            .pname == "wordhunter" and
+            .version == $ENV.WH_APP_VERSION and
+            .binaryNativeCode == true and
+            .license == "AGPL-3.0-or-later" and
+            .mainProgram == "wordhunter" and
+            .platformSupported == true
+          ' >/dev/null
+
+      - name: Build from the pinned nixpkgs revision
+        run: |
+          set -euo pipefail
+          package_expression='
+            let
+              pkgs = import <nixpkgs> { };
+            in
+            pkgs.callPackage ./packaging/nix/package.nix { }
+          '
+          contents_expression='
+            let
+              pkgs = import <nixpkgs> { };
+              package = pkgs.callPackage ./packaging/nix/package.nix { };
+            in
+            package.appimageContents
+          '
+          package_path="$(nix-build --no-out-link -E "${package_expression}")"
+          contents_path="$(nix-build --no-out-link -E "${contents_expression}")"
+          test -d "${package_path}"
+          test -d "${contents_path}"
+          printf 'NIX_PACKAGE=%s\n' "${package_path}" >> "${GITHUB_ENV}"
+          printf 'NIX_APPIMAGE_CONTENTS=%s\n' "${contents_path}" >> "${GITHUB_ENV}"
+
+      - name: Verify the AppImage contents
+        run: |
+          set -euo pipefail
+          test -x "${NIX_APPIMAGE_CONTENTS}/usr/bin/word-hunter-rustified"
+          ocr_runner="$(
+            find "${NIX_APPIMAGE_CONTENTS}/usr/lib" -type f \
+              -path '*/ocr-runtime/bin/wordhunter-paddleocr' -print -quit
+          )"
+          test -n "${ocr_runner}"
+          test -x "${ocr_runner}"
+          # The desktop binary relies on the FHS environment supplied by
+          # wrapAppImage and is exercised through that final wrapper below.
+          # The standalone OCR runtime must remain self-contained.
+          ldd_output="$(ldd "${ocr_runner}" 2>&1 || true)"
+          if grep -Fq 'not found' <<<"${ldd_output}"; then
+            printf 'Unresolved dynamic dependency in %s\n%s\n' \
+              "${ocr_runner}" "${ldd_output}" >&2
+            exit 1
+          fi
+
+          ocr_help="$("${ocr_runner}" --help 2>&1)"
+          printf '%s\n' "${ocr_help}"
+          grep -Fq 'wordhunter-paddleocr' <<<"${ocr_help}"
+
+      - name: Validate installed desktop metadata
+        run: |
+          set -euo pipefail
+          launcher="${NIX_PACKAGE}/bin/wordhunter"
+          desktop="${NIX_PACKAGE}/share/applications/com.wordhunter.app.desktop"
+          metainfo="${NIX_PACKAGE}/share/metainfo/com.wordhunter.app.metainfo.xml"
+
+          test -x "${launcher}"
+          test -f "${desktop}"
+          test -f "${metainfo}"
+          test -f "${NIX_PACKAGE}/share/icons/hicolor/256x256/apps/com.wordhunter.app.png"
+          desktop-file-validate "${desktop}"
+          appstreamcli validate --no-net "${metainfo}"
+          grep -Fxq 'Exec=wordhunter' "${desktop}"
+          grep -Fq \
+            '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
+            "${metainfo}"
+          grep -Fq '<binary>wordhunter</binary>' "${metainfo}"
+
+      - name: Start Word Hunter under Xvfb
+        run: |
+          set -euo pipefail
+          home="${RUNNER_TEMP}/wordhunter-nix-home"
+          runtime="${RUNNER_TEMP}/wordhunter-nix-runtime"
+          mkdir -p "${home}" "${runtime}"
+          chmod 700 "${runtime}"
+
+          # Ubuntu 24.04 restricts unprivileged user namespaces with AppArmor,
+          # while appimageTools uses bubblewrap to enter its Nix FHS runtime.
+          # Relax that host-only policy for this smoke test and restore it on
+          # exit; the package itself is not modified.
+          userns_setting=kernel.apparmor_restrict_unprivileged_userns
+          userns_original=""
+          xvfb_pid=""
+          cleanup() {
+            if [[ -n "${xvfb_pid}" ]]; then
+              kill "${xvfb_pid}" 2>/dev/null || true
+              wait "${xvfb_pid}" 2>/dev/null || true
+            fi
+            if [[ -n "${userns_original}" ]]; then
+              sudo sysctl -w "${userns_setting}=${userns_original}" >/dev/null \
+                || true
+            fi
+          }
+          trap cleanup EXIT
+
+          if userns_original="$(sysctl -n "${userns_setting}" 2>/dev/null)"; then
+            if [[ "${userns_original}" != 0 ]]; then
+              sudo sysctl -w "${userns_setting}=0"
+            fi
+          else
+            userns_original=""
+          fi
+
+          Xvfb :99 -screen 0 1280x800x24 -ac -nolisten tcp \
+            >"${RUNNER_TEMP}/wordhunter-nix-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          for _ in {1..40}; do
+            [[ -S /tmp/.X11-unix/X99 ]] && break
+            sleep 0.25
+          done
+          test -S /tmp/.X11-unix/X99
+
+          set +e
+          timeout --signal=TERM --kill-after=5s 20s \
+            dbus-run-session -- env \
+              DISPLAY=:99 \
+              HOME="${home}" \
+              XDG_CONFIG_HOME="${home}/.config" \
+              XDG_DATA_HOME="${home}/.local/share" \
+              XDG_RUNTIME_DIR="${runtime}" \
+              "${NIX_PACKAGE}/bin/wordhunter"
+          status=$?
+          set -e
+          if [[ "${status}" -ne 124 ]]; then
+            printf 'Word Hunter exited with status %s instead of reaching the smoke-test timeout.\n' \
+              "${status}" >&2
+            exit 1
+          fi
+
+  scoop:
+    name: Scoop manifest and portable archive
+    needs: changes
+    if: ${{ needs.changes.outputs.stores == 'true' }}
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Validate Scoop metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifestPath = "packaging/scoop/wordhunter.json"
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+
+          if ($manifest.architecture.'64bit'.hash -notmatch '^[0-9a-f]{64}$') {
+            throw "Scoop SHA-256 must contain exactly 64 lowercase hexadecimal characters"
+          }
+
+          $expectedUrl = "https://github.com/Ironship/WordHunter/releases/download/WordHunter$($manifest.version)/Word.Hunter.portable.zip"
+          if ($manifest.architecture.'64bit'.url -ne $expectedUrl) {
+            throw "Scoop URL does not match its stable $($manifest.version) version"
+          }
+
+      - name: Verify Scoop checkver and autoupdate
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $scoopRoot = Join-Path $env:RUNNER_TEMP "scoop-source"
+          git init --quiet $scoopRoot
+          git -C $scoopRoot remote add origin https://github.com/ScoopInstaller/Scoop.git
+          git -C $scoopRoot fetch --quiet --depth 1 origin b588a06e41d920d2123ec70aee682bae14935939
+          git -C $scoopRoot checkout --quiet FETCH_HEAD
+
+          & (Join-Path $scoopRoot "bin/checkver.ps1") -App wordhunter -Dir (Resolve-Path "packaging/scoop")
+          if ($LASTEXITCODE -ne 0) {
+            throw "Scoop checkver failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Download and inspect portable archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $manifest = Get-Content -LiteralPath "packaging/scoop/wordhunter.json" -Raw | ConvertFrom-Json
+          $archive = Join-Path $env:RUNNER_TEMP "Word.Hunter.portable.zip"
+
+          curl.exe --fail --location --retry 3 --output $archive $manifest.architecture.'64bit'.url
+          if ($LASTEXITCODE -ne 0) {
+            throw "Portable archive download failed with exit code $LASTEXITCODE"
+          }
+
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $manifest.architecture.'64bit'.hash) {
+            throw "Portable archive SHA-256 mismatch: $actualHash"
+          }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($archive)
+          try {
+            $entries = @($zip.Entries | ForEach-Object FullName)
+            foreach ($required in @(
+              "Word.Hunter.portable.exe",
+              "THIRD-PARTY-NOTICES.md",
+              "THIRD-PARTY-LICENSES.html"
+            )) {
+              if ($required -notin $entries) {
+                throw "Portable archive does not contain $required"
+              }
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
+  chocolatey:
+    name: Chocolatey pack, install, upgrade, and uninstall
+    needs: changes
+    if: ${{ needs.changes.outputs.stores == 'true' }}
+    runs-on: windows-2022
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Validate Chocolatey metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          [xml]$nuspec = Get-Content -LiteralPath "packaging/chocolatey/wordhunter.nuspec" -Raw
+          $packageVersion = $nuspec.package.metadata.version
+
+          $installScript = Get-Content -LiteralPath "packaging/chocolatey/tools/chocolateyInstall.ps1" -Raw
+          $expectedUrl = "https://github.com/Ironship/WordHunter/releases/download/WordHunter$packageVersion/Word.Hunter.Setup.exe"
+          if ($installScript -notmatch [regex]::Escape($expectedUrl)) {
+            throw "Chocolatey install script does not match its stable $packageVersion version"
+          }
+          if ($installScript -notmatch "checksum64\s*=\s*'[0-9a-f]{64}'") {
+            throw "Chocolatey install script is missing a lowercase SHA-256 checksum"
+          }
+
+      - name: Pack Chocolatey package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $output = Join-Path $env:RUNNER_TEMP "chocolatey-package"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          choco pack "packaging/chocolatey/wordhunter.nuspec" --outputdirectory $output --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "choco pack failed with exit code $LASTEXITCODE"
+          }
+          $package = Get-ChildItem -LiteralPath $output -Filter "wordhunter.*.nupkg"
+          if ($package.Count -ne 1) {
+            throw "Expected exactly one Chocolatey package, found $($package.Count)"
+          }
+          "CHOCO_PACKAGE_SOURCE=$output" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install and force-upgrade from local package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          [xml]$nuspec = Get-Content -LiteralPath "packaging/chocolatey/wordhunter.nuspec" -Raw
+          $version = $nuspec.package.metadata.version
+
+          choco install wordhunter --version $version --source $env:CHOCO_PACKAGE_SOURCE --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey install failed with exit code $LASTEXITCODE"
+          }
+
+          choco upgrade wordhunter --version $version --source $env:CHOCO_PACKAGE_SOURCE --force --yes --no-progress --limit-output
+          if ($LASTEXITCODE -ne 0) {
+            throw "Chocolatey force-upgrade failed with exit code $LASTEXITCODE"
+          }
+
+          $uninstallRoots = @(
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+          )
+          $installed = Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -Like "Word Hunter*"
+          if (-not $installed) {
+            throw "Word Hunter was not registered after Chocolatey installation"
+          }
+
+      - name: Uninstall and verify cleanup
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          $packageRoot = Join-Path $env:ChocolateyInstall "lib\wordhunter"
+          if (Test-Path -LiteralPath $packageRoot) {
+            choco uninstall wordhunter --yes --no-progress --limit-output
+            if ($LASTEXITCODE -ne 0) {
+              throw "Chocolatey uninstall failed with exit code $LASTEXITCODE"
+            }
+          }
+
+          $uninstallRoots = @(
+            "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+          )
+          $remaining = Get-ItemProperty -Path $uninstallRoots -ErrorAction SilentlyContinue |
+            Where-Object DisplayName -Like "Word Hunter*"
+          if ($remaining) {
+            throw "Word Hunter remains registered after Chocolatey uninstall"
+          }

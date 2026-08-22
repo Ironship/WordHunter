@@ -6,7 +6,6 @@ import { t as translate, getLocale } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { showConfirmDialog } from "../dialog-backdrop.js";
 import { searchGutendex } from "../discover/gutendex.js";
-import { searchMediaWiki } from "../discover/mediawiki.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 interface DiscoverElements {
@@ -63,7 +62,6 @@ let searchRunId = 0;
 let activeSearchController: AbortController | null = null;
 let _cachedPrev: boolean | null = null;
 let _cachedNext: boolean | null = null;
-let _mwContinueToken: string | null = null;
 const FETCH_CONCURRENCY = 2;
 
 function isAbortError(value: unknown): boolean {
@@ -94,7 +92,6 @@ export function renderDiscover(): void {
 
   const isGutenberg = (state.discover.source || "gutenberg") === "gutenberg";
   if (els.discoverLevel) els.discoverLevel.disabled = !isGutenberg;
-  if (els.discoverSort) els.discoverSort.disabled = (state.discover.source === "wikipedia");
   renderResults();
   renderUserBooks();
 }
@@ -127,20 +124,6 @@ export async function runDiscoverSearch(): Promise<void> {
       if (runId !== searchRunId) return;
       lastResults = data.results || [];
       data.results = lastResults;
-    } else if (source === "wikipedia" || source === "wikinews" || source === "wikisource") {
-      const mw = await searchMediaWiki(
-        source,
-        language,
-        state.discover.query || "",
-        state.discover.page || 1,
-        state.discover.sort,
-        _mwContinueToken,
-        activeSearchController.signal
-      );
-      if (runId !== searchRunId) return;
-      lastResults = mw.results || [];
-      _mwContinueToken = mw.continueToken;
-      data = { count: mw.count, results: lastResults, next: mw.next, previous: mw.previous };
     }
 
     renderResults(data);
@@ -209,9 +192,6 @@ function renderResults(data?: DiscoverSearchResult): void {
       : "";
 
     let sourceTag = t("discover.sourceGutenberg", { id: escapeHtml(id) });
-    if (book.source === "wikipedia") sourceTag = t("discover.sourceWikipedia");
-    if (book.source === "wikinews") sourceTag = t("discover.sourceWikinews");
-    if (book.source === "wikisource") sourceTag = t("discover.sourceWikisource");
 
     const extraMeta = [
       langs ? escapeHtml(langs) : "",
@@ -383,7 +363,6 @@ export function getDiscoverHandlers({ onAdd, onRemove, onOpen }: DiscoverHandler
     activeSearchController,
     _cachedPrev,
     _cachedNext,
-    _mwContinueToken,
     FETCH_CONCURRENCY,
     setStatus,
     renderResults,
