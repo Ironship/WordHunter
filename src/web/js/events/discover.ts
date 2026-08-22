@@ -36,7 +36,6 @@ export function bindDiscoverEvents() {
 
     const isGutenberg = state.discover.source === "gutenberg";
     if (els.discoverLevel) els.discoverLevel.disabled = !isGutenberg;
-    if (els.discoverSort) els.discoverSort.disabled = (state.discover.source === "tatoeba" || state.discover.source === "wikipedia");
 
     runDiscoverSearch();
   });

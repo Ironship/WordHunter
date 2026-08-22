@@ -27,6 +27,8 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.0.9-rc.7
 | WebKitGTK and GTK | Linux WebView and desktop toolkit | LGPL-2.1-or-later for the principal libraries; supplied by the system, Flatpak runtime, or AppImage payload | https://webkitgtk.org/ and https://www.gtk.org/ |
 | Android System WebView | Android WebView runtime | Supplied by the Android system | https://developer.android.com/reference/android/webkit/WebView |
 | Inter | Optional interface font loaded from Google Fonts | SIL Open Font License 1.1; copyright Rasmus Andersson | https://github.com/rsms/inter |
+| Atkinson Hyperlegible | Bundled reader font (fonts/atkinson-hyperlegible-*.woff2) | SIL Open Font License 1.1; copyright Braille Institute of America | https://www.brailleinstitute.org/freefont/ and https://github.com/googlefonts/atkinson-hyperlegible |
+| OpenDyslexic | Bundled reader font for dyslexia support (fonts/opendyslexic-*.woff2) | SIL Open Font License 1.1 with font-specific reserved names; copyright OpenDyslexic contributors | https://opendyslexic.org/ and https://github.com/antijingoist/opendyslexic |
 
 ## Translation, PDF, and OCR
 

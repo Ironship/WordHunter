@@ -12,7 +12,7 @@ import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playReviewGradeSound, playStatusSound } from "../status-sounds.js";
 import { formatHeadword } from "./article.js";
-import { resolveVocabularyKey } from "../tokenizer_v2.js";
+import { resolveVocabularyKey, GERMAN_SEPARABLE_PREFIXES } from "../tokenizer_v2.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { speakWord } from "../tts.js";
 
@@ -68,6 +68,17 @@ function shuffle<T>(values: readonly T[]): T[] {
  */
 export function reviewSessionKeyOrder(): readonly string[] {
   return reviewSession ? [...reviewSession.keys] : [];
+}
+
+/**
+ * Re-shuffles the remaining cards scheduled for today (issue: shuffle button).
+ * Already-graded cards have left the due set, so only unreviewed keys are
+ * reordered; the index restarts at the first card of the new order.
+ */
+export function shuffleTodayReviewQueue(): void {
+  if (!reviewSession || reviewSession.keys.length === 0) return;
+  reviewSession.keys = shuffle(reviewSession.keys);
+  state.reviewIndex = 0;
 }
 
 function buildReviewQueue(entries: readonly ReviewQueueEntry[], today: string): ReviewQueueEntry[] {
@@ -499,12 +510,43 @@ function maskWordInSentence(sentence: string, word: string): string {
   }
 }
 
+// German separable verbs ("anrufen" → "ruf … an") are stored as the clicked
+// two-part form ("rief an") while the example sentence contains both parts
+// separated by the rest of the clause. The contiguous mask never matches, so
+// the verb stayed visible on reverse cards (issue #278). Mask the whole
+// stem→prefix span instead; bounded gap keeps unrelated sentences untouched.
+function maskSeparableVerbInSentence(sentence: string, word: string): string {
+  if (!sentence || !word) return sentence;
+  const parts = word.trim().split(/\s+/);
+  if (parts.length !== 2) return sentence;
+  const [stem, prefix] = parts;
+  if (!GERMAN_SEPARABLE_PREFIXES.has(prefix.toLowerCase())) return sentence;
+  const escapePart = (value: string) => value
+    .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+    .replace(/['’]/g, "['’]");
+  try {
+    const regex = new RegExp(
+      `(?<!\\p{L})${escapePart(stem)}[\\p{L}\\p{M}]*[\\s\\S]{0,80}?\\s${escapePart(prefix)}(?!\\p{L})`,
+      "giu"
+    );
+    // Blank only the two verb parts and keep the words between them visible.
+    return sentence.replace(regex, (match: string) => {
+      const stemRegex = new RegExp(`(?<!\\p{L})${escapePart(stem)}[\\p{L}\\p{M}]*`, "iu");
+      const prefixRegex = new RegExp(`\\s${escapePart(prefix)}(?!\\p{L})`, "iu");
+      return match.replace(stemRegex, "_____").replace(prefixRegex, " _____");
+    });
+  } catch (e) {
+    return sentence;
+  }
+}
+
 function maskHeadwordInSentence(sentence: string, word: string, article: unknown): string {
   const maskedWord = maskWordInSentence(
     maskWordInSentence(sentence, formatHeadword(word, article)),
     word
   );
-  return maskWordInSentence(maskedWord, typeof article === "string" ? article.trim() : "");
+  const maskedArticle = maskWordInSentence(maskedWord, typeof article === "string" ? article.trim() : "");
+  return maskSeparableVerbInSentence(maskedArticle, typeof word === "string" ? word : "");
 }
 
 function renderReviewTranslationInput(card: ReviewTranslationCard): string {

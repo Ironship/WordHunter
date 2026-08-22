@@ -385,6 +385,12 @@ export function normalizeState(nextState: WhRecord): WhAppState {
     if (!Object.hasOwn(defaults.filters, key)) delete nextState.filters[key];
   }
   nextState.discover = { ...defaults.discover, ...(nextState.discover || {}) };
+  // The Wikipedia/Wikinews/Wikisource discovery sources were removed — map a
+  // persisted legacy selection onto the only remaining source so the hidden
+  // select and the stored state stay consistent.
+  if (nextState.discover.source === "wikipedia" || nextState.discover.source === "wikinews" || nextState.discover.source === "wikisource") {
+    nextState.discover.source = "gutenberg";
+  }
   for (const key of Object.keys(nextState.discover)) {
     if (!Object.hasOwn(defaults.discover, key)) delete nextState.discover[key];
   }

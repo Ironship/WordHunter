@@ -162,6 +162,7 @@ describe("lazy library statistics", () => {
       "../panel-resizer.js": { bindSidebarResizer() {} },
       "../platform.js": { openAndroidUrl: () => false },
       "../toast.js": { showToast: () => {} },
+      "../loading.js": { beginElementBusy: () => () => {} },
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" }
     }, {
       window: {},
@@ -861,6 +862,7 @@ describe("focused frontend regressions", () => {
       "../render.js": { setView() { viewChanges += 1; } },
       "../preferences.js": { updatePreferenceValue() {}, applyPreferences() {}, themeLabel: (value) => value },
       "../views/vocabulary.js": { renderReview() {}, resetReviewPresentation() {} },
+      "../vocabulary/review-card.js": { shuffleTodayReviewQueue() {} },
       "../toast.js": { showToast() {} },
       "../i18n.js": { t: (key) => key },
       "./keyboard/global-keys.js": { handleGlobalKeys() { return false; }, openReaderView() { viewChanges += 1; } },

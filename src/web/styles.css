@@ -1,3 +1,37 @@
+/* Bundled reader fonts (SIL Open Font License 1.1). Files live in fonts/ and
+   are copied + cache-busted by scripts/build-frontend.mjs. */
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/opendyslexic-latin-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("fonts/opendyslexic-latin-700-normal.woff2") format("woff2");
+}
+
 :root {
   --reader-font-family: Georgia, "Times New Roman", serif;
   --reader-line-height: 1.82;

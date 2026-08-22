@@ -5,7 +5,8 @@ globalThis.window = { addEventListener: () => {}, removeEventListener: () => {},
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 globalThis.document = { addEventListener: () => {}, getElementById: () => null };
 
-const { renderReview } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { renderReview, reviewSessionKeyOrder } = await import("../../dist/web/js/vocabulary/review-card.js");
+const { shuffleTodayReviewQueue } = await import("../../dist/web/js/vocabulary/review-card.js");
 const { state } = await import("../../dist/web/js/state.js");
 const { els } = await import("../../dist/web/js/dom.js");
 
@@ -105,6 +106,47 @@ describe("review upcoming list order", () => {
       assert.deepEqual(upcoming.slice(dueWords.length), ["sooner", "middle", "later"]);
       // The due block is the shuffled session order.
       assert.deepEqual(upcoming.slice(0, dueWords.length), cardOrder(dueWords.length));
+    } finally {
+      Math.random = previousRandom;
+      els.reviewCard = previousCard;
+      els.reviewUpcoming = previousUpcoming;
+      state.vocab = previousVocab;
+      state.reviewIndex = previousIndex;
+    }
+  });
+
+  it("re-shuffles the remaining due cards when the shuffle action runs", async () => {
+    const previousCard = els.reviewCard;
+    const previousUpcoming = els.reviewUpcoming;
+    const previousVocab = state.vocab;
+    const previousIndex = state.reviewIndex;
+    const previousRandom = Math.random;
+    const words = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot"];
+    try {
+      Math.random = mulberry32(2026);
+      els.reviewCard = { innerHTML: "" };
+      els.reviewUpcoming = { innerHTML: "" };
+      state.preferences.autoAddLearningOnly = true;
+      state.vocab = Object.fromEntries(words.map((word) => [word, dueEntry(word)]));
+      state.reviewIndex = 0;
+
+      await renderAndCollect();
+      const before = [...reviewSessionKeyOrder()];
+
+      // Mid-session position is reset to the first card of the new order.
+      shuffleTodayReviewQueue();
+      const after = [...reviewSessionKeyOrder()];
+      state.reviewIndex = 0;
+      renderReview();
+
+      assert.equal(state.reviewIndex, 0);
+      assert.deepEqual(new Set(after), new Set(before));
+      // With a deterministic PRNG the reshuffle actually changes the order.
+      assert.notDeepEqual(after, before);
+      assert.equal(
+        els.reviewCard.innerHTML.match(/data-dict-word="([^"]+)"/)?.[1],
+        after[0]
+      );
     } finally {
       Math.random = previousRandom;
       els.reviewCard = previousCard;

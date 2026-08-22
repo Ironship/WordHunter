@@ -10,6 +10,7 @@ import { bindSidebarResizer } from "../panel-resizer.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { openAndroidUrl } from "../platform.js";
 import { showToast } from "../toast.js";
+import { beginElementBusy } from "../loading.js";
 
 interface LibraryBook {
   id: string;
@@ -97,9 +98,6 @@ function observeVisibleBookStats(bookList: HTMLElement): void {
 
 function sourceTagForBook(book: LibraryBook): string {
   const source = `${book.source || ""} ${book.pageUrl || ""}`.toLowerCase();
-  if (source.includes("wikipedia.org") || source.includes("wikipedia")) return t("library.sourceWikipedia");
-  if (source.includes("wikinews.org") || source.includes("wikinews")) return t("library.sourceWikinews");
-  if (source.includes("wikisource.org") || source.includes("wikisource")) return t("library.sourceWikisource");
   if (source.includes("gutenberg.org") || source.includes("project gutenberg")) return book.gutenbergId ? t("library.sourceGutenberg", { id: book.gutenbergId }) : t("library.sourceGutenbergNoId");
   return "";
 }
@@ -467,7 +465,12 @@ export function bindLibraryEvents(): void {
   const deleteCancel = document.getElementById("delete-book-cancel") as HTMLButtonElement | null;
   const deleteConfirm = document.getElementById("delete-book-confirm") as HTMLButtonElement | null;
   let pendingDelete: (() => unknown) | null = null;
+  let deleteInFlight = false;
   const closeDeleteDialog = () => {
+    // Removing can take a while on large stores; while the busy indicator is
+    // active the dialog stays pinned so the operation cannot be dismissed
+    // into an invisible background task.
+    if (deleteInFlight) return;
     pendingDelete = null;
     deleteDialog?.close();
   };
@@ -478,6 +481,7 @@ export function bindLibraryEvents(): void {
     confirmLabel = t("library.removeConfirmButton")
   ): void => {
     if (!deleteDialog || !deleteTitle || !deleteMessage || !deleteConfirm) return;
+    if (deleteInFlight) return;
     pendingDelete = remove;
     deleteTitle.textContent = title;
     deleteMessage.textContent = message;
@@ -487,8 +491,22 @@ export function bindLibraryEvents(): void {
   deleteCancel?.addEventListener("click", closeDeleteDialog);
   deleteConfirm?.addEventListener("click", () => {
     const remove = pendingDelete;
-    closeDeleteDialog();
-    remove?.();
+    if (!remove || deleteInFlight) return;
+    deleteInFlight = true;
+    const releaseConfirmBusy = beginElementBusy(deleteConfirm, { disable: true });
+    const releaseCancelBusy = beginElementBusy(deleteCancel, { disable: true });
+    // .then(remove) defers the call so a synchronous throw from a remover is
+    // captured as a rejection instead of leaving the dialog stuck in busy.
+    void Promise.resolve()
+      .then(remove)
+      .catch((error) => console.warn("book removal failed", error))
+      .finally(() => {
+        releaseConfirmBusy();
+        releaseCancelBusy();
+        deleteInFlight = false;
+        pendingDelete = null;
+        deleteDialog?.close();
+      });
   });
   deleteDialog?.addEventListener("cancel", (event) => { event.preventDefault(); closeDeleteDialog(); });
   deleteDialog?.addEventListener("click", (event) => { if (event.target === deleteDialog) closeDeleteDialog(); });

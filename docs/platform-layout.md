@@ -1,5 +1,7 @@
 # Platform source layout
 
+Where the shared app ends and the per-platform layers begin.
+
 Word Hunter keeps one shared app and adds platform layers only where the OS actually differs.
 
 Active targets in this repository right now:

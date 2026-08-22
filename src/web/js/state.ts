@@ -251,6 +251,12 @@ export function applyBridgeSnapshotToState(
     Math.min(IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, Math.max(0, Math.trunc(Number(previousPreferences.inTextReviewCompletedGuesses) || 0))),
     nextState.preferences.inTextReviewCompletedGuesses
   );
+  // One-way latch: if the user confirmed the language onboarding while the
+  // snapshot was still pending, that choice must survive the wholesale
+  // preferences replace (otherwise the dialog re-shows on every launch).
+  if (previousPreferences.languageOnboardingDone === true) {
+    nextState.preferences.languageOnboardingDone = true;
+  }
   if (localUi) restoreLocalUiState(nextState, localUi);
   replaceState(nextState, { save: false });
   autosave.markDurableStateReplaced();

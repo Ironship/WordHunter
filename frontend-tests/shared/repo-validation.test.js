@@ -109,8 +109,8 @@ describe("repository validation wiring", () => {
   });
 
   it("persists the derived AUR app version for every later workflow step", () => {
-    const workflow = parseSimpleYaml(read("../../.github/workflows/aur-validation.yml"));
-    const validate = workflow.jobs.validate;
+    const workflow = parseSimpleYaml(read("../../.github/workflows/packaging-validation.yml"));
+    const validate = workflow.jobs.aur;
     const versionStep = stepByName(validate, "Read app version");
 
     assert.match(versionStep.run, /tauri\.conf\.json/);
@@ -181,7 +181,11 @@ describe("repository validation wiring", () => {
       stepByName(workflow.jobs.macos, "Upload validated macOS DMG").with.path,
       /WordHunter-\$\{\{ steps\.package-version\.outputs\.version \}\}-aarch64\.dmg/,
     );
-    assert.equal(stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run, "./scripts/build-flatpak.sh");
+    const flatpakBuild = stepByName(workflow.jobs.flatpak, "Build frontend, then build and inspect Flatpak bundle").run;
+    assert.match(flatpakBuild, /\.\/scripts\/build-flatpak\.sh/);
+    // Flathub CDN outages must not fail the release on the first try.
+    assert.match(flatpakBuild, /attempt=1/);
+    assert.match(flatpakBuild, /retrying in 60 s/);
     assert.match(
       stepByName(workflow.jobs["linux-native"], "Build frontend, AppImage, and DEB through the release recipe").run,
       /build-linux-native\.sh/,
@@ -414,7 +418,7 @@ describe("repository validation wiring", () => {
   it("derives Snap validation from the application version and verifies the release digest", () => {
     const config = JSON.parse(read("../../src-tauri/tauri.conf.json"));
     const snapcraft = read("../../snap/snapcraft.yaml");
-    const workflow = read("../../.github/workflows/snap-validation.yml");
+    const workflow = read("../../.github/workflows/packaging-validation.yml");
 
     assert.match(snapcraft, new RegExp(`^version: ['\\"]${config.version}['\\"]$`, "m"));
     assert.match(
@@ -628,7 +632,7 @@ describe("repository validation wiring", () => {
     const sources = JSON.parse(read("../../flatpak/cargo-sources.json"));
     const vendorManifest = read("../../src-tauri/vendor/tiny_http/Cargo.toml");
     const manifest = parseSimpleYaml(read("../../com.wordhunter.app.yml"));
-    const workflow = parseSimpleYaml(read("../../.github/workflows/flatpak-validation.yml"));
+    const workflow = parseSimpleYaml(read("../../.github/workflows/packaging-validation.yml"));
 
     // tiny_http 0.12.0 is a vendored path dependency (Fix #105): the Flatpak
     // build compiles it from the repository dir source, so cargo-sources.json
@@ -641,7 +645,7 @@ describe("repository validation wiring", () => {
     const wordHunterModule = manifest.modules.find((module) => module.name === "word-hunter");
     const dirSource = wordHunterModule.sources.find((item) => item.type === "dir");
     assert.ok(!dirSource.skip.includes("vendor"));
-    const checkStep = stepByName(workflow.jobs["build-and-smoke-test"], "Verify Flatpak cargo sources are up to date");
+    const checkStep = stepByName(workflow.jobs.flatpak, "Verify Flatpak cargo sources are up to date");
     assert.match(checkStep.run, /update-flatpak-cargo-sources\.sh --check/);
   });
 
