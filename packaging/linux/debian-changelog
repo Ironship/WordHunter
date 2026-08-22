@@ -1,3 +1,9 @@
+word-hunter (1.1.0-rc.5) unstable; urgency=medium
+
+  * 1.1.0-rc.5 restores Wikipedia and Wikinews to Discovery (only Wikisource stays removed), fixes Reader search overlap, bookmark jumps, TTS follow-along drift and the eye-toggle for highlights, repositions the flashcard shuffle button, shortens book deletion, and cleans up release notes.
+
+ -- Ironship <ironship@example.com>  Fri, 22 Aug 2026 14:00:00 +0200
+
 word-hunter (1.1.0-rc.1) unstable; urgency=medium
 
   * Keeps the chosen language at startup; keyboard, screen-reader, and OCR fixes.

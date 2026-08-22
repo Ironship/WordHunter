@@ -94,7 +94,9 @@ const DUP_GROUP_PIN = 51;
    toast above export overlay. +~270 B net, pin re-baselined. */
 const CSS_SIZE_PIN = new Map([
   ["src/web/styles.css", 118500],
-  ["src/web/platforms/android-pocket.css", 35000],
+  // 35255 B: +.review-header-actions rules — flashcard shuffle/reverse chips
+  // pinned to the header edge (rc.4 review fix: shuffle filled the view).
+  ["src/web/platforms/android-pocket.css", 36000],
   ["src/web/theme.css", 6500]
 ]);
 
