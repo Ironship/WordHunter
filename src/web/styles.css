@@ -575,6 +575,22 @@ kbd {
   width: 100%;
 }
 
+/* Flashcard header chips (shuffle + reverse) stay a compact side-by-side row
+   pinned to the trailing edge of the header — never full-width blocks in the
+   middle of the view when the header collapses to a grid on narrow/pocket
+   layouts. */
+.review-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: fit-content;
+}
+
+.review-header-actions .chip {
+  flex-shrink: 0;
+}
+
 /* Translator tab */
 .translator-layout {
   display: flex;

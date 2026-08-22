@@ -186,6 +186,12 @@ function openReaderFind(): boolean {
   const bar = document.getElementById("reader-find-bar");
   if (!bar) return false;
   bar.hidden = false;
+  // Pocket toolbar: hide the magnifier while the find bar is open, otherwise
+  // it stays on top and covers the bar's close button.
+  if (els.readerFindToggle) {
+    els.readerFindToggle.hidden = true;
+    els.readerFindToggle.setAttribute("aria-expanded", "true");
+  }
   const input = els.readerFindInput;
   if (input) {
     input.focus();
@@ -204,6 +210,10 @@ function closeReaderFind(): void {
     active instanceof Node && (active === input || Boolean(bar && bar.contains(active)));
   const wasFocusInBar = Boolean(bar && activeIsInBar);
   if (bar) bar.hidden = true;
+  if (els.readerFindToggle) {
+    els.readerFindToggle.hidden = false;
+    els.readerFindToggle.setAttribute("aria-expanded", "false");
+  }
   findGeneration += 1;
   findMatches = [];
   findIndex = -1;

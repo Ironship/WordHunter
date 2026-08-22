@@ -100,6 +100,8 @@
     "uniqueWordsLabel": "unique words",
     "removeBuiltInTitle": "Hide built-in book",
     "sourceGutenberg": "Gutenberg #{id}",
+    "sourceWikipedia": "Wikipedia",
+    "sourceWikinews": "Wikinews",
     "sourceGutenbergNoId": "Gutenberg",
     "coverAlt": "Cover",
     "shortcut": {}
@@ -412,6 +414,8 @@
     "died": "† {year}",
     "source": "Source",
     "sourceGutenberg": "Gutenberg",
+    "sourceWikipedia": "Wikipedia",
+    "sourceWikinews": "Wikinews",
     "shortcut": {}
   },
   "settings": {
@@ -777,8 +781,8 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.4 keeps read-aloud text in view while it speaks, adds a shuffle button for today's flashcards, masks German separable verbs on cards (issue #278), shows a busy indicator when deleting books, asks about languages only once at first start, bundles dyslexia-friendly reader fonts, and focuses Discovery on Gutenberg.",
-    "version": "1.1.0-rc.4",
+    "whatsNew": "1.1.0-rc.5 restores Wikipedia and Wikinews to Discovery (only Wikisource stays removed), fixes Reader search overlap, bookmark jumps, TTS follow-along drift and the eye-toggle for highlights, repositions the flashcard shuffle button, shortens book deletion, and cleans up release notes.",
+    "version": "1.1.0-rc.5",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",
@@ -923,6 +927,7 @@
     "backupCreated": "Backup created before clearing data.",
     "backupRequired": "Backup was cancelled or failed, so data was not cleared.",
     "saveUnavailable": "Could not save changes. Check available storage and keep Word Hunter open.",
+    "deleteStillRunning": "Removal is taking longer than expected. It keeps running in the background.",
     "fileLoaded": "Loaded file: {name}",
     "fileError": "Could not read the file.",
     "backupTooLarge": "The backup is too large to import (maximum {mb} MB).",

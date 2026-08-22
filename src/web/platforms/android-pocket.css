@@ -1369,6 +1369,19 @@ html.pocket-mode {
   overflow-wrap: anywhere;
 }
 
+/* Shuffle + reverse chips: keep them compact side-by-side on the side of the
+   header (issue: shuffle button filled the central part of the view when the
+   pocket header collapsed to a single-column grid). */
+.pocket-mode #flashcards-view .review-header-actions {
+  justify-self: start;
+  gap: 0.55rem;
+}
+
+.pocket-mode #flashcards-view .review-header-actions .chip {
+  min-height: 44px;
+  width: auto;
+}
+
 .pocket-mode #flashcards-view .word-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
