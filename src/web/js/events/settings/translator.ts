@@ -111,7 +111,7 @@ export function bindOfflineTranslatorSettings() {
         // Dynamically build the language list in the download dialog
         const { t: translate } = await import("../../i18n.js");
         const supported = Array.from(new Set([...OFFLINE_TRANSLATOR_LANGUAGES, pair.fromCode, pair.toCode].filter(Boolean)));
-        
+
         const languagesList = document.getElementById("argos-languages-list");
         if (languagesList) {
           languagesList.innerHTML = supported.map(lang => `
@@ -120,14 +120,14 @@ export function bindOfflineTranslatorSettings() {
               <span>${translate(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : translate(`languages.${lang}`)} (${lang.toUpperCase()})</span>
             </label>
           `).join("");
-          
+
           // Update button text with size
           const updateBtnText = () => {
             const count = languagesList.querySelectorAll("input:checked").length;
             const confirmButton = document.getElementById("argos-download-confirm");
             if (confirmButton) confirmButton.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
           };
-          
+
           languagesList.querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
             checkbox.addEventListener("change", updateBtnText);
             checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
@@ -165,24 +165,24 @@ export function bindOfflineTranslatorSettings() {
       if (!(languagesList instanceof HTMLElement)) return;
       const checkedBoxes = Array.from(languagesList.querySelectorAll<HTMLInputElement>("input:checked"));
       const toCodes = checkedBoxes.map(cb => cb.value);
-      
+
       if (toCodes.length === 0) {
         import("../../toast.js").then(m => m.showToast(t("toast.selectAtLeastOneLanguage")));
         return;
       }
-      
+
       setElementBusy(argosConfirmButton, true, { disable: true });
       setElementBusy(document.getElementById("argos-download-dialog"), true);
       argosDownloadRunning = true;
       argosSelectionDirty = false;
       if (argosCancelButton) (argosCancelButton as HTMLButtonElement).disabled = true;
       argosConfirmButton.textContent = t("toast.downloadingWait");
-      
+
       try {
         const pair = resolveProfileTranslationPair(state.preferences);
         const languages = Array.from(new Set(["en", pair.fromCode, pair.toCode, ...toCodes].filter(Boolean)));
         const response = await httpPost("/__argos/install", { from: languages, to: languages }, { timeoutMs: 600_000 });
-        
+
         if (!response.ok) throw new Error("Failed to download models");
         const result = await response.json();
         if (!Number.isFinite(result.installed)) throw new Error("Invalid model installation response");
