@@ -18,6 +18,22 @@ function isVerbatimBody(body: unknown): boolean {
   );
 }
 
+export function httpGet(
+  url: string,
+  opts: { timeoutMs?: number; signal?: AbortSignal; cache?: RequestCache } = {}
+): Promise<Response> {
+  return fetchWithTimeout(
+    url,
+    {
+      method: "GET",
+      headers: authHeaders(),
+      ...(opts.cache ? { cache: opts.cache } : {}),
+      signal: opts.signal
+    },
+    opts.timeoutMs
+  );
+}
+
 export function httpPost(
   url: string,
   body: unknown,

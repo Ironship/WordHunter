@@ -446,67 +446,15 @@ describe("add-word dialog renderer (events/word-editor.ts)", () => {
   });
 });
 
+// settings.ts was split into the events/settings/ folder module; both boot
+// renderers live in renderers.js, which only imports the view template.
+const SETTINGS_RENDERERS = "dist/web/js/events/settings/renderers.js";
+
 describe("argos download dialog renderer (events/settings.ts)", () => {
   it("builds the dialog once with the audited ids and i18n attributes", async () => {
     const document = fakeDocument();
-    const { renderArgosDownloadDialog } = await evaluateWithMocks("dist/web/js/events/settings.js", {
-      "../state.js": {
-        applyBridgeSnapshotToState: () => false,
-        flushAllPendingFrontendState: async () => {},
-        getDurableStateRevision: () => 0,
-        runExclusiveStateWrite: async (fn) => fn(),
-        state: {},
-        saveState: async () => {},
-        switchLearningLanguage: () => {}
-      },
-      "../dom.js": { els: {} },
-      "../i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
-      "../render.js": { render: () => {} },
-      "../views/library.js": { renderLibrary: () => {} },
-      "../reader/renderer.js": { getTextById: () => null, renderReader: () => {} },
-      "../reader/word-panel.js": { renderWordPanel: () => {} },
-      "../views/vocabulary.js": { renderReview: () => {} },
-      "../views/discover.js": { renderDiscover: () => {} },
-      "../preferences.js": {
-        applyPreferences: () => {},
-        syncSettingsControls: () => {},
-        updatePreferenceValue: async () => {},
-        resetPreferences: async () => {},
-        setReaderFontSize: () => {},
-        setUiScale: () => {}
-      },
-      "../toast.js": { showToast: () => {} },
-      "../sync-actions.js": {
-        clearWords: async () => {},
-        clearLibrary: async () => {},
-        exportAnkiTsv: async () => {},
-        importAnkiTsv: async () => {},
-        exportTransfer: async () => {},
-        importTransfer: async () => {}
-      },
-      "../store-bridge.js": { acknowledgeBackendSnapshot: () => {}, loadBackendSnapshot: async () => {} },
-      "../dialog-backdrop.js": { registerUnsavedDialog: () => {}, showConfirmDialog: async () => true },
-      "../loading.js": { setElementBusy: () => {} },
-      "../platform.js": { applyPlatformUi: () => {}, isAndroidPlatform: () => false },
-      "../constants.js": { OFFLINE_TRANSLATOR_LANGUAGES: ["en", "pl", "de", "es", "fr", "zh"] },
-      "../translator-preferences.js": {
-        normalizeTranslationLanguageCode: (value) => value,
-        normalizeTranslatorTextPreference: (key, value) => value,
-        resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
-      },
-      "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
-      "../ai-model-discovery.js": {
-        countAiModelMatches: (models) => models.length,
-        filterAiModels: (models) => models,
-        isAiModelCommitKey: (event) => event.key === "Enter" || event.keyCode === 13,
-        getCachedAiModels: () => [],
-        isAiModelCacheFresh: () => false,
-        requestAiModels: async () => []
-      },
-      "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
-      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks },
-      "./word-editor.js": { refreshAddWordDialogLocalization: () => {} },
-      "./settings-view-template.js": { SETTINGS_VIEW_HTML }
+    const { renderArgosDownloadDialog } = await evaluateWithMocks(SETTINGS_RENDERERS, {
+      "../settings-view-template.js": { SETTINGS_VIEW_HTML }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
     const dialog = renderArgosDownloadDialog();
@@ -758,64 +706,8 @@ describe("import panel renderer (events/book-import.ts)", () => {
 describe("settings view renderer (events/settings.ts)", () => {
   it("builds the settings view once with the audited ids and i18n attributes", async () => {
     const document = fakeDocument();
-    const { renderSettingsView } = await evaluateWithMocks("dist/web/js/events/settings.js", {
-      "../state.js": {
-        applyBridgeSnapshotToState: () => false,
-        flushAllPendingFrontendState: async () => {},
-        getDurableStateRevision: () => 0,
-        runExclusiveStateWrite: async (fn) => fn(),
-        state: {},
-        saveState: async () => {},
-        switchLearningLanguage: () => {}
-      },
-      "../dom.js": { els: {} },
-      "../i18n.js": { t: (key) => key, loadLocale: async () => {}, applyTranslations: () => {} },
-      "../render.js": { render: () => {} },
-      "../views/library.js": { renderLibrary: () => {} },
-      "../reader/renderer.js": { getTextById: () => null, renderReader: () => {} },
-      "../reader/word-panel.js": { renderWordPanel: () => {} },
-      "../views/vocabulary.js": { renderReview: () => {} },
-      "../views/discover.js": { renderDiscover: () => {} },
-      "../preferences.js": {
-        applyPreferences: () => {},
-        syncSettingsControls: () => {},
-        updatePreferenceValue: async () => {},
-        resetPreferences: async () => {},
-        setReaderFontSize: () => {},
-        setUiScale: () => {}
-      },
-      "../toast.js": { showToast: () => {} },
-      "../sync-actions.js": {
-        clearWords: async () => {},
-        clearLibrary: async () => {},
-        exportAnkiTsv: async () => {},
-        importAnkiTsv: async () => {},
-        exportTransfer: async () => {},
-        importTransfer: async () => {}
-      },
-      "../store-bridge.js": { acknowledgeBackendSnapshot: () => {}, loadBackendSnapshot: async () => {} },
-      "../dialog-backdrop.js": { registerUnsavedDialog: () => {}, showConfirmDialog: async () => true },
-      "../loading.js": { setElementBusy: () => {} },
-      "../platform.js": { applyPlatformUi: () => {}, isAndroidPlatform: () => false },
-      "../constants.js": { OFFLINE_TRANSLATOR_LANGUAGES: ["en", "pl", "de", "es", "fr", "zh"] },
-      "../translator-preferences.js": {
-        normalizeTranslationLanguageCode: (value) => value,
-        normalizeTranslatorTextPreference: (key, value) => value,
-        resolveProfileTranslationPair: () => ({ fromCode: "en", toCode: "pl", configured: true })
-      },
-      "../ai-explainer.js": { normalizeAiTextPreference: (value) => value },
-      "../ai-model-discovery.js": {
-        countAiModelMatches: (models) => models.length,
-        filterAiModels: (models) => models,
-        isAiModelCommitKey: (event) => event.key === "Enter" || event.keyCode === 13,
-        getCachedAiModels: () => [],
-        isAiModelCacheFresh: () => false,
-        requestAiModels: async () => []
-      },
-      "../state/normalize.js": { normalizeSelectedWordPanelItems: (items) => items },
-      "../reader/bookmarks.js": { remapReaderBookmarksForAlgorithm: (bookmarks) => bookmarks },
-      "./word-editor.js": { refreshAddWordDialogLocalization: () => {} },
-      "./settings-view-template.js": { SETTINGS_VIEW_HTML }
+    const { renderSettingsView } = await evaluateWithMocks(SETTINGS_RENDERERS, {
+      "../settings-view-template.js": { SETTINGS_VIEW_HTML }
     }, { document, HTMLElement: HTMLElementInstance });
 
     const view = renderSettingsView();
@@ -960,7 +852,7 @@ describe("settings view renderer (events/settings.ts)", () => {
   });
 
   it("sends the saved API key only after the explicit Refresh models action", () => {
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings/ai-models.js", import.meta.url), "utf8");
     const discoveryCalls = settings.match(/void refreshAiModels\(/g) || [];
     assert.equal(discoveryCalls.length, 1, "implicit settings events must not probe a provider");
     assert.match(
@@ -971,9 +863,9 @@ describe("settings view renderer (events/settings.ts)", () => {
   });
 
   it("supports Android IME commit and restores focus after choosing a model", () => {
-    // settings.js (behaviour) + settings-view-template.js (markup, split 93a1828).
+    // ai-models.js (behaviour) + settings-view-template.js (markup, split 93a1828).
     const settings = [
-      new URL("../../dist/web/js/events/settings.js", import.meta.url),
+      new URL("../../dist/web/js/events/settings/ai-models.js", import.meta.url),
       new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
     ].map((url) => readFileSync(url, "utf8")).join("\n");
     assert.match(settings, /enterkeyhint="done"/);
@@ -985,13 +877,13 @@ describe("settings view renderer (events/settings.ts)", () => {
   });
 
   it("keeps chosen-model semantics separate from keyboard highlight", () => {
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings/ai-models.js", import.meta.url), "utf8");
     const activeSetter = settings.match(/function setActiveAiModelOption[\s\S]*?\n}/)?.[0] || "";
     assert.doesNotMatch(activeSetter, /aria-selected/);
   });
 
   it("cancels discovery when settings closes and recounts a lingering query on focus", () => {
-    const settings = readFileSync(new URL("../../dist/web/js/events/settings.js", import.meta.url), "utf8");
+    const settings = readFileSync(new URL("../../dist/web/js/events/settings/ai-models.js", import.meta.url), "utf8");
     assert.match(settings, /if \(view !== "settings"\) \{\s*cancelAiModelRefresh\(\);\s*closeAiModelOptions\(\);/);
     assert.match(settings, /renderAiModelOptions\(open, open\)/);
   });

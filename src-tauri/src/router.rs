@@ -331,380 +331,7 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             eprintln!("{text}");
             response::no_content(request)
         }
-        (Method::Post, _) => match path {
-            "/__app/close" => {
-                let _payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                response::no_content(request)?;
-                crate::platform::permit_exit(&state.app_handle);
-                state.app_handle.exit(0);
-                Ok(())
-            }
-            "/__window/zoom" => {
-                let payload = read_json_or_400!(request);
-                let scale_factor = match handlers::parse_window_zoom_percent(&payload) {
-                    Ok(scale_factor) => scale_factor,
-                    Err(error) => return response::error_response(request, 400, &error),
-                };
-                match handlers::set_window_zoom(&state, scale_factor) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 500, &error),
-                }
-            }
-            "/__store/save" => {
-                let payload = read_json_or_400!(request);
-                let query = response::parse_query(query);
-                let result = state.store.bulk_save(payload);
-                match result {
-                    Ok(conflicts) => {
-                        if query.get("snapshot").map(String::as_str) == Some("1") {
-                            response::json_response(
-                                request,
-                                json!({
-                                    "snapshot": state.store.snapshot_unacknowledged(),
-                                    "conflicts": conflicts
-                                }),
-                            )
-                        } else if conflicts > 0 {
-                            // Concurrent-edit conflicts were resolved (kept one side);
-                            // surface the count so clients can warn the user.
-                            response::json_response(request, json!({ "conflicts": conflicts }))
-                        } else {
-                            response::no_content(request)
-                        }
-                    }
-                    Err(error) => {
-                        // Schema/validation failures are client errors: the
-                        // frontend's saveWithRetry treats 4xx as "send a full
-                        // snapshot" while 5xx would retry the broken payload.
-                        let code = if error.contains("schemaVersion") {
-                            400
-                        } else {
-                            500
-                        };
-                        response::error_response(request, code, &error)
-                    }
-                }
-            }
-            "/__store/ui_state" => {
-                let payload = read_json_limited_or_error!(request, MAX_UI_STATE_REQUEST_BODY);
-                match state.store.save_ui_state(&payload) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__store/ack_snapshot" => {
-                let payload = read_json_or_400!(request);
-                match state.store.acknowledge_frontend_snapshot(&payload) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__store/choose_data_dir" => {
-                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                let Some(request) = confirm_or_400(request, &payload) else {
-                    return Ok(());
-                };
-                match handlers::choose_data_dir(&state) {
-                    Ok(Some(path)) => response::json_response(
-                        request,
-                        json!({ "path": path, "snapshot": state.store.snapshot_unacknowledged() }),
-                    ),
-                    Ok(None) => response::json_response(request, json!({ "path": null })),
-                    Err(err) => response::error_response(request, 500, &err),
-                }
-            }
-            "/__store/export_transfer" => {
-                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                let Some(request) = confirm_or_400(request, &payload) else {
-                    return Ok(());
-                };
-                match handlers::export_transfer(&state, &payload) {
-                    Ok(result) => response::json_response(request, result),
-                    Err(error) => response::error_response(request, 500, &error),
-                }
-            }
-            "/__store/import_transfer" => {
-                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                let Some(request) = confirm_or_400(request, &payload) else {
-                    return Ok(());
-                };
-                match handlers::import_transfer(&state, &payload) {
-                    Ok(result) => response::json_response(request, result),
-                    Err(error) => response::error_response(request, 422, &error),
-                }
-            }
-            "/__store/upsert_text" => {
-                let payload = read_json_or_400!(request);
-                match state.store.upsert_text(&payload) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__store/delete_text" => {
-                let payload = read_json_or_400!(request);
-                let id = payload
-                    .get("id")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                match state.store.delete_text(id) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__store/wipe" => {
-                let payload = read_json_or_400!(request);
-                let Some(request) = confirm_or_400(request, &payload) else {
-                    return Ok(());
-                };
-                let _ocr_guard = match state.ocr_slot.try_lock() {
-                    Ok(guard) => guard,
-                    Err(std::sync::TryLockError::WouldBlock) => {
-                        return response::error_response(
-                            request,
-                            409,
-                            "Cannot wipe data while an OCR import is running",
-                        );
-                    }
-                    Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
-                };
-                match state.store.wipe() {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 500, &error),
-                }
-            }
-            "/__book/image" => {
-                let payload = read_json_limited_or_error!(request, MAX_IMAGE_REQUEST_BODY);
-                if let Err(error) = validate_book_image_payload(&payload) {
-                    return response::error_response(request, 400, &error);
-                }
-                match state.store.save_book_image(&payload) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 500, &error),
-                }
-            }
-            "/__export/save" => {
-                let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
-                let Some(request) = confirm_or_400(request, &payload) else {
-                    return Ok(());
-                };
-                match handlers::save_export(payload) {
-                    Ok(saved) => response::json_response(request, json!({ "saved": saved })),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__import/ebook" => {
-                let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY)
-                {
-                    Ok(body) => body,
-                    Err(error) => {
-                        let status = match &error {
-                            response::BodyError::TooLarge { .. } => 413,
-                            _ => 400,
-                        };
-                        return response::error_response(request, status, &error.to_string());
-                    }
-                };
-                // Deserialize into a borrowing struct instead of a
-                // `serde_json::Value` so a large base64 `data` field is not
-                // duplicated in memory alongside the raw body (F13).
-                let request_body = match ebook::parse_import_body(&body) {
-                    Ok(request_body) => request_body,
-                    Err(error) => return response::error_response(request, 400, &error),
-                };
-                match ebook::import_request(&request_body) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(error) => response::error_response(request, 422, &error),
-                }
-            }
-            "/__import/pdf_ocr/raw" => {
-                let _ocr_guard = match state.ocr_slot.try_lock() {
-                    Ok(guard) => guard,
-                    Err(std::sync::TryLockError::WouldBlock) => {
-                        return response::error_response(
-                            request,
-                            409,
-                            "Another OCR import is already running",
-                        );
-                    }
-                    Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
-                };
-                let params = response::parse_query(query);
-                let job_id = params.get("job_id").cloned().unwrap_or_default();
-                let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
-                    Ok(guard) => guard,
-                    Err(error) => return response::error_response(request, 400, &error),
-                };
-                let data = match response::read_body_limited(&mut request, MAX_RAW_PDF_BODY) {
-                    Ok(data) => data,
-                    Err(error) => {
-                        return response::error_response(request, 413, &error.to_string());
-                    }
-                };
-                let max_pages = params
-                    .get("max_pages")
-                    .and_then(|value| value.parse::<u64>().ok())
-                    .unwrap_or(0);
-                let payload = json!({
-                    "book_id": params.get("book_id").cloned().unwrap_or_default(),
-                    "job_id": params.get("job_id").cloned().unwrap_or_default(),
-                    "filename": params.get("filename").cloned().unwrap_or_default(),
-                    "lang": params.get("lang").cloned().unwrap_or_else(|| "en".to_string()),
-                    "max_pages": max_pages,
-                });
-                match pdf_ocr::import_bytes(
-                    payload,
-                    data,
-                    &state.store,
-                    &state.app_handle,
-                    &state.ocr_jobs,
-                ) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(error) => response::error_response(request, 422, &error),
-                }
-            }
-            "/__import/image_ocr/raw" => {
-                let _ocr_guard = match state.ocr_slot.try_lock() {
-                    Ok(guard) => guard,
-                    Err(std::sync::TryLockError::WouldBlock) => {
-                        return response::error_response(
-                            request,
-                            409,
-                            "Another OCR import is already running",
-                        );
-                    }
-                    Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
-                };
-                let params = response::parse_query(query);
-                let job_id = params.get("job_id").cloned().unwrap_or_default();
-                let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
-                    Ok(guard) => guard,
-                    Err(error) => return response::error_response(request, 400, &error),
-                };
-                let content_type = request_header(&request, "Content-Type")
-                    .unwrap_or("")
-                    .to_string();
-                let data = match response::read_body_limited(&mut request, MAX_RAW_OCR_IMAGE_BODY) {
-                    Ok(data) => data,
-                    Err(error) => {
-                        return response::error_response(request, 413, &error.to_string());
-                    }
-                };
-                let payload = json!({
-                    "book_id": params.get("book_id").cloned().unwrap_or_default(),
-                    "job_id": params.get("job_id").cloned().unwrap_or_default(),
-                    "filename": params.get("filename").cloned().unwrap_or_default(),
-                    "lang": params.get("lang").cloned().unwrap_or_else(|| "en".to_string()),
-                    "content_type": content_type,
-                });
-                match pdf_ocr::import_image_bytes(
-                    payload,
-                    data,
-                    &state.store,
-                    &state.app_handle,
-                    &state.ocr_jobs,
-                ) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(error) => response::error_response(request, 422, &error),
-                }
-            }
-            "/__import/ocr/cancel" | "/__import/pdf_ocr/cancel" => {
-                let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
-                match pdf_ocr::cancel(payload, &state.ocr_jobs) {
-                    Ok(()) => response::no_content(request),
-                    Err(error) => response::error_response(request, 400, &error),
-                }
-            }
-            "/__argos/install" => {
-                let payload = read_json_or_400!(request);
-                match offline_translator::install(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(_) => {
-                        response::error_response(request, 500, "offline package install failed")
-                    }
-                }
-            }
-            "/__srs/review" => {
-                let payload = read_json_or_400!(request);
-                match srs::review(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__translate/external" => {
-                let payload = read_json_or_400!(request);
-                match external_translator::translate(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__ai/models" => {
-                let payload = read_json_or_400!(request);
-                let prepared = match ai_explainer::prepare_models_request(&payload) {
-                    Ok(prepared) => prepared,
-                    Err(err) => return response::error_response(request, 400, &err),
-                };
-                let upstream = match ai_explainer::send_models_request(&prepared) {
-                    Ok(upstream) => upstream,
-                    Err(err) => return response::error_response(request, 502, &err),
-                };
-                match ai_explainer::parse_models_response(upstream) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 502, &err),
-                }
-            }
-            "/__ai/explain" => {
-                let payload = read_json_or_400!(request);
-                let prepared = match ai_explainer::prepare_request(&payload, false) {
-                    Ok(prepared) => prepared,
-                    Err(err) => return response::error_response(request, 400, &err),
-                };
-                let upstream = match ai_explainer::send_prepared_request(&prepared) {
-                    Ok(upstream) => upstream,
-                    Err(err) => return response::error_response(request, 502, &err),
-                };
-                match ai_explainer::parse_explanation_response(upstream) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 502, &err),
-                }
-            }
-            "/__ai/explain_stream" => {
-                let payload = read_json_or_400!(request);
-                let prepared = match ai_explainer::prepare_request(&payload, true) {
-                    Ok(prepared) => prepared,
-                    Err(err) => return response::error_response(request, 400, &err),
-                };
-                // Connect upstream before consuming the tiny_http request. If
-                // the provider is unreachable, the client still receives a
-                // real HTTP error instead of ERR_EMPTY_RESPONSE.
-                let upstream = match ai_explainer::send_prepared_request(&prepared) {
-                    Ok(upstream) => upstream,
-                    Err(err) => return response::error_response(request, 502, &err),
-                };
-                ai_explainer::relay_stream_response(upstream, request)
-            }
-            "/__text/vocab_index" => {
-                let payload = read_json_or_400!(request);
-                match vocab_index::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__youtube/captions" => {
-                let payload = read_json_or_400!(request);
-                match youtube_captions::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            "/__vocab" => {
-                let payload = read_json_or_400!(request);
-                match vocab_export::handle(payload) {
-                    Ok(payload) => response::json_response(request, payload),
-                    Err(err) => response::error_response(request, 400, &err),
-                }
-            }
-            _ => response::error_response(request, 404, "not found"),
-        },
+        (Method::Post, _) => dispatch_post_request(request, &state, path, query),
         _ => {
             // Known route prefix with an unsupported method — 405, not 404.
             if path.starts_with("/__") {
@@ -713,6 +340,388 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
                 response::error_response(request, 404, "not found")
             }
         }
+    }
+}
+
+/** POST dispatch extracted verbatim from `handle_request` (SRP rc.8):
+ * only the enclosing function changed; arms consume `request` exactly as
+ * before, `state`/`path`/`query` are shared borrows. */
+fn dispatch_post_request(
+    mut request: Request,
+    state: &Arc<ServerState>,
+    path: &str,
+    query: &str,
+) -> Result<(), String> {
+    match path {
+        "/__app/close" => {
+            let _payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+            response::no_content(request)?;
+            crate::platform::permit_exit(&state.app_handle);
+            state.app_handle.exit(0);
+            Ok(())
+        }
+        "/__window/zoom" => {
+            let payload = read_json_or_400!(request);
+            let scale_factor = match handlers::parse_window_zoom_percent(&payload) {
+                Ok(scale_factor) => scale_factor,
+                Err(error) => return response::error_response(request, 400, &error),
+            };
+            match handlers::set_window_zoom(&state, scale_factor) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 500, &error),
+            }
+        }
+        "/__store/save" => {
+            let payload = read_json_or_400!(request);
+            let query = response::parse_query(query);
+            let result = state.store.bulk_save(payload);
+            match result {
+                Ok(conflicts) => {
+                    if query.get("snapshot").map(String::as_str) == Some("1") {
+                        response::json_response(
+                            request,
+                            json!({
+                                "snapshot": state.store.snapshot_unacknowledged(),
+                                "conflicts": conflicts
+                            }),
+                        )
+                    } else if conflicts > 0 {
+                        // Concurrent-edit conflicts were resolved (kept one side);
+                        // surface the count so clients can warn the user.
+                        response::json_response(request, json!({ "conflicts": conflicts }))
+                    } else {
+                        response::no_content(request)
+                    }
+                }
+                Err(error) => {
+                    // Schema/validation failures are client errors: the
+                    // frontend's saveWithRetry treats 4xx as "send a full
+                    // snapshot" while 5xx would retry the broken payload.
+                    let code = if error.contains("schemaVersion") {
+                        400
+                    } else {
+                        500
+                    };
+                    response::error_response(request, code, &error)
+                }
+            }
+        }
+        "/__store/ui_state" => {
+            let payload = read_json_limited_or_error!(request, MAX_UI_STATE_REQUEST_BODY);
+            match state.store.save_ui_state(&payload) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__store/ack_snapshot" => {
+            let payload = read_json_or_400!(request);
+            match state.store.acknowledge_frontend_snapshot(&payload) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__store/choose_data_dir" => {
+            let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+            let Some(request) = confirm_or_400(request, &payload) else {
+                return Ok(());
+            };
+            match handlers::choose_data_dir(&state) {
+                Ok(Some(path)) => response::json_response(
+                    request,
+                    json!({ "path": path, "snapshot": state.store.snapshot_unacknowledged() }),
+                ),
+                Ok(None) => response::json_response(request, json!({ "path": null })),
+                Err(err) => response::error_response(request, 500, &err),
+            }
+        }
+        "/__store/export_transfer" => {
+            let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+            let Some(request) = confirm_or_400(request, &payload) else {
+                return Ok(());
+            };
+            match handlers::export_transfer(&state, &payload) {
+                Ok(result) => response::json_response(request, result),
+                Err(error) => response::error_response(request, 500, &error),
+            }
+        }
+        "/__store/import_transfer" => {
+            let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+            let Some(request) = confirm_or_400(request, &payload) else {
+                return Ok(());
+            };
+            match handlers::import_transfer(&state, &payload) {
+                Ok(result) => response::json_response(request, result),
+                Err(error) => response::error_response(request, 422, &error),
+            }
+        }
+        "/__store/upsert_text" => {
+            let payload = read_json_or_400!(request);
+            match state.store.upsert_text(&payload) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__store/delete_text" => {
+            let payload = read_json_or_400!(request);
+            let id = payload
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            match state.store.delete_text(id) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__store/wipe" => {
+            let payload = read_json_or_400!(request);
+            let Some(request) = confirm_or_400(request, &payload) else {
+                return Ok(());
+            };
+            let _ocr_guard = match state.ocr_slot.try_lock() {
+                Ok(guard) => guard,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    return response::error_response(
+                        request,
+                        409,
+                        "Cannot wipe data while an OCR import is running",
+                    );
+                }
+                Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+            };
+            match state.store.wipe() {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 500, &error),
+            }
+        }
+        "/__book/image" => {
+            let payload = read_json_limited_or_error!(request, MAX_IMAGE_REQUEST_BODY);
+            if let Err(error) = validate_book_image_payload(&payload) {
+                return response::error_response(request, 400, &error);
+            }
+            match state.store.save_book_image(&payload) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 500, &error),
+            }
+        }
+        "/__export/save" => {
+            let payload = read_json_limited_or_error!(request, MAX_IMPORT_REQUEST_BODY);
+            let Some(request) = confirm_or_400(request, &payload) else {
+                return Ok(());
+            };
+            match handlers::save_export(payload) {
+                Ok(saved) => response::json_response(request, json!({ "saved": saved })),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__import/ebook" => {
+            let body = match response::read_body_limited(&mut request, MAX_IMPORT_REQUEST_BODY) {
+                Ok(body) => body,
+                Err(error) => {
+                    let status = match &error {
+                        response::BodyError::TooLarge { .. } => 413,
+                        _ => 400,
+                    };
+                    return response::error_response(request, status, &error.to_string());
+                }
+            };
+            // Deserialize into a borrowing struct instead of a
+            // `serde_json::Value` so a large base64 `data` field is not
+            // duplicated in memory alongside the raw body (F13).
+            let request_body = match ebook::parse_import_body(&body) {
+                Ok(request_body) => request_body,
+                Err(error) => return response::error_response(request, 400, &error),
+            };
+            match ebook::import_request(&request_body) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(error) => response::error_response(request, 422, &error),
+            }
+        }
+        "/__import/pdf_ocr/raw" => {
+            let _ocr_guard = match state.ocr_slot.try_lock() {
+                Ok(guard) => guard,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    return response::error_response(
+                        request,
+                        409,
+                        "Another OCR import is already running",
+                    );
+                }
+                Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+            };
+            let params = response::parse_query(query);
+            let job_id = params.get("job_id").cloned().unwrap_or_default();
+            let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
+                Ok(guard) => guard,
+                Err(error) => return response::error_response(request, 400, &error),
+            };
+            let data = match response::read_body_limited(&mut request, MAX_RAW_PDF_BODY) {
+                Ok(data) => data,
+                Err(error) => {
+                    return response::error_response(request, 413, &error.to_string());
+                }
+            };
+            let max_pages = params
+                .get("max_pages")
+                .and_then(|value| value.parse::<u64>().ok())
+                .unwrap_or(0);
+            let payload = json!({
+                "book_id": params.get("book_id").cloned().unwrap_or_default(),
+                "job_id": params.get("job_id").cloned().unwrap_or_default(),
+                "filename": params.get("filename").cloned().unwrap_or_default(),
+                "lang": params.get("lang").cloned().unwrap_or_else(|| "en".to_string()),
+                "max_pages": max_pages,
+            });
+            match pdf_ocr::import_bytes(
+                payload,
+                data,
+                &state.store,
+                &state.app_handle,
+                &state.ocr_jobs,
+            ) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(error) => response::error_response(request, 422, &error),
+            }
+        }
+        "/__import/image_ocr/raw" => {
+            let _ocr_guard = match state.ocr_slot.try_lock() {
+                Ok(guard) => guard,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    return response::error_response(
+                        request,
+                        409,
+                        "Another OCR import is already running",
+                    );
+                }
+                Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+            };
+            let params = response::parse_query(query);
+            let job_id = params.get("job_id").cloned().unwrap_or_default();
+            let _job_guard = match ActiveOcrJob::begin(&state.ocr_jobs, &job_id) {
+                Ok(guard) => guard,
+                Err(error) => return response::error_response(request, 400, &error),
+            };
+            let content_type = request_header(&request, "Content-Type")
+                .unwrap_or("")
+                .to_string();
+            let data = match response::read_body_limited(&mut request, MAX_RAW_OCR_IMAGE_BODY) {
+                Ok(data) => data,
+                Err(error) => {
+                    return response::error_response(request, 413, &error.to_string());
+                }
+            };
+            let payload = json!({
+                "book_id": params.get("book_id").cloned().unwrap_or_default(),
+                "job_id": params.get("job_id").cloned().unwrap_or_default(),
+                "filename": params.get("filename").cloned().unwrap_or_default(),
+                "lang": params.get("lang").cloned().unwrap_or_else(|| "en".to_string()),
+                "content_type": content_type,
+            });
+            match pdf_ocr::import_image_bytes(
+                payload,
+                data,
+                &state.store,
+                &state.app_handle,
+                &state.ocr_jobs,
+            ) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(error) => response::error_response(request, 422, &error),
+            }
+        }
+        "/__import/ocr/cancel" | "/__import/pdf_ocr/cancel" => {
+            let payload = read_json_limited_or_error!(request, MAX_COMMAND_REQUEST_BODY);
+            match pdf_ocr::cancel(payload, &state.ocr_jobs) {
+                Ok(()) => response::no_content(request),
+                Err(error) => response::error_response(request, 400, &error),
+            }
+        }
+        "/__argos/install" => {
+            let payload = read_json_or_400!(request);
+            match offline_translator::install(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(_) => response::error_response(request, 500, "offline package install failed"),
+            }
+        }
+        "/__srs/review" => {
+            let payload = read_json_or_400!(request);
+            match srs::review(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 400, &err),
+            }
+        }
+        "/__translate/external" => {
+            let payload = read_json_or_400!(request);
+            match external_translator::translate(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 400, &err),
+            }
+        }
+        "/__ai/models" => {
+            let payload = read_json_or_400!(request);
+            let prepared = match ai_explainer::prepare_models_request(&payload) {
+                Ok(prepared) => prepared,
+                Err(err) => return response::error_response(request, 400, &err),
+            };
+            let upstream = match ai_explainer::send_models_request(&prepared) {
+                Ok(upstream) => upstream,
+                Err(err) => return response::error_response(request, 502, &err),
+            };
+            match ai_explainer::parse_models_response(upstream) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 502, &err),
+            }
+        }
+        "/__ai/explain" => {
+            let payload = read_json_or_400!(request);
+            let prepared = match ai_explainer::prepare_request(&payload, false) {
+                Ok(prepared) => prepared,
+                Err(err) => return response::error_response(request, 400, &err),
+            };
+            let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                Ok(upstream) => upstream,
+                Err(err) => return response::error_response(request, 502, &err),
+            };
+            match ai_explainer::parse_explanation_response(upstream) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 502, &err),
+            }
+        }
+        "/__ai/explain_stream" => {
+            let payload = read_json_or_400!(request);
+            let prepared = match ai_explainer::prepare_request(&payload, true) {
+                Ok(prepared) => prepared,
+                Err(err) => return response::error_response(request, 400, &err),
+            };
+            // Connect upstream before consuming the tiny_http request. If
+            // the provider is unreachable, the client still receives a
+            // real HTTP error instead of ERR_EMPTY_RESPONSE.
+            let upstream = match ai_explainer::send_prepared_request(&prepared) {
+                Ok(upstream) => upstream,
+                Err(err) => return response::error_response(request, 502, &err),
+            };
+            ai_explainer::relay_stream_response(upstream, request)
+        }
+        "/__text/vocab_index" => {
+            let payload = read_json_or_400!(request);
+            match vocab_index::handle(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 400, &err),
+            }
+        }
+        "/__youtube/captions" => {
+            let payload = read_json_or_400!(request);
+            match youtube_captions::handle(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 400, &err),
+            }
+        }
+        "/__vocab" => {
+            let payload = read_json_or_400!(request);
+            match vocab_export::handle(payload) {
+                Ok(payload) => response::json_response(request, payload),
+                Err(err) => response::error_response(request, 400, &err),
+            }
+        }
+        _ => response::error_response(request, 404, "not found"),
     }
 }
 

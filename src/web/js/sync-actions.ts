@@ -12,7 +12,7 @@ import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, post
 import { clearAllBookTextCaches, clearBookTextCache } from "./books.js";
 import { isCustomTextReferenced } from "./book-actions/profile-library.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
-import { httpPost } from "./http.js";
+import { httpGet, httpPost } from "./http.js";
 
 // Export/vocab transfers stream large payloads — bare fetch had no deadline,
 // keep an explicit generous one instead of the client's 15 s default.
@@ -374,8 +374,7 @@ export async function waitForExportJob(job: string): Promise<boolean> {
         throw new Error(t("toast.exportTimedOut"));
       }
       await new Promise((resolve) => setTimeout(resolve, 400));
-      const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
-        headers: { "X-WH-Token": window.WH_TOKEN || "" },
+      const response = await httpGet(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
         cache: "no-store"
       });
       if (!response.ok) throw new Error(`export progress HTTP ${response.status}`);

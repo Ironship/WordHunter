@@ -1,4 +1,4 @@
-import { fetchWithTimeout } from "./request.js";
+import { httpPost } from "./http.js";
 
 export const VOCAB_INDEX_CACHE_VERSION = 4;
 const CACHE_KEY = `wordhunter:vocab-index:cache-v${VOCAB_INDEX_CACHE_VERSION}`;
@@ -272,14 +272,12 @@ async function fetchVocabIndex({ text, vocab, lang, algorithm, book }: VocabInde
       ? { status: typeof entry.status === "string" ? entry.status : "new", ...(typeof entry.word === "string" ? { word: entry.word } : {}) }
       : { status: "new" }]))
     : {};
-  const response = await fetchWithTimeout("/__text/vocab_index", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-WH-Token": window.WH_TOKEN || ""
-    },
-    body: JSON.stringify({ text, vocab: compactVocab, lang, algorithm })
-  }, 30_000);
+  const response = await httpPost("/__text/vocab_index", {
+    text,
+    vocab: compactVocab,
+    lang,
+    algorithm
+  }, { timeoutMs: 30_000 });
   if (!response.ok) throw new Error(`vocab_index HTTP ${response.status}`);
   const data: unknown = await response.json();
   return parseVocabIndexPayload(data);
