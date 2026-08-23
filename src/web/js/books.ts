@@ -5,6 +5,7 @@ import { clearVocabIndexCache, invalidateBookId } from "./vocab-index-client.js"
 import { cleanGutenbergText } from "./tokenizer_v2.js";
 import { t as translate } from "./i18n.js";
 import { fetchWithTimeout } from "./request.js";
+import { httpGet } from "./http.js";
 import { clearReaderSession } from "./reader/session.js";
 import { invalidateTextStats, prepareBookTextStats, prepareTextStats } from "./stats-cache.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
@@ -230,10 +231,10 @@ function fetchCustomTextContent(text: WhText): Promise<string> {
   const generation = (textCacheGenerationById.get(text.id) || 0) + 1;
   textCacheGenerationById.set(text.id, generation);
   staleBookTextIds.add(text.id);
-  const promise = fetchWithTimeout(`/__book/text?id=${encodeURIComponent(text.id)}`, {
+  const promise = httpGet(`/__book/text?id=${encodeURIComponent(text.id)}`, {
     cache: "no-store",
-    headers: { "X-WH-Token": window.WH_TOKEN || "" }
-  }, 20_000)
+    timeoutMs: 20_000
+  })
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
@@ -264,10 +265,10 @@ export async function loadCustomTextPdfPages(text: WhText): Promise<WhRecord[]> 
     return text?.pdfOcrPages || [];
   }
   if (pdfPagesLoadingById.has(text.id)) return pdfPagesLoadingById.get(text.id);
-  const promise = fetchWithTimeout(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, {
+  const promise = httpGet(`/__book/pdf_pages?id=${encodeURIComponent(text.id)}`, {
     cache: "no-store",
-    headers: { "X-WH-Token": window.WH_TOKEN || "" }
-  }, 20_000)
+    timeoutMs: 20_000
+  })
     .then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();

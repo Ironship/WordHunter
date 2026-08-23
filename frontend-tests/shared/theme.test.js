@@ -178,9 +178,15 @@ describe("named themes", () => {
 
   it("wires the Settings selector to all themes and themed control colors", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
-    // settings.js (behaviour) + settings-view-template.js (markup, split 93a1828).
+    // settings folder module (behaviour) + settings-view-template.js
+    // (markup, split 93a1828).
+    const SETTINGS_FOLDER_FILES = [
+      "index.js", "ai-models.js", "ai-preferences.js", "appearance.js", "data.js",
+      "languages.js", "preference-controls.js", "renderers.js", "review.js",
+      "shared.js", "translator.js"
+    ];
     const settingsSource = [
-      new URL("../../dist/web/js/events/settings.js", import.meta.url),
+      ...SETTINGS_FOLDER_FILES.map((file) => new URL(`../../dist/web/js/events/settings/${file}`, import.meta.url)),
       new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
     ].map((url) => readFileSync(url, "utf8")).join("\n");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");

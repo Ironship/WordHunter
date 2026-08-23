@@ -31,10 +31,11 @@ describe("manual transfer tab", () => {
     assert.match(actions, /httpPost\("\/__store\/export_transfer", \{ scope, filename, requestId, confirm: true \}/);
     assert.match(actions, /httpPost\("\/__store\/import_transfer", androidPath \? \{ path: androidPath, confirm: true \} : \{ confirm: true \}/);
     const settings = readFileSync(
-      new URL("../../dist/web/js/events/settings.js", import.meta.url),
+      new URL("../../dist/web/js/events/settings/data.js", import.meta.url),
       "utf8"
     );
-    assert.match(settings, /JSON\.stringify\(\{ confirm: true \}\)/);
+    // DIP migration: choose_data_dir goes through httpPost; allow trailing options.
+    assert.match(settings, /httpPost\("\/__store\/choose_data_dir", \{ confirm: true \}/);
   });
 
   it("sends an explicit confirmation with the store wipe (fix #211)", () => {

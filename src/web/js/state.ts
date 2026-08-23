@@ -6,7 +6,7 @@ import { getDefaultDictionaryUrl } from "./state/defaults.js";
 import { assertSupportedStateSchemaVersion, loadState } from "./state/normalize.js";
 import { captureUiState, saveUiStateCache, UI_STATE_KEYS } from "./state/ui-cache.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, OTHER_PROFILE_ID, STATE_SCHEMA_VERSION } from "./constants.js";
-import { fetchWithTimeout } from "./request.js";
+import { httpPost } from "./http.js";
 import { postStoreJson } from "./store-bridge.js";
 
 export { STATE_SCHEMA_VERSION } from "./constants.js";
@@ -191,11 +191,7 @@ export async function requestWordHunterClose(): Promise<void> {
     return;
   }
   try {
-    const response = await fetchWithTimeout("/__app/close", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: "{}"
-    }, 10_000);
+    const response = await httpPost("/__app/close", {}, { timeoutMs: 10_000 });
     if (!response.ok) throw new Error(`close HTTP ${response.status}`);
   } catch (error) {
     nativeCloseRequested = false;
