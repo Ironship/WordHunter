@@ -410,6 +410,9 @@ describe("add-word dialog renderer (events/word-editor.ts)", () => {
       "../vocabulary/review-card.js": { invalidateReviewQueueCache: () => {} },
       "../reader/smart-suggest.js": { invalidateSuggestIndex: () => {} },
       "../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
+      // rc.6: the edit branch resolves the headword rename key.
+      "../tokenizer_v2.js": { resolveVocabularyKey: (word) => String(word || "").toLowerCase() },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" },
       "../loading.js": { beginElementBusy: () => () => {}, setElementBusy: () => {}, withElementBusy: async (_element, fn) => fn() },
       "./vocab-status.js": { VOCAB_STATUS_FILTERS: [] }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });

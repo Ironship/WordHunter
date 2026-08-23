@@ -1953,6 +1953,33 @@ async function evaluateWordPanel({
     translateWithRetry: translateText,
     localizedTranslationError() { return ""; }
   };
+  // Contract mirror of the real ../ai-note-append.js (exercised end to end
+  // by review-ai-note.test.js): appends the explanation through the mocked
+  // updateWordField so the reader-flow tests still observe the note write.
+  // rc.6: word-panel now calls the interactive persist; in these tests it
+  // keeps the legacy silent-append semantics (the dialog path itself is
+  // covered by review-ai-note.test.js). Named self-reference — `this` is
+  // undefined for bare ESM imports.
+  const aiNoteAppendMock = {
+    appendAiExplanationToNote(word, explanation) {
+      const trimmed = String(explanation || "").trim();
+      if (!trimmed) return "";
+      const entry = state.vocab[word];
+      const current = entry?.note || "";
+      // Mirrors the real module: localized "<label>:<text>" block, dedupe
+      // included. The harness i18n mock (t: (key) => key) makes the marker
+      // render as the literal key name. NL avoids backslash escaping here.
+      const NL = String.fromCharCode(10);
+      const marker = "reader.aiNoteMarker";
+      const block = marker + ":" + NL + trimmed;
+      if (current.includes(block)) return current;
+      const next = current ? current + NL + NL + block : block;
+      updateWordField(word, "note", next);
+      return next;
+    }
+  };
+  aiNoteAppendMock.persistAiExplanationToNote = async (word, explanation) =>
+    aiNoteAppendMock.appendAiExplanationToNote(word, explanation);
   return evaluateWithMocks("dist/web/js/reader/word-panel.js", {
     "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
     "./session.js": {
@@ -1978,27 +2005,9 @@ async function evaluateWordPanel({
       }
     },
     "../vocab-actions.js": { updateWordField },
-    // Contract mirror of the real ../ai-note-append.js (exercised end to end
-    // by review-ai-note.test.js): appends the explanation through the mocked
-    // updateWordField so the reader-flow tests still observe the note write.
-    "../ai-note-append.js": {
-      appendAiExplanationToNote(word, explanation) {
-        const trimmed = String(explanation || "").trim();
-        if (!trimmed) return "";
-        const entry = state.vocab[word];
-        const current = entry?.note || "";
-        // Mirrors the real module: localized "<label>:<text>" block, dedupe
-        // included. The harness i18n mock (t: (key) => key) makes the marker
-        // render as the literal key name. NL avoids backslash escaping here.
-        const NL = String.fromCharCode(10);
-        const marker = "reader.aiNoteMarker";
-        const block = marker + ":" + NL + trimmed;
-        if (current.includes(block)) return current;
-        const next = current ? current + NL + NL + block : block;
-        updateWordField(word, "note", next);
-        return next;
-      }
-    },
+    // See aiNoteAppendMock above (rc.6: persist delegates to the same
+    // silent-append mirror; dialog semantics live in review-ai-note.test.js).
+    "../ai-note-append.js": aiNoteAppendMock,
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
     "./selection.js": { getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {

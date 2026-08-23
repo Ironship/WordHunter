@@ -1,0 +1,3 @@
+Word Hunter 1.1.0-rc.6
+
+1.1.0-rc.6 fixes hiding word underlines with the reader eye toggle on Android, asks whether to append or replace an existing note when saving AI explanations, and lets you rename a saved word when editing it.

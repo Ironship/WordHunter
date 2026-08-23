@@ -1476,3 +1476,20 @@ html.pocket-mode {
     min-height: 0;
   }
 }
+
+/* === Eye toggle (hide underlines) — must win over the pocket token styling
+   above. The status rules earlier in this file share specificity with
+   `:root.no-token-highlight .word-token` from styles.css and load later, so
+   on Android they used to keep the underlines visible after toggling the eye
+   (rc.4 review bug). Compounding both root classes gives a strictly higher
+   precedence regardless of file order. PC is unaffected (no pocket-mode). */
+.pocket-mode.no-token-highlight .word-token {
+  box-shadow: none;
+  color: inherit;
+  opacity: 1;
+  text-decoration: none;
+}
+
+.pocket-mode.no-token-highlight .word-token.pdf-ocr-word::after {
+  display: none;
+}
