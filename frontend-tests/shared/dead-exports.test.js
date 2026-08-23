@@ -146,12 +146,16 @@ describe("dead backend surface contract (#114)", () => {
       /STATE_SCHEMA_VERSION/,
       "the STATE_SCHEMA_VERSION import must stay removed (schemaVersion is not sent by #114)",
     );
-    const bodyLine = vi.split("\n").find((line) => line.includes("JSON.stringify({"));
-    assert.ok(bodyLine, "the vocab_index fetch body line must exist");
+    // DIP migration: the body is now an object literal passed to httpPost
+    // (which performs the JSON.stringify), so inspect the call block instead.
+    const viLines = vi.split("\n");
+    const postStart = viLines.findIndex((line) => line.includes('httpPost("/__text/vocab_index"'));
+    assert.ok(postStart !== -1, "the vocab_index httpPost call must exist");
+    const callBlock = viLines.slice(postStart, postStart + 8).join("\n");
     assert.doesNotMatch(
-      bodyLine,
+      callBlock,
       /\b(book|schemaVersion)\b/,
-      "the vocab_index fetch body must not carry book or schemaVersion (removed by #114)",
+      "the vocab_index request body must not carry book or schemaVersion (removed by #114)",
     );
   });
 

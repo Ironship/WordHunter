@@ -25,10 +25,15 @@ describe("selected-word panel", () => {
     const html = read("dist/web/index.html");
     const dom = read("dist/web/js/dom.js");
     const preferences = read("dist/web/js/preferences.js");
-    const settings = read("dist/web/js/events/settings.js");
+    // settings.ts was split into the events/settings/ folder module; this
+    // contract spans preference-controls.js (word-panel item saving) and
+    // languages.js (locale change sequence).
+    const settings = [
+      read("dist/web/js/events/settings/preference-controls.js"),
+      read("dist/web/js/events/settings/languages.js")
+    ].join("\n");
     // The settings view markup (incl. the word-panel items setting) lives in
-    // settings-view-template.js since the 93a1828 split; settings.js keeps
-    // only the behaviour.
+    // settings-view-template.js since the 93a1828 split.
     const template = read("dist/web/js/events/settings-view-template.js");
 
     assert.match(html, /id="pocket-word-panel-sheet-handle"[^>]*aria-controls="word-panel"[^>]*aria-expanded="false"/);

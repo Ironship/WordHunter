@@ -1,6 +1,8 @@
 // SM-2 spaced repetition algorithm (SuperMemo 2). Pure logic, no side effects.
 // See: https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm
 
+import { httpPost } from "./http.js";
+
 export type SrsAlgorithm = "sm2" | "fsrs";
 type FsrsRating = "again" | "hard" | "good" | "easy";
 
@@ -228,21 +230,17 @@ export async function applyReviewNative<T extends SrsEntry>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4000);
   try {
-    const response = await fetch("/__srs/review", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "X-WH-Token": window.WH_TOKEN || ""
-      },
-      body: JSON.stringify({
+    const response = await httpPost(
+      "/__srs/review",
+      {
         entry,
         quality,
         algorithm: mode,
         now: now.toISOString(),
         today: todayISO(now)
-      })
-    });
+      },
+      { signal: controller.signal }
+    );
     if (!response.ok) throw new Error(await response.text());
     const next = await response.json() as ReviewSchedule;
     applyReviewResult(entry, next, now, mode);

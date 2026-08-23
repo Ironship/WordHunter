@@ -116,7 +116,7 @@ async function loadApp({ isAndroidPlatform, applyBridgeSnapshotToState }) {
     "./js/onboarding.js": { renderLanguageOnboardingDialog: noOp },
     "./js/book-actions/edit-modal.js": { renderEditBookDialog: noOp },
     "./js/events/book-import.js": { renderImportPanel: noOp },
-    "./js/request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+    "./js/http.js": { httpGet: async () => ({ ok: true, json: async () => ({}) }) },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,

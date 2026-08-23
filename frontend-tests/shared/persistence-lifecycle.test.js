@@ -154,7 +154,9 @@ async function loadAppHarness({
     "./js/events/word-editor.js": { renderAddWordDialog: noOp, refreshAddWordDialogLocalization: noOp },
 "./js/events/settings.js": { renderArgosDownloadDialog: noOp, renderSettingsView: noOp },
     "./js/events/book-import.js": { renderImportPanel: noOp },    "./js/book-actions/edit-modal.js": { renderEditBookDialog: noOp },
-    "./js/request.js": { fetchWithTimeout: bridgeFetch },
+    // httpGet carries the timeout inside its options object; unwrap it so the
+    // bridgeFetch(url, init, timeoutMs) contract of this harness stays valid.
+    "./js/http.js": { httpGet: (url, opts) => bridgeFetch(url, undefined, opts?.timeoutMs) },
     "./js/platform.js": {
       applyPlatformUi: noOp,
       detectPlatform: noOp,
@@ -832,8 +834,8 @@ describe("persistence lifecycle", () => {
       "./store-bridge.js": {
         postStoreJson(path, payload, _options) { backendSaves.push([path, payload]); return Promise.resolve({}); }
       },
-      "./request.js": {
-        fetchWithTimeout(path, options) { keepaliveUiSaves.push([path, options]); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      "./http.js": {
+        httpPost(path, _body, options) { keepaliveUiSaves.push([path, options]); return Promise.resolve({ ok: true, json: async () => ({}) }); }
       },
       "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
@@ -862,7 +864,9 @@ describe("persistence lifecycle", () => {
     await stateModule.requestWordHunterClose();
     const closeRequest = keepaliveUiSaves.find(([path]) => path === "/__app/close");
     assert.ok(closeRequest);
-    assert.equal(closeRequest[1].headers["X-WH-Token"], "test-token");
+    // DIP migration: the token now travels inside httpPost (authHeaders),
+    // so the caller only carries the timeout contract.
+    assert.equal(closeRequest[1].timeoutMs, 10_000);
     assert.equal(durableSaves, 1);
   });
 
@@ -912,7 +916,7 @@ describe("persistence lifecycle", () => {
         UI_STATE_KEYS: []
       },
       "./store-bridge.js": { postStoreJson: async () => ({}) },
-      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+      "./http.js": { httpPost: async () => ({ ok: true, json: async () => ({}) }) },
       "./constants.js": {
         OTHER_PROFILE_ID: "other",
         STATE_SCHEMA_VERSION: 2,
@@ -972,7 +976,7 @@ describe("persistence lifecycle", () => {
           return {};
         }
       },
-      "./request.js": { fetchWithTimeout: async () => ({ ok: true, json: async () => ({}) }) },
+      "./http.js": { httpPost: async () => ({ ok: true, json: async () => ({}) }) },
       "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
       window: { __qtBridge: true, WH_TOKEN: "test-token" },
@@ -1045,8 +1049,8 @@ describe("persistence lifecycle", () => {
       "./store-bridge.js": {
         async postStoreJson(_path, _payload, _options) { calls.push("final-ui"); return {}; }
       },
-      "./request.js": {
-        async fetchWithTimeout(path) {
+      "./http.js": {
+        httpPost(path) {
           if (path === "/__app/close") calls.push("close");
           return { ok: true, json: async () => ({}) };
         }
@@ -1112,8 +1116,8 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": { postStoreJson: async () => ({}) },
-      "./request.js": {
-        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      "./http.js": {
+        httpPost(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
       },
       "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
@@ -1169,8 +1173,8 @@ describe("persistence lifecycle", () => {
           return {};
         }
       },
-      "./request.js": {
-        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      "./http.js": {
+        httpPost(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
       },
       "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
@@ -1217,8 +1221,8 @@ describe("persistence lifecycle", () => {
       },
       "./state/ui-cache.js": { captureUiState: () => ({}), saveUiStateCache: noOp, UI_STATE_KEYS: [] },
       "./store-bridge.js": { postStoreJson: async (_path, _payload, _options) => { throw new Error("ui disk full"); } },
-      "./request.js": {
-        fetchWithTimeout(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
+      "./http.js": {
+        httpPost(path) { closeRequests.push(path); return Promise.resolve({ ok: true, json: async () => ({}) }); }
       },
       "./constants.js": { OTHER_PROFILE_ID: "other", STATE_SCHEMA_VERSION: 2, IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT: 3 }
     }, {
@@ -1360,7 +1364,8 @@ describe("persistence lifecycle", () => {
     assert.match(bootLogo, /background:\s*url\("favicon\.svg\?v=[0-9a-f]{12}"\)/);
     assert.match(bootLogo, /animation:\s*boot-logo-pulse 1\.15s ease-in-out infinite !important/);
     assert.doesNotMatch(styles, /content: "Word Hunter"/);
-    assert.ok(app.includes('fetchWithTimeout("/__store/load"'));
+    // DIP migration: boot store load goes through httpGet; allow trailing options.
+    assert.match(app, /httpGet\("\/__store\/load"(?:,|\))/);
     assert.match(handlers, /bootstrap_script\([\s\S]*(Some|None)/);
     assert.match(bootstrapTemplate, /storeLoadController[\s\S]*120000/);
     assert.match(boot, /wordHunterBootTimeout = window\.setTimeout/);
@@ -1378,6 +1383,11 @@ describe("persistence lifecycle", () => {
     const toasts = [];
     let applyShouldThrow = false;
     let transferResponse = { ok: true, saved: false };
+    const transferFetch = async () => ({
+      ok: transferResponse.ok,
+      json: async () => ({ saved: transferResponse.saved }),
+      text: async () => "disk unavailable"
+    });
     const window = fakeEventTarget({
       WH_TOKEN: "test-token",
       __qtBridge: false,
@@ -1509,6 +1519,12 @@ describe("persistence lifecycle", () => {
           || Object.values(state.profiles || {}).some((profile) =>
             profile?.customTexts?.some((text) => text.id === id)
           )
+      },
+      // httpPost keeps the raw Response contract; route it through the
+      // recording fetch mock so exportTransfer assertions stay valid.
+      "./http.js": {
+        httpPost: (url, body) => transferFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+        httpGet: (url) => transferFetch(url, { method: "GET" })
       }
     }, {
       window,
@@ -1517,11 +1533,7 @@ describe("persistence lifecycle", () => {
       Blob: class Blob {},
       URL: { createObjectURL: () => "blob:test", revokeObjectURL() {} },
       document: { createElement: () => ({ click() {} }) },
-      fetch: async () => ({
-        ok: transferResponse.ok,
-        json: async () => ({ saved: transferResponse.saved }),
-        text: async () => "disk unavailable"
-      }),
+      fetch: transferFetch,
       setTimeout: () => 1,
       clearTimeout() {},
       console: { warn() {}, error() {} }

@@ -642,7 +642,8 @@ describe("focused frontend regressions", () => {
       "../views/library.js": { renderLibrary() {} },
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
-      "../store-bridge.js": { upsertStoredText() {} }
+      "../store-bridge.js": { upsertStoredText() {} },
+      "../http.js": { httpPost: async () => { throw new Error("unexpected backend POST"); } }
     }, { window: { __qtBridge: false }, document });
 
     await module.openEditBookModal("custom-1");
@@ -666,7 +667,7 @@ describe("focused frontend regressions", () => {
       bookImport.indexOf("\nexport { importPdfFile")
     );
 
-    assert.match(ocrProgress, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
+    assert.match(ocrProgress, /httpPost\("\/__book\/image",[\s\S]*?timeoutMs:\s*30_000/);
     assert.match(
       runPdfImport,
       /finally\s*{[\s\S]*?stopAndroidPdfProgress\(\);\s*stopOcrProgress\(\);\s*setImportLoading\(false\);\s*}/
@@ -704,7 +705,8 @@ describe("focused frontend regressions", () => {
       "../views/library.js": { renderLibrary() {} },
       "../reader/renderer.js": { renderReader() {} },
       "../bridge-commit.js": { reloadBridgeSnapshot() {}, saveStateAndReloadBridge() {} },
-      "../store-bridge.js": { upsertStoredText() {} }
+      "../store-bridge.js": { upsertStoredText() {} },
+      "../http.js": { httpPost: async () => { throw new Error("unexpected backend POST"); } }
     }, { window: { __qtBridge: true }, document, console: { warn() {} } });
 
     await module.openEditBookModal("custom-1");
@@ -770,7 +772,7 @@ describe("focused frontend regressions", () => {
   });
 
   it("keeps Argos cancellation disabled and inert while installation is running", () => {
-    const settings = read("dist/web/js/events/settings.js");
+    const settings = read("dist/web/js/events/settings/translator.js");
     assert.match(settings, /function cancelArgosDownload\(\) \{[^]*?if \(argosDownloadRunning\)\s*return;[^]*?getElementById\("argos-download-dialog"\)\?\.close\(\)/);
     assert.match(settings, /argosDownloadRunning = true;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = true/);
     assert.match(settings, /finally \{[^]*?argosDownloadRunning = false;[^]*?argosCancelButton\)\s*argosCancelButton\.disabled = false/);
@@ -939,7 +941,7 @@ describe("focused frontend regressions", () => {
   });
 
   it("restores selected-word settings focus after visibility and reorder renders", () => {
-    const settings = read("dist/web/js/events/settings.js");
+    const settings = read("dist/web/js/events/settings/preference-controls.js");
     assert.match(settings, /preferred && !preferred\.disabled/);
     assert.match(settings, /fallback && !fallback\.disabled \? fallback : checkbox/);
     assert.match(settings, /item\.visible = input\.checked;\s*saveSelectedWordPanelItems\(items\);\s*restoreSelectedWordPanelSettingFocus\(id\)/);
@@ -1741,7 +1743,15 @@ describe("focused frontend regressions", () => {
       },
       "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
       "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
-      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
+      "./http.js": {
+        httpPost: async () => { throw new Error("unexpected backend POST"); },
+        // The export-progress poll goes through httpGet; keep counting calls.
+        httpGet: async () => {
+          fetches += 1;
+          return { ok: true, json: async () => ({ done: false, percent: 0, phase: "words" }) };
+        }
+      }
     }, {
       Date: FakeDate,
       document: {
@@ -1749,10 +1759,6 @@ describe("focused frontend regressions", () => {
         createElement: () => overlay
       },
       window: { WH_TOKEN: "test-token" },
-      fetch: async () => {
-        fetches += 1;
-        return { ok: true, json: async () => ({ done: false, percent: 0, phase: "words" }) };
-      },
       setTimeout(resolve) { resolve(); return 1; }
     });
 
@@ -1765,6 +1771,7 @@ describe("focused frontend regressions", () => {
     const provider = await evaluateWithMocks("dist/web/js/translation-provider.js", {
       "./state.js": { state: { preferences: {} } },
       "./i18n.js": { t: (key) => key },
+      "./http.js": { httpPost: async () => { throw new Error("unexpected backend POST"); } },
       "./translator-preferences.js": {
         normalizeTranslationLanguageCode: (value) => value,
         normalizeTranslationProvider: (value) => value,
@@ -1842,6 +1849,10 @@ describe("focused frontend regressions", () => {
     const toasts = [];
     const fetchBodies = [];
     const noOp = () => {};
+    const fetchMock = async (_url, options) => {
+      fetchBodies.push(String(options?.body ?? ""));
+      return { ok: false, status: 500, text: async () => "" };
+    };
     const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
       "./state.js": {
         applyBridgeSnapshotToState: noOp,
@@ -1873,14 +1884,17 @@ describe("focused frontend regressions", () => {
       },
       "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
       "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
-      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
+      // httpPost keeps the raw Response contract; route it through the
+      // recording fetch mock so exportTransfer assertions stay valid.
+      "./http.js": {
+        httpPost: (url, body) => fetchMock(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+        httpGet: (url) => fetchMock(url, { method: "GET" })
+      }
     }, {
       document: { body: { appendChild() {} }, createElement: () => ({}) },
       window: { WH_TOKEN: "test-token" },
-      fetch: async (_url, options) => {
-        fetchBodies.push(String(options?.body ?? ""));
-        return { ok: false, status: 500, text: async () => "" };
-      }
+      fetch: fetchMock
     });
 
     assert.equal(module.transferErrorMessage(new Error("export HTTP 500")), 'transfer.httpError:{"status":"500"}');

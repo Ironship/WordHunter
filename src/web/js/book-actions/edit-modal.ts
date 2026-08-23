@@ -11,6 +11,7 @@ import { renderLibrary } from "../views/library.js";
 import { renderReader } from "../reader/renderer.js";
 import { reloadBridgeSnapshot, saveStateAndReloadBridge } from "../bridge-commit.js";
 import { upsertStoredText } from "../store-bridge.js";
+import { httpPost } from "../http.js";
 
 /**
  * Builds the edit-book dialog markup once (idempotent). Called during app
@@ -380,11 +381,7 @@ export async function pasteImageToEditBook(file: File): Promise<void> {
     const textToInsert = `\n[IMG:${imgName}]\n`;
     try {
       if (!window.__qtBridge) throw new Error("book image storage is unavailable");
-      const response = await fetch("/__book/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({ book_id: targetBookId, img_name: imgName, base64_data: base64Data })
-      });
+      const response = await httpPost("/__book/image", { book_id: targetBookId, img_name: imgName, base64_data: base64Data }, { timeoutMs: 30_000 });
       if (!response.ok) throw new Error(`book image upload HTTP ${response.status}`);
       if (generation !== editBookGeneration || editingBookId !== targetBookId) return;
       textarea.value = textarea.value.substring(0, startPos) + textToInsert + textarea.value.substring(endPos, textarea.value.length);

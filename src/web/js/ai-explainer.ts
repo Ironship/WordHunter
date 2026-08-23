@@ -12,6 +12,7 @@ import { getTextById } from "./reader/renderer.js";
 import { findPdfSentenceRange, effectivePdfPageText, type PdfOcrPage } from "./reader/pdf-page-text.js";
 import { escapeHtml } from "./utils.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./translator-preferences.js";
+import { httpPost } from "./http.js";
 
 export const DEFAULT_AI_ENDPOINT = "https://opencode.ai/zen/go/v1/chat/completions";
 export const DEFAULT_AI_MODEL = "deepseek-v4-flash";
@@ -54,17 +55,9 @@ export interface AiExplanationResult {
 
 export async function requestAiExplanation(request: AiExplanationRequest): Promise<AiExplanationResult> {
   const payload = buildAiPayload(request);
-  const response = await fetch("/__ai/explain", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-WH-Token": window.WH_TOKEN || ""
-    },
-    body: JSON.stringify(payload),
-    // A silent endpoint must not hang the explain flow (or keep a word
-    // "in flight" forever); 90s is generous for a local/remote LLM call.
-    signal: AbortSignal.timeout(90000)
-  });
+  // A silent endpoint must not hang the explain flow (or keep a word
+  // "in flight" forever); 90s is generous for a local/remote LLM call.
+  const response = await httpPost("/__ai/explain", payload, { timeoutMs: 90_000 });
   if (!response.ok) {
     const detail = (await response.text()).trim();
     throw new Error(detail || `HTTP ${response.status}`);
@@ -119,15 +112,7 @@ export async function requestAiExplanationStream(
   request: AiExplanationRequest,
   onDelta?: (text: string) => void
 ): Promise<StreamResult> {
-  const response = await fetch("/__ai/explain_stream", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-WH-Token": window.WH_TOKEN || ""
-    },
-    body: JSON.stringify(buildAiPayload(request)),
-    signal: AbortSignal.timeout(90000)
-  });
+  const response = await httpPost("/__ai/explain_stream", buildAiPayload(request), { timeoutMs: 90_000 });
   if (!response.ok) {
     const detail = (await response.text()).trim();
     throw new Error(detail || `HTTP ${response.status}`);

@@ -1,6 +1,6 @@
 // OCR / Android PDF-render progress overlays with cancel wiring.
 import { t } from "../../i18n.js";
-import { fetchWithTimeout } from "../../request.js";
+import { httpPost } from "../../http.js";
 import { isAndroidPlatform } from "../../platform.js";
 import { el, waitForUiPaint } from "./shared.js";
 
@@ -109,16 +109,12 @@ async function renderAndSaveAndroidPdfPages(data: string, bookId: string, pages:
       if (!rendered.dataUrl || !page?.imageName) {
         throw new Error(t("toast.pdfOcrNoText"));
       }
-      const response = await fetchWithTimeout("/__book/image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({
-          book_id: bookId,
-          img_name: page.imageName,
-          base64_data: rendered.dataUrl,
-          pending_import: true
-        })
-      }, 30_000);
+      const response = await httpPost("/__book/image", {
+        book_id: bookId,
+        img_name: page.imageName,
+        base64_data: rendered.dataUrl,
+        pending_import: true
+      }, { timeoutMs: 30_000 });
       if (!response.ok) {
         const message = await response.text().catch(() => "");
         throw new Error(message || `HTTP ${response.status}`);
