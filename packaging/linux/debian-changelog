@@ -1,3 +1,9 @@
+word-hunter (1.1.0-rc.8) unstable; urgency=medium
+
+  * 1.1.0-rc.8 continues the maintainability work behind the scenes: the backend request router and the settings module are reorganised into focused units with identical behaviour, and every network call now carries an explicit timeout so long operations (AI explanations, model downloads, library transfers) no longer risk silent 15-second cutoffs.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Sat, 23 Aug 2026 23:55:00 +0200
+
 word-hunter (1.1.0-rc.7) unstable; urgency=medium
 
   * 1.1.0-rc.7 is a maintenance release: the import pipeline and record storage modules are reorganised for maintainability, duplicate styles are consolidated with no visual change, a large-library performance guard joins the test suite, and the AUR package version tracking is fixed.
