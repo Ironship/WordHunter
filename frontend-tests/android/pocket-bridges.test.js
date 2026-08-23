@@ -168,7 +168,8 @@ describe("Android Pocket bridges", () => {
 
   it("defines Android PDF rendering and overlay integration ABIs", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import/pdf-ocr.js", import.meta.url), "utf8");
+    const progressModule = readFileSync(new URL("../../dist/web/js/events/book-import/ocr-progress.js", import.meta.url), "utf8");
 
     assert.match(activity, /import android\.graphics\.pdf\.PdfRenderer/);
     assert.match(activity, /private val pdfRenderSessions = mutableMapOf<String, PdfRenderSession>\(\)/);
@@ -180,14 +181,15 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /Base64\.encodeToString\(bytes\.toByteArray\(\), Base64\.NO_WRAP\)/);
     assert.match(activity, /fun endPdfRender\(sessionId: String\?\)/);
     assert.match(activity, /closeAllPdfRenderSessions\(\)/);
-    assert.match(importEvents, /getAndroidPdfRendererBridge\(\)/);
+    assert.match(progressModule, /getAndroidPdfRendererBridge\(\)/);
     assert.match(importEvents, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
-    assert.match(importEvents, /pending_import: true/);
+    assert.match(progressModule, /pending_import: true/);
   });
 
   it("caps Android PDF base64 transfer at 64 MB and decodes chunked to the cache file", () => {
     const activity = readFileSync(new URL("../../src-tauri/platforms/android/MainActivity.kt", import.meta.url), "utf8");
-    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importEvents = readFileSync(new URL("../../dist/web/js/events/book-import/pdf-ocr.js", import.meta.url), "utf8");
+    const progressModule = readFileSync(new URL("../../dist/web/js/events/book-import/ocr-progress.js", import.meta.url), "utf8");
 
     assert.match(activity, /private const val ANDROID_PDF_MAX_BASE64_DECODED = 64L \* 1024L \* 1024L/);
     assert.match(activity, /private fun writeDecodedDataUrl\(dataUrl: String\?, output: File\)/);
@@ -197,9 +199,9 @@ describe("Android Pocket bridges", () => {
     assert.match(activity, /PDF is too large for Pocket render \(max 64 MB\)/);
     assert.doesNotMatch(activity, /Base64\.decode\(raw, Base64\.DEFAULT\)/);
     assert.doesNotMatch(activity, /400 MB/);
-    assert.match(importEvents, /ANDROID_PDF_RENDER_MAX_BASE64_MB/);
+    assert.match(progressModule, /ANDROID_PDF_RENDER_MAX_BASE64_MB/);
     assert.match(
-      importEvents,
+      progressModule,
       /if \(data\.length > ANDROID_PDF_RENDER_MAX_BASE64_ENCODED\)[\s\S]{0,300}bridge\.beginPdfRender\(sessionId, data\)/
     );
   });

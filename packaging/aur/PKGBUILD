@@ -1,7 +1,7 @@
 # Maintainer: Ironship <25068602+Ironship at users dot noreply dot github dot com>
 
 pkgname=wordhunter-bin
-pkgver=1.0.10
+pkgver=1.1.0-rc.7
 pkgrel=1
 pkgdesc="Local-first reader and vocabulary trainer (binary AppImage release)"
 arch=('x86_64')
@@ -25,7 +25,8 @@ _appimage="WordHunter-${pkgver}-x86_64.AppImage"
 source_x86_64=(
   "${_appimage}::https://github.com/Ironship/WordHunter/releases/download/WordHunter${pkgver}/${_appimage}"
 )
-sha256sums_x86_64=('309dcae292637265759cde2ec9de8d270f5b4768b1cbdade385a0b353e6ab523')
+# Maintainers refresh the AppImage sha256 at publish time; offline edits use SKIP.
+sha256sums_x86_64=('SKIP')
 noextract=("${_appimage}")
 
 prepare() {

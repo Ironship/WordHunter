@@ -835,7 +835,7 @@ describe("desktop reader markup and style contracts", () => {
 
   it("statically suppresses Pocket drawer controls outside Pocket mode", () => {
     const libraryModule = readFileSync(new URL("../../dist/web/js/views/library.js", import.meta.url), "utf8");
-    const importModule = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importModule = readFileSync(new URL("../../dist/web/js/events/book-import/panel.js", import.meta.url), "utf8");
     // library-import-toggle / library-import-close are TS-rendered (#127 P2):
     // their pocket marker classes live in the renderer sources, not in
     // static HTML.
@@ -1095,7 +1095,7 @@ describe("desktop PDF reader contracts", () => {
     const response = readFileSync(new URL("../../src-tauri/src/response.rs", import.meta.url), "utf8");
     const server = readFileSync(new URL("../../src-tauri/src/server.rs", import.meta.url), "utf8");
     const handlers = readFileSync(new URL("../../src-tauri/src/handlers.rs", import.meta.url), "utf8");
-    const importer = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const importer = readFileSync(new URL("../../dist/web/js/events/book-import/pdf-ocr.js", import.meta.url), "utf8");
     assert.match(tomlSection(cargoToml, "dependencies"), /pdf-extract = "0\.12"/);
     assert.match(flatpakManifest, /--filesystem=host-os:ro/);
     assert.match(backend, /let result = import_text_layer_pdf\(/);
