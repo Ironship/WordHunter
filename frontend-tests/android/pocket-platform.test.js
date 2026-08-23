@@ -597,26 +597,27 @@ describe("Android Pocket platform", () => {
   });
 
   it("declares the Android PDF overlay integration contract", () => {
-    const source = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const source = readFileSync(new URL("../../dist/web/js/events/book-import/pdf-ocr.js", import.meta.url), "utf8");
+    const progress = readFileSync(new URL("../../dist/web/js/events/book-import/ocr-progress.js", import.meta.url), "utf8");
     const backend = readFileSync(new URL("../../src-tauri/src/platform/android_backend/pdf_ocr.rs", import.meta.url), "utf8");
     const sharedTextLayer = readFileSync(new URL("../../src-tauri/src/pdf_text_layer.rs", import.meta.url), "utf8");
 
     assert.match(source, /const androidPdfOverlay = isAndroidPlatform\(\);/);
     assert.match(source, /if \(!androidPdfOverlay && !await confirmWholeBookOcr\(\)\)\s*return false;/);
     assert.match(source, /renderAndSaveAndroidPdfPages\(data, id, pages\)/);
-    assert.match(source, /bridge\.beginPdfRender\(sessionId, data\)/);
-    assert.match(source, /bridge\.renderPdfPage\(sessionId, index, pdfRenderWidth\(\)\)/);
+    assert.match(progress, /bridge\.beginPdfRender\(sessionId, data\)/);
+    assert.match(progress, /bridge\.renderPdfPage\(sessionId, index, pdfRenderWidth\(\)\)/);
     // The render width follows the screen (device pixels), clamped to the
     // native 512..2400 range instead of a fixed 1400.
-    assert.match(source, /function pdfRenderWidth\(\)[\s\S]*Math\.min\(2400, Math\.max\(512, width\)\)/);
-    assert.match(source, /new FileReader\(\)/);
+    assert.match(progress, /function pdfRenderWidth\(\)[\s\S]*Math\.min\(2400, Math\.max\(512, width\)\)/);
+    assert.match(progress, /new FileReader\(\)/);
     assert.match(source, /fetch\(`\/__import\/pdf_ocr\/raw\?\$\{params\}`/);
-    assert.match(source, /MAX_POCKET_PDF_BYTES = 32 \* 1024 \* 1024/);
+    assert.match(progress, /MAX_POCKET_PDF_BYTES = 32 \* 1024 \* 1024/);
     assert.match(source, /error\?\.message === POCKET_PDF_SCAN_ERROR/);
     assert.match(source, /showPocketPdfScanDialog\(\)/);
     assert.match(source, /dialog\.showModal\(\)/);
     assert.match(source, /const blurb = androidPdfOverlay[\s\S]*t\("import\.pdfTextLayerBlurb"/);
-    assert.match(source, /"\/__book\/image"/);
+    assert.match(progress, /"\/__book\/image"/);
     assert.match(source, /pdfOcrPages: hasOverlayPages \? pages : undefined/);
     assert.match(source, /pdfOcrEngine: hasOverlayPages \? ocrEngine : ""/);
     assert.match(backend, /pub fn import_bytes\(/);
