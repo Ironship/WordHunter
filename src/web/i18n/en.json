@@ -290,7 +290,11 @@
     "wordNavPageStart": "You are at the first word of this page.",
     "wordNavPageEnd": "You are at the last word of this page.",
     "aiNoteMarker": "AI explanation",
-    "findOpen": "Find in text…"
+    "findOpen": "Find in text…",
+    "aiNoteChoiceTitle": "Add explanation to note",
+    "aiNoteChoiceMessage": "The note already has content. Append the new AI explanation, or replace the whole note?",
+    "aiNoteAppend": "Append",
+    "aiNoteReplace": "Replace"
   },
   "vocab": {
     "eyebrow": "Your words",
@@ -367,7 +371,8 @@
     "cardCount": "{count} cards",
     "shortcut": {},
     "confirmDeleteWord": "Delete this word and its learning progress?",
-    "wordRequired": "Enter the word first."
+    "wordRequired": "Enter the word first.",
+    "wordExists": "This word already exists in your collection."
   },
   "discover": {
     "eyebrow": "Online resources",
@@ -781,8 +786,8 @@
     "contactIssues": "<strong>Bug reports and feature requests:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Contact:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>License:</strong> AGPL-3.0-or-later. Closed-source commercial use of derivative code requires a separate written license. Details: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.5 restores Wikipedia and Wikinews to Discovery (only Wikisource stays removed), fixes Reader search overlap, bookmark jumps, TTS follow-along drift and the eye-toggle for highlights, repositions the flashcard shuffle button, shortens book deletion, and cleans up release notes.",
-    "version": "1.1.0-rc.5",
+    "whatsNew": "1.1.0-rc.6 fixes hiding word underlines with the reader eye toggle on Android, asks whether to append or replace an existing note when saving AI explanations, and lets you rename a saved word when editing it.",
+    "version": "1.1.0-rc.6",
     "tipsEyebrow": "Documentation",
     "focusHint1": "Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to enter or return to text",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> to navigate words",

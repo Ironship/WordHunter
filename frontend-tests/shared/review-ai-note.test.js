@@ -88,20 +88,35 @@ function makeCardDom({ noteEl } = {}) {
 
 const MARKER = "Wyjaśnienie AI";
 
-function sharedMocks({ state, calls, flushed }) {
+/**
+ * @param choice what showChoiceDialog resolves with ("append" | "replace" |
+ *   null for Cancel/Escape). Defaults to "append" so legacy tests exercise
+ *   the non-empty-note path silently.
+ * @param chosen records every dialog invocation (option id lists).
+ */
+function sharedMocks({ state, calls, flushed, choice = "append", chosen = [], explanations } = {}) {
+  const queue = explanations && explanations.length ? [...explanations] : null;
+  const dialogMock = {
+    showChoiceDialog: async ({ options }) => {
+      chosen.push(options.map((option) => option.id));
+      return choice;
+    }
+  };
   return {
     "../state.js": { state },
     "../ai-explainer.js": {
       aiExplanationConfigured: () => true,
       aiExplanationLanguagePair: () => ({ from: "en", to: "pl" }),
       explainWord: async (request, onDelta) => {
-        onDelta?.("To czasownik.");
-        return { explanation: "To czasownik." };
+        const explanation = queue ? queue.shift() : "To czasownik.";
+        onDelta?.(explanation);
+        return { explanation };
       },
       formatAiExplanation: (text) => String(text ?? "")
     },
     "../loading.js": { beginElementBusy: () => () => {} },
     "../i18n.js": { t: (key) => (key === "reader.aiNoteMarker" ? MARKER : key) },
+    "../dialog-backdrop.js": dialogMock,
     // Deps of the real shared ai-note-append chunk (loaded from dist).
     "./state.js": { state },
     "./i18n.js": { t: (key) => (key === "reader.aiNoteMarker" ? MARKER : key) },
@@ -116,7 +131,8 @@ function sharedMocks({ state, calls, flushed }) {
         calls.push([word, field, value]);
         state.vocab[word][field] = value;
       }
-    }
+    },
+    "./dialog-backdrop.js": dialogMock
   };
 }
 
@@ -254,5 +270,73 @@ describe("flashcards AI explanation → word note", () => {
 
     assert.equal(noteEl.textContent, state.vocab.run.note);
     assert.match(noteEl.textContent, new RegExp(`Stara notatka\\.\\n\\n${MARKER}:\\nTo czasownik\\.`));
+  });
+
+  it("asks Append/Replace only when the note already has content", async () => {
+    const state = makeState();
+    const calls = [];
+    const flushed = [];
+    const chosen = [];
+    const { button } = makeCardDom();
+    const { runReviewCardAiExplain } = await evaluateReviewAi(
+      sharedMocks({
+        state, calls, flushed, choice: "append", chosen,
+        // Two DIFFERENT explanations: an identical repeat would hit the
+        // dedupe guard before the dialog ever opens.
+        explanations: ["To czasownik.", "Częsty czasownik ruchu."]
+      }),
+      globalsWith(flushed),
+      { "../ai-note-append.js": "dist/web/js/ai-note-append.js" }
+    );
+
+    // First explanation lands in an EMPTY note — no dialog may appear.
+    await runReviewCardAiExplain(button, "run");
+    assert.deepEqual(chosen, []);
+
+    // A genuinely NEW explanation must prompt (Append default → appended).
+    await runReviewCardAiExplain(button, "run");
+    // Cross-realm arrays differ by prototype, so compare structurally.
+    assert.equal(JSON.stringify(chosen), JSON.stringify([["cancel", "replace", "append"]]));
+    assert.match(state.vocab.run.note, /Wyjaśnienie AI:\nCzęsty czasownik ruchu\.$/);
+  });
+
+  it("replaces the whole note when Replace is chosen", async () => {
+    const state = makeState();
+    state.vocab.run.note = "Stara treść.";
+    const calls = [];
+    const flushed = [];
+    const chosen = [];
+    const { button } = makeCardDom();
+    const { runReviewCardAiExplain } = await evaluateReviewAi(
+      sharedMocks({ state, calls, flushed, choice: "replace", chosen }),
+      globalsWith(flushed),
+      { "../ai-note-append.js": "dist/web/js/ai-note-append.js" }
+    );
+
+    await runReviewCardAiExplain(button, "run");
+
+    assert.equal(state.vocab.run.note, `${MARKER}:\nTo czasownik.`);
+    const noteWrite = calls.find(([word, field]) => word === "run" && field === "note");
+    assert.ok(noteWrite, "updateWordField must persist the replaced note");
+  });
+
+  it("writes nothing when Cancel is chosen on a non-empty note", async () => {
+    const state = makeState();
+    state.vocab.run.note = "Stara treść.";
+    const calls = [];
+    const flushed = [];
+    const { output, button } = makeCardDom();
+    const { runReviewCardAiExplain } = await evaluateReviewAi(
+      sharedMocks({ state, calls, flushed, choice: null }),
+      globalsWith(flushed),
+      { "../ai-note-append.js": "dist/web/js/ai-note-append.js" }
+    );
+
+    await runReviewCardAiExplain(button, "run");
+
+    assert.equal(state.vocab.run.note, "Stara treść.");
+    assert.ok(!calls.some(([, field]) => field === "note"), "Cancel must not touch the note");
+    // The streamed card output still shows the explanation.
+    assert.equal(output.innerHTML, "To czasownik.");
   });
 });

@@ -194,8 +194,7 @@ export function registerUnsavedDialog(
   checkDirty: () => boolean,
   onSave?: DialogAction,
   onDiscard?: DialogAction
-): void {
-  const dialog = document.getElementById(dialogId);
+): void {  const dialog = document.getElementById(dialogId);
   if (!(dialog instanceof HTMLDialogElement)) return;
 
   const discard = () => {
@@ -224,5 +223,95 @@ export function registerUnsavedDialog(
   dialog.addEventListener("cancel", (e) => {
     e.preventDefault();
     requestClose();
+  });
+}
+
+export interface ChoiceDialogOption {
+  id: string;
+  label: string;
+  style?: "primary" | "secondary" | "danger";
+}
+
+export interface ChoiceDialogOptions {
+  title: string;
+  message: string;
+  /** Rendered in order; the last option keeps focus when the dialog opens. */
+  options: ChoiceDialogOption[];
+}
+
+/**
+ * Multi-option dialog (e.g. Append / Replace / Cancel) built on a native
+ * <dialog>, mirroring showConfirmDialog. Resolves with the chosen option id,
+ * or null on Escape / backdrop click — callers must treat null as "do
+ * nothing". The dialog element is removed after resolving.
+ */
+export function showChoiceDialog(options: ChoiceDialogOptions): Promise<string | null> {
+  const dialog = document.createElement("dialog");
+  dialog.className = "panel confirmation-dialog";
+  dialog.style.width = "90vw";
+  dialog.style.maxWidth = "420px";
+
+  const header = document.createElement("div");
+  header.className = "panel-header";
+  const h2 = document.createElement("h2");
+  h2.textContent = options.title;
+  header.appendChild(h2);
+
+  const body = document.createElement("div");
+  body.className = "confirmation-dialog-body";
+  const copy = document.createElement("div");
+  copy.className = "confirmation-dialog-copy";
+  const msg = document.createElement("p");
+  msg.className = "muted-copy";
+  msg.style.margin = "0";
+  msg.textContent = options.message;
+  copy.appendChild(msg);
+
+  const actions = document.createElement("div");
+  actions.className = "confirmation-dialog-actions";
+  const buttons: HTMLButtonElement[] = [];
+  for (const option of options.options) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = option.style === "primary" ? "primary-button"
+      : option.style === "danger" ? "danger-button"
+      : "secondary-button";
+    btn.textContent = option.label;
+    btn.dataset.choiceId = option.id;
+    actions.appendChild(btn);
+    buttons.push(btn);
+  }
+
+  body.appendChild(copy);
+  body.appendChild(actions);
+  dialog.appendChild(header);
+  dialog.appendChild(body);
+  document.body.appendChild(dialog);
+
+  return new Promise<string | null>((resolve) => {
+    let settled = false;
+    const cleanup = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      dialog.removeEventListener("cancel", handleCancel);
+      dialog.removeEventListener("click", handleBackdrop);
+      for (const btn of buttons) btn.removeEventListener("click", handleChoice);
+      dialog.close();
+      dialog.remove();
+      resolve(value);
+    };
+    const handleCancel = () => cleanup(null);
+    const handleBackdrop = (e: MouseEvent) => {
+      if (e.target === dialog) cleanup(null);
+    };
+    const handleChoice = (e: MouseEvent) => {
+      const id = (e.currentTarget as HTMLButtonElement).dataset.choiceId || null;
+      cleanup(id);
+    };
+    dialog.addEventListener("cancel", handleCancel);
+    dialog.addEventListener("click", handleBackdrop);
+    for (const btn of buttons) btn.addEventListener("click", handleChoice);
+    dialog.showModal();
+    buttons[buttons.length - 1]?.focus();
   });
 }

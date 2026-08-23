@@ -290,7 +290,11 @@
     "wordNavPageStart": "Jesteś na pierwszym słowie tej strony.",
     "wordNavPageEnd": "Jesteś na ostatnim słowie tej strony.",
     "aiNoteMarker": "Wyjaśnienie AI",
-    "findOpen": "Znajdź w tekście…"
+    "findOpen": "Znajdź w tekście…",
+    "aiNoteChoiceTitle": "Dodaj wyjaśnienie do notatki",
+    "aiNoteChoiceMessage": "Notatka zawiera już treść. Dodać nowe wyjaśnienie AI na końcu, czy zastąpić całą notatkę?",
+    "aiNoteAppend": "Dodaj na końcu",
+    "aiNoteReplace": "Zastąp"
   },
   "vocab": {
     "eyebrow": "Twoje słowa",
@@ -367,7 +371,8 @@
     "shortcut": {},
     "confirmDeleteWord": "Usunąć to słowo wraz z postępem nauki?",
     "wordRequired": "Najpierw wpisz słowo.",
-    "noResults": "Brak wyników dla bieżącego filtra."
+    "noResults": "Brak wyników dla bieżącego filtra.",
+    "wordExists": "To słowo już istnieje w Twojej kolekcji."
   },
   "discover": {
     "eyebrow": "Zasoby online",
@@ -781,8 +786,8 @@
     "contactIssues": "<strong>Zgłoszenia błędów i propozycje funkcji:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>Kontakt:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>Licencja:</strong> AGPL-3.0-or-later. Komercyjne wykorzystanie kodu pochodnego w oprogramowaniu o zamkniętym kodzie źródłowym wymaga odrębnej pisemnej licencji. Szczegóły: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.5 przywraca Wikipedię i Wikinews w Discovery (tylko Wikisource pozostaje usunięte), naprawia zasłanianie wyszukiwania w czytniku, skoki zakładek, dryf podświetlenia TTS i przycisk oka, poprawia pozycję tasowania fiszek, skraca usuwanie książek i porządkuje opisy wydań.",
-    "version": "1.1.0-rc.5",
+    "whatsNew": "1.1.0-rc.6 naprawia ukrywanie podkreśleń słów przyciskiem oka w czytniku na Androidzie, pyta o dopisanie lub zastąpienie istniejącej notatki przy zapisie wyjaśnień AI i pozwala zmienić zapisane słowo podczas jego edycji.",
+    "version": "1.1.0-rc.6",
     "tipsEyebrow": "Dokumentacja",
     "focusHint1": "Naciśnij <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, aby przejść do tekstu lub do niego wrócić",
     "focusHint2": "<kbd>←</kbd> <kbd>→</kbd> – poruszaj się między słowami",
