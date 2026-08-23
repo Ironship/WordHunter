@@ -547,7 +547,8 @@ describe("edit-book dialog renderer (book-actions/edit-modal.ts)", () => {
       "../views/library.js": { renderLibrary: () => {} },
       "../reader/renderer.js": { renderReader: () => {} },
       "../bridge-commit.js": { reloadBridgeSnapshot: async () => {}, saveStateAndReloadBridge: async () => {} },
-      "../store-bridge.js": { upsertStoredText: async () => {} }
+      "../store-bridge.js": { upsertStoredText: async () => {} },
+      "../http.js": { httpPost: async () => ({ ok: false }) }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
     const dialog = renderEditBookDialog();

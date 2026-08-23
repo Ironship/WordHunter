@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { t } from "./i18n.js";
+import { httpPost } from "./http.js";
 import {
   normalizeTranslationLanguageCode,
   normalizeTranslationProvider,
@@ -78,22 +79,15 @@ export async function translateText(text: string, from: string, to: string): Pro
     return response.json() as Promise<TranslationResult>;
   }
 
-  const response = await fetch("/__translate/external", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-WH-Token": window.WH_TOKEN || ""
-    },
-    body: JSON.stringify({
-      provider,
-      text,
-      from: fromCode,
-      to: toCode,
-      key: state.preferences?.deeplApiKey || "",
-      endpoint: state.preferences?.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions",
-      model: state.preferences?.lmStudioModel || ""
-    })
-  });
+  const response = await httpPost("/__translate/external", {
+    provider,
+    text,
+    from: fromCode,
+    to: toCode,
+    key: state.preferences?.deeplApiKey || "",
+    endpoint: state.preferences?.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions",
+    model: state.preferences?.lmStudioModel || ""
+    }, { timeoutMs: 90_000 });
   if (!response.ok) throw new Error(await response.text());
   return response.json() as Promise<TranslationResult>;
 }

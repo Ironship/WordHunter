@@ -1,12 +1,11 @@
 // YouTube captions discovery + import flow.
 import { t } from "../../i18n.js";
+import { httpPost } from "../../http.js";
 import { showToast } from "../../toast.js";
 import { setElementBusy } from "../../loading.js";
 import {
-  clearPendingImportMeta,
   el,
   setImportCoverPreview,
-  setImportLoading,
   setPendingImportMeta,
   safeImportErrorMessage,
 } from "./shared.js";
@@ -65,11 +64,7 @@ function resetYoutubeTracks(clearUrl = false) {
 }
 
 async function youtubeCaptionsRequest(payload: YoutubeCaptionsPayload): Promise<YoutubeCaptionsResponse> {
-  const response = await fetch("/__youtube/captions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-    body: JSON.stringify(payload)
-  });
+  const response = await httpPost("/__youtube/captions", payload, { timeoutMs: 120_000 });
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     throw new Error(message || `HTTP ${response.status}`);

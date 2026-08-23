@@ -30,8 +30,8 @@ describe("image OCR import wiring", () => {
       assert.ok(formats.includes(mime));
     }
     assert.match(source, /startOcrProgress\("import\.parsingImageOcr", "import\.ocrImageStatus"/);
-    assert.match(source, /fetch\(`\/__import\/image_ocr\/raw\?\$\{params\}`/);
-    assert.match(source, /fetch\("\/__import\/ocr\/cancel"/);
+    assert.match(source, /httpPost\(`\/__import\/image_ocr\/raw\?\$\{params\}`[^;]*/);
+    assert.match(source, /httpPost\("\/__import\/ocr\/cancel"[^;]*/);
     assert.match(source, /Failed to clean incomplete image OCR import/);
     assert.match(source, /pdfOcrPages: pages[\s\S]*pdfOcrPageCount: 1/);
   });

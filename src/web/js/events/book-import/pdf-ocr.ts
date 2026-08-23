@@ -5,17 +5,15 @@ import { t } from "../../i18n.js";
 import { showToast } from "../../toast.js";
 import { isAndroidPlatform } from "../../platform.js";
 import { effectiveLearningLanguage } from "../../translator-preferences.js";
+import { httpPost } from "../../http.js";
 import {
   el,
   slugFromFileName,
-  safeImportErrorMessage,
-  setImportCoverPreview,
   setImportLoading,
   waitForUiPaint,
   MAX_DESKTOP_OCR_IMAGE_BYTES,
   isOcrImportRunning,
   setOcrImportRunning,
-  type ImportMeta,
 } from "./shared.js";
 import {
   readFileAsBase64,
@@ -181,11 +179,8 @@ async function runPdfImport(file: File): Promise<boolean> {
       cancelled = true;
       controller.abort();
       if (requestStarted) {
-        void fetch("/__import/ocr/cancel", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-          body: JSON.stringify({ job_id: jobId })
-        }).catch((error) => console.warn("PDF OCR cancellation request failed", error));
+        void httpPost("/__import/ocr/cancel", { job_id: jobId })
+          .catch((error) => console.warn("PDF OCR cancellation request failed", error));
       }
     });
   }
@@ -288,11 +283,8 @@ async function importOcrImageFile(file: File): Promise<boolean> {
     cancelled = true;
     controller.abort();
     if (requestStarted) {
-      void fetch("/__import/ocr/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-        body: JSON.stringify({ job_id: jobId })
-      }).catch((error) => console.warn("Image OCR cancellation request failed", error));
+      void httpPost("/__import/ocr/cancel", { job_id: jobId })
+        .catch((error) => console.warn("Image OCR cancellation request failed", error));
     }
   });
   try {
@@ -304,11 +296,9 @@ async function importOcrImageFile(file: File): Promise<boolean> {
       lang: effectiveLearningLanguage(state.preferences)
     });
     requestStarted = true;
-    const response = await fetch(`/__import/image_ocr/raw?${params}`, {
-      method: "POST",
-      headers: { "Content-Type": format.contentType, "X-WH-Token": window.WH_TOKEN || "" },
-      signal: controller.signal,
-      body: file
+    const response = await httpPost(`/__import/image_ocr/raw?${params}`, file, {
+      headers: { "Content-Type": format.contentType },
+      signal: controller.signal
     });
     if (!response.ok) {
       const message = await response.text().catch(() => "");
