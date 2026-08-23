@@ -12,7 +12,7 @@ import { bindLibraryEvents, renderDeleteBookDialog, renderLibrary, renderLibrary
 import { renderReview, renderVocabulary } from "./js/views/vocabulary.js";
 import { applyPlatformUi, detectPlatform, isAndroidPlatform, openAndroidUrl } from "./js/platform.js";
 import { refreshYouGlishTheme, renderYouGlishModal } from "./js/youglish.js";
-import { fetchWithTimeout } from "./js/request.js";
+import { httpGet } from "./js/http.js";
 import { renderBookmarksDialog } from "./js/reader/bookmarks.js";
 import { renderMoveBookDialog } from "./js/events/move-book.js";
 import { renderAddWordDialog, refreshAddWordDialogLocalization } from "./js/events/word-editor.js";
@@ -185,7 +185,7 @@ function startBridgeStateLoad(): void {
   if (!window.__qtBridge || window.__bridgeState || bridgeStateLoadStarted) return;
   bridgeStateLoadStarted = true;
   const promise = window.__bridgeStatePromise
-    ?? fetchWithTimeout("/__store/load", { cache: "no-store", headers: { "X-WH-Token": window.WH_TOKEN || "" } }, 120_000)
+    ?? httpGet("/__store/load", { cache: "no-store", timeoutMs: 120_000 })
       .then(async (response) => {
         if (!response.ok) throw new Error(`Store load failed: HTTP ${response.status}`);
         return response.json();

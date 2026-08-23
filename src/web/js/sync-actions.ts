@@ -1,6 +1,5 @@
-import { applyBridgeSnapshotToState, getDurableStateRevision, state, saveState, saveUiState, createDefaultState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
+import { applyBridgeSnapshotToState, state, saveState, createDefaultState, replaceState, resetInitialVocabKeys, runExclusiveStateWrite, clearLastReadTextForLanguage } from "./state.js";
 import { STORAGE_KEY, UI_STORAGE_KEY } from "./constants.js";
-import { buildSavePayload } from "./api.js";
 import { showToast } from "./toast.js";
 import { showConfirmDialog } from "./dialog-backdrop.js";
 import { t, plural } from "./i18n.js";
@@ -13,8 +12,12 @@ import { acknowledgeBackendSnapshot, deleteStoredText, loadBackendSnapshot, post
 import { clearAllBookTextCaches, clearBookTextCache } from "./books.js";
 import { isCustomTextReferenced } from "./book-actions/profile-library.js";
 import { effectiveLearningLanguage } from "./translator-preferences.js";
+import { httpGet, httpPost } from "./http.js";
 
-const WH_TOKEN_HEADER = { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" };
+// Export/vocab transfers stream large payloads — bare fetch had no deadline,
+// keep an explicit generous one instead of the client's 15 s default.
+const LONG_RUNNING_TIMEOUT_MS = 120_000;
+
 const MAX_ANKI_IMPORT_BYTES = 32 * 1024 * 1024;
 
 type UnknownRecord = Record<string, unknown>;
@@ -205,11 +208,7 @@ async function nativeSave(data: string, filename: string, mime: string): Promise
     throw new Error("Android export bridge is unavailable");
   }
   if (window.__qtBridge) {
-    const response = await fetch("/__export/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
-      body: JSON.stringify({ data, filename, mime, confirm: true })
-    });
+    const response = await httpPost("/__export/save", { data, filename, mime, confirm: true }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
     if (!response.ok) throw new Error(`export HTTP ${response.status}`);
     const result: unknown = await response.json().catch(() => ({ saved: true }));
     return !isRecord(result) || result.saved !== false;
@@ -375,8 +374,7 @@ export async function waitForExportJob(job: string): Promise<boolean> {
         throw new Error(t("toast.exportTimedOut"));
       }
       await new Promise((resolve) => setTimeout(resolve, 400));
-      const response = await fetch(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
-        headers: { "X-WH-Token": window.WH_TOKEN || "" },
+      const response = await httpGet(`/__store/export_progress?job=${encodeURIComponent(job)}`, {
         cache: "no-store"
       });
       if (!response.ok) throw new Error(`export progress HTTP ${response.status}`);
@@ -432,11 +430,7 @@ export async function exportTransfer(
   try {
     await window.flushAllPendingFrontendState?.();
     const requestId = `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const response = await fetch("/__store/export_transfer", {
-      method: "POST",
-      headers: WH_TOKEN_HEADER,
-      body: JSON.stringify({ scope, filename, requestId, confirm: true })
-    });
+    const response = await httpPost("/__store/export_transfer", { scope, filename, requestId, confirm: true }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
     if (typeof result.job === "string") {
@@ -480,11 +474,7 @@ export async function importTransfer(): Promise<boolean> {
       showToast(t("toast.importCancelled"));
       return false;
     }
-    const response = await fetch("/__store/import_transfer", {
-      method: "POST",
-      headers: WH_TOKEN_HEADER,
-      body: JSON.stringify(androidPath ? { path: androidPath, confirm: true } : { confirm: true })
-    });
+    const response = await httpPost("/__store/import_transfer", androidPath ? { path: androidPath, confirm: true } : { confirm: true }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
     if (!response.ok) throw new Error((await response.text()).trim() || `import HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
     if (result.imported === false) return false;
@@ -509,11 +499,7 @@ export async function importTransfer(): Promise<boolean> {
 }
 
 export async function requestVocabExport(payload: unknown): Promise<unknown> {
-  const response = await fetch("/__vocab", {
-    method: "POST",
-    headers: WH_TOKEN_HEADER,
-    body: JSON.stringify(payload)
-  });
+  const response = await httpPost("/__vocab", payload, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
   if (!response.ok) throw new Error(`vocab_export HTTP ${response.status}`);
   return response.json();
 }
@@ -522,11 +508,7 @@ async function requestAnkiImport(tsv: string): Promise<unknown> {
   if (!window.__qtBridge) {
     throw new Error("anki import requires native bridge");
   }
-  const response = await fetch("/__vocab", {
-    method: "POST",
-    headers: WH_TOKEN_HEADER,
-    body: JSON.stringify({ op: "import", tsv })
-  });
+  const response = await httpPost("/__vocab", { op: "import", tsv }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
   if (!response.ok) throw new Error(`vocab_import HTTP ${response.status}`);
   return response.json();
 }

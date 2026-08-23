@@ -1,3 +1,5 @@
+import { httpPost } from "./http.js";
+
 const MAX_VISIBLE_MODELS = 80;
 const AI_MODELS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -66,15 +68,7 @@ export async function requestAiModels(
   else callerSignal?.addEventListener("abort", abortFromCaller, { once: true });
 
   try {
-    const response = await fetch("/__ai/models", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-WH-Token": window.WH_TOKEN || ""
-      },
-      body: JSON.stringify({ endpoint: endpoint.trim(), apiKey: apiKey.trim() }),
-      signal: controller.signal
-    });
+    const response = await httpPost("/__ai/models", { endpoint: endpoint.trim(), apiKey: apiKey.trim() }, { signal: controller.signal });
     if (!response.ok) {
       const detail = (await response.text()).trim();
       throw new Error(detail || `HTTP ${response.status}`);

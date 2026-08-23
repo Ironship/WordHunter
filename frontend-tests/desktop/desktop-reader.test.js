@@ -3,10 +3,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
-// settings.js holds the behaviour; the rendered markup moved to
-// settings-view-template.js (split 93a1828). Both ship to dist, so audit both.
+// The behaviour was split into the events/settings/ folder module; the
+// rendered markup lives in settings-view-template.js (split 93a1828). Both
+// ship to dist, so audit both.
+const SETTINGS_FOLDER_FILES = [
+  "index.js", "ai-models.js", "ai-preferences.js", "appearance.js", "data.js",
+  "languages.js", "preference-controls.js", "renderers.js", "review.js",
+  "shared.js", "translator.js"
+];
 const settingsSource = [
-  new URL("../../dist/web/js/events/settings.js", import.meta.url),
+  ...SETTINGS_FOLDER_FILES.map((file) => new URL(`../../dist/web/js/events/settings/${file}`, import.meta.url)),
   new URL("../../dist/web/js/events/settings-view-template.js", import.meta.url)
 ].map((url) => readFileSync(url, "utf8")).join("\n");
 const css = ["theme.css", "styles.css"]

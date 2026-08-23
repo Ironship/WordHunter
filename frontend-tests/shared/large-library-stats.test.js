@@ -42,7 +42,7 @@ async function evaluateStatsCache({ state, getVocabularyRevision, getTextStats }
     "./tokenizer_v2.js": { getTextStats },
     // Dep of the real vocab-index-client chunk (never reached: the
     // worker-less fallback path below performs no network requests).
-    "./request.js": { fetchWithTimeout: async () => { throw new Error("no network in perf smoke"); } }
+    "./http.js": { httpPost: async () => { throw new Error("no network in perf smoke"); } }
   };
   for (const [specifier, values] of Object.entries(mocks)) {
     modules.set(specifier, createMock(specifier, values));
