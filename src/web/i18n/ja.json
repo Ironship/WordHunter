@@ -290,7 +290,11 @@
     "wordNavPageStart": "このページの最初の単語です。",
     "wordNavPageEnd": "このページの最後の単語です。",
     "aiNoteMarker": "AIによる説明",
-    "findOpen": "テキストを検索…"
+    "findOpen": "テキストを検索…",
+    "aiNoteChoiceTitle": "説明をノートに追加",
+    "aiNoteChoiceMessage": "ノートには既に内容があります。新しいAIの説明を追記しますか、ノート全体を置き換えますか？",
+    "aiNoteAppend": "追記",
+    "aiNoteReplace": "置き換え"
   },
   "vocab": {
     "eyebrow": "あなたの単語",
@@ -367,7 +371,8 @@
     "shortcut": {},
     "confirmDeleteWord": "この単語と学習の進捗を削除しますか？",
     "wordRequired": "先に単語を入力してください。",
-    "noResults": "現在のフィルターに一致する結果はありません。"
+    "noResults": "現在のフィルターに一致する結果はありません。",
+    "wordExists": "この単語はすでにコレクションに存在します。"
   },
   "discover": {
     "eyebrow": "オンラインリソース",
@@ -813,8 +818,8 @@
     "contactIssues": "<strong>バグとアイデア:</strong> https://github.com/Ironship/WordHunter/issues",
     "contactAuthor": "<strong>お問い合わせ:</strong> https://x.com/AryoSomeGumul",
     "contactLicense": "<strong>ライセンス:</strong> AGPL-3.0-or-later。派生コードをクローズドソースで商用利用するには、別途書面によるライセンスが必要です。詳細: https://github.com/Ironship/WordHunter/blob/main/LICENSE",
-    "whatsNew": "1.1.0-rc.5 はDiscoveryでWikipediaとWikinewsを復元（Wikisourceのみ削除のまま）、リーダーの検索重なり、ブックマークジャンプ、TTSハイライトのずれと目のトグルを修正、シャッフルボタンを再配置、書籍削除を短縮しリリースノートを整理します。",
-    "version": "1.1.0-rc.5",
+    "whatsNew": "1.1.0-rc.6 はAndroidでリーダーの目アイコンによる下線非表示を修正し、AIの説明を保存する際にノートへ追記か置き換えかを選べるようにし、保存済み単語の名前変更を可能にします。",
+    "version": "1.1.0-rc.6",
     "creditOfflineTranslator": "<strong>翻訳、PDF、OCR</strong> — デスクトップ版はCTranslate2（MIT）、SentencePiece（Apache-2.0）、paddle-ocr-rs/PaddleOCR（Apache-2.0）、ONNX Runtime（MIT）、PDFium（BSD-3-Clauseおよび構成要素の通知）を使用します。Windows OCRはMicrosoftの再配布条件に基づきDirectMLを使用できます。",
     "creditNotices": "<strong>完全な通知</strong> — LICENSE、THIRD-PARTY-NOTICES.md、生成されたRust依存関係ライセンス報告書をすべてのリリースパッケージに含めます。",
     "pocketTransferTitle": "パッケージのエクスポートとインポート",

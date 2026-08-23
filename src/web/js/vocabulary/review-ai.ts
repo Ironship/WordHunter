@@ -5,7 +5,7 @@
  */
 import { state } from "../state.js";
 import { aiExplanationConfigured, aiExplanationLanguagePair, explainWord, formatAiExplanation } from "../ai-explainer.js";
-import { appendAiExplanationToNote } from "../ai-note-append.js";
+import { persistAiExplanationToNote } from "../ai-note-append.js";
 import { beginElementBusy } from "../loading.js";
 import { t } from "../i18n.js";
 
@@ -39,10 +39,10 @@ export async function runReviewCardAiExplain(
     );
     if (output.isConnected) output.innerHTML = formatAiExplanation(result.explanation);
     // Persist the finished explanation to the word's note exactly like the
-    // reader word panel does (append-only with dedupe): the card output box
-    // alone is ephemeral and the user would pay for a repeated explanation
-    // otherwise.
-    const nextNote = appendAiExplanationToNote(word, result.explanation);
+    // reader word panel does. rc.6: when the note already holds text, a
+    // dialog asks Append / Replace / Cancel instead of silently stacking
+    // explanations; Cancel keeps the streamed card output but writes nothing.
+    const nextNote = await persistAiExplanationToNote(word, result.explanation);
     // Keep the visible note paragraph in sync when the answer side is
     // showing; a full renderReview() would wipe the streamed explanation
     // box. The note is persisted in state regardless and appears on the

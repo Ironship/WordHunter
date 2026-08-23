@@ -1,3 +1,9 @@
+word-hunter (1.1.0-rc.6) unstable; urgency=medium
+
+  * 1.1.0-rc.6 fixes hiding word underlines with the reader eye toggle on Android, asks whether to append or replace an existing note when saving AI explanations, and lets you rename a saved word when editing it.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Sat, 23 Aug 2026 13:30:00 +0200
+
 word-hunter (1.1.0-rc.5) unstable; urgency=medium
 
   * 1.1.0-rc.5 restores Wikipedia and Wikinews to Discovery (only Wikisource stays removed), fixes Reader search overlap, bookmark jumps, TTS follow-along drift and the eye-toggle for highlights, repositions the flashcard shuffle button, shortens book deletion, and cleans up release notes.

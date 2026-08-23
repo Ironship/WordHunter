@@ -8,7 +8,7 @@ import { icon, statusIcon } from "../icons.js";
 import { IN_TEXT_REVIEW_PROMPT_COMPLETION_LIMIT, STATUS_ORDER } from "../constants.js";
 import { t, plural } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
-import { appendAiExplanationToNote } from "../ai-note-append.js";
+import { persistAiExplanationToNote } from "../ai-note-append.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
 import { getReaderSelectionText, getReaderWordTokens } from "./selection.js";
 import { getSentenceForWord } from "../tokenizer_v2.js";
@@ -382,7 +382,9 @@ async function runAiExplanation(
     if (generation !== aiExplainGeneration || state.selectedWord !== word) return;
     if (output) output.innerHTML = formatAiExplanation(result.explanation);
     if (!isTransientRange) {
-      appendAiExplanationToNote(word, result.explanation);
+      // Interactive persist: asks Append / Replace when the note already has
+      // content instead of silently stacking explanations (rc.6).
+      await persistAiExplanationToNote(word, result.explanation);
       markWordExplained(word);
     }
   } catch (error) {
