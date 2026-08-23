@@ -13,6 +13,8 @@ import { invalidateReviewQueueCache } from "../vocabulary/review-card.js";
 import { invalidateSuggestIndex } from "../reader/smart-suggest.js";
 import { registerUnsavedDialog } from "../dialog-backdrop.js";
 import { VOCAB_STATUS_FILTERS } from "./vocab-status.js";
+import { resolveVocabularyKey } from "../tokenizer_v2.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 type AddWordOriginalValues = {
   word: string;
@@ -207,7 +209,9 @@ export function bindWordEditorEvents() {
     const entry = state.vocab[word];
     if (!entry) return;
     addWordEditing.value = word;
-    if (addWordInput) { addWordInput.value = entry.word || word; addWordInput.disabled = true; }
+    // rc.6: the headword itself is editable now — confirming with a changed
+    // word renames the entry key (guarded against collisions, see below).
+    if (addWordInput) { addWordInput.value = entry.word || word; addWordInput.disabled = false; }
     if (addArticleInput) addArticleInput.value = entry.article || "";
     if (addTranslationInput) addTranslationInput.value = entry.translation || "";
     if (addExampleInput) addExampleInput.value = entry.examples?.[0] || "";
@@ -239,6 +243,20 @@ export function bindWordEditorEvents() {
     if (editing) {
       const entry = state.vocab[editing];
       if (!entry) return;
+      // rc.6: headword rename. The vocab map is keyed by the resolved token
+      // key, so a changed word moves the SAME entry object under the new key
+      // (SRS dates, note, examples survive). Colliding with an existing
+      // different entry is rejected instead of silently merging.
+      const newWord = addWordInput?.value.trim() || "";
+      if (!newWord) {
+        showToast(t("vocab.wordRequired"), "error");
+        return;
+      }
+      const newKey = resolveVocabularyKey(newWord, state.vocab, effectiveLearningLanguage(state.preferences));
+      if (newKey !== editing && state.vocab[newKey]) {
+        showToast(t("vocab.wordExists"), "error");
+        return;
+      }
       const article = addArticleInput?.value.trim() || "";
       if (article) entry.article = article;
       else delete entry.article;
@@ -261,8 +279,17 @@ export function bindWordEditorEvents() {
       } else {
         entry.examples = (entry.examples || []).slice(1);
       }
+      let renamedTo: string | null = null;
+      if (newKey !== editing) {
+        delete state.vocab[editing];
+        state.vocab[newKey] = entry;
+        renamedTo = newKey;
+      }
+      entry.word = newWord;
       entry.updatedAt = now;
-  invalidateVocabListCache();
+      // Keep the reader word panel on the same entry after a rename.
+      if (renamedTo && state.selectedWord === editing) state.selectedWord = renamedTo;
+      invalidateVocabListCache();
     } else {
       const word = addWordInput?.value.trim();
       if (!word) {
@@ -291,7 +318,9 @@ export function bindWordEditorEvents() {
     addWordDialog.close();
     if (editing && state.currentView === "reader") {
       import("../reader/renderer.js").then(({ renderReader }) => {
-        if (state.currentView === "reader" && state.selectedWord === editing) renderReader();
+        // After a rename the selection moved to the new key; refresh when it
+        // points at either form (old key pre-rename, new key post-rename).
+        if (state.currentView === "reader" && (state.selectedWord === editing || state.selectedWord === addWordInput?.value.trim())) renderReader();
       });
     }
     });

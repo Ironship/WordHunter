@@ -41,7 +41,9 @@ const TS_STYLE_PROP_WHITELIST = new Set([
   "height", "justifyContent", "left", "margin", "marginTop", "maxWidth",
   "opacity", "padding", "pointerEvents", "position", "top", "width", "zoom"
 ]);
-const TS_STYLE_PROP_PIN = 65;
+// 66: showChoiceDialog (rc.6) reuses the confirmation-dialog sizing pattern —
+// two .style width/max-width writes like showConfirmDialog above it.
+const TS_STYLE_PROP_PIN = 66;
 
 /* T3: z-index declarations must reference the named --z-* scale; bare numerics
    are allowed only from the small legacy whitelist. */
