@@ -671,8 +671,18 @@ describe("import panel renderer (events/book-import.ts)", () => {
       }
     };
     document.querySelector = (selector) => selector === ".workspace-grid.library-layout" ? layoutHost : null;
-    const { renderImportPanel } = await evaluateWithMocks("dist/web/js/events/book-import.js", {
+    const { renderImportPanel } = await evaluateWithMocks("dist/web/js/events/book-import/panel.js", {
       "../state.js": { state: {} },
+      "../../state.js": { state: {} },
+      "../../i18n.js": { t: (key) => key },
+      "../../loading.js": { beginElementBusy: () => () => {}, setElementBusy: () => {} },
+      "../../dialog-backdrop.js": { registerUnsavedDialog: () => {} },
+      "../../request.js": { fetchWithTimeout: async () => ({ ok: false }) },
+      "../../platform.js": { isAndroidPlatform: () => false, isImageOcrAvailable: () => true },
+      "./shared.js": {
+        clearPendingImportMeta: () => {},
+        resetCoverPreview: () => {}
+      },
       "../i18n.js": { t: (key) => key },
       "../toast.js": { showToast: () => {} },
       "../platform.js": { isAndroidPlatform: () => false, isImageOcrAvailable: () => true },

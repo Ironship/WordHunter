@@ -610,7 +610,7 @@ describe("focused frontend regressions", () => {
   });
 
   it("routes unsaved edit-book discard through the complete cancellation cleanup", async () => {
-    const bookImport = read("dist/web/js/events/book-import.js");
+    const bookImport = read("dist/web/js/events/book-import/events.js");
     assert.match(bookImport, /registerUnsavedDialog\("edit-book-dialog", isEditBookDirty, \(\) => saveEditedBook\(\), \(\) => cancelEditBook\(\)\)/);
 
     let closeCount = 0;
@@ -659,13 +659,14 @@ describe("focused frontend regressions", () => {
   });
 
   it("cleans Android PDF progress and bounds per-page saves on every import exit", () => {
-    const bookImport = read("dist/web/js/events/book-import.js");
+    const bookImport = read("dist/web/js/events/book-import/pdf-ocr.js");
+    const ocrProgress = read("dist/web/js/events/book-import/ocr-progress.js");
     const runPdfImport = bookImport.slice(
       bookImport.indexOf("async function runPdfImport"),
-      bookImport.indexOf("export function bindBookImportEvents")
+      bookImport.indexOf("\nexport { importPdfFile")
     );
 
-    assert.match(bookImport, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
+    assert.match(ocrProgress, /fetchWithTimeout\("\/__book\/image",[\s\S]*?30_000\)/);
     assert.match(
       runPdfImport,
       /finally\s*{[\s\S]*?stopAndroidPdfProgress\(\);\s*stopOcrProgress\(\);\s*setImportLoading\(false\);\s*}/

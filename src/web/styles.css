@@ -62,14 +62,6 @@
   display: none !important;
 }
 
-.pocket-word-navigation {
-  display: none;
-}
-
-.pocket-word-panel-sheet-handle {
-  display: none;
-}
-
 /* Qt WebEngine can burn CPU on continuous CSS animations. Keep the app static by default,
    but allow loading spinners (short-lived, user waits on them). */
 *,
@@ -248,10 +240,6 @@ button {
   cursor: pointer;
 }
 
-a {
-  color: var(--blue);
-}
-
 code {
   background: var(--panel-strong);
   border: 1px solid var(--line);
@@ -385,14 +373,7 @@ kbd {
   border-radius: 50%;
 }
 
-.color-picker-lg::-webkit-color-swatch {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-}
-
+.color-picker-lg::-webkit-color-swatch,
 .color-picker-lg::-moz-color-swatch {
   box-sizing: border-box;
   width: 100%;
@@ -413,11 +394,6 @@ kbd {
   place-items: center;
   border-radius: var(--radius);
   color: var(--sidebar-nav-icon);
-}
-
-.nav-item > .nav-icon svg {
-  width: 18px;
-  height: 18px;
 }
 
 .nav-item.active > .nav-icon,
@@ -542,13 +518,6 @@ kbd {
   animation: view-enter 180ms ease-out both !important;
 }
 
-:root:not(.pocket-mode) button.pocket-import-toggle,
-:root:not(.pocket-mode) button.pocket-drawer-close,
-:root:not(.pocket-mode) button.pocket-navigation-toggle,
-:root:not(.pocket-mode) button.pocket-reader-navigation-toggle {
-  display: none;
-}
-
 .workspace-grid,
 .reader-grid,
 .settings-grid {
@@ -561,18 +530,17 @@ kbd {
   grid-template-columns: minmax(360px, 1fr) minmax(280px, min(var(--library-sidebar-width, 360px), calc(100% - 376px)));
 }
 
-.vocab-layout {
+.vocab-layout,
+:root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-grid {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.flashcards-layout {
+.flashcards-layout,
+.translator-layout,
+.graphs-layout {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-}
-
-.flashcards-layout > .review-panel {
-  width: 100%;
 }
 
 /* Flashcard header chips (shuffle + reverse) stay a compact side-by-side row
@@ -597,9 +565,6 @@ kbd {
   justify-content: center;
   align-items: flex-start;
 }
-.translator-layout > .translator-panel {
-  width: 100%;
-}
 .translator-controls {
   display: flex;
   align-items: flex-end;
@@ -615,7 +580,8 @@ kbd {
   flex: 1;
   min-width: 140px;
 }
-.translator-controls label span {
+.translator-controls label span,
+.translator-field span {
   font-size: 0.7rem;
   color: var(--muted);
   text-transform: uppercase;
@@ -662,13 +628,6 @@ kbd {
   flex-direction: column;
   gap: 0.4rem;
   min-height: 0;
-}
-.translator-field span {
-  font-size: 0.7rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.04em;
 }
 .translator-field textarea {
   width: 100%;
@@ -724,14 +683,9 @@ kbd {
   backface-visibility: hidden;
 }
 
-/* Graphs tab */
-.graphs-layout { display: flex; justify-content: center; align-items: flex-start; }
-.graphs-layout > .panel { width: 100%; }
-
 .graphs-heatmap { padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
 .heatmap-wrap { display: flex; gap: 4px; align-items: flex-start; min-width: -webkit-fill-available; min-width: fit-content; }
 .heatmap-day-labels { display: flex; flex-direction: column; gap: 3px; padding-top: 20px; font-size: 0.6875rem; color: var(--muted); line-height: 14px; }
-.heatmap-grid-area { position: relative; }
 .heatmap-months { display: flex; gap: 0; font-size: 0.6875rem; color: var(--muted); margin-bottom: 4px; white-space: nowrap; }
 .heatmap-months span { min-width: 0; overflow: visible; }
 .heatmap-grid { display: flex; gap: 3px; }
@@ -746,7 +700,6 @@ kbd {
 .graph-cell::before { content: none; }
 .graph-cell:hover,
 .graph-cell:focus-within { border-bottom-color: color-mix(in srgb, var(--control-accent) 40%, var(--line)); }
-.graph-cell-wide { grid-column: 1 / -1; }
 .graph-cell canvas { display: block; width: 100%; aspect-ratio: 1.5; }
 .graph-cell-wide canvas { aspect-ratio: auto; height: clamp(260px, 30vw, 360px); }
 .chart-reveal { animation: chart-canvas-reveal 0.68s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--chart-delay, 0ms); transform-origin: 50% 100%; }
@@ -779,9 +732,6 @@ kbd {
 .graph-stat-box:nth-child(4) { animation-delay: 150ms; }
 .graph-stat-value { font-size: 1.4rem; font-weight: 700; color: var(--ink); }
 .graph-stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.15rem; }
-.highlight-red .graph-stat-value { color: var(--red); }
-.highlight-green .graph-stat-value { color: var(--green); }
-.highlight-blue .graph-stat-value { color: var(--blue); }
 
 .chart-tooltip { position: fixed; z-index: var(--z-tooltip); max-width: min(320px, calc(100vw - 24px)); background: color-mix(in srgb, var(--panel) 92%, transparent); color: var(--ink); border: 1px solid color-mix(in srgb, var(--control-accent) 28%, var(--line)); border-radius: var(--radius); padding: 7px 10px; box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 18%, transparent); backdrop-filter: blur(10px); font-size: 0.6875rem; line-height: 1.35; font-family: Inter, system-ui, sans-serif; pointer-events: none; display: none; }
 
@@ -791,12 +741,10 @@ kbd {
 @keyframes heatmap-cell-enter { from { opacity: 0; transform: scale(0.55); } to { opacity: 1; transform: none; } }
 
 .review-chart-fullwidth { width: 100%; max-width: 100%; margin-top: 2rem; padding: 1.5rem 1rem 1rem; min-height: 140px; border-top: 1px solid var(--line); }
-.review-chart-fullwidth:empty { display: none; }
 .review-chart-frame { width: min(100%, 860px); margin: 0 auto; overflow: hidden; }
 .review-chart-fullwidth canvas { display: block; width: 100%; max-width: 100%; border-radius: var(--radius); }
 .review-heatmap { width: 100%; padding: 0 1.25rem 0.5rem; overflow-x: auto; display: flex; justify-content: center; }
 .image-action-button { height: 38px; font-size: 0.75rem; padding: 0.25rem 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem; justify-content: center; }
-.word-image-search .image-action-button { width: 100%; }
 .word-image-remove {
   position: absolute;
   top: -6px;
@@ -823,7 +771,6 @@ kbd {
   gap: 0.5rem;
 }
 .review-image-search .image-action-button { margin: 0 auto; }
-.image-action-button svg { width: 14px; height: 14px; }
 
 @media (max-width: 500px) {
   .graphs-grid { grid-template-columns: 1fr; }
@@ -837,16 +784,6 @@ kbd {
   grid-template-columns: minmax(0, 1fr) 8px minmax(300px, var(--reader-sidebar-width, 380px));
 }
 
-:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .topbar,
-:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-meta,
-:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .focus-hint {
-  display: none;
-}
-
-:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .main-panel {
-  padding: 1rem;
-}
-
 :root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-toolbar {
   position: sticky;
   top: 0;
@@ -856,10 +793,6 @@ kbd {
   background: var(--panel);
 }
 
-:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-toolbar .shortcut-badge {
-  display: none;
-}
-
 :root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-text {
   min-height: calc(100vh - 5rem);
   padding: 2rem clamp(1.25rem, 4vw, 3rem);
@@ -867,11 +800,6 @@ kbd {
 
 :root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-grid {
   grid-template-columns: minmax(0, 1fr);
-}
-
-:root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-resizer,
-:root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-wrapper {
-  display: none;
 }
 
 #reader-highlight-toggle[aria-pressed="true"],
@@ -911,10 +839,6 @@ kbd {
 .panel-sidebar-resizer:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
-}
-
-.settings-grid {
-  grid-template-columns: 1fr;
 }
 
 .transfer-note {
@@ -1016,23 +940,6 @@ body.is-resizing-panel * {
 .library-title-row {
   flex: 0 0 auto;
   min-width: 0;
-}
-
-button.library-filters-toggle {
-  display: none;
-}
-
-.library-filters-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.library-filters-icon-up {
-  display: none;
-}
-
-.library-panel:not(.library-filters-collapsed) .library-filters-icon-down {
-  display: none;
 }
 
 .library-panel:not(.library-filters-collapsed) .library-filters-icon-up {
@@ -1143,11 +1050,7 @@ button.library-filters-toggle {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   margin-top: -5px;
 }
-.reader-zoom-slider input[type="range"]::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--line);
-}
+.reader-zoom-slider input[type="range"]::-webkit-slider-runnable-track,
 .reader-zoom-slider input[type="range"]::-moz-range-track {
   height: 4px;
   border-radius: 999px;
@@ -1170,12 +1073,7 @@ button.library-filters-toggle {
   white-space: nowrap;
 }
 
-/* In PDF OCR mode the text is an image overlay; font-size scaling does not
-   apply, so hide the zoom slider and A-/A+ buttons. */
-.reader-panel:has(.reader-text.pdf-ocr-reader) .toolbar-buttons [data-font],
-.reader-panel:has(.reader-text.pdf-ocr-reader) .reader-zoom-slider {
-  display: none;
-}
+
 
 .status-filter-field {
   display: grid;
@@ -1194,7 +1092,8 @@ button.library-filters-toggle {
   font-weight: 700;
 }
 
-.status-filter-options {
+.status-filter-options,
+.book-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
@@ -1285,12 +1184,6 @@ select {
   background-size: 14px;
 }
 
-select option,
-select optgroup {
-  background: var(--panel);
-  color: var(--ink);
-}
-
 select:disabled {
   cursor: not-allowed;
   color: var(--muted);
@@ -1369,12 +1262,6 @@ button:disabled {
   color: var(--muted);
 }
 
-.book-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
 #tracking-summary {
   display: flex;
   flex: 1 1 12rem;
@@ -1405,13 +1292,8 @@ button:disabled {
   font-weight: 700;
   overflow-wrap: anywhere;
 }
-
-.tracking-known strong { color: var(--green); }
-.tracking-learning strong { color: var(--blue); }
+.tracking-new,
 .tracking-new strong { color: var(--amber); }
-.tracking-known { color: var(--green); }
-.tracking-learning { color: var(--blue); }
-.tracking-new { color: var(--amber); }
 
 .card-progress-line {
   align-items: flex-start;
@@ -1482,9 +1364,7 @@ button:disabled {
 .card-stat-known { color: color-mix(in srgb, var(--green) 80%, var(--muted)); }
 .card-stat-learning { color: color-mix(in srgb, var(--blue) 80%, var(--muted)); }
 .card-stat-new { color: color-mix(in srgb, var(--amber) 80%, var(--muted)); }
-.card-stat-unique { color: var(--muted); }
-.card-stat-unique strong { color: var(--ink); }
-.card-stat-total { color: var(--muted); }
+.card-stat-unique strong,
 .card-stat-total strong { color: var(--ink); }
 
 .book-actions {
@@ -1492,11 +1372,6 @@ button:disabled {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: auto;
-}
-
-/* Per-card ⋯ overflow menu for secondary book actions. */
-.book-card-menu-anchor {
-  position: relative;
 }
 .book-card-menu-anchor .book-card-menu-toggle {
   width: 28px;
@@ -1530,9 +1405,6 @@ button:disabled {
   display: grid;
   gap: 0.1rem;
 }
-.book-card-menu[hidden] {
-  display: none;
-}
 .book-card-menu .book-menu-item {
   display: flex;
   align-items: center;
@@ -1554,9 +1426,6 @@ button:disabled {
 .book-card-menu .book-menu-item:focus-visible {
   background: var(--panel-strong);
   color: var(--ink);
-}
-.book-card-menu .book-menu-item.danger {
-  color: var(--red);
 }
 .book-card-menu .book-menu-item.danger:hover,
 .book-card-menu .book-menu-item.danger:focus-visible {
@@ -1598,15 +1467,13 @@ button:disabled {
   min-width: 90px;
 }
 
-:root[data-theme="dark"] .primary-button {
-  font-weight: 700;
-}
-
 .secondary-button,
 .file-button,
 .toolbar-buttons button,
 .row-actions button,
-.status-button {
+.status-button,
+select option,
+select optgroup {
   background: var(--panel);
   color: var(--ink);
 }
@@ -1712,11 +1579,6 @@ button.icon-button {
   opacity: 0;
 }
 
-.import-form,
-.data-actions {
-  padding: 1rem;
-}
-
 .import-form {
   display: grid;
   gap: 0.85rem;
@@ -1729,9 +1591,6 @@ button.icon-button {
 .import-mode-row label {
   display: grid;
   gap: 0.4rem;
-}
-.import-mode-row .input {
-  width: 100%;
 }
 
 .youtube-import-section {
@@ -1746,7 +1605,8 @@ button.icon-button {
   font-size: 0.95rem;
 }
 
-.youtube-import-section label {
+.youtube-import-section label,
+.import-form > label:not(.import-cover-dropzone) {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -1764,14 +1624,6 @@ button.icon-button {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.5rem;
   align-items: center;
-}
-
-.youtube-import-actions select[hidden] {
-  display: none;
-}
-
-.youtube-import-actions select[hidden] + button {
-  grid-column: 1 / -1;
 }
 
 .import-form > label:not(.import-cover-dropzone) {
@@ -1824,10 +1676,6 @@ button.icon-button {
 .recovery-status-list {
   display: grid;
   gap: 0.5rem;
-}
-
-.recovery-status-title {
-  font-weight: 700;
 }
 
 .recovery-status-lines {
@@ -1910,10 +1758,12 @@ button.icon-button {
 .data-action-row.danger-zone {
   border-top-color: color-mix(in srgb, var(--red) 45%, transparent);
 }
-
+.highlight-red .graph-stat-value,
+.book-card-menu .book-menu-item.danger,
 .data-action-row.danger-zone h3 {
   color: var(--red);
 }
+
 
 .import-cover-preview {
   display: flex;
@@ -1961,11 +1811,6 @@ button.icon-button {
   gap: 0.75rem 1rem;
 }
 
-.edit-book-body .edit-book-field > .input,
-.edit-book-body .edit-book-field > select {
-  width: 100%;
-}
-
 .edit-book-cover-row {
   display: flex;
   align-items: flex-start;
@@ -2006,11 +1851,6 @@ button.icon-button {
   color: var(--red-ink);
   line-height: 1;
   cursor: pointer;
-}
-
-.edit-book-cover-clear svg {
-  width: 14px;
-  height: 14px;
 }
 
 .edit-book-cover-dropzone {
@@ -2062,12 +1902,7 @@ button.icon-button {
   font-variant-numeric: tabular-nums;
 }
 
-/* Reader rendering of **bold** / *italic* spans (markers are stripped before
-   tokenization; these classes land on word buttons and gap spans). */
-.word-token.fmt-bold,
-span.fmt-bold {
-  font-weight: 700;
-}
+
 
 .word-token.fmt-italic,
 span.fmt-italic {
@@ -2089,14 +1924,13 @@ span.fmt-italic {
 .reader-toolbar {
   align-items: flex-end;
 }
-
-.reader-panel {
-  position: relative;
-}
-
+.heatmap-grid-area,
+/* Per-card ⋯ overflow menu for secondary book actions. */ .book-card-menu-anchor,
+.reader-panel,
 .reader-bookmarks-button {
   position: relative;
 }
+
 
 .reader-bookmarks-count {
   position: absolute;
@@ -2129,10 +1963,6 @@ span.fmt-italic {
   overflow-y: auto;
   pointer-events: none;
   scrollbar-width: none;
-}
-
-.reader-bookmark-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .reader-bookmark-tab,
@@ -2555,12 +2385,6 @@ html[data-max-width="full"] .reader-text {
   opacity: 1;
 }
 
-:root.no-token-highlight .word-token.pdf-ocr-word::after,
-:root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-known::after,
-:root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-ignored::after {
-  display: none;
-}
-
 .reader-sidebar-wrapper {
   align-self: start;
   position: sticky;
@@ -2730,10 +2554,6 @@ html[data-max-width="full"] .reader-text {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-}
-
-.word-panel-close {
-  display: none;
 }
 
 .word-article-editor {
@@ -2989,9 +2809,6 @@ html[data-max-width="full"] .reader-text {
   padding: 3rem 1rem;
   text-align: center;
 }
-.reader-loading h3 {
-  margin: 0;
-}
 .reader-loading .spinner {
   width: 44px;
   height: 44px;
@@ -3107,9 +2924,6 @@ html[data-max-width="full"] .reader-text {
   0%, 100% { transform: translateY(0); opacity: 0.65; }
   50% { transform: translateY(55px); opacity: 1; }
 }
-.ocr-progress-copy p {
-  margin: 0;
-}
 .ocr-progress-copy #ocr-progress-text,
 .ocr-progress-copy #export-progress-text {
   color: var(--ink);
@@ -3222,7 +3036,6 @@ html[data-max-width="full"] .reader-text {
   gap: 1rem;
   padding: 1.25rem;
 }
-.ocr-confirm-body p { margin: 0; }
 .ocr-confirm-actions {
   display: flex;
   justify-content: flex-end;
@@ -3241,7 +3054,6 @@ html[data-max-width="full"] .reader-text {
   display: grid;
   gap: 0.75rem;
 }
-.confirmation-dialog-body p { margin: 0; }
 .confirmation-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -3266,14 +3078,16 @@ html[data-max-width="full"] .reader-text {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--line);
 }
-
+/* Reader rendering of **bold** / *italic* spans (markers are stripped before
+   tokenization;:root[data-theme="dark"] .primary-button,
+.recovery-status-title,
+these classes land on word buttons and gap spans). */
+.word-token.fmt-bold,
+span.fmt-bold,
 .reader-bookmark-form label {
   font-weight: 700;
 }
 
-.reader-bookmark-form input {
-  width: 100%;
-}
 
 .reader-bookmark-color-field {
   min-width: 0;
@@ -3375,10 +3189,6 @@ button.reader-bookmark-location {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.reader-bookmark-location small {
-  color: var(--muted);
 }
 
 .reader-bookmark-row-marker {
@@ -3593,10 +3403,12 @@ textarea.vocab-translation-input {
   background: var(--green-soft);
   color: var(--green);
 }
-
+.card-stat-unique, .card-stat-total,
+.reader-bookmark-location small,
 .status-chip.status-ignored {
   color: var(--muted);
 }
+
 
 .review-card {
   display: grid;
@@ -3671,10 +3483,12 @@ textarea.vocab-translation-input {
 .settings-grid .panel {
   padding-bottom: 1rem;
 }
-
+:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .main-panel,
+.import-form, .data-actions,
 .settings-grid .muted-copy {
   padding: 1rem;
 }
+
 
 .toast {
   position: fixed;
@@ -3847,14 +3661,19 @@ textarea.vocab-translation-input {
   min-width: 4.5rem;
   justify-content: center;
 }
-
+.highlight-green .graph-stat-value,
+.tracking-known, .tracking-known strong,
 .metric-pill.metric-known {
   color: var(--green);
 }
 
+a,
+.highlight-blue .graph-stat-value,
+.tracking-learning, .tracking-learning strong,
 .metric-pill.metric-learning {
   color: var(--blue);
 }
+
 
 .metric-pill.metric-new {
   color: var(--purple);
@@ -3894,10 +3713,6 @@ textarea.vocab-translation-input {
 .tag-level-B2 { background: var(--amber-soft); color: var(--amber); }
 .tag-level-C1 { background: var(--red-soft); color: var(--red); }
 .tag-level-custom { background: var(--panel-strong); color: var(--muted); }
-
-:root.no-card-stats .book-card .progress-block {
-  display: none;
-}
 
 /* Settings rows */
 .settings-body {
@@ -3974,10 +3789,6 @@ textarea.vocab-translation-input {
   overflow-wrap: anywhere;
   padding: 9px 10px;
   text-align: left;
-}
-
-.pocket-only-setting {
-  display: none;
 }
 
 .setting-row > span {
@@ -4074,15 +3885,6 @@ textarea.vocab-translation-input {
   display: grid;
   gap: 0.65rem;
   margin-top: 0.65rem;
-}
-
-.word-panel-items-setting:not([open]) .word-panel-items-setting-body {
-  display: none;
-}
-
-.word-panel-items-setting .settings-subheading,
-.word-panel-items-setting .muted-copy {
-  margin: 0;
 }
 
 .word-panel-item-list {
@@ -4260,10 +4062,6 @@ textarea.vocab-translation-input {
   line-height: 1.15;
 }
 
-.language-onboarding-body .muted-copy {
-  margin: 0;
-}
-
 .language-onboarding-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -4340,8 +4138,29 @@ textarea.vocab-translation-input {
 .book-card.has-cover { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; }
 .book-cover { aspect-ratio: 3/4; max-width: 96px; background: var(--panel-strong); border-radius: var(--radius); overflow: hidden; }
 .book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-:root.no-covers .book-cover { display: none; }
-:root.no-covers .book-card.has-cover { grid-template-columns: 1fr; }
+/* In PDF OCR mode the text is an image overlay; font-size scaling does not
+   apply, so hide the zoom slider and A-/A+ buttons. */
+.pocket-word-navigation,
+.pocket-word-panel-sheet-handle,
+:root:not(.pocket-mode) button.pocket-import-toggle, :root:not(.pocket-mode) button.pocket-drawer-close, :root:not(.pocket-mode) button.pocket-navigation-toggle, :root:not(.pocket-mode) button.pocket-reader-navigation-toggle,
+.review-chart-fullwidth:empty,
+:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .topbar, :root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-meta, :root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .focus-hint,
+:root.reader-focus-mode:not(.pocket-mode)[data-view="reader"] .reader-toolbar .shortcut-badge,
+:root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-resizer, :root.reader-word-panel-hidden:not(.pocket-mode)[data-view="reader"] .reader-sidebar-wrapper,
+button.library-filters-toggle,
+.library-filters-icon-up, .library-panel:not(.library-filters-collapsed) .library-filters-icon-down,
+.reader-panel:has(.reader-text.pdf-ocr-reader) .toolbar-buttons [data-font], .reader-panel:has(.reader-text.pdf-ocr-reader) .reader-zoom-slider,
+.book-card-menu[hidden],
+.youtube-import-actions select[hidden],
+.reader-bookmark-tabs::-webkit-scrollbar,
+:root.no-token-highlight .word-token.pdf-ocr-word::after, :root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-known::after, :root.no-highlight-known-ignored .word-token.pdf-ocr-word.status-ignored::after,
+.word-panel-close,
+:root.no-card-stats .book-card .progress-block,
+.pocket-only-setting,
+.word-panel-items-setting:not([open]) .word-panel-items-setting-body,
+:root.no-covers .book-cover {
+  display: none;
+}
 .reading-active { outline: 2px solid var(--control-accent); outline-offset: 2px; border-radius: var(--radius); }
 
 /* === Discover view === */
@@ -4350,7 +4169,12 @@ textarea.vocab-translation-input {
 .discover-search .grow { flex: 1 1 240px; }
 .discover-toolbar { display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .6rem 1rem; border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent); background: var(--panel-strong); flex-wrap: wrap; }
 .discover-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .85rem; padding: 1rem; }
-:root.no-covers .discover-card.book-card.has-cover { grid-template-columns: 1fr; }
+.settings-grid,
+:root.no-covers .book-card.has-cover,
+:root.no-covers .discover-card.book-card.has-cover {
+  grid-template-columns: 1fr;
+}
+
 .discover-card.selected { outline: 2px solid var(--control-accent); border-color: var(--control-accent); }
 .discover-card .discover-check { display: inline-flex; align-items: center; gap: .3rem; font-size: .85rem; color: var(--muted); margin-right: auto; }
 .discover-card .discover-check input { width: auto; height: auto; }
@@ -4514,22 +4338,16 @@ dialog {
   color: var(--muted);
 }
 
-.word-editor-field > .input,
-.word-editor-field > textarea,
-.word-editor-field > input[type="text"] {
-  width: 100%;
-}
-
 .word-editor-field.word-editor-word {
   grid-column: 1;
 }
-
-.word-editor-field.word-editor-translation {
-  grid-column: 1 / -1;
-}
+.graph-cell-wide,
+.youtube-import-actions select[hidden] + button,
+.word-editor-field.word-editor-translation,
 .word-editor-field.word-editor-example {
   grid-column: 1 / -1;
 }
+
 
 .word-editor-status {
   grid-column: 1 / -1;
@@ -4548,10 +4366,6 @@ dialog {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--muted);
-}
-
-.word-editor-status .status-options {
-  width: 100%;
 }
 
 .word-editor-actions {
@@ -4574,9 +4388,6 @@ dialog {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.5rem;
-}
-.graphs-ai-summary .ai-explanation {
-  width: 100%;
 }
 .graphs-ai-summary:has([data-graphs-ai-explanation]:not([hidden])) {
   border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
@@ -4750,7 +4561,16 @@ dialog {
 .justify-start { justify-content: flex-start; gap: 0.5rem; }
 .lh-2 { line-height: 2; }
 .lh-2-m-b-1 { line-height: 2; margin-bottom: 1rem; }
-.m-0 { margin: 0; }
+.reader-loading h3,
+.ocr-progress-copy p,
+.ocr-confirm-body p,
+.confirmation-dialog-body p,
+.word-panel-items-setting .settings-subheading, .word-panel-items-setting .muted-copy,
+.language-onboarding-body .muted-copy,
+.m-0 {
+  margin: 0;
+}
+
 .m-0-auto-1 { margin: 0 auto 1rem; }
 .m-0-fs-09-lh-15-muted { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
 .m-b-15-center { margin-bottom: 1.5rem; text-align: center; }
@@ -4788,9 +4608,13 @@ dialog {
 .row-stretch-flex-1 { display: flex; gap: 0.5rem; align-items: stretch; flex: 1; min-height: 0; }
 .row-tight { display: flex; align-items: center; gap: 0.35rem; }
 .self-end-noshrink { align-self: flex-end; flex-shrink: 0; }
-.size-14 { width: 14px; height: 14px; }
 .size-16 { width: 16px; height: 16px; }
-.size-18 { width: 18px; height: 18px; }
+.nav-item > .nav-icon svg,
+.library-filters-icon,
+.size-18 {
+  width: 18px; height: 18px;
+}
+
 .size-20-green { width: 20px; height: 20px; flex-shrink: 0; color: var(--green); }
 .size-28-muted-m-b-05 { width: 28px; height: 28px; color: var(--muted); margin-bottom: 0.5rem; }
 .size-32-muted { width: 32px; height: 32px; color: var(--muted); }
@@ -4810,7 +4634,20 @@ dialog {
 .upload-zone-sm { margin-top: 0.5rem; text-align: center; position: relative; display: inline-block; }
 .visibility-hidden { visibility:hidden; }
 .w-10 { width:10px; }
-.w-100 { width: 100%; }
+.flashcards-layout > .review-panel,
+.translator-layout > .translator-panel,
+/* Graphs tab */ .graphs-layout > .panel,
+.word-image-search .image-action-button,
+.import-mode-row .input,
+.edit-book-body .edit-book-field > .input, .edit-book-body .edit-book-field > select,
+.reader-bookmark-form input,
+.word-editor-field > .input, .word-editor-field > textarea, .word-editor-field > input[type="text"],
+.word-editor-status .status-options,
+.graphs-ai-summary .ai-explanation,
+.w-100 {
+  width: 100%;
+}
+
 /* === De-AI wave 2 — global surfaces (exp/theme-deai-rc3) === */
 .settings-grid > .panel {
   border: 0;
@@ -4836,10 +4673,13 @@ dialog {
   width: 0.95rem;
   height: 0.95rem;
 }
+.image-action-button svg,
+.edit-book-cover-clear svg,
+.size-14,
 .ai-inline-icon {
-  width: 14px;
-  height: 14px;
+  width: 14px; height: 14px;
 }
+
 .book-meta-detail {
   color: var(--muted);
   font-size: 0.8rem;

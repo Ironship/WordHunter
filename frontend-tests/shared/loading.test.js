@@ -83,7 +83,8 @@ describe("loading state", () => {
   it("keeps long-running status visible and respects reduced motion", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
     const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
-    const bookImport = readFileSync(new URL("../../dist/web/js/events/book-import.js", import.meta.url), "utf8");
+    const bookImport = readFileSync(new URL("../../dist/web/js/events/book-import/ocr-progress.js", import.meta.url), "utf8");
+    const pdfSource = readFileSync(new URL("../../dist/web/js/events/book-import/pdf-ocr.js", import.meta.url), "utf8");
     const reducedMotion = styles.slice(styles.indexOf("@media (prefers-reduced-motion: reduce)"));
 
     for (const id of ["translator-status", "discover-status"]) {
@@ -100,7 +101,7 @@ describe("loading state", () => {
     assert.match(bookImport, /id="ocr-progress-eta" aria-hidden="true"/);
     assert.match(bookImport, /class="ocr-progress-document"/);
     assert.match(bookImport, /await waitForUiPaint\(\)/);
-    assert.match(bookImport, /androidPdfOverlay \? "import\.parsingPdfTextLayer" : "import\.parsingPdfOcr"/);
+    assert.match(pdfSource, /androidPdfOverlay \? "import\.parsingPdfTextLayer" : "import\.parsingPdfOcr"/);
     assert.match(styles, /@keyframes ocr-progress-travel[\s\S]*transform: translateX/);
     assert.match(styles, /@keyframes ocr-page-scan[\s\S]*transform: translateY/);
     assert.doesNotMatch(styles, /@keyframes ocr-progress-sweep/);
