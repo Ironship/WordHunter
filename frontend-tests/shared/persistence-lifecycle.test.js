@@ -1378,6 +1378,11 @@ describe("persistence lifecycle", () => {
     const toasts = [];
     let applyShouldThrow = false;
     let transferResponse = { ok: true, saved: false };
+    const transferFetch = async () => ({
+      ok: transferResponse.ok,
+      json: async () => ({ saved: transferResponse.saved }),
+      text: async () => "disk unavailable"
+    });
     const window = fakeEventTarget({
       WH_TOKEN: "test-token",
       __qtBridge: false,
@@ -1509,6 +1514,11 @@ describe("persistence lifecycle", () => {
           || Object.values(state.profiles || {}).some((profile) =>
             profile?.customTexts?.some((text) => text.id === id)
           )
+      },
+      // httpPost keeps the raw Response contract; route it through the
+      // recording fetch mock so exportTransfer assertions stay valid.
+      "./http.js": {
+        httpPost: (url, body) => transferFetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
       }
     }, {
       window,
@@ -1517,11 +1527,7 @@ describe("persistence lifecycle", () => {
       Blob: class Blob {},
       URL: { createObjectURL: () => "blob:test", revokeObjectURL() {} },
       document: { createElement: () => ({ click() {} }) },
-      fetch: async () => ({
-        ok: transferResponse.ok,
-        json: async () => ({ saved: transferResponse.saved }),
-        text: async () => "disk unavailable"
-      }),
+      fetch: transferFetch,
       setTimeout: () => 1,
       clearTimeout() {},
       console: { warn() {}, error() {} }
