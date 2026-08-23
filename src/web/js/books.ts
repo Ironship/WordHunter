@@ -148,12 +148,12 @@ export function findBookById(id: string): LibraryBook | undefined {
 export function loadAllBookTexts() {
   // If a load is already in progress, return that promise
   if (bookTextsLoadingPromise) return bookTextsLoadingPromise;
-  
+
   const books = getAllBooks();
   if (!books.length) {
     return Promise.resolve();
   }
-  
+
   const batchGeneration = allTextCacheGeneration;
   let nextBook = 0;
   const loadNext = async () => {
@@ -172,7 +172,7 @@ export function loadAllBookTexts() {
     if (bookTextsLoadingPromise === tracked) bookTextsLoadingPromise = null;
   });
   bookTextsLoadingPromise = tracked;
-  
+
   return bookTextsLoadingPromise;
 }
 
