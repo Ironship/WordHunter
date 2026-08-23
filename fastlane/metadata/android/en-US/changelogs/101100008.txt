@@ -1,0 +1,3 @@
+Word Hunter 1.1.0-rc.8
+
+1.1.0-rc.8 continues the maintainability work behind the scenes: the backend request router and the settings module are reorganised into focused units with identical behaviour, and every network call now carries an explicit timeout so long operations (AI explanations, model downloads, library transfers) no longer risk silent 15-second cutoffs.
