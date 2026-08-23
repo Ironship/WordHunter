@@ -20,10 +20,11 @@ describe("image OCR import wiring", () => {
   });
 
   it("reuses OCR progress, cancellation, cleanup, and reader page records", () => {
-    const source = read("../../src/web/js/events/book-import.ts");
+    const source = read("../../src/web/js/events/book-import/pdf-ocr.ts");
+    const shared = read("../../src/web/js/events/book-import/shared.ts");
     const formats = read("../../src/web/js/ocr-image-format.ts");
 
-    assert.match(source, /MAX_DESKTOP_OCR_IMAGE_BYTES = 32 \* 1024 \* 1024/);
+    assert.match(shared, /MAX_DESKTOP_OCR_IMAGE_BYTES = 32 \* 1024 \* 1024/);
     assert.match(source, /validatedOcrImageFormat\(file\)/);
     for (const mime of ["image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp", "application/octet-stream"]) {
       assert.ok(formats.includes(mime));
