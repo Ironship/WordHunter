@@ -3,7 +3,7 @@
  */
 import { state } from "../state.js";
 import { els } from "../dom.js";
-import { escapeHtml, escapeAttribute, statusLabel } from "../utils.js";
+import { escapeHtml, escapeAttribute, statusLabel, isWordHunterWowReadyForKnown } from "../utils.js";
 import { icon } from "../icons.js";
 import { normalizeSearchVariants, normalizeVocabularyWord } from "../tokenizer_v2.js";
 import { t } from "../i18n.js";
@@ -149,6 +149,7 @@ export function renderVocabulary(resetLimit = true): void {
 
   els.vocabTableBody.innerHTML = entriesToRender.map((entry) => {
     const addedInSession = sessionAddedWords.has(entry.key);
+    const readyForKnown = isWordHunterWowReadyForKnown(entry);
     const translationField = pocketMode ? `
         <textarea
           class="vocab-translation-input${entry.translation ? "" : " empty"}"
@@ -170,7 +171,10 @@ export function renderVocabulary(resetLimit = true): void {
     return `
     <tr class="${addedInSession ? "vocab-row-added-in-session" : ""}">
       <td><strong>${escapeHtml(formatHeadword(entry.word, entry.article))}</strong></td>
-      <td><span class="status-chip status-${escapeHtml(entry.status)}">${escapeHtml(statusLabel(entry.status))}</span></td>
+      <td>
+        <span class="status-chip status-${escapeHtml(entry.status)}">${escapeHtml(statusLabel(entry.status))}</span>
+        ${readyForKnown ? `<span class="status-recommendation">${escapeHtml(t("vocab.readyForKnown"))}</span>` : ""}
+      </td>
       <td>
         ${translationField}
       </td>

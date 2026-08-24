@@ -1,0 +1,3 @@
+Word Hunter 1.1.0-rc.11
+
+Import first-added and last-seen dates plus distinct-quest counts from WordHunterWoW 1.3, and highlight Learning words that may be ready for Known without changing their status automatically.
