@@ -6,12 +6,15 @@ export interface WordHunterWowRow {
   statusChangedAt: number;
   updatedAt: number;
   translation: string;
+  note: string;
+  noteUpdatedAt: number;
   context: string;
   questId: string;
   questTitle: string;
 }
 
-const PREFIX = "WHW1|";
+const PREFIX_V1 = "WHW1|";
+const PREFIX_V2 = "WHW2|";
 const SAFE_PAYLOAD = /^[A-Za-z0-9_.~%|,;:-]*$/;
 const STATUSES = new Set<WhVocabStatus>(["new", "learning", "known", "ignored"]);
 
@@ -31,16 +34,18 @@ export function parseWordHunterWowSavedVariables(source: string): WordHunterWowR
   const match = source.match(/(?:^|\r?\n)\s*WordHunterWoWExport\s*=\s*"([^"]*)"/);
   if (!match) throw new Error("WordHunterWoWExport was not found");
   const payload = match[1];
-  if (!payload.startsWith(PREFIX) || !SAFE_PAYLOAD.test(payload)) {
+  const prefix = payload.startsWith(PREFIX_V2) ? PREFIX_V2 : PREFIX_V1;
+  if (!payload.startsWith(prefix) || !SAFE_PAYLOAD.test(payload)) {
     throw new Error("WordHunterWoW export has an unsupported format");
   }
 
   const rows: WordHunterWowRow[] = [];
-  const records = payload.slice(PREFIX.length);
+  const records = payload.slice(prefix.length);
   if (!records) return rows;
   for (const record of records.split(";")) {
     const fields = record.split(",");
-    if (fields.length !== 8) throw new Error("WordHunterWoW export contains an invalid record");
+    const expectedFields = prefix === PREFIX_V2 ? 10 : 8;
+    if (fields.length !== expectedFields) throw new Error("WordHunterWoW export contains an invalid record");
     const status = fields[1] as WhVocabStatus;
     if (!STATUSES.has(status)) throw new Error("WordHunterWoW export contains an invalid status");
     const word = decodeField(fields[0]).trim();
@@ -51,9 +56,11 @@ export function parseWordHunterWowSavedVariables(source: string): WordHunterWowR
       statusChangedAt: timestamp(fields[2]),
       updatedAt: timestamp(fields[3]),
       translation: decodeField(fields[4]).trim(),
-      context: decodeField(fields[5]).trim(),
-      questId: decodeField(fields[6]).trim(),
-      questTitle: decodeField(fields[7]).trim()
+      note: prefix === PREFIX_V2 ? decodeField(fields[5]).trim() : "",
+      noteUpdatedAt: prefix === PREFIX_V2 ? timestamp(fields[6]) : 0,
+      context: decodeField(fields[prefix === PREFIX_V2 ? 7 : 5]).trim(),
+      questId: decodeField(fields[prefix === PREFIX_V2 ? 8 : 6]).trim(),
+      questTitle: decodeField(fields[prefix === PREFIX_V2 ? 9 : 7]).trim()
     });
   }
   return rows;
@@ -91,6 +98,10 @@ export function mergeWordHunterWowEntry(
   if (row.translation && (row.updatedAt * 1000 >= localUpdatedTime || !entry.translation)) {
     entry.translation = row.translation;
     entry.updatedAt = unixSecondsToIso(row.updatedAt);
+  }
+  if (row.note && (row.noteUpdatedAt * 1000 >= localUpdatedTime || !entry.note)) {
+    entry.note = row.note;
+    entry.updatedAt = unixSecondsToIso(row.noteUpdatedAt);
   }
   return JSON.stringify(entry) !== before;
 }
