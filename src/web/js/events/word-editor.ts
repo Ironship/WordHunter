@@ -4,7 +4,7 @@ import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { statusIcon } from "../icons.js";
 import { STATUS_ORDER, type VocabStatus } from "../constants.js";
-import { statusLabel, escapeHtml, escapeAttribute } from "../utils.js";
+import { statusLabel, escapeHtml, escapeAttribute, isWordHunterWowReadyForKnown } from "../utils.js";
 import { invalidateVocabListCache } from "../vocabulary/vocab-list.js";
 import { getOrCreateEntry, renderVocabulary } from "../views/vocabulary.js";
 import { setEntryStatus } from "../vocabulary/entry-state.js";
@@ -60,6 +60,7 @@ export function renderAddWordDialog(): HTMLDialogElement {
           <legend data-i18n="vocab.status">Status</legend>
           <div id="add-word-status-buttons" class="status-options"></div>
         </fieldset>
+        <div id="add-word-history" class="word-editor-history" hidden></div>
         <label class="word-editor-field word-editor-example">
           <span data-i18n="vocab.addExampleLabel">Example sentence (optional)</span>
           <textarea id="add-example-input" class="input" rows="4" autocomplete="off" spellcheck="false"></textarea>
@@ -77,6 +78,33 @@ export function renderAddWordDialog(): HTMLDialogElement {
 }
 
 let addWordStatusButtons: HTMLButtonElement[] = [];
+let addWordHistoryEntry: WhVocabEntry | null = null;
+
+function formatHistoryDate(value?: string): string {
+  const parsed = new Date(value || "");
+  return Number.isFinite(parsed.getTime())
+    ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(parsed)
+    : "—";
+}
+
+function renderAddWordHistory(status?: VocabStatus): void {
+  const history = document.getElementById("add-word-history");
+  const entry = addWordHistoryEntry;
+  if (!history || !entry?.lastSeenAt) {
+    if (history) history.hidden = true;
+    return;
+  }
+  const displayEntry = status ? { ...entry, status } : entry;
+  history.innerHTML = `<span>${escapeHtml(t("vocab.wowHistory", {
+    first: formatHistoryDate(entry.addedAt),
+    last: formatHistoryDate(entry.lastSeenAt),
+    count: Number(entry.encounterCount || 0),
+    status: formatHistoryDate(entry.statusUpdatedAt || entry.updatedAt)
+  }))}</span>${isWordHunterWowReadyForKnown(displayEntry)
+    ? `<strong>${escapeHtml(t("vocab.readyForKnown"))}</strong>`
+    : ""}`;
+  history.hidden = false;
+}
 
 /**
  * Re-localizes the add/edit-word dialog after the locale changes (post-boot
@@ -92,6 +120,7 @@ export function refreshAddWordDialogLocalization(): void {
     ?.dataset.addWordStatus;
   renderAddWordStatusButtons();
   if (activeStatus) setAddWordStatus(activeStatus);
+  renderAddWordHistory(activeStatus as VocabStatus | undefined);
 }
 
 function renderAddWordStatusButtons() {
@@ -180,11 +209,14 @@ export function bindWordEditorEvents() {
       if (!btn) return;
       e.preventDefault();
       setAddWordStatus(btn.dataset.addWordStatus);
+      renderAddWordHistory(getAddWordStatus());
     });
   }
 
   if (addWordBtn && addWordDialog) {
     addWordBtn.addEventListener("click", () => {
+      addWordHistoryEntry = null;
+      renderAddWordHistory();
       addWordEditing.value = "";
       if (addWordInput) { addWordInput.value = ""; addWordInput.disabled = false; }
       if (addArticleInput) addArticleInput.value = "";
@@ -208,6 +240,7 @@ export function bindWordEditorEvents() {
     const word = editBtn.dataset.editWord;
     const entry = state.vocab[word];
     if (!entry) return;
+    addWordHistoryEntry = entry;
     addWordEditing.value = word;
     // rc.6: the headword itself is editable now — confirming with a changed
     // word renames the entry key (guarded against collisions, see below).
@@ -216,6 +249,7 @@ export function bindWordEditorEvents() {
     if (addTranslationInput) addTranslationInput.value = entry.translation || "";
     if (addExampleInput) addExampleInput.value = entry.examples?.[0] || "";
     setAddWordStatus(entry.status || "new");
+    renderAddWordHistory(entry.status);
     const title = addWordDialog.querySelector("#add-word-dialog-title");
     if (title) title.textContent = t("vocab.editWordTitle");
     addWordConfirm.textContent = t("vocab.editWordConfirm");

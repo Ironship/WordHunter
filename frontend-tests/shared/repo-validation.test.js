@@ -525,6 +525,7 @@ describe("repository validation wiring", () => {
     "add-article-input", // events/word-editor.ts (renderAddWordDialog)
     "add-translation-input", // events/word-editor.ts (renderAddWordDialog)
     "add-word-status-buttons", // events/word-editor.ts (renderAddWordDialog)
+    "add-word-history", // events/word-editor.ts (renderAddWordDialog)
     "add-example-input", // events/word-editor.ts (renderAddWordDialog)
     "add-word-cancel", // events/word-editor.ts (renderAddWordDialog)
     "add-word-confirm", // events/word-editor.ts (renderAddWordDialog)

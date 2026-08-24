@@ -4368,6 +4368,36 @@ dialog {
   color: var(--muted);
 }
 
+.word-editor-history {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.word-editor-history[hidden] {
+  display: none;
+}
+
+.word-editor-history strong,
+.status-recommendation {
+  color: var(--green);
+  font-weight: 700;
+}
+
+.status-recommendation {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  white-space: normal;
+}
+
 .word-editor-actions {
   display: flex;
   justify-content: flex-end;

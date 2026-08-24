@@ -11,10 +11,14 @@ export interface WordHunterWowRow {
   context: string;
   questId: string;
   questTitle: string;
+  firstSeenAt: number;
+  lastSeenAt: number;
+  encounterCount: number;
 }
 
 const PREFIX_V1 = "WHW1|";
 const PREFIX_V2 = "WHW2|";
+const PREFIX_V3 = "WHW3|";
 const SAFE_PAYLOAD = /^[A-Za-z0-9_.~%|,;:-]*$/;
 const STATUSES = new Set<WhVocabStatus>(["new", "learning", "known", "ignored"]);
 
@@ -30,11 +34,21 @@ function timestamp(value: string): number {
   return parsed;
 }
 
+function count(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 1_000_000_000) {
+    throw new Error("WordHunterWoW export contains an invalid encounter count");
+  }
+  return parsed;
+}
+
 export function parseWordHunterWowSavedVariables(source: string): WordHunterWowRow[] {
   const match = source.match(/(?:^|\r?\n)\s*WordHunterWoWExport\s*=\s*"([^"]*)"/);
   if (!match) throw new Error("WordHunterWoWExport was not found");
   const payload = match[1];
-  const prefix = payload.startsWith(PREFIX_V2) ? PREFIX_V2 : PREFIX_V1;
+  const prefix = payload.startsWith(PREFIX_V3)
+    ? PREFIX_V3
+    : payload.startsWith(PREFIX_V2) ? PREFIX_V2 : PREFIX_V1;
   if (!payload.startsWith(prefix) || !SAFE_PAYLOAD.test(payload)) {
     throw new Error("WordHunterWoW export has an unsupported format");
   }
@@ -44,12 +58,13 @@ export function parseWordHunterWowSavedVariables(source: string): WordHunterWowR
   if (!records) return rows;
   for (const record of records.split(";")) {
     const fields = record.split(",");
-    const expectedFields = prefix === PREFIX_V2 ? 10 : 8;
+    const expectedFields = prefix === PREFIX_V3 ? 13 : prefix === PREFIX_V2 ? 10 : 8;
     const hasLegacyMetadata = prefix === PREFIX_V1 && fields.length === 9;
     if (fields.length !== expectedFields && !hasLegacyMetadata) {
       throw new Error("WordHunterWoW export contains an invalid record");
     }
     if (hasLegacyMetadata) timestamp(fields[8]);
+    const hasNotes = prefix !== PREFIX_V1;
     const status = fields[1] as WhVocabStatus;
     if (!STATUSES.has(status)) throw new Error("WordHunterWoW export contains an invalid status");
     const word = decodeField(fields[0]).trim();
@@ -60,11 +75,14 @@ export function parseWordHunterWowSavedVariables(source: string): WordHunterWowR
       statusChangedAt: timestamp(fields[2]),
       updatedAt: timestamp(fields[3]),
       translation: decodeField(fields[4]).trim(),
-      note: prefix === PREFIX_V2 ? decodeField(fields[5]).trim() : "",
-      noteUpdatedAt: prefix === PREFIX_V2 ? timestamp(fields[6]) : 0,
-      context: decodeField(fields[prefix === PREFIX_V2 ? 7 : 5]).trim(),
-      questId: decodeField(fields[prefix === PREFIX_V2 ? 8 : 6]).trim(),
-      questTitle: decodeField(fields[prefix === PREFIX_V2 ? 9 : 7]).trim()
+      note: hasNotes ? decodeField(fields[5]).trim() : "",
+      noteUpdatedAt: hasNotes ? timestamp(fields[6]) : 0,
+      context: decodeField(fields[hasNotes ? 7 : 5]).trim(),
+      questId: decodeField(fields[hasNotes ? 8 : 6]).trim(),
+      questTitle: decodeField(fields[hasNotes ? 9 : 7]).trim(),
+      firstSeenAt: prefix === PREFIX_V3 ? timestamp(fields[10]) : 0,
+      lastSeenAt: prefix === PREFIX_V3 ? timestamp(fields[11]) : 0,
+      encounterCount: prefix === PREFIX_V3 ? count(fields[12]) : 0
     });
   }
   return rows;
@@ -107,5 +125,12 @@ export function mergeWordHunterWowEntry(
     entry.note = row.note;
     entry.updatedAt = unixSecondsToIso(row.noteUpdatedAt);
   }
+  if (row.firstSeenAt > 0 && (!entry.addedAt || row.firstSeenAt * 1000 < isoTime(entry.addedAt))) {
+    entry.addedAt = unixSecondsToIso(row.firstSeenAt);
+  }
+  if (row.lastSeenAt > 0 && row.lastSeenAt * 1000 >= isoTime(entry.lastSeenAt)) {
+    entry.lastSeenAt = unixSecondsToIso(row.lastSeenAt);
+  }
+  entry.encounterCount = Math.max(Number(entry.encounterCount || 0), Number(row.encounterCount || 0));
   return JSON.stringify(entry) !== before;
 }

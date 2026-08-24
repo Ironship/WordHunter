@@ -47,9 +47,9 @@ word notes, and a round of Android startup and storage reliability fixes.
 
 > [!TIP]
 > **Testing prereleases?** The current release candidate is
-> **[1.1.0-rc.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.10)**
-> (WordHunterWoW notes, visible import progress, and compatibility with legacy
-> SavedVariables exports). See `docs/releases/1.1.0-rc.10.md` for details.
+> **[1.1.0-rc.11](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.11)**
+> (WordHunterWoW encounter dates, distinct-quest counts, and `Ready for Known`
+> suggestions). See `docs/releases/1.1.0-rc.11.md` for details.
 
 > [!NOTE]
 > **F-Droid:** Word Hunter Pocket is not available on F-Droid yet, but a
@@ -140,7 +140,7 @@ You can start locally and move data later with a ZIP transfer package from the
 ## Release status
 
 - **Stable:** [1.0.13](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.13)
-- **Prerelease:** [1.1.0-rc.10](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.10)
+- **Prerelease:** [1.1.0-rc.11](https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.11)
 
 <details>
 <summary><strong>Upgrading an older installation</strong></summary>
