@@ -1,0 +1,3 @@
+Word Hunter 1.1.0-rc.10
+
+Import personal notes from WordHunterWoW 1.2, follow visible import and translation progress, and read current or legacy SavedVariables exports without creating duplicate quest context.

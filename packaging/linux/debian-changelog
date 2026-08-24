@@ -1,3 +1,9 @@
+word-hunter (1.1.0-rc.10) unstable; urgency=medium
+
+  * Import WordHunterWoW notes, show import and translation progress, and accept legacy SavedVariables metadata without creating duplicates.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Mon, 24 Aug 2026 17:35:00 +0200
+
 word-hunter (1.1.0-rc.9) unstable; urgency=medium
 
   * Import German quest vocabulary from WordHunterWoW with statuses, meanings, context deduplication, and optional automatic translation.
