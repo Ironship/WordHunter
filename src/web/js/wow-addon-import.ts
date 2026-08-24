@@ -40,6 +40,10 @@ export function importWordHunterWow(event: unknown): void {
   const reader = new FileReader();
   reader.addEventListener("load", async () => {
     try {
+      if (state.preferences?.learningLanguage !== "de") {
+        showToast(t("toast.wowImportGermanProfile"), "error");
+        return;
+      }
       const rows = parseWordHunterWowSavedVariables(String(reader.result || ""));
       let changed = 0;
       const translationKeys = new Set<string>();
@@ -64,6 +68,7 @@ export function importWordHunterWow(event: unknown): void {
       render();
       showToast(t("toast.wowImportDone", { count: changed }));
       for (const key of translationKeys) {
+        if (state.preferences?.learningLanguage !== "de") break;
         const entry = state.vocab[key];
         if (entry) await maybeAutoTranslateWord(key, entry);
       }
