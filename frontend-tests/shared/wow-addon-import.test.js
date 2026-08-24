@@ -1,7 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 const { parseWordHunterWowSavedVariables, mergeWordHunterWowEntry } = await import("../../dist/web/js/wow-addon-format.js");
+const importerSource = readFileSync(new URL("../../dist/web/js/wow-addon-import.js", import.meta.url), "utf8");
 
 describe("WordHunterWoW SavedVariables import", () => {
   it("decodes German words, meanings, notes, and quest context", () => {
@@ -28,9 +30,25 @@ describe("WordHunterWoW SavedVariables import", () => {
     assert.equal(parseWordHunterWowSavedVariables(source)[0].noteUpdatedAt, 0);
   });
 
+  it("accepts the numeric trailing metadata used by legacy WHW1 exports", () => {
+    const source = 'WordHunterWoWExport = "WHW1|Wort,learning,1787500000,1787500010,slowo,Kontekst,26265,Tytul,2"';
+
+    assert.equal(parseWordHunterWowSavedVariables(source)[0].word, "Wort");
+    assert.throws(() => parseWordHunterWowSavedVariables(
+      'WordHunterWoWExport = "WHW1|Wort,learning,1787500000,1787500010,slowo,Kontekst,26265,Tytul,not-a-number"'
+    ));
+  });
+
   it("rejects executable or malformed payloads instead of evaluating Lua", () => {
     assert.throws(() => parseWordHunterWowSavedVariables('WordHunterWoWExport = loadstring("bad")'));
     assert.throws(() => parseWordHunterWowSavedVariables('WordHunterWoWExport = "WHW1|Wort,broken,1,1,,,,"'));
+  });
+
+  it("shows busy and translation progress until the complete import finishes", () => {
+    assert.match(importerSource, /beginElementBusy\(importLabel/);
+    assert.match(importerSource, /transfer\.importingWow/);
+    assert.match(importerSource, /transfer\.translatingWow/);
+    assert.match(importerSource, /finally \{\s*finishProgress\(\)/);
   });
 
   it("applies the WoW status and meaning to a word created by the import", () => {

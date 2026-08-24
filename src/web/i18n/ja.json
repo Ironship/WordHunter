@@ -842,6 +842,8 @@
     "wowTitle": "World of Warcraft クエスト",
     "wowHint": "WordHunterWoW の SavedVariables ファイルからドイツ語の単語、意味、ステータス、クエスト文脈を読み込みます。先にドイツ語学習プロフィールを選択してください。",
     "importWow": "WordHunterWoW から読み込む",
+    "importingWow": "WordHunterWoW から読み込み中…",
+    "translatingWow": "読み込んだ単語を翻訳中… {current}/{total}",
     "exportProgress": "パッケージをエクスポート中… {percent}%",
     "phasePreparing": "レコードを準備中",
     "phaseWords": "語彙をエクスポート中",

@@ -7,6 +7,7 @@ import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render } from "./render.js";
 import { maybeAutoTranslateWord } from "./vocab-actions.js";
+import { beginElementBusy } from "./loading.js";
 
 const MAX_WOW_IMPORT_BYTES = 8 * 1024 * 1024;
 
@@ -37,6 +38,22 @@ export function importWordHunterWow(event: unknown): void {
     return;
   }
 
+  const importLabel = document.getElementById("import-wordhunter-wow")?.closest<HTMLElement>(".file-button");
+  const importLabelText = importLabel?.querySelector<HTMLElement>("span");
+  const releaseBusy = beginElementBusy(importLabel, { disable: true });
+  const updateProgress = (message: string) => {
+    if (importLabelText) importLabelText.textContent = message;
+  };
+  let finished = false;
+  const finishProgress = () => {
+    if (finished) return;
+    finished = true;
+    releaseBusy();
+    updateProgress(t("transfer.importWow"));
+  };
+  updateProgress(t("transfer.importingWow"));
+  showToast(t("transfer.importingWow"));
+
   const reader = new FileReader();
   reader.addEventListener("load", async () => {
     try {
@@ -66,12 +83,19 @@ export function importWordHunterWow(event: unknown): void {
       }
       await saveStateAndReloadBridge({ withSnapshot: true });
       render();
-      showToast(t("toast.wowImportDone", { count: changed }));
+      const translationTotal = translationKeys.size;
+      let translationCurrent = 0;
       for (const key of translationKeys) {
         if (state.preferences?.learningLanguage !== "de") break;
+        translationCurrent++;
+        updateProgress(t("transfer.translatingWow", {
+          current: translationCurrent,
+          total: translationTotal
+        }));
         const entry = state.vocab[key];
         if (entry) await maybeAutoTranslateWord(key, entry);
       }
+      showToast(t("toast.wowImportDone", { count: changed }));
     } catch (error) {
       console.warn("WordHunterWoW import failed", error);
       if (window.__qtBridge) {
@@ -80,9 +104,14 @@ export function importWordHunterWow(event: unknown): void {
         });
       }
       showToast(t("toast.wowImportFailed"), "error");
+    } finally {
+      finishProgress();
     }
   });
-  const readFailed = () => showToast(t("toast.wowImportFailed"), "error");
+  const readFailed = () => {
+    finishProgress();
+    showToast(t("toast.wowImportFailed"), "error");
+  };
   reader.addEventListener("error", readFailed);
   reader.addEventListener("abort", readFailed);
   reader.readAsText(file);

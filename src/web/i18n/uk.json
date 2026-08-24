@@ -842,6 +842,8 @@
     "wowTitle": "Завдання World of Warcraft",
     "wowHint": "Імпортуйте німецькі слова, значення, статуси й контекст завдань із файлу SavedVariables WordHunterWoW. Спочатку виберіть профіль німецької мови.",
     "importWow": "Імпортувати з WordHunterWoW",
+    "importingWow": "Імпорт із WordHunterWoW…",
+    "translatingWow": "Переклад імпортованих слів… {current}/{total}",
     "exportProgress": "Експорт пакета… {percent}%",
     "phasePreparing": "Підготовка записів",
     "phaseWords": "Експорт словника",

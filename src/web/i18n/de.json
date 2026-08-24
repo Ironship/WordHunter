@@ -810,6 +810,8 @@
     "wowTitle": "World-of-Warcraft-Quests",
     "wowHint": "Importiere deutsche Wörter, Bedeutungen, Status und Questkontext aus der SavedVariables-Datei von WordHunterWoW. Wähle zuerst das deutsche Lernprofil.",
     "importWow": "Aus WordHunterWoW importieren",
+    "importingWow": "Import aus WordHunterWoW…",
+    "translatingWow": "Importierte Wörter werden übersetzt… {current}/{total}",
     "exportProgress": "Paket wird exportiert… {percent}%",
     "phasePreparing": "Datensätze vorbereiten",
     "phaseWords": "Wortschatz wird exportiert",
