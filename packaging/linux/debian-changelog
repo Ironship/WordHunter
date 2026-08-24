@@ -1,3 +1,9 @@
+word-hunter (1.1.0-rc.9) unstable; urgency=medium
+
+  * Import German quest vocabulary from WordHunterWoW with statuses, meanings, context deduplication, and optional automatic translation.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Mon, 24 Aug 2026 16:25:00 +0200
+
 word-hunter (1.1.0-rc.8) unstable; urgency=medium
 
   * 1.1.0-rc.8 continues the maintainability work behind the scenes: the backend request router and the settings module are reorganised into focused units with identical behaviour, and every network call now carries an explicit timeout so long operations (AI explanations, model downloads, library transfers) no longer risk silent 15-second cutoffs.
