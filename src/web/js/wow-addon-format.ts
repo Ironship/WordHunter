@@ -45,7 +45,11 @@ export function parseWordHunterWowSavedVariables(source: string): WordHunterWowR
   for (const record of records.split(";")) {
     const fields = record.split(",");
     const expectedFields = prefix === PREFIX_V2 ? 10 : 8;
-    if (fields.length !== expectedFields) throw new Error("WordHunterWoW export contains an invalid record");
+    const hasLegacyMetadata = prefix === PREFIX_V1 && fields.length === 9;
+    if (fields.length !== expectedFields && !hasLegacyMetadata) {
+      throw new Error("WordHunterWoW export contains an invalid record");
+    }
+    if (hasLegacyMetadata) timestamp(fields[8]);
     const status = fields[1] as WhVocabStatus;
     if (!STATUSES.has(status)) throw new Error("WordHunterWoW export contains an invalid status");
     const word = decodeField(fields[0]).trim();

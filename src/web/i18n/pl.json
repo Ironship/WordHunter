@@ -895,6 +895,8 @@
     "wowTitle": "Questy World of Warcraft",
     "wowHint": "Importuj niemieckie słowa, znaczenia, statusy i kontekst questów z pliku SavedVariables WordHunterWoW. Najpierw wybierz profil nauki języka niemieckiego.",
     "importWow": "Importuj z WordHunterWoW",
+    "importingWow": "Importowanie z WordHunterWoW…",
+    "translatingWow": "Tłumaczenie zaimportowanych słów… {current}/{total}",
     "exportProgress": "Eksportowanie paczki… {percent}%",
     "phasePreparing": "Przygotowywanie rekordów",
     "phaseWords": "Eksportowanie słownictwa",

@@ -895,6 +895,8 @@
     "wowTitle": "《魔兽世界》任务",
     "wowHint": "从 WordHunterWoW 的 SavedVariables 文件导入德语单词、释义、状态和任务上下文。请先选择德语学习配置。",
     "importWow": "从 WordHunterWoW 导入",
+    "importingWow": "正在从 WordHunterWoW 导入…",
+    "translatingWow": "正在翻译导入的单词… {current}/{total}",
     "exportProgress": "正在导出数据包… {percent}%",
     "phasePreparing": "正在准备记录",
     "phaseWords": "正在导出词汇",

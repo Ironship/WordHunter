@@ -810,6 +810,8 @@
     "wowTitle": "Misiones de World of Warcraft",
     "wowHint": "Importa palabras alemanas, significados, estados y contexto de misiones desde el archivo SavedVariables de WordHunterWoW. Selecciona primero el perfil de alemán.",
     "importWow": "Importar desde WordHunterWoW",
+    "importingWow": "Importando desde WordHunterWoW…",
+    "translatingWow": "Traduciendo las palabras importadas… {current}/{total}",
     "exportProgress": "Exportando paquete… {percent}%",
     "phasePreparing": "Preparando registros",
     "phaseWords": "Exportando vocabulario",

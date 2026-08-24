@@ -895,6 +895,8 @@
     "wowTitle": "World of Warcraft quests",
     "wowHint": "Import German words, meanings, statuses, and quest context from the WordHunterWoW SavedVariables file. Select the German learning profile first.",
     "importWow": "Import from WordHunterWoW",
+    "importingWow": "Importing from WordHunterWoW…",
+    "translatingWow": "Translating imported words… {current}/{total}",
     "exportProgress": "Exporting package… {percent}%",
     "phasePreparing": "Preparing records",
     "phaseWords": "Exporting vocabulary",

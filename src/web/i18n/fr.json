@@ -810,6 +810,8 @@
     "wowTitle": "Quêtes de World of Warcraft",
     "wowHint": "Importez les mots allemands, leurs traductions, leurs statuts et le contexte des quêtes depuis le fichier SavedVariables de WordHunterWoW. Sélectionnez d’abord le profil allemand.",
     "importWow": "Importer depuis WordHunterWoW",
+    "importingWow": "Importation depuis WordHunterWoW…",
+    "translatingWow": "Traduction des mots importés… {current}/{total}",
     "exportProgress": "Export du paquet… {percent}%",
     "phasePreparing": "Préparation des enregistrements",
     "phaseWords": "Export du vocabulaire",
