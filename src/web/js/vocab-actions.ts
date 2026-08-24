@@ -36,11 +36,12 @@ function isAutoTranslationRejected(entry: WhVocabEntry): boolean {
   return entry.translationAutoRejected === true;
 }
 
-async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promise<boolean> {
+export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promise<boolean> {
   if (state.preferences?.autoTranslateWords !== true) return false;
   if (!canUseTranslationProvider()) return false;
   if (!entry || String(entry.translation || "").trim()) return false;
   if (isAutoTranslationRejected(entry)) return false;
+  const learningLanguage = state.preferences?.learningLanguage;
   const lastFailure = failedAutoTranslations.get(word);
   if (lastFailure && Date.now() - lastFailure < AUTO_TRANSLATE_FAILURE_COOLDOWN_MS) return false;
   if (pendingAutoTranslations.has(entry)) return false;
@@ -51,6 +52,7 @@ async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promis
     const displayWord = entry.word || word;
     // Retries transient endpoint failures internally (once, after a short delay).
     const data = await translateWithRetry(displayWord, pair.fromCode, pair.toCode);
+    if (state.preferences?.learningLanguage !== learningLanguage) return false;
     // The entry object may have been replaced by a state reload while we waited —
     // resolve the CURRENT entry for this word and apply the result only if it
     // still needs a translation (fixes silently dropped translations).

@@ -46,7 +46,7 @@ globalThis.CustomEvent = class CustomEvent {
 
 const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { selectWord, setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
+const { maybeAutoTranslateWord, selectWord, setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
 const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
 
 function vocabEntry(overrides = {}) {
@@ -184,5 +184,33 @@ describe("vocabulary actions", () => {
     updateWordField("haus", "article", "   ");
     assert.equal(Object.hasOwn(state.vocab.haus, "article"), false);
     assert.equal(saveWrites, 2);
+  });
+
+  it("does not apply a late automatic translation after switching profiles", async () => {
+    const germanEntry = vocabEntry({ word: "Haus" });
+    resetVocabState({ haus: germanEntry });
+    state.preferences.autoTranslateWords = true;
+    const previousFetch = globalThis.fetch;
+    let finishRequest;
+    globalThis.fetch = () => new Promise((resolve) => {
+      finishRequest = () => resolve(new Response(JSON.stringify({ translated: "house", engine: "google" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      }));
+    });
+
+    try {
+      const pending = maybeAutoTranslateWord("haus", state.vocab.haus);
+      while (!finishRequest) await Promise.resolve();
+      state.preferences.learningLanguage = "fr";
+      state.vocab = { haus: vocabEntry({ word: "Haus" }) };
+      finishRequest();
+
+      assert.equal(await pending, false);
+      assert.equal(germanEntry.translation, "");
+      assert.equal(state.vocab.haus.translation, "");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
   });
 });
