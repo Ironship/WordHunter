@@ -1,0 +1,3 @@
+Word Hunter 1.1.0-rc.9
+
+Import German quest vocabulary from WordHunterWoW with statuses, meanings, and context. Repeated imports do not create duplicate entries, and empty meanings can be filled by the configured automatic translator. The strict importer reads data only and never executes Lua.
