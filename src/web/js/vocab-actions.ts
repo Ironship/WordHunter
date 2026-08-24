@@ -36,7 +36,7 @@ function isAutoTranslationRejected(entry: WhVocabEntry): boolean {
   return entry.translationAutoRejected === true;
 }
 
-async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promise<boolean> {
+export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promise<boolean> {
   if (state.preferences?.autoTranslateWords !== true) return false;
   if (!canUseTranslationProvider()) return false;
   if (!entry || String(entry.translation || "").trim()) return false;

@@ -6,6 +6,7 @@ import { resolveVocabularyKey } from "./tokenizer_v2.js";
 import { showToast } from "./toast.js";
 import { t } from "./i18n.js";
 import { render } from "./render.js";
+import { maybeAutoTranslateWord } from "./vocab-actions.js";
 
 const MAX_WOW_IMPORT_BYTES = 8 * 1024 * 1024;
 
@@ -41,6 +42,7 @@ export function importWordHunterWow(event: unknown): void {
     try {
       const rows = parseWordHunterWowSavedVariables(String(reader.result || ""));
       let changed = 0;
+      const translationKeys = new Set<string>();
       for (const row of rows) {
         const sourceContext = row.context && row.questTitle
           ? `[WoW: ${row.questTitle}] ${row.context}`
@@ -54,10 +56,17 @@ export function importWordHunterWow(event: unknown): void {
         getOrCreateEntry(row.word, sourceContext);
         if (JSON.stringify(entry.examples || []) !== examplesBefore) entry.updatedAt = new Date().toISOString();
         if (JSON.stringify(entry) !== before) changed++;
+        if (row.status !== "ignored" && !String(entry.translation || "").trim()) {
+          translationKeys.add(key);
+        }
       }
       await saveStateAndReloadBridge({ withSnapshot: true });
       render();
       showToast(t("toast.wowImportDone", { count: changed }));
+      for (const key of translationKeys) {
+        const entry = state.vocab[key];
+        if (entry) await maybeAutoTranslateWord(key, entry);
+      }
     } catch (error) {
       console.warn("WordHunterWoW import failed", error);
       if (window.__qtBridge) {
