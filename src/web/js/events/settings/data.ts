@@ -11,6 +11,7 @@ import { renderWordPanel } from "../../reader/word-panel.js";
 import { syncSettingsControls, updatePreferenceValue, resetPreferences } from "../../preferences.js";
 import { showToast } from "../../toast.js";
 import { clearWords, clearLibrary, exportAnkiTsv, importAnkiTsv, exportTransfer, importTransfer } from "../../sync-actions.js";
+import { importWordHunterWow } from "../../wow-addon-import.js";
 import { acknowledgeBackendSnapshot } from "../../store-bridge.js";
 import { httpPost } from "../../http.js";
 import { showConfirmDialog } from "../../dialog-backdrop.js";
@@ -202,6 +203,9 @@ export function bindDataSettings() {
 
   const importAnkiFile = document.getElementById("import-anki-tsv");
   if (importAnkiFile) importAnkiFile.addEventListener("change", importAnkiTsv);
+
+  const importWowFile = document.getElementById("import-wordhunter-wow");
+  if (importWowFile) importWowFile.addEventListener("change", importWordHunterWow);
 
   if (els.clearWords) els.clearWords.addEventListener("click", clearWords);
   if (els.clearLibrary) els.clearLibrary.addEventListener("click", clearLibrary);
