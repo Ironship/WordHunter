@@ -55,6 +55,14 @@ export function statusLabel(status: string): string {
   return t(STATUS_LABEL_MAP[status] || STATUS_LABEL_MAP.new);
 }
 
+export function isWordHunterWowReadyForKnown(entry: WhVocabEntry, now = Date.now()): boolean {
+  const learningSince = Date.parse(entry.learningStartedAt || entry.statusUpdatedAt || entry.addedAt || "");
+  return entry.status === "learning"
+    && Number(entry.encounterCount || 0) >= 5
+    && Number.isFinite(learningSince)
+    && now - learningSince >= 14 * 24 * 60 * 60 * 1000;
+}
+
 export interface VocabularyStats {
   known: number;
   ignored: number;

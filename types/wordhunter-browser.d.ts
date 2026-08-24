@@ -44,6 +44,8 @@ declare global {
     srsAlgorithm: "sm2" | "fsrs";
     nextDate: string;
     addedAt?: string;
+    lastSeenAt?: string;
+    encounterCount?: number;
     learningStartedAt?: string;
     knownAt?: string;
     lastReviewedAt?: string;
