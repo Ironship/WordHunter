@@ -37,6 +37,15 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.0" date="2026-08-29">
+      <description>
+        <ul>
+          <li>Imports German quest vocabulary from World of Warcraft, with encounter history and a suggestion when a word may be ready for Known.</li>
+          <li>Adds editable saved words, shuffled review sessions, separable-verb masking on cards, dyslexia-friendly reader fonts, and bold and italic in the book editor.</li>
+          <li>Starts and saves markedly faster on large libraries, and keeps image text recognition from being cut off while it is still running.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0~rc.11" date="2026-08-24" type="development">
       <url>https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0-rc.11</url>
     </release>

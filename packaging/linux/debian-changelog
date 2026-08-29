@@ -1,3 +1,11 @@
+word-hunter (1.1.0) unstable; urgency=medium
+
+  * Import German quest vocabulary from World of Warcraft, with encounter history.
+  * Editable saved words, shuffled reviews, separable-verb masking, dyslexia-friendly reader fonts.
+  * Faster start and save on large libraries; image text recognition is no longer cut off mid-run.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Sat, 29 Aug 2026 20:00:00 +0200
+
 word-hunter (1.1.0-rc.11) unstable; urgency=medium
 
   * Import WordHunterWoW encounter dates and distinct-quest counts, and suggest when long-running Learning words may be ready for Known.
