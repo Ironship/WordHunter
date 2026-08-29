@@ -40,6 +40,13 @@ import { deleteStoredText } from "../../store-bridge.js";
 
 const POCKET_PDF_SCAN_ERROR = "PDF_TEXT_LAYER_EMPTY";
 
+// The OCR runner budgets an hour per attempt and retries once on the
+// accelerated -> CPU fallback path (src-tauri/src/pdf_ocr/runner.rs), so a
+// shorter client deadline aborts work the backend goes on to finish. The whole
+// book path below sends its request without any deadline; either import is
+// cancelled through the AbortController wired up at its call site.
+const IMAGE_OCR_TIMEOUT_MS = 2 * 60 * 60 * 1000;
+
 export function confirmWholeBookOcr(): Promise<boolean> {
   let dialog = document.querySelector<HTMLDialogElement>("#ocr-whole-book-confirm");
   if (dialog && (
@@ -298,7 +305,8 @@ async function importOcrImageFile(file: File): Promise<boolean> {
     requestStarted = true;
     const response = await httpPost(`/__import/image_ocr/raw?${params}`, file, {
       headers: { "Content-Type": format.contentType },
-      signal: controller.signal
+      signal: controller.signal,
+      timeoutMs: IMAGE_OCR_TIMEOUT_MS
     });
     if (!response.ok) {
       const message = await response.text().catch(() => "");
