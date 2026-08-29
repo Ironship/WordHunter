@@ -118,6 +118,31 @@ pub(crate) fn load_records(dir: &Path) -> Result<BTreeMap<String, SyncRecord>, S
     Ok(canonicalize_vocab_records(records))
 }
 
+/// Cheap probe for the only thing `migrate_legacy_json_records` acts on: a
+/// `*.json` record file. `read_dir` yields names without opening or parsing
+/// anything, so an already-migrated store stops paying a full tree parse at
+/// every start. The directories walked are a superset of the two the migration
+/// itself tests, because `record_path` and `legacy_record_path` both resolve to
+/// `records_root(dir).join(kind_dir(kind))`, and `kind_dir` returns either one
+/// of `RECORD_DIRS` or the `"records"` fallback.
+pub(crate) fn legacy_json_records_present(dir: &Path) -> bool {
+    let root = records_root(dir);
+    if !root.exists() {
+        return false;
+    }
+    for kind_dir in RECORD_DIRS.iter().copied().chain(["records"]) {
+        let Ok(entries) = std::fs::read_dir(root.join(kind_dir)) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            if entry.path().extension().and_then(|value| value.to_str()) == Some("json") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub(crate) fn migrate_legacy_json_records(dir: &Path) -> Result<usize, String> {
     let records = load_records(dir)?;
     let mut migrated = 0;

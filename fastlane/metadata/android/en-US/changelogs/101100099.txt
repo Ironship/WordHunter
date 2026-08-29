@@ -1,0 +1,5 @@
+Word Hunter 1.1.0
+
+Import German quest vocabulary from World of Warcraft with its encounter
+history, edit saved words, shuffle today's cards, read with dyslexia-friendly
+fonts, and start noticeably faster with a large library.

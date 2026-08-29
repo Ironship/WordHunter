@@ -128,7 +128,9 @@ impl Store {
         {
             let _guard = self.lock_writes()?;
             self.recover_pending_save()?;
-            record_files::migrate_legacy_json_records(&self.dir())?;
+            if record_files::legacy_json_records_present(&self.dir()) {
+                record_files::migrate_legacy_json_records(&self.dir())?;
+            }
         }
         self.discard_abandoned_book_imports()
     }
@@ -180,7 +182,7 @@ impl Store {
         let mut incoming = record_files::payload_to_records(payload, self.device_id(), now);
         self.hydrate_text_records(&mut incoming)?;
         let incoming_fingerprints = record_files::fingerprints(&incoming);
-        let current = record_files::load_records(&self.dir())?;
+        let current = self.records_cache_or_load()?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             acknowledged_frontend_base(&previous, &incoming_fingerprints, &current);
         Ok(())
@@ -615,7 +617,12 @@ impl Store {
         if !needs_hydration {
             return Ok(());
         }
-        let current = record_files::load_records(&self.dir())?;
+        // The merge a few lines later already trusts this cache to decide what
+        // gets written; reading it here too makes hydration agree with the merge
+        // instead of re-parsing the whole tree for a second, possibly different
+        // view. A miss still fails closed below rather than persisting an empty
+        // body.
+        let current = self.records_cache_or_load()?;
         for record in records.values_mut().filter(|record| record.kind == "text") {
             let has_text = record.data.get("text").and_then(Value::as_str).is_some();
             let pages_are_deferred = record.data.get("pdfOcrPageCount").and_then(Value::as_u64)
