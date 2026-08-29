@@ -59,7 +59,7 @@ parts:
     plugin: dump
     source: https://github.com/Ironship/WordHunter/releases/download/WordHunter1.1.0/word-hunter_1.1.0_amd64.deb
     source-type: deb
-    source-checksum: sha256/d95617843fb96fd9e645e55b822cc222227a6746491adb1bf906c1c74d00a421
+    source-checksum: sha256/915c90e9f41a1261af19c254544dcb7edf0dc69f1f9b78012a75ece54de03158
     stage-packages:
       - dbus-daemon
       - dbus-session-bus-common

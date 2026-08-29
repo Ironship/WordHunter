@@ -2,11 +2,11 @@
 
 Word Hunter's Snap recipe repackages the already validated Linux Debian
 artifact. It does not rebuild the application and it does not wrap the
-The pinned input for version 1.0.10 is:
+The pinned input for version 1.1.0 is:
 
-- URL: `https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.10/word-hunter_1.0.10_amd64.deb`
-- size: `55,546,686` bytes
-- SHA-256: `9cef8fe726a8fb3b0aa9ae52293d8d1c1510c457ae72f4dd698c8ef3e2065d29`
+- URL: `https://github.com/Ironship/WordHunter/releases/download/WordHunter1.1.0/word-hunter_1.1.0_amd64.deb`
+- size: `55,854,610` bytes
+- SHA-256: `915c90e9f41a1261af19c254544dcb7edf0dc69f1f9b78012a75ece54de03158`
 
 Snapcraft's `dump` plugin supports a remote Debian package as `source-type:
 deb`, and `source-checksum` verifies it before unpacking. This keeps the Snap
