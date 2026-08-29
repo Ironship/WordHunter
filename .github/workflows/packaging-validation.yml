@@ -45,8 +45,13 @@ jobs:
           BEFORE_IS_ZEROS: ${{ startsWith(github.event.before, '0000000') }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$BEFORE_IS_ZEROS" = "true" ] || [ -z "$BASE_SHA" ]; then
-            echo "::notice::Full validation (dispatch or unknown base)."
+          # A force-push leaves github.event.before naming a commit the
+          # repository no longer has, and `git diff` against it aborts the job
+          # before any area is decided. The checkout is fetch-depth 0, so a
+          # missing object means the history was rewritten, not unfetched.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$BEFORE_IS_ZEROS" = "true" ] || [ -z "$BASE_SHA" ] \
+            || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "::notice::Full validation (dispatch, unknown base, or rewritten history)."
             for area in flatpak snap aur nix stores; do
               echo "$area=true" >>"$GITHUB_OUTPUT"
             done
