@@ -1,20 +1,20 @@
 VERIFICATION
 
 The Word Hunter installer is not embedded in this Chocolatey package. The
-installation script downloads the official 1.0.8 release asset from the
+installation script downloads the official 1.1.0 release asset from the
 upstream GitHub repository and verifies its SHA-256 checksum before execution.
 
 Upstream release:
-https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.0.8
+https://github.com/Ironship/WordHunter/releases/tag/WordHunter1.1.0
 
 Asset:
 Word.Hunter.Setup.exe
 
 Download URL:
-https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.8/Word.Hunter.Setup.exe
+https://github.com/Ironship/WordHunter/releases/download/WordHunter1.1.0/Word.Hunter.Setup.exe
 
 Expected SHA-256:
-88a7ceffb161f1d50b19430a3d7cb55e409cc028f921c527dee09a09014e13dd
+f74549a2b4b6a0af423c9eb4a1046e383f8b31040357bae6a85a2c1b6fc9480e
 
 The digest is displayed by GitHub next to the release asset. A maintainer can
 independently verify a downloaded file with:
