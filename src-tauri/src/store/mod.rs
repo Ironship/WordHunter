@@ -79,7 +79,9 @@ impl Store {
         #[cfg(not(target_os = "android"))]
         {
             store.recover_pending_save()?;
-            record_files::migrate_legacy_json_records(&store.dir())?;
+            if record_files::legacy_json_records_present(&store.dir()) {
+                record_files::migrate_legacy_json_records(&store.dir())?;
+            }
             store.discard_abandoned_book_imports()?;
         }
         // Snapshot refreshes records on first load; do not block Android WebView creation here.
