@@ -32,10 +32,11 @@ appimageTools.wrapAppImage {
     install -m 444 -D \
       "${appimageContents}/usr/share/metainfo/com.wordhunter.app.metainfo.xml" \
       "$out/share/metainfo/com.wordhunter.app.metainfo.xml"
+    # The bundled metainfo has pointed its launchable at com.wordhunter.app.desktop
+    # since 1.0.7, so only the binary name still needs rewriting. --replace-fail
+    # treats a pattern that matches nothing as an error, which is what we want:
+    # it tells us when the upstream file has moved out from under this recipe.
     substituteInPlace "$out/share/metainfo/com.wordhunter.app.metainfo.xml" \
-      --replace-fail \
-        '<launchable type="desktop-id">Word Hunter.desktop</launchable>' \
-        '<launchable type="desktop-id">com.wordhunter.app.desktop</launchable>' \
       --replace-fail \
         '<binary>word-hunter-rustified</binary>' \
         '<binary>wordhunter</binary>'
