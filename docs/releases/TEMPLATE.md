@@ -43,7 +43,8 @@ factual language — no marketing filler.
 - [ ] Every bullet describes user-visible behavior, not the implementation.
 - [ ] Known issues section present (explicit "None reported." is fine).
 - [ ] Version string matches the tag and all version sinks
-      (`scripts/check-version-sinks.sh <version>`).
+      (`./scripts/check-version-sinks.sh <version>`, also run by
+      `node scripts/release.mjs prepare <version>`).
 - [ ] Second person read-through by someone who did not write the notes.
 
 ## Rationale

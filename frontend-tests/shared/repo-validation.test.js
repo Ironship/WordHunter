@@ -113,7 +113,7 @@ describe("repository validation wiring", () => {
     const validate = workflow.jobs.aur;
     const versionStep = stepByName(validate, "Read app version");
 
-    assert.match(versionStep.run, /tauri\.conf\.json/);
+    assert.match(versionStep.run, /packaging\/aur\/PKGBUILD/);
     assert.match(versionStep.run, /WH_APP_VERSION=.*GITHUB_ENV/);
     for (const name of ["Verify the pinned release source", "Validate package metadata and contents", "Install and smoke-test the package"]) {
       assert.match(stepByName(validate, name).run, /WH_APP_VERSION/);
@@ -415,17 +415,21 @@ describe("repository validation wiring", () => {
     assert.ok(ruleIds.includes("close-order") || ruleIds.includes("no-dup-id"), ruleIds.join(", "));
   });
 
-  it("derives Snap validation from the application version and verifies the release digest", () => {
-    const config = JSON.parse(read("../../src-tauri/tauri.conf.json"));
+  it("validates the Snap recipe against its own published release digest", () => {
     const snapcraft = read("../../snap/snapcraft.yaml");
     const workflow = read("../../.github/workflows/packaging-validation.yml");
+    const versionStep = stepByName(parseSimpleYaml(workflow).jobs.snap, "Read and validate the recipe version");
+    const version = snapcraft.match(/^version: '([^']+)'$/m)?.[1];
 
-    assert.match(snapcraft, new RegExp(`^version: ['\\"]${config.version}['\\"]$`, "m"));
+    assert.ok(version, "snapcraft.yaml needs a quoted top-level version");
     assert.match(
       snapcraft,
-      new RegExp(`releases/download/WordHunter${config.version}/word-hunter_${config.version}_amd64\\.deb`, "m"),
+      new RegExp(`releases/download/WordHunter${version}/word-hunter_${version}_amd64\\.deb`, "m"),
     );
-    assert.match(workflow, /require\('\.\/src-tauri\/tauri\.conf\.json'\)\.version/);
+    // A version bump must not start a job whose release asset is not published yet.
+    assert.doesNotMatch(workflow, /echo "snap=\$\(match '[^']*tauri/);
+    assert.match(versionStep.run, /snap\/snapcraft\.yaml/);
+    assert.doesNotMatch(versionStep.run, /tauri\.conf\.json/);
     assert.match(workflow, /steps\.app_version\.outputs\.version/);
     assert.match(workflow, /api\.github\.com\/repos\/Ironship\/WordHunter\/releases\/tags/);
     assert.match(workflow, /asset\?\.digest/);

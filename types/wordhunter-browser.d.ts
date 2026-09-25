@@ -123,6 +123,7 @@ declare global {
     statusSoundsEnabled: boolean;
     statusSoundVolume: number;
     reviewReverse: boolean;
+    reviewUpcomingVisible: boolean;
     srsAlgorithm: "sm2" | "fsrs";
     removalBehavior: string;
     useEdgeTts: boolean;

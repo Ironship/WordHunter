@@ -51,7 +51,7 @@ trap cleanup EXIT
 hdiutil verify "$output" >/dev/null
 mount_dir=""
 for attempt in 1 2 3; do
-  if attach_output="$(hdiutil attach -mountrandom /tmp -readonly -noverify -noautoopen -nobrowse "$output" 2>/dev/null)"; then
+  if attach_output="$(hdiutil attach -mountrandom /tmp -readonly -noverify -noautoopen -nobrowse "$output")"; then
     device="$(printf '%s\n' "$attach_output" | awk '/^\/dev\// { print $1; exit }')"
     mount_dir="$(hdiutil info | awk -v device="$device" 'index($1, device) == 1 && NF >= 3 { mount = $3 } END { print mount }')"
     [[ -n "$mount_dir" ]] && break
@@ -60,6 +60,7 @@ for attempt in 1 2 3; do
 done
 if [[ -n "$mount_dir" ]]; then
   app="$mount_dir/Word Hunter.app"
+  binary="$app/Contents/MacOS/word-hunter-rustified"
   [[ -L "$mount_dir/Applications" ]] || die "DMG does not contain the Applications shortcut"
 else
   # The DMG checksum already passed; mounting is flaky on macos-15 runners

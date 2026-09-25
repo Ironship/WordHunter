@@ -2737,6 +2737,25 @@ html[data-max-width="full"] .reader-text {
   font-size: 1rem;
 }
 
+.review-upcoming-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.review-upcoming-toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.review-upcoming-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
 .book-summary {
   display: -webkit-box;
   -webkit-line-clamp: 4;

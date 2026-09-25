@@ -6,11 +6,12 @@ set -euo pipefail
 # The canonical app version lives in the Rust crate (src-tauri/Cargo.toml);
 # release bumps update it first and then push it into every other manifest.
 # This check hard-fails when one of the strictly-synced sinks drifts, so a
-# half-finished bump cannot ship a Flatpak/snap/AppStream build that reports
-# a different version than the actual binary. AUR is advisory only (it is
-# maintained separately by the community).
+# half-finished bump cannot ship a Flatpak/AppStream build that reports a
+# different version than the actual binary. Store recipes that repackage a
+# published release asset (Snap, AUR) are advisory only: they can move only
+# after that release exists.
 #
-# Usage: ./scripts/check-version-sinks.sh
+# Usage: ./scripts/check-version-sinks.sh [expected-version]
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
@@ -29,6 +30,9 @@ cargo_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' src-tauri/Cargo.toml | h
 if [[ -z "$cargo_version" ]]; then
   echo "could not read version from src-tauri/Cargo.toml" >&2
   exit 2
+fi
+if [[ -n "${1:-}" && "$1" != "$cargo_version" ]]; then
+  fail "src-tauri/Cargo.toml version $cargo_version != expected $1"
 fi
 
 # --- src-tauri/tauri.conf.json (Tauri bundle identity) ---
@@ -60,16 +64,6 @@ elif [[ "$lock_version" == "$cargo_version" ]]; then
   pass "src-tauri/Cargo.lock word-hunter ($lock_version)"
 else
   fail "src-tauri/Cargo.lock word-hunter version $lock_version != Cargo.toml $cargo_version"
-fi
-
-# --- snap/snapcraft.yaml ---
-snap_version="$(sed -n "s/^version: ['\"]\([^'\"]*\)['\"]/\1/p" snap/snapcraft.yaml | head -n1)"
-if [[ -z "$snap_version" ]]; then
-  fail "snap/snapcraft.yaml has no top-level version"
-elif [[ "$snap_version" == "$cargo_version" ]]; then
-  pass "snap/snapcraft.yaml ($snap_version)"
-else
-  fail "snap/snapcraft.yaml version $snap_version != Cargo.toml $cargo_version"
 fi
 
 # --- i18n locales (help.version shown in the app) ---
@@ -106,7 +100,43 @@ else
   fail "flatpak/com.wordhunter.app.metainfo.xml does not match $metainfo"
 fi
 
-# --- Advisory: AUR pkgver (community-maintained, not a release-time sink) ---
+# --- Files shipped in or published with the release ---
+if head -n1 packaging/linux/debian-changelog | grep -Fq "word-hunter ($cargo_version) "; then
+  pass "packaging/linux/debian-changelog top entry ($cargo_version)"
+else
+  fail "packaging/linux/debian-changelog does not start with a word-hunter ($cargo_version) entry"
+fi
+if grep -Fq "distributed by Word Hunter $cargo_version." THIRD-PARTY-NOTICES.md \
+  && grep -Fq "tree/WordHunter$cargo_version" THIRD-PARTY-NOTICES.md; then
+  pass "THIRD-PARTY-NOTICES.md names $cargo_version and its source tree"
+else
+  fail "THIRD-PARTY-NOTICES.md does not name Word Hunter $cargo_version and tree/WordHunter$cargo_version"
+fi
+if [[ -f "docs/releases/$cargo_version.md" ]]; then
+  pass "docs/releases/$cargo_version.md (release body)"
+else
+  fail "docs/releases/$cargo_version.md is missing; it is the GitHub release body"
+fi
+if [[ "$cargo_version" != *-* ]]; then
+  version_code="$(node -p 'require("./src-tauri/tauri.android.conf.json").bundle.android.versionCode')"
+  if [[ -f "fastlane/metadata/android/en-US/changelogs/$version_code.txt" ]]; then
+    pass "fastlane changelog $version_code.txt"
+  else
+    fail "fastlane/metadata/android/en-US/changelogs/$version_code.txt is missing for stable $cargo_version"
+  fi
+fi
+
+# --- Advisory: store recipes that repackage a published release asset ---
+# Snap, AUR, Nix, Scoop and Chocolatey download the released DEB, AppImage or
+# ZIP and pin its checksum, which cannot exist before the release is
+# published. They move to a new version in the post-release commit, so they
+# lag the in-tree version between the bump and that commit.
+snap_version="$(sed -n "s/^version: ['\"]\([^'\"]*\)['\"]/\1/p" snap/snapcraft.yaml | head -n1)"
+if [[ -z "$snap_version" ]]; then
+  fail "snap/snapcraft.yaml has no top-level version"
+elif [[ "$snap_version" != "$cargo_version" ]]; then
+  warn "snap/snapcraft.yaml version=$snap_version (canonical $cargo_version); updated after the release is published"
+fi
 if [[ -f packaging/aur/PKGBUILD ]]; then
   aur_version="$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD | head -n1)"
   if [[ "$aur_version" != "$cargo_version" ]]; then
@@ -116,7 +146,7 @@ fi
 
 if [[ "$failures" -ne 0 ]]; then
   echo
-  echo "version sinks are out of sync ($failures problem(s)); run the release-bump script (scripts-dev/) to update them." >&2
+  echo "version sinks are out of sync ($failures problem(s)); run node scripts/release.mjs prepare <version> to update them." >&2
   exit 1
 fi
 echo "version sinks OK: $cargo_version"
