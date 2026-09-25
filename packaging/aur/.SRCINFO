@@ -1,6 +1,6 @@
 pkgbase = wordhunter-bin
 	pkgdesc = Local-first reader and vocabulary trainer (binary AppImage release)
-	pkgver = 1.1.0
+	pkgver = 1.1.1
 	pkgrel = 1
 	url = https://ironship.github.io/WordHunter-site/
 	arch = x86_64
@@ -13,11 +13,11 @@ pkgbase = wordhunter-bin
 	depends = libglvnd
 	depends = mesa
 	depends = xdg-utils
-	provides = wordhunter=1.1.0
+	provides = wordhunter=1.1.1
 	conflicts = wordhunter
-	noextract = WordHunter-1.1.0-x86_64.AppImage
+	noextract = WordHunter-1.1.1-x86_64.AppImage
 	options = !strip
-	source_x86_64 = WordHunter-1.1.0-x86_64.AppImage::https://github.com/Ironship/WordHunter/releases/download/WordHunter1.1.0/WordHunter-1.1.0-x86_64.AppImage
-	sha256sums_x86_64 = 7be75dbb3a3161a8451ca8ad2dc1161921c0ed791a8108f48869781ee2ca3022
+	source_x86_64 = WordHunter-1.1.1-x86_64.AppImage::https://github.com/Ironship/WordHunter/releases/download/WordHunter1.1.1/WordHunter-1.1.1-x86_64.AppImage
+	sha256sums_x86_64 = f8b9215fbc6038fa3d3687158fad0af8c4cd105b5efe513e97cd197eff441f8f
 
 pkgname = wordhunter-bin
