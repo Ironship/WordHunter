@@ -1,0 +1,4 @@
+Word Hunter 1.1.1
+
+Flashcards: the Upcoming reviews list is collapsed by default so it no longer
+reveals the next cards. Tap its heading to show it; your choice is remembered.

@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.1" date="2026-09-25">
+      <description>
+        <ul>
+          <li>The desktop app opens straight into the saved language pair, theme and library instead of briefly showing the defaults with an empty library.</li>
+          <li>The Upcoming reviews list under the flashcards is collapsed by default so it no longer reveals the next cards; its heading shows or hides it and the choice is remembered.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-08-29">
       <description>
         <ul>
