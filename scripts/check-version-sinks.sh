@@ -6,9 +6,10 @@ set -euo pipefail
 # The canonical app version lives in the Rust crate (src-tauri/Cargo.toml);
 # release bumps update it first and then push it into every other manifest.
 # This check hard-fails when one of the strictly-synced sinks drifts, so a
-# half-finished bump cannot ship a Flatpak/snap/AppStream build that reports
-# a different version than the actual binary. AUR is advisory only (it is
-# maintained separately by the community).
+# half-finished bump cannot ship a Flatpak/AppStream build that reports a
+# different version than the actual binary. Store recipes that repackage a
+# published release asset (Snap, AUR) are advisory only: they can move only
+# after that release exists.
 #
 # Usage: ./scripts/check-version-sinks.sh
 
@@ -62,16 +63,6 @@ else
   fail "src-tauri/Cargo.lock word-hunter version $lock_version != Cargo.toml $cargo_version"
 fi
 
-# --- snap/snapcraft.yaml ---
-snap_version="$(sed -n "s/^version: ['\"]\([^'\"]*\)['\"]/\1/p" snap/snapcraft.yaml | head -n1)"
-if [[ -z "$snap_version" ]]; then
-  fail "snap/snapcraft.yaml has no top-level version"
-elif [[ "$snap_version" == "$cargo_version" ]]; then
-  pass "snap/snapcraft.yaml ($snap_version)"
-else
-  fail "snap/snapcraft.yaml version $snap_version != Cargo.toml $cargo_version"
-fi
-
 # --- i18n locales (help.version shown in the app) ---
 for locale in src/web/i18n/*.json; do
   locale_version="$(
@@ -106,7 +97,17 @@ else
   fail "flatpak/com.wordhunter.app.metainfo.xml does not match $metainfo"
 fi
 
-# --- Advisory: AUR pkgver (community-maintained, not a release-time sink) ---
+# --- Advisory: store recipes that repackage a published release asset ---
+# Snap, AUR, Nix, Scoop and Chocolatey download the released DEB, AppImage or
+# ZIP and pin its checksum, which cannot exist before the release is
+# published. They move to a new version in the post-release commit, so they
+# lag the in-tree version between the bump and that commit.
+snap_version="$(sed -n "s/^version: ['\"]\([^'\"]*\)['\"]/\1/p" snap/snapcraft.yaml | head -n1)"
+if [[ -z "$snap_version" ]]; then
+  fail "snap/snapcraft.yaml has no top-level version"
+elif [[ "$snap_version" != "$cargo_version" ]]; then
+  warn "snap/snapcraft.yaml version=$snap_version (canonical $cargo_version); updated after the release is published"
+fi
 if [[ -f packaging/aur/PKGBUILD ]]; then
   aur_version="$(sed -n 's/^pkgver=//p' packaging/aur/PKGBUILD | head -n1)"
   if [[ "$aur_version" != "$cargo_version" ]]; then
