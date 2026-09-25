@@ -182,9 +182,12 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
 }
 
 fn escape_inline_json(value: &Value) -> String {
+    // `<` only occurs inside JSON strings, where \u003c is the same value.
+    // Escaping every one (not just `</`) keeps user text such as `<!--` and
+    // `<script` from changing how the HTML parser ends the inline <script>.
     serde_json::to_string(value)
         .expect("serializing a JSON value cannot fail")
-        .replace("</", "<\\/")
+        .replace('<', "\\u003c")
         .replace('\u{2028}', "\\u2028")
         .replace('\u{2029}', "\\u2029")
 }

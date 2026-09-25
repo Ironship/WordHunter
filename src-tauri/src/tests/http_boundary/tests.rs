@@ -333,12 +333,12 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
 
     assert_eq!(
         token_line,
-        r#"window.WH_TOKEN = "\";\n<\/script>\\\u2028\u2029";"#
+        r#"window.WH_TOKEN = "\";\n\u003c/script>\\\u2028\u2029";"#
     );
-    assert!(!script.contains("</script>"));
+    assert!(!script.contains('<'));
     assert!(!script.contains('\u{2028}'));
     assert!(!script.contains('\u{2029}'));
-    assert!(script.contains(r#"<\/script><script>alert(1)<\/script>\u2028\u2029"#));
+    assert!(script.contains(r#"\u003c/script>\u003cscript>alert(1)\u003c/script>\u2028\u2029"#));
     assert!(script.contains("window.WH_IMAGE_OCR_AVAILABLE = false"));
     assert!(script.contains("'/__proxy?url=' + encodeURIComponent(url)"));
 }
@@ -354,6 +354,28 @@ fn bootstrap_inlines_a_provided_snapshot_instead_of_loading_it() {
         )
     );
     assert!(script.contains("window.__bridgeState = bridgeSnapshot;"));
+}
+
+#[test]
+fn bootstrap_keeps_html_comment_and_script_openers_out_of_the_inline_script() {
+    // An unescaped `<!--` followed by `<script` switches the HTML tokenizer
+    // into its double-escaped state, and the inline <script> would then run
+    // past its own end tag and swallow the page.
+    let words = ["<!--", "<script>", "</script>", "-->"];
+    let snapshot = serde_json::json!({ "texts": [{ "pdfOcrPages": [{ "words": words }] }] });
+    let script = handlers::bootstrap_script("token", Some(&snapshot), false);
+
+    assert!(!script.contains('<'));
+    assert!(script.contains(r#"["\u003c!--","\u003cscript>","\u003c/script>","-->"]"#));
+    let inlined = script
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("const bridgeSnapshot = "))
+        .and_then(|value| value.strip_suffix(';'))
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(inlined).unwrap(),
+        snapshot
+    );
 }
 
 #[test]
