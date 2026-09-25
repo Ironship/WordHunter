@@ -256,6 +256,10 @@ export function syncSettingsControls() {
     els.readerWordPanelToggle.setAttribute("aria-pressed", String(visible));
     els.readerWordPanelToggle.textContent = t(visible ? "settings.readerWordPanelHideControl" : "settings.readerWordPanelShowControl");
   }
+  const upcomingVisible = prefs.reviewUpcomingVisible === true;
+  byId("review-upcoming-toggle")?.setAttribute("aria-expanded", String(upcomingVisible));
+  const upcomingList = byId("review-upcoming");
+  if (upcomingList) upcomingList.hidden = !upcomingVisible;
   if (els.prefWordsPerPage) els.prefWordsPerPage.value = String(prefs.wordsPerPage || "1000");
   if (els.prefWordAlgorithm) els.prefWordAlgorithm.value = prefs.wordDetectionAlgorithm || "modern";
   if (byId<HTMLSelectElement>("pref-srs-algorithm")) byId<HTMLSelectElement>("pref-srs-algorithm").value = prefs.srsAlgorithm === "sm2" ? "sm2" : "fsrs";

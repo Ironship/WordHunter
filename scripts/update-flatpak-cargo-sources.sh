@@ -17,10 +17,24 @@ fi
 tmpdir="$(mktemp -d)"
 trap 'rm -rf "$tmpdir"' EXIT
 
+# Pinned so an upstream change to the generator's output cannot turn the
+# drift check red without any change in this repository.
+generator_rev="41c20aa10819cdb2a4f3ca171758a96d1955c018"
+generator_sha256="0a2db6be87d75910facef28ab46d4d6460802e8419ab850d0caa6a364d26b380"
 generator="$tmpdir/flatpak-cargo-generator.py"
 curl -fsSL \
-  https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/master/cargo/flatpak-cargo-generator.py \
+  "https://raw.githubusercontent.com/flatpak/flatpak-builder-tools/$generator_rev/cargo/flatpak-cargo-generator.py" \
   -o "$generator"
+python3 - "$generator" "$generator_sha256" <<'PY'
+import hashlib
+import sys
+
+path, expected = sys.argv[1], sys.argv[2]
+with open(path, "rb") as handle:
+    actual = hashlib.sha256(handle.read()).hexdigest()
+if actual != expected:
+    sys.exit(f"flatpak-cargo-generator.py sha256 {actual} != pinned {expected}")
+PY
 
 generate_sources() {
   local lockfile="$1"
