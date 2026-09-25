@@ -111,8 +111,10 @@ into path-scoped jobs that run only when their own area changes:
 A manual dispatch always runs every job. Every store recipe repackages an
 asset of a published stable release and pins its checksum, so each job checks
 the recipe against the version the recipe itself names, never against the
-in-tree app version. A version bump therefore starts none of these jobs, and
-the recipes move only after the release is published (see Cutting a Release).
+in-tree app version. A version bump therefore starts none of the Snap, AUR,
+Nix, Scoop, or Chocolatey jobs, and those recipes move only after the release
+is published (see Cutting a Release). The Flatpak job builds from source and
+does run on a version bump.
 
 The Snap, AUR, and Nix workflows are validation-only. They do not read store
 credentials, reserve package names, publish releases, or claim that Word Hunter
@@ -147,8 +149,9 @@ After a stable release is published:
 5. Run `node scripts/release.mjs pin-stores <version>`. It points the Snap,
    Scoop, Chocolatey, AUR, and Nix recipes at the published assets using the
    digests GitHub reports, and the packaging workflow validates them on push.
-6. Update the channels outside this repository: the Homebrew cask, `choco
-   push`, the AUR push, and the Play Console upload.
+6. Update the channels outside this repository: the winget manifest
+   (`Ironship.WordHunter` in `microsoft/winget-pkgs`), the Homebrew cask,
+   `choco push`, the AUR push, and the Play Console upload.
 
 ## Android Version Code
 
