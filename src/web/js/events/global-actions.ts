@@ -219,6 +219,10 @@ function handleGlobalClick(event: MouseEvent): void {
   if (reviewUpcomingToggleBtn) {
     updatePreferenceValue("reviewUpcomingVisible", state.preferences.reviewUpcomingVisible !== true);
     syncSettingsControls();
+    // A pointer click would leave focus on the toggle, and the flashcard
+    // Enter/Space shortcuts would then keep toggling the list instead of
+    // revealing or speaking the card. Keyboard activation (detail 0) keeps it.
+    if (event.detail > 0 && reviewUpcomingToggleBtn instanceof HTMLElement) reviewUpcomingToggleBtn.blur();
   }
 
   const exportVocabTxtBtn = target.closest("#export-vocab-txt");

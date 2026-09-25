@@ -142,6 +142,23 @@ describe("upcoming reviews toggle (#282)", () => {
     assert.equal(elements.get("review-upcoming").hidden, true);
   });
 
+  it("gives up focus after a pointer click so Enter still reveals the card", () => {
+    resetState();
+    bindGlobalActionEvents();
+    const click = documentListeners.get("click").at(-1);
+    let blurs = 0;
+    const toggle = { ...onToggle, blur() { blurs += 1; } };
+
+    click({ detail: 1, composedPath() { return []; }, target: toggle });
+    assert.equal(state.preferences.reviewUpcomingVisible, true);
+    assert.equal(blurs, 1);
+
+    // Enter or Space on a keyboard-focused button clicks with detail 0.
+    click({ detail: 0, composedPath() { return []; }, target: toggle });
+    assert.equal(state.preferences.reviewUpcomingVisible, false);
+    assert.equal(blurs, 1);
+  });
+
   it("lets Enter and Space activate the focused toggle instead of the card", () => {
     resetState();
     for (const key of ["enter", " "]) {
