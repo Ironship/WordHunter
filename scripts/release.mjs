@@ -39,7 +39,7 @@ const read = (path) => readFileSync(join(root, path), "utf8");
 function write(path, text) {
   if (existsSync(join(root, path)) && read(path) === text) return;
   writeFileSync(join(root, path), text);
-  changed.push(path);
+  if (!changed.includes(path)) changed.push(path);
 }
 function replaceOnce(path, pattern, replacement) {
   const text = read(path);

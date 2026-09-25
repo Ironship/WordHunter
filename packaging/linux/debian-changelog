@@ -1,3 +1,10 @@
+word-hunter (1.1.1) unstable; urgency=medium
+
+  * Open the desktop app with the saved languages and library instead of the defaults.
+  * Collapse the Upcoming reviews list under the flashcards by default so it no longer reveals the next cards.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Fri, 25 Sep 2026 12:00:00 +0000
+
 word-hunter (1.1.0) unstable; urgency=medium
 
   * Import German quest vocabulary from World of Warcraft, with encounter history.
