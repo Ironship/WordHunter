@@ -108,8 +108,11 @@ into path-scoped jobs that run only when their own area changes:
   revision, validates desktop metadata, and exercises OCR helper + GUI;
 - job `flatpak` — full Flatpak build, inspection, and GUI smoke test.
 
-A manual dispatch always runs every job. Prerelease version bumps do not
-validate or rewrite stable Scoop and Chocolatey manifests.
+A manual dispatch always runs every job. Every store recipe repackages an
+asset of a published stable release and pins its checksum, so each job checks
+the recipe against the version the recipe itself names, never against the
+in-tree app version. A version bump therefore starts none of these jobs, and
+the recipes move only after the release is published (see Cutting a Release).
 
 The Snap, AUR, and Nix workflows are validation-only. They do not read store
 credentials, reserve package names, publish releases, or claim that Word Hunter
@@ -117,6 +120,35 @@ is available from those catalogs. Store publication remains a separate manual,
 account-gated maintainer step. A central Nixpkgs submission additionally requires
 the upstream maintainer entry, policy checks, and human review described in the
 packaging instructions.
+
+## Cutting a Release
+
+`scripts/release.mjs` performs both version bumps. It never rewrites tests.
+
+Before tagging:
+
+1. Write `docs/releases/<version>.md` from `docs/releases/TEMPLATE.md`; it is
+   the GitHub release body.
+2. For a stable release, write a notes file with `whatsNew` for every locale
+   (without the version prefix), the AppStream `highlights`, optional
+   `debian` bullets, and the `fastlane` changelog text. A release candidate
+   can omit it.
+3. Run `node scripts/release.mjs prepare <version> --notes <file>`. It moves
+   the manifests, the `word-hunter` entry of `Cargo.lock` (only that entry),
+   the Android versionCode, the locales, the legal files, AppStream, the
+   Debian changelog, and the Play changelog, then runs
+   `scripts/check-version-sinks.sh <version>`.
+4. Run `./scripts/validate.sh`, merge with Validate green, create the draft
+   release `WordHunter<version>` targeting that commit, and dispatch the
+   artifact workflow with its `release_tag`.
+
+After a stable release is published:
+
+5. Run `node scripts/release.mjs pin-stores <version>`. It points the Snap,
+   Scoop, Chocolatey, AUR, and Nix recipes at the published assets using the
+   digests GitHub reports, and the packaging workflow validates them on push.
+6. Update the channels outside this repository: the Homebrew cask, `choco
+   push`, the AUR push, and the Play Console upload.
 
 ## Android Version Code
 
