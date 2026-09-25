@@ -150,12 +150,18 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
         .get_file("index.html")
         .ok_or_else(|| "embedded index.html was not found".to_string())?;
     let mut html = String::from_utf8(index.contents().to_vec()).map_err(|e| e.to_string())?;
-    // Arch F10: never inline the store snapshot into the served HTML (it can
-    // be megabyte-sized and is re-serialized on every / hit). The boot script
-    // always starts with a null snapshot and the renderer bootstraps state
-    // from /__store/load — the same path Android has used all along.
+    // Desktop inlines the store snapshot so the renderer starts from the
+    // user's own state: the window stays hidden until this page has loaded,
+    // and there is no phase in which the default preferences, an empty
+    // library, and a discarded language switch are shown (issue #281).
+    // Android keeps loading it from /__store/load (compact media snapshot,
+    // persistent WebView origin).
     let bootstrap = bootstrap_script(
         &state.token,
+        #[cfg(not(target_os = "android"))]
+        Some(&state.store.snapshot()),
+        #[cfg(target_os = "android")]
+        None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
     );
     if let Some(pos) = html.find("<head>") {
@@ -185,8 +191,17 @@ fn escape_inline_json(value: &Value) -> String {
 
 const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
 
-pub(crate) fn bootstrap_script(token: &str, image_ocr_available: bool) -> String {
+pub(crate) fn bootstrap_script(
+    token: &str,
+    snapshot: Option<&Value>,
+    image_ocr_available: bool,
+) -> String {
     let escaped = escape_inline_json(&Value::String(token.to_string()));
+    // Without an inlined snapshot the template's else branch boots the
+    // renderer from /__store/load.
+    let snapshot = snapshot
+        .map(escape_inline_json)
+        .unwrap_or_else(|| "null".to_string());
     crate::template::render_template(
         BOOTSTRAP_TEMPLATE,
         &[
@@ -195,10 +210,7 @@ pub(crate) fn bootstrap_script(token: &str, image_ocr_available: bool) -> String
                 "__WH_IMAGE_OCR_AVAILABLE__",
                 if image_ocr_available { "true" } else { "false" },
             ),
-            // Arch F10: snapshot is always null; the template's else branch
-            // boots the renderer from /__store/load instead of a megabyte of
-            // inlined JSON.
-            ("__WH_SNAPSHOT_JSON__", "null"),
+            ("__WH_SNAPSHOT_JSON__", snapshot.as_str()),
         ],
     )
     .expect("bootstrap template placeholders must be present")
