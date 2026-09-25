@@ -1,17 +1,16 @@
 # Nix packaging
 
-This directory stages the Word Hunter 1.0.8 expression intended for a future
-central `NixOS/nixpkgs` pull request. It is not a separate Nix channel and it
-does not claim that Word Hunter is already available from `nixpkgs`.
+This directory stages the Word Hunter expression proposed to `NixOS/nixpkgs`
+in [NixOS/nixpkgs#543250](https://github.com/NixOS/nixpkgs/pull/543250). It is
+not a separate Nix channel and it does not claim that Word Hunter is already
+available from `nixpkgs`.
 
 ## Pinned input
 
-The package consumes the stable upstream x86_64 AppImage:
-
-- URL: <https://github.com/Ironship/WordHunter/releases/download/WordHunter1.0.8/WordHunter-1.0.8-x86_64.AppImage>
-- SHA-256: `052fd8f0f3d8c500807819dda96869ca50471ce969b31fdae6b8ddcd5b8b7bf5`
-- Nix SRI hash: `sha256-BS/Y8PPYxQCAeBndqWhpylBHHOlpsx/a5rjdzVuLe/U=`
-- supported platform: `x86_64-linux`
+The package consumes the x86_64 AppImage of the latest stable release. Its
+version and Nix SRI hash live only in `package.nix`, where
+`node scripts/release.mjs pin-stores <version>` updates them after a release is
+published. The supported platform is `x86_64-linux`.
 
 `package.nix` follows the current unstable
 [`appimageTools` API](https://nixos.org/manual/nixpkgs/unstable/#sec-pkgs-appimageTools):
