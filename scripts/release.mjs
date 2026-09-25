@@ -9,8 +9,9 @@
 //
 //   node scripts/release.mjs pin-stores <stable-version> [--digests <digests.json>]
 //       After a stable release is published. Points the Snap, Scoop,
-//       Chocolatey, AUR and Nix recipes at its assets, using the digests the
-//       GitHub release reports (or an offline {name: {sha256, size}} file).
+//       Chocolatey, AUR and Nix recipes and the README download links at its
+//       assets, using the digests the GitHub release reports (or an offline
+//       {name: {sha256, size}} file).
 //
 // notes.json (required for a stable release, optional for an RC):
 //   {
@@ -187,7 +188,7 @@ async function pinStores(version) {
     .replace(new RegExp(`(blob|tree)/WordHunter${anyVersion}`, "g"), `$1/${tag(version)}`)
     .replace(new RegExp(`@WordHunter${anyVersion}`, "g"), `@${tag(version)}`)
     .replace(new RegExp(`word-hunter_${anyVersion}_amd64`, "g"), `word-hunter_${version}_amd64`)
-    .replace(new RegExp(`WordHunter-${anyVersion}-x86_64`, "g"), `WordHunter-${version}-x86_64`);
+    .replace(new RegExp(`WordHunter-${anyVersion}-(x86_64|aarch64)`, "g"), `WordHunter-${version}-$1`);
 
   write(
     "snap/snapcraft.yaml",
@@ -251,8 +252,19 @@ async function pinStores(version) {
       .replace(/hash = "sha256-[^"]+";/, `hash = "${sri}";`),
   );
 
+  // README: versioned download links, CLI examples and release status. The
+  // unversioned assets use releases/latest and need no edit.
+  write(
+    "README.md",
+    pinUrls(read("README.md"))
+      .replace(new RegExp(`Word Hunter ${anyVersion}\\]\\(`, "g"), `Word Hunter ${version}](`)
+      .replace(new RegExp(`\\[${anyVersion}\\]\\(`, "g"), `[${version}](`)
+      .replace(new RegExp(`newer than ${anyVersion} right`, "g"), `newer than ${version} right`),
+  );
+
   console.log(`pinned store recipes to ${version}; changed:`);
   for (const path of changed) console.log(`  ${path}`);
+  console.log(`Rewrite the README "Version ${version} ..." summary by hand.`);
   console.log("Also update outside this repository: the Homebrew cask, choco push, and the AUR push.");
 }
 
