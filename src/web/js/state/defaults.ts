@@ -75,6 +75,9 @@ export function createDefaultPreferences(): WhPreferences {
       statusSoundsEnabled: true,
       statusSoundVolume: 0.55,
       reviewReverse: false,
+      // Collapsed by default: the due rows follow the card order and would
+      // reveal the next cards (issue #282).
+      reviewUpcomingVisible: false,
       srsAlgorithm: "fsrs",
       removalBehavior: "ignored",
       useEdgeTts: true,

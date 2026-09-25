@@ -4,6 +4,11 @@ import { openDictionary } from "../shared.js";
 export function handleFlashcardKeys(event: KeyboardEvent, key: string): boolean {
   const plainKey = !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
   const exactCtrl = event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey;
+  // Let Enter/Space activate the focused queue toggle natively instead of
+  // revealing the card or speaking the word.
+  const target = event.target as Element | null;
+  if ((key === "enter" || key === " " || key === "spacebar")
+    && typeof target?.closest === "function" && target.closest("#review-upcoming-toggle")) return false;
   if (plainKey && (key === "arrowleft" || key === "arrowright")) {
     event.preventDefault();
     const button = document.getElementById(key === "arrowleft" ? "btn-flashcard-prev" : "btn-flashcard-next");

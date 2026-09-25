@@ -215,6 +215,12 @@ function handleGlobalClick(event: MouseEvent): void {
     syncSettingsControls();
   }
 
+  const reviewUpcomingToggleBtn = target.closest("#review-upcoming-toggle");
+  if (reviewUpcomingToggleBtn) {
+    updatePreferenceValue("reviewUpcomingVisible", state.preferences.reviewUpcomingVisible !== true);
+    syncSettingsControls();
+  }
+
   const exportVocabTxtBtn = target.closest("#export-vocab-txt");
   if (exportVocabTxtBtn) exportVocabularySelection("txt");
 
