@@ -320,7 +320,11 @@ fn proxy_rejects_lookalike_host_without_network_access() {
 
 #[test]
 fn bootstrap_escapes_javascript_and_proxy_url_values() {
-    let script = handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", false);
+    let snapshot = serde_json::json!({
+        "prefs": { "note": "</script><script>alert(1)</script>\u{2028}\u{2029}" }
+    });
+    let script =
+        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", Some(&snapshot), false);
     let token_line = script
         .lines()
         .find(|line| line.contains("window.WH_TOKEN"))
@@ -332,13 +336,29 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
         r#"window.WH_TOKEN = "\";\n<\/script>\\\u2028\u2029";"#
     );
     assert!(!script.contains("</script>"));
+    assert!(!script.contains('\u{2028}'));
+    assert!(!script.contains('\u{2029}'));
+    assert!(script.contains(r#"<\/script><script>alert(1)<\/script>\u2028\u2029"#));
     assert!(script.contains("window.WH_IMAGE_OCR_AVAILABLE = false"));
     assert!(script.contains("'/__proxy?url=' + encodeURIComponent(url)"));
 }
 
 #[test]
+fn bootstrap_inlines_a_provided_snapshot_instead_of_loading_it() {
+    let snapshot = serde_json::json!({ "prefs": { "locale": "pl", "learningLanguage": "de" } });
+    let script = handlers::bootstrap_script("token", Some(&snapshot), false);
+
+    assert!(
+        script.contains(
+            r#"const bridgeSnapshot = {"prefs":{"learningLanguage":"de","locale":"pl"}};"#
+        )
+    );
+    assert!(script.contains("window.__bridgeState = bridgeSnapshot;"));
+}
+
+#[test]
 fn bootstrap_defers_snapshot_load_to_store_endpoint() {
-    let script = handlers::bootstrap_script("token", false);
+    let script = handlers::bootstrap_script("token", None, false);
 
     assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
     assert!(script.contains("storeLoadController.abort(); }, 120000)"));
