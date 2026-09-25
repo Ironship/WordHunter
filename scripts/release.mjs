@@ -60,17 +60,37 @@ function debianDate(date) {
 }
 
 function prepare(next) {
+  // Everything is validated before the first write, so a bad argument or
+  // notes file leaves the tree untouched and the command can be re-run.
   const isRc = Boolean(parseVersion(next)[4]);
   const current = /^version = "([^"]+)"/m.exec(read("src-tauri/Cargo.toml"))[1];
-  if (current === next) throw new Error(`src-tauri/Cargo.toml is already at ${next}`);
   const versionCode = androidVersionFor(next).code;
+  const currentCode = JSON.parse(read("src-tauri/tauri.android.conf.json")).bundle.android.versionCode;
+  if (!(versionCode > currentCode)) {
+    throw new Error(`${next} (versionCode ${versionCode}) does not follow ${current} (versionCode ${currentCode})`);
+  }
   const date = option("--date") || new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) !== date) {
+    throw new Error(`--date must be a real YYYY-MM-DD date, got "${date}"`);
+  }
   const notesPath = option("--notes");
   const notes = notesPath ? JSON.parse(readFileSync(notesPath, "utf8")) : {};
   if (!isRc) {
     for (const key of ["whatsNew", "highlights", "fastlane"]) {
       if (!notes[key]) throw new Error(`a stable release needs "${key}" in --notes`);
     }
+  }
+  for (const key of ["highlights", "debian"]) {
+    if (notes[key] !== undefined && !(Array.isArray(notes[key]) && notes[key].every((item) => typeof item === "string" && item))) {
+      throw new Error(`notes "${key}" must be a list of non-empty strings`);
+    }
+  }
+  if (notes.fastlane !== undefined && typeof notes.fastlane !== "string") throw new Error('notes "fastlane" must be a string');
+  const locales = readdirSync(join(root, "src", "web", "i18n")).filter((file) => file.endsWith(".json"));
+  if (notes.whatsNew) {
+    const expected = locales.map((file) => file.replace(/\.json$/, "")).sort().join(",");
+    const provided = Object.keys(notes.whatsNew).sort().join(",");
+    if (expected !== provided) throw new Error(`whatsNew locales ${provided} != ${expected}`);
   }
   if (!existsSync(join(root, "docs", "releases", `${next}.md`))) {
     throw new Error(`write docs/releases/${next}.md from docs/releases/TEMPLATE.md first`);
@@ -88,12 +108,6 @@ function prepare(next) {
   replaceOnce("src-tauri/tauri.android.conf.json", /"versionCode": \d+/, `"versionCode": ${versionCode}`);
 
   // Locales: help.version and the version-prefixed release summary.
-  const locales = readdirSync(join(root, "src", "web", "i18n")).filter((file) => file.endsWith(".json"));
-  if (notes.whatsNew) {
-    const expected = locales.map((file) => file.replace(/\.json$/, "")).sort().join(",");
-    const provided = Object.keys(notes.whatsNew).sort().join(",");
-    if (expected !== provided) throw new Error(`whatsNew locales ${provided} != ${expected}`);
-  }
   for (const file of locales) {
     const path = `src/web/i18n/${file}`;
     const document = JSON.parse(read(path));
@@ -148,9 +162,13 @@ function prepare(next) {
 
   console.log(`prepared ${current} -> ${next} (versionCode ${versionCode}); changed:`);
   for (const path of changed) console.log(`  ${path}`);
-  if (!process.argv.includes("--no-check")) {
-    execFileSync("bash", [join(root, "scripts", "check-version-sinks.sh"), next], { stdio: "inherit", cwd: root });
+  if (process.argv.includes("--no-check")) return;
+  if (process.platform === "win32") {
+    // "bash" may resolve to WSL or not at all here; leave it to Git Bash.
+    console.log(`Now run ./scripts/check-version-sinks.sh ${next} from Git Bash.`);
+    return;
   }
+  execFileSync("bash", [join(root, "scripts", "check-version-sinks.sh"), next], { stdio: "inherit", cwd: root });
 }
 
 async function releaseDigests(version) {
@@ -265,7 +283,7 @@ async function pinStores(version) {
   console.log(`pinned store recipes to ${version}; changed:`);
   for (const path of changed) console.log(`  ${path}`);
   console.log(`Rewrite the README "Version ${version} ..." summary by hand.`);
-  console.log("Also update outside this repository: the Homebrew cask, choco push, and the AUR push.");
+  console.log("Also update outside this repository: the winget manifest, the Homebrew cask, choco push, and the AUR push.");
 }
 
 const [command, version] = process.argv.slice(2);
