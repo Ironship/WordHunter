@@ -5,7 +5,7 @@ import { registerFrontendStateFlusher, state } from "../state.js";
 import { t } from "../i18n.js";
 import { showToast } from "../toast.js";
 
-import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearReaderSelection } from "../reader/selection.js";
+import { setReaderSelectionAnchorFromToken, clearReaderSelectionRange, clearReaderSelection, getReaderSelectionHeadword } from "../reader/selection.js";
 
 import { rememberReaderScrollPosition } from "../reader/scroll.js";
 import { bindReaderBookmarkEvents } from "../reader/bookmarks.js";
@@ -74,7 +74,8 @@ export function bindReaderEvents(): void {
       let wordToSelect = token.dataset.displayWord || token.dataset.word;
       if (!wordToSelect) return;
       if (options.ctrlKey && state.selectedWord && state.selectedWord !== token.dataset.word) {
-        wordToSelect = state.selectedWord + " " + (token.dataset.word || wordToSelect);
+        // Extend the words as written ("L'homme est"), not their key.
+        wordToSelect = (getReaderSelectionHeadword() || state.selectedWord) + " " + (token.dataset.displayWord || token.dataset.word || wordToSelect);
       } else {
         setReaderSelectionAnchorFromToken(token);
       }
@@ -455,7 +456,7 @@ export function bindReaderEvents(): void {
       if (!wordToSelect) return;
 
       if (event.ctrlKey && state.selectedWord && state.selectedWord !== wordToSelect) {
-          wordToSelect = state.selectedWord + " " + wordToSelect;
+          wordToSelect = (getReaderSelectionHeadword() || state.selectedWord) + " " + (token.dataset.displayWord || wordToSelect);
       } else {
           setReaderSelectionAnchorFromToken(token);
       }

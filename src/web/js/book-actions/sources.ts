@@ -13,7 +13,17 @@ import { cleanCatalogTitle } from "../utils.js";
 import { t as translate } from "../i18n.js";
 import { renderLibrary } from "../views/library.js";
 import { importCustomText } from "./custom-text.js";
+import { forgetUserBook } from "./library-ops.js";
 import { addUserBookToActiveProfile, findCustomText, hasUserBook } from "./profile-library.js";
+import { fetchDiscover } from "../discover/fetch-discover.js";
+import {
+  isMediaWikiArticleInLibrary,
+  mediaWikiArticleTextUrl,
+  mediaWikiArticleUrl,
+  mediaWikiBookId,
+  mediaWikiSourceName
+} from "../discover/mediawiki.js";
+import type { MediaWikiSource } from "../discover/mediawiki.js";
 
 const t = translate as (key: string, vars?: WhRecord) => string;
 
@@ -31,6 +41,12 @@ function stringProperty(record: UnknownRecord, key: string): string {
 }
 
 export async function loadFullGutenbergText(book: LibraryBook): Promise<void> {
+  if (isLegacyMediaWikiBook(book)) {
+    // openBook replaces it with the article.
+    const { openBook } = await import("../book-actions.js");
+    await openBook(book.id);
+    return;
+  }
   if (!book.gutenbergId) {
     const { openBook } = await import("../book-actions.js");
     await openBook(book.id);
@@ -128,6 +144,8 @@ export async function addUserBook(result: unknown, { silent }: { silent?: boolea
   const book = asRecord(result);
   if (!book) throw new TypeError("Discover result must be an object");
   const title = cleanCatalogTitle(book.title) || t("library.untitled");
+  const source = stringProperty(book, "source");
+  if (source === "wikipedia" || source === "wikinews") return addMediaWikiArticle(book, source, title, silent);
 
   const gutenbergId = String(book.id);
   const id = `user-${gutenbergId}`;
@@ -159,4 +177,83 @@ export async function addUserBook(result: unknown, { silent }: { silent?: boolea
   loadBookText(newBook).catch(() => {});
   renderLibrary();
   return true;
+}
+
+// Wikipedia and Wikinews results carry a MediaWiki page id, not a Gutenberg
+// one: the article's plain text comes from the wiki's own API and is stored as
+// a custom text of the active profile.
+async function addMediaWikiArticle(result: UnknownRecord, source: MediaWikiSource, title: string, silent = false): Promise<boolean> {
+  const apiLang = stringProperty(result, "apiLang") || "en";
+  const pageId = String(result.mwId ?? "");
+  if (!/^\d+$/.test(pageId)) throw new TypeError("MediaWiki result has no page id");
+  if (isMediaWikiArticleInLibrary({ id: String(result.id), source, apiLang, mwId: pageId })) return false;
+  const importedId = await importMediaWikiArticle({
+    source, apiLang, pageId, title, coverDataUrl: stringProperty(result, "coverDataUrl"), silent
+  });
+  // 1.1.0 and 1.1.1 added these results as Gutenberg books that never
+  // loaded; the working copy replaces such an entry.
+  if (importedId && forgetUserBook(`user-${String(result.id)}`)) {
+    await saveState();
+    renderLibrary();
+  }
+  return Boolean(importedId);
+}
+
+interface MediaWikiArticle {
+  source: MediaWikiSource;
+  apiLang: string;
+  pageId: string;
+  title: string;
+  coverDataUrl?: string;
+  silent?: boolean;
+}
+
+async function importMediaWikiArticle({ source, apiLang, pageId, title, coverDataUrl = "", silent = false }: MediaWikiArticle): Promise<string | null> {
+  // The article joins the profile that was active when it was added.
+  const learningLanguage = state.preferences.learningLanguage;
+  if (!silent) showToast(t("toast.fetchingTxt", { title }));
+  try {
+    const response = await fetchDiscover(mediaWikiArticleTextUrl(source, apiLang, pageId), null);
+    const data = asRecord(await response.json());
+    const pages = asRecord(asRecord(data?.query)?.pages);
+    const page = asRecord(pages?.[pageId]);
+    const text = page ? stringProperty(page, "extract").trim() : "";
+    if (!text) throw new Error(`No text for ${source} page ${pageId}`);
+    if (state.preferences.learningLanguage !== learningLanguage) return null;
+    const sourceName = mediaWikiSourceName(source);
+    return await importCustomText(title, text, {
+      id: mediaWikiBookId(source, apiLang, pageId, learningLanguage),
+      author: sourceName,
+      source: sourceName,
+      sourceUrl: mediaWikiArticleUrl(source, apiLang, pageId),
+      level: "custom",
+      coverDataUrl
+    }, false, { silent });
+  } catch (error) {
+    console.warn(error);
+    showToast(t("toast.fetchTextFailed"), "error");
+    return null;
+  }
+}
+
+/** The article behind a Discover wiki result that 1.1.0/1.1.1 saved as a Gutenberg book. */
+function legacyMediaWikiArticle(book: LibraryBook): Omit<MediaWikiArticle, "title"> | null {
+  const match = /^mw-(?:[a-z0-9-]*?-)?(wikipedia|wikinews)-([a-z0-9-]+)-(\d+)$/.exec(String(book.gutenbergId ?? ""));
+  if (!match || !String(book.id).startsWith("user-mw-")) return null;
+  return { source: match[1] as MediaWikiSource, apiLang: match[2], pageId: match[3] };
+}
+
+export function isLegacyMediaWikiBook(book: LibraryBook): boolean {
+  return legacyMediaWikiArticle(book) !== null;
+}
+
+/** Imports the article behind such a book and drops the book; returns the article's text id. */
+export async function replaceLegacyMediaWikiBook(book: LibraryBook): Promise<string | null> {
+  const article = legacyMediaWikiArticle(book);
+  if (!article) return null;
+  const existing = (state.customTexts || []).find((text) => text.sourceUrl === mediaWikiArticleUrl(article.source, article.apiLang, article.pageId));
+  const importedId = existing?.id || await importMediaWikiArticle({ ...article, title: book.title || t("library.untitled") });
+  if (!importedId) return null;
+  if (forgetUserBook(book.id)) await saveState();
+  return importedId;
 }

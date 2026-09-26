@@ -6,11 +6,13 @@ import { isAndroidPlatform } from "../../platform.js";
 import { effectiveLearningLanguage } from "../../translator-preferences.js";
 import { isOcrImageFile } from "../../ocr-image-format.js";
 import {
+  autofillImportCover,
+  autofillImportField,
+  clearAutofilledImportFields,
   clearPendingImportMeta,
   el,
   isEbookFile,
   isPdfFile,
-  setImportCoverPreview,
   setImportLoading,
   MAX_DESKTOP_IMPORT_FILE_BYTES,
   MAX_POCKET_IMPORT_FILE_BYTES,
@@ -46,11 +48,9 @@ async function importEbookViaForm(file: File): Promise<boolean> {
   }
   const importText = el<HTMLTextAreaElement>("import-text");
   if (importText) importText.value = ebook.text;
-  const importTitle = el<HTMLInputElement>("import-title");
-  if (importTitle && !importTitle.value.trim()) importTitle.value = ebook.title || titleFromImportedFileName(file.name);
-  const importAuthor = el<HTMLInputElement>("import-author");
-  if (importAuthor && !importAuthor.value.trim()) importAuthor.value = ebook.author || "";
-  setImportCoverPreview(ebook.coverDataUrl || "");
+  autofillImportField("title", ebook.title || titleFromImportedFileName(file.name));
+  autofillImportField("author", ebook.author || "");
+  if (ebook.coverDataUrl) autofillImportCover(ebook.coverDataUrl);
   return true;
 }
 
@@ -72,6 +72,7 @@ function assertImportFileLimit(file: File): number {
 
 export async function loadImportFile(file: File): Promise<boolean | void> {
   clearPendingImportMeta();
+  clearAutofilledImportFields();
   resetYoutubeTracks(false);
 
   for (const handler of IMPORT_HANDLERS) {
@@ -92,8 +93,5 @@ export async function loadImportFile(file: File): Promise<boolean | void> {
   }
   const importText = el<HTMLTextAreaElement>("import-text");
   if (importText) importText.value = text;
-  const importTitle = el<HTMLInputElement>("import-title");
-  if (importTitle && !importTitle.value.trim()) {
-    importTitle.value = titleFromImportedFileName(file.name);
-  }
+  autofillImportField("title", titleFromImportedFileName(file.name));
 }

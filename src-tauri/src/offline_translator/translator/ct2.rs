@@ -225,6 +225,9 @@ fn translate_with_ct2_model(model_dir: &Path, text: &str) -> Result<String, Stri
         beam_size: 4,
         length_penalty: 0.2,
         replace_unknowns: true,
+        // Each segment is one sentence; the default cap of 256 tokens only
+        // bites on very long ones.
+        max_decoding_length: 512,
         ..TranslationOptions::default()
     };
 
@@ -259,12 +262,170 @@ fn translate_with_tokenizer<T: ctranslate2::Tokenizer>(
 ) -> Result<String, String> {
     let translator = Translator2::new(model_dir, config, tokenizer)
         .map_err(|e| format!("failed to create CTranslate2 translator: {e}"))?;
-    let result = translator
-        .translate_batch(&[text.to_string()], options)
-        .map_err(|e| format!("CTranslate2 translation failed: {e}"))?;
-    result
+    // Translated as one segment, a long paragraph stopped mid-text at the
+    // decode limit. Translate long lines sentence by sentence and keep the
+    // line structure.
+    let lines = translation_segments(text);
+    let sentences = lines.iter().flatten().cloned().collect::<Vec<_>>();
+    if sentences.is_empty() {
+        return Err("CTranslate2 returned no translation".to_string());
+    }
+    let mut translated = translator
+        .translate_batch(&sentences, options)
+        .map_err(|e| format!("CTranslate2 translation failed: {e}"))?
         .into_iter()
-        .next()
-        .map(|(translated, _)| translated)
-        .ok_or_else(|| "CTranslate2 returned no translation".to_string())
+        .map(|(translated, _)| translated);
+    let mut output = Vec::with_capacity(lines.len());
+    for line in &lines {
+        let parts = line
+            .iter()
+            .map(|_| translated.next().unwrap_or_default())
+            .collect::<Vec<_>>();
+        output.push(join_sentences(&parts));
+    }
+    Ok(output.join("\n"))
+}
+
+/// Lines up to this many characters are translated whole: that stays well
+/// below the decode limit and keeps the model's context.
+const MAX_UNSPLIT_LINE_CHARS: usize = 300;
+
+/// Splits text into lines, and long lines into sentences that keep their
+/// punctuation. A hard-wrapped sentence is joined back into one line first.
+/// Empty lines stay (as empty lists) so the translation keeps the paragraph
+/// breaks.
+pub(crate) fn translation_segments(text: &str) -> Vec<Vec<String>> {
+    let mut lines: Vec<String> = Vec::new();
+    let mut continues = false;
+    for line in text.lines().map(str::trim) {
+        match lines.last_mut() {
+            Some(previous) if continues && !line.is_empty() => {
+                previous.push(' ');
+                previous.push_str(line);
+            }
+            _ => lines.push(line.to_string()),
+        }
+        continues = !line.is_empty() && !line.ends_with(is_line_final);
+    }
+    lines
+        .iter()
+        .map(|line| {
+            if line.is_empty() {
+                Vec::new()
+            } else if line.chars().count() <= MAX_UNSPLIT_LINE_CHARS {
+                vec![line.clone()]
+            } else {
+                split_sentences(line)
+            }
+        })
+        .collect()
+}
+
+/// A line ending like this ends its own line (a sentence, a verse or a
+/// dialogue turn), not a hard-wrapped piece of one.
+fn is_line_final(ch: char) -> bool {
+    is_sentence_end(ch) || matches!(ch, ':' | ';') || is_closing(ch)
+}
+
+fn is_sentence_end(ch: char) -> bool {
+    matches!(ch, '.' | '!' | '?' | '…' | '。' | '！' | '？')
+}
+
+/// Quotes and brackets that close after a sentence's final punctuation.
+fn is_closing(ch: char) -> bool {
+    matches!(
+        ch,
+        '"' | '\'' | '»' | '«' | '”' | '“' | '’' | ')' | '」' | '』' | '）'
+    )
+}
+
+fn split_sentences(line: &str) -> Vec<String> {
+    let chars = line.chars().collect::<Vec<_>>();
+    let mut sentences = Vec::new();
+    let mut start = 0;
+    let mut index = 0;
+    while index < chars.len() {
+        let ch = chars[index];
+        if !is_sentence_end(ch) {
+            index += 1;
+            continue;
+        }
+        // "?!", "..." and a closing quote or bracket belong to the sentence
+        // they end: 「こんにちは。」 stays one piece.
+        let mut end = index;
+        while chars
+            .get(end + 1)
+            .is_some_and(|next| is_sentence_end(*next) || is_closing(*next))
+        {
+            end += 1;
+        }
+        let ends = if matches!(ch, '。' | '！' | '？') {
+            true
+        } else {
+            let next = chars[end + 1..].iter().find(|next| !next.is_whitespace());
+            chars.get(end + 1).is_some_and(|next| next.is_whitespace())
+                && next.is_some_and(|next| !next.is_lowercase())
+                && (ch != '.' || !ends_with_abbreviation(&chars[start..index]))
+        };
+        if ends {
+            let sentence = chars[start..=end].iter().collect::<String>();
+            if !sentence.trim().is_empty() {
+                sentences.push(sentence.trim().to_string());
+            }
+            start = end + 1;
+        }
+        index = end + 1;
+    }
+    let rest = chars[start..].iter().collect::<String>();
+    if !rest.trim().is_empty() {
+        sentences.push(rest.trim().to_string());
+    }
+    sentences
+}
+
+/// True when the dot after `before` more likely marks an abbreviation or an
+/// ordinal ("z. B.", "Dr.", "3.") than the end of a sentence.
+fn ends_with_abbreviation(before: &[char]) -> bool {
+    const ABBREVIATIONS: &[&str] = &[
+        "bzw", "ca", "dr", "etc", "evtl", "ggf", "inkl", "jr", "mme", "mr", "mrs", "ms", "nr",
+        "prof", "sr", "sra", "st", "str", "usw", "vgl", "vs",
+    ];
+    let word = before
+        .iter()
+        .rev()
+        .take_while(|ch| ch.is_alphanumeric())
+        .collect::<String>()
+        .chars()
+        .rev()
+        .collect::<String>()
+        .to_lowercase();
+    !word.is_empty()
+        && (word.chars().all(|ch| ch.is_ascii_digit())
+            || word.chars().count() == 1
+            || ABBREVIATIONS.contains(&word.as_str()))
+}
+
+/// Joins translated sentences, without spaces around Chinese or Japanese.
+fn join_sentences(parts: &[String]) -> String {
+    let mut joined = String::new();
+    for part in parts
+        .iter()
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+    {
+        let no_space = joined.chars().next_back().is_some_and(is_cjk)
+            || part.chars().next().is_some_and(is_cjk);
+        if !joined.is_empty() && !no_space {
+            joined.push(' ');
+        }
+        joined.push_str(part);
+    }
+    joined
+}
+
+fn is_cjk(ch: char) -> bool {
+    matches!(
+        ch,
+        '\u{3000}'..='\u{30ff}' | '\u{3400}'..='\u{4dbf}' | '\u{4e00}'..='\u{9fff}' | '\u{ff00}'..='\u{ffef}'
+    )
 }

@@ -116,7 +116,10 @@ pub(crate) fn finalize_imported_book_assets(
         return Err("finalized PDF import has no media assets".to_string());
     }
     let mut manifest = refreshed_book_manifest(root, device_id)?;
-    update_manifest_from_files(root, &files, &mut manifest, device_id)?;
+    // These files were just written for a live, newer book record: an older
+    // deletion of the same paths (e.g. from "Clear library" before its backup
+    // is restored) must not keep them marked as deleted.
+    update_manifest_from_files(root, &files, &mut manifest, device_id, true)?;
     write_manifest(root, &manifest)
 }
 
@@ -140,7 +143,7 @@ fn refresh_book_manifest(root: &Path, device_id: &str) -> Result<Manifest, Strin
 fn refreshed_book_manifest(root: &Path, device_id: &str) -> Result<Manifest, String> {
     let mut manifest = load_manifest(root)?;
     let files = list_book_asset_files(root)?;
-    update_manifest_from_files(root, &files, &mut manifest, device_id)?;
+    update_manifest_from_files(root, &files, &mut manifest, device_id, false)?;
     Ok(manifest)
 }
 
@@ -149,6 +152,7 @@ fn update_manifest_from_files(
     files: &[PathBuf],
     manifest: &mut Manifest,
     device_id: &str,
+    revive_deleted: bool,
 ) -> Result<(), String> {
     let now = record_files::now_millis();
     for file in files {
@@ -158,8 +162,9 @@ fn update_manifest_from_files(
             .map_err(|e| format!("could not stat {}: {e}", file.display()))?
             .len();
         match manifest.get_mut(&relative) {
-            Some(entry) if entry.deleted_at.is_some() => {}
-            Some(entry) if entry.hash == hash && entry.size == size => {}
+            Some(entry) if entry.deleted_at.is_some() && !revive_deleted => {}
+            Some(entry)
+                if entry.deleted_at.is_none() && entry.hash == hash && entry.size == size => {}
             Some(entry) => {
                 entry.hash = hash;
                 entry.size = size;

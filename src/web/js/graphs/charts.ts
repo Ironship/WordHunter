@@ -2,7 +2,7 @@
  * Individual chart render functions for the graphs view.
  */
 import { state } from "../state.js";
-import { todayISO } from "../sm2.js";
+import { isInReviewQueue, todayISO } from "../sm2.js";
 import { getLocale, t as rawT } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import {
@@ -207,8 +207,9 @@ export function renderDueForecast(_chartEntries?: readonly VocabEntry[], options
     let total = 0;
     let latest = todayDate;
     const counts: Record<string, number> = {};
+    const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
     for (const e of _chartEntries || stateVocabEntries()) {
-      if (e.status === "ignored" || e.status === "known" || !e.nextDate) continue;
+      if (!isInReviewQueue(e, autoAddLearningOnly) || !e.nextDate) continue;
       total++;
       const delta = daysBetween(e.nextDate, today);
       if (delta < 0) {

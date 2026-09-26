@@ -1,10 +1,13 @@
 import { classifyTokenOccurrences, getTokenStatsFromClassifications, tokenizeTextWithFormats } from "../tokenizer_v2.js";
 import type { TextStats, TextToken, TokenClassification, Vocabulary } from "../tokenizer_v2.js";
+import { stripFormatMarkers } from "./format-markers.js";
 import type { WhFormatSpan } from "./format-markers.js";
 
 export interface ReaderSession {
   id: string | undefined;
   text: string;
+  /** `text` without bold/italic markers: the text all offsets refer to. */
+  plain: string;
   language: string;
   algorithm: string;
   tokens: TextToken[];
@@ -36,7 +39,7 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
     return cachedSession;
   }
 
-  const { tokens, spans: formatSpans } = tokenizeTextWithFormats(text, language, algorithm);
+  const { tokens, spans: formatSpans, plain } = tokenizeTextWithFormats(text, language, algorithm);
   const globalWordIndexes = new Array(tokens.length).fill(-1);
   const globalCharOffsets = new Array(tokens.length).fill(-1);
   const tokenCharOffsets = new Array<number>(tokens.length).fill(0);
@@ -57,6 +60,7 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
   cachedSession = {
     id: current?.id,
     text,
+    plain,
     language,
     algorithm,
     tokens,
@@ -71,6 +75,14 @@ export function getReaderSession(current: Pick<WhText, "id" | "text"> | null | u
     stats: null
   };
   return cachedSession;
+}
+
+/** `current.text` without bold/italic markers (the text reader offsets
+ *  index), taken from the open reader session when it holds this text. */
+export function readerPlainText(current: Pick<WhText, "id" | "text"> | null | undefined): string {
+  const text = String(current?.text || "");
+  if (cachedSession && cachedSession.id === current?.id && cachedSession.text === text) return cachedSession.plain;
+  return stripFormatMarkers(text).plain;
 }
 
 export function clearReaderSession(): void {

@@ -4,8 +4,10 @@ import { httpPost } from "../../http.js";
 import { showToast } from "../../toast.js";
 import { setElementBusy } from "../../loading.js";
 import {
+  autofillImportCover,
+  autofillImportField,
+  clearAutofilledImportFields,
   el,
-  setImportCoverPreview,
   setPendingImportMeta,
   safeImportErrorMessage,
 } from "./shared.js";
@@ -112,11 +114,11 @@ async function importYoutubeTrack(url: string, trackIndex: string | number): Pro
   if (!data.text) throw new Error(t("import.youtubeNoText"));
   const importText = el<HTMLTextAreaElement>("import-text");
   if (importText) importText.value = data.text;
-  const importTitle = el<HTMLInputElement>("import-title");
-  if (importTitle && !importTitle.value.trim()) importTitle.value = data.title || t("import.youtubeImportedTitle");
-  const importAuthor = el<HTMLInputElement>("import-author");
-  if (importAuthor && !importAuthor.value.trim()) importAuthor.value = data.author || "";
-  setImportCoverPreview(data.thumbnailUrl || "");
+  // Replaces what an earlier file or video filled in, not what the user typed.
+  clearAutofilledImportFields();
+  autofillImportField("title", data.title || t("import.youtubeImportedTitle"));
+  autofillImportField("author", data.author || "");
+  autofillImportCover(data.thumbnailUrl || "");
   setPendingImportMeta({
     source: t("import.youtubeSource"),
     sourceUrl: data.sourceUrl || url,

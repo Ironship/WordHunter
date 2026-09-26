@@ -183,6 +183,16 @@ export function scheduleFirstLearningReview<T extends SrsEntry>(entry: T, now = 
   return entry;
 }
 
+/**
+ * Whether a word takes part in spaced repetition: not known or ignored, and
+ * not a "new" word while new words stay out of reviews (autoAddLearningOnly).
+ * The flashcard queue and the graphs' due counts share this rule.
+ */
+export function isInReviewQueue(entry: { status?: unknown }, autoAddLearningOnly: boolean): boolean {
+  if (entry.status === "ignored" || entry.status === "known") return false;
+  return !(autoAddLearningOnly && entry.status === "new");
+}
+
 /** Whether a given date is due (≤ today)? No date = immediately due. */
 export function isDue(nextDate: unknown, today = todayISO()): boolean {
   if (!nextDate) return true;

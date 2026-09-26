@@ -10,7 +10,7 @@ import { t, plural } from "../i18n.js";
 import { getOrCreateEntry } from "../views/vocabulary.js";
 import { persistAiExplanationToNote } from "../ai-note-append.js";
 import { getTextById, renderTrackingSummary } from "./renderer.js";
-import { getReaderSelectionText, getReaderWordTokens } from "./selection.js";
+import { getReaderSelectionHeadword, getReaderSelectionText, getReaderWordTokens } from "./selection.js";
 import { getSentenceForWord } from "../tokenizer_v2.js";
 import {
   articleOptionsForLanguage,
@@ -37,7 +37,7 @@ import { normalizeSelectedWordPanelItems } from "../state/normalize.js";
 import type { VocabStatus } from "../constants.js";
 import { formatHeadword } from "../vocabulary/article.js";
 import { playReviewGradeSound } from "../status-sounds.js";
-import { analyzeReaderSession, getReaderSession } from "./session.js";
+import { analyzeReaderSession, getReaderSession, readerPlainText } from "./session.js";
 
 export interface UpdateWordStatusOptions {
   renderPanel?: boolean;
@@ -281,7 +281,8 @@ function aiExplainContext(word: string, context: string, isTransientRange: boole
   if (context) return context;
   if (!isTransientRange) return "";
   const current = getTextById(state.currentTextId);
-  const bookText = current?.text || "";
+  // data-char-offset indexes the marker-free text.
+  const bookText = readerPlainText(current);
   if (bookText) {
     const tokens = getReaderWordTokens();
     const anchorIndex = Number(state.readerSelectionRange?.anchor);
@@ -363,7 +364,7 @@ async function runAiExplanation(
     const effectiveContext = imageContext?.context || aiExplainContext(word, context, isTransientRange);
     const result = await explainWord(
       {
-        word,
+        word: (isTransientRange && getReaderSelectionHeadword()) || word,
         context: effectiveContext,
         from: pair.from,
         to: pair.to,
@@ -617,8 +618,10 @@ export function renderWordPanel(currentText: WhText): void {
   }
 
   const isTransientRange = isTransientReaderRangeSelection();
+  // An unsaved phrase is shown, spoken and looked up as selected
+  // ("L'homme est"), not as the key it would be saved under ("homme est").
   const entry: WordPanelEntry = isTransientRange
-    ? { status: "new", translation: "", note: "", imageUrl: "", examples: [] }
+    ? { word: getReaderSelectionHeadword() || word, status: "new", translation: "", note: "", imageUrl: "", examples: [] }
     : state.vocab[word] || getOrCreateEntry(word);
   const displayWord = entry.word || word;
   applyWordPanelStatus(entry.status);

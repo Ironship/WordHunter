@@ -44,7 +44,7 @@ async function loadHelpers() {
     "../i18n.js": { t: (key) => key },
     "../loading.js": { setElementBusy: () => {} },
     "../views/heatmap.js": { renderContributionHeatmap: () => {} },
-    "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }) }
+    "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }), isInReviewQueue: (entry, autoAddLearningOnly) => entry.status !== "ignored" && entry.status !== "known" && !(autoAddLearningOnly && entry.status === "new") }
   };
   for (const [specifier, values] of Object.entries(imports)) {
     modules.set(specifier, createMock(specifier, values));

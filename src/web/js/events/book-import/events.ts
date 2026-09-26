@@ -116,6 +116,9 @@ function bindImportFormEvents() {
         showToast(safeImportErrorMessage(err), "error");
       } finally {
         releaseBusy();
+        // Let the same file be picked again (after fixing a failed import,
+        // or to reload it) — an unchanged selection fires no change event.
+        importFile.value = "";
       }
     });
   }

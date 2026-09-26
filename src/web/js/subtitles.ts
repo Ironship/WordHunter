@@ -31,6 +31,25 @@ function stripBom(text: unknown): string {
   return stringValue(text).replace(/^\uFEFF/, "");
 }
 
+// The usual pre-Unicode Windows code page for text in a language, used when a
+// file is not valid UTF-8 (the "Other" profile can hold any language).
+const LEGACY_ENCODINGS: Record<string, string> = {
+  pl: "windows-1250", cs: "windows-1250", sk: "windows-1250", hu: "windows-1250", hr: "windows-1250",
+  sl: "windows-1250", ro: "windows-1250", bs: "windows-1250", sq: "windows-1250",
+  // Serbian subtitles in old code pages are mostly written in Latin script.
+  sr: "windows-1250",
+  ru: "windows-1251", uk: "windows-1251", be: "windows-1251", bg: "windows-1251", mk: "windows-1251",
+  el: "windows-1253", grc: "windows-1253",
+  tr: "windows-1254",
+  he: "windows-1255",
+  ar: "windows-1256", fa: "windows-1256",
+  lt: "windows-1257", lv: "windows-1257", et: "windows-1257",
+  vi: "windows-1258",
+  ja: "shift_jis",
+  zh: "gb18030",
+  ko: "euc-kr"
+};
+
 export function decodeImportedTextBytes(
   value: ArrayBuffer | ArrayBufferView,
   language = "pl"
@@ -51,18 +70,7 @@ export function decodeImportedTextBytes(
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     const baseLanguage = String(language || "").toLowerCase().split("-")[0];
-    const legacyEncoding = baseLanguage === "pl"
-      ? "windows-1250"
-      : baseLanguage === "ru" || baseLanguage === "uk"
-        ? "windows-1251"
-        : baseLanguage === "el" || baseLanguage === "grc"
-          ? "windows-1253"
-          : baseLanguage === "ja"
-            ? "shift_jis"
-            : baseLanguage === "zh"
-              ? "gb18030"
-              : "windows-1252";
-    return new TextDecoder(legacyEncoding).decode(bytes);
+    return new TextDecoder(LEGACY_ENCODINGS[baseLanguage] || "windows-1252").decode(bytes);
   }
 }
 
@@ -70,13 +78,16 @@ function parseSrt(text: string): string {
   const lines = stripBom(text).replace(/\r\n?/g, "\n").split("\n");
   const output: string[] = [];
 
-  for (const rawLine of lines) {
+  const isTiming = (line: string | undefined) =>
+    /^\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}\s*-->\s*\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}/.test((line || "").trim());
+  lines.forEach((rawLine, index) => {
     const line = rawLine.trim();
-    if (!line) continue;
-    if (/^\d+$/.test(line)) continue;
-    if (/^\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}\s+-->\s+\d{1,2}:\d{2}:\d{2}[,.]\d{1,3}/.test(line)) continue;
+    if (!line || isTiming(line)) return;
+    // A number is a cue index only right before a timing line; otherwise it
+    // is dialogue ("1984").
+    if (/^\d+$/.test(line) && isTiming(lines[index + 1])) return;
     output.push(line);
-  }
+  });
 
   return joinSubtitleLines(output);
 }
@@ -85,8 +96,10 @@ function parseVtt(text: string): string {
   const lines = stripBom(text).replace(/\r\n?/g, "\n").split("\n");
   const output: string[] = [];
   let skippingBlock = false;
+  const isTiming = (line: string | undefined) =>
+    /^(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}\s*-->\s*(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}/.test((line || "").trim());
 
-  for (const rawLine of lines) {
+  for (const [index, rawLine] of lines.entries()) {
     const line = rawLine.trim();
     if (!line) {
       skippingBlock = false;
@@ -104,8 +117,8 @@ function parseVtt(text: string): string {
     }
     if (skippingBlock) continue;
     if (line.startsWith("::cue") || line === "}") continue;
-    if (/^\d+$/.test(line)) continue;
-    if (/^(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}\s+-->\s+(?:\d{1,2}:)?\d{2}:\d{2}\.\d{3}/.test(line)) continue;
+    // The line right before a timing line is a cue identifier ("intro", "c2", "12").
+    if (isTiming(line) || isTiming(lines[index + 1])) continue;
     output.push(line);
   }
 

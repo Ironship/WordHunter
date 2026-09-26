@@ -128,8 +128,14 @@ export async function checkForUpdates({ manual = false }: UpdateCheckOptions = {
       if (newBtn instanceof HTMLButtonElement) {
         openBtn.replaceWith(newBtn);
         newBtn.addEventListener("click", () => {
+          // The desktop webview does not open window.open() targets; the
+          // backend opens the system browser instead (as the Library does).
           if (!openAndroidUrl(GITHUB_RELEASES_URL)) {
-            window.open(GITHUB_RELEASES_URL, "_blank");
+            fetch(`/__open_external?url=${encodeURIComponent(GITHUB_RELEASES_URL)}`)
+              .then((response) => {
+                if (!response.ok) showToast(t("toast.openExternalFailed"), "error");
+              })
+              .catch(() => showToast(t("toast.openExternalFailed"), "error"));
           }
           dialog.close();
         });

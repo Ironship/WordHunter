@@ -75,7 +75,7 @@ fn import_decoded(payload: Value, data: &[u8], store: &Store) -> Result<Value, S
         .filter(|text| !text.is_empty())
         .collect::<Vec<_>>()
         .join("\n\n");
-    if readable_chars(&text) < 3 || pages.iter().any(|page| readable_chars(&page.text) < 3) {
+    if !pdf_text_layer::text_layer_is_usable(&pages) {
         return Err(TEXT_LAYER_EMPTY.to_string());
     }
     store.begin_book_import_assets(book_id)?;
@@ -132,10 +132,6 @@ fn decode_payload(data_url: &str) -> Result<Vec<u8>, String> {
         return Err("PDF is too large for Pocket import (max 400 MB)".to_string());
     }
     Ok(data)
-}
-
-fn readable_chars(text: &str) -> usize {
-    text.chars().filter(|ch| ch.is_alphanumeric()).count()
 }
 
 fn extract_overlay_pages(
