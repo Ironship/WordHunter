@@ -86,12 +86,17 @@ fn visit_tokens_in_block(block: &str, mode: &str, visit: &mut impl FnMut(TokenKi
 }
 
 pub fn normalize_word(value: &str) -> String {
+    normalize_word_folding(value, true)
+}
+
+fn normalize_word_folding(value: &str, fold_modifier_apostrophe: bool) -> String {
     let compatible: String = value.nfc().collect();
     let mut folded = String::new();
     for c in compatible.to_lowercase().chars() {
         match c {
+            '‘' | '’' => folded.push('\''),
             // U+02BC is the apostrophe Ukrainian orthography recommends.
-            '‘' | '’' | 'ʼ' => folded.push('\''),
+            'ʼ' if fold_modifier_apostrophe => folded.push('\''),
             _ => folded.push(c),
         }
     }
@@ -142,18 +147,48 @@ pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
             .nfc()
             .collect(),
         _ => compatible,
-    }
-    .replace(['‘', '’'], "'");
-    let lowered = locale_adjusted.to_lowercase();
+    };
+    // Normalized first (apostrophes folded, punctuation and spaces
+    // stripped), then the elision: the order normalizeVocabularyWord uses.
+    let normalized = normalize_word(&locale_adjusted);
     for prefix in elided_prefixes(&language) {
-        if let Some(remainder) = lowered.strip_prefix(prefix) {
+        if let Some(remainder) = normalized.strip_prefix(prefix) {
             let word = normalize_word(remainder);
             if !word.is_empty() {
                 return case_fold_vocabulary_word(word);
             }
         }
     }
-    case_fold_vocabulary_word(normalize_word(&locale_adjusted))
+    case_fold_vocabulary_word(normalized)
+}
+
+/// The vocabulary key before 1.1.2: only French l' and Italian un'/l' were
+/// split off, and neither ʼ nor Greek grave accents were folded. The store
+/// uses it to tell which words a deletion made before then was about.
+pub fn legacy_vocabulary_word_key(value: &str, lang: &str) -> String {
+    let language = lang.split(['-', '_']).next().unwrap_or("").to_lowercase();
+    let compatible: String = value.nfkc().collect();
+    let locale_adjusted = if matches!(language.as_str(), "tr" | "az") {
+        compatible.replace('I', "ı").replace('İ', "i")
+    } else {
+        compatible
+    }
+    .replace(['‘', '’'], "'");
+    let prefixes: &[&str] = match language.as_str() {
+        "fr" => &["l'"],
+        "it" => &["un'", "l'"],
+        _ => &[],
+    };
+    let lowered = locale_adjusted.to_lowercase();
+    for prefix in prefixes {
+        if let Some(remainder) = lowered.strip_prefix(prefix) {
+            let word = normalize_word_folding(remainder, false);
+            if !word.is_empty() {
+                return case_fold_vocabulary_word(word);
+            }
+        }
+    }
+    case_fold_vocabulary_word(normalize_word_folding(&locale_adjusted, false))
 }
 
 pub fn normalize_search_variants(value: &str) -> Vec<String> {

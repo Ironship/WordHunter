@@ -634,6 +634,20 @@ fn canonical_vocab_record_key(
     record: &SyncRecord,
     records: &BTreeMap<String, SyncRecord>,
 ) -> Option<String> {
+    vocab_record_key_with(record, records, tokenizer::vocabulary_word_key)
+}
+
+/// The key the record had before 1.1.2 changed the vocabulary keys.
+fn legacy_vocab_record_key(record: &SyncRecord, records: &BTreeMap<String, SyncRecord>) -> String {
+    vocab_record_key_with(record, records, tokenizer::legacy_vocabulary_word_key)
+        .unwrap_or_else(|| record.key.clone())
+}
+
+fn vocab_record_key_with(
+    record: &SyncRecord,
+    records: &BTreeMap<String, SyncRecord>,
+    word_key: fn(&str, &str) -> String,
+) -> Option<String> {
     let (lang, key_word) = parse_lang_key(&record.key, "vocab:")?;
     if let Some(canonical) = record.data.get(VOCAB_ALIAS_MARKER).and_then(Value::as_str) {
         return Some(canonical.to_string());
@@ -644,7 +658,7 @@ fn canonical_vocab_record_key(
         .and_then(Value::as_str)
         .unwrap_or(key_word);
     let language = profile_vocabulary_language(records, lang);
-    let word = tokenizer::vocabulary_word_key(identity_word, &language);
+    let word = word_key(identity_word, &language);
     (!word.is_empty()).then(|| format!("vocab:{lang}:{word}"))
 }
 
@@ -665,29 +679,77 @@ pub(crate) fn canonicalize_vocab_records(
 
     for (canonical_key, group) in groups {
         let mut group_causal = CausalClock::new();
-        let mut live_only_causal = CausalClock::new();
         for record in &group {
             merge_causal_clock(&mut group_causal, &record.causal);
-            if record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data) {
-                merge_causal_clock(&mut live_only_causal, &record.causal);
-            }
         }
+        let is_live = |record: &SyncRecord| {
+            record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data)
+        };
+        let is_tombstone = |record: &SyncRecord| {
+            record.deleted_at.is_some() && !is_vocab_alias_retirement(&record.data)
+        };
+        let descends = |tombstone: &SyncRecord, live: &SyncRecord| {
+            compare_causal(&tombstone.causal, &live.causal) == CausalOrder::IncomingDescends
+        };
+        // Records that had one key before 1.1.2 are one word: a deletion at
+        // that key, or made after one of its records was written, deletes
+        // them all. Words that only share the new key ("c'est" and "est",
+        // "καὶ" and "καί") keep their own deletions; a deletion reaches
+        // another of them only when it was made at the new key after that
+        // word was written.
+        let legacy_keys = group
+            .iter()
+            .map(|record| legacy_vocab_record_key(record, &records))
+            .collect::<Vec<_>>();
+        let deleted_words = legacy_keys
+            .iter()
+            .enumerate()
+            .filter(|(index, legacy)| {
+                is_tombstone(&group[*index])
+                    && (group[*index].key == **legacy
+                        || group.iter().zip(&legacy_keys).any(|(live, live_legacy)| {
+                            live_legacy == *legacy
+                                && is_live(live)
+                                && descends(&group[*index], live)
+                        }))
+            })
+            .map(|(_, legacy)| legacy.clone())
+            .collect::<BTreeSet<_>>();
+        let deleted_at_new_key = |live: &SyncRecord| {
+            group.iter().any(|tombstone| {
+                is_tombstone(tombstone)
+                    && tombstone.key == canonical_key
+                    && descends(tombstone, live)
+            })
+        };
+        let survivors = group
+            .iter()
+            .zip(&legacy_keys)
+            .filter(|(record, legacy)| {
+                is_live(record) && !deleted_words.contains(*legacy) && !deleted_at_new_key(record)
+            })
+            .map(|(record, _)| record)
+            .collect::<Vec<_>>();
         let real_tombstones = group
             .iter()
-            .filter(|record| {
-                record.deleted_at.is_some() && !is_vocab_alias_retirement(&record.data)
+            .zip(&legacy_keys)
+            .filter(|(record, legacy)| {
+                // Deletions at the new key, and those that deleted a word
+                // this group holds; an old deletion of a word no longer
+                // here stays as it is.
+                is_tombstone(record)
+                    && (record.key == canonical_key
+                        || (deleted_words.contains(*legacy)
+                            && group.iter().zip(&legacy_keys).any(|(live, live_legacy)| {
+                                live_legacy == *legacy && is_live(live)
+                            })))
             })
-            .filter(|tombstone| {
-                tombstone.key == canonical_key
-                    || group.iter().any(|live| {
-                        live.deleted_at.is_none()
-                            && !is_vocab_alias_retirement(&live.data)
-                            && compare_causal(&tombstone.causal, &live.causal)
-                                == CausalOrder::IncomingDescends
-                    })
-            })
+            .map(|(record, _)| record)
             .collect::<Vec<_>>();
-        let winning_tombstone = real_tombstones.first();
+        let winning_tombstone = survivors
+            .is_empty()
+            .then(|| real_tombstones.first())
+            .flatten();
         let canonical_record = if let Some(first) = winning_tombstone {
             let preferred =
                 real_tombstones
@@ -720,16 +782,24 @@ pub(crate) fn canonicalize_vocab_records(
                 causal: group_causal.clone(),
             }
         } else {
-            let mut live = group.iter().filter(|record| {
-                record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data)
-            });
+            let mut live = survivors.iter();
             let Some(first) = live.next() else {
                 for record in group {
                     output.insert(record.key.clone(), record);
                 }
                 continue;
             };
-            let mut preferred = first.clone();
+            let mut preferred = (*first).clone();
+            // The kept word also supersedes a deletion at its new key that
+            // was about another word.
+            let mut causal = CausalClock::new();
+            for record in survivors.iter().copied().chain(
+                group
+                    .iter()
+                    .filter(|record| is_tombstone(record) && record.key == canonical_key),
+            ) {
+                merge_causal_clock(&mut causal, &record.causal);
+            }
             for source in live {
                 let source_is_preferred = should_keep_incoming(source, &preferred);
                 merge_vocab_entry_data(&mut preferred.data, &source.data);
@@ -739,7 +809,7 @@ pub(crate) fn canonicalize_vocab_records(
                 }
             }
             preferred.key = canonical_key.clone();
-            preferred.causal = live_only_causal.clone();
+            preferred.causal = causal;
             preferred
         };
         output.insert(canonical_key.clone(), canonical_record.clone());

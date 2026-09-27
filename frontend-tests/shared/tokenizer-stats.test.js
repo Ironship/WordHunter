@@ -108,6 +108,10 @@ describe("token stats", () => {
     assert.equal(normalizeVocabularyWord("All’inizio", "it"), "inizio");
     assert.equal(normalizeVocabularyWord("aujourd'hui", "fr"), "aujourd'hui");
     assert.equal(normalizeVocabularyWord("d'amour", "de"), "d'amour");
+    assert.equal(normalizeVocabularyWord("lʼhomme", "fr"), "homme");
+    assert.equal(normalizeVocabularyWord("«d'amour»", "fr"), "amour");
+    assert.equal(normalizeVocabularyWord(" d'amour", "fr"), "amour");
+    assert.equal(normalizeVocabularyWord("l'", "fr"), "l'");
   });
 
   it("keeps legacy attached-article vocabulary keys readable", () => {

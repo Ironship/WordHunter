@@ -15,6 +15,16 @@ fn attached_articles_use_the_bare_vocabulary_key() {
     assert_eq!(vocabulary_word_key("All’inizio", "it"), "inizio");
     assert_eq!(vocabulary_word_key("aujourd'hui", "fr"), "aujourd'hui");
     assert_eq!(vocabulary_word_key("d'amour", "de"), "d'amour");
+    // The same order as normalizeVocabularyWord: ʼ, quotes and spaces first.
+    assert_eq!(vocabulary_word_key("lʼhomme", "fr"), "homme");
+    assert_eq!(vocabulary_word_key("«d'amour»", "fr"), "amour");
+    assert_eq!(vocabulary_word_key(" d'amour", "fr"), "amour");
+    assert_eq!(vocabulary_word_key("l'", "fr"), "l'");
+    // Keys before 1.1.2, which decide what an old deletion was about.
+    assert_eq!(legacy_vocabulary_word_key("d'amour", "fr"), "d'amour");
+    assert_eq!(legacy_vocabulary_word_key("L’homme", "fr"), "homme");
+    assert_eq!(legacy_vocabulary_word_key("памʼять", "uk"), "памʼять");
+    assert_eq!(legacy_vocabulary_word_key("καὶ", "grc"), "καὶ");
 }
 #[test]
 fn resolve_algorithm_defaults_to_modern() {

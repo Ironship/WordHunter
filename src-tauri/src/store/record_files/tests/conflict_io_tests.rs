@@ -146,6 +146,67 @@ fn words_saved_under_keys_from_before_1_1_2_merge_into_the_new_key() {
 }
 
 #[test]
+fn an_old_deletion_of_another_word_does_not_delete_a_word_under_its_new_key() {
+    let live = |key: &str, word: &str, at: u128| SyncRecord {
+        key: key.to_string(),
+        kind: "vocab".to_string(),
+        data: json!({ "word": word, "status": "learning", "translation": "x" }),
+        updated_at: at,
+        deleted_at: None,
+        device_id: "pc".to_string(),
+        causal: causal(&[("pc", at as u64)]),
+    };
+    let deleted = |key: &str, at: u128| SyncRecord {
+        data: Value::Null,
+        deleted_at: Some(at),
+        ..live(key, "", at)
+    };
+    let canonical = |records: &[SyncRecord]| {
+        canonicalize_vocab_records(
+            records
+                .iter()
+                .map(|record| (record.key.clone(), record.clone()))
+                .collect(),
+        )
+    };
+
+    // "est" was deleted long before "c'est" was saved.
+    let records = canonical(&[
+        deleted("vocab:fr:est", 10),
+        live("vocab:fr:c'est", "c'est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+    assert_eq!(records["vocab:fr:est"].data["translation"], "x");
+
+    // "d'amour" was deleted after "amour" was saved, and "καὶ" after "καί".
+    let records = canonical(&[
+        live("vocab:fr:amour", "amour", 10),
+        deleted("vocab:fr:d'amour", 20),
+    ]);
+    assert!(records["vocab:fr:amour"].deleted_at.is_none());
+    let records = canonical(&[
+        live("vocab:grc:καί", "καί", 10),
+        deleted("vocab:grc:καὶ", 20),
+    ]);
+    assert!(records["vocab:grc:καί"].deleted_at.is_none());
+
+    // Deleting the merged word under its new key after 1.1.2 still
+    // deletes every form of it.
+    let records = canonical(&[
+        live("vocab:fr:c'est", "c'est", 10),
+        deleted("vocab:fr:est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_some());
+    assert!(records["vocab:fr:c'est"].deleted_at.is_some());
+    assert!(records["vocab:fr:c'est"].data.is_null());
+
+    // An old deletion with no word left under the new key stays as it was.
+    let records = canonical(&[deleted("vocab:fr:d'amour", 20)]);
+    assert!(records["vocab:fr:d'amour"].deleted_at.is_some());
+    assert!(!records.contains_key("vocab:fr:amour"));
+}
+
+#[test]
 fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
     let known = SyncRecord {
         key: "vocab:de:haus".to_string(),
