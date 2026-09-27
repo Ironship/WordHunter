@@ -186,6 +186,8 @@ export interface PendingDelta {
   session: string;
   /** Mutation sequence of that session at freeze time. */
   sequence: number;
+  /** Page that froze it; the replay is sent on that page's behalf. */
+  page?: string;
 }
 
 export function flushPendingDeltaToLocalStorage(delta: PendingDelta): void {
@@ -229,7 +231,7 @@ export function clearPendingDelta(): void {
 export async function saveWithRetry(
   body: string,
   maxRetries: number,
-  { withSnapshot = false }: { withSnapshot?: boolean } = {}
+  { withSnapshot = false, page = window.WH_PAGE_ID || "" }: { withSnapshot?: boolean; page?: string } = {}
 ): Promise<WhBridgeSaveResult> {
   const url = withSnapshot ? "/__store/save?snapshot=1" : "/__store/save";
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -241,7 +243,10 @@ export async function saveWithRetry(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-WH-Token": window.WH_TOKEN || ""
+          "X-WH-Token": window.WH_TOKEN || "",
+          // A save sent for another page (a replayed teardown delta) must
+          // not move the base the backend keeps for this page.
+          "X-WH-Page": page
         },
         body
       });
@@ -258,19 +263,28 @@ export async function saveWithRetry(
   return {};
 }
 
+// Browsers refuse keepalive requests whose body is over 64 KiB.
+const KEEPALIVE_BODY_LIMIT = 60 * 1024;
+
 /** Fire-and-forget save for window close / flush scenarios.
  *
  * Uses a keepalive fetch instead of a blocking synchronous XHR: the server is
  * already shutting down when this fires from pagehide, so a sync XHR could
- * hang the renderer for its full timeout with no one left to answer.
+ * hang the renderer for its full timeout with no one left to answer. A body
+ * too large for keepalive goes as a plain fetch, which still reaches the
+ * backend when the page is only being reloaded.
  */
 export function saveSyncXhr(body: string): void {
   try {
     void fetch("/__store/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-WH-Token": window.WH_TOKEN || "" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-WH-Token": window.WH_TOKEN || "",
+        "X-WH-Page": window.WH_PAGE_ID || ""
+      },
       body,
-      keepalive: true
+      keepalive: new TextEncoder().encode(body).length <= KEEPALIVE_BODY_LIMIT
     }).then((response) => {
       if (response.ok) return;
       window.dispatchEvent(new CustomEvent("wordhunter:state-save-error"));

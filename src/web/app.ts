@@ -97,7 +97,10 @@ function recoverPendingFlush(): void {
   const pending = readPendingDelta();
   if (pending === null) return;
   const replay = () => {
-    saveWithRetry(pending.payload, 3)
+    // Sent on behalf of the page that froze it: the backend merges it but
+    // keeps this page's save base, so this page's next save, which never
+    // saw these edits, does not delete them again.
+    saveWithRetry(pending.payload, 3, { page: pending.page || "previous-page" })
       .then(() => clearPendingDelta())
       .catch((error) => console.error("pending-flush replay failed; will retry next boot", error));
   };

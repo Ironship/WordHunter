@@ -92,6 +92,15 @@ fn request_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a st
         .map(|header| header.value.as_str())
 }
 
+/// The id of the page that sent a store request (`X-WH-Page`, set by the
+/// bootstrap script of every served page).
+fn request_page(request: &Request) -> Option<String> {
+    request_header(request, "X-WH-Page")
+        .map(str::trim)
+        .filter(|page| !page.is_empty() && page.len() <= 64)
+        .map(str::to_string)
+}
+
 fn method_not_allowed(method: &Method, path: &str) -> bool {
     let allows_get = matches!(
         path,
@@ -251,7 +260,11 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => {
             let acknowledge = response::query_value(query, "ack").as_deref() != Some("0");
-            response::json_response(request, handlers::store_snapshot(&state.store, acknowledge))
+            let page = request_page(&request);
+            response::json_response(
+                request,
+                handlers::store_snapshot(&state.store, acknowledge, page.as_deref()),
+            )
         }
         (Method::Get, "/__store/export_progress") => {
             match handlers::export_progress(&state, query) {
@@ -364,9 +377,10 @@ fn dispatch_post_request(
             }
         }
         "/__store/save" => {
+            let page = request_page(&request);
             let payload = read_json_or_400!(request);
             let query = response::parse_query(query);
-            let result = state.store.bulk_save(payload);
+            let result = state.store.bulk_save_from(payload, page.as_deref());
             match result {
                 Ok(conflicts) => {
                     if query.get("snapshot").map(String::as_str) == Some("1") {
@@ -406,8 +420,12 @@ fn dispatch_post_request(
             }
         }
         "/__store/ack_snapshot" => {
+            let page = request_page(&request);
             let payload = read_json_or_400!(request);
-            match state.store.acknowledge_frontend_snapshot(&payload) {
+            match state
+                .store
+                .acknowledge_frontend_snapshot_from(&payload, page.as_deref())
+            {
                 Ok(()) => response::no_content(request),
                 Err(error) => response::error_response(request, 400, &error),
             }

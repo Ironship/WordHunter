@@ -156,10 +156,16 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     // library, and a discarded language switch are shown (issue #281).
     // Android keeps loading it from /__store/load (compact media snapshot,
     // persistent WebView origin).
+    // Every served page gets its own id. The store's save base belongs to
+    // the page that last loaded an acknowledged snapshot, so the exit flush
+    // of the page this one replaces cannot rewrite it (a reload right after
+    // an edit used to delete that edit on the next save).
+    let page = crate::server::make_token();
     let bootstrap = bootstrap_script(
         &state.token,
+        &page,
         #[cfg(not(target_os = "android"))]
-        Some(&store_snapshot(&state.store, true)),
+        Some(&store_snapshot(&state.store, true, Some(&page))),
         #[cfg(target_os = "android")]
         None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
@@ -197,10 +203,15 @@ const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
 /// The snapshot a renderer starts from: the store records plus the persisted
 /// UI state (open book, view, reading positions). `/__store/load` and the
 /// desktop's inlined boot snapshot share it so both hand the renderer the
-/// same state. `acknowledge` is false for `/__store/load?ack=0`.
-pub(crate) fn store_snapshot(store: &crate::store::Store, acknowledge: bool) -> Value {
+/// same state. `acknowledge` is false for `/__store/load?ack=0`; an
+/// acknowledged snapshot makes `page` the owner of the save base.
+pub(crate) fn store_snapshot(
+    store: &crate::store::Store,
+    acknowledge: bool,
+    page: Option<&str>,
+) -> Value {
     let mut snapshot = if acknowledge {
-        store.snapshot()
+        store.snapshot_for_page(page)
     } else {
         store.snapshot_unacknowledged()
     };
@@ -212,10 +223,12 @@ pub(crate) fn store_snapshot(store: &crate::store::Store, acknowledge: bool) -> 
 
 pub(crate) fn bootstrap_script(
     token: &str,
+    page: &str,
     snapshot: Option<&Value>,
     image_ocr_available: bool,
 ) -> String {
     let escaped = escape_inline_json(&Value::String(token.to_string()));
+    let page = escape_inline_json(&Value::String(page.to_string()));
     // Without an inlined snapshot the template's else branch boots the
     // renderer from /__store/load.
     let snapshot = snapshot
@@ -225,6 +238,7 @@ pub(crate) fn bootstrap_script(
         BOOTSTRAP_TEMPLATE,
         &[
             ("__WH_TOKEN_JSON__", escaped.as_str()),
+            ("__WH_PAGE_JSON__", page.as_str()),
             (
                 "__WH_IMAGE_OCR_AVAILABLE__",
                 if image_ocr_available { "true" } else { "false" },

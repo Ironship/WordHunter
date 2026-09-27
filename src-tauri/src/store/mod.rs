@@ -46,6 +46,11 @@ pub struct Store {
     // Global save lock; shard only if saves become a bottleneck.
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
+    // The page that `base_records` describes: the one that was last served
+    // an acknowledged snapshot. Saves from any other page (the exit flush of
+    // the page being reloaded, a replayed teardown delta) still merge, but
+    // must not move this page's base (see `Store::page_owns_base`).
+    base_page: Mutex<Option<String>>,
     // In-memory copy of all record files. Saves re-load the records tree
     // only once (after startup or after an external mutation); every commit
     // refreshes it from the merged output. Large stores take seconds to
@@ -72,6 +77,7 @@ impl Store {
             inner: Mutex::new(StoreInner { dir, books_dir }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            base_page: Mutex::new(None),
             records_cache: Mutex::new(None),
             device_id: crate::paths::device_id(app_name)?,
             startup_instant: std::time::Instant::now(),
@@ -338,6 +344,7 @@ pub(crate) fn test_store(dir: &std::path::Path, device_id: &str) -> Store {
         }),
         write_lock: Mutex::new(()),
         base_records: Mutex::new(BTreeMap::new()),
+        base_page: Mutex::new(None),
         records_cache: Mutex::new(None),
         device_id: device_id.to_string(),
         startup_instant: std::time::Instant::now(),
@@ -387,6 +394,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            base_page: Mutex::new(None),
             records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),

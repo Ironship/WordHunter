@@ -454,6 +454,8 @@ interface WhDomCache {
   interface Window {
     __qtBridge?: boolean;
     WH_TOKEN?: string;
+    /** Id of this served page; the backend's save base belongs to one page. */
+    WH_PAGE_ID?: string;
     WH_IMAGE_OCR_AVAILABLE?: boolean;
     __bridgeState?: unknown;
     __bridgeStatePromise?: Promise<WhBridgeSnapshot>;

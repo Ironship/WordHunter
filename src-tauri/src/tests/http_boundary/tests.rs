@@ -323,8 +323,12 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
     let snapshot = serde_json::json!({
         "prefs": { "note": "</script><script>alert(1)</script>\u{2028}\u{2029}" }
     });
-    let script =
-        handlers::bootstrap_script("\";\n</script>\\\u{2028}\u{2029}", Some(&snapshot), false);
+    let script = handlers::bootstrap_script(
+        "\";\n</script>\\\u{2028}\u{2029}",
+        "page",
+        Some(&snapshot),
+        false,
+    );
     let token_line = script
         .lines()
         .find(|line| line.contains("window.WH_TOKEN"))
@@ -346,7 +350,7 @@ fn bootstrap_escapes_javascript_and_proxy_url_values() {
 #[test]
 fn bootstrap_inlines_a_provided_snapshot_instead_of_loading_it() {
     let snapshot = serde_json::json!({ "prefs": { "locale": "pl", "learningLanguage": "de" } });
-    let script = handlers::bootstrap_script("token", Some(&snapshot), false);
+    let script = handlers::bootstrap_script("token", "page", Some(&snapshot), false);
 
     assert!(
         script.contains(
@@ -369,12 +373,13 @@ fn boot_snapshot_carries_the_persisted_ui_state() {
     store.save_ui_state(&ui_state).unwrap();
 
     for acknowledge in [true, false] {
-        let snapshot = handlers::store_snapshot(&store, acknowledge);
+        let snapshot = handlers::store_snapshot(&store, acknowledge, None);
         assert_eq!(snapshot["uiState"], ui_state);
     }
     let script = handlers::bootstrap_script(
         "token",
-        Some(&handlers::store_snapshot(&store, true)),
+        "page",
+        Some(&handlers::store_snapshot(&store, true, Some("page"))),
         false,
     );
     assert!(script.contains(r#""currentTextId":"de-custom-mein-text""#));
@@ -387,7 +392,7 @@ fn bootstrap_keeps_html_comment_and_script_openers_out_of_the_inline_script() {
     // past its own end tag and swallow the page.
     let words = ["<!--", "<script>", "</script>", "-->"];
     let snapshot = serde_json::json!({ "texts": [{ "pdfOcrPages": [{ "words": words }] }] });
-    let script = handlers::bootstrap_script("token", Some(&snapshot), false);
+    let script = handlers::bootstrap_script("token", "page", Some(&snapshot), false);
 
     assert!(!script.contains('<'));
     assert!(script.contains(r#"["\u003c!--","\u003cscript>","\u003c/script>","-->"]"#));
@@ -404,9 +409,11 @@ fn bootstrap_keeps_html_comment_and_script_openers_out_of_the_inline_script() {
 
 #[test]
 fn bootstrap_defers_snapshot_load_to_store_endpoint() {
-    let script = handlers::bootstrap_script("token", None, false);
+    let script = handlers::bootstrap_script("token", "page", None, false);
 
     assert!(script.contains("window.__bridgeStatePromise = origFetch('/__store/load'"));
+    assert!(script.contains("'X-WH-Page': \"page\""));
+    assert!(script.contains("window.WH_PAGE_ID = \"page\";"));
     assert!(script.contains("storeLoadController.abort(); }, 120000)"));
     assert!(script.contains("Store load timed out after 120 seconds"));
     assert!(!script.contains("window.__bridgeState = null"));

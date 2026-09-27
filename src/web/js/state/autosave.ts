@@ -453,8 +453,16 @@ export function createAutosave(getState: () => WhAppState) {
       const current = rawState();
       syncProfilePreferences();
       if (isBridgeSnapshotPending()) saveToLocalStorage(current);
-      else if (window.__qtBridge) saveSyncXhr(JSON.stringify(buildSavePayload(current)));
-      else saveToLocalStorage(current);
+      else if (window.__qtBridge) {
+        // Only what changed since the last save, so the request usually fits
+        // in a keepalive fetch (the full store almost never does). Mutations
+        // the dirty tracking could not attribute need the full state, as in
+        // doSave.
+        const unattributed = dirtyVocabLangs.size === 0 && dirtyTextIds.size === 0 && !allTextsDirty;
+        saveSyncXhr(JSON.stringify(unattributed
+          ? buildSavePayload(current)
+          : buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds)));
+      } else saveToLocalStorage(current);
     },
     // Synchronous serialization of the save delta for the Android teardown
     // flush (see flushPendingDeltaToLocalStorage): reuses the same dirty
@@ -471,7 +479,8 @@ export function createAutosave(getState: () => WhAppState) {
           buildDeltaSavePayload(current, dirtyVocabLangs, allTextsDirty ? true : dirtyTextIds),
         ),
         session: AUTOSAVE_SESSION,
-        sequence: mutationSequence
+        sequence: mutationSequence,
+        page: window.WH_PAGE_ID || ""
       };
     },
     hasPendingChanges,

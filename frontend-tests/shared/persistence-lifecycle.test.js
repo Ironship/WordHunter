@@ -144,7 +144,11 @@ async function loadAppHarness({
       flushPendingDeltaToLocalStorage(delta) { calls.push(`pending-flush:${delta.payload}`); },
       readPendingDelta() { return pendingDelta; },
       clearPendingDelta() { calls.push("clear-pending"); },
-      saveWithRetry(body) { calls.push(`replay:${body}`); return Promise.resolve({ ok: true }); }
+      saveWithRetry(body, _retries, options) {
+        calls.push(`replay:${body}`);
+        calls.push(`replay-page:${options?.page}`);
+        return Promise.resolve({ ok: true });
+      }
     },
     "./js/views/library.js": { bindLibraryEvents: noOp, renderDeleteBookDialog: noOp, renderLibraryPanel: noOp, renderLibrary: () => calls.push("render-library") },
     "./js/views/vocabulary.js": { renderReview: noOp, renderVocabulary: noOp },
@@ -377,7 +381,7 @@ describe("persistence lifecycle", () => {
 
   it("replays a pending Android teardown flush through the normal save path at boot", async () => {
     const harness = await loadAppHarness({
-      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2, page: "old-page" }
     });
 
     await Promise.all(harness.document.emit("DOMContentLoaded"));
@@ -387,7 +391,21 @@ describe("persistence lifecycle", () => {
       harness.calls.includes('replay:{"delta":true,"fullKeys":[]}'),
       "the pending delta is replayed through the normal save path"
     );
+    // Sent for the page that froze it, so it does not move this page's
+    // save base in the backend.
+    assert.ok(harness.calls.includes("replay-page:old-page"));
     assert.ok(harness.calls.includes("clear-pending"), "the pending flush is cleared on success");
+  });
+
+  it("replays a teardown flush from an older version as another page's save", async () => {
+    const harness = await loadAppHarness({
+      pendingDelta: { payload: '{"delta":true,"fullKeys":[]}', session: "prev", sequence: 2 }
+    });
+
+    await Promise.all(harness.document.emit("DOMContentLoaded"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.ok(harness.calls.includes("replay-page:previous-page"));
   });
 
   it("replays a pending Android teardown flush after the durable store load succeeds", async () => {
@@ -1241,6 +1259,41 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(toasts, ["toast.saveUnavailable"]);
   });
 
+  it("sends only the changes in the exit flush, so it fits a keepalive request", async () => {
+    const exitBodies = [];
+    const rawState = { preferences: {}, profiles: { de: { vocab: {} } } };
+    class CustomEvent {
+      constructor(type, init) { this.type = type; this.detail = init?.detail; }
+    }
+    const { createAutosave } = await evaluateWithMocks("../../dist/web/js/state/autosave.js", {
+      "../api.js": {
+        buildSavePayload: () => ({ full: true }),
+        buildDeltaSavePayload: (_raw, langs, texts) => ({ delta: true, langs: [...langs], texts }),
+        saveToLocalStorage() {},
+        async saveWithRetry() { return {}; },
+        saveSyncXhr(body) { exitBodies.push(JSON.parse(body)); },
+        readPendingDelta() { return null; },
+        coverageCovers: () => false,
+        clearPendingDelta() {}
+      }
+    }, {
+      window: { __qtBridge: true, dispatchEvent() {} },
+      CustomEvent,
+      setTimeout: () => 1,
+      clearTimeout() {},
+      console
+    });
+    const autosave = createAutosave(() => rawState);
+    const state = autosave.wrap(rawState);
+
+    state.profiles.de.vocab.haus = { word: "Haus", status: "learning" };
+    autosave.flushPendingSave();
+
+    assert.equal(exitBodies.length, 1);
+    assert.equal(exitBodies[0].delta, true);
+    assert.deepEqual(exitBodies[0].langs, ["de"]);
+  });
+
   it("queues autosaves behind an exclusive state write", async () => {
     const savedThemes = [];
     let synchronousWrites = 0;
@@ -1634,6 +1687,31 @@ describe("persistence lifecycle", () => {
       }
     }
 });
+  it("sends the exit save for this page, as keepalive only while the body fits", async () => {
+    const requests = [];
+    const api = await evaluateWithMocks("../../dist/web/js/api.js", {
+      "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" },
+      "./request.js": { fetchWithTimeout() { throw new Error("unexpected"); } }
+    }, {
+      window: { WH_TOKEN: "test-token", WH_PAGE_ID: "page-1", dispatchEvent() {} },
+      TextEncoder,
+      fetch(url, init) {
+        requests.push({ url, init });
+        return Promise.resolve({ ok: true });
+      },
+      console
+    });
+
+    api.saveSyncXhr('{"delta":true}');
+    api.saveSyncXhr(JSON.stringify({ delta: true, text: "ü".repeat(40 * 1024) }));
+
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].init.headers["X-WH-Page"], "page-1");
+    assert.equal(requests[0].init.keepalive, true);
+    // 80 KiB of UTF-8 is over the browsers' 64 KiB keepalive limit.
+    assert.equal(requests[1].init.keepalive, false);
+  });
+
   it("builds incremental save payloads with only changed languages and fullKeys", async () => {
     const { buildDeltaSavePayload, buildFullKeys, buildSavePayload } = await evaluateWithMocks("../../dist/web/js/api.js", {
       "./constants.js": { STATE_SCHEMA_VERSION: 2, STORAGE_KEY: "wordhunter-state" }

@@ -179,7 +179,10 @@ export async function openEditBookModal(id: string): Promise<void> {
   if (generation !== editBookGeneration || editingBookId !== id) return;
   if (textArea) {
     textArea.value = customText ? customBody : bookTexts.get(id) || "";
-    textArea.readOnly = editingBookKind !== "custom" || Array.isArray(customText?.pdfOcrPages);
+    // An OCR book's text comes from its pages, which may not be loaded yet.
+    textArea.readOnly = editingBookKind !== "custom"
+      || Array.isArray(customText?.pdfOcrPages)
+      || Number(customText?.pdfOcrPageCount) > 0;
   }
   updateEditBookCounter();
 
