@@ -152,6 +152,36 @@ export function todayISO(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Days of history the per-day review counter keeps (about two years). */
+const REVIEW_DAYS_KEPT = 730;
+
+/**
+ * A profile's per-day review counter ({"YYYY-MM-DD": count}, local days) with
+ * malformed entries and days older than about two years dropped.
+ */
+export function pruneReviewsByDay(value: unknown, now = new Date()): Record<string, number> {
+  const counts: Record<string, number> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return counts;
+  const oldest = todayISO(new Date(now.getFullYear(), now.getMonth(), now.getDate() - REVIEW_DAYS_KEPT));
+  for (const [day, count] of Object.entries(value)) {
+    const reviews = Math.trunc(Number(count));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day >= oldest && reviews > 0) counts[day] = reviews;
+  }
+  return counts;
+}
+
+/**
+ * Counts one review on the local day of `now`. An entry keeps only its latest
+ * lastReviewedAt, so the review heatmap and the weekday chart need this
+ * counter to keep the earlier days a card was reviewed on.
+ */
+export function recordReviewDay(profile: { reviewsByDay?: Record<string, number> }, now = new Date()): void {
+  const counts = pruneReviewsByDay(profile.reviewsByDay, now);
+  const day = todayISO(now);
+  counts[day] = (counts[day] || 0) + 1;
+  profile.reviewsByDay = counts;
+}
+
 /**
  * Pure, non-mutating simulation of one review: applies the card's own
  * scheduler (SM2 or FSRS) with the given quality and returns the projected

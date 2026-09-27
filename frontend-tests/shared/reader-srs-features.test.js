@@ -704,6 +704,29 @@ describe("in-text SRS grading", () => {
       delete window.WH_TOKEN;
     }
   });
+
+  it("counts every applied grade on its local day in the active profile", async () => {
+    const localDay = (daysAgo) => {
+      const now = new Date();
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+      return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    };
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
+    state.profiles.de.reviewsByDay = { [localDay(900)]: 7, [localDay(30)]: 3 };
+
+    await applyReviewGrade("wort", 4);
+    await applyReviewGrade("wort", 2);
+    assert.equal(await applyReviewGrade("missing", 4), null);
+
+    // A card reviewed again adds to today without erasing its earlier day;
+    // days older than about two years are dropped.
+    const expected = { [localDay(30)]: 3, [localDay(0)]: 2 };
+    assert.deepEqual({ ...state.profiles.de.reviewsByDay }, expected);
+    // The profile is saved (as the profile:de store record) with the counter.
+    const { payload } = window.buildPendingDeltaEnvelope();
+    assert.deepEqual(JSON.parse(payload).records.vocab.de.reviewsByDay, expected);
+  });
 });
 
 describe("new interface copy", () => {

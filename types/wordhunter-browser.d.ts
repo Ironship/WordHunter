@@ -178,6 +178,8 @@ declare global {
     hiddenBuiltInBooks: string[];
     archivedBookIds: string[];
     preferences?: WhProfilePreferences;
+    /** Reviews graded per local day ("YYYY-MM-DD"), kept for about two years. */
+    reviewsByDay?: Record<string, number>;
   }
 
   interface WhStateFilters extends WhRecord {

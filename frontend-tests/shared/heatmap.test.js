@@ -6,6 +6,7 @@ globalThis.window = { WH_TOKEN: "", dispatchEvent: () => {} };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
 const { buildHeatmapActivityCounts } = await import("../../dist/web/js/graphs/helpers.js");
+const { createDefaultState, replaceState, switchLearningLanguage } = await import("../../dist/web/js/state.js");
 const { buildContributionMonthLabels, latestHeatmapScrollLeft } = await import("../../dist/web/js/views/heatmap.js");
 
 describe("shared heatmap", () => {
@@ -28,6 +29,41 @@ describe("shared heatmap", () => {
     ]);
 
     assert.deepEqual(counts, { "2026-06-20": 2 });
+  });
+
+  it("keeps the earlier days a card was reviewed on", () => {
+    // 20 cards reviewed on Monday and again on Friday keep only Friday's
+    // lastReviewedAt; the per-day review counter keeps both days.
+    const cards = Array.from({ length: 20 }, () => ({
+      status: "learning", addedAt: "2026-06-01T09:00:00", lastReviewedAt: "2026-06-19T10:00:00"
+    }));
+    const { counts, firstTime } = buildHeatmapActivityCounts([
+      ...cards,
+      // Last reviewed before the counter's first day: that review still counts.
+      { status: "known", addedAt: "2026-05-01T09:00:00", lastReviewedAt: "2026-06-10T10:00:00" },
+      // Never reviewed: counts on the day it was added.
+      { status: "learning", addedAt: "2026-06-19T08:00:00" }
+    ], { "2026-06-15": 20, "2026-06-19": 20 });
+
+    assert.deepEqual(counts, { "2026-06-10": 1, "2026-06-15": 20, "2026-06-19": 21 });
+    assert.equal(firstTime, new Date("2026-06-10T10:00:00").getTime());
+  });
+
+  it("reads the review counter of the active language profile", () => {
+    const defaults = createDefaultState();
+    replaceState({
+      ...defaults,
+      profiles: {
+        de: { ...defaults.profiles.de, reviewsByDay: { "2026-06-15": 4 } },
+        fr: { vocab: {}, customTexts: [], userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [], reviewsByDay: { "2026-06-16": 2 } }
+      }
+    }, { save: false });
+
+    assert.deepEqual(buildHeatmapActivityCounts([]).counts, { "2026-06-15": 4 });
+    switchLearningLanguage("fr");
+    assert.deepEqual(buildHeatmapActivityCounts([]).counts, { "2026-06-16": 2 });
+    switchLearningLanguage("de");
+    assert.deepEqual(buildHeatmapActivityCounts([]).counts, { "2026-06-15": 4 });
   });
 
   it("positions a clipped Pocket heatmap at the latest weeks", () => {

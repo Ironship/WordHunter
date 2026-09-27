@@ -86,15 +86,50 @@ export function countMatureYoung(entries: readonly VocabEntry[]): { young: numbe
   return { young, mature };
 }
 
-// Review activity per weekday — counts cards by their lastReviewedAt LOCAL
-// weekday only. Cards never reviewed must not count (they used to fall back
-// to addedAt, faking "review activity" — 583/640 entries in the user's data).
-export function countReviewsByWeekday(entries: readonly VocabEntry[]): { counts: number[]; total: number } {
+type ReviewsByDay = Readonly<Record<string, number>>;
+
+/** The active profile's per-day review counter (see recordReviewDay). */
+function activeReviewsByDay(): ReviewsByDay {
+  const counts = state.profiles?.[state.preferences?.learningLanguage]?.reviewsByDay;
+  return counts && typeof counts === "object" ? counts : {};
+}
+
+/** The first day the counter holds. Reviews from that day on are counted by
+ *  it; an entry's lastReviewedAt stands in only for the days before. */
+function firstCountedReviewDay(reviewsByDay: ReviewsByDay): string {
+  let first = "";
+  for (const day of Object.keys(reviewsByDay)) {
+    if (!first || day < first) first = day;
+  }
+  return first;
+}
+
+function localDayTime(day: string): number {
+  return new Date(`${day}T00:00:00`).getTime();
+}
+
+// Review activity per weekday — counts reviews by their LOCAL weekday only.
+// Cards never reviewed must not count (they used to fall back to addedAt,
+// faking "review activity" — 583/640 entries in the user's data).
+export function countReviewsByWeekday(
+  entries: readonly VocabEntry[],
+  reviewsByDay: ReviewsByDay = activeReviewsByDay()
+): { counts: number[]; total: number } {
   const counts = new Array(7).fill(0);
   let total = 0;
+  for (const [day, reviews] of Object.entries(reviewsByDay)) {
+    const weekday = new Date(localDayTime(day)).getDay();
+    if (!(reviews > 0) || Number.isNaN(weekday)) continue;
+    counts[weekday] += reviews;
+    total += reviews;
+  }
+  const firstCounted = firstCountedReviewDay(reviewsByDay);
   for (const e of entries) {
     if (e.status === "ignored" || !e.lastReviewedAt) continue;
-    counts[new Date(e.lastReviewedAt).getDay()]++;
+    const reviewedAt = new Date(e.lastReviewedAt);
+    if (Number.isNaN(reviewedAt.getTime())) continue;
+    if (firstCounted && todayISO(reviewedAt) >= firstCounted) continue;
+    counts[reviewedAt.getDay()]++;
     total++;
   }
   return { counts, total };
@@ -359,19 +394,32 @@ function activityDateForHeatmap(entry: VocabEntry): string {
   return entry?.lastReviewedAt || entry?.addedAt || "";
 }
 
-export function buildHeatmapActivityCounts(entries: readonly VocabEntry[]) {
+export function buildHeatmapActivityCounts(
+  entries: readonly VocabEntry[],
+  reviewsByDay: ReviewsByDay = activeReviewsByDay()
+) {
   const counts: Record<string, number> = {};
   let firstTime = Infinity;
+  for (const [day, reviews] of Object.entries(reviewsByDay)) {
+    const time = localDayTime(day);
+    if (!(reviews > 0) || !Number.isFinite(time)) continue;
+    firstTime = Math.min(firstTime, time);
+    counts[day] = (counts[day] || 0) + reviews;
+  }
+  const firstCounted = firstCountedReviewDay(reviewsByDay);
   for (const e of entries || []) {
     if (e.status === "ignored") continue;
     const d = activityDateForHeatmap(e);
     if (!d) continue;
     const time = new Date(d).getTime();
     if (!Number.isFinite(time)) continue;
-    firstTime = Math.min(firstTime, time);
     // Local calendar day — a review at 23:30 local must count for that
     // day, not the next UTC day.
     const day = todayISO(new Date(time));
+    // The counter holds every review from its first day on; a card never
+    // reviewed still counts on the day it was added.
+    if (firstCounted && e.lastReviewedAt && day >= firstCounted) continue;
+    firstTime = Math.min(firstTime, time);
     counts[day] = (counts[day] || 0) + 1;
   }
   return { counts, firstTime };
