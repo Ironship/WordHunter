@@ -8,11 +8,11 @@ NuGet package.
 ## Current package
 
 - Package ID: `wordhunter`
-- Application version: `1.1.1`
+- Application version: `1.1.2`
 - Installer: `Word.Hunter.Setup.exe`
 - Silent install and uninstall switch: `/S`
 - Installer SHA-256:
-  `b7bc0e1712b43fc8f6304876ae4b2aed5e64986d411e1203cb6565aa628b7ad3`
+  `d655b66fe8669158908b185f96a55c88074b32897136478b6fce1dc2237520e1`
 
 ## Updating for a release
 

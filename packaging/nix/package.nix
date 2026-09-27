@@ -6,11 +6,11 @@
 
 let
   pname = "wordhunter";
-  version = "1.1.1";
+  version = "1.1.2";
 
   src = fetchurl {
     url = "https://github.com/Ironship/WordHunter/releases/download/WordHunter${version}/WordHunter-${version}-x86_64.AppImage";
-    hash = "sha256-+LkhX7xgOPo9NocVj60K+MTNEFte/lE+l80Zfv9EH48=";
+    hash = "sha256-HbibWcg04TJHwDNk7MnbeNt3WPekRxhE5NBad1cijqQ=";
   };
 
   appimageContents = appimageTools.extract { inherit pname version src; };
