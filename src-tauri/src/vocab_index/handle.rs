@@ -62,7 +62,7 @@ pub fn handle(mut payload: Value) -> Result<Value, String> {
     let stats = stats::VocabStats::from_words(&index.words, &index.frequencies, &vocab, &lang);
 
     Ok(json!({
-        "indexVersion": 4,
+        "indexVersion": 5,
         "unique": stats.unique,
         "known": stats.known,
         "learning": stats.learning,

@@ -54,7 +54,8 @@ test("smart-suggest skips dead index keys instead of crashing on a TypeError", a
     "../state.js": { state: mockState },
     "../utils.js": { escapeHtml: (v) => v, escapeAttribute: (v) => v },
     "../i18n.js": { t: (key) => key },
-    "../translator-preferences.js": { effectiveLearningLanguage: () => "de" }
+    "../translator-preferences.js": { effectiveLearningLanguage: () => "de" },
+    "../tokenizer_v2.js": { normalizeVocabularyWord: (value) => String(value || "").toLowerCase() }
   }, {
     window: {},
     console

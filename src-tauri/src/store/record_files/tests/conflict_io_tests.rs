@@ -115,6 +115,37 @@ fn canonical_live_survives_concurrent_legacy_alias_tombstone() {
 }
 
 #[test]
+fn words_saved_under_keys_from_before_1_1_2_merge_into_the_new_key() {
+    let record = |key: &str, word: &str, status: &str, device: &str| SyncRecord {
+        key: key.to_string(),
+        kind: "vocab".to_string(),
+        data: json!({ "word": word, "status": status }),
+        updated_at: 10,
+        deleted_at: None,
+        device_id: device.to_string(),
+        causal: causal(&[(device, 10)]),
+    };
+    // Elided words and Greek grave accents used to get keys of their own.
+    let old = [
+        record("vocab:fr:d'amour", "d'amour", "known", "device-a"),
+        record("vocab:fr:amour", "amour", "new", "device-b"),
+        record("vocab:grc:θεὰ", "θεὰ", "learning", "device-a"),
+    ];
+    let records = canonicalize_vocab_records(
+        old.iter()
+            .map(|record| (record.key.clone(), record.clone()))
+            .collect(),
+    );
+
+    let amour = &records["vocab:fr:amour"];
+    assert!(amour.deleted_at.is_none());
+    assert_eq!(amour.data["status"], "known");
+    assert!(records["vocab:fr:d'amour"].deleted_at.is_some());
+    assert!(records["vocab:grc:θεά"].deleted_at.is_none());
+    assert!(records["vocab:grc:θεὰ"].deleted_at.is_some());
+}
+
+#[test]
 fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
     let known = SyncRecord {
         key: "vocab:de:haus".to_string(),

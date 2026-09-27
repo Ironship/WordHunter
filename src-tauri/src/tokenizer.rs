@@ -90,7 +90,8 @@ pub fn normalize_word(value: &str) -> String {
     let mut folded = String::new();
     for c in compatible.to_lowercase().chars() {
         match c {
-            '‘' | '’' => folded.push('\''),
+            // U+02BC is the apostrophe Ukrainian orthography recommends.
+            '‘' | '’' | 'ʼ' => folded.push('\''),
             _ => folded.push(c),
         }
     }
@@ -99,6 +100,24 @@ pub fn normalize_word(value: &str) -> String {
         .filter(|c| !STRIP_PUNCTUATION.contains(*c))
         .collect();
     stripped.trim().nfc().collect()
+}
+
+/// Articles and other elided words written onto the next one ("l'homme",
+/// "d'amour", "dell'acqua"): the vocabulary key is the word after the
+/// apostrophe. Longest prefixes come first. Keep in sync with
+/// ELIDED_PREFIXES in src/web/js/vocabulary/article.ts.
+fn elided_prefixes(language: &str) -> &'static [&'static str] {
+    match language {
+        "fr" => &[
+            "lorsqu'", "puisqu'", "jusqu'", "qu'", "l'", "d'", "j'", "m'", "t'", "s'", "n'", "c'",
+        ],
+        "it" => &[
+            "dell'", "dall'", "nell'", "sull'", "coll'", "degl'", "dagl'", "negl'", "sugl'",
+            "quest'", "quell'", "all'", "agl'", "gl'", "un'", "l'", "c'", "d'", "m'", "t'", "s'",
+            "v'",
+        ],
+        _ => &[],
+    }
 }
 
 fn case_fold_vocabulary_word(value: String) -> String {
@@ -113,23 +132,21 @@ pub fn vocabulary_word_key(value: &str, lang: &str) -> String {
         Cow::Owned(primary.to_lowercase())
     };
     let compatible: String = value.nfkc().collect();
-    let locale_adjusted = if matches!(language.as_ref(), "tr" | "az") {
-        compatible.replace('I', "ı").replace('İ', "i")
-    } else {
-        compatible
+    let locale_adjusted = match language.as_ref() {
+        "tr" | "az" => compatible.replace('I', "ı").replace('İ', "i"),
+        // Greek writes a final acute as grave before the next word (θεὰ,
+        // θεά): one word, one key. Keep in sync with normalizeVocabularyWord.
+        "grc" | "el" => compatible
+            .nfd()
+            .map(|c| if c == '\u{300}' { '\u{301}' } else { c })
+            .nfc()
+            .collect(),
+        _ => compatible,
     }
     .replace(['‘', '’'], "'");
-    let prefixes: &[(&str, &str)] = match language.as_ref() {
-        "fr" => &[("l'", "l’")],
-        "it" => &[("un'", "un’"), ("l'", "l’")],
-        _ => &[],
-    };
     let lowered = locale_adjusted.to_lowercase();
-    for &(straight, curly) in prefixes {
-        let remainder = lowered
-            .strip_prefix(straight)
-            .or_else(|| lowered.strip_prefix(curly));
-        if let Some(remainder) = remainder {
+    for prefix in elided_prefixes(&language) {
+        if let Some(remainder) = lowered.strip_prefix(prefix) {
             let word = normalize_word(remainder);
             if !word.is_empty() {
                 return case_fold_vocabulary_word(word);

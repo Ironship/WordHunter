@@ -32,7 +32,7 @@ fn handle_returns_words_stats() {
         "book": book_payload(),
     });
     let result = vocab_index::handle(payload).expect("handle succeeds");
-    assert_eq!(result["indexVersion"], 4);
+    assert_eq!(result["indexVersion"], 5);
     assert_eq!(result["unique"], 3);
     assert_eq!(result["known"], 2);
     assert_eq!(result["learning"], 1);
