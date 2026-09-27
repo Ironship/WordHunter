@@ -81,6 +81,16 @@ export function upsertCustomText(customText: WhText): WhText {
   return customText;
 }
 
+/**
+ * Custom text ids a Gutenberg user book's full text is cached under by
+ * loadFullGutenbergText: the per-profile id and the older id without a
+ * language. The book's own Library card stands for that copy.
+ */
+export function gutenbergFullTextIds(gutenbergId: unknown, lang: string): string[] {
+  const id = String(gutenbergId ?? "").trim();
+  return id ? [`gutenberg-full-${lang}-${id}`, `gutenberg-full-${id}`] : [];
+}
+
 export function hasUserBook(id: string): boolean {
   return state.userBooks.some((book) => book.id === id);
 }

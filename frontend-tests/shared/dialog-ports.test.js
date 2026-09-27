@@ -271,6 +271,7 @@ describe("delete-book dialog renderer (views/library.ts)", () => {
         loadBookText: async () => "",
         loadCustomTextContent: async () => ""
       },
+      "../book-actions/profile-library.js": { gutenbergFullTextIds: () => [] },
       "../stats-cache.js": {
         getCachedBookTextStats: () => null,
         getCachedTextStats: () => null,
@@ -558,6 +559,7 @@ describe("library filter bar renderer (views/library.ts)", () => {
         loadBookText: async () => "",
         loadCustomTextContent: async () => ""
       },
+      "../book-actions/profile-library.js": { gutenbergFullTextIds: () => [] },
       "../stats-cache.js": {
         getCachedBookTextStats: () => null,
         getCachedTextStats: () => null,

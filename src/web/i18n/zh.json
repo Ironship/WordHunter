@@ -954,6 +954,7 @@
     "youtubeCaptionsLoaded": "YouTube 字幕已加载。",
     "youtubeCaptionsError": "无法加载 YouTube 字幕。",
     "ebookRequiresApp": "EPUB/MOBI 导入在桌面应用中进行。",
+    "mobileImportUnsupported": "Android 上无法导入此类文件。请选择 TXT、Markdown、字幕（SRT、VTT、ASS/SSA）、EPUB 或 PDF 文件。",
     "pdfOcrRequiresApp": "PDF OCR 导入在桌面应用中进行，使用内置的本地 PaddleOCR 运行时。",
     "pdfOcrNoText": "PaddleOCR 在此 PDF 中未找到可读文本。",
     "pdfImportBusy": "另一个 OCR 导入正在进行中。",

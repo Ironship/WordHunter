@@ -930,6 +930,7 @@
     "searching": "Идет поиск...",
     "ttsMissing": "Отсутствует голос TTS. Установите речевой пакет в настройках системы.",
     "ebookRequiresApp": "Импорт EPUB/MOBI работает в настольном приложении.",
+    "mobileImportUnsupported": "Этот тип файла нельзя импортировать на Android. Выберите файл TXT, Markdown, субтитры (SRT, VTT, ASS/SSA), EPUB или PDF.",
     "pdfOcrRequiresApp": "Импорт PDF OCR работает в настольном приложении со встроенным нативным рантаймом PaddleOCR.",
     "pdfOcrNoText": "PaddleOCR не нашёл читаемый текст в этом PDF.",
     "pdfImportBusy": "Другой импорт OCR уже выполняется.",

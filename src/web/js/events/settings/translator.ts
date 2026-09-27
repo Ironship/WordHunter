@@ -97,7 +97,58 @@ export function bindTranslationProviderSettings() {
   }
 }
 
+/**
+ * Builds the download dialog's language list: the offline languages plus the
+ * profile pair and `checkedCodes`, which start checked. A Translator view pair
+ * can be outside both defaults, so it must be added here to be installable.
+ */
+function renderArgosLanguageList(checkedCodes: string[]): void {
+  const languagesList = document.getElementById("argos-languages-list");
+  if (!languagesList) return;
+  const pair = resolveProfileTranslationPair(state.preferences);
+  const supported = Array.from(new Set([...OFFLINE_TRANSLATOR_LANGUAGES, pair.fromCode, pair.toCode, ...checkedCodes].filter(Boolean)));
+  languagesList.innerHTML = supported.map(lang => `
+    <label class="status-check justify-start">
+      <input type="checkbox" value="${lang}" ${checkedCodes.includes(lang) ? "checked" : ""}>
+      <span>${t(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : t(`languages.${lang}`)} (${lang.toUpperCase()})</span>
+    </label>
+  `).join("");
+
+  // Update button text with size
+  const updateBtnText = () => {
+    const count = languagesList.querySelectorAll("input:checked").length;
+    const confirmButton = document.getElementById("argos-download-confirm");
+    if (confirmButton) confirmButton.textContent = t("settings.argosDownloadSize", { label: t("settings.argosDownloadConfirm"), size: count * 150 });
+  };
+
+  languagesList.querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
+    checkbox.addEventListener("change", updateBtnText);
+    checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
+  });
+  updateBtnText();
+}
+
+/**
+ * Opens the download dialog from the Translator view for a pair without a
+ * model. The dialog remembers the pair until it closes, so the install covers
+ * it and success is only reported once it can translate.
+ */
+export function openArgosDownloadDialogForPair(fromCode: string, toCode: string): void {
+  const dialog = document.getElementById("argos-download-dialog");
+  if (!(dialog instanceof HTMLDialogElement)) return;
+  renderArgosLanguageList([fromCode, toCode]);
+  dialog.dataset.from = fromCode;
+  dialog.dataset.to = toCode;
+  dialog.showModal();
+}
+
 export function bindOfflineTranslatorSettings() {
+  const argosDialog = document.getElementById("argos-download-dialog");
+  argosDialog?.addEventListener("close", () => {
+    delete argosDialog.dataset.from;
+    delete argosDialog.dataset.to;
+  });
+
   if (els.prefOfflineTranslator) {
     els.prefOfflineTranslator.addEventListener("change", async (event: Event) => {
       const target = event.currentTarget as HTMLInputElement;
@@ -108,33 +159,7 @@ export function bindOfflineTranslatorSettings() {
           showToast(t("translator.providerUnavailable"), "error");
           return;
         }
-        // Dynamically build the language list in the download dialog
-        const { t: translate } = await import("../../i18n.js");
-        const supported = Array.from(new Set([...OFFLINE_TRANSLATOR_LANGUAGES, pair.fromCode, pair.toCode].filter(Boolean)));
-
-        const languagesList = document.getElementById("argos-languages-list");
-        if (languagesList) {
-          languagesList.innerHTML = supported.map(lang => `
-            <label class="status-check justify-start">
-              <input type="checkbox" value="${lang}" ${lang === pair.fromCode || lang === pair.toCode ? "checked" : ""}>
-              <span>${translate(`languages.${lang}`) === `languages.${lang}` ? lang.toUpperCase() : translate(`languages.${lang}`)} (${lang.toUpperCase()})</span>
-            </label>
-          `).join("");
-
-          // Update button text with size
-          const updateBtnText = () => {
-            const count = languagesList.querySelectorAll("input:checked").length;
-            const confirmButton = document.getElementById("argos-download-confirm");
-            if (confirmButton) confirmButton.textContent = translate("settings.argosDownloadSize", { label: translate("settings.argosDownloadConfirm"), size: count * 150 });
-          };
-
-          languagesList.querySelectorAll<HTMLInputElement>("input").forEach((checkbox) => {
-            checkbox.addEventListener("change", updateBtnText);
-            checkbox.addEventListener("change", () => { argosSelectionDirty = true; });
-          });
-          updateBtnText();
-        }
-
+        renderArgosLanguageList([pair.fromCode, pair.toCode]);
         (document.getElementById("argos-download-dialog") as HTMLDialogElement | null)?.showModal();
       } else {
         updatePreferenceValue("offlineTranslator", false);
@@ -163,6 +188,7 @@ export function bindOfflineTranslatorSettings() {
     argosConfirmButton.addEventListener("click", async () => {
       const languagesList = document.getElementById("argos-languages-list");
       if (!(languagesList instanceof HTMLElement)) return;
+      const requested = { from: argosDialog?.dataset.from || "", to: argosDialog?.dataset.to || "" };
       const checkedBoxes = Array.from(languagesList.querySelectorAll<HTMLInputElement>("input:checked"));
       const toCodes = checkedBoxes.map(cb => cb.value);
 
@@ -180,7 +206,7 @@ export function bindOfflineTranslatorSettings() {
 
       try {
         const pair = resolveProfileTranslationPair(state.preferences);
-        const languages = Array.from(new Set(["en", pair.fromCode, pair.toCode, ...toCodes].filter(Boolean)));
+        const languages = Array.from(new Set(["en", pair.fromCode, pair.toCode, requested.from, requested.to, ...toCodes].filter(Boolean)));
         const response = await httpPost("/__argos/install", { from: languages, to: languages }, { timeoutMs: 600_000 });
 
         if (!response.ok) throw new Error("Failed to download models");
@@ -190,6 +216,9 @@ export function bindOfflineTranslatorSettings() {
         invalidatePackagesCache();
         await refreshTranslatorAvailability();
         if (!hasModelForPair(pair.fromCode, pair.toCode)) throw new Error("No matching translation models were installed");
+        // The profile pair works, so offline translation stays on either way;
+        // success is only reported when the Translator view's pair works too.
+        const requestedInstalled = hasModelForPair(requested.from, requested.to);
         updatePreferenceValue("offlineTranslator", true);
         if (els.prefArgosAsDictRow) {
           els.prefArgosAsDictRow.style.opacity = "1";
@@ -198,7 +227,7 @@ export function bindOfflineTranslatorSettings() {
         syncSettingsControls();
         (document.getElementById("argos-download-dialog") as HTMLDialogElement | null)?.close();
         renderTranslator();
-        import("../../toast.js").then(m => m.showToast(t("toast.modelsDownloaded")));
+        import("../../toast.js").then(m => m.showToast(t(requestedInstalled ? "toast.modelsDownloaded" : "toast.modelsDownloadError")));
       } catch (err) {
         console.error("Offline translator install error", err);
         import("../../toast.js").then(m => m.showToast(t("toast.modelsDownloadError")));
