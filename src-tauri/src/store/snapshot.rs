@@ -173,7 +173,7 @@ impl Store {
         let (_, base) = pages
             .served
             .drain(..=index)
-            .last()
+            .next_back()
             .expect("index is in range");
         pages.owner = Some(page.to_string());
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base;
