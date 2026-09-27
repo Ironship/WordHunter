@@ -1,0 +1,7 @@
+Word Hunter 1.1.2
+
+Discover: Wikipedia and Wikinews articles open again.
+Import: more PDFs, illustrated EPUBs, Markdown and ASS/SSA files; large exports no longer fail.
+Backups: restoring the backup made before clearing data works, and packages no longer delete words on the other device.
+Reader: French and Italian elisions, Ukrainian apostrophes and Greek accents keep one entry per word.
+Flashcards: every review day is kept, and deleting a word asks first.
