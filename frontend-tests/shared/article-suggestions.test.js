@@ -85,6 +85,12 @@ describe("grammatical article suggestions", () => {
     assert.equal(getSmartSuggestion("Das Haus ist alt.", "haus"), null);
   });
 
+  it("does not suggest a separable verb with ß again once it is saved", () => {
+    state.vocab["schliesse ab"] = { word: "schließe ab", status: "learning" };
+    assert.equal(getSmartSuggestion("Ich schließe die Tür ab.", "schließe"), null);
+    delete state.vocab["schliesse ab"];
+  });
+
   it("keeps German separable verbs as phrase suggestions", () => {
     const suggestion = getSmartSuggestion("Ich rufe dich morgen an.", "rufe");
     assert.deepEqual(suggestion, { kind: "separable-verb", word: "rufe an" });

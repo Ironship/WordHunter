@@ -53,6 +53,7 @@ pub(crate) fn merge_records(
     let current = canonicalize_vocab_records(current);
     let mut output = BTreeMap::new();
     let mut conflicts = Vec::new();
+    let mut old_key_deletions = Vec::new();
     let keys: BTreeSet<String> = base
         .keys()
         .chain(incoming.keys())
@@ -216,15 +217,97 @@ pub(crate) fn merge_records(
             }
         };
 
-        if let Some(record) = chosen {
+        if let Some(mut record) = chosen {
+            // Per-day review counts only grow: whichever profile record
+            // wins, it keeps the reviews the other side counted (within the
+            // days the frontend keeps).
+            for other in [incoming_record, current_record].into_iter().flatten() {
+                if merge_review_days(&mut record, other) {
+                    // The merged record includes both sides, so it descends
+                    // from both and other devices converge on it.
+                    merge_causal_clock(&mut record.causal, &other.causal);
+                }
+            }
+            // A word deleted under its new key is deleted under its old key
+            // too ("c'est" at vocab:fr:est also at vocab:fr:c'est), so a
+            // device or package that still has it there doesn't bring it
+            // back.
+            if record.kind == "vocab"
+                && record.deleted_at.is_some()
+                && let Some(live) = current_record.filter(|live| live.deleted_at.is_none())
+            {
+                let legacy = legacy_vocab_record_key(live, &current);
+                if legacy != record.key {
+                    old_key_deletions.push(SyncRecord {
+                        key: legacy,
+                        ..record.clone()
+                    });
+                }
+            }
             output.insert(record.key.clone(), record);
         }
+    }
+    for deletion in old_key_deletions {
+        output.entry(deletion.key.clone()).or_insert(deletion);
     }
 
     MergeResult {
         records: canonicalize_vocab_records(output),
         conflicts,
     }
+}
+
+const REVIEWS_BY_DAY: &str = "reviewsByDay";
+
+/// Days the frontend keeps in a profile's review counter (REVIEW_DAYS_KEPT).
+const REVIEW_DAYS_KEPT: i64 = 730;
+
+/// Adds `source`'s per-day review counts to `target` (a profile record),
+/// keeping the larger count of a day and none older than the frontend
+/// keeps. The counter has no per-device parts, so reviews two devices made
+/// on the same day before they synced count as the larger of the two.
+/// Returns whether `target` changed.
+pub(crate) fn merge_review_days(target: &mut SyncRecord, source: &SyncRecord) -> bool {
+    if !target.key.starts_with("profile:")
+        || source.key != target.key
+        || target.deleted_at.is_some()
+        || source.deleted_at.is_some()
+    {
+        return false;
+    }
+    let Some(source_days) = source.data.get(REVIEWS_BY_DAY).and_then(Value::as_object) else {
+        return false;
+    };
+    let Some(target) = target.data.as_object_mut() else {
+        return false;
+    };
+    let Some(days) = target
+        .entry(REVIEWS_BY_DAY)
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+    else {
+        return false;
+    };
+    let oldest =
+        (OffsetDateTime::now_utc().date() - time::Duration::days(REVIEW_DAYS_KEPT)).to_string();
+    let mut changed = false;
+    for (day, count) in source_days {
+        let Some(count) = count.as_u64() else {
+            continue;
+        };
+        if day.len() != 10 || *day < oldest {
+            continue;
+        }
+        if days
+            .get(day)
+            .and_then(Value::as_u64)
+            .is_none_or(|own| own < count)
+        {
+            days.insert(day.clone(), Value::from(count));
+            changed = true;
+        }
+    }
+    changed
 }
 
 fn merge_in_text_review_completions(
@@ -583,6 +666,20 @@ fn canonical_vocab_record_key(
     record: &SyncRecord,
     records: &BTreeMap<String, SyncRecord>,
 ) -> Option<String> {
+    vocab_record_key_with(record, records, tokenizer::vocabulary_word_key)
+}
+
+/// The key the record had before 1.1.2 changed the vocabulary keys.
+fn legacy_vocab_record_key(record: &SyncRecord, records: &BTreeMap<String, SyncRecord>) -> String {
+    vocab_record_key_with(record, records, tokenizer::legacy_vocabulary_word_key)
+        .unwrap_or_else(|| record.key.clone())
+}
+
+fn vocab_record_key_with(
+    record: &SyncRecord,
+    records: &BTreeMap<String, SyncRecord>,
+    word_key: fn(&str, &str) -> String,
+) -> Option<String> {
     let (lang, key_word) = parse_lang_key(&record.key, "vocab:")?;
     if let Some(canonical) = record.data.get(VOCAB_ALIAS_MARKER).and_then(Value::as_str) {
         return Some(canonical.to_string());
@@ -593,7 +690,7 @@ fn canonical_vocab_record_key(
         .and_then(Value::as_str)
         .unwrap_or(key_word);
     let language = profile_vocabulary_language(records, lang);
-    let word = tokenizer::vocabulary_word_key(identity_word, &language);
+    let word = word_key(identity_word, &language);
     (!word.is_empty()).then(|| format!("vocab:{lang}:{word}"))
 }
 
@@ -614,29 +711,82 @@ pub(crate) fn canonicalize_vocab_records(
 
     for (canonical_key, group) in groups {
         let mut group_causal = CausalClock::new();
-        let mut live_only_causal = CausalClock::new();
         for record in &group {
             merge_causal_clock(&mut group_causal, &record.causal);
-            if record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data) {
-                merge_causal_clock(&mut live_only_causal, &record.causal);
-            }
         }
+        let is_live = |record: &SyncRecord| {
+            record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data)
+        };
+        let is_tombstone = |record: &SyncRecord| {
+            record.deleted_at.is_some() && !is_vocab_alias_retirement(&record.data)
+        };
+        let descends = |tombstone: &SyncRecord, live: &SyncRecord| {
+            compare_causal(&tombstone.causal, &live.causal) == CausalOrder::IncomingDescends
+        };
+        // Records that had one key before 1.1.2 are one word: a deletion at
+        // that key, or made after one of its records was written, deletes
+        // them all. Words that only share the new key ("c'est" and "est",
+        // "καὶ" and "καί") keep their own deletions. Deleting the merged
+        // word in 1.1.2 deletes each old key too (the alias tombstones
+        // below), which is how it reaches every form of it.
+        let legacy_keys = group
+            .iter()
+            .map(|record| legacy_vocab_record_key(record, &records))
+            .collect::<Vec<_>>();
+        let deleted_words = legacy_keys
+            .iter()
+            .enumerate()
+            .filter(|(index, legacy)| {
+                is_tombstone(&group[*index])
+                    && (group[*index].key == **legacy
+                        || group.iter().zip(&legacy_keys).any(|(live, live_legacy)| {
+                            live_legacy == *legacy
+                                && is_live(live)
+                                && descends(&group[*index], live)
+                        }))
+            })
+            .map(|(_, legacy)| legacy.clone())
+            .collect::<BTreeSet<_>>();
+        let survivors = group
+            .iter()
+            .zip(&legacy_keys)
+            .filter(|(record, legacy)| {
+                // A word saved at its new key by 1.1.2 ("c'est" at
+                // vocab:fr:est) was saved after any deletion of its old key.
+                let saved_at_new_key = record.key == canonical_key
+                    && **legacy != canonical_key
+                    && group
+                        .iter()
+                        .zip(&legacy_keys)
+                        .all(|(tombstone, tombstone_legacy)| {
+                            !is_tombstone(tombstone)
+                                || tombstone_legacy != *legacy
+                                || record_time(record) > record_time(tombstone)
+                        });
+                is_live(record) && (saved_at_new_key || !deleted_words.contains(*legacy))
+            })
+            .map(|(record, _)| record)
+            .collect::<Vec<_>>();
         let real_tombstones = group
             .iter()
-            .filter(|record| {
-                record.deleted_at.is_some() && !is_vocab_alias_retirement(&record.data)
+            .zip(&legacy_keys)
+            .filter(|(record, legacy)| {
+                // Deletions at the new key, and those that deleted a word
+                // this group holds; an old deletion of a word no longer
+                // here stays as it is.
+                is_tombstone(record)
+                    && (record.key == canonical_key
+                        || (deleted_words.contains(*legacy)
+                            && group.iter().zip(&legacy_keys).any(|(live, live_legacy)| {
+                                live_legacy == *legacy && is_live(live)
+                            })))
             })
-            .filter(|tombstone| {
-                tombstone.key == canonical_key
-                    || group.iter().any(|live| {
-                        live.deleted_at.is_none()
-                            && !is_vocab_alias_retirement(&live.data)
-                            && compare_causal(&tombstone.causal, &live.causal)
-                                == CausalOrder::IncomingDescends
-                    })
-            })
+            .map(|(record, _)| record)
             .collect::<Vec<_>>();
-        let winning_tombstone = real_tombstones.first();
+        let winning_tombstone = survivors
+            .is_empty()
+            .then(|| real_tombstones.first())
+            .flatten();
         let canonical_record = if let Some(first) = winning_tombstone {
             let preferred =
                 real_tombstones
@@ -669,16 +819,24 @@ pub(crate) fn canonicalize_vocab_records(
                 causal: group_causal.clone(),
             }
         } else {
-            let mut live = group.iter().filter(|record| {
-                record.deleted_at.is_none() && !is_vocab_alias_retirement(&record.data)
-            });
+            let mut live = survivors.iter();
             let Some(first) = live.next() else {
                 for record in group {
                     output.insert(record.key.clone(), record);
                 }
                 continue;
             };
-            let mut preferred = first.clone();
+            let mut preferred = (*first).clone();
+            // The kept word also supersedes a deletion at its new key that
+            // was about another word.
+            let mut causal = CausalClock::new();
+            for record in survivors.iter().copied().chain(
+                group
+                    .iter()
+                    .filter(|record| is_tombstone(record) && record.key == canonical_key),
+            ) {
+                merge_causal_clock(&mut causal, &record.causal);
+            }
             for source in live {
                 let source_is_preferred = should_keep_incoming(source, &preferred);
                 merge_vocab_entry_data(&mut preferred.data, &source.data);
@@ -688,7 +846,7 @@ pub(crate) fn canonicalize_vocab_records(
                 }
             }
             preferred.key = canonical_key.clone();
-            preferred.causal = live_only_causal.clone();
+            preferred.causal = causal;
             preferred
         };
         output.insert(canonical_key.clone(), canonical_record.clone());
@@ -853,7 +1011,7 @@ fn bookmark_values(value: Option<&Value>) -> Option<BTreeMap<String, Value>> {
         .collect()
 }
 
-fn merge_reader_bookmark_data(
+pub(crate) fn merge_reader_bookmark_data(
     existing: &mut SyncRecord,
     source: &SyncRecord,
     base: Option<&Value>,

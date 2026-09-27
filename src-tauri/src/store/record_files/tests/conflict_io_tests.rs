@@ -115,6 +115,148 @@ fn canonical_live_survives_concurrent_legacy_alias_tombstone() {
 }
 
 #[test]
+fn words_saved_under_keys_from_before_1_1_2_merge_into_the_new_key() {
+    let record = |key: &str, word: &str, status: &str, device: &str| SyncRecord {
+        key: key.to_string(),
+        kind: "vocab".to_string(),
+        data: json!({ "word": word, "status": status }),
+        updated_at: 10,
+        deleted_at: None,
+        device_id: device.to_string(),
+        causal: causal(&[(device, 10)]),
+    };
+    // Elided words and Greek grave accents used to get keys of their own.
+    let old = [
+        record("vocab:fr:d'amour", "d'amour", "known", "device-a"),
+        record("vocab:fr:amour", "amour", "new", "device-b"),
+        record("vocab:grc:θεὰ", "θεὰ", "learning", "device-a"),
+    ];
+    let records = canonicalize_vocab_records(
+        old.iter()
+            .map(|record| (record.key.clone(), record.clone()))
+            .collect(),
+    );
+
+    let amour = &records["vocab:fr:amour"];
+    assert!(amour.deleted_at.is_none());
+    assert_eq!(amour.data["status"], "known");
+    assert!(records["vocab:fr:d'amour"].deleted_at.is_some());
+    assert!(records["vocab:grc:θεά"].deleted_at.is_none());
+    assert!(records["vocab:grc:θεὰ"].deleted_at.is_some());
+}
+
+#[test]
+fn an_old_deletion_of_another_word_does_not_delete_a_word_under_its_new_key() {
+    let live = |key: &str, word: &str, at: u128| SyncRecord {
+        key: key.to_string(),
+        kind: "vocab".to_string(),
+        data: json!({ "word": word, "status": "learning", "translation": "x" }),
+        updated_at: at,
+        deleted_at: None,
+        device_id: "pc".to_string(),
+        causal: causal(&[("pc", at as u64)]),
+    };
+    let deleted = |key: &str, at: u128| SyncRecord {
+        data: Value::Null,
+        deleted_at: Some(at),
+        ..live(key, "", at)
+    };
+    let canonical = |records: &[SyncRecord]| {
+        canonicalize_vocab_records(
+            records
+                .iter()
+                .map(|record| (record.key.clone(), record.clone()))
+                .collect(),
+        )
+    };
+
+    // "est" was deleted long before "c'est" was saved.
+    let records = canonical(&[
+        deleted("vocab:fr:est", 10),
+        live("vocab:fr:c'est", "c'est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+    assert_eq!(records["vocab:fr:est"].data["translation"], "x");
+
+    // "d'amour" was deleted after "amour" was saved, and "καὶ" after "καί".
+    let records = canonical(&[
+        live("vocab:fr:amour", "amour", 10),
+        deleted("vocab:fr:d'amour", 20),
+    ]);
+    assert!(records["vocab:fr:amour"].deleted_at.is_none());
+    let records = canonical(&[
+        live("vocab:grc:καί", "καί", 10),
+        deleted("vocab:grc:καὶ", 20),
+    ]);
+    assert!(records["vocab:grc:καί"].deleted_at.is_none());
+
+    // In 1.1.1 "est" and "c'est" were different words: deleting "est"
+    // after "c'est" was saved left "c'est" alone.
+    let records = canonical(&[
+        live("vocab:fr:c'est", "c'est", 10),
+        deleted("vocab:fr:est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+
+    // Deleting the merged word in 1.1.2 deletes it under its old keys too,
+    // which reaches a device that still has "c'est" under its old key.
+    let records = canonical(&[
+        live("vocab:fr:c'est", "c'est", 10),
+        deleted("vocab:fr:est", 20),
+        SyncRecord {
+            key: "vocab:fr:c'est".to_string(),
+            ..deleted("vocab:fr:est", 20)
+        },
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_some());
+    assert!(records["vocab:fr:c'est"].deleted_at.is_some());
+
+    // Saving "c'est" again after that deletion keeps it.
+    let records = canonical(&[
+        deleted("vocab:fr:c'est", 10),
+        live("vocab:fr:est", "c'est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+    let records = canonical(&[
+        deleted("vocab:grc:καὶ", 10),
+        live("vocab:grc:καί", "καὶ", 20),
+    ]);
+    assert!(records["vocab:grc:καί"].deleted_at.is_none());
+
+    // A copy of the word at its new key that is older than the deletion
+    // at its old key (it came from another device) stays deleted.
+    let records = canonical(&[
+        deleted("vocab:fr:c'est", 100),
+        live("vocab:fr:est", "c'est", 50),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_some());
+
+    // Deleting a word that this device only has at its new key also
+    // deletes it at its old key, so a copy there does not come back.
+    let current = BTreeMap::from([(
+        "vocab:fr:est".to_string(),
+        live("vocab:fr:est", "c'est", 50),
+    )]);
+    let merged = merge_records(
+        &fingerprints(&current),
+        BTreeMap::new(),
+        current,
+        "pc",
+        200,
+        &BTreeSet::new(),
+    );
+    assert!(merged.records["vocab:fr:est"].deleted_at.is_some());
+    assert!(merged.records["vocab:fr:c'est"].deleted_at.is_some());
+    // A copy at the old key from before the deletion loses to it on import.
+    assert!(merged.records["vocab:fr:c'est"].deleted_at.unwrap() > 50);
+
+    // An old deletion with no word left under the new key stays as it was.
+    let records = canonical(&[deleted("vocab:fr:d'amour", 20)]);
+    assert!(records["vocab:fr:d'amour"].deleted_at.is_some());
+    assert!(!records.contains_key("vocab:fr:amour"));
+}
+
+#[test]
 fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
     let known = SyncRecord {
         key: "vocab:de:haus".to_string(),
@@ -158,6 +300,66 @@ fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
     assert_eq!(record.data["translation"], "new translation");
     assert_eq!(record.data["statusUpdatedAt"], "2026-07-23T12:00:00.000Z");
     assert_eq!(record.data["nextDate"], "2026-07-24");
+}
+
+#[test]
+fn concurrent_profile_edits_keep_both_devices_review_days() {
+    let profile = |days: serde_json::Value, device: &str, time: u128| SyncRecord {
+        key: "profile:de".to_string(),
+        kind: "profile".to_string(),
+        data: json!({ "archivedBookIds": [], "reviewsByDay": days }),
+        updated_at: time,
+        deleted_at: None,
+        device_id: device.to_string(),
+        causal: causal(&[(device, time as u64)]),
+    };
+    let day =
+        |ago: i64| (time::OffsetDateTime::now_utc().date() - time::Duration::days(ago)).to_string();
+    let (monday, tuesday, long_ago) = (day(6), day(5), day(800));
+    let phone = profile(
+        json!({ monday.clone(): 3, tuesday.clone(): 5, long_ago.clone(): 1 }),
+        "phone-device",
+        2_000,
+    );
+    let desktop = profile(json!({ monday.clone(): 7 }), "pc-device", 3_000);
+
+    let merged = merge_records(
+        &BTreeMap::new(),
+        [(phone.key.clone(), phone)].into_iter().collect(),
+        [(desktop.key.clone(), desktop)].into_iter().collect(),
+        "phone-device",
+        6_000,
+        &BTreeSet::new(),
+    );
+
+    let record = &merged.records["profile:de"];
+    // Days older than the frontend keeps are not brought back.
+    assert_eq!(
+        record.data["reviewsByDay"],
+        json!({ monday.clone(): 7, tuesday.clone(): 5 })
+    );
+    assert!(record.causal.contains_key("phone-device") && record.causal.contains_key("pc-device"));
+
+    // A day the frontend pruned as too old does not come back from the
+    // stored record, and the save's own days stay.
+    let mut stored = record.clone();
+    stored.data["reviewsByDay"][long_ago.clone()] = json!(1);
+    let stored = BTreeMap::from([(stored.key.clone(), stored)]);
+    let mut pruned = stored["profile:de"].clone();
+    pruned.data["reviewsByDay"] = json!({ monday.clone(): 7, tuesday.clone(): 6 });
+    pruned.causal.insert("phone-device".to_string(), 9_000);
+    let merged = merge_records(
+        &crate::store::record_files::fingerprints(&stored),
+        [(pruned.key.clone(), pruned)].into_iter().collect(),
+        stored.clone(),
+        "phone-device",
+        9_000,
+        &BTreeSet::new(),
+    );
+    assert_eq!(
+        merged.records["profile:de"].data["reviewsByDay"],
+        json!({ monday: 7, tuesday: 6 })
+    );
 }
 
 #[test]

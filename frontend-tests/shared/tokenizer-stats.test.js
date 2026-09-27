@@ -100,7 +100,18 @@ describe("token stats", () => {
     assert.equal(normalizeVocabularyWord("L‘homme", "fr_FR"), "homme");
     assert.equal(normalizeVocabularyWord("un’amica", "it"), "amica");
     assert.equal(normalizeVocabularyWord("Un‘amica", "it_IT"), "amica");
-    assert.equal(normalizeVocabularyWord("d’homme", "fr"), "d'homme");
+    // Other elided words are keys of the word they are written onto, as in Rust.
+    assert.equal(normalizeVocabularyWord("d’homme", "fr"), "homme");
+    assert.equal(normalizeVocabularyWord("Qu'il", "fr"), "il");
+    assert.equal(normalizeVocabularyWord("jusqu’à", "fr"), "à");
+    assert.equal(normalizeVocabularyWord("dell'acqua", "it"), "acqua");
+    assert.equal(normalizeVocabularyWord("All’inizio", "it"), "inizio");
+    assert.equal(normalizeVocabularyWord("aujourd'hui", "fr"), "aujourd'hui");
+    assert.equal(normalizeVocabularyWord("d'amour", "de"), "d'amour");
+    assert.equal(normalizeVocabularyWord("lʼhomme", "fr"), "homme");
+    assert.equal(normalizeVocabularyWord("«d'amour»", "fr"), "amour");
+    assert.equal(normalizeVocabularyWord(" d'amour", "fr"), "amour");
+    assert.equal(normalizeVocabularyWord("l'", "fr"), "l'");
   });
 
   it("keeps legacy attached-article vocabulary keys readable", () => {
@@ -190,5 +201,19 @@ describe("token stats", () => {
     assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 1), "Ich rufe dich an.");
     assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 3), "Ich rufe dich an.");
     assert.equal(getSentenceForWord(text, "rufe an", "de", "modern", 5), "Später rufe ich wieder an.");
+  });
+
+  it("matches a separated German verb with ß to its folded key", () => {
+    const tokens = tokenizeText("Ich schließe die Tür ab.", "de");
+    const matches = findGermanSeparableVerbMatches(tokens, { "schliesse ab": { status: "learning" } }, "de");
+    assert.deepEqual([...matches.keys()].map((index) => tokens[index].value), ["schließe", "ab"]);
+  });
+
+  it("gives Greek grave and acute forms and Ukrainian apostrophes one key", () => {
+    assert.equal(normalizeVocabularyWord("θεὰ", "grc"), normalizeVocabularyWord("θεά", "grc"));
+    assert.equal(normalizeVocabularyWord("Θεά", "grc"), normalizeVocabularyWord("θεά", "grc"));
+    assert.notEqual(normalizeVocabularyWord("ὁ", "grc"), normalizeVocabularyWord("ὀ", "grc"));
+    assert.equal(normalizeVocabularyWord("памʼять", "uk"), "пам'ять");
+    assert.equal(normalizeVocabularyWord("пам’ять", "uk"), "пам'ять");
   });
 });

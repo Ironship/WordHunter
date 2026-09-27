@@ -121,7 +121,7 @@ fn rejects_rootfile_paths_that_escape_the_archive() {
 
 #[test]
 fn rejects_epubs_over_the_entry_limit() {
-    let names = (0..501)
+    let names = (0..10_001)
         .map(|index| format!("entry-{index}.txt"))
         .collect::<Vec<_>>();
     let entries = names
@@ -130,7 +130,41 @@ fn rejects_epubs_over_the_entry_limit() {
         .collect::<Vec<_>>();
 
     let error = import_epub(make_zip(&entries)).expect_err("entry limit should be enforced");
+    assert!(error.starts_with("EPUB_TOO_LARGE"), "{error}");
     assert!(error.contains("too many entries"), "{error}");
+}
+
+#[test]
+fn large_fonts_and_many_images_do_not_block_an_epub() {
+    // A 12 MB embedded CJK font and 60 MB of pictures used to exceed the
+    // 10 MB per entry and 50 MB per book limits, though none of it is read.
+    let font = vec![0u8; 12_000_000];
+    let picture = vec![0u8; 2_000_000];
+    let picture_names = (0..30)
+        .map(|index| format!("OPS/images/p{index}.jpg"))
+        .collect::<Vec<_>>();
+    let mut entries: Vec<(&str, &[u8])> = vec![
+        ("mimetype", b"application/epub+zip"),
+        ("META-INF/container.xml", CONTAINER.as_bytes()),
+        ("OPS/content.opf", OPF.as_bytes()),
+        (
+            "OPS/first.xhtml",
+            b"<html><body><p>First chapter.</p></body></html>",
+        ),
+        (
+            "OPS/second.xhtml",
+            b"<html><body><p>Second chapter.</p></body></html>",
+        ),
+        ("OPS/fonts/NotoSerifCJK.otf", &font),
+    ];
+    entries.extend(
+        picture_names
+            .iter()
+            .map(|name| (name.as_str(), picture.as_slice())),
+    );
+
+    let result = import_epub(make_zip(&entries)).expect("illustrated EPUB should import");
+    assert_eq!(result["text"], "Second chapter.\n\nFirst chapter.");
 }
 
 fn import_epub(epub: Vec<u8>) -> Result<serde_json::Value, String> {

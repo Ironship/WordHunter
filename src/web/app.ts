@@ -71,8 +71,8 @@ function flushPendingStateBeforeExit() {
   if (lifecycleFlushStarted) return;
   lifecycleFlushStarted = true;
   flushFrontendStateBuffers();
-  flushUiStateSync();
   if (isAndroidPlatform()) {
+    flushUiStateSync();
     // The webview is being torn down: keepalive fetches are capped at 64 KiB
     // while the real save payload is multi-MB, so the final mutations could
     // never reach the backend (issue #137). Persist the save delta to
@@ -86,7 +86,10 @@ function flushPendingStateBeforeExit() {
     }
     return;
   }
+  // The store save goes first: browsers allow 64 KiB of keepalive bodies
+  // per page, and the words matter more than the reading position.
   if (typeof window.flushPendingSave === "function") window.flushPendingSave();
+  flushUiStateSync();
 }
 
 // Replay a pending Android teardown flush into the backend once the boot
@@ -97,7 +100,10 @@ function recoverPendingFlush(): void {
   const pending = readPendingDelta();
   if (pending === null) return;
   const replay = () => {
-    saveWithRetry(pending.payload, 3)
+    // Sent on behalf of the page that froze it: the backend merges it but
+    // keeps this page's save base, so this page's next save, which never
+    // saw these edits, does not delete them again.
+    saveWithRetry(pending.payload, 3, { page: pending.page || "previous-page" })
       .then(() => clearPendingDelta())
       .catch((error) => console.error("pending-flush replay failed; will retry next boot", error));
   };
@@ -131,7 +137,7 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   if (openAndroidUrl(link.href)) return;
   if (window.__qtBridge) {
-    fetch("/__open_dict?url=" + encodeURIComponent(link.href) + "&mode=external")
+    fetch("/__open_dict?url=" + encodeURIComponent(link.href) + "&mode=external", { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
       .catch((error) => console.warn("Failed to open external link", error));
   } else {
     window.open(link.href, "_blank", "noopener,noreferrer");

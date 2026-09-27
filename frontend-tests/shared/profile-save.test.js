@@ -68,6 +68,36 @@ describe("profile save payload", () => {
     assert.equal(Object.hasOwn(normalized.vocab.broken, "article"), false);
     assert.equal(Object.hasOwn(normalized.vocab.empty, "article"), false);
   });
+  it("keeps each profile's per-day review counter through normalization and saves", () => {
+    const localDay = (daysAgo) => {
+      const now = new Date();
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+      return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    };
+    const raw = createDefaultState();
+    raw.profiles.de.reviewsByDay = {
+      [localDay(0)]: 3,
+      [localDay(40)]: "2",
+      [localDay(800)]: 5,
+      [localDay(1)]: 0,
+      yesterday: 1
+    };
+    raw.profiles.fr = {
+      vocab: {}, customTexts: [], userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [],
+      reviewsByDay: { [localDay(2)]: -1 }
+    };
+
+    const normalized = normalizeState(raw);
+    const payload = buildSavePayload(normalized);
+
+    const expected = { [localDay(0)]: 3, [localDay(40)]: 2 };
+    assert.deepEqual(normalized.profiles.de.reviewsByDay, expected);
+    assert.equal(Object.hasOwn(normalized.profiles.fr, "reviewsByDay"), false);
+    // The backend stores payload.vocab.<lang> minus vocab/userBooks as the
+    // profile:<lang> record, so the counter round-trips with the profile.
+    assert.deepEqual(payload.vocab.de.reviewsByDay, expected);
+  });
+
   it("removes the duplicate starter text created by the old Gutenberg fallback", () => {
     const raw = createDefaultState();
     raw.preferences.learningLanguage = "ru";

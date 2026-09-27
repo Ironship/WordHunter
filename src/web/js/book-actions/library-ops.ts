@@ -15,11 +15,13 @@ import {
   clearCurrentBookSelectionIfMatches,
   forgetArchivedBook,
   forgetReaderPositionIfUnreferenced,
+  gutenbergFullTextIds,
   hideBuiltInBookId,
   isCustomTextReferenced,
   moveCustomTextToProfile,
   moveUserBookToProfile,
   planCustomTextMove,
+  removeCustomTextFromActiveProfile,
   removeUserBookFromActiveProfile
 } from "./profile-library.js";
 
@@ -82,6 +84,7 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   if (currentLang === targetLang) return false;
   const previousUiState = cloneMoveUiState();
   let movedCustom: { oldId: string; newId: string; textBody: string } | null = null;
+  let droppedFullTexts: string[] = [];
 
   if (isCustom) {
     const planned = planCustomTextMove(id, targetLang);
@@ -112,8 +115,14 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   } else {
     const bookObj = moveUserBookToProfile(id, targetLang);
     if (!bookObj) return false;
-    if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
-    clearLastReadTextId(id);
+    // The full text cached for the book belongs to the old language; the
+    // moved book fetches its own copy when it is read, under this id, and
+    // finds the bookmarks and reading position made in the old copy there.
+    const [targetFullTextId] = gutenbergFullTextIds(bookObj.gutenbergId, targetLang);
+    const oldFullTextIds = gutenbergFullTextIds(bookObj.gutenbergId, currentLang);
+    if (targetFullTextId) carryReadingState(oldFullTextIds, targetFullTextId);
+    droppedFullTexts = oldFullTextIds.filter((textId) => removeCustomTextFromActiveProfile(textId));
+    [id, ...droppedFullTexts].forEach(forgetBookState);
   }
 
   try {
@@ -147,6 +156,13 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
       console.warn("move custom text cleanup failed", cleanupError);
     });
   }
+  if (window.__qtBridge) {
+    for (const textId of droppedFullTexts.filter((textId) => !isCustomTextReferenced(textId))) {
+      await deleteStoredText(textId).catch((cleanupError) => {
+        console.warn("move book full text cleanup failed", cleanupError);
+      });
+    }
+  }
   render();
   showToast(t("toast.bookMoved"));
   return true;
@@ -156,20 +172,66 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
 // busy indicator on screen until the durable save (which can take seconds
 // on large stores) settles.
 export async function removeUserBook(id: string): Promise<void> {
-  if (!forgetUserBook(id)) return;
+  const fullTextIds = forgetUserBookWithFullText(id);
+  if (!fullTextIds) return;
   await saveState();
+  // As in removeCustomText, the cached full text's body lives in the store.
+  if (window.__qtBridge) {
+    for (const textId of fullTextIds) {
+      if (isCustomTextReferenced(textId)) continue;
+      await deleteStoredText(textId).catch((error) => {
+        console.warn("delete_text media cleanup failed", error);
+      });
+    }
+  }
   render();
   showToast(t("toast.userBookRemoved"));
 }
 
-/** Drops a user book and its reader state from the active profile, without saving. */
+/**
+ * Drops a user book and its reader state from the active profile, without
+ * saving, together with the Gutenberg full text cached for it (that copy has
+ * no Library card of its own).
+ */
 export function forgetUserBook(id: string): boolean {
-  if (!removeUserBookFromActiveProfile(id)) return false;
+  return forgetUserBookWithFullText(id) !== null;
+}
+
+/** forgetUserBook, returning the removed full-text ids (null: no such book). */
+function forgetUserBookWithFullText(id: string): string[] | null {
+  const book = removeUserBookFromActiveProfile(id);
+  if (!book) return null;
+  const fullTextIds = gutenbergFullTextIds(book.gutenbergId, state.preferences.learningLanguage)
+    .filter((textId) => removeCustomTextFromActiveProfile(textId));
+  [id, ...fullTextIds].forEach(forgetBookState);
+  return fullTextIds;
+}
+
+/** Copies bookmarks and reading positions kept under `fromIds` to `toId`,
+ * unless `toId` already has its own. */
+function carryReadingState(fromIds: string[], toId: string): void {
+  const bookmarks = state.preferences.readerBookmarks;
+  for (const fromId of fromIds) {
+    if (bookmarks?.[fromId]?.length && !bookmarks[toId]?.length) bookmarks[toId] = bookmarks[fromId];
+    for (const positions of [state.readerPages, state.readerScrolls]) {
+      if (positions && Object.hasOwn(positions, fromId) && !Object.hasOwn(positions, toId)) {
+        positions[toId] = positions[fromId];
+      }
+    }
+    const perPage = state.readerScrollsPerPage;
+    if (!perPage) continue;
+    for (const [key, value] of Object.entries(perPage)) {
+      const moved = `${toId}${key.slice(fromId.length)}`;
+      if (key.startsWith(`${fromId}-`) && !Object.hasOwn(perPage, moved)) perPage[moved] = value;
+    }
+  }
+}
+
+function forgetBookState(id: string): void {
   clearBookTextCache(id);
   forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
-  return true;
 }
 
 export async function hideBuiltInBook(id: string): Promise<void> {

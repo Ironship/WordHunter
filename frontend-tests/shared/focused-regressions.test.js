@@ -151,6 +151,7 @@ describe("lazy library statistics", () => {
         loadBookText: async () => "",
         loadCustomTextContent: async () => ""
       },
+      "../book-actions/profile-library.js": { gutenbergFullTextIds: () => [] },
       "../stats-cache.js": {
         getCachedBookTextStats: (id) => id === "long"
           ? { unique: 8, known: 2, learning: 2, ignored: 1, new: 5 }
@@ -212,7 +213,7 @@ async function globalActionsHarness(options = {}) {
     },
     "../views/vocabulary.js": { gradeReview() {}, loadMoreVocab() {}, removeFromSrs() {} },
     "../vocab-actions.js": {
-      deleteWord() {}, handleReviewAction() {}, ignoreWord() {}, removeWordImage() {},
+      confirmAndDeleteWord: options.confirmAndDeleteWord || (async () => false), handleReviewAction() {}, ignoreWord() {}, removeWordImage() {},
       setWordImage() {}, setWordStatus() {}, updateWordField() {}
     },
     "../sync-actions.js": { exportVocabularySelection() {} },
@@ -409,6 +410,85 @@ describe("focused frontend regressions", () => {
 
     assert.deepEqual(sliceCalls, [[readerText.dataset.ttsText, 9]]);
     assert.equal(calls.find((call) => call[0] === "speakText")[3].startTokenIndex, 1);
+  });
+
+  it("reads aloud a paginated page without its pagination controls", async () => {
+    const readerText = {
+      dataset: {},
+      innerHTML: "",
+      // Like the DOM: the page text followed by the footer's key labels.
+      get innerText() { return this.innerHTML.replace(/<[^>]*>/g, ""); },
+      insertAdjacentHTML(_position, html) { this.innerHTML += html; },
+      removeAttribute() {},
+      querySelectorAll() { return []; },
+      contains() { return false; }
+    };
+    const { renderPlainText } = await evaluateWithMocks("dist/web/js/reader/text-renderer.js", {
+      "../state.js": { state: { readerPage: 2, selectedWord: null, preferences: {}, vocab: {} } },
+      "../dom.js": { els: { readerText } },
+      "../utils.js": { escapeHtml: (value) => value },
+      "../i18n.js": { t: (key) => key },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word.toLowerCase() },
+      "./scroll.js": { restoreReaderPagePosition() {} },
+      "./word-panel.js": { renderWordPanel() {} },
+      "./selection.js": { updateReaderSelection() {} },
+      "./pagination.js": {
+        paginationHtml: () => '<div class="pagination-controls"><kbd>Page Up</kbd><span>/ 12</span><kbd>Page Down</kbd></div>'
+      },
+      "./focus.js": { applyPendingReaderPageFocus() { return false; }, applyPendingReaderWordFocus() { return false; } },
+      "../reader-colors.js": { getSrsLevel() { return 0; } },
+      "./bookmarks.js": { renderInlineBookmarkIndicators() {} },
+      "./format-markers.js": { spanCovers() { return false; } }
+    });
+    const tokens = [
+      { type: "word", value: "Vorher" }, { type: "text", value: ". " },
+      { type: "word", value: "Der" }, { type: "text", value: " " }, { type: "word", value: "Hund" },
+      { type: "image", value: "hund.png" }, { type: "text", value: " " }, { type: "word", value: "bellt" },
+      { type: "text", value: "." }
+    ];
+    renderPlainText({
+      current: { id: "book" },
+      tokens,
+      globalWordIndexes: [0, 0, 1, 0, 2, 0, 0, 3, 0],
+      globalCharOffsets: [0, 0, 8, 0, 12, 0, 0, 18, 0],
+      classifications: new Map(),
+      pageStartIndex: 2,
+      pageEndIndex: tokens.length,
+      totalPages: 12,
+      scrollPerPageKey: "book-p2",
+      savedPos: 0
+    });
+    for (let tick = 0; tick < 10 && readerText.dataset.rendering !== "0"; tick += 1) await flushAsync();
+    assert.match(readerText.innerHTML, /pagination-controls/);
+
+    const { calls, listeners } = await globalActionsHarness({
+      state: { selectedWord: null, selectedWordIndex: null },
+      elements: { "reader-text": readerText, "tts-stop-text": { hidden: true } }
+    });
+    listeners.get("click")({
+      target: closestTarget({
+        "#tts-play-text": { hidden: false },
+        "#reader-text, #word-panel, #reader-view .reader-toolbar, dialog": { id: "toolbar" }
+      }),
+      composedPath() { return []; }
+    });
+
+    assert.equal(calls.find((call) => call[0] === "speakText")[1], "Der Hund bellt.");
+  });
+
+  it("routes every [data-delete-word] click through the confirm-then-delete helper", async () => {
+    const deletes = [];
+    const { listeners } = await globalActionsHarness({
+      state: { currentView: "vocabulary", selectedWord: null },
+      confirmAndDeleteWord: async (word) => { deletes.push(word); return false; }
+    });
+
+    listeners.get("click")({
+      target: closestTarget({ "[data-delete-word]": { dataset: { deleteWord: "haus" } } }),
+      composedPath() { return []; }
+    });
+
+    assert.deepEqual(deletes, ["haus"]);
   });
 
   it("keeps keyboard navigation lightweight and routes swipes through automatic translation", async () => {
@@ -990,10 +1070,9 @@ describe("focused frontend regressions", () => {
       "../../state.js": { state },
       "../../i18n.js": { t: (key) => key },
       "../../toast.js": { showToast() {} },
-      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
-      "../../vocab-actions.js": { setWordStatus() {} },
+      "../../vocab-actions.js": { confirmAndDeleteWord: async () => false, setWordStatus() {} },
       "../shared.js": {
         openDictionary() {}, getSelectedReaderActionText() { return "middle"; },
         copySelectedWordToClipboard() {}, hasNativeTextSelection() { return false; }
@@ -1085,10 +1164,9 @@ describe("focused frontend regressions", () => {
       "../../state.js": { state },
       "../../i18n.js": { t: (key) => key },
       "../../toast.js": { showToast() {} },
-      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
-      "../../vocab-actions.js": { setWordStatus() {} },
+      "../../vocab-actions.js": { confirmAndDeleteWord: async () => false, setWordStatus() {} },
       "../shared.js": {
         openDictionary() {}, getSelectedReaderActionText() { return "wort"; },
         copySelectedWordToClipboard() {}, hasNativeTextSelection() { return false; }
@@ -1695,6 +1773,84 @@ describe("focused frontend regressions", () => {
     assert.doesNotMatch(html, /sm2\.inTextPrompt/);
     assert.match(html, /data-in-text-answer/);
     assert.match(html, /sm2\.showAnswer/);
+  });
+
+  it("keeps waiting for an export job that is still making progress, and hands an Android package to Save as", async () => {
+    // Every clock read moves 100 s on: the job runs past the old fixed
+    // 5-minute limit while its progress keeps changing.
+    let clock = 0;
+    class FakeDate extends Date {
+      static now() { const value = clock; clock += 100_000; return value; }
+    }
+    const phases = [
+      { done: false, percent: 10, phase: "words" },
+      { done: false, percent: 50, phase: "images" },
+      { done: true, percent: 100, phase: "done", summary: { path: "/cache/wordhunter-transfer/x.zip", filename: "f.zip" } }
+    ];
+    const saved = [];
+    const listeners = new Map();
+    const overlay = { id: "", className: "", innerHTML: "", setAttribute() {}, querySelector() { return null; }, remove() {} };
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: noOp },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key) => key, plural: (key) => key },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
+      "./http.js": {
+        httpPost: async () => ({ ok: true, json: async () => ({ saved: false, job: "job-1" }) }),
+        httpGet: async () => ({ ok: true, json: async () => phases.shift() })
+      }
+    }, {
+      Date: FakeDate,
+      document: { body: { appendChild() {} }, createElement: () => overlay },
+      window: {
+        WH_TOKEN: "test-token",
+        addEventListener: (type, listener) => listeners.set(type, listener),
+        removeEventListener: (type) => listeners.delete(type),
+        WordHunterAndroid: {
+          saveExportFile(path, filename, mime, requestId) {
+            saved.push({ path, filename });
+            // The system picker reports the write as done.
+            queueMicrotask(() => listeners.get("wordhunter:android-export")?.({ detail: { requestId, terminal: true, success: true } }));
+            return true;
+          }
+        }
+      },
+      // Only the progress poll's short sleep runs at once; the Android
+      // bridge's safety timers never fire in this test.
+      setTimeout(callback, ms) { if (ms === 400) callback(); return 1; },
+      clearTimeout() {}
+    });
+
+    assert.equal(await module.exportTransfer("all", "wordhunter-full", false), true);
+    assert.deepEqual(saved.map((entry) => entry.path), ["/cache/wordhunter-transfer/x.zip"]);
   });
 
   it("stops polling an invalid export-progress response at the deadline and removes the overlay", async () => {

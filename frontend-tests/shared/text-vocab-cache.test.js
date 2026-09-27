@@ -27,7 +27,9 @@ describe("text vocabulary cache", () => {
       tokenLine: " homme "
     };
     assert.equal(entryAppearsInText("l’homme", textIndex, "fr"), true);
-    assert.equal(entryAppearsInText("d’homme", textIndex, "fr"), false);
+    // Other elided words count as the word they are written onto.
+    assert.equal(entryAppearsInText("d’homme", textIndex, "fr"), true);
+    assert.equal(entryAppearsInText("aujourd’hui", textIndex, "fr"), false);
   });
 
   it("retries with a fresh index when the active request is invalidated", async () => {

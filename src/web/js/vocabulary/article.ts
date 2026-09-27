@@ -36,6 +36,23 @@ function splitAttachedArticle(value: string, language: string): { word: string; 
   return null;
 }
 
+// Elided words written onto the next one ("d'amour", "qu'il", "dell'acqua"):
+// the vocabulary key is the word after the apostrophe. Longest prefixes come
+// first. Keep in sync with ELIDED_PREFIXES in src-tauri/src/tokenizer.rs.
+const ELIDED_PREFIXES: Record<string, string[]> = {
+  fr: ["lorsqu'", "puisqu'", "jusqu'", "qu'", "l'", "d'", "j'", "m'", "t'", "s'", "n'", "c'"],
+  it: [
+    "dell'", "dall'", "nell'", "sull'", "coll'", "degl'", "dagl'", "negl'", "sugl'", "quest'", "quell'",
+    "all'", "agl'", "gl'", "un'", "l'", "c'", "d'", "m'", "t'", "s'", "v'"
+  ]
+};
+
 export function vocabularyWordKey(value: string, language: string): string {
-  return splitAttachedArticle(value, language)?.word || value;
+  const article = splitAttachedArticle(value, language);
+  if (article) return article.word;
+  const prefixes = ELIDED_PREFIXES[baseLanguage(language)] || [];
+  const lower = String(value || "").toLowerCase().replaceAll("’", "'");
+  const prefix = prefixes.find((candidate) => lower.startsWith(candidate));
+  const word = prefix ? value.slice(prefix.length).trim() : "";
+  return word || value;
 }

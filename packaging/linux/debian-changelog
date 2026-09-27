@@ -1,3 +1,13 @@
+word-hunter (1.1.2) unstable; urgency=medium
+
+  * Open Wikipedia and Wikinews articles from Discover as texts again.
+  * Import browser-printed PDFs, illustrated EPUBs and more YouTube subtitles; ship a working yt-dlp in the Snap.
+  * Restore what the clear buttons removed from their automatic backup; keep API keys and deletions out of packages.
+  * Keep elided French and Italian words, Ukrainian apostrophes and Greek accents under one vocabulary entry.
+  * Keep every review day, confirm word deletion, and keep edits made right before a reload.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Sun, 27 Sep 2026 12:00:00 +0000
+
 word-hunter (1.1.1) unstable; urgency=medium
 
   * Open the desktop app with the saved languages and library instead of the defaults.

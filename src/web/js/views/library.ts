@@ -11,6 +11,7 @@ import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { openAndroidUrl } from "../platform.js";
 import { showToast } from "../toast.js";
 import { beginElementBusy } from "../loading.js";
+import { gutenbergFullTextIds } from "../book-actions/profile-library.js";
 
 interface LibraryBook {
   id: string;
@@ -168,9 +169,13 @@ export function renderLibrary(): void {
       .finally(() => { completeStatsHydration = null; });
   }
 
+  // The full text loadFullGutenbergText caches for a Gutenberg book opens
+  // from the book's own card, so it gets no second "(full text)" card.
+  const cachedFullTextIds = new Set((state.userBooks || [])
+    .flatMap((book) => gutenbergFullTextIds(book.gutenbergId, state.preferences.learningLanguage)));
   const allBooks: LibraryBook[] = [
     ...getAllBooks() as LibraryBook[],
-    ...(state.customTexts || []).map((ct) => {
+    ...(state.customTexts || []).filter((ct) => !cachedFullTextIds.has(ct.id)).map((ct) => {
       const cachedText = bookTexts.peek(ct.id);
       const hasCachedText = cachedText !== undefined;
       const hasInlineText = typeof ct.text === "string";
@@ -585,7 +590,7 @@ export function bindLibraryEvents(): void {
         // On Android the webview cannot open new windows, so the native
         // bridge goes first; /__open_external covers the desktop webview.
         if (openAndroidUrl(url)) return;
-        fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+        fetch(`/__open_external?url=${encodeURIComponent(url)}`, { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
           .then((res) => {
             if (!res.ok) {
               console.warn("Failed to open source link", `HTTP ${res.status}`);

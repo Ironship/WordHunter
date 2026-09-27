@@ -165,7 +165,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           asset_name="word-hunter_${APP_VERSION}_amd64.deb"
-          expected="$(sed -nE 's/^    source-checksum: sha256\/([0-9a-f]{64})$/sha256:\1/p' snap/snapcraft.yaml)"
+          # The first part is the Word Hunter DEB; later parts pin their own sources.
+          expected="$(sed -nE 's/^    source-checksum: sha256\/([0-9a-f]{64})$/sha256:\1/p' snap/snapcraft.yaml | head -n 1)"
           test -n "$expected"
           actual="$(curl --fail --location --retry 3 \
             --header 'Accept: application/vnd.github+json' \
@@ -222,6 +223,8 @@ jobs:
           test -f "$root/snap/snapcraft.yaml"
           test -x "$root/snap/command-chain/gpu-2404-wrapper"
           test -x "$root/snap/command-chain/desktop-launch"
+          test -x "$root/usr/bin/yt-dlp"
+          test -f "$root/usr/lib/word-hunter/yt-dlp/yt_dlp/__main__.py"
           test -x "$root/usr/lib/Word Hunter/ocr-runtime/bin/wordhunter-paddleocr"
           test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libpdfium.so"
           test -f "$root/usr/lib/Word Hunter/ocr-runtime/bin/libwebgpu_dawn.so"
@@ -256,6 +259,8 @@ jobs:
           sudo snap install --dangerous "$SNAP_PATH"
           snap list word-hunter
           snap connections word-hunter
+          # The caption fallback's yt-dlp must run inside the confinement.
+          snap run --shell word-hunter -c '"$SNAP/usr/bin/yt-dlp" --version'
           set +e
           # GitHub-hosted runners live in hosted-compute-agent.service. Enter
           # the confined app environment before creating the private D-Bus

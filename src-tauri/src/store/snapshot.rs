@@ -92,7 +92,7 @@ impl Store {
                     continue;
                 }
             };
-            self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+            self.commit_bulk_save_with_context(&payload, &base, saved_at, true)?;
             remove_if_exists(&journal)?;
             remove_if_exists(&temp)?;
             return Ok(PendingRecovery::Save);
@@ -135,11 +135,15 @@ impl Store {
         self.discard_abandoned_book_imports()
     }
 
+    #[cfg(test)]
     pub fn snapshot(&self) -> Value {
-        self.snapshot_with_recovery_status(true)
+        self.snapshot_for_page(None)
     }
 
-    fn snapshot_with_recovery_status(&self, include_recovery_status: bool) -> Value {
+    /// The snapshot a page boots from. Its records become that page's save
+    /// base once the page sends a request (`claim_base`); without a page id
+    /// they replace the base at once.
+    pub fn snapshot_for_page(&self, page: Option<&str>) -> Value {
         let _guard = match self.lock_writes() {
             Ok(guard) => guard,
             Err(error) => return add_snapshot_error(empty_snapshot(self.dir()), error),
@@ -147,7 +151,36 @@ impl Store {
         if let Err(error) = self.recover_pending_save() {
             return add_snapshot_error(empty_snapshot(self.dir()), format!("recovery: {error}"));
         }
-        self.snapshot_unlocked(include_recovery_status)
+        self.snapshot_unlocked(true, page)
+    }
+
+    /// Whether a request from `page` speaks for the page the save base
+    /// describes. A served page's first request makes it that page, with
+    /// the base it was served; pages served before it are gone. Requests
+    /// without a page id (and a base no page claimed) keep the single-page
+    /// behaviour.
+    fn claim_base(&self, page: Option<&str>) -> bool {
+        let Some(page) = page else {
+            return true;
+        };
+        let mut pages = self.base_page.lock().unwrap_or_else(|e| e.into_inner());
+        if pages.owner.as_deref() == Some(page) {
+            return true;
+        }
+        let Some(index) = pages.served.iter().position(|(id, _)| id == page) else {
+            // Another page's save (a replayed teardown delta, or the page a
+            // served one replaces): it merges against the current base but
+            // does not move it.
+            return pages.owner.is_none() && pages.served.is_empty();
+        };
+        let (_, base) = pages
+            .served
+            .drain(..=index)
+            .next_back()
+            .expect("index is in range");
+        pages.owner = Some(page.to_string());
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base;
+        true
     }
 
     pub fn snapshot_unacknowledged(&self) -> Value {
@@ -170,9 +203,16 @@ impl Store {
         snapshot
     }
 
-    pub fn acknowledge_frontend_snapshot(&self, payload: &Value) -> Result<(), String> {
+    pub fn acknowledge_frontend_snapshot_from(
+        &self,
+        payload: &Value,
+        page: Option<&str>,
+    ) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         validate_snapshot_payload_schema(payload)?;
+        if !self.claim_base(page) {
+            return Ok(());
+        }
         let previous = self
             .base_records
             .lock()
@@ -188,8 +228,8 @@ impl Store {
         Ok(())
     }
 
-    fn snapshot_unlocked(&self, include_recovery_status: bool) -> Value {
-        let mut snapshot = match self.records_snapshot() {
+    fn snapshot_unlocked(&self, include_recovery_status: bool, page: Option<&str>) -> Value {
+        let mut snapshot = match self.records_snapshot(page) {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 add_snapshot_error(empty_snapshot(self.dir()), format!("records: {error}"))
@@ -201,7 +241,17 @@ impl Store {
         snapshot
     }
 
+    #[cfg(test)]
     pub fn bulk_save(&self, payload: Value) -> Result<usize, String> {
+        self.bulk_save_from(payload, None)
+    }
+
+    /// Saves a page's state. A save from a page other than the one the base
+    /// belongs to (the reloaded page's exit flush arriving after the new
+    /// page was served) is merged like any other, but leaves the base alone:
+    /// otherwise the new page, which never saw that save, would later send
+    /// its state without the saved words and delete them.
+    pub fn bulk_save_from(&self, payload: Value, page: Option<&str>) -> Result<usize, String> {
         let _guard = self.lock_writes()?;
         match self.recover_pending_operations()? {
             PendingRecovery::None => {}
@@ -216,6 +266,7 @@ impl Store {
             }
         }
         validate_snapshot_payload_schema(&payload)?;
+        let advance_base = self.claim_base(page);
         let base = self
             .base_records
             .lock()
@@ -249,7 +300,8 @@ impl Store {
         }
         durable::write_file_atomic(&journal, &journal_bytes, false)?;
 
-        let conflicts = self.commit_bulk_save_with_context(&payload, &base, saved_at)?;
+        let conflicts =
+            self.commit_bulk_save_with_context(&payload, &base, saved_at, advance_base)?;
         remove_if_exists(journal)?;
         Ok(conflicts)
     }
@@ -259,6 +311,7 @@ impl Store {
         payload: &Value,
         base: &record_files::Fingerprints,
         now: u128,
+        advance_base: bool,
     ) -> Result<usize, String> {
         validate_snapshot_payload_schema(payload)?;
         let effective = if payload.get("delta").and_then(Value::as_bool) == Some(true) {
@@ -300,8 +353,10 @@ impl Store {
             .map(|(key, record)| (key.clone(), record.clone()))
             .collect();
         record_files::write_records(&self.dir(), &changed)?;
-        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
-            acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
+        if advance_base {
+            *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
+                acknowledged_frontend_base(base, &incoming_fingerprints, &merged.records);
+        }
         self.set_records_cache(merged.records);
         Ok(merged.conflicts.len())
     }
@@ -319,12 +374,31 @@ impl Store {
         status
     }
 
-    fn records_snapshot(&self) -> Result<Value, String> {
+    fn records_snapshot(&self, page: Option<&str>) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
         self.set_records_cache(records.clone());
-        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
-            record_files::fingerprints(&records);
+        let base = record_files::fingerprints(&records);
+        let mut pages = self.base_page.lock().unwrap_or_else(|e| e.into_inner());
+        match page {
+            Some(page) => {
+                // With no page owning the base yet (app start), saves from
+                // other pages merge against what this page was served.
+                if pages.owner.is_none() {
+                    *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base.clone();
+                }
+                pages.served.retain(|(id, _)| id != page);
+                pages.served.push_back((page.to_string(), base));
+                while pages.served.len() > super::SERVED_PAGES_KEPT {
+                    pages.served.pop_front();
+                }
+            }
+            None => {
+                pages.owner = None;
+                *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base;
+            }
+        }
+        drop(pages);
         if records.is_empty() {
             return Ok(empty_snapshot(dir));
         }
@@ -363,6 +437,12 @@ impl Store {
         media_assets::tombstone_all(&self.dir(), self.device_id())?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             record_files::fingerprints(&records);
+        // Pages served before the wipe must not take their old base over.
+        self.base_page
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .served
+            .clear();
         Ok(())
     }
 
@@ -531,20 +611,15 @@ fn add_recovery_status_to_snapshot(snapshot: &mut Value, status: Value) {
     snapshot["recoveryStatus"] = status;
 }
 
-#[cfg(target_os = "android")]
+/// Every snapshot leaves out the OCR page arrays and sends their count; the
+/// renderer loads a book's pages from `/__book/pdf_pages` when it opens it,
+/// and saves fill them back in (`hydrate_text_records`). A few OCR books
+/// used to add tens of megabytes to the desktop's inlined boot snapshot.
 fn snapshot_payload(
     dir: &std::path::Path,
     records: &BTreeMap<String, record_files::SyncRecord>,
 ) -> Value {
     record_files::records_to_mobile_snapshot_payload(dir, records)
-}
-
-#[cfg(not(target_os = "android"))]
-fn snapshot_payload(
-    dir: &std::path::Path,
-    records: &BTreeMap<String, record_files::SyncRecord>,
-) -> Value {
-    record_files::records_to_snapshot_payload(dir, records)
 }
 
 fn acknowledged_frontend_base(
@@ -690,6 +765,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            base_page: Mutex::default(),
             records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
@@ -741,6 +817,99 @@ mod tests {
                     |entry| entry.path().extension().and_then(|value| value.to_str())
                         == Some("yaml")
                 )
+        );
+    }
+
+    #[test]
+    fn a_reloaded_pages_exit_save_does_not_move_the_new_pages_base() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        store.bulk_save(payload("Wort")).unwrap();
+        let _ = store.snapshot_for_page(Some("old"));
+        // F5 right after an edit: the new page is served before the old
+        // page's exit save lands.
+        let served = store.snapshot_for_page(Some("new"));
+        assert!(served["vocab"]["de"]["vocab"].get("haus").is_none());
+        let mut exit_save = payload_with_status("Wort", "known");
+        exit_save["vocab"]["de"]["vocab"]["Haus"] =
+            json!({ "word": "Haus", "translation": "house", "status": "learning" });
+        store.bulk_save_from(exit_save, Some("old")).unwrap();
+
+        // The new page saves the state it was served.
+        store.bulk_save_from(payload("Wort"), Some("new")).unwrap();
+        let vocab = store.snapshot_unacknowledged()["vocab"]["de"]["vocab"].clone();
+        assert_eq!(vocab["haus"]["translation"], "house");
+        assert_eq!(vocab["wort"]["status"], "known");
+
+        // Once the new page has checked in, the old page's requests and a
+        // replayed delta from an earlier page no longer move its base, and
+        // a page served but never used (a stray GET /) takes nothing over.
+        store
+            .acknowledge_frontend_snapshot_from(&payload("Wort"), Some("old"))
+            .unwrap();
+        let _ = store.snapshot_for_page(Some("stray"));
+
+        // The new page's own saves still move the base: a word it adds and
+        // then removes is gone.
+        let mut added = payload_with_status("Wort", "known");
+        added["vocab"]["de"]["vocab"]["Haus"] =
+            json!({ "word": "Haus", "translation": "house", "status": "learning" });
+        added["vocab"]["de"]["vocab"]["Neu"] =
+            json!({ "word": "Neu", "translation": "new", "status": "learning" });
+        store.bulk_save_from(added.clone(), Some("new")).unwrap();
+        added["vocab"]["de"]["vocab"]
+            .as_object_mut()
+            .unwrap()
+            .remove("Neu");
+        store.bulk_save_from(added, Some("new")).unwrap();
+        let vocab = store.snapshot()["vocab"]["de"]["vocab"].clone();
+        assert!(vocab.get("neu").is_none(), "{vocab}");
+        assert_eq!(vocab["haus"]["translation"], "house");
+    }
+
+    #[test]
+    fn a_replayed_delta_at_app_start_merges_against_the_served_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut two_words = payload("Wort");
+        two_words["vocab"]["de"]["vocab"]["Haus"] =
+            json!({ "word": "Haus", "translation": "house", "status": "learning" });
+        store_at(&dir).bulk_save(two_words).unwrap();
+
+        // The app restarts; the new page loads before the old page's
+        // teardown delta, which deleted "Haus", is replayed.
+        let store = store_at(&dir);
+        let _ = store.snapshot_for_page(Some("page"));
+        store
+            .bulk_save_from(payload("Wort"), Some("previous-page"))
+            .unwrap();
+        let vocab = store.snapshot_unacknowledged()["vocab"]["de"]["vocab"].clone();
+        assert!(vocab.get("haus").is_none(), "{vocab}");
+        assert!(vocab.get("wort").is_some());
+    }
+
+    #[test]
+    fn snapshots_leave_ocr_pages_to_be_loaded_on_demand() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = store_at(&dir);
+        let mut saved = payload("Wort");
+        saved["texts"] = json!([{
+            "id": "de-scan",
+            "title": "Scan",
+            "text": "Seite eins",
+            "pdfOcrPages": [{ "text": "Seite eins", "words": ["Seite", "eins"] }]
+        }]);
+        store.bulk_save(saved).unwrap();
+
+        let snapshot = store.snapshot_for_page(Some("page"));
+        let text = &snapshot["texts"][0];
+        assert!(text.get("pdfOcrPages").is_none(), "{text}");
+        assert_eq!(text["pdfOcrPageCount"], 1);
+
+        // The renderer saves the texts as it got them; the pages stay.
+        store.bulk_save_from(snapshot, Some("page")).unwrap();
+        assert_eq!(
+            store.get_pdf_ocr_pages("de-scan").unwrap()[0]["text"],
+            "Seite eins"
         );
     }
 

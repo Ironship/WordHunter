@@ -13,8 +13,34 @@ The build script prepares this automatically for `portable`, `installer`, and
 It downloads PaddleOCR ONNX models, downloads `pdfium.dll`, builds the native
 Rust runner, and copies the executable and DLLs into this runtime folder.
 The bundled defaults are the small PP-OCRv5 ONNX models used by
-`paddle-ocr-rs`. Language-specific PP-OCR ONNX models can be dropped into
-`models\` as `det.onnx`, `rec.onnx`, and `dict.txt` without changing the app.
+`paddle-ocr-rs`, which read Chinese, English and Japanese. Other models can be
+dropped into `models\` without changing the app. The runner picks the
+recognizer and its dictionary together, for the learning language it is given
+(`--lang`), in this order:
+
+1. `<lang>_rec.onnx` with `<lang>_dict.txt` (for example `de_rec.onnx`);
+2. `rec.onnx` with `dict.txt`;
+3. PaddleOCR's PP-OCRv5 model for the language's script:
+   `<family>_PP-OCRv5_mobile_rec_infer.onnx` (or `<family>_rec.onnx`) with
+   `<family>_dict.txt`, where the family is `latin` (German, Polish, French,
+   Spanish, Italian and other Latin-script languages), `eslav` (Russian,
+   Ukrainian, Belarusian), `cyrillic`, `el`, `arabic`, `devanagari`,
+   `korean` or `th`;
+4. the bundled Chinese/English model; for a language with a family above it
+   prints a warning, because it may drop that language's letters.
+
+A recognizer is only ever paired with its own dictionary file. Without one it
+must carry its character list in its ONNX metadata (`character`, as the
+RapidOCR/paddle-ocr-rs exports do); otherwise the runner skips it and tries
+the next. Dictionary files can use PaddleOCR's own format (one character per
+line) or already include the CTC blank as the first line and a space as the
+last: the runner compares the line count with the model's number of output
+classes and adds the blank and the space when they are missing. A dictionary
+whose size fits neither belongs to another model, and the recognizer is
+skipped.
+
+`det.onnx` and `cls.onnx` replace the bundled detection and orientation
+models.
 
 Expected Windows layout:
 

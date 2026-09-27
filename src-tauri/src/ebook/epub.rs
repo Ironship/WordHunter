@@ -8,8 +8,21 @@ use zip::ZipArchive;
 
 use super::text::{clean_imported_ebook_text, decode_epub_text, strip_xhtml_to_text};
 
-/// Maximum number of entries accepted in an EPUB archive.
-const MAX_ENTRIES: usize = 500;
+/// Maximum number of entries accepted in an EPUB archive. Listing them is
+/// cheap, and illustrated books carry thousands of images.
+const MAX_ENTRIES: usize = 10_000;
+/// The package documents, text and cover actually read from an EPUB may
+/// add up to this much. Images, fonts and media are never read, so a book
+/// with a large embedded CJK font or many pictures still imports.
+const MAX_READ_BYTES: u64 = 50_000_000;
+const MAX_FILE_SIZE: u64 = 10_000_000;
+/// Prefix of the errors the import panel shows as "this EPUB is too large".
+pub(crate) const EPUB_TOO_LARGE: &str = "EPUB_TOO_LARGE";
+
+/// Bytes still allowed to be read from the archive (a zip bomb guard).
+struct ReadBudget {
+    remaining: u64,
+}
 
 #[derive(Clone, Debug)]
 struct EpubItem {
@@ -21,29 +34,24 @@ struct EpubItem {
 
 pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, String> {
     let mut archive = ZipArchive::new(Cursor::new(data)).map_err(|e| e.to_string())?;
-    const MAX_TOTAL_SIZE: u64 = 50_000_000;
-    const MAX_FILE_SIZE: u64 = 10_000_000;
-
     if archive.len() > MAX_ENTRIES {
         return Err(format!(
-            "EPUB contains too many entries (max {MAX_ENTRIES})"
+            "{EPUB_TOO_LARGE}: EPUB contains too many entries (max {MAX_ENTRIES})"
         ));
     }
-    let total_size = (0..archive.len()).try_fold(0u64, |acc, index| {
-        let file = archive.by_index(index).map_err(|e| e.to_string())?;
-        if file.size() > MAX_FILE_SIZE {
-            return Err(format!("File {} exceeds max size (10 MB)", file.name()));
-        }
-        Ok(acc.saturating_add(file.size()))
-    })?;
-    if total_size > MAX_TOTAL_SIZE {
-        return Err("EPUB uncompressed size too large (max 50 MB)".to_string());
-    }
+    let mut budget = ReadBudget {
+        remaining: MAX_READ_BYTES,
+    };
 
     // Entries already read by the main path; the fallback must not re-read them.
     let mut consumed: HashSet<String> = HashSet::new();
 
-    let container = read_zip_text(&mut archive, "META-INF/container.xml", MAX_FILE_SIZE)?;
+    let container = read_zip_text(
+        &mut archive,
+        "META-INF/container.xml",
+        MAX_FILE_SIZE,
+        &mut budget,
+    )?;
     consumed.insert("META-INF/container.xml".to_string());
     let container_doc = roxmltree::Document::parse(&container).map_err(|e| e.to_string())?;
     let rootfile = container_doc
@@ -56,7 +64,7 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
     let rootfile = epub_href("", &rootfile)
         .ok_or_else(|| "EPUB rootfile path escapes the archive root".to_string())?;
 
-    let opf = read_zip_text(&mut archive, &rootfile, MAX_FILE_SIZE)?;
+    let opf = read_zip_text(&mut archive, &rootfile, MAX_FILE_SIZE, &mut budget)?;
     consumed.insert(rootfile.clone());
     let opf_doc = roxmltree::Document::parse(&opf).map_err(|e| e.to_string())?;
     let opf_dir = zip_parent_dir(&rootfile);
@@ -102,21 +110,30 @@ pub(crate) fn parse_epub(data: &[u8], fallback_title: &str) -> Result<Value, Str
         let Some(path) = epub_href(&opf_dir, &item.href) else {
             continue;
         };
-        if let Ok(markup) = read_zip_text(&mut archive, &path, MAX_FILE_SIZE) {
-            consumed.insert(path.clone());
-            let text = strip_xhtml_to_text(&markup);
-            if !text.is_empty() {
-                text_parts.push(text);
-            }
+        let markup = match read_zip_text(&mut archive, &path, MAX_FILE_SIZE, &mut budget) {
+            Ok(markup) => markup,
+            Err(error) if error.starts_with(EPUB_TOO_LARGE) => return Err(error),
+            Err(_) => continue,
+        };
+        consumed.insert(path.clone());
+        let text = strip_xhtml_to_text(&markup);
+        if !text.is_empty() {
+            text_parts.push(text);
         }
     }
 
     if text_parts.is_empty() {
-        text_parts = read_epub_html_fallback(&mut archive, MAX_FILE_SIZE, &consumed)?;
+        text_parts = read_epub_html_fallback(&mut archive, MAX_FILE_SIZE, &consumed, &mut budget)?;
     }
 
-    let cover_data_url =
-        cover_data_url(&mut archive, &manifest, cover_id.as_deref(), &opf_dir).unwrap_or_default();
+    let cover_data_url = cover_data_url(
+        &mut archive,
+        &manifest,
+        cover_id.as_deref(),
+        &opf_dir,
+        &mut budget,
+    )
+    .unwrap_or_default();
     let text = clean_imported_ebook_text(&text_parts.join("\n\n"));
     if text.is_empty() {
         return Err("No readable text found in EPUB".to_string());
@@ -134,11 +151,12 @@ fn read_epub_html_fallback(
     archive: &mut ZipArchive<Cursor<&[u8]>>,
     max_file_size: u64,
     consumed: &HashSet<String>,
+    budget: &mut ReadBudget,
 ) -> Result<Vec<String>, String> {
     let mut text_parts = Vec::new();
     if archive.len() > MAX_ENTRIES {
         return Err(format!(
-            "EPUB contains too many entries (max {MAX_ENTRIES})"
+            "{EPUB_TOO_LARGE}: EPUB contains too many entries (max {MAX_ENTRIES})"
         ));
     }
 
@@ -158,8 +176,7 @@ fn read_epub_html_fallback(
         if file.size() > max_file_size {
             continue;
         }
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+        let bytes = read_entry(&mut file, max_file_size, budget)?;
         let markup = decode_epub_text(&bytes);
         let text = strip_xhtml_to_text(&markup);
         if !text.trim().is_empty() {
@@ -174,27 +191,48 @@ fn read_zip_text(
     archive: &mut ZipArchive<Cursor<&[u8]>>,
     path: &str,
     max_size: u64,
+    budget: &mut ReadBudget,
 ) -> Result<String, String> {
-    let mut file = archive.by_name(path).map_err(|e| e.to_string())?;
-    if file.size() > max_size {
-        return Err(format!("{path} too large"));
-    }
-    let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
-    Ok(decode_epub_text(&bytes))
+    read_zip_bytes(archive, path, max_size, budget).map(|bytes| decode_epub_text(&bytes))
 }
 
 fn read_zip_bytes(
     archive: &mut ZipArchive<Cursor<&[u8]>>,
     path: &str,
     max_size: u64,
+    budget: &mut ReadBudget,
 ) -> Result<Vec<u8>, String> {
     let mut file = archive.by_name(path).map_err(|e| e.to_string())?;
     if file.size() > max_size {
-        return Err(format!("{path} too large"));
+        return Err(format!(
+            "{EPUB_TOO_LARGE}: {path} is larger than {} MB",
+            max_size / 1_000_000
+        ));
     }
+    read_entry(&mut file, max_size, budget)
+}
+
+/// Reads one entry, counting what it really inflates to (not what its header
+/// claims) against `budget`.
+fn read_entry(
+    file: &mut impl Read,
+    max_size: u64,
+    budget: &mut ReadBudget,
+) -> Result<Vec<u8>, String> {
+    let limit = max_size.min(budget.remaining);
     let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+    file.take(limit + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|e| e.to_string())?;
+    let read = bytes.len() as u64;
+    if read > limit {
+        return Err(if limit < max_size {
+            format!("{EPUB_TOO_LARGE}: the text of this EPUB is larger than 50 MB")
+        } else {
+            "EPUB entry is larger than it claims".to_string()
+        });
+    }
+    budget.remaining -= read;
     Ok(bytes)
 }
 
@@ -255,6 +293,7 @@ fn cover_data_url(
     manifest: &HashMap<String, EpubItem>,
     cover_id: Option<&str>,
     opf_dir: &str,
+    budget: &mut ReadBudget,
 ) -> Result<String, String> {
     let cover = cover_id.and_then(|id| manifest.get(id)).or_else(|| {
         manifest.values().find(|item| {
@@ -269,7 +308,7 @@ fn cover_data_url(
     };
     let cover_path = epub_href(opf_dir, &item.href)
         .ok_or_else(|| "EPUB cover path escapes the archive root".to_string())?;
-    let bytes = read_zip_bytes(archive, &cover_path, 1_500_000)?;
+    let bytes = read_zip_bytes(archive, &cover_path, 1_500_000, budget)?;
     let content_type = if item.media_type.starts_with("image/") {
         item.media_type.clone()
     } else {
@@ -379,7 +418,7 @@ mod tests {
         let err = parse_epub(&data, "Fallback Title").unwrap_err();
         assert_eq!(
             err,
-            format!("EPUB contains too many entries (max {MAX_ENTRIES})")
+            format!("{EPUB_TOO_LARGE}: EPUB contains too many entries (max {MAX_ENTRIES})")
         );
     }
 
@@ -391,7 +430,13 @@ mod tests {
         ]);
         let consumed: HashSet<String> = ["a.html".to_string()].into_iter().collect();
         let mut archive = ZipArchive::new(Cursor::new(data.as_slice())).unwrap();
-        let parts = read_epub_html_fallback(&mut archive, TEST_MAX_FILE_SIZE, &consumed).unwrap();
+        let parts = read_epub_html_fallback(
+            &mut archive,
+            TEST_MAX_FILE_SIZE,
+            &consumed,
+            &mut full_budget(),
+        )
+        .unwrap();
         assert_eq!(parts, vec!["BETA".to_string()]);
     }
 
@@ -406,12 +451,65 @@ mod tests {
             .collect();
         let data = build_zip(&refs);
         let mut archive = ZipArchive::new(Cursor::new(data.as_slice())).unwrap();
-        let err =
-            read_epub_html_fallback(&mut archive, TEST_MAX_FILE_SIZE, &HashSet::new()).unwrap_err();
+        let err = read_epub_html_fallback(
+            &mut archive,
+            TEST_MAX_FILE_SIZE,
+            &HashSet::new(),
+            &mut full_budget(),
+        )
+        .unwrap_err();
         assert_eq!(
             err,
-            format!("EPUB contains too many entries (max {MAX_ENTRIES})")
+            format!("{EPUB_TOO_LARGE}: EPUB contains too many entries (max {MAX_ENTRIES})")
         );
+    }
+
+    fn full_budget() -> ReadBudget {
+        ReadBudget {
+            remaining: MAX_READ_BYTES,
+        }
+    }
+
+    #[test]
+    fn the_read_budget_counts_what_entries_really_inflate_to() {
+        let mut budget = ReadBudget { remaining: 10 };
+        assert_eq!(
+            read_entry(&mut &b"123456"[..], 100, &mut budget).unwrap(),
+            b"123456"
+        );
+        assert_eq!(budget.remaining, 4);
+        let err = read_entry(&mut &b"12345"[..], 100, &mut budget).unwrap_err();
+        assert!(err.starts_with(EPUB_TOO_LARGE), "{err}");
+        // An entry that inflates past its own limit is refused, not truncated.
+        let err = read_entry(&mut &b"123"[..], 2, &mut full_budget()).unwrap_err();
+        assert!(!err.starts_with(EPUB_TOO_LARGE), "{err}");
+    }
+
+    #[test]
+    fn a_spine_chapter_over_the_budget_rejects_the_book() {
+        let chapter = format!(
+            "<html><body><p>{}</p></body></html>",
+            "a ".repeat(4_000_000)
+        );
+        let spine: Vec<(String, String)> = (0..7)
+            .map(|i| (format!("c{i}"), format!("chapter{i}.html")))
+            .collect();
+        let spine_refs: Vec<(&str, &str)> = spine
+            .iter()
+            .map(|(id, href)| (id.as_str(), href.as_str()))
+            .collect();
+        let package = opf("Huge", &spine_refs);
+        let paths: Vec<String> = spine
+            .iter()
+            .map(|(_, href)| format!("OEBPS/{href}"))
+            .collect();
+        let mut entries: Vec<(&str, &[u8])> = vec![
+            ("META-INF/container.xml", container_xml().as_bytes()),
+            ("OEBPS/content.opf", package.as_bytes()),
+        ];
+        entries.extend(paths.iter().map(|path| (path.as_str(), chapter.as_bytes())));
+        let err = parse_epub(&build_zip(&entries), "Fallback Title").unwrap_err();
+        assert!(err.starts_with(EPUB_TOO_LARGE), "{err}");
     }
 
     #[test]

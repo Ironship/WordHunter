@@ -6,6 +6,7 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
+use std::time::{Duration, Instant};
 use url::Url;
 
 use crate::subtitles;
@@ -22,6 +23,13 @@ struct VideoInfo {
     player: Value,
 }
 
+/// The download op answers within this time, below the frontend's request
+/// timeout: the watch page, the direct caption request and every yt-dlp try
+/// share it.
+const DOWNLOAD_BUDGET: Duration = Duration::from_secs(110);
+/// Listing tracks through yt-dlp when the watch page has none.
+const LIST_BUDGET: Duration = Duration::from_secs(60);
+
 pub fn handle(payload: Value) -> Result<Value, String> {
     let op = payload
         .get("op")
@@ -34,26 +42,44 @@ pub fn handle(payload: Value) -> Result<Value, String> {
 
     match op {
         "tracks" => {
-            let info = fetch_video_info(url)?;
+            let (info, tracks) = video_tracks(url, Instant::now() + LIST_BUDGET)?;
             Ok(json!({
                 "videoId": info.id,
                 "title": info.title,
                 "author": info.author,
                 "thumbnailUrl": info.thumbnail_url,
                 "sourceUrl": watch_url(&info.id),
-                "tracks": tracks_from_player(&info.player),
+                "tracks": tracks
+                    .iter()
+                    .enumerate()
+                    .map(|(index, track)| track_json(index, track))
+                    .collect::<Vec<_>>(),
             }))
         }
         "download" => {
+            let deadline = Instant::now() + DOWNLOAD_BUDGET;
             let track_index = payload
                 .get("track_index")
                 .and_then(Value::as_u64)
                 .ok_or_else(|| "missing track_index".to_string())?
                 as usize;
-            let info = fetch_video_info(url)?;
-            let track = caption_track_at(&info.player, track_index)
+            // The same resolution as "tracks". The watch page and yt-dlp can
+            // list tracks in a different order, so the language and kind the
+            // user picked decide when they are sent.
+            let (info, tracks) = video_tracks(url, deadline)?;
+            let wanted = payload
+                .get("language_code")
+                .and_then(Value::as_str)
+                .map(|language| {
+                    let auto = payload
+                        .get("auto_generated")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false);
+                    (language, auto)
+                });
+            let (track_index, track) = pick_track(&tracks, track_index, wanted)
                 .ok_or_else(|| "caption track not found".to_string())?;
-            let text = download_caption_text(&info, track)?;
+            let text = download_caption_text(&info, track, deadline)?;
             Ok(json!({
                 "videoId": info.id,
                 "title": info.title,
@@ -68,13 +94,171 @@ pub fn handle(payload: Value) -> Result<Value, String> {
     }
 }
 
-fn download_caption_text(info: &VideoInfo, track: &Value) -> Result<String, String> {
-    let direct_error = match download_caption_text_direct(track) {
-        Ok(text) if !text.trim().is_empty() => return Ok(text),
-        Ok(_) => "caption track is empty".to_string(),
-        Err(err) => err,
+/// The track at `index`, or, when it is not the `(language, automatic)`
+/// track the user picked, that track wherever it is now listed.
+fn pick_track<'a>(
+    tracks: &'a [Value],
+    index: usize,
+    wanted: Option<(&str, bool)>,
+) -> Option<(usize, &'a Value)> {
+    let matches = |track: &Value| {
+        wanted.is_none_or(|(language, auto)| {
+            track.get("languageCode").and_then(Value::as_str) == Some(language)
+                && track_is_auto_generated(track) == auto
+        })
     };
-    download_caption_text_with_ytdlp(info, track).map_err(|fallback_error| {
+    tracks
+        .get(index)
+        .filter(|track| matches(track))
+        .map(|track| (index, track))
+        .or_else(|| {
+            wanted?;
+            tracks.iter().enumerate().find(|(_, track)| matches(track))
+        })
+}
+
+/// The video and its caption tracks: from the watch page, or, when the page
+/// does not list any (consent or bot-check pages), from `yt-dlp -J`.
+fn video_tracks(url: &str, deadline: Instant) -> Result<(VideoInfo, Vec<Value>), String> {
+    let id = video_id_from_url(url)?;
+    let scraped = fetch_video_info(&id).map(|info| {
+        let tracks = page_tracks(&info.player);
+        (info, tracks)
+    });
+    let (page, page_error) = match scraped {
+        Ok((info, tracks)) if !tracks.is_empty() => return Ok((info, tracks)),
+        Ok(page) => (Some(page), "the watch page lists no captions".to_string()),
+        Err(error) => (None, error),
+    };
+    match (ytdlp_video_tracks(&id, deadline), page) {
+        (Ok(Some(found)), _) => Ok(found),
+        // The page was read and lists no captions, and there is no yt-dlp
+        // to ask: the video has none, which the import panel says as such.
+        (Ok(None), Some(page)) => Ok(page),
+        (Ok(None), None) => Err(page_error),
+        (Err(error), _) => Err(format!("{page_error}; yt-dlp: {error}")),
+    }
+}
+
+fn ytdlp_video_tracks(
+    id: &str,
+    deadline: Instant,
+) -> Result<Option<(VideoInfo, Vec<Value>)>, String> {
+    let mut errors = Vec::new();
+    for invocation in ytdlp_commands() {
+        let args = ["-J", "--skip-download", "--no-playlist", "--no-warnings"]
+            .map(OsString::from)
+            .into_iter()
+            .chain([OsString::from(watch_url(id))])
+            .collect::<Vec<_>>();
+        match run_ytdlp_process(&invocation, &args, deadline) {
+            Ok((output, _temp)) => {
+                let json = serde_json::from_slice::<Value>(&output.stdout)
+                    .map_err(|e| format!("yt-dlp printed no video JSON: {e}"))?;
+                return Ok(Some(tracks_from_ytdlp_json(id, &json)));
+            }
+            Err(YtdlpError::Missing(_)) => continue,
+            Err(YtdlpError::TimedOut) => return Err(YtdlpError::TimedOut.to_string()),
+            Err(error) => errors.push(format!("{}: {error}", invocation.program.to_string_lossy())),
+        }
+    }
+    if errors.is_empty() {
+        Ok(None)
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+/// YouTube's machine translations of a track: yt-dlp lists one per language
+/// under `automatic_captions`, fetched with a `tlang` parameter.
+fn is_translation(formats: &[Value]) -> bool {
+    formats.iter().any(|format| {
+        format
+            .get("url")
+            .and_then(Value::as_str)
+            .and_then(|url| url::Url::parse(url).ok())
+            .is_some_and(|url| url.query_pairs().any(|(key, _)| key == "tlang"))
+    })
+}
+
+/// Video details and caption tracks from `yt-dlp -J` output: manual tracks
+/// first, then automatic ones (marked like the page's "asr" tracks), each
+/// group sorted by language.
+fn tracks_from_ytdlp_json(id: &str, json: &Value) -> (VideoInfo, Vec<Value>) {
+    let group = |key: &str, kind: &str| {
+        let mut tracks = json
+            .get(key)
+            .and_then(Value::as_object)
+            .into_iter()
+            .flatten()
+            .filter(|(language, formats)| {
+                // "live_chat" is a stream's chat replay, not subtitles.
+                !language.is_empty()
+                    && language.as_str() != "live_chat"
+                    && formats
+                        .as_array()
+                        .is_some_and(|formats| !formats.is_empty() && !is_translation(formats))
+            })
+            .map(|(language, formats)| {
+                // yt-dlp lists an automatic track in its own language twice,
+                // as "en" and "en-orig".
+                let language = language.strip_suffix("-orig").unwrap_or(language);
+                let name = formats
+                    .as_array()
+                    .and_then(|formats| formats.iter().find_map(|format| format.get("name")))
+                    .and_then(Value::as_str)
+                    .unwrap_or(language);
+                json!({
+                    "languageCode": language,
+                    "kind": kind,
+                    "name": { "simpleText": name },
+                })
+            })
+            .collect::<Vec<_>>();
+        tracks.sort_by(|a, b| a["languageCode"].as_str().cmp(&b["languageCode"].as_str()));
+        tracks.dedup_by(|a, b| a["languageCode"] == b["languageCode"]);
+        tracks
+    };
+    let mut tracks = group("subtitles", "manual");
+    tracks.extend(group("automatic_captions", "asr"));
+    let text = |key: &str| {
+        json.get(key)
+            .and_then(Value::as_str)
+            .map(clean_text)
+            .unwrap_or_default()
+    };
+    let title = Some(text("title"))
+        .filter(|title| !title.is_empty())
+        .unwrap_or_else(|| "YouTube video".to_string());
+    let thumbnail_url = Some(text("thumbnail"))
+        .filter(|url| !url.is_empty())
+        .unwrap_or_else(|| format!("https://i.ytimg.com/vi/{id}/hqdefault.jpg"));
+    let info = VideoInfo {
+        id: id.to_string(),
+        title,
+        author: text("uploader"),
+        thumbnail_url,
+        player: Value::Null,
+    };
+    (info, tracks)
+}
+
+fn download_caption_text(
+    info: &VideoInfo,
+    track: &Value,
+    deadline: Instant,
+) -> Result<String, String> {
+    // Tracks listed by yt-dlp have no page URL; yt-dlp downloads them too.
+    let direct_error = if track.get("baseUrl").is_some() {
+        match download_caption_text_direct(track) {
+            Ok(text) if !text.trim().is_empty() => return Ok(text),
+            Ok(_) => "caption track is empty".to_string(),
+            Err(err) => err,
+        }
+    } else {
+        "the track is only available through yt-dlp".to_string()
+    };
+    download_caption_text_with_ytdlp(info, track, deadline).map_err(|fallback_error| {
         format!(
             "Could not download YouTube captions. Direct captions failed: {direct_error}. yt-dlp fallback failed: {fallback_error}"
         )
@@ -92,13 +276,23 @@ fn download_caption_text_direct(track: &Value) -> Result<String, String> {
     caption_body_to_text(&raw)
 }
 
-fn download_caption_text_with_ytdlp(info: &VideoInfo, track: &Value) -> Result<String, String> {
+fn download_caption_text_with_ytdlp(
+    info: &VideoInfo,
+    track: &Value,
+    deadline: Instant,
+) -> Result<String, String> {
     let language = ytdlp_track_language(track)
         .ok_or_else(|| "caption track has no language code".to_string())?;
     let mut errors = Vec::new();
     for invocation in ytdlp_commands() {
-        match run_ytdlp(&invocation, info, track, &language) {
+        match run_ytdlp(&invocation, info, track, &language, deadline) {
             Ok(text) => return Ok(text),
+            Err(YtdlpError::Missing(_)) => continue,
+            // The shared time is used up; later candidates would not get any.
+            Err(YtdlpError::TimedOut) => {
+                errors.push(YtdlpError::TimedOut.to_string());
+                break;
+            }
             Err(err) => errors.push(format!("{}: {err}", invocation.program.to_string_lossy())),
         }
     }
@@ -128,34 +322,90 @@ fn plain_ytdlp(program: OsString) -> YtdlpInvocation {
     }
 }
 
+#[derive(Debug)]
+enum YtdlpError {
+    /// This candidate is not installed; the next one may be.
+    Missing(String),
+    TimedOut,
+    Failed(String),
+}
+
+impl std::fmt::Display for YtdlpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Missing(error) => write!(f, "Could not start yt-dlp: {error}"),
+            Self::TimedOut => write!(f, "yt-dlp ran out of time"),
+            Self::Failed(error) => write!(f, "{error}"),
+        }
+    }
+}
+
 fn run_ytdlp(
     invocation: &YtdlpInvocation,
     info: &VideoInfo,
     track: &Value,
     language: &str,
-) -> Result<String, String> {
-    let temp = tempfile::tempdir().map_err(|e| e.to_string())?;
+    deadline: Instant,
+) -> Result<String, YtdlpError> {
+    let temp = tempfile::tempdir().map_err(|e| YtdlpError::Failed(e.to_string()))?;
     let output_template = temp.path().join("%(id)s.%(ext)s");
+    let args = [
+        "--skip-download",
+        "--no-playlist",
+        "--no-progress",
+        "--no-warnings",
+        if track_is_auto_generated(track) {
+            "--write-auto-subs"
+        } else {
+            "--write-subs"
+        },
+        "--sub-langs",
+        language,
+        "--sub-format",
+        "vtt",
+        "-o",
+    ]
+    .map(OsString::from)
+    .into_iter()
+    .chain([
+        output_template.into_os_string(),
+        OsString::from(watch_url(&info.id)),
+    ])
+    .collect::<Vec<_>>();
+    let (_output, work) = run_ytdlp_process(invocation, &args, deadline)?;
+    let path = find_subtitle_file(temp.path())
+        .and_then(|found| match found {
+            Some(path) => Ok(Some(path)),
+            None => find_subtitle_file(work.path()),
+        })
+        .map_err(YtdlpError::Failed)?
+        .ok_or_else(|| YtdlpError::Failed("yt-dlp did not write a subtitle file".to_string()))?;
+    let raw = read_caption_file(&path).map_err(YtdlpError::Failed)?;
+    let text = caption_body_to_text(&raw).map_err(YtdlpError::Failed)?;
+    if text.trim().is_empty() {
+        return Err(YtdlpError::Failed(
+            "yt-dlp returned empty captions".to_string(),
+        ));
+    }
+    Ok(text)
+}
+
+/// Runs yt-dlp with `args` until `deadline`; returns its output and the
+/// directory that holds its captured messages.
+fn run_ytdlp_process(
+    invocation: &YtdlpInvocation,
+    args: &[OsString],
+    deadline: Instant,
+) -> Result<(Output, tempfile::TempDir), YtdlpError> {
+    if Instant::now() >= deadline {
+        return Err(YtdlpError::TimedOut);
+    }
+    let work = tempfile::tempdir().map_err(|e| YtdlpError::Failed(e.to_string()))?;
     let mut process = Command::new(&invocation.program);
     process
         .args(&invocation.prefix_args)
         .envs(invocation.env.iter().cloned())
-        .arg("--skip-download")
-        .arg("--no-playlist")
-        .arg("--no-progress")
-        .arg("--no-warnings")
-        .arg(if track_is_auto_generated(track) {
-            "--write-auto-subs"
-        } else {
-            "--write-subs"
-        })
-        .arg("--sub-langs")
-        .arg(language)
-        .arg("--sub-format")
-        .arg("vtt")
-        .arg("-o")
-        .arg(&output_template)
-        .arg(watch_url(&info.id));
+        .args(args);
     // Never pop a visible console window on Windows when spawning yt-dlp
     // from the embedded server (CREATE_NO_WINDOW = 0x08000000).
     #[cfg(windows)]
@@ -165,49 +415,49 @@ fn run_ytdlp(
     }
     // Capture yt-dlp's messages (its ERROR line says why it failed) in files:
     // inherited stdio loses them, and pipes could fill up while we poll.
-    let stdout_path = temp.path().join("yt-dlp.out.log");
-    let stderr_path = temp.path().join("yt-dlp.err.log");
-    let stdout = fs::File::create(&stdout_path).map_err(|e| e.to_string())?;
-    let stderr = fs::File::create(&stderr_path).map_err(|e| e.to_string())?;
+    let stdout_path = work.path().join("yt-dlp.out.log");
+    let stderr_path = work.path().join("yt-dlp.err.log");
+    let stdout = fs::File::create(&stdout_path).map_err(|e| YtdlpError::Failed(e.to_string()))?;
+    let stderr = fs::File::create(&stderr_path).map_err(|e| YtdlpError::Failed(e.to_string()))?;
     process
         .stdin(Stdio::null())
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
-    let mut child = process
-        .spawn()
-        .map_err(|e| format!("Could not start yt-dlp: {e}"))?;
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    let mut child = process.spawn().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            YtdlpError::Missing(e.to_string())
+        } else {
+            YtdlpError::Failed(format!("Could not start yt-dlp: {e}"))
+        }
+    })?;
     let output = loop {
         match child.try_wait() {
             Ok(Some(status)) => {
-                break std::process::Output {
+                break Output {
                     status,
                     stdout: fs::read(&stdout_path).unwrap_or_default(),
                     stderr: fs::read(&stderr_path).unwrap_or_default(),
                 };
             }
             Ok(None) => {
-                if std::time::Instant::now() >= deadline {
+                if Instant::now() >= deadline {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err("yt-dlp timed out after 120 seconds".to_string());
+                    return Err(YtdlpError::TimedOut);
                 }
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(Duration::from_millis(100));
             }
-            Err(e) => return Err(format!("Could not wait for yt-dlp: {e}")),
+            Err(e) => {
+                return Err(YtdlpError::Failed(format!(
+                    "Could not wait for yt-dlp: {e}"
+                )));
+            }
         }
     };
     if !output.status.success() {
-        return Err(process_error(&output));
+        return Err(YtdlpError::Failed(process_error(&output)));
     }
-    let path = find_subtitle_file(temp.path())?
-        .ok_or_else(|| "yt-dlp did not write a subtitle file".to_string())?;
-    let raw = read_caption_file(&path)?;
-    let text = caption_body_to_text(&raw)?;
-    if text.trim().is_empty() {
-        return Err("yt-dlp returned empty captions".to_string());
-    }
-    Ok(text)
+    Ok((output, work))
 }
 
 fn ytdlp_commands() -> Vec<YtdlpInvocation> {
@@ -370,8 +620,8 @@ fn process_error(output: &Output) -> String {
     message
 }
 
-fn fetch_video_info(input_url: &str) -> Result<VideoInfo, String> {
-    let id = video_id_from_url(input_url)?;
+fn fetch_video_info(id: &str) -> Result<VideoInfo, String> {
+    let id = id.to_string();
     let html = fetch_text(&watch_url(&id), MAX_WATCH_BODY)?;
     let player = player_response_from_html(&html)?;
     let title = player
@@ -401,7 +651,9 @@ fn fetch_text(url: &str, max_bytes: u64) -> Result<String, String> {
         .get(url)
         .set("User-Agent", USER_AGENT)
         .set("Accept-Language", "en-US,en;q=0.8")
-        .set("Cookie", "CONSENT=YES+1")
+        // SOCS is the consent cookie YouTube checks today (yt-dlp sends the
+        // same); CONSENT is its older form.
+        .set("Cookie", "CONSENT=YES+1; SOCS=CAI")
         .call()
         .map_err(|e| e.to_string())?;
     let mut reader = response.into_reader().take(max_bytes + 1);
@@ -534,19 +786,12 @@ fn caption_tracks(player: &Value) -> Vec<&Value> {
         .unwrap_or_default()
 }
 
-fn caption_track_at(player: &Value, index: usize) -> Option<&Value> {
-    player
-        .pointer("/captions/playerCaptionsTracklistRenderer/captionTracks")
-        .and_then(Value::as_array)
-        .and_then(|tracks| tracks.get(index))
-}
-
-fn tracks_from_player(player: &Value) -> Vec<Value> {
+/// The page's caption tracks that can be fetched directly, in page order.
+fn page_tracks(player: &Value) -> Vec<Value> {
     caption_tracks(player)
         .into_iter()
-        .enumerate()
-        .filter(|(_, track)| track.get("baseUrl").and_then(Value::as_str).is_some())
-        .map(|(index, track)| track_json(index, track))
+        .filter(|track| track.get("baseUrl").and_then(Value::as_str).is_some())
+        .cloned()
         .collect()
 }
 
