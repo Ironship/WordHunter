@@ -69,6 +69,8 @@ pub fn run_worker() -> i32 {
     }
 }
 
+const CT2_TIMED_OUT: &str = "native CTranslate2 timed out";
+
 /// Spawn a child process of ourselves with `--ct2-translate` and send it a translation job.
 fn native_ct2_translate(input: &Value) -> Result<String, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -135,7 +137,7 @@ fn native_ct2_translate(input: &Value) -> Result<String, String> {
         if start.elapsed() >= timeout {
             let _ = child.kill();
             let _ = child.wait();
-            return Err("native CTranslate2 timed out".to_string());
+            return Err(CT2_TIMED_OUT.to_string());
         }
         thread::sleep(Duration::from_millis(50));
     }
@@ -173,7 +175,9 @@ fn native_ct2_translate_with_pivot(input: &Value) -> Result<String, String> {
         match native_ct2_translate(input) {
             Ok(translated) => return Ok(translated),
             Err(direct_err) => {
-                if from.is_empty() || from == "en" || to == "en" {
+                // Two more translations of a text too long for one would
+                // only make the user wait longer for the same failure.
+                if from.is_empty() || from == "en" || to == "en" || direct_err == CT2_TIMED_OUT {
                     return Err(direct_err);
                 }
                 let step1 = json!({ "text": text, "from": from, "to": "en" });
