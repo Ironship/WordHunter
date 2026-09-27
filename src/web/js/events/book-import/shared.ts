@@ -128,6 +128,7 @@ function safeImportErrorMessage(error: unknown): string {
     t("toast.imageTooLarge", { mb: Math.floor(MAX_DESKTOP_OCR_IMAGE_BYTES / (1024 * 1024)) }),
     t("toast.importFailed"),
     t("toast.ebookRequiresApp"),
+    t("toast.mobileImportUnsupported"),
     t("toast.importedEbookEmpty"),
     t("toast.importedFileEmpty"),
     t("toast.importFileTooLarge", { mb: Math.floor(MAX_POCKET_IMPORT_FILE_BYTES / (1024 * 1024)) }),

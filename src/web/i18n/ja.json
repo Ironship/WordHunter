@@ -900,6 +900,7 @@
     "youtubeCaptionsLoaded": "YouTube字幕を読み込みました。",
     "youtubeCaptionsError": "YouTube字幕を読み込めませんでした。",
     "ebookRequiresApp": "EPUB/MOBIのインポートはデスクトップ版で動作します。",
+    "mobileImportUnsupported": "この種類のファイルはAndroidではインポートできません。TXT、Markdown、字幕（SRT、VTT、ASS/SSA）、EPUB、PDFのいずれかのファイルを選んでください。",
     "pdfOcrRequiresApp": "PDF OCRインポートは、バンドルされたネイティブPaddleOCRランタイムでデスクトップ版で動作します。",
     "pdfOcrNoText": "PaddleOCRはこのPDFに読み取り可能なテキストを見つけませんでした。",
     "pdfImportBusy": "別のOCRインポートがすでに実行中です。",

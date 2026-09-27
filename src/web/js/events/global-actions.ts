@@ -2,7 +2,7 @@ import { registerFrontendStateFlusher, state } from "../state.js";
 import { clearReaderSelection } from "../reader/selection.js";
 import { gradeReview, loadMoreVocab, removeFromSrs } from "../views/vocabulary.js";
 import {
-  deleteWord,
+  confirmAndDeleteWord,
   handleReviewAction,
   ignoreWord,
   removeWordImage,
@@ -235,7 +235,7 @@ function handleGlobalClick(event: MouseEvent): void {
   if (statusButton) setWordStatus(statusButton.dataset.word, statusButton.dataset.setStatus);
 
   const deleteButton = target.closest<HTMLElement>("[data-delete-word]");
-  if (deleteButton) deleteWord(deleteButton.dataset.deleteWord);
+  if (deleteButton) void confirmAndDeleteWord(deleteButton.dataset.deleteWord);
 
   const ignoreButton = target.closest<HTMLElement>("[data-ignore-word]");
   if (ignoreButton) ignoreWord(ignoreButton.dataset.ignoreWord);

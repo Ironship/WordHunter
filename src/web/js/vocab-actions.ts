@@ -287,6 +287,39 @@ export function deleteWord(word: string): void {
   showToast(t("toast.wordRemoved"));
 }
 
+function hasWordProgress(entry: WhVocabEntry | undefined): boolean {
+  return Boolean(entry && (
+    String(entry.translation || "").trim()
+    || String(entry.note || "").trim()
+    || entry.imageUrl
+    || entry.examples?.length
+    || entry.lastReviewedAt
+    || Number(entry.repetition) > 0
+  ));
+}
+
+/**
+ * Deletes a word after a danger confirmation: its translation, note, examples,
+ * image and SRS schedule are gone for good and there is no undo. Every delete
+ * control (Word base trash icon, reader word panel, reader X key) goes through
+ * here; an entry with nothing to lose is removed without asking. Resolves true
+ * when the word was deleted.
+ */
+export async function confirmAndDeleteWord(word: string): Promise<boolean> {
+  const key = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
+  if (hasWordProgress(state.vocab[key])) {
+    const { showConfirmDialog } = await import("./dialog-backdrop.js");
+    const ok = await showConfirmDialog({
+      title: t("dialog.confirmTitle"),
+      message: t("vocab.confirmDeleteWord"),
+      danger: true
+    });
+    if (!ok) return false;
+  }
+  deleteWord(word);
+  return true;
+}
+
 export function ignoreWord(word: string): void {
   setWordStatus(word, "ignored");
 }

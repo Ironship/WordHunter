@@ -141,6 +141,12 @@ function getAddWordStatus(): VocabStatus {
   return VOCAB_STATUS_FILTERS.includes(status) ? status as VocabStatus : "new";
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement
+    || target instanceof HTMLTextAreaElement
+    || (target instanceof HTMLElement && target.isContentEditable);
+}
+
 function setAddWordStatus(status: unknown): void {
   const normalized: VocabStatus = typeof status === "string" && VOCAB_STATUS_FILTERS.includes(status)
     ? status as VocabStatus
@@ -362,16 +368,16 @@ export function bindWordEditorEvents() {
 
   addWordDialog.addEventListener("keydown", (e) => {
     if (e.target === addExampleInput && e.key === "Enter" && !e.ctrlKey && !e.metaKey) return;
+    // Digits 1-4 pick the status only while focus is outside the text fields
+    // (the dialog itself or a status button): in a field they are typed text
+    // ("um 3 Uhr"). Matching e.key alone keeps AZERTY and shifted digit-row
+    // symbols from switching the status.
     const statusShortcutMap: Record<string, VocabStatus> = { "1": "new", "2": "learning", "3": "known", "4": "ignored" };
-    const statusDigit = statusShortcutMap[e.key]
-      ? e.key
-      : e.code?.match(/^(?:Digit|Numpad)([1-4])$/)?.[1];
-    if (statusDigit && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      if (e.target === addWordInput || e.target === addArticleInput || e.target === addTranslationInput || e.target === addExampleInput) {
-        e.preventDefault();
-        setAddWordStatus(statusShortcutMap[statusDigit]);
-        return;
-      }
+    const shortcutStatus = statusShortcutMap[e.key];
+    if (shortcutStatus && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !isEditableTarget(e.target)) {
+      e.preventDefault();
+      setAddWordStatus(shortcutStatus);
+      return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

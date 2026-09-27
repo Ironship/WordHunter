@@ -955,6 +955,7 @@
     "youtubeCaptionsLoaded": "Wczytano napisy z YouTube.",
     "youtubeCaptionsError": "Nie udało się wczytać napisów z YouTube.",
     "ebookRequiresApp": "Import plików EPUB/MOBI działa w wersji komputerowej.",
+    "mobileImportUnsupported": "Tego typu pliku nie można zaimportować na Androidzie. Wybierz plik TXT, Markdown, napisy (SRT, VTT, ASS/SSA), EPUB lub PDF.",
     "pdfOcrRequiresApp": "Import plików PDF z użyciem OCR działa w wersji komputerowej dzięki dołączonemu natywnemu środowisku uruchomieniowemu PaddleOCR.",
     "pdfOcrNoText": "PaddleOCR nie znalazł czytelnego tekstu w tym pliku PDF.",
     "pdfImportBusy": "Trwa już inny import OCR.",

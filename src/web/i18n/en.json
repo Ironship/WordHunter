@@ -955,6 +955,7 @@
     "youtubeCaptionsLoaded": "YouTube captions loaded.",
     "youtubeCaptionsError": "Could not load YouTube captions.",
     "ebookRequiresApp": "EPUB/MOBI import works in the desktop app.",
+    "mobileImportUnsupported": "This file type can't be imported on Android. Choose a TXT, Markdown, subtitle (SRT, VTT, ASS/SSA), EPUB or PDF file.",
     "pdfOcrRequiresApp": "PDF OCR import works in the desktop app with the bundled native PaddleOCR runtime.",
     "pdfOcrNoText": "PaddleOCR did not find readable text in this PDF.",
     "pdfImportBusy": "Another OCR import is already running.",

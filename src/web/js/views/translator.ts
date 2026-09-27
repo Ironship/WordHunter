@@ -334,20 +334,10 @@ async function translateNow(): Promise<void> {
   }
 }
 
-/** Open the existing offline model download dialog pre-populated with the target language. */
+/** Open the offline model download dialog for a pair that has no model yet. */
 function openDownloadDialog(fromCode: string, toCode: string): void {
-  const dialog = document.getElementById("argos-download-dialog");
-  const list = document.getElementById("argos-languages-list");
-  if (!(dialog instanceof HTMLDialogElement) || !(list instanceof HTMLElement)) return;
-  
-  // Pre-check the target language in the download list
-  const checkboxes = list.querySelectorAll("input[type='checkbox']");
-  checkboxes.forEach(cb => {
-    if (!(cb instanceof HTMLInputElement)) return;
-    cb.checked = cb.value === toCode || cb.value === fromCode;
-  });
-  
-  dialog.showModal();
+  void import("../events/settings/translator.js")
+    .then(({ openArgosDownloadDialogForPair }) => openArgosDownloadDialogForPair(fromCode, toCode));
 }
 
 function scheduleTranslate(): void {

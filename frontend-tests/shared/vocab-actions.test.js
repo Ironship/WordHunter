@@ -46,7 +46,7 @@ globalThis.CustomEvent = class CustomEvent {
 
 const { els } = await import("../../dist/web/js/dom.js");
 const { createDefaultState, replaceState, state } = await import("../../dist/web/js/state.js");
-const { maybeAutoTranslateWord, selectWord, setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
+const { confirmAndDeleteWord, maybeAutoTranslateWord, selectWord, setWordStatus, updateWordField } = await import("../../dist/web/js/vocab-actions.js");
 const { getOrCreateEntry } = await import("../../dist/web/js/views/vocabulary.js");
 
 function vocabEntry(overrides = {}) {
@@ -211,6 +211,62 @@ describe("vocabulary actions", () => {
       assert.equal(state.vocab.haus.translation, "");
     } finally {
       globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("asks before deleting a word that has progress, and only deletes on confirm", async () => {
+    // Minimal element stand-in for showConfirmDialog (dialog-backdrop.ts).
+    const element = () => {
+      const listeners = new Map();
+      return {
+        style: {}, dataset: {}, children: [], className: "", textContent: "", type: "",
+        appendChild(child) { this.children.push(child); return child; },
+        addEventListener(type, listener) { listeners.set(type, listener); },
+        removeEventListener(type) { listeners.delete(type); },
+        fire(type) { listeners.get(type)?.({ type, target: this }); },
+        showModal() {}, close() {}, remove() {}
+      };
+    };
+    const dialogs = [];
+    const findByClass = (node, className) => node.className === className
+      ? node
+      : node.children.map((child) => findByClass(child, className)).find(Boolean);
+    const waitForDialog = async (count) => {
+      for (let i = 0; i < 200 && dialogs.length < count; i += 1) await new Promise((resolve) => setTimeout(resolve, 5));
+      assert.equal(dialogs.length, count, "confirmation dialog shown");
+      return dialogs[count - 1];
+    };
+    document.createElement = element;
+    document.body = { appendChild(node) { dialogs.push(node); } };
+    try {
+      resetVocabState({
+        haus: vocabEntry({ word: "Haus", translation: "house" }),
+        baum: vocabEntry({ word: "Baum", lastReviewedAt: "2026-06-01T00:00:00.000Z", repetition: 2 }),
+        neu: vocabEntry({ word: "neu" })
+      });
+
+      const cancelled = confirmAndDeleteWord("Haus");
+      findByClass(await waitForDialog(1), "secondary-button").fire("click");
+      assert.equal(await cancelled, false);
+      assert.ok(state.vocab.haus, "cancel keeps the entry");
+
+      const confirmed = confirmAndDeleteWord("Haus");
+      findByClass(await waitForDialog(2), "danger-button").fire("click");
+      assert.equal(await confirmed, true);
+      assert.equal(state.vocab.haus, undefined);
+
+      const reviewed = confirmAndDeleteWord("baum");
+      findByClass(await waitForDialog(3), "secondary-button").fire("click");
+      assert.equal(await reviewed, false);
+      assert.ok(state.vocab.baum, "review history alone needs a confirmation");
+
+      // Nothing to lose: no translation, note, image, examples or reviews.
+      assert.equal(await confirmAndDeleteWord("neu"), true);
+      assert.equal(dialogs.length, 3);
+      assert.equal(state.vocab.neu, undefined);
+    } finally {
+      delete document.createElement;
+      delete document.body;
     }
   });
 });

@@ -151,6 +151,7 @@ describe("lazy library statistics", () => {
         loadBookText: async () => "",
         loadCustomTextContent: async () => ""
       },
+      "../book-actions/profile-library.js": { gutenbergFullTextIds: () => [] },
       "../stats-cache.js": {
         getCachedBookTextStats: (id) => id === "long"
           ? { unique: 8, known: 2, learning: 2, ignored: 1, new: 5 }
@@ -212,7 +213,7 @@ async function globalActionsHarness(options = {}) {
     },
     "../views/vocabulary.js": { gradeReview() {}, loadMoreVocab() {}, removeFromSrs() {} },
     "../vocab-actions.js": {
-      deleteWord() {}, handleReviewAction() {}, ignoreWord() {}, removeWordImage() {},
+      confirmAndDeleteWord: options.confirmAndDeleteWord || (async () => false), handleReviewAction() {}, ignoreWord() {}, removeWordImage() {},
       setWordImage() {}, setWordStatus() {}, updateWordField() {}
     },
     "../sync-actions.js": { exportVocabularySelection() {} },
@@ -473,6 +474,21 @@ describe("focused frontend regressions", () => {
     });
 
     assert.equal(calls.find((call) => call[0] === "speakText")[1], "Der Hund bellt.");
+  });
+
+  it("routes every [data-delete-word] click through the confirm-then-delete helper", async () => {
+    const deletes = [];
+    const { listeners } = await globalActionsHarness({
+      state: { currentView: "vocabulary", selectedWord: null },
+      confirmAndDeleteWord: async (word) => { deletes.push(word); return false; }
+    });
+
+    listeners.get("click")({
+      target: closestTarget({ "[data-delete-word]": { dataset: { deleteWord: "haus" } } }),
+      composedPath() { return []; }
+    });
+
+    assert.deepEqual(deletes, ["haus"]);
   });
 
   it("keeps keyboard navigation lightweight and routes swipes through automatic translation", async () => {
@@ -1054,10 +1070,9 @@ describe("focused frontend regressions", () => {
       "../../state.js": { state },
       "../../i18n.js": { t: (key) => key },
       "../../toast.js": { showToast() {} },
-      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
-      "../../vocab-actions.js": { setWordStatus() {} },
+      "../../vocab-actions.js": { confirmAndDeleteWord: async () => false, setWordStatus() {} },
       "../shared.js": {
         openDictionary() {}, getSelectedReaderActionText() { return "middle"; },
         copySelectedWordToClipboard() {}, hasNativeTextSelection() { return false; }
@@ -1149,10 +1164,9 @@ describe("focused frontend regressions", () => {
       "../../state.js": { state },
       "../../i18n.js": { t: (key) => key },
       "../../toast.js": { showToast() {} },
-      "../../dialog-backdrop.js": { showConfirmDialog: async () => true },
       "../../reader/selection.js": { clearReaderSelection() {}, extendReaderSelection() { return false; } },
       "../../tts.js": { speakWord() {} },
-      "../../vocab-actions.js": { setWordStatus() {} },
+      "../../vocab-actions.js": { confirmAndDeleteWord: async () => false, setWordStatus() {} },
       "../shared.js": {
         openDictionary() {}, getSelectedReaderActionText() { return "wort"; },
         copySelectedWordToClipboard() {}, hasNativeTextSelection() { return false; }

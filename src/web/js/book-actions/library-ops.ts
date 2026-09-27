@@ -15,11 +15,13 @@ import {
   clearCurrentBookSelectionIfMatches,
   forgetArchivedBook,
   forgetReaderPositionIfUnreferenced,
+  gutenbergFullTextIds,
   hideBuiltInBookId,
   isCustomTextReferenced,
   moveCustomTextToProfile,
   moveUserBookToProfile,
   planCustomTextMove,
+  removeCustomTextFromActiveProfile,
   removeUserBookFromActiveProfile
 } from "./profile-library.js";
 
@@ -156,20 +158,46 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
 // busy indicator on screen until the durable save (which can take seconds
 // on large stores) settles.
 export async function removeUserBook(id: string): Promise<void> {
-  if (!forgetUserBook(id)) return;
+  const fullTextIds = forgetUserBookWithFullText(id);
+  if (!fullTextIds) return;
   await saveState();
+  // As in removeCustomText, the cached full text's body lives in the store.
+  if (window.__qtBridge) {
+    for (const textId of fullTextIds) {
+      if (isCustomTextReferenced(textId)) continue;
+      await deleteStoredText(textId).catch((error) => {
+        console.warn("delete_text media cleanup failed", error);
+      });
+    }
+  }
   render();
   showToast(t("toast.userBookRemoved"));
 }
 
-/** Drops a user book and its reader state from the active profile, without saving. */
+/**
+ * Drops a user book and its reader state from the active profile, without
+ * saving, together with the Gutenberg full text cached for it (that copy has
+ * no Library card of its own).
+ */
 export function forgetUserBook(id: string): boolean {
-  if (!removeUserBookFromActiveProfile(id)) return false;
+  return forgetUserBookWithFullText(id) !== null;
+}
+
+/** forgetUserBook, returning the removed full-text ids (null: no such book). */
+function forgetUserBookWithFullText(id: string): string[] | null {
+  const book = removeUserBookFromActiveProfile(id);
+  if (!book) return null;
+  const fullTextIds = gutenbergFullTextIds(book.gutenbergId, state.preferences.learningLanguage)
+    .filter((textId) => removeCustomTextFromActiveProfile(textId));
+  [id, ...fullTextIds].forEach(forgetBookState);
+  return fullTextIds;
+}
+
+function forgetBookState(id: string): void {
   clearBookTextCache(id);
   forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
-  return true;
 }
 
 export async function hideBuiltInBook(id: string): Promise<void> {

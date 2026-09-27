@@ -899,6 +899,7 @@
     "searching": "Ricerca...",
     "ttsMissing": "Voce TTS mancante. Installa il pacchetto vocale nelle impostazioni di sistema.",
     "ebookRequiresApp": "L'importazione EPUB/MOBI funziona nell'app desktop.",
+    "mobileImportUnsupported": "Questo tipo di file non può essere importato su Android. Scegli un file TXT, Markdown, di sottotitoli (SRT, VTT, ASS/SSA), EPUB o PDF.",
     "pdfOcrRequiresApp": "L'importazione PDF OCR funziona nell'app desktop con il runtime nativo PaddleOCR incluso.",
     "pdfOcrNoText": "PaddleOCR non ha trovato testo leggibile in questo PDF.",
     "pdfImportBusy": "È già in corso un’altra importazione OCR.",

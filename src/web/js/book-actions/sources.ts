@@ -14,7 +14,7 @@ import { t as translate } from "../i18n.js";
 import { renderLibrary } from "../views/library.js";
 import { importCustomText } from "./custom-text.js";
 import { forgetUserBook } from "./library-ops.js";
-import { addUserBookToActiveProfile, findCustomText, hasUserBook } from "./profile-library.js";
+import { addUserBookToActiveProfile, findCustomText, gutenbergFullTextIds, hasUserBook } from "./profile-library.js";
 import { fetchDiscover } from "../discover/fetch-discover.js";
 import {
   isMediaWikiArticleInLibrary,
@@ -52,8 +52,7 @@ export async function loadFullGutenbergText(book: LibraryBook): Promise<void> {
     await openBook(book.id);
     return;
   }
-  const cachedId = `gutenberg-full-${state.preferences.learningLanguage}-${book.gutenbergId}`;
-  const legacyCachedId = `gutenberg-full-${book.gutenbergId}`;
+  const [cachedId, legacyCachedId] = gutenbergFullTextIds(book.gutenbergId, state.preferences.learningLanguage);
   const cached = findCustomText(cachedId) || findCustomText(legacyCachedId);
   const cachedText = cached
     ? await loadCustomTextContent(cached).catch(() => "")
