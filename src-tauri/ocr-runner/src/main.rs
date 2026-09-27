@@ -186,7 +186,7 @@ fn process_pdf(
             match extract_pdf_text_layer(&page, page_image.width(), page_image.height())? {
                 Some((lines, words, text)) => (lines, words, text, Some(TEXT_LAYER_BOUNDS_VERSION)),
                 None => {
-                    let ocr = ensure_ocr(&mut ocr, models_dir, args.threads)?;
+                    let ocr = ensure_ocr(&mut ocr, models_dir, args.threads, &args.lang)?;
                     let (lines, words, text) = run_page_ocr(ocr, &page_image, args)
                         .with_context(|| format!("PaddleOCR failed on PDF page {page_number}"))?;
                     (lines, words, text, None)
@@ -219,7 +219,7 @@ fn process_image(
     page_image
         .save_with_format(&image_path, ImageFormat::Png)
         .with_context(|| format!("failed to save OCR image {}", image_path.display()))?;
-    let mut ocr = load_ocr(models_dir, args.threads)?;
+    let mut ocr = load_ocr(models_dir, args.threads, &args.lang)?;
     let (lines, words, text) = run_page_ocr(&mut ocr, &page_image, args)
         .with_context(|| format!("PaddleOCR failed on image {}", input.display()))?;
     let page = OcrPage {
@@ -373,8 +373,9 @@ mod tests {
         expand_native_word_bounds, is_pdf_input, load_normalized_image,
         merge_native_words_using_plain_text, native_gap_without_space_is_word_break,
         native_space_is_word_break, native_text_layer_is_useful, normalize_decoded_image,
-        page_limit, split_native_words_using_plain_text, validate_image_dimensions, DeviceMode,
-        GpuStatus, OcrWord, PixelBounds, MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS,
+        page_limit, recognizer_files, split_native_words_using_plain_text,
+        validate_image_dimensions, DeviceMode, GpuStatus, OcrWord, PixelBounds,
+        MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS,
     };
     use image::{metadata::Orientation, DynamicImage, ImageBuffer, ImageFormat, Rgb};
     use serde_json::json;
@@ -711,6 +712,56 @@ mod tests {
             confidence: 1.0,
         }
     }
+
+    #[test]
+    fn recognizer_and_dictionary_are_chosen_as_a_pair_for_the_language() {
+        let dir = tempfile::tempdir().unwrap();
+        let touch = |name: &str| std::fs::write(dir.path().join(name), b"").unwrap();
+        let chosen = |lang: &str| {
+            let (rec, dict) = recognizer_files(dir.path(), lang).unwrap();
+            (
+                rec.file_name().unwrap().to_string_lossy().to_string(),
+                dict.map(|dict| dict.file_name().unwrap().to_string_lossy().to_string()),
+            )
+        };
+        touch("ch_PP-OCRv5_rec_mobile_infer.onnx");
+        touch("ppocrv5_dict.txt");
+        assert_eq!(
+            chosen("de"),
+            (
+                "ch_PP-OCRv5_rec_mobile_infer.onnx".into(),
+                Some("ppocrv5_dict.txt".into())
+            )
+        );
+
+        // A family recognizer without its dictionary is not used.
+        touch("latin_PP-OCRv5_mobile_rec_infer.onnx");
+        assert_eq!(chosen("de").0, "ch_PP-OCRv5_rec_mobile_infer.onnx");
+        touch("latin_dict.txt");
+        assert_eq!(
+            chosen("de"),
+            (
+                "latin_PP-OCRv5_mobile_rec_infer.onnx".into(),
+                Some("latin_dict.txt".into())
+            )
+        );
+        assert_eq!(chosen("pl_PL").0, "latin_PP-OCRv5_mobile_rec_infer.onnx");
+        assert_eq!(chosen("zh").0, "ch_PP-OCRv5_rec_mobile_infer.onnx");
+
+        // The README's drop-in recognizer wins over families, with dict.txt only.
+        touch("rec.onnx");
+        assert_eq!(chosen("de"), ("rec.onnx".into(), None));
+        touch("dict.txt");
+        assert_eq!(chosen("ru"), ("rec.onnx".into(), Some("dict.txt".into())));
+
+        // A language's own pair wins over everything.
+        touch("de_rec.onnx");
+        touch("de_dict.txt");
+        assert_eq!(
+            chosen("de"),
+            ("de_rec.onnx".into(), Some("de_dict.txt".into()))
+        );
+    }
 }
 
 fn configure_ort(device: DeviceMode) -> Result<()> {
@@ -785,7 +836,7 @@ fn write_gpu_status(args: &Args) -> Result<()> {
         .clone()
         .unwrap_or(runtime_root()?.join("models"));
     let ready = configure_ort(device)
-        .and_then(|_| load_ocr(&models_dir, args.threads).map(|_| ()))
+        .and_then(|_| load_ocr(&models_dir, args.threads, "auto").map(|_| ()))
         .is_ok();
     print_gpu_status(
         if ready { "ready" } else { "unavailable" },
@@ -838,47 +889,29 @@ fn runtime_root() -> Result<PathBuf> {
     }
 }
 
-fn load_ocr(models_dir: &Path, threads: usize) -> Result<OcrLite> {
+fn load_ocr(models_dir: &Path, threads: usize, lang: &str) -> Result<OcrLite> {
+    // The drop-in names from ocr-runtime/README.md come before the bundled ones.
     let det = find_existing(
         models_dir,
         &[
+            "det.onnx",
             "ch_PP-OCRv5_mobile_det.onnx",
             "ch_PP-OCRv4_det_infer.onnx",
             "ch_PP-OCRv4_det_server_infer.onnx",
             "ch_PP-OCRv3_det_infer.onnx",
-            "det.onnx",
         ],
         "detection model",
     )?;
     let cls = find_existing(
         models_dir,
         &[
+            "cls.onnx",
             "ch_ppocr_mobile_v2.0_cls_infer.onnx",
             "ch_ppocr_mobile_v2.0_cls.onnx",
-            "cls.onnx",
         ],
         "classification model",
     )?;
-    let rec = find_existing(
-        models_dir,
-        &[
-            "ch_PP-OCRv5_rec_mobile_infer.onnx",
-            "ch_PP-OCRv5_mobile_rec.onnx",
-            "ch_PP-OCRv4_rec_infer.onnx",
-            "ch_PP-OCRv3_rec_infer.onnx",
-            "rec.onnx",
-        ],
-        "recognition model",
-    )?;
-    let dict = find_optional(
-        models_dir,
-        &[
-            "dict.txt",
-            "ppocr_keys_v1.txt",
-            "ppocrv5_dict.txt",
-            "ch_PP-OCRv5_rec_mobile_infer.txt",
-        ],
-    );
+    let (rec, dict) = recognizer_files(models_dir, lang)?;
 
     let mut ocr = OcrLite::new();
     match dict {
@@ -894,13 +927,107 @@ fn load_ocr(models_dir: &Path, threads: usize) -> Result<OcrLite> {
     Ok(ocr)
 }
 
+/// PaddleOCR's multilingual PP-OCRv5 recognizer family for a learning
+/// language, or None where the bundled Chinese/English model is the right one.
+fn recognizer_family(lang: &str) -> Option<&'static str> {
+    let base = lang
+        .split(['-', '_'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    Some(match base.as_str() {
+        "de" | "pl" | "fr" | "es" | "it" | "pt" | "nl" | "cs" | "sk" | "sl" | "hr" | "bs"
+        | "hu" | "ro" | "sv" | "da" | "no" | "nb" | "nn" | "fi" | "et" | "lv" | "lt" | "tr"
+        | "az" | "sq" | "ga" | "cy" | "is" | "mt" | "la" | "id" | "ms" | "ca" | "eu" | "gl"
+        | "af" | "sw" | "tl" => "latin",
+        "ru" | "uk" | "be" => "eslav",
+        "bg" | "mk" | "sr" | "kk" | "ky" | "mn" | "tg" => "cyrillic",
+        "el" | "grc" => "el",
+        "ar" | "fa" | "ur" | "ug" => "arabic",
+        "hi" | "mr" | "ne" | "sa" => "devanagari",
+        "ko" => "korean",
+        "th" => "th",
+        _ => return None,
+    })
+}
+
+/// The recognizer and its dictionary, which must belong together (a
+/// dictionary of another model makes the output garbage). In order: the
+/// language's own `{lang}_rec.onnx` + `{lang}_dict.txt`; the drop-in
+/// `rec.onnx` (+ `dict.txt`); the language's PaddleOCR script family; the
+/// bundled Chinese/English model.
+fn recognizer_files(models_dir: &Path, lang: &str) -> Result<(PathBuf, Option<PathBuf>)> {
+    let existing = |name: &str| Some(models_dir.join(name)).filter(|path| path.is_file());
+    let base = lang
+        .split(['-', '_'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let mut candidates = Vec::new();
+    if !base.is_empty() && base != "auto" {
+        candidates.push((format!("{base}_rec.onnx"), Some(format!("{base}_dict.txt"))));
+    }
+    candidates.push(("rec.onnx".to_string(), None));
+    if let Some(family) = recognizer_family(lang) {
+        for rec in [
+            format!("{family}_PP-OCRv5_mobile_rec_infer.onnx"),
+            format!("{family}_PP-OCRv5_rec_mobile_infer.onnx"),
+            format!("{family}_rec.onnx"),
+        ] {
+            candidates.push((rec, Some(format!("{family}_dict.txt"))));
+        }
+    }
+    for (rec, dict) in candidates {
+        let Some(rec) = existing(&rec) else {
+            continue;
+        };
+        match dict {
+            // A language or family recognizer needs its own dictionary.
+            Some(dict) => {
+                if let Some(dict) = existing(&dict) {
+                    return Ok((rec, Some(dict)));
+                }
+            }
+            // The drop-in recognizer takes the drop-in dictionary, or its
+            // own embedded one; never a bundled dictionary.
+            None => return Ok((rec, existing("dict.txt"))),
+        }
+    }
+    if recognizer_family(lang).is_some() {
+        eprintln!(
+            "wordhunter-paddleocr: no recognizer for \"{lang}\" in {}; using the bundled Chinese/English model, which may drop this language's letters",
+            models_dir.display()
+        );
+    }
+    let rec = find_existing(
+        models_dir,
+        &[
+            "ch_PP-OCRv5_rec_mobile_infer.onnx",
+            "ch_PP-OCRv5_mobile_rec.onnx",
+            "ch_PP-OCRv4_rec_infer.onnx",
+            "ch_PP-OCRv3_rec_infer.onnx",
+        ],
+        "recognition model",
+    )?;
+    let dict = find_optional(
+        models_dir,
+        &[
+            "ppocrv5_dict.txt",
+            "ch_PP-OCRv5_rec_mobile_infer.txt",
+            "ppocr_keys_v1.txt",
+        ],
+    );
+    Ok((rec, dict))
+}
+
 fn ensure_ocr<'a>(
     ocr: &'a mut Option<OcrLite>,
     models_dir: &Path,
     threads: usize,
+    lang: &str,
 ) -> Result<&'a mut OcrLite> {
     if ocr.is_none() {
-        *ocr = Some(load_ocr(models_dir, threads)?);
+        *ocr = Some(load_ocr(models_dir, threads, lang)?);
     }
     Ok(ocr.as_mut().expect("OCR was initialized"))
 }
