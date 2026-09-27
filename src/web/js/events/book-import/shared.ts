@@ -115,6 +115,7 @@ function safeImportErrorMessage(error: unknown): string {
   if (/Image OCR requires the bundled PaddleOCR component/i.test(message)) return t("toast.imageOcrRequiresApp");
   if (/yt-dlp|\[youtube\]|video (?:unavailable|not found)|private video|sign in to confirm/i.test(message)) return t("import.youtubeError");
   if (message.includes("CALIBRE_NOT_FOUND")) return t("toast.calibreRequired");
+  if (message.includes("EPUB_TOO_LARGE")) return t("toast.ebookTooLarge");
   const localizedMessages = new Set([
     t("toast.pdfImportBusy"),
     t("toast.pdfOcrRequiresApp"),
@@ -128,6 +129,7 @@ function safeImportErrorMessage(error: unknown): string {
     t("toast.imageTooLarge", { mb: Math.floor(MAX_DESKTOP_OCR_IMAGE_BYTES / (1024 * 1024)) }),
     t("toast.importFailed"),
     t("toast.ebookRequiresApp"),
+    t("toast.ebookTooLarge"),
     t("toast.mobileImportUnsupported"),
     t("toast.importedEbookEmpty"),
     t("toast.importedFileEmpty"),

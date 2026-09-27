@@ -894,6 +894,7 @@
     "fileLoaded": "ファイルを読み込みました: {name}",
     "fileError": "ファイルを読み込めませんでした。",
     "calibreRequired": "MOBI・AZW 形式の本には Calibre が必要です。calibre-ebook.com からインストールしてから、もう一度ファイルを読み込んでください。",
+    "ebookTooLarge": "この EPUB は大きすぎて、Word Hunter で一度に取り込めません。小さな本に分けて、1 冊ずつ取り込んでください。",
     "learningLanguageLockedDuringOcr": "OCR の読み込みが終わるまで、学習言語を切り替えないでください。",
     "backupTooLarge": "バックアップが大きすぎるためインポートできません（最大 {mb} MB）。",
     "importFileTooLarge": "この端末で確実にインポートするにはファイルが大きすぎます（最大 {mb} MB）。",

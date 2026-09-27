@@ -949,6 +949,7 @@
     "fileLoaded": "已加载文件：{name}",
     "fileError": "无法读取该文件。",
     "calibreRequired": "MOBI 和 AZW 电子书需要 Calibre。请从 calibre-ebook.com 安装后重新导入该文件。",
+    "ebookTooLarge": "此 EPUB 太大，Word Hunter 无法一次导入。请将其拆分为较小的书，再逐本导入。",
     "learningLanguageLockedDuringOcr": "请等待 OCR 导入完成后再切换学习语言。",
     "backupTooLarge": "备份过大，无法导入（最大 {mb} MB）。",
     "importFileTooLarge": "此文件过大，在此设备上无法可靠导入（最大 {mb} MB）。",

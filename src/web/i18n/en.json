@@ -949,6 +949,7 @@
     "fileLoaded": "Loaded file: {name}",
     "fileError": "Could not read the file.",
     "calibreRequired": "MOBI and AZW books need Calibre. Install it from calibre-ebook.com, then import the file again.",
+    "ebookTooLarge": "This EPUB is too large for Word Hunter to import at once. Split it into smaller books and import them one by one.",
     "learningLanguageLockedDuringOcr": "Wait until the OCR import finishes before switching the learning language.",
     "backupTooLarge": "The backup is too large to import (maximum {mb} MB).",
     "importFileTooLarge": "This file is too large for reliable import on this device (max {mb} MB).",
