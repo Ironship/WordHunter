@@ -263,12 +263,15 @@ fn concurrent_profile_edits_keep_both_devices_review_days() {
         device_id: device.to_string(),
         causal: causal(&[(device, time as u64)]),
     };
+    let day =
+        |ago: i64| (time::OffsetDateTime::now_utc().date() - time::Duration::days(ago)).to_string();
+    let (monday, tuesday, long_ago) = (day(6), day(5), day(800));
     let phone = profile(
-        json!({ "2026-09-21": 3, "2026-09-22": 5 }),
+        json!({ monday.clone(): 3, tuesday.clone(): 5, long_ago.clone(): 1 }),
         "phone-device",
         2_000,
     );
-    let desktop = profile(json!({ "2026-09-21": 7 }), "pc-device", 3_000);
+    let desktop = profile(json!({ monday.clone(): 7 }), "pc-device", 3_000);
 
     let merged = merge_records(
         &BTreeMap::new(),
@@ -280,11 +283,29 @@ fn concurrent_profile_edits_keep_both_devices_review_days() {
     );
 
     let record = &merged.records["profile:de"];
+    // Days older than the frontend keeps are not brought back.
     assert_eq!(
         record.data["reviewsByDay"],
-        json!({ "2026-09-21": 7, "2026-09-22": 5 })
+        json!({ monday.clone(): 7, tuesday.clone(): 5 })
     );
     assert!(record.causal.contains_key("phone-device") && record.causal.contains_key("pc-device"));
+
+    // A save that descends from the stored record keeps what it pruned.
+    let mut pruned = record.clone();
+    pruned.data["reviewsByDay"] = json!({ tuesday.clone(): 5 });
+    pruned.causal.insert("phone-device".to_string(), 9_000);
+    let merged = merge_records(
+        &crate::store::record_files::fingerprints(&merged.records),
+        [(pruned.key.clone(), pruned)].into_iter().collect(),
+        merged.records.clone(),
+        "phone-device",
+        9_000,
+        &BTreeSet::new(),
+    );
+    assert_eq!(
+        merged.records["profile:de"].data["reviewsByDay"],
+        json!({ tuesday: 5 })
+    );
 }
 
 #[test]

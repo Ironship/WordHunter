@@ -217,10 +217,13 @@ pub(crate) fn merge_records(
         };
 
         if let Some(mut record) = chosen {
-            // Per-day review counts only grow: whichever profile record
-            // wins, it keeps the reviews the other side counted.
+            // Whichever of two concurrent profile records wins keeps the
+            // review days the other side counted. A record that already
+            // descends from the other one has seen them (or pruned them).
             for other in [incoming_record, current_record].into_iter().flatten() {
-                if merge_review_days(&mut record, other) {
+                if compare_causal(&record.causal, &other.causal) == CausalOrder::Concurrent
+                    && merge_review_days(&mut record, other)
+                {
                     // The merged record includes both sides, so it descends
                     // from both and other devices converge on it.
                     merge_causal_clock(&mut record.causal, &other.causal);
@@ -238,8 +241,14 @@ pub(crate) fn merge_records(
 
 const REVIEWS_BY_DAY: &str = "reviewsByDay";
 
+/// Days the frontend keeps in a profile's review counter (REVIEW_DAYS_KEPT).
+const REVIEW_DAYS_KEPT: i64 = 730;
+
 /// Adds `source`'s per-day review counts to `target` (a profile record),
-/// keeping the larger count of a day. Returns whether `target` changed.
+/// keeping the larger count of a day and none older than the frontend
+/// keeps. The counter has no per-device parts, so reviews two devices made
+/// on the same day before they synced count as the larger of the two.
+/// Returns whether `target` changed.
 pub(crate) fn merge_review_days(target: &mut SyncRecord, source: &SyncRecord) -> bool {
     if !target.key.starts_with("profile:")
         || source.key != target.key
@@ -261,11 +270,16 @@ pub(crate) fn merge_review_days(target: &mut SyncRecord, source: &SyncRecord) ->
     else {
         return false;
     };
+    let oldest =
+        (OffsetDateTime::now_utc().date() - time::Duration::days(REVIEW_DAYS_KEPT)).to_string();
     let mut changed = false;
     for (day, count) in source_days {
         let Some(count) = count.as_u64() else {
             continue;
         };
+        if day.len() != 10 || *day < oldest {
+            continue;
+        }
         if days
             .get(day)
             .and_then(Value::as_u64)
