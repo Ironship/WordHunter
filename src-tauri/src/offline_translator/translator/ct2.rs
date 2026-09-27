@@ -102,11 +102,15 @@ fn native_ct2_translate(input: &Value) -> Result<String, String> {
         }
     }
 
+    let text_chars = input
+        .get("text")
+        .and_then(Value::as_str)
+        .map_or(0, |text| text.chars().count());
     let timeout = Duration::from_millis(
         std::env::var("WH_NATIVE_CT2_TIMEOUT_MS")
             .ok()
             .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(15_000),
+            .unwrap_or_else(|| default_timeout_ms(text_chars)),
     );
     let start = Instant::now();
     loop {
@@ -135,6 +139,15 @@ fn native_ct2_translate(input: &Value) -> Result<String, String> {
         }
         thread::sleep(Duration::from_millis(50));
     }
+}
+
+/// A long text is translated in full now, sentence by sentence, so it gets
+/// more time than a word or a sentence does.
+pub(crate) fn default_timeout_ms(text_chars: usize) -> u64 {
+    const BASE_MS: u64 = 15_000;
+    const PER_100_CHARS_MS: u64 = 1_000;
+    const MAX_MS: u64 = 180_000;
+    (BASE_MS + (text_chars as u64 / 100) * PER_100_CHARS_MS).min(MAX_MS)
 }
 
 /// Try a direct translation; if it fails, fall back to a two-step pivot via English.
@@ -220,7 +233,8 @@ fn native_ct2_translate_direct(input: &Value) -> Result<String, String> {
 fn translate_with_ct2_model(model_dir: &Path, text: &str) -> Result<String, String> {
     let ctranslate_model = model_dir.join("model");
     let options = TranslationOptions {
-        max_batch_size: 1,
+        // Sentences of a long text are decoded together, up to this many tokens.
+        max_batch_size: 1024,
         batch_type: BatchType::Tokens,
         beam_size: 4,
         length_penalty: 0.2,

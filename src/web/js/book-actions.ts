@@ -21,7 +21,8 @@ export async function openBook(id: string) {
     // A Wikipedia/Wikinews result that 1.1.0/1.1.1 saved as a Gutenberg book
     // never loaded; open the article it points to instead, from any view.
     const articleId = await replaceLegacyMediaWikiBook(legacyArticle);
-    if (generation !== openBookGeneration) return false;
+    // The article stays in the library even if the user moved on meanwhile.
+    if (generation !== openBookGeneration || startingNavigationEpoch !== getNavigationEpoch()) return false;
     if (!articleId) return false;
     return openBook(articleId);
   }

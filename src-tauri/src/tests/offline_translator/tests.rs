@@ -148,3 +148,13 @@ fn offline_translation_is_split_into_sentences_and_lines() {
         vec![line(&[&format!("{}。", "你好".repeat(160)), "我是学生。"])]
     );
 }
+
+#[test]
+fn long_offline_translations_get_more_time() {
+    use super::translator::ct2::default_timeout_ms;
+
+    assert_eq!(default_timeout_ms(0), 15_000);
+    assert_eq!(default_timeout_ms(80), 15_000);
+    assert_eq!(default_timeout_ms(3_000), 45_000);
+    assert_eq!(default_timeout_ms(1_000_000), 180_000);
+}

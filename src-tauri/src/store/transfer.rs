@@ -117,9 +117,16 @@ impl ClearBackup {
 
     /// Whether the clear edited this record in place instead of deleting it.
     fn edited(&self, key: &str) -> bool {
-        self.clear == "library"
-            && (matches!(key, "pref:readerBookmarks" | "pref:lastReadTextIds")
-                || key.strip_prefix("profile:") == Some(self.language.as_str()))
+        match self.clear.as_str() {
+            "library" => {
+                matches!(key, "pref:readerBookmarks" | "pref:lastReadTextIds")
+                    || key.strip_prefix("profile:") == Some(self.language.as_str())
+            }
+            // After the wipe the app saves its default settings and profile
+            // again; those stand in for the ones the wipe deleted.
+            "all" => key.starts_with("pref:") || key.starts_with("profile:"),
+            _ => false,
+        }
     }
 }
 
@@ -361,18 +368,33 @@ impl Store {
         }
         // "Clear library" also edits bookmarks, the last read book and the
         // archive list in place; give back what it removed from them for the
-        // books that are back.
-        let live_books = current
-            .iter()
-            .filter(|(key, _)| !accepted.contains_key(*key))
-            .map(|(_, record)| record)
-            .chain(accepted.values())
-            .filter(|record| record.deleted_at.is_none())
-            .filter_map(record_book_id)
-            .collect::<BTreeSet<_>>();
+        // books that are back and for built-in books. After "Clear
+        // everything" the backup's settings replace the defaults saved since.
+        let books = |live_only: bool| {
+            current
+                .iter()
+                .filter(|(key, _)| !accepted.contains_key(*key))
+                .map(|(_, record)| record)
+                .chain(accepted.values())
+                .filter(|record| !live_only || record.deleted_at.is_none())
+                .filter_map(|record| record_key_book_id(&record.key))
+                .collect::<BTreeSet<_>>()
+        };
+        let (live_books, user_books) = (books(true), books(false));
+        let wiped = plan
+            .clear_backup
+            .as_ref()
+            .is_some_and(|(clear, _)| clear.clear == "all");
         for (key, mut incoming) in edited_by_clear {
             let saved = current.get(&key);
-            match saved.and_then(|saved| restore_cleared_entries(saved, &incoming, &live_books)) {
+            let data = if wiped {
+                Some(incoming.data.clone())
+            } else {
+                saved.and_then(|saved| {
+                    restore_cleared_entries(saved, &incoming, &live_books, &user_books)
+                })
+            };
+            match data {
                 Some(data) => {
                     incoming.data = data;
                     restore_over(&mut incoming, saved, &self.device_id, now);
@@ -1039,17 +1061,24 @@ fn restore_over(
 }
 
 /// For records "Clear library" edits instead of deleting: the saved data plus
-/// the backup's entries for `live_books` that the saved record lacks, or
-/// `None` when nothing is missing. Later edits of the saved record are kept.
+/// the backup's entries that the saved record lacks, for user books that are
+/// back (`live_books`) and, in the last read and archive lists, built-in
+/// books (ids that are not in `user_books`). `None` when nothing is missing.
+/// Later edits of the saved record are kept.
 fn restore_cleared_entries(
     saved: &record_files::SyncRecord,
     incoming: &record_files::SyncRecord,
     live_books: &BTreeSet<String>,
+    user_books: &BTreeSet<String>,
 ) -> Option<Value> {
     if saved.deleted_at.is_some() {
         return None;
     }
-    let is_live = |id: &Value| id.as_str().is_some_and(|id| live_books.contains(id));
+    // A user book that is back, or a built-in book (which is never a record).
+    let is_live = |id: &Value| {
+        id.as_str()
+            .is_some_and(|id| live_books.contains(id) || !user_books.contains(id))
+    };
     let mut data = saved.data.clone();
     let target = data.as_object_mut()?;
     let mut changed = false;
@@ -1103,6 +1132,16 @@ fn restore_cleared_entries(
         }
     }
     changed.then_some(data)
+}
+
+/// The id of the user book or text a record key belongs to, whatever its kind.
+fn record_key_book_id(key: &str) -> Option<String> {
+    key.strip_prefix("text:")
+        .or_else(|| {
+            key.strip_prefix("book:")
+                .and_then(|rest| rest.split_once(':').map(|(_, id)| id))
+        })
+        .map(str::to_string)
 }
 
 fn record_book_id(record: &record_files::SyncRecord) -> Option<String> {
@@ -1273,7 +1312,11 @@ mod tests {
         let store = store(dir.path(), "pc");
         let records = record_files::payload_to_records(
             &json!({
-                "vocab": {"de": {"vocab": {}, "archivedBookIds": ["book-1"], "hiddenBuiltInBooks": ["gb-1"]}},
+                "vocab": {"de": {
+                    "vocab": {},
+                    "archivedBookIds": ["book-1", "gb-archived", "book-2"],
+                    "hiddenBuiltInBooks": ["gb-1"],
+                }},
                 "texts": [
                     {"id": "book-1", "title": "PDF", "pdfOcrPages": [{"imageName": "page.png"}]},
                     {"id": "book-2", "title": "Deleted later"},
@@ -1340,9 +1383,11 @@ mod tests {
             restored["pref:lastReadTextIds"].data,
             json!({"de": "book-1"})
         );
+        // Built-in books ("gb-archived") come back too; the book deleted
+        // later does not.
         assert_eq!(
             restored["profile:de"].data["archivedBookIds"],
-            json!(["book-1"])
+            json!(["book-1", "gb-archived"])
         );
         assert_eq!(
             restored["profile:de"].data["hiddenBuiltInBooks"],
@@ -1393,6 +1438,64 @@ mod tests {
         assert_eq!(restored["pref:readerBookmarks"].data, json!({}));
         assert_eq!(restored["profile:de"].data["archivedBookIds"], json!([]));
         assert_eq!(restored["profile:de"].data["hiddenBuiltInBooks"], json!([]));
+    }
+
+    #[test]
+    fn backup_before_clear_everything_restores_settings_saved_over_by_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let packages = tempfile::tempdir().unwrap();
+        let store = store(dir.path(), "pc");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}, "archivedBookIds": ["gb-2"]}},
+                "prefs": {"theme": "dark", "locale": "pl", "lastReadTextIds": {"de": "gb-2"}},
+            }),
+            "pc",
+            100,
+        );
+        record_files::write_records(dir.path(), &records).unwrap();
+        let backup = packages.path().join("backup.zip");
+        let wipe = ClearBackup {
+            clear: "all".to_string(),
+            language: "de".to_string(),
+        };
+        store
+            .export_transfer(&backup, ExportScope::All, Some(&wipe), None)
+            .unwrap();
+
+        // The wipe deletes everything, then the app saves its defaults.
+        let wiped = record_files::load_records(dir.path())
+            .unwrap()
+            .into_iter()
+            .map(|(key, record)| {
+                let now = record_files::now_millis();
+                let tombstone =
+                    record_files::tombstone_with_base(&key, "pc", now, Some(&record.causal));
+                (key, tombstone)
+            })
+            .collect::<BTreeMap<_, _>>();
+        record_files::write_records(dir.path(), &wiped).unwrap();
+        let defaults = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": []}},
+                "prefs": {"theme": "light", "locale": "en", "lastReadTextIds": {}},
+            }),
+            "pc",
+            record_files::now_millis() + 1,
+        );
+        record_files::write_records(dir.path(), &defaults).unwrap();
+        store.invalidate_records_cache();
+
+        store.import_transfer(&backup).unwrap();
+        let restored = record_files::load_records(dir.path()).unwrap();
+        assert!(restored["vocab:de:haus"].deleted_at.is_none());
+        assert_eq!(restored["pref:theme"].data, "dark");
+        assert_eq!(restored["pref:locale"].data, "pl");
+        assert_eq!(restored["pref:lastReadTextIds"].data, json!({"de": "gb-2"}));
+        assert_eq!(
+            restored["profile:de"].data["archivedBookIds"],
+            json!(["gb-2"])
+        );
     }
 
     #[test]

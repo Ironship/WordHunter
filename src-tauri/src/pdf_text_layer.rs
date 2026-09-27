@@ -49,9 +49,16 @@ pub(crate) fn text_layer_is_usable(pages: &[OverlayPage]) -> bool {
 /// Rewrite ranges into the list form (`first [width ...]`), which pdf-extract
 /// reads correctly.
 fn expand_cid_width_ranges(document: &mut pdf_extract::Document) {
-    use pdf_extract::Object;
+    use pdf_extract::{Object, ObjectId};
 
-    let cid_fonts = document
+    // Where a font's /W array lives: in the font itself, or in an object
+    // that several fonts may share (expanded once).
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    enum Widths {
+        InFont(ObjectId),
+        Shared(ObjectId),
+    }
+    let mut targets = document
         .objects
         .iter()
         .filter_map(|(id, object)| {
@@ -60,23 +67,56 @@ fn expand_cid_width_ranges(document: &mut pdf_extract::Document) {
             if !matches!(subtype, b"CIDFontType0" | b"CIDFontType2") {
                 return None;
             }
-            let widths = match font.get(b"W").ok()? {
-                Object::Reference(target) => document.get_object(*target).ok()?.as_array().ok()?,
-                widths => widths.as_array().ok()?,
-            };
-            Some((*id, expand_width_ranges(widths)?))
+            Some(match font.get(b"W").ok()? {
+                Object::Reference(target) => Widths::Shared(*target),
+                _ => Widths::InFont(*id),
+            })
         })
         .collect::<Vec<_>>();
-    for (id, widths) in cid_fonts {
-        if let Some(Object::Dictionary(font)) = document.objects.get_mut(&id) {
-            font.set("W", Object::Array(widths));
+    targets.sort();
+    targets.dedup();
+
+    // A few embedded fonts need far fewer widths than this; the budget for
+    // the whole file keeps a crafted PDF with thousands of fonts from
+    // exhausting memory.
+    let mut budget = 4 * 0x1_0000;
+    for target in targets {
+        let widths = match target {
+            Widths::InFont(id) => document
+                .objects
+                .get(&id)
+                .and_then(|font| font.as_dict().ok())
+                .and_then(|font| font.get(b"W").ok())
+                .and_then(|widths| widths.as_array().ok()),
+            Widths::Shared(id) => document
+                .objects
+                .get(&id)
+                .and_then(|widths| widths.as_array().ok()),
+        };
+        let Some(expanded) = widths.and_then(|widths| expand_width_ranges(widths, &mut budget))
+        else {
+            continue;
+        };
+        match target {
+            Widths::InFont(id) => {
+                if let Some(Object::Dictionary(font)) = document.objects.get_mut(&id) {
+                    font.set("W", Object::Array(expanded));
+                }
+            }
+            Widths::Shared(id) => {
+                document.objects.insert(id, Object::Array(expanded));
+            }
         }
     }
 }
 
-/// The list form of a /W array, or None when it has no ranges to expand (or
-/// is malformed, in which case it is left for pdf-extract as it was).
-fn expand_width_ranges(widths: &[pdf_extract::Object]) -> Option<Vec<pdf_extract::Object>> {
+/// The list form of a /W array, or None when it has no ranges to expand, is
+/// malformed, or needs more widths than `budget` has left (in these cases it
+/// is left for pdf-extract as it was). The widths added are taken off `budget`.
+fn expand_width_ranges(
+    widths: &[pdf_extract::Object],
+    budget: &mut usize,
+) -> Option<Vec<pdf_extract::Object>> {
     use pdf_extract::Object;
 
     let code = |object: &Object| match object {
@@ -84,9 +124,9 @@ fn expand_width_ranges(widths: &[pdf_extract::Object]) -> Option<Vec<pdf_extract
         Object::Real(value) => Some(*value as i64),
         _ => None,
     };
-    // CIDs are 16-bit, so a valid font never lists more widths than this;
-    // the cap keeps a hostile PDF from making the expansion huge.
+    // CIDs are 16-bit, so a valid font never lists more widths than this.
     const MAX_WIDTHS: usize = 0x1_0000;
+    let limit = MAX_WIDTHS.min(*budget);
     let mut expanded = Vec::with_capacity(widths.len());
     let mut expanded_widths = 0usize;
     let mut has_ranges = false;
@@ -104,7 +144,7 @@ fn expand_width_ranges(widths: &[pdf_extract::Object]) -> Option<Vec<pdf_extract
                 code(width)?;
                 let count = usize::try_from(span).ok()?.checked_add(1)?;
                 expanded_widths = expanded_widths.checked_add(count)?;
-                if expanded_widths > MAX_WIDTHS {
+                if expanded_widths > limit {
                     return None;
                 }
                 expanded.extend([
@@ -115,6 +155,9 @@ fn expand_width_ranges(widths: &[pdf_extract::Object]) -> Option<Vec<pdf_extract
                 index += 3;
             }
         }
+    }
+    if has_ranges {
+        *budget -= expanded_widths;
     }
     has_ranges.then_some(expanded)
 }
@@ -1009,6 +1052,8 @@ mod tests {
     fn cid_width_ranges_become_lists_pdf_extract_can_read() {
         use pdf_extract::Object;
 
+        let mut unlimited = usize::MAX;
+
         let widths = vec![
             Object::Integer(0),
             Object::Array(vec![Object::Real(777.8)]),
@@ -1018,7 +1063,7 @@ mod tests {
             Object::Integer(81),
             Object::Array(vec![Object::Integer(556), Object::Integer(500)]),
         ];
-        let expanded = expand_width_ranges(&widths).unwrap();
+        let expanded = expand_width_ranges(&widths, &mut unlimited).unwrap();
 
         assert_eq!(
             expanded,
@@ -1032,22 +1077,79 @@ mod tests {
             ]
         );
         // Nothing to expand, or malformed: leave the array alone.
-        assert_eq!(expand_width_ranges(&widths[..2]), None);
-        assert_eq!(expand_width_ranges(&widths[2..4]), None);
+        assert_eq!(expand_width_ranges(&widths[..2], &mut unlimited), None);
+        assert_eq!(expand_width_ranges(&widths[2..4], &mut unlimited), None);
         let range = |first, last, width| vec![Object::Integer(first), Object::Integer(last), width];
         assert_eq!(
-            expand_width_ranges(&range(1, 3, Object::Name(b"x".to_vec()))),
+            expand_width_ranges(&range(1, 3, Object::Name(b"x".to_vec())), &mut unlimited),
             None
         );
         assert_eq!(
-            expand_width_ranges(&range(i64::MIN, i64::MAX, Object::Integer(1))),
+            expand_width_ranges(
+                &range(i64::MIN, i64::MAX, Object::Integer(1)),
+                &mut unlimited
+            ),
             None
         );
         // Many ranges together may not exceed what 16-bit CIDs can use.
         let many = (0..3)
             .flat_map(|_| range(0, 0x7fff, Object::Integer(500)))
             .collect::<Vec<_>>();
-        assert_eq!(expand_width_ranges(&many), None);
+        assert_eq!(expand_width_ranges(&many, &mut unlimited), None);
+    }
+
+    #[test]
+    fn width_expansion_is_bounded_for_the_whole_document() {
+        use pdf_extract::{Dictionary, Document, Object};
+
+        let cid_font = |widths: Object| {
+            let mut font = Dictionary::new();
+            font.set("Type", Object::Name(b"Font".to_vec()));
+            font.set("Subtype", Object::Name(b"CIDFontType2".to_vec()));
+            font.set("W", widths);
+            Object::Dictionary(font)
+        };
+        let range = |first: i64, last: i64| {
+            Object::Array(vec![
+                Object::Integer(first),
+                Object::Integer(last),
+                Object::Integer(500),
+            ])
+        };
+
+        // Many fonts sharing one ranged /W array: it is expanded once.
+        let mut document = Document::with_version("1.5");
+        let shared = document.add_object(range(0, 0xffff));
+        let fonts = (0..50)
+            .map(|_| document.add_object(cid_font(Object::Reference(shared))))
+            .collect::<Vec<_>>();
+        expand_cid_width_ranges(&mut document);
+        let expanded = document.objects[&shared].as_array().unwrap();
+        assert_eq!(expanded.len(), 2);
+        assert_eq!(expanded[1].as_array().unwrap().len(), 0x1_0000);
+        for font in fonts {
+            let font = document.objects[&font].as_dict().unwrap();
+            assert_eq!(font.get(b"W").unwrap(), &Object::Reference(shared));
+        }
+
+        // Fonts with their own full ranges: only a bounded number is expanded.
+        let mut document = Document::with_version("1.5");
+        let fonts = (0..20)
+            .map(|_| document.add_object(cid_font(range(0, 0xffff))))
+            .collect::<Vec<_>>();
+        expand_cid_width_ranges(&mut document);
+        let expanded = fonts
+            .iter()
+            .filter(|font| {
+                let widths = document.objects[*font]
+                    .as_dict()
+                    .unwrap()
+                    .get(b"W")
+                    .unwrap();
+                widths.as_array().unwrap().len() == 2
+            })
+            .count();
+        assert_eq!(expanded, 4);
     }
 
     #[test]
