@@ -579,6 +579,7 @@ fn merged_on_import(
             }
         }
         key if key.starts_with("profile:") => {
+            record_files::merge_review_days(&mut merged, older);
             for field in ["archivedBookIds", "hiddenBuiltInBooks"] {
                 let Some(older_ids) = older.data.get(field).and_then(Value::as_array) else {
                     continue;

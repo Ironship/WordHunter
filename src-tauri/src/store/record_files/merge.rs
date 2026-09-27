@@ -216,7 +216,16 @@ pub(crate) fn merge_records(
             }
         };
 
-        if let Some(record) = chosen {
+        if let Some(mut record) = chosen {
+            // Per-day review counts only grow: whichever profile record
+            // wins, it keeps the reviews the other side counted.
+            for other in [incoming_record, current_record].into_iter().flatten() {
+                if merge_review_days(&mut record, other) {
+                    // The merged record includes both sides, so it descends
+                    // from both and other devices converge on it.
+                    merge_causal_clock(&mut record.causal, &other.causal);
+                }
+            }
             output.insert(record.key.clone(), record);
         }
     }
@@ -225,6 +234,48 @@ pub(crate) fn merge_records(
         records: canonicalize_vocab_records(output),
         conflicts,
     }
+}
+
+const REVIEWS_BY_DAY: &str = "reviewsByDay";
+
+/// Adds `source`'s per-day review counts to `target` (a profile record),
+/// keeping the larger count of a day. Returns whether `target` changed.
+pub(crate) fn merge_review_days(target: &mut SyncRecord, source: &SyncRecord) -> bool {
+    if !target.key.starts_with("profile:")
+        || source.key != target.key
+        || target.deleted_at.is_some()
+        || source.deleted_at.is_some()
+    {
+        return false;
+    }
+    let Some(source_days) = source.data.get(REVIEWS_BY_DAY).and_then(Value::as_object) else {
+        return false;
+    };
+    let Some(target) = target.data.as_object_mut() else {
+        return false;
+    };
+    let Some(days) = target
+        .entry(REVIEWS_BY_DAY)
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+    else {
+        return false;
+    };
+    let mut changed = false;
+    for (day, count) in source_days {
+        let Some(count) = count.as_u64() else {
+            continue;
+        };
+        if days
+            .get(day)
+            .and_then(Value::as_u64)
+            .is_none_or(|own| own < count)
+        {
+            days.insert(day.clone(), Value::from(count));
+            changed = true;
+        }
+    }
+    changed
 }
 
 fn merge_in_text_review_completions(

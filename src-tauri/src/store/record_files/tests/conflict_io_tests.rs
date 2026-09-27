@@ -192,6 +192,41 @@ fn concurrent_vocab_merge_allows_a_later_explicit_status_downgrade() {
 }
 
 #[test]
+fn concurrent_profile_edits_keep_both_devices_review_days() {
+    let profile = |days: serde_json::Value, device: &str, time: u128| SyncRecord {
+        key: "profile:de".to_string(),
+        kind: "profile".to_string(),
+        data: json!({ "archivedBookIds": [], "reviewsByDay": days }),
+        updated_at: time,
+        deleted_at: None,
+        device_id: device.to_string(),
+        causal: causal(&[(device, time as u64)]),
+    };
+    let phone = profile(
+        json!({ "2026-09-21": 3, "2026-09-22": 5 }),
+        "phone-device",
+        2_000,
+    );
+    let desktop = profile(json!({ "2026-09-21": 7 }), "pc-device", 3_000);
+
+    let merged = merge_records(
+        &BTreeMap::new(),
+        [(phone.key.clone(), phone)].into_iter().collect(),
+        [(desktop.key.clone(), desktop)].into_iter().collect(),
+        "phone-device",
+        6_000,
+        &BTreeSet::new(),
+    );
+
+    let record = &merged.records["profile:de"];
+    assert_eq!(
+        record.data["reviewsByDay"],
+        json!({ "2026-09-21": 7, "2026-09-22": 5 })
+    );
+    assert!(record.causal.contains_key("phone-device") && record.causal.contains_key("pc-device"));
+}
+
+#[test]
 fn concurrent_same_vocab_status_keeps_the_latest_status_clock() {
     let mut older = SyncRecord {
         key: "vocab:de:haus".to_string(),
