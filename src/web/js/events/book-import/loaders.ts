@@ -65,8 +65,9 @@ const IMPORT_HANDLERS: ImportHandler[] = [
 // binaries can arrive here and must not be decoded as text.
 const MOBILE_IMPORT_EXTENSIONS = /\.(txt|md|markdown|srt|vtt|ass|ssa|epub|pdf)$/i;
 // Types the picker reports for files it offered by type; some providers
-// give text files no extension or an unusual one.
-const MOBILE_IMPORT_TYPES = new Set(["text/plain", "text/markdown", "text/vtt", "application/x-subrip", "text/x-ssa", "application/pdf"]);
+// give text files no extension or an unusual one. Subtitles are not among
+// them: their parser is chosen by extension.
+const MOBILE_IMPORT_TYPES = new Set(["text/plain", "text/markdown", "application/pdf"]);
 
 function mobileCanImport(file: File): boolean {
   return MOBILE_IMPORT_EXTENSIONS.test(file.name || "") || MOBILE_IMPORT_TYPES.has(file.type);

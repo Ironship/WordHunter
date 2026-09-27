@@ -1094,7 +1094,11 @@ fn recognizer_files(models_dir: &Path, lang: &str) -> Option<(PathBuf, Option<Pa
 /// last one; a copy with them added is written when the model has room
 /// for them.
 fn recognizer_dictionary(recognizer: &Recognizer) -> Result<Option<PathBuf>> {
+    // Only its outputs and metadata are read: no GPU, no optimisation.
     let session = ort::session::Session::builder()?
+        .with_no_environment_execution_providers()?
+        .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Disable)?
+        .with_intra_threads(1)?
         .commit_from_file(&recognizer.rec)
         .context("the model does not load")?;
     let classes = session
@@ -1114,15 +1118,53 @@ fn recognizer_dictionary(recognizer: &Recognizer) -> Result<Option<PathBuf>> {
     };
     let content =
         fs::read_to_string(dict).with_context(|| format!("failed to read {}", dict.display()))?;
-    let keys = dictionary_keys(&content, classes)
-        .with_context(|| format!("{} does not belong to it", dict.display()))?;
-    let path = env::temp_dir().join(format!(
-        "wordhunter-paddleocr-{}-dict.txt",
-        std::process::id()
-    ));
-    fs::write(&path, keys.join("\n"))
-        .with_context(|| format!("failed to write {}", path.display()))?;
-    Ok(Some(path))
+    let keys = match dictionary_keys(&content, classes) {
+        Ok(keys) => keys,
+        // The model's own list is the right one.
+        Err(error) if embedded => {
+            eprintln!(
+                "wordhunter-paddleocr: ignoring {}: {error:#}; using the list in the model",
+                dict.display()
+            );
+            return Ok(None);
+        }
+        Err(error) => {
+            return Err(error.context(format!("{} does not belong to it", dict.display())));
+        }
+    };
+    write_temp_dictionary(&keys.join("\n")).map(Some)
+}
+
+/// A new file in the temp directory that nothing else has created, so a
+/// planted link cannot redirect the write.
+fn write_temp_dictionary(content: &str) -> Result<PathBuf> {
+    use std::io::Write;
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.subsec_nanos())
+        .unwrap_or_default();
+    for attempt in 0..16u32 {
+        let path = env::temp_dir().join(format!(
+            "wordhunter-paddleocr-{}-{nanos:08x}-{attempt}-dict.txt",
+            std::process::id()
+        ));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(mut file) => {
+                file.write_all(content.as_bytes())
+                    .with_context(|| format!("failed to write {}", path.display()))?;
+                return Ok(path);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => {
+                return Err(error).with_context(|| format!("failed to create {}", path.display()));
+            }
+        }
+    }
+    bail!("failed to create a temporary dictionary file")
 }
 
 /// A dictionary's lines as the recognizer's classes (see

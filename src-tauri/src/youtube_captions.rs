@@ -132,11 +132,11 @@ fn video_tracks(url: &str, deadline: Instant) -> Result<(VideoInfo, Vec<Value>),
     };
     match (ytdlp_video_tracks(&id, deadline), page) {
         (Ok(Some(found)), _) => Ok(found),
-        // The page was read and lists no captions, and yt-dlp can't add any:
-        // the video has none, which the import panel says as such.
-        (_, Some(page)) => Ok(page),
+        // The page was read and lists no captions, and there is no yt-dlp
+        // to ask: the video has none, which the import panel says as such.
+        (Ok(None), Some(page)) => Ok(page),
         (Ok(None), None) => Err(page_error),
-        (Err(error), None) => Err(format!("{page_error}; yt-dlp: {error}")),
+        (Err(error), _) => Err(format!("{page_error}; yt-dlp: {error}")),
     }
 }
 

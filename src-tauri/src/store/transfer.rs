@@ -331,6 +331,12 @@ impl Store {
                     && matches!(record.kind.as_str(), "vocab" | "text" | "book")
             });
         let new_books = books_brought_by(&root, &current, &plan)?;
+        let package_books = plan
+            .records
+            .values()
+            .filter(|record| record.deleted_at.is_none())
+            .filter_map(record_book_id)
+            .collect::<BTreeSet<_>>();
         for (key, mut incoming) in std::mem::take(&mut plan.records) {
             // Packages from before 1.1.2 may carry API keys and deletions;
             // keep this device's own keys, and delete nothing here.
@@ -383,6 +389,7 @@ impl Store {
                     fresh_target,
                     plan.clear_backup.is_none(),
                     &new_books,
+                    &package_books,
                 )
             }) {
                 incoming.data = data;
@@ -587,19 +594,23 @@ fn books_brought_by(
 
 /// Import data for records that are merged instead of replaced. Without a
 /// common ancestor a missing entry can mean either side removed it, so the
-/// newer record wins and only gains the other side's reading positions,
-/// last read book and archive entries for the books this import brings
-/// (`new_books`); review days are facts and always add up. On a device
-/// without words or books yet the package's settings win, and the device
-/// keeps its own reading positions and lists alongside them. `merge_lists`
-/// is false for the backup a clear made, which restores exactly what the
-/// clear changed elsewhere. `None` leaves the usual newest-wins.
+/// newer record wins and keeps the other side's reading positions, last
+/// read book and archive entries only for books the newer side can't have
+/// removed them from: the books this import brings (`new_books`) when this
+/// device's record is newer, and the books the package doesn't have
+/// (`package_books`) when the package's is. Review days are facts and
+/// always add up. On a device without words or books yet the package's
+/// settings win, and the device keeps its own reading positions and lists
+/// alongside them. `merge_lists` is false for the backup a clear made,
+/// which restores exactly what the clear changed elsewhere. `None` leaves
+/// the usual newest-wins.
 fn merged_on_import(
     saved: &record_files::SyncRecord,
     incoming: &record_files::SyncRecord,
     fresh_target: bool,
     merge_lists: bool,
     new_books: &BTreeSet<String>,
+    package_books: &BTreeSet<String>,
 ) -> Option<Value> {
     if saved.deleted_at.is_some() || incoming.deleted_at.is_some() {
         return None;
@@ -617,8 +628,16 @@ fn merged_on_import(
         (saved, incoming)
     };
     // Which of the older side's books to keep: all of them for the fresh
-    // device's own, else only those the import brings.
-    let keep = |id: &str| fresh || new_books.contains(id);
+    // device's own; else the package's entries for the books it brings, or
+    // this device's entries for the books the package doesn't have.
+    let keep = |id: &str| {
+        fresh
+            || if saved_is_newer {
+                new_books.contains(id)
+            } else {
+                !package_books.contains(id)
+            }
+    };
     let mut merged = newer.clone();
     match saved.key.as_str() {
         "pref:readerBookmarks" => {
@@ -1874,6 +1893,61 @@ mod tests {
         assert_eq!(
             after["pref:readerBookmarks"].data,
             json!({"b": [{"id": "2", "page": 9}]})
+        );
+    }
+
+    #[test]
+    fn a_newer_package_keeps_this_devices_lists_for_books_it_does_not_have() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let target_dir = tempfile::tempdir().unwrap();
+        let tablet = store(target_dir.path(), "tablet");
+        let own = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Baum": {"word": "Baum"}}, "archivedBookIds": ["b", "c"]}},
+                "texts": [
+                    {"id": "b", "title": "B", "text": "Text"},
+                    {"id": "c", "title": "C", "text": "Text"},
+                ],
+                "prefs": {"readerBookmarks": {
+                    "b": [{"id": "1", "page": 2}],
+                    "c": [{"id": "2", "page": 4}],
+                }},
+            }),
+            "tablet",
+            100,
+        );
+        record_files::write_records(target_dir.path(), &own).unwrap();
+
+        // The PC has book c too, and removed its bookmark and archive entry
+        // later than the tablet last changed its lists.
+        let source = store(source_dir.path(), "pc");
+        let package = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}, "archivedBookIds": ["a"]}},
+                "texts": [
+                    {"id": "a", "title": "A", "text": "Text"},
+                    {"id": "c", "title": "C", "text": "Text"},
+                ],
+                "prefs": {"readerBookmarks": {"a": [{"id": "3", "page": 1}]}},
+            }),
+            "pc",
+            300,
+        );
+        record_files::write_records(source_dir.path(), &package).unwrap();
+        let archive = source_dir.path().join("all.zip");
+        source
+            .export_transfer(&archive, ExportScope::All, None, None)
+            .unwrap();
+
+        tablet.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(target_dir.path()).unwrap();
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({"a": [{"id": "3", "page": 1}], "b": [{"id": "1", "page": 2}]})
+        );
+        assert_eq!(
+            after["profile:de"].data["archivedBookIds"],
+            json!(["a", "b"])
         );
     }
 
