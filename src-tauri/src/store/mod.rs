@@ -46,11 +46,9 @@ pub struct Store {
     // Global save lock; shard only if saves become a bottleneck.
     write_lock: Mutex<()>,
     base_records: Mutex<record_files::Fingerprints>,
-    // The page that `base_records` describes: the one that was last served
-    // an acknowledged snapshot. Saves from any other page (the exit flush of
-    // the page being reloaded, a replayed teardown delta) still merge, but
-    // must not move this page's base (see `Store::page_owns_base`).
-    base_page: Mutex<Option<String>>,
+    // Which page `base_records` describes, and the bases of pages served
+    // since (see `Store::claim_base`).
+    base_page: Mutex<PageBases>,
     // In-memory copy of all record files. Saves re-load the records tree
     // only once (after startup or after an external mutation); every commit
     // refreshes it from the merged output. Large stores take seconds to
@@ -61,6 +59,22 @@ pub struct Store {
     device_id: String,
     startup_instant: std::time::Instant,
 }
+
+/// Each served page saves against the records it was served. A page takes
+/// its base over with its first store request; until then the page it
+/// replaces keeps its own, so that page's late exit save, merged against
+/// it, cannot move the new page's base. A page that never sends a request
+/// (a stray `GET /`) takes nothing over.
+#[derive(Default)]
+struct PageBases {
+    /// The page `base_records` belongs to.
+    owner: Option<String>,
+    /// Pages served since that have not sent a request yet, oldest first.
+    served: std::collections::VecDeque<(String, record_files::Fingerprints)>,
+}
+
+/// Served pages whose base is kept until they check in.
+const SERVED_PAGES_KEPT: usize = 4;
 
 #[derive(Clone)]
 struct StoreInner {
@@ -77,7 +91,7 @@ impl Store {
             inner: Mutex::new(StoreInner { dir, books_dir }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
-            base_page: Mutex::new(None),
+            base_page: Mutex::default(),
             records_cache: Mutex::new(None),
             device_id: crate::paths::device_id(app_name)?,
             startup_instant: std::time::Instant::now(),
@@ -236,6 +250,11 @@ impl Store {
         // snapshot()/records_snapshot() rebuilds them from the new dir.
         self.invalidate_records_cache();
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = Default::default();
+        self.base_page
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .served
+            .clear();
         Ok(dir)
     }
 }
@@ -344,7 +363,7 @@ pub(crate) fn test_store(dir: &std::path::Path, device_id: &str) -> Store {
         }),
         write_lock: Mutex::new(()),
         base_records: Mutex::new(BTreeMap::new()),
-        base_page: Mutex::new(None),
+        base_page: Mutex::default(),
         records_cache: Mutex::new(None),
         device_id: device_id.to_string(),
         startup_instant: std::time::Instant::now(),
@@ -394,7 +413,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
-            base_page: Mutex::new(None),
+            base_page: Mutex::default(),
             records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),

@@ -1708,7 +1708,8 @@ describe("persistence lifecycle", () => {
     assert.equal(requests.length, 2);
     assert.equal(requests[0].init.headers["X-WH-Page"], "page-1");
     assert.equal(requests[0].init.keepalive, true);
-    // 80 KiB of UTF-8 is over the browsers' 64 KiB keepalive limit.
+    // 80 KiB of UTF-8 does not fit next to the UI-state flush in the
+    // browsers' 64 KiB keepalive budget.
     assert.equal(requests[1].init.keepalive, false);
   });
 

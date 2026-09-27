@@ -112,6 +112,34 @@ describe("learning colors", () => {
     assert.equal(normalizeState(raw).discover.source, "gutenberg");
   });
 
+  it("keeps the OCR pages already loaded for texts a snapshot did not change", () => {
+    const original = structuredClone(state._raw || state);
+    window.__qtBridge = true;
+    try {
+      const pages = [{ imageName: "p1.png", text: "Seite eins" }];
+      const scan = { id: "de-scan", lang: "de", title: "Scan", updatedAt: "2026-09-01T00:00:00.000Z", pdfOcrPageCount: 1 };
+      const other = { id: "de-other", lang: "de", title: "Other", updatedAt: "2026-09-01T00:00:00.000Z", pdfOcrPageCount: 1 };
+      replaceState({
+        ...original,
+        customTexts: [{ ...scan, pdfOcrPages: pages }, { ...other, pdfOcrPages: pages }]
+      }, { save: false });
+      const prefs = { ...original.preferences, learningLanguage: "de" };
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs,
+        vocab: { de: { vocab: {} } },
+        texts: [scan, { ...other, updatedAt: "2026-09-02T00:00:00.000Z" }],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      const byId = Object.fromEntries(state.customTexts.map((text) => [text.id, text]));
+      assert.deepEqual(JSON.parse(JSON.stringify(byId["de-scan"].pdfOcrPages)), pages);
+      assert.equal(byId["de-other"].pdfOcrPages, undefined, "a changed text loads its pages again");
+    } finally {
+      replaceState(original, { save: false });
+      window.__qtBridge = false;
+    }
+  });
+
   it("keeps a confirmed language onboarding flag when applying older sync snapshots", () => {
     const original = structuredClone(state._raw || state);
     window.__qtBridge = true;

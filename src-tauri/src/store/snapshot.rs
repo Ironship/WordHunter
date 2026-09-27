@@ -140,8 +140,9 @@ impl Store {
         self.snapshot_for_page(None)
     }
 
-    /// The snapshot a page boots from. It resets the save base to the
-    /// records on disk and makes `page` the page that base belongs to.
+    /// The snapshot a page boots from. Its records become that page's save
+    /// base once the page sends a request (`claim_base`); without a page id
+    /// they replace the base at once.
     pub fn snapshot_for_page(&self, page: Option<&str>) -> Value {
         let _guard = match self.lock_writes() {
             Ok(guard) => guard,
@@ -150,25 +151,33 @@ impl Store {
         if let Err(error) = self.recover_pending_save() {
             return add_snapshot_error(empty_snapshot(self.dir()), format!("recovery: {error}"));
         }
-        let snapshot = self.snapshot_unlocked(true);
-        *self.base_page.lock().unwrap_or_else(|e| e.into_inner()) = page.map(str::to_string);
-        snapshot
+        self.snapshot_unlocked(true, page)
     }
 
     /// Whether a request from `page` speaks for the page the save base
-    /// describes. Requests without a page id (and a base no page claimed)
-    /// keep the single-page behaviour.
-    fn page_owns_base(&self, page: Option<&str>) -> bool {
-        match (
-            page,
-            self.base_page
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .as_deref(),
-        ) {
-            (Some(page), Some(owner)) => page == owner,
-            _ => true,
+    /// describes. A served page's first request makes it that page, with
+    /// the base it was served; pages served before it are gone. Requests
+    /// without a page id (and a base no page claimed) keep the single-page
+    /// behaviour.
+    fn claim_base(&self, page: Option<&str>) -> bool {
+        let Some(page) = page else {
+            return true;
+        };
+        let mut pages = self.base_page.lock().unwrap_or_else(|e| e.into_inner());
+        if pages.owner.as_deref() == Some(page) {
+            return true;
         }
+        let Some(index) = pages.served.iter().position(|(id, _)| id == page) else {
+            return pages.owner.is_none();
+        };
+        let (_, base) = pages
+            .served
+            .drain(..=index)
+            .last()
+            .expect("index is in range");
+        pages.owner = Some(page.to_string());
+        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base;
+        true
     }
 
     pub fn snapshot_unacknowledged(&self) -> Value {
@@ -198,7 +207,7 @@ impl Store {
     ) -> Result<(), String> {
         let _guard = self.lock_writes()?;
         validate_snapshot_payload_schema(payload)?;
-        if !self.page_owns_base(page) {
+        if !self.claim_base(page) {
             return Ok(());
         }
         let previous = self
@@ -216,8 +225,8 @@ impl Store {
         Ok(())
     }
 
-    fn snapshot_unlocked(&self, include_recovery_status: bool) -> Value {
-        let mut snapshot = match self.records_snapshot() {
+    fn snapshot_unlocked(&self, include_recovery_status: bool, page: Option<&str>) -> Value {
+        let mut snapshot = match self.records_snapshot(page) {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 add_snapshot_error(empty_snapshot(self.dir()), format!("records: {error}"))
@@ -254,6 +263,7 @@ impl Store {
             }
         }
         validate_snapshot_payload_schema(&payload)?;
+        let advance_base = self.claim_base(page);
         let base = self
             .base_records
             .lock()
@@ -287,7 +297,6 @@ impl Store {
         }
         durable::write_file_atomic(&journal, &journal_bytes, false)?;
 
-        let advance_base = self.page_owns_base(page);
         let conflicts =
             self.commit_bulk_save_with_context(&payload, &base, saved_at, advance_base)?;
         remove_if_exists(journal)?;
@@ -362,12 +371,26 @@ impl Store {
         status
     }
 
-    fn records_snapshot(&self) -> Result<Value, String> {
+    fn records_snapshot(&self, page: Option<&str>) -> Result<Value, String> {
         let dir = self.dir();
         let records = record_files::load_records(&dir)?;
         self.set_records_cache(records.clone());
-        *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
-            record_files::fingerprints(&records);
+        let base = record_files::fingerprints(&records);
+        let mut pages = self.base_page.lock().unwrap_or_else(|e| e.into_inner());
+        match page {
+            Some(page) => {
+                pages.served.retain(|(id, _)| id != page);
+                pages.served.push_back((page.to_string(), base));
+                while pages.served.len() > super::SERVED_PAGES_KEPT {
+                    pages.served.pop_front();
+                }
+            }
+            None => {
+                pages.owner = None;
+                *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base;
+            }
+        }
+        drop(pages);
         if records.is_empty() {
             return Ok(empty_snapshot(dir));
         }
@@ -406,6 +429,12 @@ impl Store {
         media_assets::tombstone_all(&self.dir(), self.device_id())?;
         *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) =
             record_files::fingerprints(&records);
+        // Pages served before the wipe must not take their old base over.
+        self.base_page
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .served
+            .clear();
         Ok(())
     }
 
@@ -728,7 +757,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
-            base_page: Mutex::new(None),
+            base_page: Mutex::default(),
             records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
@@ -797,19 +826,23 @@ mod tests {
         exit_save["vocab"]["de"]["vocab"]["Haus"] =
             json!({ "word": "Haus", "translation": "house", "status": "learning" });
         store.bulk_save_from(exit_save, Some("old")).unwrap();
-        // An old page can no longer acknowledge its view as the base either.
-        store
-            .acknowledge_frontend_snapshot_from(&payload("Wort"), Some("old"))
-            .unwrap();
 
         // The new page saves the state it was served.
         store.bulk_save_from(payload("Wort"), Some("new")).unwrap();
-        let vocab = store.snapshot_for_page(Some("new"))["vocab"]["de"]["vocab"].clone();
+        let vocab = store.snapshot_unacknowledged()["vocab"]["de"]["vocab"].clone();
         assert_eq!(vocab["haus"]["translation"], "house");
         assert_eq!(vocab["wort"]["status"], "known");
 
-        // Its own saves still move the base: a word it adds and then
-        // removes is gone.
+        // Once the new page has checked in, the old page's requests and a
+        // replayed delta from an earlier page no longer move its base, and
+        // a page served but never used (a stray GET /) takes nothing over.
+        store
+            .acknowledge_frontend_snapshot_from(&payload("Wort"), Some("old"))
+            .unwrap();
+        let _ = store.snapshot_for_page(Some("stray"));
+
+        // The new page's own saves still move the base: a word it adds and
+        // then removes is gone.
         let mut added = payload_with_status("Wort", "known");
         added["vocab"]["de"]["vocab"]["Haus"] =
             json!({ "word": "Haus", "translation": "house", "status": "learning" });
