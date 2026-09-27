@@ -135,6 +135,7 @@ impl Store {
         self.discard_abandoned_book_imports()
     }
 
+    #[cfg(test)]
     pub fn snapshot(&self) -> Value {
         self.snapshot_for_page(None)
     }
@@ -190,10 +191,6 @@ impl Store {
         snapshot
     }
 
-    pub fn acknowledge_frontend_snapshot(&self, payload: &Value) -> Result<(), String> {
-        self.acknowledge_frontend_snapshot_from(payload, None)
-    }
-
     pub fn acknowledge_frontend_snapshot_from(
         &self,
         payload: &Value,
@@ -232,6 +229,7 @@ impl Store {
         snapshot
     }
 
+    #[cfg(test)]
     pub fn bulk_save(&self, payload: Value) -> Result<usize, String> {
         self.bulk_save_from(payload, None)
     }
