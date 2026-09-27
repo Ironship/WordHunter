@@ -42,6 +42,9 @@ export async function translateWithRetry(text: string, from: string, to: string)
   try {
     return await translateText(text, from, to);
   } catch (error) {
+    // A local LM Studio model that failed or ran out of time is not throttled;
+    // a second request would only queue behind the first one.
+    if (activeTranslationProvider() === "lmstudio") throw error;
     console.warn("Translation failed, retrying once", error);
     await new Promise((resolve) => setTimeout(resolve, TRANSLATE_RETRY_DELAY_MS));
     return translateText(text, from, to);
@@ -87,7 +90,8 @@ export async function translateText(text: string, from: string, to: string): Pro
     key: state.preferences?.deeplApiKey || "",
     endpoint: state.preferences?.lmStudioEndpoint || "http://127.0.0.1:1234/v1/chat/completions",
     model: state.preferences?.lmStudioModel || ""
-    }, { timeoutMs: 90_000 });
+    // The backend gives a local LM Studio model up to 180 s to answer.
+    }, { timeoutMs: provider === "lmstudio" ? 200_000 : 90_000 });
   if (!response.ok) throw new Error(await response.text());
   return response.json() as Promise<TranslationResult>;
 }

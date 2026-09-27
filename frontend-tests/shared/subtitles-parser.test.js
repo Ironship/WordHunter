@@ -31,6 +31,24 @@ describe("subtitle parser", () => {
     );
   });
 
+  it("decodes legacy files of other Central European and Cyrillic languages", () => {
+    // "Příliš" in Windows-1250 and "Здравей" in Windows-1251.
+    assert.equal(decodeImportedTextBytes(Uint8Array.from([0x50, 0xf8, 0xed, 0x6c, 0x69, 0x9a]), "cs"), "Příliš");
+    assert.equal(decodeImportedTextBytes(Uint8Array.from([0xc7, 0xe4, 0xf0, 0xe0, 0xe2, 0xe5, 0xe9]), "bg"), "Здравей");
+    // Serbian subtitles are mostly Latin script: "Šta ćeš" in Windows-1250.
+    assert.equal(decodeImportedTextBytes(Uint8Array.from([0x8a, 0x74, 0x61, 0x20, 0xe6, 0x65, 0x9a]), "sr"), "Šta ćeš");
+  });
+
+  it("keeps numeric dialogue in SRT and drops WebVTT cue identifiers", () => {
+    const srt = "1\n00:00:01,000 --> 00:00:02,000\nWhat year?\n\n2\n00:00:03,000 --> 00:00:04,000\n1984\n";
+    assert.equal(parseImportedTextFile({ name: "film.srt" }, srt), "What year?\n1984");
+    const vtt = "WEBVTT\n\nintro-cue\n00:00:01.000 --> 00:00:02.000\nHello\n\nc2\n00:00:03.000 --> 00:00:04.000\nWorld\n";
+    assert.equal(parseImportedTextFile({ name: "film.vtt" }, vtt), "Hello\nWorld");
+    // Some tools write the arrow without spaces.
+    const tight = "1\n00:00:01,000-->00:00:02,000\n2024\n";
+    assert.equal(parseImportedTextFile({ name: "film.srt" }, tight), "2024");
+  });
+
   it("strips YouTube VTT metadata and zero-width markers", () => {
     const raw = "Kind: captions\nLanguage: de\nStyle:\n::cue(c.colorFEFEFE) { color: rgb(254,254,254);\n}\n##\n\u200B\u200B Khashchi\u200B\n\u200B— Hallo\u200B\n";
     assert.equal(parseImportedTextFile({ name: "youtube.vtt" }, raw), "Khashchi\n— Hallo");

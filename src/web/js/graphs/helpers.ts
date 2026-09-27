@@ -2,7 +2,7 @@
  * Shared helpers and module-level state for graphs.
  */
 import { state } from "../state.js";
-import { todayISO } from "../sm2.js";
+import { isInReviewQueue, todayISO } from "../sm2.js";
 import { t as rawT } from "../i18n.js";
 import { simulateNextReview } from "../sm2.js";
 import type { SrsEntry } from "../sm2.js";
@@ -172,8 +172,9 @@ export function projectDueBuckets(
   const buckets = new Array(horizon).fill(0);
   let overdue = 0;
   let total = 0;
+  const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
   for (const e of entries) {
-    if (e.status === "ignored" || e.status === "known" || !e.nextDate) continue;
+    if (!isInReviewQueue(e, autoAddLearningOnly) || !e.nextDate) continue;
     total++;
     const delta = daysBetween(e.nextDate, today);
     if (delta < 0) overdue++;
@@ -405,7 +406,7 @@ export function renderStatsSummary(_chartEntries?: readonly VocabEntry[]): void 
     if (e.status === "new") newCount++;
     else if (e.status === "learning") learning++;
     else if (e.status === "known") known++;
-    if (e.status !== "known" && e.nextDate) {
+    if (isInReviewQueue(e, state.preferences?.autoAddLearningOnly === true) && e.nextDate) {
       const d = daysBetween(e.nextDate, today);
       if (d < 0) overdue++;
       else if (d === 0) due++;

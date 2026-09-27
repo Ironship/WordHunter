@@ -16,7 +16,8 @@ const snapshot = {
   vocab: {
     de: { vocab: { haus: { status: "learning" } }, userBooks: [], hiddenBuiltInBooks: [], archivedBookIds: [], preferences: {} }
   },
-  texts: [{ id: "de-custom-mein-text", lang: "de", title: "Mein Text" }]
+  texts: [{ id: "de-custom-mein-text", lang: "de", title: "Mein Text" }],
+  uiState: { schemaVersion: 2, currentView: "reader", currentTextId: "de-custom-mein-text", readerPage: 3 }
 };
 
 function runBootstrap(snapshotJson) {
@@ -34,8 +35,16 @@ function runBootstrap(snapshotJson) {
 describe("desktop boot snapshot (#281)", () => {
   it("inlines the store snapshot on desktop only", () => {
     const call = handlers.match(/let bootstrap = bootstrap_script\(([\s\S]*?)\);/)?.[1] || "";
-    assert.match(call, /#\[cfg\(not\(target_os = "android"\)\)\]\s*Some\(&state\.store\.snapshot\(\)\)/);
+    assert.match(call, /#\[cfg\(not\(target_os = "android"\)\)\]\s*Some\(&store_snapshot\(&state\.store, true\)\)/);
     assert.match(call, /#\[cfg\(target_os = "android"\)\]\s*None/);
+  });
+
+  it("inlines the same snapshot /__store/load returns, UI state included", () => {
+    const helper = handlers.match(/pub\(crate\) fn store_snapshot\([\s\S]*?\n\}/)?.[0] || "";
+    assert.match(helper, /object\.insert\("uiState"\.to_string\(\), store\.load_ui_state\(\)\)/);
+    const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
+    const load = router.match(/\(Method::Get, "\/__store\/load"\) => \{[\s\S]*?\n {8}\}/)?.[0] || "";
+    assert.match(load, /handlers::store_snapshot\(&state\.store, acknowledge\)/);
   });
 
   it("hands an inlined snapshot to the renderer without a store round trip", () => {
@@ -70,6 +79,9 @@ describe("desktop boot snapshot (#281)", () => {
     assert.equal(state.preferences.theme, "classic-dark");
     assert.deepEqual(state.customTexts.map((text) => text.id), ["de-custom-mein-text"]);
     assert.equal(state.vocab.haus.status, "learning");
+    // The open book and view come back too, not only the library.
+    assert.equal(state.currentView, "reader");
+    assert.equal(state.currentTextId, "de-custom-mein-text");
     assert.equal(initialLocale(state.preferences.locale, "en-US"), "pl");
   });
 });

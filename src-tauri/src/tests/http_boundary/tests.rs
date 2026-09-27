@@ -357,6 +357,30 @@ fn bootstrap_inlines_a_provided_snapshot_instead_of_loading_it() {
 }
 
 #[test]
+fn boot_snapshot_carries_the_persisted_ui_state() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = crate::store::test_store(dir.path(), "boot-test");
+    let ui_state = serde_json::json!({
+        "schemaVersion": 2,
+        "currentView": "reader",
+        "currentTextId": "de-custom-mein-text",
+        "readerPage": 3
+    });
+    store.save_ui_state(&ui_state).unwrap();
+
+    for acknowledge in [true, false] {
+        let snapshot = handlers::store_snapshot(&store, acknowledge);
+        assert_eq!(snapshot["uiState"], ui_state);
+    }
+    let script = handlers::bootstrap_script(
+        "token",
+        Some(&handlers::store_snapshot(&store, true)),
+        false,
+    );
+    assert!(script.contains(r#""currentTextId":"de-custom-mein-text""#));
+}
+
+#[test]
 fn bootstrap_keeps_html_comment_and_script_openers_out_of_the_inline_script() {
     // An unescaped `<!--` followed by `<script` switches the HTML tokenizer
     // into its double-escaped state, and the inline <script> would then run

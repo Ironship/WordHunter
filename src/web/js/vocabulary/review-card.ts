@@ -6,8 +6,8 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { icon } from "../icons.js";
 import { t } from "../i18n.js";
-import { applyReviewNative, isDue, todayISO } from "../sm2.js";
-import { renderVocabulary, invalidateVocabListCache } from "./vocab-list.js";
+import { applyReviewNative, isDue, isInReviewQueue, todayISO } from "../sm2.js";
+import { renderVocabulary, invalidateVocabListCache, vocabMutationRevision } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
 import { playReviewGradeSound, playStatusSound } from "../status-sounds.js";
@@ -130,9 +130,12 @@ export function resetReviewPresentation(): void {
 }
 
 // The queue rebuild (filter + sort over the whole vocab) is the hot path on
-// every grade; memoize it and invalidate explicitly on mutations.
+// every grade; memoize it. The entries are copies, so the memo also keys on
+// the vocab mutation revision: a grade from the reader's in-text review or an
+// edited translation must not leave a stale card in the queue.
 let reviewQueueCache: {
   vocabRef: Record<string, WhVocabEntry>;
+  revision: number;
   today: string;
   autoAddLearningOnly: boolean;
   entries: ReviewQueueEntry[];
@@ -143,23 +146,21 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   const today = todayISO();
   const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
   let srsEntries: ReviewQueueEntry[];
+  const revision = vocabMutationRevision();
   if (
     reviewQueueCache &&
     reviewQueueCache.vocabRef === state.vocab &&
+    reviewQueueCache.revision === revision &&
     reviewQueueCache.today === today &&
     reviewQueueCache.autoAddLearningOnly === autoAddLearningOnly
   ) {
     srsEntries = reviewQueueCache.entries;
   } else {
     srsEntries = Object.entries(state.vocab)
-      .filter(([, entry]) => {
-        if (entry.status === "ignored" || entry.status === "known") return false;
-        if (autoAddLearningOnly && entry.status === "new") return false;
-        return true;
-      })
+      .filter(([, entry]) => isInReviewQueue(entry, autoAddLearningOnly))
       .map(([key, entry]) => ({ ...entry, key, word: entry.word || key, nextDate: entry.nextDate || today }))
       .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
-    reviewQueueCache = { vocabRef: state.vocab, today, autoAddLearningOnly, entries: srsEntries };
+    reviewQueueCache = { vocabRef: state.vocab, revision, today, autoAddLearningOnly, entries: srsEntries };
   }
   const reviewWords = buildReviewQueue(srsEntries, today);
 
@@ -200,7 +201,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   `).join("");
 
   const context = card.examples?.[0] || "";
-  const displayContext = context.length > 120 ? context.slice(0, 117) + "…" : context;
+  const shortenContext = (text: string) => text.length > 120 ? text.slice(0, 117) + "…" : text;
+  const displayContext = shortenContext(context);
   const isReverse = !!state.preferences.reviewReverse;
 
   let frontHtml = "";
@@ -230,7 +232,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
       ` : renderReviewTranslationInput(card)}
       ${context ? `
         <p class="review-context hint-italic-center">
-          „${escapeHtml(maskHeadwordInSentence(displayContext, card.word, card.article))}”
+          „${escapeHtml(shortenContext(maskHeadwordInSentence(context, card.word, card.article)))}”
         </p>
       ` : ""}
     `;

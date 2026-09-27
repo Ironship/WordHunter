@@ -106,6 +106,8 @@ export interface TokenizeWithFormatsResult {
   /** Format spans positioned in the STRIPPED text — the same coordinate
    *  system as the returned tokens (and globalCharOffsets downstream). */
   spans: WhFormatSpan[];
+  /** The text without format markers, which the tokens and offsets index. */
+  plain: string;
 }
 
 /** tokenizeText with **bold** / *italic* support: markers are stripped before
@@ -114,7 +116,7 @@ export interface TokenizeWithFormatsResult {
  *  formatting (PDF-OCR pages, sentence extraction). */
 export function tokenizeTextWithFormats(text: string, lang = "en", algorithm = "modern"): TokenizeWithFormatsResult {
   const { plain, spans } = stripFormatMarkers(text);
-  return { tokens: tokenizeText(plain, lang, algorithm), spans };
+  return { tokens: tokenizeText(plain, lang, algorithm), spans, plain };
 }
 
 

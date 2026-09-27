@@ -5,6 +5,7 @@
  * Wikinews remain; do not re-add "wikisource" to MediaWikiSource.
  */
 import { t as translate } from "../i18n.js";
+import { state } from "../state.js";
 import { fetchDiscover } from "./fetch-discover.js";
 
 const t = translate as (key: string, vars?: WhRecord) => string;
@@ -88,7 +89,13 @@ export async function searchMediaWiki(
   const data = asRecord(rawData) || {};
   const queryData = asRecord(data.query);
   const pageData = asRecord(queryData?.pages);
-  const pages: unknown[] = pageData ? Object.values(pageData) : [];
+  // query.pages is keyed by page id; generator=search puts the relevance rank
+  // in each page's `index`.
+  const rank = (item: unknown) => {
+    const index = asRecord(item)?.index;
+    return typeof index === "number" ? index : Number.MAX_SAFE_INTEGER;
+  };
+  const pages: unknown[] = pageData ? Object.values(pageData).sort((a, b) => rank(a) - rank(b)) : [];
 
   const mapPage = (item: unknown): MediaWikiBook => {
     const pageData = asRecord(item) || {};
@@ -133,9 +140,46 @@ export async function searchMediaWiki(
   };
 }
 
+// Built-in learning languages whose wiki edition does not exist: there is no
+// Ancient Greek Wikipedia, and no Latin or Ancient Greek Wikinews. Codes of
+// the "Other" profile are passed through unchecked.
+const MISSING_EDITIONS: Record<MediaWikiSource, ReadonlySet<string>> = {
+  wikipedia: new Set(["grc"]),
+  wikinews: new Set(["la", "grc"])
+};
+
+export function mediaWikiEditionExists(source: MediaWikiSource, lang: string): boolean {
+  return !MISSING_EDITIONS[source]?.has(lang);
+}
+
 function mediaWikiDomain(source: MediaWikiSource): string {
   if (source === "wikinews") return "wikinews.org";
   return "wikipedia.org";
+}
+
+/** Canonical page address, also used to recognise an article already imported. */
+export function mediaWikiArticleUrl(source: MediaWikiSource, apiLang: string, pageId: string | number): string {
+  return `https://${apiLang || "en"}.${mediaWikiDomain(source)}/?curid=${encodeURIComponent(String(pageId))}`;
+}
+
+/** True when a Discover result from Wikipedia/Wikinews is already in the active library. */
+export function isMediaWikiArticleInLibrary(result: Pick<MediaWikiBook, "id" | "source" | "apiLang" | "mwId">): boolean {
+  const sourceUrl = mediaWikiArticleUrl(result.source, result.apiLang, result.mwId);
+  return (state.customTexts || []).some((text) => String(text.id) === String(result.id) || text.sourceUrl === sourceUrl);
+}
+
+/** Plain-text API request for one article's full text. */
+export function mediaWikiArticleTextUrl(source: MediaWikiSource, apiLang: string, pageId: string | number): string {
+  const params = new URLSearchParams({
+    action: "query",
+    prop: "extracts",
+    explaintext: "1",
+    exsectionformat: "plain",
+    pageids: String(pageId),
+    format: "json",
+    origin: "*"
+  });
+  return `https://${apiLang || "en"}.${mediaWikiDomain(source)}/w/api.php?${params}`;
 }
 
 function mediaWikiLang(source: MediaWikiSource, lang: string): string {
@@ -143,7 +187,7 @@ function mediaWikiLang(source: MediaWikiSource, lang: string): string {
   return lang || "en";
 }
 
-function mediaWikiSourceName(source: MediaWikiSource): string {
+export function mediaWikiSourceName(source: MediaWikiSource): string {
   if (source === "wikinews") return t("discover.sourceWikinews");
   return t("discover.sourceWikipedia");
 }

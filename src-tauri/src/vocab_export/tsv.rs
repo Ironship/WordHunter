@@ -17,6 +17,7 @@ const LOCALIZED_ANKI_WORD_HEADERS: &[&str] = &[
     "mot",
     "parola",
     "単語",
+    "单词",
     "слово",
 ];
 const LOCALIZED_ANKI_TRANSLATION_HEADERS: &[&str] = &[
@@ -27,6 +28,7 @@ const LOCALIZED_ANKI_TRANSLATION_HEADERS: &[&str] = &[
     "traduction",
     "traduzione",
     "翻訳",
+    "翻译",
     "перевод",
     "переклад",
 ];
@@ -38,6 +40,7 @@ const LOCALIZED_ANKI_CONTEXT_HEADERS: &[&str] = &[
     "contexte",
     "contesto",
     "文脈",
+    "上下文",
     "контекст",
 ];
 

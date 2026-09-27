@@ -487,7 +487,8 @@ describe("focused frontend regressions", () => {
     const selection = await evaluateWithMocks("dist/web/js/reader/selection.js", {
       "../state.js": { state, saveUiState() {} },
       "../dom.js": { els: { readerText } },
-      "../tokenizer_v2.js": { normalizeWord: (word) => word },
+      "../tokenizer_v2.js": { resolveVocabularyKey: (word) => word },
+      "../translator-preferences.js": { effectiveLearningLanguage: () => "en" },
       "./renderer.js": { getTextById: () => ({ id: "book-1" }) },
       "./word-panel.js": { renderWordPanel() {} },
       "./visibility.js": { keepReaderTokenVisible: (token) => followed.push(token) },
@@ -1999,7 +2000,8 @@ async function evaluateWordPanel({
     "../state.js": { state, saveState, getVocabularyRevision: () => 0 },
     "./session.js": {
       getReaderSession: () => ({ id: null, text: "", tokens: [], stats: { unique: 0 }, classifications: {} }),
-      analyzeReaderSession: (session) => { session.stats = { unique: 0 }; return session; }
+      analyzeReaderSession: (session) => { session.stats = { unique: 0 }; return session; },
+      readerPlainText: (current) => String(current?.text || "")
     },
     "../dom.js": { els: { wordPanel, readerText: null, uniqueSummary: null } },
     "../utils.js": {
@@ -2024,7 +2026,7 @@ async function evaluateWordPanel({
     // silent-append mirror; dialog semantics live in review-ai-note.test.js).
     "../ai-note-append.js": aiNoteAppendMock,
     "./renderer.js": { getTextById() { return null; }, renderTrackingSummary() {} },
-    "./selection.js": { getReaderSelectionText, getReaderWordTokens },
+    "./selection.js": { getReaderSelectionText, getReaderSelectionHeadword: getReaderSelectionText, getReaderWordTokens },
     "./smart-suggest.js": {
       articleOptionsForLanguage() { return []; },
       getSmartSuggestion() { return null; },

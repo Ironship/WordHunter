@@ -18,7 +18,8 @@ import { playStatusSound } from "./status-sounds.js";
 import { effectiveLearningLanguage, resolveProfileTranslationPair } from "./translator-preferences.js";
 import { formatHeadword } from "./vocabulary/article.js";
 import { resolveVocabularyKey } from "./tokenizer_v2.js";
-import { getCachedReaderWord } from "./reader/session.js";
+import { getCachedReaderWord, readerPlainText } from "./reader/session.js";
+import { getReaderSelectionHeadword } from "./reader/selection.js";
 
 let lastAutoTtsFocusKey = "";
 const pendingAutoTranslations = new WeakSet<WhVocabEntry>();
@@ -119,7 +120,8 @@ export function selectWord(
     : null;
   const entry = getOrCreateEntry(
     displayWord || word,
-    current?.text || "",
+    // The reader's word and character offsets index the marker-free text.
+    readerPlainText(current),
     state.selectedWordIndex,
     cachedWord?.characterIndex ?? null,
     cachedWord?.word || ""
@@ -195,7 +197,10 @@ export function setWordStatus(word: string, status: string): void {
   if (!isVocabStatus(status)) return;
   word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
-  const entry = getOrCreateEntry(word, getTextById(state.currentTextId)?.text || "");
+  // A phrase selected in the reader keeps its own spelling ("L'homme est"),
+  // not the key it is saved under ("homme est").
+  const selection = word === state.selectedWord ? getReaderSelectionHeadword() : "";
+  const entry = getOrCreateEntry(selection || word, readerPlainText(getTextById(state.currentTextId)));
   const previousStatus = entry.status;
   if (hadEntry && previousStatus === status) return;
   maybeAutoTranslateWord(word, entry).catch((e) => console.warn("auto translate failed", e));
@@ -220,7 +225,8 @@ export function setWordStatus(word: string, status: string): void {
 export function updateWordField(word: string, field: string, value: unknown): void {
   word = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
   const hadEntry = Object.hasOwn(state.vocab, word);
-  const entry = getOrCreateEntry(word);
+  const selection = !hadEntry && word === state.selectedWord ? getReaderSelectionHeadword() : "";
+  const entry = getOrCreateEntry(selection || word);
   if (field === "article") {
     const article = typeof value === "string" ? value.trim() : "";
     if (hadEntry && Object.is(entry.article || "", article)) return;

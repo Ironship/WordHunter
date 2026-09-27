@@ -218,3 +218,37 @@ fn ytdlp_commands_dedupe_keeps_wrapped_and_bare_host_candidates() {
     assert!(deduped.iter().any(|item| item.program == wrapped.program));
     assert!(deduped.iter().any(|item| item.program == bare.program));
 }
+
+#[cfg(unix)]
+#[test]
+fn ytdlp_failures_report_what_ytdlp_said() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempfile::tempdir().unwrap();
+    let script = dir.path().join("yt-dlp");
+    std::fs::write(
+        &script,
+        "#!/bin/sh\necho 'ERROR: [youtube] abc: Sign in to confirm you are not a bot' >&2\nexit 1\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let info = VideoInfo {
+        id: "abcdefghijk".to_string(),
+        title: String::new(),
+        author: String::new(),
+        thumbnail_url: String::new(),
+        player: json!({}),
+    };
+
+    let error = run_ytdlp(
+        &plain_ytdlp(script.into_os_string()),
+        &info,
+        &json!({}),
+        "de",
+    )
+    .unwrap_err();
+    assert!(
+        error.contains("Sign in to confirm you are not a bot"),
+        "{error}"
+    );
+}

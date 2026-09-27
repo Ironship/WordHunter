@@ -6,7 +6,7 @@ import { t as translate, getLocale } from "../i18n.js";
 import { showToast } from "../toast.js";
 import { showConfirmDialog } from "../dialog-backdrop.js";
 import { searchGutendex } from "../discover/gutendex.js";
-import { searchMediaWiki, type MediaWikiSource } from "../discover/mediawiki.js";
+import { isMediaWikiArticleInLibrary, mediaWikiEditionExists, searchMediaWiki, type MediaWikiBook, type MediaWikiSource } from "../discover/mediawiki.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 
 interface DiscoverElements {
@@ -86,8 +86,27 @@ function getDiscoverLanguage(): string {
   return effectiveLearningLanguage(state.preferences).split("-")[0];
 }
 
+/**
+ * Disables the Wikipedia/Wikinews sources the learning language has no wiki
+ * for, and falls back to Gutenberg when the saved source is one of them.
+ */
+export function syncDiscoverSources(): void {
+  const language = getDiscoverLanguage();
+  for (const option of Array.from(els.discoverSource?.options || [])) {
+    if (option.value === "wikipedia" || option.value === "wikinews") {
+      option.disabled = !mediaWikiEditionExists(option.value, language);
+    }
+  }
+  const source = state.discover.source || "gutenberg";
+  if ((source === "wikipedia" || source === "wikinews") && !mediaWikiEditionExists(source, language)) {
+    state.discover.source = "gutenberg";
+    if (els.discoverSource) els.discoverSource.value = "gutenberg";
+  }
+}
+
 export function renderDiscover(): void {
   if (!els.discoverForm) return;
+  syncDiscoverSources();
   els.discoverQuery.value = state.discover.query || "";
   if (els.discoverSource) els.discoverSource.value = state.discover.source || "gutenberg";
   els.discoverSort.value = state.discover.sort || "popular";
@@ -121,6 +140,7 @@ export async function runDiscoverSearch(): Promise<void> {
     </div>`;
   els.discoverPagination.innerHTML = "";
   try {
+    syncDiscoverSources();
     const source = state.discover.source || "gutenberg";
     let data: DiscoverSearchResult = { count: 0, results: [] };
     const language = getDiscoverLanguage();
@@ -210,7 +230,7 @@ function renderResults(data?: DiscoverSearchResult): void {
     const isSelected = selected.has(id);
     const inLibrary = isGutenberg
       ? (state.userBooks || []).some((entry) => entry.gutenbergId === id)
-      : (state.customTexts || []).some((entry) => String(entry.id) === id);
+      : isMediaWikiArticleInLibrary(book as MediaWikiBook);
     const showCover = state.preferences?.showCovers !== false;
     const coverBlock = showCover
       ? (cover

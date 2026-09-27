@@ -419,10 +419,9 @@ fn import_text_layer_pdf(
         .filter(|page| !page.is_empty())
         .collect::<Vec<_>>()
         .join("\n\n");
-    let incomplete_page = pages.iter().any(|page| readable_chars(&page.text) < 3);
-    if readable_chars(&text) < 3 || incomplete_page {
+    if !crate::pdf_text_layer::text_layer_is_usable(&pages) {
         return Err(format!(
-            "{runner_error}\nAt least one PDF page has no readable text layer, and the bundled OCR component is unavailable. Reinstall Word Hunter if the problem persists."
+            "{runner_error}\nMost PDF pages have no readable text layer, and the bundled OCR component is unavailable. Reinstall Word Hunter if the problem persists."
         ));
     }
     let (pages, ocr_engine, experimental) = match render_text_layer_page_images(
@@ -1130,10 +1129,6 @@ fn decode_payload_with_limit(data_url: &str, max_pdf_bytes: usize) -> Result<Vec
         return Err("PDF is too large (max 1 GB)".to_string());
     }
     Ok(data)
-}
-
-fn readable_chars(text: &str) -> usize {
-    text.chars().filter(|ch| ch.is_alphanumeric()).count()
 }
 
 fn requested_lang(payload: &Value) -> String {

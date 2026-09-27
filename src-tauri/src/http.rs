@@ -8,14 +8,24 @@ const READ_TIMEOUT: Duration = Duration::from_secs(30);
 const READ_TIMEOUT_EXTENDED: Duration = Duration::from_secs(300);
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(60 * 60);
 
+/// Local LLM servers (LM Studio) answer only after generating the whole reply.
+const READ_TIMEOUT_SLOW_RESPONSE: Duration = Duration::from_secs(180);
+
 static AGENT: LazyLock<ureq::Agent> =
     LazyLock::new(|| agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT));
+static SLOW_AGENT: LazyLock<ureq::Agent> =
+    LazyLock::new(|| agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT_SLOW_RESPONSE));
 static DOWNLOAD_AGENT: LazyLock<ureq::Agent> = LazyLock::new(|| {
     download_agent_with_timeouts(CONNECT_TIMEOUT, READ_TIMEOUT_EXTENDED, DOWNLOAD_TIMEOUT)
 });
 
 pub(crate) fn agent() -> &'static ureq::Agent {
     &AGENT
+}
+
+/// Agent for requests whose server may think for minutes before replying.
+pub(crate) fn slow_agent() -> &'static ureq::Agent {
+    &SLOW_AGENT
 }
 
 /// Agent with an extended read timeout for large downloads.

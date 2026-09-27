@@ -18,6 +18,11 @@ fn clean_translation_strips_artifacts_and_normalizes_spaces() {
         "leading and trailing"
     );
     assert_eq!(clean_translation("{A:x} {B:y} {C:z}".to_string()), "");
+    // Lines and paragraphs of a translated text stay.
+    assert_eq!(
+        clean_translation("First  line .\nSecond line\n\n\n\nNext paragraph ".to_string()),
+        "First line.\nSecond line\n\nNext paragraph"
+    );
 }
 
 #[test]
@@ -70,4 +75,86 @@ fn popup_labels_use_locale_file_copy() {
         Some("Copy translation")
     );
     assert_eq!(labels.get("copied").map(String::as_str), Some("Copied!"));
+}
+
+#[test]
+fn offline_translation_is_split_into_sentences_and_lines() {
+    use super::translator::ct2::translation_segments;
+
+    let segments = |text: &str| translation_segments(text);
+    let line = |parts: &[&str]| {
+        parts
+            .iter()
+            .map(|part| part.to_string())
+            .collect::<Vec<_>>()
+    };
+
+    // Short lines go whole; blank lines stay as paragraph breaks.
+    assert_eq!(
+        segments("Das ist gut. Wirklich? Ja!\n\nZweiter Absatz."),
+        vec![
+            line(&["Das ist gut. Wirklich? Ja!"]),
+            Vec::new(),
+            line(&["Zweiter Absatz."])
+        ]
+    );
+    // A hard-wrapped sentence is one line again; a finished line is not.
+    assert_eq!(
+        segments("Er ging langsam\nnach Hause.\n– Wirklich?\n– Ja."),
+        vec![
+            line(&["Er ging langsam nach Hause."]),
+            line(&["– Wirklich?"]),
+            line(&["– Ja."])
+        ]
+    );
+
+    // Long lines are split into sentences, but not after abbreviations,
+    // ordinals or before a lowercase word.
+    let filler = "Das Wetter war schön und alle waren draußen im Garten ".repeat(6);
+    let long = format!(
+        "Am 3. Mai kam Dr. Weber, z. B. mit Tee. {filler}and! Und dann? ja, so war es. Ende 1.1.2 da."
+    );
+    assert_eq!(
+        segments(&long),
+        vec![line(&[
+            "Am 3. Mai kam Dr. Weber, z. B. mit Tee.",
+            &format!("{filler}and!"),
+            "Und dann? ja, so war es.",
+            "Ende 1.1.2 da."
+        ])]
+    );
+    // A closing quote stays with the sentence it ends, and "?!" is one end.
+    let japanese = format!("{}「こんにちは。」と彼は言った。", "あ".repeat(300));
+    assert_eq!(
+        segments(&japanese),
+        vec![line(&[
+            &format!("{}「こんにちは。」", "あ".repeat(300)),
+            "と彼は言った。"
+        ])]
+    );
+    let quoted = format!("{filler}. Er rief: „Halt!“ Dann ging er?! Ja.");
+    assert_eq!(
+        segments(&quoted),
+        vec![line(&[
+            &format!("{filler}."),
+            "Er rief: „Halt!“",
+            "Dann ging er?!",
+            "Ja."
+        ])]
+    );
+    let chinese = format!("{}。我是学生。", "你好".repeat(160));
+    assert_eq!(
+        segments(&chinese),
+        vec![line(&[&format!("{}。", "你好".repeat(160)), "我是学生。"])]
+    );
+}
+
+#[test]
+fn long_offline_translations_get_more_time() {
+    use super::translator::ct2::default_timeout_ms;
+
+    assert_eq!(default_timeout_ms(0), 15_000);
+    assert_eq!(default_timeout_ms(80), 15_000);
+    assert_eq!(default_timeout_ms(3_000), 45_000);
+    assert_eq!(default_timeout_ms(1_000_000), 180_000);
 }

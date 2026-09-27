@@ -62,6 +62,7 @@ const LOCALIZED_ANKI_WORD_HEADERS = new Set([
   "mot",
   "parola",
   "単語",
+  "单词",
   "слово"
 ]);
 const LOCALIZED_ANKI_TRANSLATION_HEADERS = new Set([
@@ -72,6 +73,7 @@ const LOCALIZED_ANKI_TRANSLATION_HEADERS = new Set([
   "traduction",
   "traduzione",
   "翻訳",
+  "翻译",
   "перевод",
   "переклад"
 ]);
@@ -83,6 +85,7 @@ const LOCALIZED_ANKI_CONTEXT_HEADERS = new Set([
   "contexte",
   "contesto",
   "文脈",
+  "上下文",
   "контекст"
 ]);
 
@@ -263,9 +266,14 @@ function removeUnreferencedBookState(value: WhAppState, candidates: Iterable<str
   }
 }
 
-async function backupBeforeClear() {
+type ClearKind = "words" | "library" | "all";
+
+async function backupBeforeClear(clear: ClearKind) {
   try {
-    if (!await exportTransfer("all", "wordhunter-backup-before-clear", false)) {
+    // Marked in its manifest with the clear it precedes: importing this
+    // backup takes that clear back.
+    const clearBackup = { purpose: "backup-before-clear", clear, clearLanguage: state.preferences?.learningLanguage || "de" };
+    if (!await exportTransfer("all", "wordhunter-backup-before-clear", false, clearBackup)) {
       showToast(t("toast.backupRequired"));
       return false;
     }
@@ -419,7 +427,8 @@ export function transferErrorMessage(error: unknown): string {
 export async function exportTransfer(
   scope: "all" | "vocabulary",
   prefix = scope === "all" ? "wordhunter-full" : "wordhunter-words",
-  notify = true
+  notify = true,
+  clearBackup: { purpose: string; clear: ClearKind; clearLanguage: string } | null = null
 ): Promise<boolean> {
   if (transferInProgress) {
     if (notify) showToast(t("toast.transferBusy"), "error");
@@ -430,7 +439,7 @@ export async function exportTransfer(
   try {
     await window.flushAllPendingFrontendState?.();
     const requestId = `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const response = await httpPost("/__store/export_transfer", { scope, filename, requestId, confirm: true }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
+    const response = await httpPost("/__store/export_transfer", { scope, filename, requestId, ...clearBackup, confirm: true }, { timeoutMs: LONG_RUNNING_TIMEOUT_MS });
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
     if (typeof result.job === "string") {
@@ -482,7 +491,12 @@ export async function importTransfer(): Promise<boolean> {
     const reloaded = await reloadBridgeSnapshot();
     ensureCurrentText();
     render();
-    if (reloaded) {
+    const summary = (result.summary && typeof result.summary === "object" ? result.summary : {}) as UnknownRecord;
+    if (reloaded && Number(summary.imported) === 0 && Number(summary.skipped) > 0) {
+      // Everything in the package is already here, or was changed or deleted
+      // here later: say so instead of claiming a successful merge.
+      showToast(t("toast.transferNothingNew"));
+    } else if (reloaded) {
       showToast(t("toast.transferImported"));
     } else {
       showToast(t("toast.transferImportedReload"), "error");
@@ -588,7 +602,7 @@ export async function exportVocabularySelection(format: VocabularyExportFormat):
 export async function clearWords(): Promise<void> {
   const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearWords"), danger: true });
   if (!confirmed) return;
-  if (!await backupBeforeClear()) return;
+  if (!await backupBeforeClear("words")) return;
   const lang = state.preferences?.learningLanguage || "de";
   state.vocab = {};
   if (state.profiles?.[lang]) {
@@ -615,7 +629,7 @@ export async function clearWords(): Promise<void> {
 export async function clearLibrary(): Promise<void> {
   const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClearLibrary"), danger: true });
   if (!confirmed) return;
-  if (!await backupBeforeClear()) return;
+  if (!await backupBeforeClear("library")) return;
   const lang = state.preferences?.learningLanguage || "de";
   const removedTextIds = state.customTexts.map((text) => text.id);
   const removedUserBookIds = state.userBooks.map((book) => book.id);
@@ -662,7 +676,7 @@ export async function clearLibrary(): Promise<void> {
 export async function clearLocalState(): Promise<void> {
   const confirmed = await showConfirmDialog({ title: t("dialog.confirmTitle"), message: t("toast.confirmClear"), danger: true });
   if (!confirmed) return;
-  if (!await backupBeforeClear()) return;
+  if (!await backupBeforeClear("all")) return;
 
   if (window.__qtBridge) {
     try {

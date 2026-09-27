@@ -28,8 +28,17 @@ export const sessionAddedWords = new Set<string>();
  */
 let cachedVocabBase: { source: WhVocabulary; keyCount: number; entries: VocabListEntry[] } | null = null;
 
+// Bumped by every vocab mutation (all of them call invalidateVocabListCache),
+// so memos over entry contents, like the flashcard queue, can key on it.
+let vocabRevision = 0;
+
 export function invalidateVocabListCache(): void {
   cachedVocabBase = null;
+  vocabRevision += 1;
+}
+
+export function vocabMutationRevision(): number {
+  return vocabRevision;
 }
 
 /**

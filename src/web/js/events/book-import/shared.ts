@@ -55,6 +55,34 @@ function resetCoverPreview() {
   if (dropzone) dropzone.style.display = "flex";
 }
 
+// What the last loaded file filled into the form. Picking another file
+// replaces these values; anything the user typed is kept.
+const autofilled = { title: "", author: "", cover: "" };
+
+/** Fills the title or author from a loaded file unless the user typed one. */
+function autofillImportField(field: "title" | "author", value: string): void {
+  const input = el<HTMLInputElement>(`import-${field}`);
+  if (!input || (input.value.trim() && input.value !== autofilled[field])) return;
+  input.value = value;
+  autofilled[field] = value;
+}
+
+function autofillImportCover(dataUrl: string): void {
+  setImportCoverPreview(dataUrl);
+  autofilled.cover = dataUrl;
+}
+
+/** Clears what the previous file filled in before another file is loaded. */
+function clearAutofilledImportFields(): void {
+  for (const field of ["title", "author"] as const) {
+    const input = el<HTMLInputElement>(`import-${field}`);
+    if (input && autofilled[field] && input.value === autofilled[field]) input.value = "";
+    autofilled[field] = "";
+  }
+  if (autofilled.cover && pendingCoverDataUrl === autofilled.cover) resetCoverPreview();
+  autofilled.cover = "";
+}
+
 function setImportCoverPreview(dataUrl: string): void {
   pendingCoverDataUrl = dataUrl || "";
   const coverImg = el<HTMLImageElement>("import-cover-img");
@@ -86,6 +114,7 @@ function safeImportErrorMessage(error: unknown): string {
   if (/unsupported.*image|image.*does not match/i.test(message)) return t("toast.imageOcrUnsupported");
   if (/Image OCR requires the bundled PaddleOCR component/i.test(message)) return t("toast.imageOcrRequiresApp");
   if (/yt-dlp|\[youtube\]|video (?:unavailable|not found)|private video|sign in to confirm/i.test(message)) return t("import.youtubeError");
+  if (message.includes("CALIBRE_NOT_FOUND")) return t("toast.calibreRequired");
   const localizedMessages = new Set([
     t("toast.pdfImportBusy"),
     t("toast.pdfOcrRequiresApp"),
@@ -143,6 +172,9 @@ function waitForUiPaint(): Promise<void> {
 // --- cross-submodule surface -------------------------------------------------
 export {
   el,
+  autofillImportCover,
+  autofillImportField,
+  clearAutofilledImportFields,
   resetCoverPreview,
   setImportCoverPreview,
   clearPendingImportMeta,

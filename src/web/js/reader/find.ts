@@ -61,7 +61,9 @@ function computeMatches(query: string): FindMatch[] {
   }
   indexed.sort((a, b) => a.offset - b.offset);
   const matches: FindMatch[] = [];
-  for (const start of findAll(session.text, query)) {
+  // Token offsets index the marker-free text, so search that, not the raw
+  // text with its **bold** markers.
+  for (const start of findAll(session.plain, query)) {
     // Largest token offset <= start (tokens are ordered, non-overlapping).
     let lo = 0;
     let hi = indexed.length - 1;

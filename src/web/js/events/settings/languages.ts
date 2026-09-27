@@ -9,6 +9,7 @@ import { applyPreferences, syncSettingsControls } from "../../preferences.js";
 import { showToast } from "../../toast.js";
 import { applyPlatformUi } from "../../platform.js";
 import { byId } from "./shared.js";
+import { isOcrImportRunning } from "../book-import/shared.js";
 
 function localeSelects(): HTMLSelectElement[] {
   return [
@@ -47,6 +48,13 @@ export function bindLanguageSettings() {
   });
   learningLanguageSelects().forEach((control) => {
     control.addEventListener("change", () => {
+      // A running OCR import saves its book into the profile it started in;
+      // switching now would put the book into the wrong language's library.
+      if (isOcrImportRunning() && control.value !== state.preferences.learningLanguage) {
+        control.value = state.preferences.learningLanguage;
+        showToast(t("toast.learningLanguageLockedDuringOcr"), "error");
+        return;
+      }
       switchLearningLanguage(control.value);
       applyPreferences();
       syncSettingsControls();

@@ -22,6 +22,10 @@ struct Converter {
     env: Vec<(OsString, OsString)>,
 }
 
+/// Error text the frontend recognises to explain that Calibre is needed.
+pub(crate) const CALIBRE_NOT_FOUND: &str =
+    "CALIBRE_NOT_FOUND: MOBI/AZW import requires Calibre (ebook-convert)";
+
 fn plain_converter(path: PathBuf) -> Converter {
     Converter {
         path,
@@ -59,6 +63,23 @@ fn find_ebook_convert() -> Option<Converter> {
                 if converter.path.is_file() {
                     return Some(converter);
                 }
+            }
+        }
+    }
+
+    // macOS: apps started from Finder get a minimal PATH, and Calibre's
+    // command-line tools live inside its app bundle.
+    #[cfg(target_os = "macos")]
+    {
+        let bundle = Path::new("calibre.app/Contents/MacOS/ebook-convert");
+        let mut roots = vec![PathBuf::from("/Applications")];
+        if let Some(home) = std::env::var_os("HOME") {
+            roots.push(PathBuf::from(home).join("Applications"));
+        }
+        for root in roots {
+            let candidate = root.join(bundle);
+            if candidate.is_file() {
+                return Some(plain_converter(candidate));
             }
         }
     }
@@ -204,8 +225,7 @@ fn wait_with_output_timeout(mut child: Child, timeout: Duration) -> Result<Outpu
 }
 
 pub(crate) fn convert_with_calibre(data: &[u8], suffix: &str) -> Result<String, String> {
-    let converter = find_ebook_convert()
-        .ok_or_else(|| "MOBI/AZW import requires Calibre and ebook-convert in PATH".to_string())?;
+    let converter = find_ebook_convert().ok_or_else(|| CALIBRE_NOT_FOUND.to_string())?;
     let temp = TempDir::new().map_err(|e| e.to_string())?;
     let source = temp.path().join(format!("input{suffix}"));
     let target = temp.path().join("output.txt");

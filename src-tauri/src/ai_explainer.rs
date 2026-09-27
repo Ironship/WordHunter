@@ -191,10 +191,12 @@ pub(crate) fn prepare_request(payload: &Value, stream: bool) -> Result<PreparedR
     if word.is_empty() {
         return Err("word is missing".to_string());
     }
-    if word.len() > MAX_WORD_LEN {
+    // Limits are in characters (as the frontend counts them), not UTF-8
+    // bytes: 100 Chinese characters are already 300 bytes.
+    if word.chars().count() > MAX_WORD_LEN {
         return Err("word is too long".to_string());
     }
-    if context.len() > MAX_CONTEXT_LEN {
+    if context.chars().count() > MAX_CONTEXT_LEN {
         return Err("context is too long".to_string());
     }
     if model.is_empty() {

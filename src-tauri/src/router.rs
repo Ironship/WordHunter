@@ -250,15 +250,8 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
     match (method, path) {
         (Method::Get, "/") | (Method::Get, "/index.html") => handlers::serve_index(request, &state),
         (Method::Get, "/__store/load") => {
-            let mut snapshot = if response::query_value(query, "ack").as_deref() == Some("0") {
-                state.store.snapshot_unacknowledged()
-            } else {
-                state.store.snapshot()
-            };
-            if let Some(object) = snapshot.as_object_mut() {
-                object.insert("uiState".to_string(), state.store.load_ui_state());
-            }
-            response::json_response(request, snapshot)
+            let acknowledge = response::query_value(query, "ack").as_deref() != Some("0");
+            response::json_response(request, handlers::store_snapshot(&state.store, acknowledge))
         }
         #[cfg(not(target_os = "android"))]
         (Method::Get, "/__store/export_progress") => {

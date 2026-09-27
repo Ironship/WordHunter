@@ -3,7 +3,8 @@
  */
 import { state, saveUiState } from "../state.js";
 import { els } from "../dom.js";
-import { normalizeWord } from "../tokenizer_v2.js";
+import { resolveVocabularyKey } from "../tokenizer_v2.js";
+import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { getTextById } from "./renderer.js";
 import { renderWordPanel } from "./word-panel.js";
 import { keepReaderTokenVisible } from "./visibility.js";
@@ -50,7 +51,13 @@ function getRangeBounds(range: WhRecord | null): ReaderRangeBounds | null {
   };
 }
 
-function getRangeText(tokens: HTMLButtonElement[], range: WhRecord | null): string {
+// Between the words of a headword only elision apostrophes and hyphens stay
+// ("L'homme", "dit-il"); other punctuation ("Bonjour», dit") becomes a space.
+function headwordGap(gap: string): string {
+  return /^['’ʼ\-‐]+$/.test(gap) ? gap : " ";
+}
+
+function getRangeText(tokens: HTMLButtonElement[], range: WhRecord | null, headword = false): string {
   const bounds = getRangeBounds(range);
   if (!bounds) return "";
   const startToken = tokens[bounds.start];
@@ -79,8 +86,13 @@ function getRangeText(tokens: HTMLButtonElement[], range: WhRecord | null): stri
     if (node === startToken) collecting = true;
     if (!collecting) continue;
 
-    if (node.nodeType === Node.TEXT_NODE || (node instanceof HTMLElement && node.classList.contains("word-token"))) {
-      text += node.textContent || "";
+    // Gaps inside bold/italic text are rendered as fmt-* spans; they hold the
+    // spaces between the words of the phrase.
+    const isToken = node instanceof HTMLElement && node.classList.contains("word-token");
+    if (isToken || node.nodeType === Node.TEXT_NODE || (node instanceof HTMLElement
+      && (node.classList.contains("fmt-bold") || node.classList.contains("fmt-italic")))) {
+      const content = node.textContent || "";
+      text += headword && !isToken ? headwordGap(content) : content;
     }
 
     if (node === endToken) break;
@@ -89,10 +101,38 @@ function getRangeText(tokens: HTMLButtonElement[], range: WhRecord | null): stri
   return text.replace(/\s+/g, " ").trim();
 }
 
+/** The vocabulary key a selected phrase is saved under (the same key a
+ *  status or translation change resolves to, e.g. "homme est" for
+ *  "L'homme est" in French). */
+function phraseKey(text: string): string {
+  if (!text) return "";
+  const language = effectiveLearningLanguage(state.preferences);
+  const memo = lastPhraseKey;
+  if (memo && memo.text === text && memo.vocab === state.vocab && memo.language === language) return memo.key;
+  // An unsaved phrase makes resolveVocabularyKey scan every vocabulary key,
+  // and selection updates ask for the same phrase several times. New
+  // entries are saved under the canonical key it returns, so the answer only
+  // changes with the vocabulary object (replaced on import and profile
+  // switch) or the language.
+  const key = resolveVocabularyKey(text, state.vocab, language);
+  lastPhraseKey = { text, vocab: state.vocab, language, key };
+  return key;
+}
+
+let lastPhraseKey: { text: string; vocab: unknown; language: string; key: string } | null = null;
+
 export function getReaderSelectionText(): string {
   const tokens = getReaderWordTokens();
   const text = getRangeText(tokens, state.readerSelectionRange);
-  return normalizeWord(text) === state.selectedWord ? text : "";
+  return text && phraseKey(text) === state.selectedWord ? text : "";
+}
+
+/** The selected phrase as a headword: its words as written, without the
+ *  punctuation between them ("Bonjour dit-il" for «Bonjour», dit-il). */
+export function getReaderSelectionHeadword(): string {
+  const tokens = getReaderWordTokens();
+  const text = getRangeText(tokens, state.readerSelectionRange, true);
+  return text && phraseKey(text) === state.selectedWord ? text : "";
 }
 
 export function setReaderSelectionAnchorFromToken(token: HTMLElement): boolean {
@@ -149,7 +189,7 @@ export function bindTouchPhraseSelection(): void {
     const current = state.readerSelectionRange;
     if (current && Number(current.anchor) === anchorIndex && Number(current.focus) === focusIndex) return;
     state.readerSelectionRange = range;
-    state.selectedWord = normalizeWord(getRangeText(tokens, range));
+    state.selectedWord = phraseKey(getRangeText(tokens, range));
     saveUiState();
     window.lastActiveToken = tokens[focusIndex];
     updateReaderSelection();
@@ -178,7 +218,7 @@ export function extendReaderSelection(direction: "left" | "right"): boolean {
   const text = getRangeText(tokens, state.readerSelectionRange);
   if (!text) return false;
 
-  state.selectedWord = normalizeWord(text);
+  state.selectedWord = phraseKey(text);
   saveUiState();
   window.lastActiveToken = tokens[nextFocus];
   tokens[nextFocus].focus({ preventScroll: true });
@@ -194,7 +234,7 @@ export function updateReaderSelection(options: UpdateReaderSelectionOptions = {}
   // Update 'selected' classes without reloading the entire text
   const tokens = getReaderWordTokens();
   const rangeBounds = getRangeBounds(state.readerSelectionRange);
-  const rangeText = rangeBounds ? normalizeWord(getRangeText(tokens, state.readerSelectionRange)) : "";
+  const rangeText = rangeBounds ? phraseKey(getRangeText(tokens, state.readerSelectionRange)) : "";
   const useRange = !!rangeBounds && !!rangeText && rangeText === state.selectedWord;
   if (state.readerSelectionRange && !useRange) {
     state.readerSelectionRange = null;

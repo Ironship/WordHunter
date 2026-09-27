@@ -65,7 +65,9 @@ export async function importCustomText(
   title: string,
   text: string,
   meta: CustomTextMeta = {},
-  openAfterImport = true
+  openAfterImport = true,
+  // Silent imports (Discover's "add all") skip the success toast.
+  { silent = false }: { silent?: boolean } = {}
 ): Promise<string | null> {
   const cleanTitle = title.trim();
   const cleanText = text.trim();
@@ -129,7 +131,7 @@ export async function importCustomText(
     showToast(t("toast.saveUnavailable"), "error");
     return null;
   }
-  showToast(t("toast.textAdded"));
+  if (!silent) showToast(t("toast.textAdded"));
   if (openAfterImport) {
     const { openBook } = await import("../book-actions.js");
     await openBook(id);

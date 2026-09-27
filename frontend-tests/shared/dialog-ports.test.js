@@ -185,7 +185,8 @@ describe("bookmarks dialog renderer (reader/bookmarks.ts)", () => {
       "./session.js": { getReaderSession: () => ({ tokens: [], globalWordIndexes: [], globalCharOffsets: [] }) },
       "../tokenizer_v2.js": { normalizeWord: (value) => value },
       "../translator-preferences.js": { effectiveLearningLanguage: () => "en" },
-      "./pdf-page-text.js": { buildPdfDocumentText: () => "" }
+      "./pdf-page-text.js": { buildPdfDocumentText: () => "" },
+      "./pagination.js": { effectiveWordsPerPage: (value) => value }
     }, { document, HTMLDialogElement: HTMLDialogElementInstance });
 
     const dialog = renderBookmarksDialog();
