@@ -253,7 +253,6 @@ pub fn handle_request(request: Request, state: Arc<ServerState>) -> Result<(), S
             let acknowledge = response::query_value(query, "ack").as_deref() != Some("0");
             response::json_response(request, handlers::store_snapshot(&state.store, acknowledge))
         }
-        #[cfg(not(target_os = "android"))]
         (Method::Get, "/__store/export_progress") => {
             match handlers::export_progress(&state, query) {
                 Ok(result) => response::json_response(request, result),

@@ -932,6 +932,7 @@
     "transferExported": "WordHunter 包已导出。",
     "transferImported": "包已导入并合并。",
     "transferNothingNew": "此数据包中没有新内容：其中的内容都已存在，或之后已在此处修改或删除。",
+    "transferImportedIncomplete": "数据包已导入。因数据包中缺少页面图像而未导入的 PDF 书籍：{n} 本。",
     "transferImportedReload": "包已导入，但无法刷新屏幕上的数据。请重启 Word Hunter 以查看导入的数据。",
     "transferBusy": "另一个导出或导入正在进行中。请等待其完成。",
     "importCancelled": "导入已取消。",

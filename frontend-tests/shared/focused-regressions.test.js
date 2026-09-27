@@ -1697,6 +1697,84 @@ describe("focused frontend regressions", () => {
     assert.match(html, /sm2\.showAnswer/);
   });
 
+  it("keeps waiting for an export job that is still making progress, and hands an Android package to Save as", async () => {
+    // Every clock read moves 100 s on: the job runs past the old fixed
+    // 5-minute limit while its progress keeps changing.
+    let clock = 0;
+    class FakeDate extends Date {
+      static now() { const value = clock; clock += 100_000; return value; }
+    }
+    const phases = [
+      { done: false, percent: 10, phase: "words" },
+      { done: false, percent: 50, phase: "images" },
+      { done: true, percent: 100, phase: "done", summary: { path: "/cache/wordhunter-transfer/x.zip", filename: "f.zip" } }
+    ];
+    const saved = [];
+    const listeners = new Map();
+    const overlay = { id: "", className: "", innerHTML: "", setAttribute() {}, querySelector() { return null; }, remove() {} };
+    const noOp = () => {};
+    const module = await evaluateWithMocks("dist/web/js/sync-actions.js", {
+      "./state.js": {
+        applyBridgeSnapshotToState: noOp,
+        getDurableStateRevision: () => 0,
+        state: {},
+        saveState: noOp,
+        saveUiState: noOp,
+        createDefaultState: () => ({}),
+        replaceState: noOp,
+        resetInitialVocabKeys: noOp,
+        runExclusiveStateWrite: (callback) => callback(),
+        clearLastReadTextForLanguage: noOp
+      },
+      "./constants.js": { STORAGE_KEY: "state", UI_STORAGE_KEY: "ui" },
+      "./api.js": { buildSavePayload: (value) => value },
+      "./toast.js": { showToast: noOp },
+      "./dialog-backdrop.js": { showConfirmDialog: async () => false },
+      "./i18n.js": { t: (key) => key, plural: (key) => key },
+      "./render.js": { render: noOp, ensureCurrentText: noOp },
+      "./views/vocabulary.js": { getOrCreateEntry: () => ({}), hideReviewAnswer: noOp },
+      "./text-vocab.js": { getVocabularyTextById: () => null, loadTextVocabularyIndex: async () => null },
+      "./events/vocab-status.js": { VOCAB_STATUS_FILTERS: [] },
+      "./bridge-commit.js": { reloadBridgeSnapshot: async () => false, saveStateAndReloadBridge: async () => false },
+      "./store-bridge.js": {
+        acknowledgeBackendSnapshot: async () => {},
+        deleteStoredText: async () => {},
+        loadBackendSnapshot: async () => null,
+        postStoreCommand: async () => ({})
+      },
+      "./books.js": { clearAllBookTextCaches: noOp, clearBookTextCache: noOp },
+      "./book-actions/profile-library.js": { isCustomTextReferenced: () => false },
+      "./translator-preferences.js": { effectiveLearningLanguage: () => "de" },
+      "./http.js": {
+        httpPost: async () => ({ ok: true, json: async () => ({ saved: false, job: "job-1" }) }),
+        httpGet: async () => ({ ok: true, json: async () => phases.shift() })
+      }
+    }, {
+      Date: FakeDate,
+      document: { body: { appendChild() {} }, createElement: () => overlay },
+      window: {
+        WH_TOKEN: "test-token",
+        addEventListener: (type, listener) => listeners.set(type, listener),
+        removeEventListener: (type) => listeners.delete(type),
+        WordHunterAndroid: {
+          saveExportFile(path, filename, mime, requestId) {
+            saved.push({ path, filename });
+            // The system picker reports the write as done.
+            queueMicrotask(() => listeners.get("wordhunter:android-export")?.({ detail: { requestId, terminal: true, success: true } }));
+            return true;
+          }
+        }
+      },
+      // Only the progress poll's short sleep runs at once; the Android
+      // bridge's safety timers never fire in this test.
+      setTimeout(callback, ms) { if (ms === 400) callback(); return 1; },
+      clearTimeout() {}
+    });
+
+    assert.equal(await module.exportTransfer("all", "wordhunter-full", false), true);
+    assert.deepEqual(saved.map((entry) => entry.path), ["/cache/wordhunter-transfer/x.zip"]);
+  });
+
   it("stops polling an invalid export-progress response at the deadline and removes the overlay", async () => {
     let removed = false;
     let fetches = 0;

@@ -877,6 +877,7 @@
     "transferExported": "WordHunterパッケージをエクスポートしました。",
     "transferImported": "パッケージをインポートして統合しました。",
     "transferNothingNew": "このパッケージに新しい内容はありません。すべてすでにあるか、その後ここで変更・削除されています。",
+    "transferImportedIncomplete": "パッケージを取り込みました。ページ画像がパッケージにないため取り込まなかった PDF の本: {n} 冊。",
     "transferImportedReload": "パッケージはインポートされましたが、画面のデータを更新できませんでした。Word Hunter を再起動してインポートしたデータを確認してください。",
     "transferBusy": "別のエクスポートまたはインポートが実行中です。完了するまでお待ちください。",
     "importCancelled": "インポートがキャンセルされました。",

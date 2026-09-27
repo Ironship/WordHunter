@@ -853,7 +853,7 @@ fn bookmark_values(value: Option<&Value>) -> Option<BTreeMap<String, Value>> {
         .collect()
 }
 
-fn merge_reader_bookmark_data(
+pub(crate) fn merge_reader_bookmark_data(
     existing: &mut SyncRecord,
     source: &SyncRecord,
     base: Option<&Value>,

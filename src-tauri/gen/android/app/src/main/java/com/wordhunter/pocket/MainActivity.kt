@@ -598,6 +598,8 @@ class MainActivity : TauriActivity() {
     runOnUiThread {
       runCatching {
         exportDocumentLauncher.launch(createExportDocumentIntent(safeExportFilename(filename), safeMimeType(mime)))
+        // The page keeps waiting while the user is in the picker.
+        dispatchAndroidExportProgress(id, "picker")
       }.onFailure { error ->
         synchronized(bridgeLock) {
           pendingExport?.timeoutRunnable?.let { mainHandler.removeCallbacks(it) }

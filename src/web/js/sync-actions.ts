@@ -162,10 +162,14 @@ function waitForAndroidExport(start: (requestId: string) => boolean): Promise<bo
       if (detail.terminal === false) {
         if (timeout !== null) clearTimeout(timeout);
         const remaining = overallDeadline - Date.now();
-        timeout = setTimeout(
-          () => fail("android export write timed out"),
-          Math.min(Math.max(remaining, 30_000), 5 * 60 * 1000)
-        );
+        // The system "Save as" picker is open: the user may take their time,
+        // so only the overall deadline applies until the write starts.
+        timeout = detail.status === "picker"
+          ? setTimeout(() => fail("android export timed out"), Math.max(remaining, 30_000))
+          : setTimeout(
+            () => fail("android export write timed out"),
+            Math.min(Math.max(remaining, 30_000), 5 * 60 * 1000)
+          );
         return;
       }
       cleanup();
@@ -321,8 +325,9 @@ function waitForAndroidImport(): Promise<string | null> | null {
   });
 }
 
-// A stuck backend job must not pin the export UI forever.
-const EXPORT_JOB_DEADLINE_MS = 5 * 60 * 1000;
+// A stuck backend job must not pin the export UI forever; a job that keeps
+// making progress may take longer.
+const EXPORT_JOB_STALL_MS = 5 * 60 * 1000;
 let transferInProgress = false;
 let exportProgressOverlay: HTMLDivElement | null = null;
 
@@ -374,8 +379,14 @@ function hideExportProgress(): void {
 }
 
 export async function waitForExportJob(job: string): Promise<boolean> {
+  return Boolean(await waitForExportJobSummary(job));
+}
+
+/** Polls a background export until it is done; returns its summary. */
+async function waitForExportJobSummary(job: string): Promise<UnknownRecord> {
   showExportProgress();
-  const deadline = Date.now() + EXPORT_JOB_DEADLINE_MS;
+  let deadline = Date.now() + EXPORT_JOB_STALL_MS;
+  let lastProgress: string | null = null;
   try {
     for (;;) {
       if (Date.now() > deadline) {
@@ -389,8 +400,11 @@ export async function waitForExportJob(job: string): Promise<boolean> {
       const progress = await response.json() as UnknownRecord;
       if (progress.done === true) {
         if (progress.error) throw new Error(String(progress.error));
-        return true;
+        return isRecord(progress.summary) ? progress.summary : {};
       }
+      const current = `${String(progress.phase || "")}|${Number(progress.percent) || 0}`;
+      if (lastProgress !== null && current !== lastProgress) deadline = Date.now() + EXPORT_JOB_STALL_MS;
+      lastProgress = current;
       updateExportProgress(Number(progress.percent) || 0, String(progress.phase || ""));
     }
   } finally {
@@ -443,8 +457,17 @@ export async function exportTransfer(
     if (!response.ok) throw new Error((await response.text()).trim() || `export HTTP ${response.status}`);
     const result = await response.json() as UnknownRecord;
     if (typeof result.job === "string") {
-      const ok = await waitForExportJob(result.job);
-      if (!ok) return false;
+      const summary = await waitForExportJobSummary(result.job);
+      // On Android the package is built in the app cache and then handed to
+      // the system "Save as" picker.
+      if (typeof summary.path === "string") {
+        const saved = saveFileWithAndroidBridge(summary.path, filename);
+        if (!saved) throw new Error("Android export bridge is unavailable");
+        if (!await saved) {
+          if (notify) showToast(t("toast.exportCancelled"));
+          return false;
+        }
+      }
     } else if (result.saved === false) {
       if (notify) showToast(t("toast.exportCancelled"));
       return false;
@@ -496,6 +519,8 @@ export async function importTransfer(): Promise<boolean> {
       // Everything in the package is already here, or was changed or deleted
       // here later: say so instead of claiming a successful merge.
       showToast(t("toast.transferNothingNew"));
+    } else if (reloaded && Number(summary.incompleteBooks) > 0) {
+      showToast(t("toast.transferImportedIncomplete", { n: Number(summary.incompleteBooks) }), "error");
     } else if (reloaded) {
       showToast(t("toast.transferImported"));
     } else {
@@ -800,8 +825,14 @@ function parseAnkiTsvLocally(text: string): AnkiImportRow[] {
   const rows: AnkiImportRow[] = [];
   let isFirstNonEmptyLine = true;
   for (const line of text.split("\n")) {
-    const trimmed = line.replace(/\r$/, "");
+    let trimmed = line.replace(/\r$/, "");
     if (!trimmed.trim()) continue;
+    // Anki file headers ("#separator:tab", "#columns:...") before the first
+    // row; the columns line names the fields like a header row.
+    if (isFirstNonEmptyLine && trimmed.startsWith("#")) {
+      if (!trimmed.startsWith("#columns:")) continue;
+      trimmed = trimmed.slice("#columns:".length);
+    }
     const parts = trimmed.split("\t");
     const first = parts[0]?.trim() || "";
     if (isFirstNonEmptyLine && isLocalizedAnkiHeader(parts)) {

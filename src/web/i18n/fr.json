@@ -845,6 +845,7 @@
     "transferExported": "Paquet WordHunter exporté",
     "transferImported": "Paquet importé et fusionné",
     "transferNothingNew": "Rien de nouveau dans ce paquet : tout son contenu est déjà ici ou a été modifié ou supprimé ici depuis.",
+    "transferImportedIncomplete": "Paquet importé. Livres PDF ignorés, car les images de leurs pages manquent dans le paquet : {n}.",
     "transferImportedReload": "Paquet importé, mais les données à l'écran n'ont pas pu être actualisées. Redémarrez Word Hunter pour voir les données importées.",
     "transferBusy": "Une autre exportation ou importation est déjà en cours. Attendez qu'elle se termine.",
     "importCancelled": "Importation annulée.",

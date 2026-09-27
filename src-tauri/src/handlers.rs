@@ -416,12 +416,10 @@ pub(crate) fn save_export(_payload: Value) -> Result<bool, String> {
     Err("Export file picker is not available in Word Hunter Pocket yet".to_string())
 }
 
-#[cfg(not(target_os = "android"))]
 pub(crate) struct ExportJob {
     progress: crate::store::transfer::ExportProgress,
 }
 
-#[cfg(not(target_os = "android"))]
 impl ExportJob {
     pub(crate) fn new(progress: crate::store::transfer::ExportProgress) -> Self {
         Self { progress }
@@ -464,18 +462,7 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
     };
     let temp = export_sidecar_path(&path, ".wordhunter-export.tmp")?;
     crate::store::durable::remove_file_if_exists(&temp)?;
-    // Run the ZIP build on a background thread and publish stage progress so
-    // the frontend can show a 0–100% bar instead of a frozen button.
-    let job_id = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(16)
-        .map(char::from)
-        .collect::<String>();
-    let progress = crate::store::transfer::ExportProgress::new();
-    if let Ok(mut jobs) = state.exports.lock() {
-        jobs.retain(|_, job| !job.is_terminal());
-        jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
-    }
+    let (job_id, progress) = register_export_job(state);
     let clear_backup = export_clear_backup(payload);
     let store = state.store.clone();
     let target = path.clone();
@@ -495,7 +482,23 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
     Ok(serde_json::json!({ "saved": false, "job": job_id }))
 }
 
-#[cfg(not(target_os = "android"))]
+/// Registers a background export whose stage progress the frontend polls, so
+/// it can show a 0–100% bar instead of a frozen button (and, on Android, no
+/// HTTP timeout cuts a long export short).
+fn register_export_job(state: &ServerState) -> (String, crate::store::transfer::ExportProgress) {
+    let job_id = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect::<String>();
+    let progress = crate::store::transfer::ExportProgress::new();
+    if let Ok(mut jobs) = state.exports.lock() {
+        jobs.retain(|_, job| !job.is_terminal());
+        jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
+    }
+    (job_id, progress)
+}
+
 pub(crate) fn export_progress(state: &ServerState, query: &str) -> Result<Value, String> {
     let job_id = crate::paths::sanitize_id(
         response::query_value(query, "job")
@@ -539,17 +542,29 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .map_err(|e| e.to_string())?
         .join("wordhunter-transfer");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+    // Earlier packages were already handed to the system file picker.
+    if let Ok(entries) = std::fs::read_dir(&cache) {
+        for entry in entries.flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
     let path = cache.join(format!("{request_id}.zip"));
-    let summary =
-        state
-            .store
-            .export_transfer(&path, scope, export_clear_backup(payload).as_ref(), None)?;
-    Ok(serde_json::json!({
-        "saved": true,
-        "path": path,
-        "filename": filename,
-        "summary": summary,
-    }))
+    let filename = filename.to_string();
+    let (job_id, progress) = register_export_job(state);
+    let clear_backup = export_clear_backup(payload);
+    let store = state.store.clone();
+    std::thread::spawn(move || {
+        match store.export_transfer(&path, scope, clear_backup.as_ref(), Some(&progress)) {
+            Ok(mut summary) => {
+                // The frontend hands this file to the system "Save as" picker.
+                summary["path"] = serde_json::json!(path);
+                summary["filename"] = Value::String(filename);
+                progress.set_done(summary);
+            }
+            Err(error) => progress.set_error(error),
+        }
+    });
+    Ok(serde_json::json!({ "saved": false, "job": job_id }))
 }
 
 #[cfg(not(target_os = "android"))]

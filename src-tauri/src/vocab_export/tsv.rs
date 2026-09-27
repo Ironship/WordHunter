@@ -77,8 +77,12 @@ pub fn entry_context(entry: &Value) -> String {
 }
 
 pub fn to_anki_tsv(entries: &[Value], header: Option<&str>) -> String {
-    let mut out = String::new();
-    out.push_str(header.unwrap_or(DEFAULT_ANKI_HEADER));
+    // Anki reads "#key:value" lines at the top as file headers; a plain column
+    // row would be imported as a card of its own.
+    let columns = header
+        .unwrap_or(DEFAULT_ANKI_HEADER)
+        .trim_end_matches(['\r', '\n']);
+    let mut out = format!("#separator:tab\n#html:false\n#columns:{columns}\n");
     for entry in entries {
         let word = clean_cell(entry.get("word").and_then(Value::as_str).unwrap_or(""));
         let translation = clean_cell(
@@ -151,6 +155,16 @@ pub fn parse_anki_tsv(tsv: &str) -> AnkiParseResult {
         if line.trim().is_empty() {
             continue;
         }
+        // Anki file headers ("#separator:tab", "#columns:...") before the
+        // first row; the columns line names the fields like a header row.
+        let line = if is_first_non_empty_line && line.starts_with('#') {
+            match line.strip_prefix("#columns:") {
+                Some(columns) => columns,
+                None => continue,
+            }
+        } else {
+            line
+        };
         let parts: Vec<&str> = line.split('\t').collect();
         let first = parts.first().copied().unwrap_or("").trim();
         if is_first_non_empty_line && is_localized_anki_header(&parts) {
