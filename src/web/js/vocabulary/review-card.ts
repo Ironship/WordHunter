@@ -6,7 +6,7 @@ import { els } from "../dom.js";
 import { escapeHtml, escapeAttribute, clamp } from "../utils.js";
 import { icon } from "../icons.js";
 import { t } from "../i18n.js";
-import { applyReviewNative, isDue, isInReviewQueue, todayISO } from "../sm2.js";
+import { applyReviewNative, isDue, isInReviewQueue, recordReviewDay, todayISO } from "../sm2.js";
 import { renderVocabulary, invalidateVocabListCache, vocabMutationRevision } from "./vocab-list.js";
 import { renderReviewChart, renderReviewUpcoming } from "./review-chart.js";
 import { setEntryStatus } from "./entry-state.js";
@@ -387,6 +387,8 @@ export async function applyReviewGrade(word: string, quality: number): Promise<W
     lastReviewedAt: reviewedEntry.lastReviewedAt,
     srsAlgorithm: reviewedEntry.srsAlgorithm
   });
+  // Flashcards and the reader's in-text review both grade here.
+  recordReviewDay(state.profiles[learningLanguage], now);
   const updatedAt = now.toISOString();
   let status = currentEntry.status;
   // Graduate to "known" only when the card is mature (interval >= 21 days).

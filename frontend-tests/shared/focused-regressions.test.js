@@ -411,6 +411,70 @@ describe("focused frontend regressions", () => {
     assert.equal(calls.find((call) => call[0] === "speakText")[3].startTokenIndex, 1);
   });
 
+  it("reads aloud a paginated page without its pagination controls", async () => {
+    const readerText = {
+      dataset: {},
+      innerHTML: "",
+      // Like the DOM: the page text followed by the footer's key labels.
+      get innerText() { return this.innerHTML.replace(/<[^>]*>/g, ""); },
+      insertAdjacentHTML(_position, html) { this.innerHTML += html; },
+      removeAttribute() {},
+      querySelectorAll() { return []; },
+      contains() { return false; }
+    };
+    const { renderPlainText } = await evaluateWithMocks("dist/web/js/reader/text-renderer.js", {
+      "../state.js": { state: { readerPage: 2, selectedWord: null, preferences: {}, vocab: {} } },
+      "../dom.js": { els: { readerText } },
+      "../utils.js": { escapeHtml: (value) => value },
+      "../i18n.js": { t: (key) => key },
+      "../tokenizer_v2.js": { normalizeWord: (word) => word.toLowerCase() },
+      "./scroll.js": { restoreReaderPagePosition() {} },
+      "./word-panel.js": { renderWordPanel() {} },
+      "./selection.js": { updateReaderSelection() {} },
+      "./pagination.js": {
+        paginationHtml: () => '<div class="pagination-controls"><kbd>Page Up</kbd><span>/ 12</span><kbd>Page Down</kbd></div>'
+      },
+      "./focus.js": { applyPendingReaderPageFocus() { return false; }, applyPendingReaderWordFocus() { return false; } },
+      "../reader-colors.js": { getSrsLevel() { return 0; } },
+      "./bookmarks.js": { renderInlineBookmarkIndicators() {} },
+      "./format-markers.js": { spanCovers() { return false; } }
+    });
+    const tokens = [
+      { type: "word", value: "Vorher" }, { type: "text", value: ". " },
+      { type: "word", value: "Der" }, { type: "text", value: " " }, { type: "word", value: "Hund" },
+      { type: "image", value: "hund.png" }, { type: "text", value: " " }, { type: "word", value: "bellt" },
+      { type: "text", value: "." }
+    ];
+    renderPlainText({
+      current: { id: "book" },
+      tokens,
+      globalWordIndexes: [0, 0, 1, 0, 2, 0, 0, 3, 0],
+      globalCharOffsets: [0, 0, 8, 0, 12, 0, 0, 18, 0],
+      classifications: new Map(),
+      pageStartIndex: 2,
+      pageEndIndex: tokens.length,
+      totalPages: 12,
+      scrollPerPageKey: "book-p2",
+      savedPos: 0
+    });
+    for (let tick = 0; tick < 10 && readerText.dataset.rendering !== "0"; tick += 1) await flushAsync();
+    assert.match(readerText.innerHTML, /pagination-controls/);
+
+    const { calls, listeners } = await globalActionsHarness({
+      state: { selectedWord: null, selectedWordIndex: null },
+      elements: { "reader-text": readerText, "tts-stop-text": { hidden: true } }
+    });
+    listeners.get("click")({
+      target: closestTarget({
+        "#tts-play-text": { hidden: false },
+        "#reader-text, #word-panel, #reader-view .reader-toolbar, dialog": { id: "toolbar" }
+      }),
+      composedPath() { return []; }
+    });
+
+    assert.equal(calls.find((call) => call[0] === "speakText")[1], "Der Hund bellt.");
+  });
+
   it("keeps keyboard navigation lightweight and routes swipes through automatic translation", async () => {
     const calls = [];
     const rootClasses = classList(["pocket-word-panel-open"]);
