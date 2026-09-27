@@ -71,8 +71,8 @@ function flushPendingStateBeforeExit() {
   if (lifecycleFlushStarted) return;
   lifecycleFlushStarted = true;
   flushFrontendStateBuffers();
-  flushUiStateSync();
   if (isAndroidPlatform()) {
+    flushUiStateSync();
     // The webview is being torn down: keepalive fetches are capped at 64 KiB
     // while the real save payload is multi-MB, so the final mutations could
     // never reach the backend (issue #137). Persist the save delta to
@@ -86,7 +86,10 @@ function flushPendingStateBeforeExit() {
     }
     return;
   }
+  // The store save goes first: browsers allow 64 KiB of keepalive bodies
+  // per page, and the words matter more than the reading position.
   if (typeof window.flushPendingSave === "function") window.flushPendingSave();
+  flushUiStateSync();
 }
 
 // Replay a pending Android teardown flush into the backend once the boot

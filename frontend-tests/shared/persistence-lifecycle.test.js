@@ -134,7 +134,7 @@ async function loadAppHarness({
     "./js/state.js": {
       applyBridgeSnapshotToState: noOp,
       flushFrontendStateBuffers() { calls.push("flush-buffers"); },
-      flushUiStateSync: noOp,
+      flushUiStateSync() { calls.push("flush-ui"); },
       saveState() { calls.push("save-state"); return Promise.resolve(); },
       state
     },
@@ -300,7 +300,7 @@ describe("persistence lifecycle", () => {
     const harness = await loadAppHarness();
 
     harness.window.emit("beforeunload");
-    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save"]);
+    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save", "flush-ui"]);
 
     harness.window.emit("pagehide");
     assert.deepEqual(harness.calls.splice(0), []);
@@ -309,7 +309,7 @@ describe("persistence lifecycle", () => {
     assert.deepEqual(harness.calls.splice(0), []);
     harness.document.visibilityState = "hidden";
     harness.document.emit("visibilitychange");
-    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save"]);
+    assert.deepEqual(harness.calls.splice(0), ["flush-buffers", "flush-save", "flush-ui"]);
 
     harness.setAndroid(true);
     harness.window.emit("pagehide");
@@ -334,6 +334,7 @@ describe("persistence lifecycle", () => {
 
     assert.deepEqual(harness.calls, [
       "flush-buffers",
+      "flush-ui",
       "build-envelope",
       'pending-flush:{"delta":true,"fullKeys":[]}'
     ]);
@@ -353,7 +354,7 @@ describe("persistence lifecycle", () => {
 
     harness.window.emit("pagehide");
 
-    assert.deepEqual(harness.calls, ["flush-buffers"]);
+    assert.deepEqual(harness.calls, ["flush-buffers", "flush-ui"]);
   });
 
   it("refuses to build a destructive pending delta before the bridge snapshot is applied", async () => {

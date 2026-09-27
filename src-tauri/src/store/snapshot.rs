@@ -168,7 +168,10 @@ impl Store {
             return true;
         }
         let Some(index) = pages.served.iter().position(|(id, _)| id == page) else {
-            return pages.owner.is_none();
+            // Another page's save (a replayed teardown delta, or the page a
+            // served one replaces): it merges against the current base but
+            // does not move it.
+            return pages.owner.is_none() && pages.served.is_empty();
         };
         let (_, base) = pages
             .served
@@ -379,6 +382,11 @@ impl Store {
         let mut pages = self.base_page.lock().unwrap_or_else(|e| e.into_inner());
         match page {
             Some(page) => {
+                // With no page owning the base yet (app start), saves from
+                // other pages merge against what this page was served.
+                if pages.owner.is_none() {
+                    *self.base_records.lock().unwrap_or_else(|e| e.into_inner()) = base.clone();
+                }
                 pages.served.retain(|(id, _)| id != page);
                 pages.served.push_back((page.to_string(), base));
                 while pages.served.len() > super::SERVED_PAGES_KEPT {
@@ -857,6 +865,26 @@ mod tests {
         let vocab = store.snapshot()["vocab"]["de"]["vocab"].clone();
         assert!(vocab.get("neu").is_none(), "{vocab}");
         assert_eq!(vocab["haus"]["translation"], "house");
+    }
+
+    #[test]
+    fn a_replayed_delta_at_app_start_merges_against_the_served_records() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut two_words = payload("Wort");
+        two_words["vocab"]["de"]["vocab"]["Haus"] =
+            json!({ "word": "Haus", "translation": "house", "status": "learning" });
+        store_at(&dir).bulk_save(two_words).unwrap();
+
+        // The app restarts; the new page loads before the old page's
+        // teardown delta, which deleted "Haus", is replayed.
+        let store = store_at(&dir);
+        let _ = store.snapshot_for_page(Some("page"));
+        store
+            .bulk_save_from(payload("Wort"), Some("previous-page"))
+            .unwrap();
+        let vocab = store.snapshot_unacknowledged()["vocab"]["de"]["vocab"].clone();
+        assert!(vocab.get("haus").is_none(), "{vocab}");
+        assert!(vocab.get("wort").is_some());
     }
 
     #[test]

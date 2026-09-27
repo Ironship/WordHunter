@@ -156,10 +156,10 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     // library, and a discarded language switch are shown (issue #281).
     // Android keeps loading it from /__store/load (compact media snapshot,
     // persistent WebView origin).
-    // Every served page gets its own id. The store's save base belongs to
-    // the page that last loaded an acknowledged snapshot, so the exit flush
-    // of the page this one replaces cannot rewrite it (a reload right after
-    // an edit used to delete that edit on the next save).
+    // Every served page gets its own id and saves against what it was
+    // served, from its first store request on (Store::claim_base), so the
+    // exit flush of the page this one replaces cannot rewrite its base (a
+    // reload right after an edit used to delete that edit on the next save).
     let page = crate::server::make_token();
     let bootstrap = bootstrap_script(
         &state.token,
@@ -206,7 +206,7 @@ const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
 /// UI state (open book, view, reading positions). `/__store/load` and the
 /// desktop's inlined boot snapshot share it so both hand the renderer the
 /// same state. `acknowledge` is false for `/__store/load?ack=0`; an
-/// acknowledged snapshot makes `page` the owner of the save base.
+/// acknowledged snapshot becomes `page`'s save base once it checks in.
 pub(crate) fn store_snapshot(
     store: &crate::store::Store,
     acknowledge: bool,

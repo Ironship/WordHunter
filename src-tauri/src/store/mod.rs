@@ -73,8 +73,9 @@ struct PageBases {
     served: std::collections::VecDeque<(String, record_files::Fingerprints)>,
 }
 
-/// Served pages whose base is kept until they check in.
-const SERVED_PAGES_KEPT: usize = 4;
+/// Served pages whose base is kept until they check in. The page in use is
+/// the newest one unless something else keeps requesting `/`.
+const SERVED_PAGES_KEPT: usize = 8;
 
 #[derive(Clone)]
 struct StoreInner {
