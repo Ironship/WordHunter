@@ -56,9 +56,15 @@ function renderImageSuggestions(container: HTMLElement, word: string, pages?: Re
 
 export function renderImageSearch(container: HTMLElement, word: string): void {
   container.innerHTML = imageSearchMessage("toast.searching");
-  const lang = effectiveLearningLanguage(state.preferences).split("-")[0];
-  fetch(`https://${lang}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(word)}&gsrlimit=10&prop=pageimages&format=json&pithumbsize=300&origin=*`)
-    .then((response) => response.json() as Promise<WikipediaImageSearchResponse>)
+  const learning = effectiveLearningLanguage(state.preferences).split("-")[0];
+  // There is no Ancient Greek Wikipedia; search the Greek one. A code without
+  // a Wikipedia of its own (the "Other" profile) falls back to English.
+  const lang = learning === "grc" ? "el" : learning;
+  const search = (edition: string) =>
+    fetch(`https://${edition}.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(word)}&gsrlimit=10&prop=pageimages&format=json&pithumbsize=300&origin=*`)
+      .then((response) => response.json() as Promise<WikipediaImageSearchResponse>);
+  search(lang)
+    .catch((error) => (lang === "en" ? Promise.reject(error) : search("en")))
     .then((data) => renderImageSuggestions(container, word, data?.query?.pages))
     .catch(() => {
       container.innerHTML = imageSearchMessage("toast.imageSearchError") + uploadImageHtml(escapeAttribute(word));

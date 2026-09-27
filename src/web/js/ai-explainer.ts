@@ -65,11 +65,21 @@ export async function requestAiExplanation(request: AiExplanationRequest): Promi
   return response.json() as Promise<AiExplanationResult>;
 }
 
+// The backend's limits (ai_explainer.rs MAX_WORD_LEN / MAX_CONTEXT_LEN), in
+// characters. A longer selection or pasted text is shortened, not rejected.
+const AI_MAX_WORD_CHARS = 300;
+const AI_MAX_CONTEXT_CHARS = 8000;
+
+function truncateCharacters(value: string, limit: number): string {
+  const characters = Array.from(String(value || ""));
+  return characters.length > limit ? characters.slice(0, limit).join("") : String(value || "");
+}
+
 function buildAiPayload(request: AiExplanationRequest): Record<string, unknown> {
   const preferences: Partial<WhPreferences> = state.preferences || {};
   const payload: Record<string, unknown> = {
-    word: request.word,
-    context: request.context,
+    word: truncateCharacters(request.word, AI_MAX_WORD_CHARS),
+    context: truncateCharacters(request.context, AI_MAX_CONTEXT_CHARS),
     from: request.from,
     to: request.to,
     endpoint: normalizeAiTextPreference("aiExplanationEndpoint", preferences.aiExplanationEndpoint),

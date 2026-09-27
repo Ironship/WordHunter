@@ -6,6 +6,7 @@ import { getReaderSession } from "./session.js";
 import { normalizeWord } from "../tokenizer_v2.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { buildPdfDocumentText } from "./pdf-page-text.js";
+import { effectiveWordsPerPage } from "./pagination.js";
 
 export interface ReaderBookmarkPosition {
   page: number;
@@ -62,7 +63,8 @@ export function getReaderBookmarkPage(bookmark: WhReaderBookmark, textId = state
   const current = state.customTexts?.find((text) => text.id === textId);
   const wordIndex = textId ? resolvedBookmarkIndex(bookmark, textId) : bookmark.wordIndex;
   if (wordIndex === null || current?.pdfOcrPages?.length) return bookmark.page;
-  const wordsPerPage = Math.max(1, Number(state.preferences.wordsPerPage) || 1000);
+  // The same clamped page size the reader paginates with ("All" is capped).
+  const wordsPerPage = effectiveWordsPerPage(Number(state.preferences.wordsPerPage) || 1000);
   return Math.floor(wordIndex / wordsPerPage) + 1;
 }
 

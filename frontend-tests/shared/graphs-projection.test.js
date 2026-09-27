@@ -40,7 +40,8 @@ async function loadHelpers() {
     "../views/heatmap.js": { renderContributionHeatmap: () => {} },
     "../sm2.js": {
       todayISO: () => "2026-08-12",
-      simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" })
+      simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }),
+      isInReviewQueue: (entry, autoAddLearningOnly) => entry.status !== "ignored" && entry.status !== "known" && !(autoAddLearningOnly && entry.status === "new")
     }
   };
   for (const [specifier, values] of Object.entries(imports)) {

@@ -28,7 +28,7 @@ describe("manual transfer tab", () => {
     // The backend refuses to open native file dialogs unless the payload
     // carries confirm: true (the import call covers both its branches).
     assert.match(actions, /httpPost\("\/__export\/save", \{ data, filename, mime, confirm: true \}/);
-    assert.match(actions, /httpPost\("\/__store\/export_transfer", \{ scope, filename, requestId, confirm: true \}/);
+    assert.match(actions, /httpPost\("\/__store\/export_transfer", \{ scope, filename, requestId, \.\.\.clearBackup, confirm: true \}/);
     assert.match(actions, /httpPost\("\/__store\/import_transfer", androidPath \? \{ path: androidPath, confirm: true \} : \{ confirm: true \}/);
     const settings = readFileSync(
       new URL("../../dist/web/js/events/settings/data.js", import.meta.url),

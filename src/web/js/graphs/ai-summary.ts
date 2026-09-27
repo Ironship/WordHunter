@@ -4,7 +4,7 @@
  * conclusions summary into a section below the graphs.
  */
 import { state } from "../state.js";
-import { todayISO } from "../sm2.js";
+import { isInReviewQueue, todayISO } from "../sm2.js";
 import {
   aiExplanationConfigured,
   aiExplanationLanguagePair,
@@ -20,6 +20,7 @@ import type { VocabEntry } from "./helpers.js";
 function buildGraphsSummaryText(): string {
   const entries = Object.values(state.vocab) as VocabEntry[];
   const today = todayISO();
+  const autoAddLearningOnly = state.preferences?.autoAddLearningOnly === true;
   let total = 0;
   let newCount = 0;
   let learning = 0;
@@ -39,7 +40,8 @@ function buildGraphsSummaryText(): string {
     if (entry.status === "new") newCount += 1;
     else if (entry.status === "learning") learning += 1;
     else if (entry.status === "known") known += 1;
-    if (entry.status !== "known" && entry.nextDate) {
+    // Due counts follow the flashcard queue, like the charts.
+    if (isInReviewQueue(entry, autoAddLearningOnly) && entry.nextDate) {
       const diff = daysBetween(entry.nextDate, today);
       if (diff < 0) overdue += 1;
       else if (diff === 0) due += 1;

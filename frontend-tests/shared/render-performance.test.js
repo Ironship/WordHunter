@@ -318,6 +318,7 @@ describe("render performance guards", () => {
         setReaderSelectionAnchorFromToken: noOp,
         clearReaderSelectionRange: noOp,
         clearReaderSelection: noOp,
+        getReaderSelectionHeadword: () => "",
         bindTouchPhraseSelection: noOp
       },
       "../reader/scroll.js": {
@@ -503,7 +504,7 @@ describe("render performance guards", () => {
       "../i18n.js": { t: (key) => key },
       "../loading.js": { setElementBusy() {} },
       "../views/heatmap.js": { renderContributionHeatmap() {} },
-      "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }) }
+      "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }), isInReviewQueue: (entry, autoAddLearningOnly) => entry.status !== "ignored" && entry.status !== "known" && !(autoAddLearningOnly && entry.status === "new") }
     }, {
       document: {
         documentElement: {},

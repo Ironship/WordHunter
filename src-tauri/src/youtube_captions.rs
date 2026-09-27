@@ -5,7 +5,7 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use url::Url;
 
 use crate::subtitles;
@@ -163,6 +163,16 @@ fn run_ytdlp(
         use std::os::windows::process::CommandExt;
         process.creation_flags(0x08000000);
     }
+    // Capture yt-dlp's messages (its ERROR line says why it failed) in files:
+    // inherited stdio loses them, and pipes could fill up while we poll.
+    let stdout_path = temp.path().join("yt-dlp.out.log");
+    let stderr_path = temp.path().join("yt-dlp.err.log");
+    let stdout = fs::File::create(&stdout_path).map_err(|e| e.to_string())?;
+    let stderr = fs::File::create(&stderr_path).map_err(|e| e.to_string())?;
+    process
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr));
     let mut child = process
         .spawn()
         .map_err(|e| format!("Could not start yt-dlp: {e}"))?;
@@ -170,14 +180,10 @@ fn run_ytdlp(
     let output = loop {
         match child.try_wait() {
             Ok(Some(status)) => {
-                let output = child.wait_with_output();
-                break match output {
-                    Ok(output) => std::process::Output {
-                        status,
-                        stdout: output.stdout,
-                        stderr: output.stderr,
-                    },
-                    Err(e) => return Err(format!("Could not read yt-dlp output: {e}")),
+                break std::process::Output {
+                    status,
+                    stdout: fs::read(&stdout_path).unwrap_or_default(),
+                    stderr: fs::read(&stderr_path).unwrap_or_default(),
                 };
             }
             Ok(None) => {

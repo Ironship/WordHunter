@@ -2,7 +2,7 @@
 import { state, saveState } from "../state.js";
 import { getSentenceForWord, resolveVocabularyKey } from "../tokenizer_v2.js";
 import { ensureSM2Fields, SM2_DEFAULTS, FSRS_DEFAULTS, todayISO } from "../sm2.js";
-import { sessionAddedWords } from "../vocabulary/vocab-list.js";
+import { invalidateVocabListCache, sessionAddedWords } from "../vocabulary/vocab-list.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { invalidateSuggestIndex } from "../reader/smart-suggest.js";
 
@@ -63,6 +63,7 @@ export function getOrCreateEntry(
   );
   if (context && !state.vocab[key].examples?.includes(context)) {
     state.vocab[key].examples = [context, ...(state.vocab[key].examples || [])].slice(0, 3);
+    invalidateVocabListCache();
   }
   return state.vocab[key];
 }

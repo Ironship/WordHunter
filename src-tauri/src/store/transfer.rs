@@ -50,6 +50,88 @@ struct ImportPlan {
     records: BTreeMap<String, record_files::SyncRecord>,
     asset_files: Vec<(String, PathBuf)>,
     staging: PathBuf,
+    /// Set for the automatic backup made before a clear, with its export
+    /// time: importing it must undo that clear.
+    clear_backup: Option<(ClearBackup, u128)>,
+}
+
+/// Manifest `purpose` of the backup the app makes before clearing data.
+pub(crate) const BACKUP_BEFORE_CLEAR: &str = "backup-before-clear";
+/// The clear runs as soon as its backup is saved; changes later than this
+/// after the backup are the user's own and are kept.
+const CLEAR_RESTORE_WINDOW_MS: u128 = 60 * 60 * 1000;
+
+/// The backup made before "Clear words" (`words`), "Clear library"
+/// (`library`) or "Clear everything" (`all`) of one learning language.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ClearBackup {
+    clear: String,
+    language: String,
+}
+
+impl ClearBackup {
+    /// Reads `purpose`, `clear` and `clearLanguage` from an export request or
+    /// a package manifest.
+    pub(crate) fn parse(value: &Value) -> Option<Self> {
+        if value.get("purpose").and_then(Value::as_str) != Some(BACKUP_BEFORE_CLEAR) {
+            return None;
+        }
+        let clear = value.get("clear").and_then(Value::as_str)?;
+        let language = value
+            .get("clearLanguage")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let valid = match clear {
+            "words" | "library" => !language.is_empty(),
+            "all" => true,
+            _ => false,
+        };
+        valid.then(|| Self {
+            clear: clear.to_string(),
+            language: language.to_string(),
+        })
+    }
+
+    /// Whether the clear deleted this record (`backup` is its copy in the backup).
+    fn deleted(&self, key: &str, backup: &record_files::SyncRecord) -> bool {
+        let in_language = |prefix: &str| {
+            key.strip_prefix(prefix)
+                .and_then(|rest| rest.split_once(':'))
+                .is_some_and(|(language, _)| language == self.language)
+        };
+        match self.clear.as_str() {
+            "words" => in_language("vocab:"),
+            "library" => {
+                in_language("book:")
+                    || key.starts_with("hidden:")
+                    || (key.starts_with("text:")
+                        && backup
+                            .data
+                            .get("lang")
+                            .and_then(Value::as_str)
+                            .is_none_or(|language| language == self.language))
+            }
+            _ => true,
+        }
+    }
+
+    /// Whether the clear edited this record in place instead of deleting it.
+    fn edited(&self, key: &str) -> bool {
+        match self.clear.as_str() {
+            "library" => {
+                matches!(key, "pref:readerBookmarks" | "pref:lastReadTextIds")
+                    || key.strip_prefix("profile:") == Some(self.language.as_str())
+            }
+            // After the wipe the app saves its default settings and profile
+            // again; those stand in for the ones the wipe deleted.
+            "all" => key.starts_with("pref:") || key.starts_with("profile:"),
+            _ => false,
+        }
+    }
+}
+
+fn within_clear_window(time: u128, exported_at: u128) -> bool {
+    time >= exported_at && time - exported_at <= CLEAR_RESTORE_WINDOW_MS
 }
 
 struct FileBackup {
@@ -70,6 +152,7 @@ impl Store {
         &self,
         target: &Path,
         scope: ExportScope,
+        clear_backup: Option<&ClearBackup>,
         progress: Option<&ExportProgress>,
     ) -> Result<Value, String> {
         // Keep the write lock only for the quick snapshot phase (record listing and
@@ -106,19 +189,19 @@ impl Store {
             .compression_method(zip::CompressionMethod::Deflated)
             .unix_permissions(0o600);
         let mut counters = ExportCounters::default();
-        write_yaml_counted(
-            &mut zip,
-            "manifest.yaml",
-            &json!({
-                "format": FORMAT,
-                "schemaVersion": SCHEMA_VERSION,
-                "appVersion": crate::APP_VERSION,
-                "exportedAt": record_files::now_millis().to_string(),
-                "scope": scope.as_str(),
-            }),
-            options,
-            &mut counters,
-        )?;
+        let mut manifest = json!({
+            "format": FORMAT,
+            "schemaVersion": SCHEMA_VERSION,
+            "appVersion": crate::APP_VERSION,
+            "exportedAt": record_files::now_millis().to_string(),
+            "scope": scope.as_str(),
+        });
+        if let Some(clear_backup) = clear_backup {
+            manifest["purpose"] = json!(BACKUP_BEFORE_CLEAR);
+            manifest["clear"] = json!(clear_backup.clear);
+            manifest["clearLanguage"] = json!(clear_backup.language);
+        }
+        write_yaml_counted(&mut zip, "manifest.yaml", &manifest, options, &mut counters)?;
         if let Some(progress) = progress {
             progress.set_phase("words");
         }
@@ -127,6 +210,9 @@ impl Store {
         let mut books_with_assets = BTreeSet::new();
         for record in records.values() {
             if scope == ExportScope::Vocabulary && record.kind != "vocab" {
+                continue;
+            }
+            if is_device_secret(record) {
                 continue;
             }
             let value = record_files::record_value(record);
@@ -223,11 +309,53 @@ impl Store {
         let mut accepted = BTreeMap::new();
         let mut accepted_books = BTreeSet::new();
         let mut skipped = 0usize;
-        for (key, incoming) in std::mem::take(&mut plan.records) {
-            if current.get(&key).is_some_and(|saved| {
-                record_files::record_time(saved) >= record_files::record_time(&incoming)
-            }) {
+        let now = record_files::now_millis();
+        let mut edited_by_clear = Vec::new();
+        for (key, mut incoming) in std::mem::take(&mut plan.records) {
+            // Packages from before 1.1.2 may carry API keys; keep this
+            // device's own keys instead.
+            if is_device_secret(&incoming) {
                 skipped += 1;
+                continue;
+            }
+            let saved = current.get(&key);
+            // The clear that followed the backup deleted these records, so its
+            // tombstones are newer than the backup; restoring the backup is
+            // the user taking the clear back. The restored record is stamped
+            // now so it also wins over the deletion on other devices.
+            let cleared_after_backup =
+                plan.clear_backup
+                    .as_ref()
+                    .is_some_and(|(clear, exported_at)| {
+                        incoming.deleted_at.is_none()
+                            && clear.deleted(&key, &incoming)
+                            && saved
+                                .and_then(|saved| saved.deleted_at)
+                                .is_some_and(|deleted_at| {
+                                    within_clear_window(deleted_at, *exported_at)
+                                })
+                    });
+            let saved_is_newer = saved.is_some_and(|saved| {
+                record_files::record_time(saved) >= record_files::record_time(&incoming)
+            });
+            if cleared_after_backup {
+                restore_over(&mut incoming, saved, &self.device_id, now);
+            } else if saved_is_newer {
+                let edited_by_the_clear =
+                    plan.clear_backup
+                        .as_ref()
+                        .is_some_and(|(clear, exported_at)| {
+                            clear.edited(&key)
+                                && saved.is_some_and(|saved| {
+                                    saved.deleted_at.is_none()
+                                        && within_clear_window(saved.updated_at, *exported_at)
+                                })
+                        });
+                if edited_by_the_clear {
+                    edited_by_clear.push((key, incoming));
+                } else {
+                    skipped += 1;
+                }
                 continue;
             }
             if incoming.kind == "text"
@@ -237,6 +365,43 @@ impl Store {
                 accepted_books.insert(crate::paths::sanitize_id(&book_id)?);
             }
             accepted.insert(key, incoming);
+        }
+        // "Clear library" also edits bookmarks, the last read book and the
+        // archive list in place; give back what it removed from them for the
+        // books that are back and for built-in books. After "Clear
+        // everything" the backup's settings replace the defaults saved since.
+        let books = |live_only: bool| {
+            current
+                .iter()
+                .filter(|(key, _)| !accepted.contains_key(*key))
+                .map(|(_, record)| record)
+                .chain(accepted.values())
+                .filter(|record| !live_only || record.deleted_at.is_none())
+                .filter_map(|record| record_key_book_id(&record.key))
+                .collect::<BTreeSet<_>>()
+        };
+        let (live_books, user_books) = (books(true), books(false));
+        let wiped = plan
+            .clear_backup
+            .as_ref()
+            .is_some_and(|(clear, _)| clear.clear == "all");
+        for (key, mut incoming) in edited_by_clear {
+            let saved = current.get(&key);
+            let data = if wiped {
+                Some(incoming.data.clone())
+            } else {
+                saved.and_then(|saved| {
+                    restore_cleared_entries(saved, &incoming, &live_books, &user_books)
+                })
+            };
+            match data {
+                Some(data) => {
+                    incoming.data = data;
+                    restore_over(&mut incoming, saved, &self.device_id, now);
+                    accepted.insert(key, incoming);
+                }
+                None => skipped += 1,
+            }
         }
         validate_incoming_pdf_assets(&accepted, &plan.asset_files)?;
 
@@ -730,6 +895,7 @@ fn build_import_plan(source: &Path, data_root: &Path) -> Result<ImportPlan, Stri
         records: BTreeMap::new(),
         asset_files: Vec::new(),
         staging,
+        clear_backup: None,
     };
     let mut manifest_seen = false;
     let mut seen_entries = BTreeSet::new();
@@ -764,6 +930,11 @@ fn build_import_plan(source: &Path, data_root: &Path) -> Result<ImportPlan, Stri
                 return Err("unsupported WordHunter package format".to_string());
             }
             manifest_seen = true;
+            let exported_at = value
+                .get("exportedAt")
+                .and_then(Value::as_str)
+                .and_then(|millis| millis.parse().ok());
+            plan.clear_backup = ClearBackup::parse(&value).zip(exported_at);
         } else if is_record_yaml(&name) {
             let value = read_yaml(&mut entry, MAX_YAML_BYTES)?;
             if name.ends_with("/book.yaml") {
@@ -859,6 +1030,120 @@ fn is_record_yaml(name: &str) -> bool {
                 && (name.ends_with("/book.yaml") || name.contains("/records/"))))
 }
 
+/// API keys (DeepL, AI explanations) belong to the device they were entered
+/// on. Transfer packages get shared and kept as backups, so the keys must not
+/// travel in them in plain text.
+fn is_device_secret(record: &record_files::SyncRecord) -> bool {
+    record.kind == "pref"
+        && record
+            .key
+            .strip_prefix("pref:")
+            .is_some_and(|name| name.to_ascii_lowercase().ends_with("apikey"))
+}
+
+/// Makes a restored record win over `saved` by time and causally, so the
+/// restore also reaches other devices that already synced the clear.
+fn restore_over(
+    incoming: &mut record_files::SyncRecord,
+    saved: Option<&record_files::SyncRecord>,
+    device_id: &str,
+    now: u128,
+) {
+    if let Some(saved) = saved {
+        for (device, counter) in &saved.causal {
+            let entry = incoming.causal.entry(device.clone()).or_insert(0);
+            *entry = (*entry).max(*counter);
+        }
+    }
+    incoming.updated_at = now;
+    incoming.device_id = device_id.to_string();
+    record_files::bump_causal(&mut incoming.causal, device_id, now);
+}
+
+/// For records "Clear library" edits instead of deleting: the saved data plus
+/// the backup's entries that the saved record lacks, for user books that are
+/// back (`live_books`) and, in the last read and archive lists, built-in
+/// books (ids that are not in `user_books`). `None` when nothing is missing.
+/// Later edits of the saved record are kept.
+fn restore_cleared_entries(
+    saved: &record_files::SyncRecord,
+    incoming: &record_files::SyncRecord,
+    live_books: &BTreeSet<String>,
+    user_books: &BTreeSet<String>,
+) -> Option<Value> {
+    if saved.deleted_at.is_some() {
+        return None;
+    }
+    // A user book that is back, or a built-in book (which is never a record).
+    let is_live = |id: &Value| {
+        id.as_str()
+            .is_some_and(|id| live_books.contains(id) || !user_books.contains(id))
+    };
+    let mut data = saved.data.clone();
+    let target = data.as_object_mut()?;
+    let mut changed = false;
+    match saved.key.as_str() {
+        // Bookmarks are keyed by book id, the last read book by language.
+        "pref:readerBookmarks" | "pref:lastReadTextIds" => {
+            let by_book = saved.key == "pref:readerBookmarks";
+            for (key, value) in incoming.data.as_object()? {
+                let book = if by_book {
+                    live_books.contains(key)
+                } else {
+                    is_live(value)
+                };
+                if book && !target.contains_key(key) {
+                    target.insert(key.clone(), value.clone());
+                    changed = true;
+                }
+            }
+        }
+        // Profiles list archived books and hidden built-in books.
+        _ => {
+            if let Some(backup) = incoming
+                .data
+                .get("archivedBookIds")
+                .and_then(Value::as_array)
+                && let Some(archived) = target
+                    .entry("archivedBookIds")
+                    .or_insert_with(|| Value::Array(Vec::new()))
+                    .as_array_mut()
+            {
+                for id in backup.iter().filter(|id| is_live(id)) {
+                    if !archived.contains(id) {
+                        archived.push(id.clone());
+                        changed = true;
+                    }
+                }
+            }
+            // The clear shows every built-in book again; a list the user has
+            // started again since is theirs.
+            let hidden_is_empty = target
+                .get("hiddenBuiltInBooks")
+                .and_then(Value::as_array)
+                .is_none_or(Vec::is_empty);
+            if let Some(backup) = incoming.data.get("hiddenBuiltInBooks")
+                && backup.as_array().is_some_and(|ids| !ids.is_empty())
+                && hidden_is_empty
+            {
+                target.insert("hiddenBuiltInBooks".to_string(), backup.clone());
+                changed = true;
+            }
+        }
+    }
+    changed.then_some(data)
+}
+
+/// The id of the user book or text a record key belongs to, whatever its kind.
+fn record_key_book_id(key: &str) -> Option<String> {
+    key.strip_prefix("text:")
+        .or_else(|| {
+            key.strip_prefix("book:")
+                .and_then(|rest| rest.split_once(':').map(|(_, id)| id))
+        })
+        .map(str::to_string)
+}
+
 fn record_book_id(record: &record_files::SyncRecord) -> Option<String> {
     match record.kind.as_str() {
         "text" => record.key.strip_prefix("text:").map(str::to_string),
@@ -925,7 +1210,7 @@ mod tests {
 
         let archive = source_dir.path().join("transfer.zip");
         source
-            .export_transfer(&archive, ExportScope::All, None)
+            .export_transfer(&archive, ExportScope::All, None, None)
             .unwrap();
         let result = target.import_transfer(&archive).unwrap();
         assert_eq!(result["assets"], 1);
@@ -955,6 +1240,332 @@ mod tests {
             std::fs::read(newer_dir.path().join("books/book-1/images/page.png")).unwrap(),
             b"newer local image"
         );
+    }
+
+    #[test]
+    fn backup_before_clear_restores_what_the_clear_deleted() {
+        let dir = tempfile::tempdir().unwrap();
+        let packages = tempfile::tempdir().unwrap();
+        let store = store(dir.path(), "pc");
+        let records = record_files::payload_to_records(
+            &json!({"vocab": {
+                "de": {"vocab": {"Haus": {"word": "Haus", "translation": "house"}}},
+                "fr": {"vocab": {"maison": {"word": "maison", "translation": "house"}}},
+            }}),
+            "pc",
+            100,
+        );
+        record_files::write_records(dir.path(), &records).unwrap();
+        let regular = packages.path().join("regular.zip");
+        let backup = packages.path().join("backup.zip");
+        store
+            .export_transfer(&regular, ExportScope::All, None, None)
+            .unwrap();
+        let clear_words = ClearBackup {
+            clear: "words".to_string(),
+            language: "de".to_string(),
+        };
+        store
+            .export_transfer(&backup, ExportScope::All, Some(&clear_words), None)
+            .unwrap();
+
+        // "Clear words" of German, and the user deleting a French word right
+        // after: tombstones newer than both packages.
+        let cleared = record_files::load_records(dir.path())
+            .unwrap()
+            .into_iter()
+            .filter(|(key, _)| key.starts_with("vocab:"))
+            .map(|(key, record)| {
+                let tombstone = record_files::tombstone_with_base(
+                    &key,
+                    "pc",
+                    record_files::now_millis(),
+                    Some(&record.causal),
+                );
+                (key, tombstone)
+            })
+            .collect::<BTreeMap<_, _>>();
+        record_files::write_records(dir.path(), &cleared).unwrap();
+        store.invalidate_records_cache();
+
+        // An ordinary package keeps the deletion.
+        store.import_transfer(&regular).unwrap();
+        let after_regular = record_files::load_records(dir.path()).unwrap();
+        assert!(after_regular["vocab:de:haus"].deleted_at.is_some());
+
+        // The backup made before the clear takes it back.
+        let summary = store.import_transfer(&backup).unwrap();
+        assert!(summary["imported"].as_u64().unwrap_or(0) >= 1, "{summary}");
+        let restored = record_files::load_records(dir.path()).unwrap();
+        let haus = &restored["vocab:de:haus"];
+        assert!(haus.deleted_at.is_none());
+        assert_eq!(haus.data["translation"], "house");
+        assert!(haus.updated_at > cleared["vocab:de:haus"].updated_at);
+        // The clear covered German words only.
+        assert!(restored["vocab:fr:maison"].deleted_at.is_some());
+    }
+
+    #[test]
+    fn backup_before_clear_library_brings_back_pdf_images_and_bookmarks() {
+        let dir = tempfile::tempdir().unwrap();
+        let packages = tempfile::tempdir().unwrap();
+        let store = store(dir.path(), "pc");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {
+                    "vocab": {},
+                    "archivedBookIds": ["book-1", "gb-archived", "book-2"],
+                    "hiddenBuiltInBooks": ["gb-1"],
+                }},
+                "texts": [
+                    {"id": "book-1", "title": "PDF", "pdfOcrPages": [{"imageName": "page.png"}]},
+                    {"id": "book-2", "title": "Deleted later"},
+                ],
+                "prefs": {
+                    "readerBookmarks": {"book-1": [{"page": 3}], "book-2": [{"page": 1}]},
+                    "lastReadTextIds": {"de": "book-1"},
+                },
+            }),
+            "pc",
+            100,
+        );
+        record_files::write_records(dir.path(), &records).unwrap();
+        store
+            .save_book_image_bytes("book-1", "page.png", b"page image")
+            .unwrap();
+        let backup = packages.path().join("backup.zip");
+        let clear_library = ClearBackup {
+            clear: "library".to_string(),
+            language: "de".to_string(),
+        };
+        store
+            .export_transfer(&backup, ExportScope::All, Some(&clear_library), None)
+            .unwrap();
+
+        // "Clear library" deletes the books and edits the lists in place.
+        store.delete_text("book-1").unwrap();
+        let later = record_files::now_millis() + 2 * CLEAR_RESTORE_WINDOW_MS;
+        let mut edited = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": [], "hiddenBuiltInBooks": []}},
+                "prefs": {"readerBookmarks": {}, "lastReadTextIds": {}},
+            }),
+            "pc",
+            record_files::now_millis(),
+        );
+        // A book the user deletes on their own well after the clear.
+        edited.insert(
+            "text:book-2".to_string(),
+            record_files::tombstone_with_base("text:book-2", "pc", later, None),
+        );
+        record_files::write_records(dir.path(), &edited).unwrap();
+        store.invalidate_records_cache();
+        assert!(!dir.path().join("books/book-1/images/page.png").exists());
+
+        store.import_transfer(&backup).unwrap();
+        let restored = record_files::load_records(dir.path()).unwrap();
+        assert!(restored["text:book-1"].deleted_at.is_none());
+        assert!(restored["text:book-2"].deleted_at.is_some());
+        assert_eq!(
+            std::fs::read(dir.path().join("books/book-1/images/page.png")).unwrap(),
+            b"page image"
+        );
+        let manifest: Value = serde_yaml::from_slice(
+            &std::fs::read(media_assets::manifest_path(dir.path())).unwrap(),
+        )
+        .unwrap();
+        assert!(manifest["assets"]["books/book-1/images/page.png"]["deletedAt"].is_null());
+        assert_eq!(
+            restored["pref:readerBookmarks"].data,
+            json!({"book-1": [{"page": 3}]})
+        );
+        assert_eq!(
+            restored["pref:lastReadTextIds"].data,
+            json!({"de": "book-1"})
+        );
+        // Built-in books ("gb-archived") come back too; the book deleted
+        // later does not.
+        assert_eq!(
+            restored["profile:de"].data["archivedBookIds"],
+            json!(["book-1", "gb-archived"])
+        );
+        assert_eq!(
+            restored["profile:de"].data["hiddenBuiltInBooks"],
+            json!(["gb-1"])
+        );
+    }
+
+    #[test]
+    fn backup_before_clear_keeps_list_edits_made_well_after_the_clear() {
+        let dir = tempfile::tempdir().unwrap();
+        let packages = tempfile::tempdir().unwrap();
+        let store = store(dir.path(), "pc");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": ["book-1"], "hiddenBuiltInBooks": ["gb-1"]}},
+                "texts": [{"id": "book-1", "title": "Kept", "lang": "de"}],
+                "prefs": {"readerBookmarks": {"book-1": [{"page": 3}]}},
+            }),
+            "pc",
+            100,
+        );
+        record_files::write_records(dir.path(), &records).unwrap();
+        let backup = packages.path().join("backup.zip");
+        let clear_library = ClearBackup {
+            clear: "library".to_string(),
+            language: "de".to_string(),
+        };
+        store
+            .export_transfer(&backup, ExportScope::All, Some(&clear_library), None)
+            .unwrap();
+
+        // Hours later the user unarchives the book, shows the built-in book
+        // again and removes the bookmark.
+        let later = record_files::now_millis() + 2 * CLEAR_RESTORE_WINDOW_MS;
+        let edited = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": [], "hiddenBuiltInBooks": []}},
+                "prefs": {"readerBookmarks": {}},
+            }),
+            "pc",
+            later,
+        );
+        record_files::write_records(dir.path(), &edited).unwrap();
+        store.invalidate_records_cache();
+
+        store.import_transfer(&backup).unwrap();
+        let restored = record_files::load_records(dir.path()).unwrap();
+        assert_eq!(restored["pref:readerBookmarks"].data, json!({}));
+        assert_eq!(restored["profile:de"].data["archivedBookIds"], json!([]));
+        assert_eq!(restored["profile:de"].data["hiddenBuiltInBooks"], json!([]));
+    }
+
+    #[test]
+    fn backup_before_clear_everything_restores_settings_saved_over_by_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let packages = tempfile::tempdir().unwrap();
+        let store = store(dir.path(), "pc");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}, "archivedBookIds": ["gb-2"]}},
+                "prefs": {"theme": "dark", "locale": "pl", "lastReadTextIds": {"de": "gb-2"}},
+            }),
+            "pc",
+            100,
+        );
+        record_files::write_records(dir.path(), &records).unwrap();
+        let backup = packages.path().join("backup.zip");
+        let wipe = ClearBackup {
+            clear: "all".to_string(),
+            language: "de".to_string(),
+        };
+        store
+            .export_transfer(&backup, ExportScope::All, Some(&wipe), None)
+            .unwrap();
+
+        // The wipe deletes everything, then the app saves its defaults.
+        let wiped = record_files::load_records(dir.path())
+            .unwrap()
+            .into_iter()
+            .map(|(key, record)| {
+                let now = record_files::now_millis();
+                let tombstone =
+                    record_files::tombstone_with_base(&key, "pc", now, Some(&record.causal));
+                (key, tombstone)
+            })
+            .collect::<BTreeMap<_, _>>();
+        record_files::write_records(dir.path(), &wiped).unwrap();
+        let defaults = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": []}},
+                "prefs": {"theme": "light", "locale": "en", "lastReadTextIds": {}},
+            }),
+            "pc",
+            record_files::now_millis() + 1,
+        );
+        record_files::write_records(dir.path(), &defaults).unwrap();
+        store.invalidate_records_cache();
+
+        store.import_transfer(&backup).unwrap();
+        let restored = record_files::load_records(dir.path()).unwrap();
+        assert!(restored["vocab:de:haus"].deleted_at.is_none());
+        assert_eq!(restored["pref:theme"].data, "dark");
+        assert_eq!(restored["pref:locale"].data, "pl");
+        assert_eq!(restored["pref:lastReadTextIds"].data, json!({"de": "gb-2"}));
+        assert_eq!(
+            restored["profile:de"].data["archivedBookIds"],
+            json!(["gb-2"])
+        );
+    }
+
+    #[test]
+    fn only_the_backup_app_makes_before_a_clear_restores() {
+        assert_eq!(
+            ClearBackup::parse(
+                &json!({"purpose": BACKUP_BEFORE_CLEAR, "clear": "words", "clearLanguage": "de"})
+            ),
+            Some(ClearBackup {
+                clear: "words".to_string(),
+                language: "de".to_string()
+            })
+        );
+        assert!(
+            ClearBackup::parse(&json!({"purpose": BACKUP_BEFORE_CLEAR, "clear": "all"})).is_some()
+        );
+        assert!(
+            ClearBackup::parse(&json!({"purpose": BACKUP_BEFORE_CLEAR, "clear": "words"}))
+                .is_none()
+        );
+        assert!(
+            ClearBackup::parse(
+                &json!({"purpose": BACKUP_BEFORE_CLEAR, "clear": "vocab", "clearLanguage": "de"})
+            )
+            .is_none()
+        );
+        assert!(ClearBackup::parse(&json!({"purpose": "other", "clear": "all"})).is_none());
+        assert!(ClearBackup::parse(&json!({"clear": "all"})).is_none());
+    }
+
+    #[test]
+    fn packages_leave_api_keys_on_the_device() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let target_dir = tempfile::tempdir().unwrap();
+        let source = store(source_dir.path(), "pc");
+        let target = store(target_dir.path(), "phone");
+        let source_records = record_files::payload_to_records(
+            &json!({"prefs": {"deeplApiKey": "pc-deepl:fx", "aiExplanationApiKey": "sk-pc", "theme": "familiar"}}),
+            "pc",
+            200,
+        );
+        record_files::write_records(source_dir.path(), &source_records).unwrap();
+        let target_records = record_files::payload_to_records(
+            &json!({"prefs": {"deeplApiKey": "phone-deepl:fx"}}),
+            "phone",
+            100,
+        );
+        record_files::write_records(target_dir.path(), &target_records).unwrap();
+
+        let archive = source_dir.path().join("transfer.zip");
+        source
+            .export_transfer(&archive, ExportScope::All, None, None)
+            .unwrap();
+        let mut entries = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
+        for index in 0..entries.len() {
+            let mut entry = entries.by_index(index).unwrap();
+            let mut contents = String::new();
+            std::io::Read::read_to_string(&mut entry, &mut contents).unwrap();
+            assert!(
+                !contents.contains("pc-deepl") && !contents.contains("sk-pc"),
+                "{}",
+                entry.name()
+            );
+        }
+
+        target.import_transfer(&archive).unwrap();
+        let records = record_files::load_records(target_dir.path()).unwrap();
+        assert_eq!(records["pref:deeplApiKey"].data, "phone-deepl:fx");
+        assert!(!records.contains_key("pref:aiExplanationApiKey"));
+        assert_eq!(records["pref:theme"].data, "familiar");
     }
 
     #[test]

@@ -12,6 +12,7 @@ pub(crate) fn extract_overlay_pages(
     if document.is_encrypted() {
         document.decrypt("").map_err(|error| error.to_string())?;
     }
+    expand_cid_width_ranges(&mut document);
     let page_numbers = document.get_pages().keys().copied().collect::<Vec<_>>();
     let page_count = page_numbers.len();
     let limit = if max_pages == 0 {
@@ -27,6 +28,138 @@ pub(crate) fn extract_overlay_pages(
             .map_err(|error| format!("Could not read PDF page {page_num}: {error}"))?;
     }
     Ok((output.pages, page_count, limit < page_count))
+}
+
+/// Whether a PDF's text layer is enough to import it without OCR: it has
+/// text, and at least half of its pages have some. Covers, blank versos and
+/// full-page illustrations have no text layer in ordinary text PDFs, so a
+/// single empty page must not make the whole book count as a scan.
+pub(crate) fn text_layer_is_usable(pages: &[OverlayPage]) -> bool {
+    let has_text =
+        |page: &OverlayPage| page.text.chars().filter(|ch| ch.is_alphanumeric()).count() >= 3;
+    let text_pages = pages.iter().filter(|page| has_text(page)).count();
+    text_pages > 0 && text_pages * 2 >= pages.len()
+}
+
+/// pdf-extract 0.12 misreads the range form of a CID font's /W array
+/// (`first last width`): it takes all three values from `first`, so every glyph
+/// in such a range falls back to the default width /DW. Browsers' "Save as
+/// PDF" writes ranges and positions each glyph itself, so the too-narrow
+/// glyphs leave gaps that read as spaces: "Kapitel" came out as "Kap itel".
+/// Rewrite ranges into the list form (`first [width ...]`), which pdf-extract
+/// reads correctly.
+fn expand_cid_width_ranges(document: &mut pdf_extract::Document) {
+    use pdf_extract::{Object, ObjectId};
+
+    // Where a font's /W array lives: in the font itself, or in an object
+    // that several fonts may share (expanded once).
+    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    enum Widths {
+        InFont(ObjectId),
+        Shared(ObjectId),
+    }
+    let mut targets = document
+        .objects
+        .iter()
+        .filter_map(|(id, object)| {
+            let font = object.as_dict().ok()?;
+            let subtype = font.get(b"Subtype").ok()?.as_name().ok()?;
+            if !matches!(subtype, b"CIDFontType0" | b"CIDFontType2") {
+                return None;
+            }
+            Some(match font.get(b"W").ok()? {
+                Object::Reference(target) => Widths::Shared(*target),
+                _ => Widths::InFont(*id),
+            })
+        })
+        .collect::<Vec<_>>();
+    targets.sort();
+    targets.dedup();
+
+    // A few embedded fonts need far fewer widths than this; the budget for
+    // the whole file keeps a crafted PDF with thousands of fonts from
+    // exhausting memory.
+    let mut budget = 4 * 0x1_0000;
+    for target in targets {
+        let widths = match target {
+            Widths::InFont(id) => document
+                .objects
+                .get(&id)
+                .and_then(|font| font.as_dict().ok())
+                .and_then(|font| font.get(b"W").ok())
+                .and_then(|widths| widths.as_array().ok()),
+            Widths::Shared(id) => document
+                .objects
+                .get(&id)
+                .and_then(|widths| widths.as_array().ok()),
+        };
+        let Some(expanded) = widths.and_then(|widths| expand_width_ranges(widths, &mut budget))
+        else {
+            continue;
+        };
+        match target {
+            Widths::InFont(id) => {
+                if let Some(Object::Dictionary(font)) = document.objects.get_mut(&id) {
+                    font.set("W", Object::Array(expanded));
+                }
+            }
+            Widths::Shared(id) => {
+                document.objects.insert(id, Object::Array(expanded));
+            }
+        }
+    }
+}
+
+/// The list form of a /W array, or None when it has no ranges to expand, is
+/// malformed, or needs more widths than `budget` has left (in these cases it
+/// is left for pdf-extract as it was). The widths added are taken off `budget`.
+fn expand_width_ranges(
+    widths: &[pdf_extract::Object],
+    budget: &mut usize,
+) -> Option<Vec<pdf_extract::Object>> {
+    use pdf_extract::Object;
+
+    let code = |object: &Object| match object {
+        Object::Integer(value) => Some(*value),
+        Object::Real(value) => Some(*value as i64),
+        _ => None,
+    };
+    // CIDs are 16-bit, so a valid font never lists more widths than this.
+    const MAX_WIDTHS: usize = 0x1_0000;
+    let limit = MAX_WIDTHS.min(*budget);
+    let mut expanded = Vec::with_capacity(widths.len());
+    let mut expanded_widths = 0usize;
+    let mut has_ranges = false;
+    let mut index = 0;
+    while index < widths.len() {
+        let first = code(&widths[index])?;
+        match widths.get(index + 1)? {
+            list @ Object::Array(_) => {
+                expanded.extend([Object::Integer(first), list.clone()]);
+                index += 2;
+            }
+            last => {
+                let span = code(last)?.checked_sub(first)?;
+                let width = widths.get(index + 2)?;
+                code(width)?;
+                let count = usize::try_from(span).ok()?.checked_add(1)?;
+                expanded_widths = expanded_widths.checked_add(count)?;
+                if expanded_widths > limit {
+                    return None;
+                }
+                expanded.extend([
+                    Object::Integer(first),
+                    Object::Array(vec![width.clone(); count]),
+                ]);
+                has_ranges = true;
+                index += 3;
+            }
+        }
+    }
+    if has_ranges {
+        *budget -= expanded_widths;
+    }
+    has_ranges.then_some(expanded)
 }
 
 fn extract_plain_text_pages(
@@ -885,6 +1018,150 @@ mod tests {
         assert_eq!(pages[0].text, "W eltmeisterschaftsstatus");
     }
 
+    #[test]
+    fn text_layer_with_a_few_empty_pages_is_usable() {
+        let page = |text: &str| OverlayPage {
+            page: 1,
+            image_name: String::new(),
+            width: 1.0,
+            height: 1.0,
+            text: text.to_string(),
+            bounds_version: TEXT_LAYER_BOUNDS_VERSION,
+            lines: Vec::new(),
+            words: Vec::new(),
+        };
+        // Cover picture and a blank verso around real text pages.
+        assert!(text_layer_is_usable(&[
+            page(""),
+            page("Kapitel eins"),
+            page("  "),
+            page("Kapitel zwei")
+        ]));
+        // Mostly scanned pages, or no text at all, still need OCR.
+        assert!(!text_layer_is_usable(&[
+            page(""),
+            page("Kapitel eins"),
+            page(""),
+            page("")
+        ]));
+        assert!(!text_layer_is_usable(&[page(""), page("12")]));
+        assert!(!text_layer_is_usable(&[]));
+    }
+
+    #[test]
+    fn cid_width_ranges_become_lists_pdf_extract_can_read() {
+        use pdf_extract::Object;
+
+        let mut unlimited = usize::MAX;
+
+        let widths = vec![
+            Object::Integer(0),
+            Object::Array(vec![Object::Real(777.8)]),
+            Object::Integer(76),
+            Object::Integer(78),
+            Object::Real(277.8),
+            Object::Integer(81),
+            Object::Array(vec![Object::Integer(556), Object::Integer(500)]),
+        ];
+        let expanded = expand_width_ranges(&widths, &mut unlimited).unwrap();
+
+        assert_eq!(
+            expanded,
+            vec![
+                Object::Integer(0),
+                Object::Array(vec![Object::Real(777.8)]),
+                Object::Integer(76),
+                Object::Array(vec![Object::Real(277.8); 3]),
+                Object::Integer(81),
+                Object::Array(vec![Object::Integer(556), Object::Integer(500)]),
+            ]
+        );
+        // Nothing to expand, or malformed: leave the array alone.
+        assert_eq!(expand_width_ranges(&widths[..2], &mut unlimited), None);
+        assert_eq!(expand_width_ranges(&widths[2..4], &mut unlimited), None);
+        let range = |first, last, width| vec![Object::Integer(first), Object::Integer(last), width];
+        assert_eq!(
+            expand_width_ranges(&range(1, 3, Object::Name(b"x".to_vec())), &mut unlimited),
+            None
+        );
+        assert_eq!(
+            expand_width_ranges(
+                &range(i64::MIN, i64::MAX, Object::Integer(1)),
+                &mut unlimited
+            ),
+            None
+        );
+        // Many ranges together may not exceed what 16-bit CIDs can use.
+        let many = (0..3)
+            .flat_map(|_| range(0, 0x7fff, Object::Integer(500)))
+            .collect::<Vec<_>>();
+        assert_eq!(expand_width_ranges(&many, &mut unlimited), None);
+    }
+
+    #[test]
+    fn width_expansion_is_bounded_for_the_whole_document() {
+        use pdf_extract::{Dictionary, Document, Object};
+
+        let cid_font = |widths: Object| {
+            let mut font = Dictionary::new();
+            font.set("Type", Object::Name(b"Font".to_vec()));
+            font.set("Subtype", Object::Name(b"CIDFontType2".to_vec()));
+            font.set("W", widths);
+            Object::Dictionary(font)
+        };
+        let range = |first: i64, last: i64| {
+            Object::Array(vec![
+                Object::Integer(first),
+                Object::Integer(last),
+                Object::Integer(500),
+            ])
+        };
+
+        // Many fonts sharing one ranged /W array: it is expanded once.
+        let mut document = Document::with_version("1.5");
+        let shared = document.add_object(range(0, 0xffff));
+        let fonts = (0..50)
+            .map(|_| document.add_object(cid_font(Object::Reference(shared))))
+            .collect::<Vec<_>>();
+        expand_cid_width_ranges(&mut document);
+        let expanded = document.objects[&shared].as_array().unwrap();
+        assert_eq!(expanded.len(), 2);
+        assert_eq!(expanded[1].as_array().unwrap().len(), 0x1_0000);
+        for font in fonts {
+            let font = document.objects[&font].as_dict().unwrap();
+            assert_eq!(font.get(b"W").unwrap(), &Object::Reference(shared));
+        }
+
+        // Fonts with their own full ranges: only a bounded number is expanded.
+        let mut document = Document::with_version("1.5");
+        let fonts = (0..20)
+            .map(|_| document.add_object(cid_font(range(0, 0xffff))))
+            .collect::<Vec<_>>();
+        expand_cid_width_ranges(&mut document);
+        let expanded = fonts
+            .iter()
+            .filter(|font| {
+                let widths = document.objects[*font]
+                    .as_dict()
+                    .unwrap()
+                    .get(b"W")
+                    .unwrap();
+                widths.as_array().unwrap().len() == 2
+            })
+            .count();
+        assert_eq!(expanded, 4);
+    }
+
+    #[test]
+    fn browser_style_cid_pdf_keeps_words_whole() {
+        // Chromium's "Save as PDF": an Identity-H font whose widths are given
+        // as a range, with every glyph placed by its own text matrix.
+        let pdf = per_glyph_cid_pdf("Kapitel Eins", "[1 12 556]");
+        let (pages, _, _) = extract_overlay_pages(&pdf, 0, None).unwrap();
+
+        assert_eq!(pages[0].text, "Kapitel Eins");
+    }
+
     fn test_word(text: &str, x: f32, y: f32, width: f32, height: f32) -> OverlayWord {
         OverlayWord {
             text: text.to_string(),
@@ -899,17 +1176,63 @@ mod tests {
     fn minimal_text_pdf(text: &str) -> Vec<u8> {
         assert!(text.is_ascii() && !text.chars().any(|ch| matches!(ch, '(' | ')' | '\\')));
         let content = format!("BT /F1 18 Tf 72 720 Td ({text}) Tj ET");
-        let objects = [
+        pdf_from_objects(&[
             "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
             "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>".to_string(),
-            format!(
-                "<< /Length {} >>\nstream\n{}\nendstream",
-                content.len(),
-                content
-            ),
+            stream_object(&content),
             "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
-        ];
+        ])
+    }
+
+    /// One page of `text` in a Type0/Identity-H font: glyph n (1-based) is the
+    /// nth distinct character, each glyph is positioned with its own text
+    /// matrix 556/1000 em after the previous one, and `widths` is the /W array.
+    fn per_glyph_cid_pdf(text: &str, widths: &str) -> Vec<u8> {
+        let mut glyphs: Vec<char> = Vec::new();
+        let mut content = String::from("BT /F1 18 Tf");
+        for (index, ch) in text.chars().enumerate() {
+            let glyph = match glyphs.iter().position(|known| *known == ch) {
+                Some(position) => position + 1,
+                None => {
+                    glyphs.push(ch);
+                    glyphs.len()
+                }
+            };
+            let x = 72.0 + index as f64 * 0.556 * 18.0;
+            content.push_str(&format!(" 1 0 0 1 {x:.3} 720 Tm <{glyph:04X}> Tj"));
+        }
+        content.push_str(" ET");
+        let mappings = glyphs
+            .iter()
+            .enumerate()
+            .map(|(index, ch)| format!("<{:04X}> <{:04X}>", index + 1, *ch as u32))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let cmap = format!(
+            "/CIDInit /ProcSet findresource begin 12 dict begin begincmap\n/CMapName /Test-UCS def /CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n{} beginbfchar\n{mappings}\nendbfchar\nendcmap CMapName currentdict /CMap defineresource pop end end",
+            glyphs.len()
+        );
+        pdf_from_objects(&[
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>".to_string(),
+            stream_object(&content),
+            "<< /Type /Font /Subtype /Type0 /BaseFont /Test /Encoding /Identity-H /DescendantFonts [6 0 R] /ToUnicode 7 0 R >>".to_string(),
+            format!("<< /Type /Font /Subtype /CIDFontType2 /BaseFont /Test /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 8 0 R /DW 250 /W {widths} >>"),
+            stream_object(&cmap),
+            "<< /Type /FontDescriptor /FontName /Test /Flags 4 /FontBBox [0 -200 1000 800] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>".to_string(),
+        ])
+    }
+
+    fn stream_object(content: &str) -> String {
+        format!(
+            "<< /Length {} >>\nstream\n{content}\nendstream",
+            content.len()
+        )
+    }
+
+    fn pdf_from_objects(objects: &[String]) -> Vec<u8> {
         let mut pdf = b"%PDF-1.4\n".to_vec();
         let mut offsets = Vec::with_capacity(objects.len());
         for (index, object) in objects.iter().enumerate() {

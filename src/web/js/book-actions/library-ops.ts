@@ -156,15 +156,20 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
 // busy indicator on screen until the durable save (which can take seconds
 // on large stores) settles.
 export async function removeUserBook(id: string): Promise<void> {
-  const bookObj = removeUserBookFromActiveProfile(id);
-  if (!bookObj) return;
+  if (!forgetUserBook(id)) return;
+  await saveState();
+  render();
+  showToast(t("toast.userBookRemoved"));
+}
+
+/** Drops a user book and its reader state from the active profile, without saving. */
+export function forgetUserBook(id: string): boolean {
+  if (!removeUserBookFromActiveProfile(id)) return false;
   clearBookTextCache(id);
   forgetReaderPositionIfUnreferenced(id);
   if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
   clearLastReadTextId(id);
-  await saveState();
-  render();
-  showToast(t("toast.userBookRemoved"));
+  return true;
 }
 
 export async function hideBuiltInBook(id: string): Promise<void> {

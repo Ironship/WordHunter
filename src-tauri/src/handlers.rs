@@ -159,7 +159,7 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     let bootstrap = bootstrap_script(
         &state.token,
         #[cfg(not(target_os = "android"))]
-        Some(&state.store.snapshot()),
+        Some(&store_snapshot(&state.store, true)),
         #[cfg(target_os = "android")]
         None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
@@ -193,6 +193,22 @@ fn escape_inline_json(value: &Value) -> String {
 }
 
 const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
+
+/// The snapshot a renderer starts from: the store records plus the persisted
+/// UI state (open book, view, reading positions). `/__store/load` and the
+/// desktop's inlined boot snapshot share it so both hand the renderer the
+/// same state. `acknowledge` is false for `/__store/load?ack=0`.
+pub(crate) fn store_snapshot(store: &crate::store::Store, acknowledge: bool) -> Value {
+    let mut snapshot = if acknowledge {
+        store.snapshot()
+    } else {
+        store.snapshot_unacknowledged()
+    };
+    if let Some(object) = snapshot.as_object_mut() {
+        object.insert("uiState".to_string(), store.load_ui_state());
+    }
+    snapshot
+}
 
 pub(crate) fn bootstrap_script(
     token: &str,
@@ -420,6 +436,12 @@ impl ExportJob {
     }
 }
 
+/// The only package purpose the frontend may set: the automatic backup made
+/// before clearing data, which restores what the clear deleted.
+fn export_clear_backup(payload: &Value) -> Option<crate::store::transfer::ClearBackup> {
+    crate::store::transfer::ClearBackup::parse(payload)
+}
+
 #[cfg(not(target_os = "android"))]
 pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Value, String> {
     let scope = ExportScope::parse(
@@ -454,10 +476,11 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         jobs.retain(|_, job| !job.is_terminal());
         jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
     }
+    let clear_backup = export_clear_backup(payload);
     let store = state.store.clone();
     let target = path.clone();
     std::thread::spawn(move || {
-        let result = store.export_transfer(&temp, scope, Some(&progress));
+        let result = store.export_transfer(&temp, scope, clear_backup.as_ref(), Some(&progress));
         match result {
             Ok(summary) => {
                 if let Err(error) = install_export_temp(&target, &temp) {
@@ -517,7 +540,10 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .join("wordhunter-transfer");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
     let path = cache.join(format!("{request_id}.zip"));
-    let summary = state.store.export_transfer(&path, scope, None)?;
+    let summary =
+        state
+            .store
+            .export_transfer(&path, scope, export_clear_backup(payload).as_ref(), None)?;
     Ok(serde_json::json!({
         "saved": true,
         "path": path,

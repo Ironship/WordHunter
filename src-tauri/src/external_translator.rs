@@ -63,6 +63,13 @@ fn translate_deepl(text: &str, from: &str, to: &str, key: &str) -> Result<String
         return Err("DeepL API key is missing".to_string());
     }
 
+    if [from, to]
+        .iter()
+        .any(|code| code.trim().eq_ignore_ascii_case("la"))
+    {
+        return Err("DeepL does not support Latin. Choose Google Translate or another provider in Settings.".to_string());
+    }
+
     let endpoint = if key.ends_with(":fx") {
         "https://api-free.deepl.com/v2/translate"
     } else {
@@ -155,7 +162,8 @@ fn deepl_lang(code: &str, target: bool) -> String {
         "zh" if target => "ZH-HANS".to_string(),
         "zh" => "ZH".to_string(),
         "grc" => "EL".to_string(),
-        other => other.to_ascii_uppercase().replace('-', "_"),
+        // DeepL writes regional variants with a hyphen: PT-BR, EN-GB, ZH-HANT.
+        other => other.to_ascii_uppercase().replace('_', "-"),
     }
 }
 
@@ -196,7 +204,9 @@ fn translate_lmstudio(
         "stream": false
     });
 
-    let response = crate::http::agent()
+    // A local model can take minutes before it sends the (non-streamed)
+    // answer; the shared agent's 30 s read timeout would cut it off.
+    let response = crate::http::slow_agent()
         .post(endpoint)
         .set("User-Agent", USER_AGENT)
         .set("Content-Type", "application/json")

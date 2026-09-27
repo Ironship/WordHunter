@@ -123,7 +123,15 @@ pub(crate) fn clean_translation(value: String) -> String {
             cleaned = regex.replace_all(&cleaned, "").to_string();
         }
     }
-    for (pattern, replacement) in [(r"\s+([,.;:!?])", "$1"), (r"\s+'", "'"), (r"\s+", " ")] {
+    // Line breaks stay: the CTranslate2 path keeps the input's lines and
+    // paragraphs.
+    for (pattern, replacement) in [
+        (r"[^\S\n]+([,.;:!?])", "$1"),
+        (r"[^\S\n]+'", "'"),
+        (r"[^\S\n]+", " "),
+        (r" ?\n ?", "\n"),
+        (r"\n{3,}", "\n\n"),
+    ] {
         let compiled = Regex::new(pattern);
         if let Ok(regex) = compiled {
             cleaned = regex.replace_all(&cleaned, replacement).to_string();
