@@ -242,7 +242,8 @@ describe("vocabulary actions", () => {
       resetVocabState({
         haus: vocabEntry({ word: "Haus", translation: "house" }),
         baum: vocabEntry({ word: "Baum", lastReviewedAt: "2026-06-01T00:00:00.000Z", repetition: 2 }),
-        neu: vocabEntry({ word: "neu" })
+        neu: vocabEntry({ word: "neu", status: "new" }),
+        bekannt: vocabEntry({ word: "bekannt", status: "known", knownAt: "2026-06-01T00:00:00.000Z" })
       });
 
       const cancelled = confirmAndDeleteWord("Haus");
@@ -260,9 +261,15 @@ describe("vocabulary actions", () => {
       assert.equal(await reviewed, false);
       assert.ok(state.vocab.baum, "review history alone needs a confirmation");
 
-      // Nothing to lose: no translation, note, image, examples or reviews.
+      const known = confirmAndDeleteWord("bekannt");
+      findByClass(await waitForDialog(4), "secondary-button").fire("click");
+      assert.equal(await known, false);
+      assert.ok(state.vocab.bekannt, "a known word alone needs a confirmation");
+
+      // Nothing to lose: a new word without translation, note, image,
+      // examples or reviews.
       assert.equal(await confirmAndDeleteWord("neu"), true);
-      assert.equal(dialogs.length, 3);
+      assert.equal(dialogs.length, 4);
       assert.equal(state.vocab.neu, undefined);
     } finally {
       delete document.createElement;

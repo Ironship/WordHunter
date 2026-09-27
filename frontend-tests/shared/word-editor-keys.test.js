@@ -161,11 +161,15 @@ describe("add/edit word dialog status shortcuts", () => {
     assert.equal(activeStatus(), "learning");
   });
 
-  it("matches the typed character only, so AZERTY and shifted keys are left alone", async () => {
-    const { dialog, keydown, activeStatus } = await wordEditorHarness();
-    // AZERTY: the physical Digit2 key types "é" without Shift.
-    assert.equal(keydown(dialog, { key: "é", code: "Digit2" }).defaultPrevented, false);
-    assert.equal(keydown(dialog, { key: "3", code: "Digit3", shiftKey: true }).defaultPrevented, false);
-    assert.equal(activeStatus(), "new");
+  it("takes the digit row on AZERTY outside the fields, as the reader does", async () => {
+    const { dialog, fields, keydown, activeStatus } = await wordEditorHarness();
+    // AZERTY: the physical Digit2 key types "é" without Shift, "2" with it.
+    assert.equal(keydown(dialog, { key: "é", code: "Digit2" }).defaultPrevented, true);
+    assert.equal(activeStatus(), "learning");
+    assert.equal(keydown(dialog, { key: "3", code: "Digit3", shiftKey: true }).defaultPrevented, true);
+    assert.equal(activeStatus(), "known");
+    // In a field "é" is a letter of the word.
+    assert.equal(keydown(fields.word, { key: "é", code: "Digit2" }).defaultPrevented, false);
+    assert.equal(activeStatus(), "known");
   });
 });

@@ -214,8 +214,15 @@ describe("Gutenberg full-text cache in the Library", () => {
   it("leaves the cached full text behind in neither profile when a user book moves", async () => {
     const calls = [];
     const { moveBookToProfile } = await libraryOps(calls);
+    state.preferences.readerBookmarks = { "gutenberg-full-de-1342": [{ id: "b1", page: 40 }] };
+    state.readerPages = { "gutenberg-full-de-1342": 40 };
 
     assert.equal(await moveBookToProfile("user-1342", "fr", false), true);
+
+    // The book fetches its full text again under the French id and finds
+    // where the reader was.
+    assert.deepEqual(state.preferences.readerBookmarks["gutenberg-full-fr-1342"], [{ id: "b1", page: 40 }]);
+    assert.equal(state.readerPages["gutenberg-full-fr-1342"], 40);
 
     assert.deepEqual(state.userBooks.map((book) => book.id), ["user-84"]);
     assert.ok(state.profiles.fr.userBooks.some((book) => book.id === "user-1342"));

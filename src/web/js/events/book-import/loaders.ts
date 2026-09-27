@@ -64,6 +64,13 @@ const IMPORT_HANDLERS: ImportHandler[] = [
 // application/octet-stream files (see MOBILE_IMPORT_ACCEPT), so MOBI/AZW and
 // binaries can arrive here and must not be decoded as text.
 const MOBILE_IMPORT_EXTENSIONS = /\.(txt|md|markdown|srt|vtt|ass|ssa|epub|pdf)$/i;
+// Types the picker reports for files it offered by type; some providers
+// give text files no extension or an unusual one.
+const MOBILE_IMPORT_TYPES = new Set(["text/plain", "text/markdown", "text/vtt", "application/x-subrip", "text/x-ssa", "application/pdf"]);
+
+function mobileCanImport(file: File): boolean {
+  return MOBILE_IMPORT_EXTENSIONS.test(file.name || "") || MOBILE_IMPORT_TYPES.has(file.type);
+}
 
 function assertImportFileLimit(file: File): number {
   const maxImportBytes = isAndroidPlatform()
@@ -76,7 +83,7 @@ function assertImportFileLimit(file: File): number {
 }
 
 export async function loadImportFile(file: File): Promise<boolean | void> {
-  if (isAndroidPlatform() && !MOBILE_IMPORT_EXTENSIONS.test(file.name || "")) {
+  if (isAndroidPlatform() && !mobileCanImport(file)) {
     throw new Error(t("toast.mobileImportUnsupported"));
   }
   clearPendingImportMeta();

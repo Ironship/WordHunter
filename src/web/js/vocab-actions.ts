@@ -289,11 +289,15 @@ export function deleteWord(word: string): void {
 
 function hasWordProgress(entry: WhVocabEntry | undefined): boolean {
   return Boolean(entry && (
-    String(entry.translation || "").trim()
+    (entry.status && entry.status !== "new")
+    || String(entry.translation || "").trim()
     || String(entry.note || "").trim()
+    || String(entry.article || "").trim()
     || entry.imageUrl
     || entry.examples?.length
     || entry.lastReviewedAt
+    || entry.knownAt
+    || entry.learningStartedAt
     || Number(entry.repetition) > 0
   ));
 }

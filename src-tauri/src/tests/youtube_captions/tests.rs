@@ -302,11 +302,15 @@ fn ytdlp_video_json_lists_manual_then_original_automatic_tracks() {
         "subtitles": {
             "fr": [{ "ext": "vtt", "name": "French" }],
             "de": [{ "ext": "vtt", "name": "German" }],
-            "live_chat": []
+            "live_chat": [{ "ext": "json", "url": "https://www.youtube.com/watch?v=abc" }]
         },
+        // yt-dlp lists the automatic track as "de" and "de-orig", and one
+        // machine translation per language, fetched with `tlang`.
         "automatic_captions": {
-            "de": [{ "ext": "vtt", "name": "German (auto)" }],
-            "de-en": [{ "ext": "vtt", "name": "English from German" }]
+            "de": [{ "ext": "vtt", "name": "German (auto)", "url": "https://www.youtube.com/api/timedtext?v=abc&lang=de&kind=asr&fmt=vtt" }],
+            "de-orig": [{ "ext": "vtt", "name": "German (Original)", "url": "https://www.youtube.com/api/timedtext?v=abc&lang=de&kind=asr&fmt=vtt" }],
+            "en": [{ "ext": "vtt", "name": "English", "url": "https://www.youtube.com/api/timedtext?v=abc&lang=de&kind=asr&fmt=vtt&tlang=en" }],
+            "pl": [{ "ext": "vtt", "name": "Polish", "url": "https://www.youtube.com/api/timedtext?v=abc&lang=de&kind=asr&fmt=vtt&tlang=pl" }]
         }
     });
     let (info, tracks) = tracks_from_ytdlp_json("abcdefghijk", &json);
@@ -327,4 +331,23 @@ fn ytdlp_video_json_lists_manual_then_original_automatic_tracks() {
     // yt-dlp downloads these tracks by language and kind.
     assert!(track_is_auto_generated(&tracks[2]));
     assert_eq!(ytdlp_track_language(&tracks[2]).as_deref(), Some("de"));
+}
+
+#[test]
+fn a_download_takes_the_picked_track_when_the_list_order_changed() {
+    let page_order = [
+        json!({ "languageCode": "en", "kind": "manual" }),
+        json!({ "languageCode": "en", "kind": "asr" }),
+    ];
+    let ytdlp_order = [
+        json!({ "languageCode": "en", "kind": "manual" }),
+        json!({ "languageCode": "af", "kind": "asr" }),
+        json!({ "languageCode": "en", "kind": "asr" }),
+    ];
+    let picked = pick_track(&ytdlp_order, 1, Some(("en", true))).unwrap();
+    assert_eq!(picked.0, 2);
+    assert_eq!(pick_track(&page_order, 1, Some(("en", true))).unwrap().0, 1);
+    assert!(pick_track(&page_order, 1, Some(("de", true))).is_none());
+    // Older frontends send only the index.
+    assert_eq!(pick_track(&ytdlp_order, 1, None).unwrap().0, 1);
 }

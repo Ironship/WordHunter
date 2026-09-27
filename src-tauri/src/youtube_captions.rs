@@ -63,10 +63,21 @@ pub fn handle(payload: Value) -> Result<Value, String> {
                 .and_then(Value::as_u64)
                 .ok_or_else(|| "missing track_index".to_string())?
                 as usize;
-            // The same resolution as "tracks", so an index means the same track.
+            // The same resolution as "tracks". The watch page and yt-dlp can
+            // list tracks in a different order, so the language and kind the
+            // user picked decide when they are sent.
             let (info, tracks) = video_tracks(url, deadline)?;
-            let track = tracks
-                .get(track_index)
+            let wanted = payload
+                .get("language_code")
+                .and_then(Value::as_str)
+                .map(|language| {
+                    let auto = payload
+                        .get("auto_generated")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false);
+                    (language, auto)
+                });
+            let (track_index, track) = pick_track(&tracks, track_index, wanted)
                 .ok_or_else(|| "caption track not found".to_string())?;
             let text = download_caption_text(&info, track, deadline)?;
             Ok(json!({
@@ -83,6 +94,29 @@ pub fn handle(payload: Value) -> Result<Value, String> {
     }
 }
 
+/// The track at `index`, or, when it is not the `(language, automatic)`
+/// track the user picked, that track wherever it is now listed.
+fn pick_track<'a>(
+    tracks: &'a [Value],
+    index: usize,
+    wanted: Option<(&str, bool)>,
+) -> Option<(usize, &'a Value)> {
+    let matches = |track: &Value| {
+        wanted.is_none_or(|(language, auto)| {
+            track.get("languageCode").and_then(Value::as_str) == Some(language)
+                && track_is_auto_generated(track) == auto
+        })
+    };
+    tracks
+        .get(index)
+        .filter(|track| matches(track))
+        .map(|track| (index, track))
+        .or_else(|| {
+            wanted?;
+            tracks.iter().enumerate().find(|(_, track)| matches(track))
+        })
+}
+
 /// The video and its caption tracks: from the watch page, or, when the page
 /// does not list any (consent or bot-check pages), from `yt-dlp -J`.
 fn video_tracks(url: &str, deadline: Instant) -> Result<(VideoInfo, Vec<Value>), String> {
@@ -91,16 +125,18 @@ fn video_tracks(url: &str, deadline: Instant) -> Result<(VideoInfo, Vec<Value>),
         let tracks = page_tracks(&info.player);
         (info, tracks)
     });
-    let page_error = match scraped {
+    let (page, page_error) = match scraped {
         Ok((info, tracks)) if !tracks.is_empty() => return Ok((info, tracks)),
-        Ok(_) => "the watch page lists no captions".to_string(),
-        Err(error) => error,
+        Ok(page) => (Some(page), "the watch page lists no captions".to_string()),
+        Err(error) => (None, error),
     };
-    match ytdlp_video_tracks(&id, deadline) {
-        Ok(Some(found)) => Ok(found),
-        // No yt-dlp: report what the page said.
-        Ok(None) => Err(page_error),
-        Err(error) => Err(format!("{page_error}; yt-dlp: {error}")),
+    match (ytdlp_video_tracks(&id, deadline), page) {
+        (Ok(Some(found)), _) => Ok(found),
+        // The page was read and lists no captions, and yt-dlp can't add any:
+        // the video has none, which the import panel says as such.
+        (_, Some(page)) => Ok(page),
+        (Ok(None), None) => Err(page_error),
+        (Err(error), None) => Err(format!("{page_error}; yt-dlp: {error}")),
     }
 }
 
@@ -133,6 +169,18 @@ fn ytdlp_video_tracks(
     }
 }
 
+/// YouTube's machine translations of a track: yt-dlp lists one per language
+/// under `automatic_captions`, fetched with a `tlang` parameter.
+fn is_translation(formats: &[Value]) -> bool {
+    formats.iter().any(|format| {
+        format
+            .get("url")
+            .and_then(Value::as_str)
+            .and_then(|url| url::Url::parse(url).ok())
+            .is_some_and(|url| url.query_pairs().any(|(key, _)| key == "tlang"))
+    })
+}
+
 /// Video details and caption tracks from `yt-dlp -J` output: manual tracks
 /// first, then automatic ones (marked like the page's "asr" tracks), each
 /// group sorted by language.
@@ -144,15 +192,17 @@ fn tracks_from_ytdlp_json(id: &str, json: &Value) -> (VideoInfo, Vec<Value>) {
             .into_iter()
             .flatten()
             .filter(|(language, formats)| {
-                // yt-dlp lists translated automatic captions as "de-en"; the
-                // original tracks are the ones without a source suffix.
+                // "live_chat" is a stream's chat replay, not subtitles.
                 !language.is_empty()
+                    && language.as_str() != "live_chat"
                     && formats
                         .as_array()
-                        .is_some_and(|formats| !formats.is_empty())
-                    && (kind != "asr" || !language.contains('-'))
+                        .is_some_and(|formats| !formats.is_empty() && !is_translation(formats))
             })
             .map(|(language, formats)| {
+                // yt-dlp lists an automatic track in its own language twice,
+                // as "en" and "en-orig".
+                let language = language.strip_suffix("-orig").unwrap_or(language);
                 let name = formats
                     .as_array()
                     .and_then(|formats| formats.iter().find_map(|format| format.get("name")))
@@ -166,6 +216,7 @@ fn tracks_from_ytdlp_json(id: &str, json: &Value) -> (VideoInfo, Vec<Value>) {
             })
             .collect::<Vec<_>>();
         tracks.sort_by(|a, b| a["languageCode"].as_str().cmp(&b["languageCode"].as_str()));
+        tracks.dedup_by(|a, b| a["languageCode"] == b["languageCode"]);
         tracks
     };
     let mut tracks = group("subtitles", "manual");

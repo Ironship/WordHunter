@@ -116,9 +116,12 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
     const bookObj = moveUserBookToProfile(id, targetLang);
     if (!bookObj) return false;
     // The full text cached for the book belongs to the old language; the
-    // moved book fetches its own copy when it is read.
-    droppedFullTexts = gutenbergFullTextIds(bookObj.gutenbergId, currentLang)
-      .filter((textId) => removeCustomTextFromActiveProfile(textId));
+    // moved book fetches its own copy when it is read, under this id, and
+    // finds the bookmarks and reading position made in the old copy there.
+    const [targetFullTextId] = gutenbergFullTextIds(bookObj.gutenbergId, targetLang);
+    const oldFullTextIds = gutenbergFullTextIds(bookObj.gutenbergId, currentLang);
+    if (targetFullTextId) carryReadingState(oldFullTextIds, targetFullTextId);
+    droppedFullTexts = oldFullTextIds.filter((textId) => removeCustomTextFromActiveProfile(textId));
     [id, ...droppedFullTexts].forEach(forgetBookState);
   }
 
@@ -202,6 +205,26 @@ function forgetUserBookWithFullText(id: string): string[] | null {
     .filter((textId) => removeCustomTextFromActiveProfile(textId));
   [id, ...fullTextIds].forEach(forgetBookState);
   return fullTextIds;
+}
+
+/** Copies bookmarks and reading positions kept under `fromIds` to `toId`,
+ * unless `toId` already has its own. */
+function carryReadingState(fromIds: string[], toId: string): void {
+  const bookmarks = state.preferences.readerBookmarks;
+  for (const fromId of fromIds) {
+    if (bookmarks?.[fromId]?.length && !bookmarks[toId]?.length) bookmarks[toId] = bookmarks[fromId];
+    for (const positions of [state.readerPages, state.readerScrolls]) {
+      if (positions && Object.hasOwn(positions, fromId) && !Object.hasOwn(positions, toId)) {
+        positions[toId] = positions[fromId];
+      }
+    }
+    const perPage = state.readerScrollsPerPage;
+    if (!perPage) continue;
+    for (const [key, value] of Object.entries(perPage)) {
+      const moved = `${toId}${key.slice(fromId.length)}`;
+      if (key.startsWith(`${fromId}-`) && !Object.hasOwn(perPage, moved)) perPage[moved] = value;
+    }
+  }
 }
 
 function forgetBookState(id: string): void {

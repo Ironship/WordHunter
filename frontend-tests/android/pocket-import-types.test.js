@@ -123,6 +123,13 @@ describe("Pocket import file types", () => {
     assert.deepEqual(calls, [["ebook", "Book.epub"], ["autofill", "title", "Book"], ["autofill", "author", ""], ["pdf", "Scan.pdf"]]);
   });
 
+  it("imports a text file the Android picker offered by type, whatever its name", async () => {
+    const { loadImportFile, file, importText } = await importLoader({ android: true });
+
+    await loadImportFile(file("notes", "Guten Morgen", "text/plain"));
+    assert.equal(importText.value, "Guten Morgen");
+  });
+
   it("keeps the desktop import dispatch unchanged", async () => {
     const { loadImportFile, file, calls } = await importLoader({ android: false });
 

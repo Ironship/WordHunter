@@ -370,11 +370,12 @@ export function bindWordEditorEvents() {
     if (e.target === addExampleInput && e.key === "Enter" && !e.ctrlKey && !e.metaKey) return;
     // Digits 1-4 pick the status only while focus is outside the text fields
     // (the dialog itself or a status button): in a field they are typed text
-    // ("um 3 Uhr"). Matching e.key alone keeps AZERTY and shifted digit-row
-    // symbols from switching the status.
+    // ("um 3 Uhr"). Outside the fields the digit row counts on any layout,
+    // AZERTY included, as in the reader.
     const statusShortcutMap: Record<string, VocabStatus> = { "1": "new", "2": "learning", "3": "known", "4": "ignored" };
-    const shortcutStatus = statusShortcutMap[e.key];
-    if (shortcutStatus && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && !isEditableTarget(e.target)) {
+    const shortcutDigit = /^[1-4]$/.test(e.key) ? e.key : e.code?.match(/^(?:Digit|Numpad)([1-4])$/)?.[1];
+    const shortcutStatus = shortcutDigit ? statusShortcutMap[shortcutDigit] : undefined;
+    if (shortcutStatus && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditableTarget(e.target)) {
       e.preventDefault();
       setAddWordStatus(shortcutStatus);
       return;
