@@ -188,17 +188,25 @@ fn authenticate_request(
 ) -> Result<Option<Request>, String> {
     let requires_token = request.method() == &Method::Post && path != "/__log_error"
         || request.method() == &Method::Get && sensitive_get_path(path);
-    if requires_token && !response::valid_token(&request, token) {
+    let authenticated = response::valid_token(&request, token)
+        || path == "/__media" && response::valid_media_cookie(&request, token);
+    if requires_token && !authenticated {
         response::error_response(request, 403, "forbidden")?;
         return Ok(None);
     }
     Ok(Some(request))
 }
 
-/// GET endpoints that expose stored user data and must not be reachable by
-/// other local processes on a shared loopback (Android uses a fixed port).
+/// GET endpoints that expose stored user data or open windows, and must not
+/// be reachable by other local processes on a shared loopback (Android uses
+/// a fixed port). `/__media` also accepts the media cookie, since `<img>`
+/// requests cannot carry the token header. `/__popup/close` stays open: the
+/// internal popup navigates to it (the webview intercepts that navigation),
+/// and all it can do is close that popup.
 fn sensitive_get_path(path: &str) -> bool {
-    path.starts_with("/__store/") || path.starts_with("/__book/")
+    path.starts_with("/__store/")
+        || path.starts_with("/__book/")
+        || matches!(path, "/__media" | "/__open_dict" | "/__open_external")
 }
 
 fn dispatch_state_independent_request(

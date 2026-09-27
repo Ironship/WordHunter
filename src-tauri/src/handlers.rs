@@ -178,12 +178,14 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     } else {
         html.insert_str(0, &format!("<script>{bootstrap}</script>"));
     }
-    response::respond(
+    let media_cookie = response::media_cookie(&state.token);
+    response::respond_with_headers(
         request,
         200,
         html.into_bytes(),
         "text/html; charset=utf-8",
         false,
+        &[("Set-Cookie", media_cookie.as_str())],
     )
 }
 

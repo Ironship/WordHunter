@@ -131,7 +131,7 @@ export async function checkForUpdates({ manual = false }: UpdateCheckOptions = {
           // The desktop webview does not open window.open() targets; the
           // backend opens the system browser instead (as the Library does).
           if (!openAndroidUrl(GITHUB_RELEASES_URL)) {
-            fetch(`/__open_external?url=${encodeURIComponent(GITHUB_RELEASES_URL)}`)
+            fetch(`/__open_external?url=${encodeURIComponent(GITHUB_RELEASES_URL)}`, { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
               .then((response) => {
                 if (!response.ok) showToast(t("toast.openExternalFailed"), "error");
               })

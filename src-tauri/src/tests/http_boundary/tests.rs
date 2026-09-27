@@ -103,6 +103,40 @@ fn protected_post_requires_the_exact_token() {
 }
 
 #[test]
+fn media_and_window_opening_gets_need_the_session() {
+    for path in [
+        "/__media?book=x&img=y",
+        "/__open_dict?url=https%3A%2F%2Fexample.org&mode=internal",
+        "/__open_external?url=https%3A%2F%2Fexample.org",
+    ] {
+        assert_eq!(send_request("GET", path, None, None).status, 403, "{path}");
+        // The boundary harness serves no handlers, so an authenticated
+        // request falls through to its 404.
+        assert_eq!(
+            send_request("GET", path, Some(TOKEN), None).status,
+            404,
+            "{path}"
+        );
+    }
+    let (port, server) = spawn_boundary_server();
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/__media?book=x&img=y"))
+        .set("Cookie", &format!("theme=dark; wh_media={TOKEN}"))
+        .call();
+    server.join().unwrap();
+    assert!(matches!(response, Err(ureq::Error::Status(404, _))));
+    let (port, server) = spawn_boundary_server();
+    let response = ureq::get(&format!("http://127.0.0.1:{port}/__open_external?url=x"))
+        .set("Cookie", &format!("wh_media={TOKEN}"))
+        .call();
+    server.join().unwrap();
+    assert!(matches!(response, Err(ureq::Error::Status(403, _))));
+    assert_eq!(
+        response::media_cookie(TOKEN),
+        "wh_media=test-token; Path=/__media; HttpOnly; SameSite=Strict"
+    );
+}
+
+#[test]
 fn method_and_route_selection_are_exact() {
     let wrong_method = send_request("GET", "/__store/save", None, None);
     assert_eq!(wrong_method.status, 405);
@@ -257,9 +291,8 @@ fn rejects_dns_rebinding_hosts_and_cross_site_origins() {
 #[test]
 fn rejects_null_origin_writes_but_allows_null_origin_reads() {
     let post = "POST /__store/save HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\nX-WH-Token: {TOKEN}\r\nContent-Length: 0\r\n\r\n";
-    // /__media is token-free by design — it proves the origin allowance itself.
-    let get =
-        "GET /__media?book=x&img=y HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\n\r\n";
+    // A token-free static path proves the origin allowance itself.
+    let get = "GET /no-such-asset.js HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nOrigin: null\r\n\r\n";
     // The null-origin POST must be rejected up front (403). A null-origin
     // GET stays allowed — it reaches the handlers (404 here, not 403).
     for (template, expected_status) in [(post, " 403 "), (get, " 404 ")] {

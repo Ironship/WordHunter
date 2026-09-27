@@ -134,7 +134,7 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   if (openAndroidUrl(link.href)) return;
   if (window.__qtBridge) {
-    fetch("/__open_dict?url=" + encodeURIComponent(link.href) + "&mode=external")
+    fetch("/__open_dict?url=" + encodeURIComponent(link.href) + "&mode=external", { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
       .catch((error) => console.warn("Failed to open external link", error));
   } else {
     window.open(link.href, "_blank", "noopener,noreferrer");

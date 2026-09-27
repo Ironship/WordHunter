@@ -590,7 +590,7 @@ export function bindLibraryEvents(): void {
         // On Android the webview cannot open new windows, so the native
         // bridge goes first; /__open_external covers the desktop webview.
         if (openAndroidUrl(url)) return;
-        fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+        fetch(`/__open_external?url=${encodeURIComponent(url)}`, { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
           .then((res) => {
             if (!res.ok) {
               console.warn("Failed to open source link", `HTTP ${res.status}`);
