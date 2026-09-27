@@ -370,10 +370,10 @@ fn page_limit(max_pages: usize, page_count: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::{
-        expand_native_word_bounds, is_pdf_input, load_normalized_image,
+        dictionary_keys, expand_native_word_bounds, is_pdf_input, load_normalized_image,
         merge_native_words_using_plain_text, native_gap_without_space_is_word_break,
         native_space_is_word_break, native_text_layer_is_useful, normalize_decoded_image,
-        page_limit, recognizer_files, split_native_words_using_plain_text,
+        page_limit, recognizer_candidates, recognizer_files, split_native_words_using_plain_text,
         validate_image_dimensions, DeviceMode, GpuStatus, OcrWord, PixelBounds,
         MAX_IMAGE_DIMENSION, MAX_IMAGE_PIXELS,
     };
@@ -734,9 +734,13 @@ mod tests {
             )
         );
 
-        // A family recognizer without its dictionary is not used.
+        // A family recognizer comes first, with its own dictionary or
+        // none (then it must carry one), never the bundled one.
         touch("latin_PP-OCRv5_mobile_rec_infer.onnx");
-        assert_eq!(chosen("de").0, "ch_PP-OCRv5_rec_mobile_infer.onnx");
+        assert_eq!(
+            chosen("de"),
+            ("latin_PP-OCRv5_mobile_rec_infer.onnx".into(), None)
+        );
         touch("latin_dict.txt");
         assert_eq!(
             chosen("de"),
@@ -747,6 +751,9 @@ mod tests {
         );
         assert_eq!(chosen("pl_PL").0, "latin_PP-OCRv5_mobile_rec_infer.onnx");
         assert_eq!(chosen("zh").0, "ch_PP-OCRv5_rec_mobile_infer.onnx");
+        let candidates = recognizer_candidates(dir.path(), "de");
+        assert!(candidates.last().unwrap().bundled);
+        assert!(!candidates[0].bundled);
 
         // The README's drop-in recognizer wins over families, with dict.txt only.
         touch("rec.onnx");
@@ -761,6 +768,29 @@ mod tests {
             chosen("de"),
             ("de_rec.onnx".into(), Some("de_dict.txt".into()))
         );
+    }
+
+    #[test]
+    fn dictionary_files_get_the_blank_and_space_the_model_expects() {
+        // PaddleOCR's own format: characters only.
+        let paddle = "a\r\nb\r\nc\n";
+        assert_eq!(
+            dictionary_keys(paddle, Some(5)).unwrap(),
+            ["#", "a", "b", "c", " "]
+        );
+        assert_eq!(
+            dictionary_keys(paddle, Some(4)).unwrap(),
+            ["#", "a", "b", "c"]
+        );
+        // Already laid out for paddle-ocr-rs.
+        assert_eq!(
+            dictionary_keys("#\na\nb\n ", Some(4)).unwrap(),
+            ["#", "a", "b", " "]
+        );
+        // Unknown class count: as it is.
+        assert_eq!(dictionary_keys("a\nb", None).unwrap(), ["a", "b"]);
+        // Another model's dictionary.
+        assert!(dictionary_keys(paddle, Some(90)).is_err());
     }
 }
 
@@ -911,20 +941,51 @@ fn load_ocr(models_dir: &Path, threads: usize, lang: &str) -> Result<OcrLite> {
         ],
         "classification model",
     )?;
-    let (rec, dict) = recognizer_files(models_dir, lang)?;
-
-    let mut ocr = OcrLite::new();
-    match dict {
-        Some(dict) => ocr.init_models_with_dict(
-            path_str(&det)?,
-            path_str(&cls)?,
-            path_str(&rec)?,
-            path_str(&dict)?,
-            threads,
-        )?,
-        None => ocr.init_models(path_str(&det)?, path_str(&cls)?, path_str(&rec)?, threads)?,
+    // The first recognizer that has a character list that fits it: its
+    // dictionary file, or the one embedded in the model.
+    for recognizer in recognizer_candidates(models_dir, lang) {
+        let dict = match recognizer_dictionary(&recognizer) {
+            Ok(dict) => dict,
+            Err(error) => {
+                eprintln!(
+                    "wordhunter-paddleocr: not using {}: {error:#}",
+                    recognizer.rec.display()
+                );
+                continue;
+            }
+        };
+        if recognizer.bundled && recognizer_family(lang).is_some() {
+            eprintln!(
+                "wordhunter-paddleocr: no recognizer for \"{lang}\" in {}; using the bundled Chinese/English model, which may drop this language's letters",
+                models_dir.display()
+            );
+        }
+        let mut ocr = OcrLite::new();
+        let loaded = match &dict {
+            Some(dict) => ocr.init_models_with_dict(
+                path_str(&det)?,
+                path_str(&cls)?,
+                path_str(&recognizer.rec)?,
+                path_str(dict)?,
+                threads,
+            ),
+            None => ocr.init_models(
+                path_str(&det)?,
+                path_str(&cls)?,
+                path_str(&recognizer.rec)?,
+                threads,
+            ),
+        };
+        if let Some(dict) = dict {
+            let _ = fs::remove_file(dict);
+        }
+        loaded?;
+        return Ok(ocr);
     }
-    Ok(ocr)
+    bail!(
+        "missing a usable PaddleOCR recognition model in {}",
+        models_dir.display()
+    )
 }
 
 /// PaddleOCR's multilingual PP-OCRv5 recognizer family for a learning
@@ -951,55 +1012,49 @@ fn recognizer_family(lang: &str) -> Option<&'static str> {
     })
 }
 
-/// The recognizer and its dictionary, which must belong together (a
-/// dictionary of another model makes the output garbage). In order: the
-/// language's own `{lang}_rec.onnx` + `{lang}_dict.txt`; the drop-in
-/// `rec.onnx` (+ `dict.txt`); the language's PaddleOCR script family; the
-/// bundled Chinese/English model.
-fn recognizer_files(models_dir: &Path, lang: &str) -> Result<(PathBuf, Option<PathBuf>)> {
+struct Recognizer {
+    rec: PathBuf,
+    /// Its own dictionary; never another model's.
+    dict: Option<PathBuf>,
+    bundled: bool,
+}
+
+/// Recognizers for the language, best first: the language's own
+/// `{lang}_rec.onnx` (+ `{lang}_dict.txt`); the drop-in `rec.onnx`
+/// (+ `dict.txt`); the language's PaddleOCR script family (+ its
+/// `{family}_dict.txt`); the bundled Chinese/English model.
+fn recognizer_candidates(models_dir: &Path, lang: &str) -> Vec<Recognizer> {
     let existing = |name: &str| Some(models_dir.join(name)).filter(|path| path.is_file());
     let base = lang
         .split(['-', '_'])
         .next()
         .unwrap_or_default()
         .to_ascii_lowercase();
-    let mut candidates = Vec::new();
+    let mut names = Vec::new();
     if !base.is_empty() && base != "auto" {
-        candidates.push((format!("{base}_rec.onnx"), Some(format!("{base}_dict.txt"))));
+        names.push((format!("{base}_rec.onnx"), format!("{base}_dict.txt")));
     }
-    candidates.push(("rec.onnx".to_string(), None));
+    names.push(("rec.onnx".to_string(), "dict.txt".to_string()));
     if let Some(family) = recognizer_family(lang) {
         for rec in [
             format!("{family}_PP-OCRv5_mobile_rec_infer.onnx"),
             format!("{family}_PP-OCRv5_rec_mobile_infer.onnx"),
             format!("{family}_rec.onnx"),
         ] {
-            candidates.push((rec, Some(format!("{family}_dict.txt"))));
+            names.push((rec, format!("{family}_dict.txt")));
         }
     }
-    for (rec, dict) in candidates {
-        let Some(rec) = existing(&rec) else {
-            continue;
-        };
-        match dict {
-            // A language or family recognizer needs its own dictionary.
-            Some(dict) => {
-                if let Some(dict) = existing(&dict) {
-                    return Ok((rec, Some(dict)));
-                }
-            }
-            // The drop-in recognizer takes the drop-in dictionary, or its
-            // own embedded one; never a bundled dictionary.
-            None => return Ok((rec, existing("dict.txt"))),
-        }
-    }
-    if recognizer_family(lang).is_some() {
-        eprintln!(
-            "wordhunter-paddleocr: no recognizer for \"{lang}\" in {}; using the bundled Chinese/English model, which may drop this language's letters",
-            models_dir.display()
-        );
-    }
-    let rec = find_existing(
+    let mut candidates = names
+        .into_iter()
+        .filter_map(|(rec, dict)| {
+            Some(Recognizer {
+                rec: existing(&rec)?,
+                dict: existing(&dict),
+                bundled: false,
+            })
+        })
+        .collect::<Vec<_>>();
+    if let Some(rec) = find_optional(
         models_dir,
         &[
             "ch_PP-OCRv5_rec_mobile_infer.onnx",
@@ -1007,17 +1062,95 @@ fn recognizer_files(models_dir: &Path, lang: &str) -> Result<(PathBuf, Option<Pa
             "ch_PP-OCRv4_rec_infer.onnx",
             "ch_PP-OCRv3_rec_infer.onnx",
         ],
-        "recognition model",
-    )?;
-    let dict = find_optional(
-        models_dir,
-        &[
-            "ppocrv5_dict.txt",
-            "ch_PP-OCRv5_rec_mobile_infer.txt",
-            "ppocr_keys_v1.txt",
-        ],
-    );
-    Ok((rec, dict))
+    ) {
+        candidates.push(Recognizer {
+            rec,
+            dict: find_optional(
+                models_dir,
+                &[
+                    "ppocrv5_dict.txt",
+                    "ch_PP-OCRv5_rec_mobile_infer.txt",
+                    "ppocr_keys_v1.txt",
+                ],
+            ),
+            bundled: true,
+        });
+    }
+    candidates
+}
+
+#[cfg(test)]
+fn recognizer_files(models_dir: &Path, lang: &str) -> Option<(PathBuf, Option<PathBuf>)> {
+    recognizer_candidates(models_dir, lang)
+        .into_iter()
+        .next()
+        .map(|recognizer| (recognizer.rec, recognizer.dict))
+}
+
+/// The dictionary file to load with a recognizer, or None when the model
+/// carries its own character list. paddle-ocr-rs uses a file's lines as the
+/// model's classes as they are, while PaddleOCR's own dictionaries leave
+/// out the CTC blank before the first character and the space after the
+/// last one; a copy with them added is written when the model has room
+/// for them.
+fn recognizer_dictionary(recognizer: &Recognizer) -> Result<Option<PathBuf>> {
+    let session = ort::session::Session::builder()?
+        .commit_from_file(&recognizer.rec)
+        .context("the model does not load")?;
+    let classes = session
+        .outputs
+        .first()
+        .and_then(|output| output.output_type.tensor_shape())
+        .and_then(|shape| shape.last().copied())
+        .and_then(|classes| usize::try_from(classes).ok())
+        .filter(|classes| *classes > 0);
+    let embedded = session.metadata()?.custom("character")?.is_some();
+    drop(session);
+    let Some(dict) = &recognizer.dict else {
+        if embedded {
+            return Ok(None);
+        }
+        bail!("it has no character list; put its dictionary next to it");
+    };
+    let content =
+        fs::read_to_string(dict).with_context(|| format!("failed to read {}", dict.display()))?;
+    let keys = dictionary_keys(&content, classes)
+        .with_context(|| format!("{} does not belong to it", dict.display()))?;
+    let path = env::temp_dir().join(format!(
+        "wordhunter-paddleocr-{}-dict.txt",
+        std::process::id()
+    ));
+    fs::write(&path, keys.join("\n"))
+        .with_context(|| format!("failed to write {}", path.display()))?;
+    Ok(Some(path))
+}
+
+/// A dictionary's lines as the recognizer's classes (see
+/// `recognizer_dictionary`), for a model with `classes` outputs per step.
+fn dictionary_keys(content: &str, classes: Option<usize>) -> Result<Vec<String>> {
+    let mut lines = content
+        .split('\n')
+        .map(|line| line.strip_suffix('\r').unwrap_or(line).to_string())
+        .collect::<Vec<_>>();
+    if lines.last().is_some_and(String::is_empty) {
+        lines.pop();
+    }
+    let Some(classes) = classes else {
+        return Ok(lines);
+    };
+    let blank = || "#".to_string();
+    match classes.checked_sub(lines.len()) {
+        Some(0) => Ok(lines),
+        Some(1) => Ok(std::iter::once(blank()).chain(lines).collect()),
+        Some(2) => Ok(std::iter::once(blank())
+            .chain(lines)
+            .chain(std::iter::once(" ".to_string()))
+            .collect()),
+        _ => bail!(
+            "it lists {} characters for a model with {classes} classes",
+            lines.len()
+        ),
+    }
 }
 
 fn ensure_ocr<'a>(
