@@ -402,7 +402,7 @@ async function waitForExportJobSummary(job: string): Promise<UnknownRecord> {
         if (progress.error) throw new Error(String(progress.error));
         return isRecord(progress.summary) ? progress.summary : {};
       }
-      const current = `${String(progress.phase || "")}|${Number(progress.percent) || 0}`;
+      const current = `${String(progress.phase || "")}|${Number(progress.percent) || 0}|${Number(progress.steps) || 0}`;
       if (lastProgress !== null && current !== lastProgress) deadline = Date.now() + EXPORT_JOB_STALL_MS;
       lastProgress = current;
       updateExportProgress(Number(progress.percent) || 0, String(progress.phase || ""));
@@ -515,12 +515,13 @@ export async function importTransfer(): Promise<boolean> {
     ensureCurrentText();
     render();
     const summary = (result.summary && typeof result.summary === "object" ? result.summary : {}) as UnknownRecord;
-    if (reloaded && Number(summary.imported) === 0 && Number(summary.skipped) > 0) {
+    if (reloaded && Number(summary.incompleteBooks) > 0) {
+      // Checked first: the books left out also count as skipped.
+      showToast(t("toast.transferImportedIncomplete", { n: Number(summary.incompleteBooks) }), "error");
+    } else if (reloaded && Number(summary.imported) === 0 && Number(summary.skipped) > 0) {
       // Everything in the package is already here, or was changed or deleted
       // here later: say so instead of claiming a successful merge.
       showToast(t("toast.transferNothingNew"));
-    } else if (reloaded && Number(summary.incompleteBooks) > 0) {
-      showToast(t("toast.transferImportedIncomplete", { n: Number(summary.incompleteBooks) }), "error");
     } else if (reloaded) {
       showToast(t("toast.transferImported"));
     } else {
