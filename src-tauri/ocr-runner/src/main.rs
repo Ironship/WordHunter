@@ -1116,9 +1116,10 @@ fn recognizer_dictionary(recognizer: &Recognizer) -> Result<Option<PathBuf>> {
         }
         bail!("it has no character list; put its dictionary next to it");
     };
-    let content =
-        fs::read_to_string(dict).with_context(|| format!("failed to read {}", dict.display()))?;
-    let keys = match dictionary_keys(&content, classes) {
+    let keys = fs::read_to_string(dict)
+        .with_context(|| format!("failed to read {}", dict.display()))
+        .and_then(|content| dictionary_keys(&content, classes));
+    let keys = match keys {
         Ok(keys) => keys,
         // The model's own list is the right one.
         Err(error) if embedded => {

@@ -53,6 +53,7 @@ pub(crate) fn merge_records(
     let current = canonicalize_vocab_records(current);
     let mut output = BTreeMap::new();
     let mut conflicts = Vec::new();
+    let mut old_key_deletions = Vec::new();
     let keys: BTreeSet<String> = base
         .keys()
         .chain(incoming.keys())
@@ -227,8 +228,27 @@ pub(crate) fn merge_records(
                     merge_causal_clock(&mut record.causal, &other.causal);
                 }
             }
+            // A word deleted under its new key is deleted under its old key
+            // too ("c'est" at vocab:fr:est also at vocab:fr:c'est), so a
+            // device or package that still has it there doesn't bring it
+            // back.
+            if record.kind == "vocab"
+                && record.deleted_at.is_some()
+                && let Some(live) = current_record.filter(|live| live.deleted_at.is_none())
+            {
+                let legacy = legacy_vocab_record_key(live, &current);
+                if legacy != record.key {
+                    old_key_deletions.push(SyncRecord {
+                        key: legacy,
+                        ..record.clone()
+                    });
+                }
+            }
             output.insert(record.key.clone(), record);
         }
+    }
+    for deletion in old_key_deletions {
+        output.entry(deletion.key.clone()).or_insert(deletion);
     }
 
     MergeResult {
@@ -733,7 +753,16 @@ pub(crate) fn canonicalize_vocab_records(
             .filter(|(record, legacy)| {
                 // A word saved at its new key by 1.1.2 ("c'est" at
                 // vocab:fr:est) was saved after any deletion of its old key.
-                let saved_at_new_key = record.key == canonical_key && **legacy != canonical_key;
+                let saved_at_new_key = record.key == canonical_key
+                    && **legacy != canonical_key
+                    && group
+                        .iter()
+                        .zip(&legacy_keys)
+                        .all(|(tombstone, tombstone_legacy)| {
+                            !is_tombstone(tombstone)
+                                || tombstone_legacy != *legacy
+                                || record_time(record) > record_time(tombstone)
+                        });
                 is_live(record) && (saved_at_new_key || !deleted_words.contains(*legacy))
             })
             .map(|(record, _)| record)

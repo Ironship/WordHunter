@@ -264,7 +264,7 @@ export async function saveWithRetry(
 }
 
 // Browsers allow 64 KiB of keepalive request bodies per page in flight, and
-// the UI-state flush sent just before this save takes part of it.
+// the UI-state flush sent right after this save needs part of it.
 const KEEPALIVE_BODY_LIMIT = 32 * 1024;
 
 /** Fire-and-forget save for window close / flush scenarios.

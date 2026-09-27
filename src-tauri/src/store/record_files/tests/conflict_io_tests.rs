@@ -223,6 +223,33 @@ fn an_old_deletion_of_another_word_does_not_delete_a_word_under_its_new_key() {
     ]);
     assert!(records["vocab:grc:καί"].deleted_at.is_none());
 
+    // A copy of the word at its new key that is older than the deletion
+    // at its old key (it came from another device) stays deleted.
+    let records = canonical(&[
+        deleted("vocab:fr:c'est", 100),
+        live("vocab:fr:est", "c'est", 50),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_some());
+
+    // Deleting a word that this device only has at its new key also
+    // deletes it at its old key, so a copy there does not come back.
+    let current = BTreeMap::from([(
+        "vocab:fr:est".to_string(),
+        live("vocab:fr:est", "c'est", 50),
+    )]);
+    let merged = merge_records(
+        &fingerprints(&current),
+        BTreeMap::new(),
+        current,
+        "pc",
+        200,
+        &BTreeSet::new(),
+    );
+    assert!(merged.records["vocab:fr:est"].deleted_at.is_some());
+    assert!(merged.records["vocab:fr:c'est"].deleted_at.is_some());
+    // A copy at the old key from before the deletion loses to it on import.
+    assert!(merged.records["vocab:fr:c'est"].deleted_at.unwrap() > 50);
+
     // An old deletion with no word left under the new key stays as it was.
     let records = canonical(&[deleted("vocab:fr:d'amour", 20)]);
     assert!(records["vocab:fr:d'amour"].deleted_at.is_some());

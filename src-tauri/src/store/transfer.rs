@@ -337,6 +337,11 @@ impl Store {
             .filter(|record| record.deleted_at.is_none())
             .filter_map(record_book_id)
             .collect::<BTreeSet<_>>();
+        let device_books = current
+            .values()
+            .filter(|record| record.deleted_at.is_none())
+            .filter_map(record_book_id)
+            .collect::<BTreeSet<_>>();
         for (key, mut incoming) in std::mem::take(&mut plan.records) {
             // Packages from before 1.1.2 may carry API keys and deletions;
             // keep this device's own keys, and delete nothing here.
@@ -390,6 +395,7 @@ impl Store {
                     plan.clear_backup.is_none(),
                     &new_books,
                     &package_books,
+                    &device_books,
                 )
             }) {
                 incoming.data = data;
@@ -597,8 +603,9 @@ fn books_brought_by(
 /// newer record wins and keeps the other side's reading positions, last
 /// read book and archive entries only for books the newer side can't have
 /// removed them from: the books this import brings (`new_books`) when this
-/// device's record is newer, and the books the package doesn't have
-/// (`package_books`) when the package's is. Review days are facts and
+/// device's record is newer, and this device's own books the package
+/// doesn't have (`device_books`, `package_books`) when the package's is.
+/// Built-in books are on both sides, so the newer side decides for them. Review days are facts and
 /// always add up. On a device without words or books yet the package's
 /// settings win, and the device keeps its own reading positions and lists
 /// alongside them. `merge_lists` is false for the backup a clear made,
@@ -611,6 +618,7 @@ fn merged_on_import(
     merge_lists: bool,
     new_books: &BTreeSet<String>,
     package_books: &BTreeSet<String>,
+    device_books: &BTreeSet<String>,
 ) -> Option<Value> {
     if saved.deleted_at.is_some() || incoming.deleted_at.is_some() {
         return None;
@@ -635,7 +643,7 @@ fn merged_on_import(
             || if saved_is_newer {
                 new_books.contains(id)
             } else {
-                !package_books.contains(id)
+                device_books.contains(id) && !package_books.contains(id)
             }
     };
     let mut merged = newer.clone();
@@ -1911,6 +1919,7 @@ mod tests {
                 "prefs": {"readerBookmarks": {
                     "b": [{"id": "1", "page": 2}],
                     "c": [{"id": "2", "page": 4}],
+                    "gb-9": [{"id": "5", "page": 7}],
                 }},
             }),
             "tablet",
@@ -1919,7 +1928,8 @@ mod tests {
         record_files::write_records(target_dir.path(), &own).unwrap();
 
         // The PC has book c too, and removed its bookmark and archive entry
-        // later than the tablet last changed its lists.
+        // later than the tablet last changed its lists; built-in book gb-9
+        // is on both devices, so the PC's newer list decides for it too.
         let source = store(source_dir.path(), "pc");
         let package = record_files::payload_to_records(
             &json!({
