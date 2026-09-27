@@ -84,6 +84,7 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   if (currentLang === targetLang) return false;
   const previousUiState = cloneMoveUiState();
   let movedCustom: { oldId: string; newId: string; textBody: string } | null = null;
+  let droppedFullTexts: string[] = [];
 
   if (isCustom) {
     const planned = planCustomTextMove(id, targetLang);
@@ -114,8 +115,11 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
   } else {
     const bookObj = moveUserBookToProfile(id, targetLang);
     if (!bookObj) return false;
-    if (clearCurrentBookSelectionIfMatches(id)) ensureCurrentText();
-    clearLastReadTextId(id);
+    // The full text cached for the book belongs to the old language; the
+    // moved book fetches its own copy when it is read.
+    droppedFullTexts = gutenbergFullTextIds(bookObj.gutenbergId, currentLang)
+      .filter((textId) => removeCustomTextFromActiveProfile(textId));
+    [id, ...droppedFullTexts].forEach(forgetBookState);
   }
 
   try {
@@ -148,6 +152,13 @@ export async function moveBookToProfile(id: string, targetLang: string, isCustom
     await deleteStoredText(movedCustom.oldId).catch((cleanupError) => {
       console.warn("move custom text cleanup failed", cleanupError);
     });
+  }
+  if (window.__qtBridge) {
+    for (const textId of droppedFullTexts.filter((textId) => !isCustomTextReferenced(textId))) {
+      await deleteStoredText(textId).catch((cleanupError) => {
+        console.warn("move book full text cleanup failed", cleanupError);
+      });
+    }
   }
   render();
   showToast(t("toast.bookMoved"));

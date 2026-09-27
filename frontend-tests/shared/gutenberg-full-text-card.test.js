@@ -210,4 +210,17 @@ describe("Gutenberg full-text cache in the Library", () => {
     assert.deepEqual(state.profiles.fr.customTexts.map((text) => text.id), ["gutenberg-full-84"]);
     assert.deepEqual(calls, ["clear:user-84", "clear:gutenberg-full-84", "save"]);
   });
+
+  it("leaves the cached full text behind in neither profile when a user book moves", async () => {
+    const calls = [];
+    const { moveBookToProfile } = await libraryOps(calls);
+
+    assert.equal(await moveBookToProfile("user-1342", "fr", false), true);
+
+    assert.deepEqual(state.userBooks.map((book) => book.id), ["user-84"]);
+    assert.ok(state.profiles.fr.userBooks.some((book) => book.id === "user-1342"));
+    assert.ok(!state.customTexts.some((text) => text.id === "gutenberg-full-de-1342"));
+    assert.ok(!state.profiles.fr.customTexts.some((text) => text.id === "gutenberg-full-de-1342"));
+    assert.ok(calls.includes("delete:gutenberg-full-de-1342"), calls.join(", "));
+  });
 });

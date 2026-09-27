@@ -67,11 +67,7 @@ parts:
       - gstreamer1.0-plugins-good
       - poppler-utils
       - calibre
-      # yt-dlp is in the Ubuntu noble universe archive (yt-dlp_*.deb) and
-      # stages a /usr/bin/yt-dlp python script; python3 (already in the
-      # core24 base, listed explicitly for snapcraft's dependency solver)
-      # runs it from the snap's own /usr/lib/python3/dist-packages.
-      - yt-dlp
+      # Runs the pinned yt-dlp of the part below.
       - python3
       - libxdo3
     override-build: |
@@ -90,3 +86,27 @@ parts:
       sed -i \
         -e 's|<launchable type="desktop-id">[^<]*</launchable>|<launchable type="desktop-id">word-hunter.desktop</launchable>|' \
         "$appstream"
+
+  yt-dlp:
+    # The upstream release from PyPI, pinned. Noble's yt-dlp package is too
+    # old for YouTube, and its script's /usr/bin/python3 shebang resolves to
+    # the base's interpreter, which does not see the snap's packages. Word
+    # Hunter finds usr/bin/yt-dlp next to its own executable.
+    plugin: dump
+    source: https://files.pythonhosted.org/packages/69/b2/8cd1613f56eed7ceb64fbd4df3f1c01246bfb098e6f398228bafda22b80b/yt_dlp-2026.8.19-py3-none-any.whl
+    source-type: zip
+    source-checksum: sha256/1d57897e94c6665a0a6f9bc54b34e584284e32c034ffab3a7df25d8f7b24eedf
+    organize:
+      yt_dlp: usr/lib/word-hunter/yt-dlp/yt_dlp
+      yt_dlp-2026.8.19.dist-info: usr/lib/word-hunter/yt-dlp/yt_dlp-2026.8.19.dist-info
+    override-build: |
+      craftctl default
+      install -d "$CRAFT_PART_INSTALL/usr/bin"
+      cat >"$CRAFT_PART_INSTALL/usr/bin/yt-dlp" <<'WRAPPER'
+      #!/bin/sh
+      # yt-dlp from the snap's own python and packages.
+      python="$SNAP/usr/bin/python3"
+      [ -x "$python" ] || python=python3
+      PYTHONPATH="$SNAP/usr/lib/word-hunter/yt-dlp${PYTHONPATH:+:$PYTHONPATH}" exec "$python" -m yt_dlp "$@"
+      WRAPPER
+      chmod 755 "$CRAFT_PART_INSTALL/usr/bin/yt-dlp"

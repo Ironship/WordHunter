@@ -66,7 +66,9 @@ function resetYoutubeTracks(clearUrl = false) {
 }
 
 async function youtubeCaptionsRequest(payload: YoutubeCaptionsPayload): Promise<YoutubeCaptionsResponse> {
-  const response = await httpPost("/__youtube/captions", payload, { timeoutMs: 120_000 });
+  // Longer than the backend's own limit (110 s for a download), so the
+  // backend's answer, including its error, always arrives.
+  const response = await httpPost("/__youtube/captions", payload, { timeoutMs: 150_000 });
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     throw new Error(message || `HTTP ${response.status}`);
