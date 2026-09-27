@@ -217,13 +217,11 @@ pub(crate) fn merge_records(
         };
 
         if let Some(mut record) = chosen {
-            // Whichever of two concurrent profile records wins keeps the
-            // review days the other side counted. A record that already
-            // descends from the other one has seen them (or pruned them).
+            // Per-day review counts only grow: whichever profile record
+            // wins, it keeps the reviews the other side counted (within the
+            // days the frontend keeps).
             for other in [incoming_record, current_record].into_iter().flatten() {
-                if compare_causal(&record.causal, &other.causal) == CausalOrder::Concurrent
-                    && merge_review_days(&mut record, other)
-                {
+                if merge_review_days(&mut record, other) {
                     // The merged record includes both sides, so it descends
                     // from both and other devices converge on it.
                     merge_causal_clock(&mut record.causal, &other.causal);
@@ -708,9 +706,9 @@ pub(crate) fn canonicalize_vocab_records(
         // Records that had one key before 1.1.2 are one word: a deletion at
         // that key, or made after one of its records was written, deletes
         // them all. Words that only share the new key ("c'est" and "est",
-        // "καὶ" and "καί") keep their own deletions; a deletion reaches
-        // another of them only when it was made at the new key after that
-        // word was written.
+        // "καὶ" and "καί") keep their own deletions. Deleting the merged
+        // word in 1.1.2 deletes each old key too (the alias tombstones
+        // below), which is how it reaches every form of it.
         let legacy_keys = group
             .iter()
             .map(|record| legacy_vocab_record_key(record, &records))
@@ -729,18 +727,14 @@ pub(crate) fn canonicalize_vocab_records(
             })
             .map(|(_, legacy)| legacy.clone())
             .collect::<BTreeSet<_>>();
-        let deleted_at_new_key = |live: &SyncRecord| {
-            group.iter().any(|tombstone| {
-                is_tombstone(tombstone)
-                    && tombstone.key == canonical_key
-                    && descends(tombstone, live)
-            })
-        };
         let survivors = group
             .iter()
             .zip(&legacy_keys)
             .filter(|(record, legacy)| {
-                is_live(record) && !deleted_words.contains(*legacy) && !deleted_at_new_key(record)
+                // A word saved at its new key by 1.1.2 ("c'est" at
+                // vocab:fr:est) was saved after any deletion of its old key.
+                let saved_at_new_key = record.key == canonical_key && **legacy != canonical_key;
+                is_live(record) && (saved_at_new_key || !deleted_words.contains(*legacy))
             })
             .map(|(record, _)| record)
             .collect::<Vec<_>>();

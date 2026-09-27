@@ -190,15 +190,38 @@ fn an_old_deletion_of_another_word_does_not_delete_a_word_under_its_new_key() {
     ]);
     assert!(records["vocab:grc:καί"].deleted_at.is_none());
 
-    // Deleting the merged word under its new key after 1.1.2 still
-    // deletes every form of it.
+    // In 1.1.1 "est" and "c'est" were different words: deleting "est"
+    // after "c'est" was saved left "c'est" alone.
     let records = canonical(&[
         live("vocab:fr:c'est", "c'est", 10),
         deleted("vocab:fr:est", 20),
     ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+
+    // Deleting the merged word in 1.1.2 deletes it under its old keys too,
+    // which reaches a device that still has "c'est" under its old key.
+    let records = canonical(&[
+        live("vocab:fr:c'est", "c'est", 10),
+        deleted("vocab:fr:est", 20),
+        SyncRecord {
+            key: "vocab:fr:c'est".to_string(),
+            ..deleted("vocab:fr:est", 20)
+        },
+    ]);
     assert!(records["vocab:fr:est"].deleted_at.is_some());
     assert!(records["vocab:fr:c'est"].deleted_at.is_some());
-    assert!(records["vocab:fr:c'est"].data.is_null());
+
+    // Saving "c'est" again after that deletion keeps it.
+    let records = canonical(&[
+        deleted("vocab:fr:c'est", 10),
+        live("vocab:fr:est", "c'est", 20),
+    ]);
+    assert!(records["vocab:fr:est"].deleted_at.is_none());
+    let records = canonical(&[
+        deleted("vocab:grc:καὶ", 10),
+        live("vocab:grc:καί", "καὶ", 20),
+    ]);
+    assert!(records["vocab:grc:καί"].deleted_at.is_none());
 
     // An old deletion with no word left under the new key stays as it was.
     let records = canonical(&[deleted("vocab:fr:d'amour", 20)]);
@@ -290,21 +313,25 @@ fn concurrent_profile_edits_keep_both_devices_review_days() {
     );
     assert!(record.causal.contains_key("phone-device") && record.causal.contains_key("pc-device"));
 
-    // A save that descends from the stored record keeps what it pruned.
-    let mut pruned = record.clone();
-    pruned.data["reviewsByDay"] = json!({ tuesday.clone(): 5 });
+    // A day the frontend pruned as too old does not come back from the
+    // stored record, and the save's own days stay.
+    let mut stored = record.clone();
+    stored.data["reviewsByDay"][long_ago.clone()] = json!(1);
+    let stored = BTreeMap::from([(stored.key.clone(), stored)]);
+    let mut pruned = stored["profile:de"].clone();
+    pruned.data["reviewsByDay"] = json!({ monday.clone(): 7, tuesday.clone(): 6 });
     pruned.causal.insert("phone-device".to_string(), 9_000);
     let merged = merge_records(
-        &crate::store::record_files::fingerprints(&merged.records),
+        &crate::store::record_files::fingerprints(&stored),
         [(pruned.key.clone(), pruned)].into_iter().collect(),
-        merged.records.clone(),
+        stored.clone(),
         "phone-device",
         9_000,
         &BTreeSet::new(),
     );
     assert_eq!(
         merged.records["profile:de"].data["reviewsByDay"],
-        json!({ tuesday: 5 })
+        json!({ monday: 7, tuesday: 6 })
     );
 }
 
