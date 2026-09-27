@@ -235,8 +235,22 @@ export function applyBridgeSnapshotToState(
   if (!snapshotPreferences.__discover && state.discover) {
     snapshot.prefs = { ...snapshotPreferences, __discover: { ...state.discover } };
   }
+  // Snapshots leave OCR page arrays out. The pages already loaded for a
+  // text the snapshot did not change stay, so an open scanned book does not
+  // fall back to plain text (and its page number) until they load again.
+  const loadedPdfPages = new Map<string, { updatedAt: unknown; pages: WhRecord[] }>();
+  for (const text of state.customTexts || []) {
+    const pages = text?.pdfOcrPages;
+    if (text?.id && Array.isArray(pages) && pages.length) loadedPdfPages.set(text.id, { updatedAt: text.updatedAt, pages });
+  }
   window.__bridgeState = snapshot;
   const nextState = loadState();
+  for (const text of nextState.customTexts || []) {
+    const loaded = text?.id ? loadedPdfPages.get(text.id) : undefined;
+    if (loaded && !text.pdfOcrPages?.length && Number(text.pdfOcrPageCount) > 0 && text.updatedAt === loaded.updatedAt) {
+      text.pdfOcrPages = loaded.pages;
+    }
+  }
   const previousPreferences = state.preferences && typeof state.preferences === "object"
     ? state.preferences
     : createDefaultPreferences();

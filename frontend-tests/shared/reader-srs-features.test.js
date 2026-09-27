@@ -112,6 +112,34 @@ describe("learning colors", () => {
     assert.equal(normalizeState(raw).discover.source, "gutenberg");
   });
 
+  it("keeps the OCR pages already loaded for texts a snapshot did not change", () => {
+    const original = structuredClone(state._raw || state);
+    window.__qtBridge = true;
+    try {
+      const pages = [{ imageName: "p1.png", text: "Seite eins" }];
+      const scan = { id: "de-scan", lang: "de", title: "Scan", updatedAt: "2026-09-01T00:00:00.000Z", pdfOcrPageCount: 1 };
+      const other = { id: "de-other", lang: "de", title: "Other", updatedAt: "2026-09-01T00:00:00.000Z", pdfOcrPageCount: 1 };
+      replaceState({
+        ...original,
+        customTexts: [{ ...scan, pdfOcrPages: pages }, { ...other, pdfOcrPages: pages }]
+      }, { save: false });
+      const prefs = { ...original.preferences, learningLanguage: "de" };
+      assert.equal(applyBridgeSnapshotToState({
+        schemaVersion: 2,
+        prefs,
+        vocab: { de: { vocab: {} } },
+        texts: [scan, { ...other, updatedAt: "2026-09-02T00:00:00.000Z" }],
+        hiddenBooks: []
+      }, { preserveLocalUi: false }), true);
+      const byId = Object.fromEntries(state.customTexts.map((text) => [text.id, text]));
+      assert.deepEqual(JSON.parse(JSON.stringify(byId["de-scan"].pdfOcrPages)), pages);
+      assert.equal(byId["de-other"].pdfOcrPages, undefined, "a changed text loads its pages again");
+    } finally {
+      replaceState(original, { save: false });
+      window.__qtBridge = false;
+    }
+  });
+
   it("keeps a confirmed language onboarding flag when applying older sync snapshots", () => {
     const original = structuredClone(state._raw || state);
     window.__qtBridge = true;
@@ -703,6 +731,29 @@ describe("in-text SRS grading", () => {
       delete window.__qtBridge;
       delete window.WH_TOKEN;
     }
+  });
+
+  it("counts every applied grade on its local day in the active profile", async () => {
+    const localDay = (daysAgo) => {
+      const now = new Date();
+      const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+      return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    };
+    state.preferences.srsAlgorithm = "sm2";
+    setActiveVocab({ wort: { status: "learning", repetition: 0, interval: 0, efactor: 2.5 } });
+    state.profiles.de.reviewsByDay = { [localDay(900)]: 7, [localDay(30)]: 3 };
+
+    await applyReviewGrade("wort", 4);
+    await applyReviewGrade("wort", 2);
+    assert.equal(await applyReviewGrade("missing", 4), null);
+
+    // A card reviewed again adds to today without erasing its earlier day;
+    // days older than about two years are dropped.
+    const expected = { [localDay(30)]: 3, [localDay(0)]: 2 };
+    assert.deepEqual({ ...state.profiles.de.reviewsByDay }, expected);
+    // The profile is saved (as the profile:de store record) with the counter.
+    const { payload } = window.buildPendingDeltaEnvelope();
+    assert.deepEqual(JSON.parse(payload).records.vocab.de.reviewsByDay, expected);
   });
 });
 

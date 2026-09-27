@@ -96,6 +96,7 @@ async function loadLibraryView({ removeCustomText }) {
       loadBookText: async () => "",
       loadCustomTextContent: async () => ""
     },
+    "../book-actions/profile-library.js": { gutenbergFullTextIds: () => [] },
     "../stats-cache.js": { getCachedBookTextStats: () => null, getCachedTextStats: () => null, prepareTextStats: () => null },
     "../i18n.js": { t: (key) => key, getLocale: () => "en" },
     "../panel-resizer.js": { bindSidebarResizer: noOp },

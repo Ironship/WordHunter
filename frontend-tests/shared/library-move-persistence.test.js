@@ -109,6 +109,7 @@ async function runMove({ saveFails, sharedOldId, reloadSucceeds = true }) {
           if (key.startsWith(`${id}-`)) delete state.readerScrollsPerPage[key];
         }
       },
+      gutenbergFullTextIds() { return []; },
       hideBuiltInBookId() { return false; },
       isCustomTextReferenced: isReferenced,
       moveCustomTextToProfile() {
@@ -127,6 +128,7 @@ async function runMove({ saveFails, sharedOldId, reloadSucceeds = true }) {
       planCustomTextMove() {
         return { oldId: oldText.id, newId: newText.id, textObj: newText };
       },
+      removeCustomTextFromActiveProfile() { return null; },
       removeUserBookFromActiveProfile() { return null; }
     }
   }, {

@@ -72,7 +72,7 @@ function openYouglishSite(word: string): void {
   if (openAndroidUrl(url)) return;
   const mode = state.preferences.youglishMode || "internal";
   if (mode === "external") {
-    fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+    fetch(`/__open_external?url=${encodeURIComponent(url)}`, { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
       .then((res) => {
         if (!res.ok) {
           console.warn("Failed to open the browser", `HTTP ${res.status}`);
@@ -86,7 +86,7 @@ function openYouglishSite(word: string): void {
     return;
   }
   const popupUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("reader.youglishModalTitle"))}`;
-  fetch(popupUrl).catch((error) => console.warn("Failed to open YouGlish popup", error));
+  fetch(popupUrl, { headers: { "X-WH-Token": window.WH_TOKEN || "" } }).catch((error) => console.warn("Failed to open YouGlish popup", error));
 }
 
 /**

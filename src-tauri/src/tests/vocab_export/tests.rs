@@ -277,7 +277,9 @@ fn export_returns_anki_tsv_with_default_header() {
     assert_eq!(result["filename"], "out.tsv");
     assert_eq!(result["mime"], "text/tab-separated-values");
     let content = result["content"].as_str().unwrap();
-    assert!(content.starts_with("word\ttranslation\tcontext\tarticle\n"));
+    assert!(content.starts_with(
+        "#separator:tab\n#html:false\n#columns:word\ttranslation\tcontext\tarticle\n"
+    ));
     assert!(content.contains("alpha\talef\tAn example sentence."));
     assert!(content.contains("beta\tbet\tsecond"));
     assert_eq!(result["count"], 2);
@@ -294,7 +296,28 @@ fn export_returns_anki_tsv_with_custom_header() {
         "headerRow": "Word\tTranslation\tSentence\n"
     }));
     let content = result["content"].as_str().unwrap();
-    assert!(content.starts_with("Word\tTranslation\tSentence\n"));
+    assert!(
+        content.starts_with("#separator:tab\n#html:false\n#columns:Word\tTranslation\tSentence\n")
+    );
+}
+
+#[test]
+fn anki_file_headers_are_read_back_and_older_header_rows_still_work() {
+    let exported = run_op(json!({
+        "op": "export",
+        "vocab": { "haus": { "word": "haus", "status": "learning", "translation": "house" } },
+        "format": "anki",
+        "filename": "out.tsv",
+        "headerRow": "单词\t翻译\t上下文\t冠词\n"
+    }));
+    let result = run_op(json!({ "op": "import", "tsv": exported["content"] }));
+    assert_eq!(result["headerFound"], true);
+    assert_eq!(result["rows"].as_array().unwrap().len(), 1);
+    assert_eq!(result["rows"][0]["word"], "haus");
+    // Data rows that start with # are words, not headers.
+    let result =
+        run_op(json!({ "op": "import", "tsv": "word\ttranslation\tcontext\n#hashtag\ttag\t\n" }));
+    assert_eq!(result["rows"][0]["word"], "#hashtag");
 }
 
 #[test]

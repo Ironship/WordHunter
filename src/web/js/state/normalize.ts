@@ -10,7 +10,7 @@ import {
   STORAGE_KEY,
   UI_SCALE
 } from "../constants.js";
-import { todayISO } from "../sm2.js";
+import { pruneReviewsByDay, todayISO } from "../sm2.js";
 import { clamp, cleanCatalogTitle } from "../utils.js";
 import { createDefaultState, getDefaultDictionaryUrl, normalizeAnkiExportStatuses, normalizeVocabStatusFilters } from "./defaults.js";
 import { normalizeLearningColors } from "../reader-colors.js";
@@ -311,6 +311,11 @@ function normalizeProfile(rawProfile: unknown, lang: string): WhProfile {
   cleanSavedCatalogTitles(profile.userBooks);
   profile.hiddenBuiltInBooks = stringArray(profile.hiddenBuiltInBooks);
   profile.archivedBookIds = stringArray(profile.archivedBookIds);
+  // Only a profile that has recorded reviews carries the counter, so older
+  // profiles are not rewritten with an empty one.
+  const reviewsByDay = pruneReviewsByDay(profile.reviewsByDay);
+  if (Object.keys(reviewsByDay).length) profile.reviewsByDay = reviewsByDay;
+  else delete profile.reviewsByDay;
   const preferences = profilePreferences;
   profile.preferences = preferences;
   delete preferences.theme;

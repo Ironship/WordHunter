@@ -31,7 +31,7 @@ export async function openDictionary(word: string): Promise<void> {
     const locale = getLocale();
     const url = `/__argos/ui?text=${encodeURIComponent(word || "")}&from=${fromLang}&to=${toLang}&theme=${theme.mode}&family=${theme.family}&locale=${locale}`;
     const dictUrl = `/__open_dict?url=${encodeURIComponent(url)}&mode=internal&title=${encodeURIComponent(t("translator.argosTitle"))}`;
-    fetch(dictUrl).catch(e => console.warn("Failed to open offline translator UI", e));
+    fetch(dictUrl, { headers: { "X-WH-Token": window.WH_TOKEN || "" } }).catch(e => console.warn("Failed to open offline translator UI", e));
     return;
   }
 
@@ -42,12 +42,12 @@ export async function openDictionary(word: string): Promise<void> {
 
   if (openAndroidUrl(url)) return;
   if (window.__qtBridge) {
-    fetch("/__open_dict?url=" + encodeURIComponent(url) + "&mode=" + encodeURIComponent(mode))
+    fetch("/__open_dict?url=" + encodeURIComponent(url) + "&mode=" + encodeURIComponent(mode), { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
       .catch(e => console.warn("Failed to open dictionary", e));
   } else {
     // Route through the embedded server so the open is never subject to
     // popup blocking (same convention as /__open_external elsewhere).
-    fetch("/__open_external?url=" + encodeURIComponent(url))
+    fetch("/__open_external?url=" + encodeURIComponent(url), { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
       .then((res) => {
         if (!res.ok) {
           console.warn("Failed to open the dictionary in the browser", `HTTP ${res.status}`);

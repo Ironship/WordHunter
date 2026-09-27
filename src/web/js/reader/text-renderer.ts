@@ -42,6 +42,12 @@ export function renderPlainText({ current, tokens, globalWordIndexes, globalChar
   const pageTokens = tokens.slice(pageStartIndex, pageEndIndex);
   let index = 0;
   els.readerText.innerHTML = "";
+  // Read aloud speaks the page's text: innerText would also hold the
+  // pagination footer (its key labels and "/ 12") appended below it.
+  els.readerText.dataset.ttsText = pageTokens
+    .filter((token) => token.type !== "image")
+    .map((token) => token.value)
+    .join("");
 
   const renderId = ++textRenderGeneration;
   els.readerText.dataset.renderId = String(renderId);

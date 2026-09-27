@@ -3,7 +3,7 @@ import { t } from "../../i18n.js";
 import { clearReaderSelection, extendReaderSelection } from "../../reader/selection.js";
 import { speakWord } from "../../tts.js";
 import { showToast } from "../../toast.js";
-import { setWordStatus } from "../../vocab-actions.js";
+import { confirmAndDeleteWord, setWordStatus } from "../../vocab-actions.js";
 import { openDictionary, getSelectedReaderActionText, copySelectedWordToClipboard, hasNativeTextSelection } from "../shared.js";
 import { openYouGlish } from "../../youglish.js";
 import { findCurrentReaderToken, navigateReaderWord, readerTokens, selectReaderToken } from "../../reader/word-navigation.js";
@@ -123,16 +123,8 @@ export function handleReaderKeys(event: KeyboardEvent, key: string): boolean {
     const index = window.lastActiveToken instanceof HTMLButtonElement
       ? tokens.indexOf(window.lastActiveToken)
       : -1;
-    import("../../dialog-backdrop.js").then(async ({ showConfirmDialog }) => {
-      const ok = await showConfirmDialog({
-        title: t("dialog.confirmTitle"),
-        message: t("vocab.confirmDeleteWord"),
-        danger: true
-      });
-      if (!ok) return;
-      const actions = await import("../../vocab-actions.js");
-      actions.deleteWord(state.selectedWord);
-      if (index !== -1 && index + 1 < tokens.length) selectReaderToken(tokens[index + 1], false);
+    void confirmAndDeleteWord(state.selectedWord).then((deleted) => {
+      if (deleted && index !== -1 && index + 1 < tokens.length) selectReaderToken(tokens[index + 1], false);
     });
     return true;
   }

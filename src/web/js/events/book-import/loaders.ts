@@ -60,6 +60,19 @@ const IMPORT_HANDLERS: ImportHandler[] = [
   { matches: isEbookFile, limit: "import", import: importEbookViaForm },
 ];
 
+// What Pocket can import. The Android picker also offers
+// application/octet-stream files (see MOBILE_IMPORT_ACCEPT), so MOBI/AZW and
+// binaries can arrive here and must not be decoded as text.
+const MOBILE_IMPORT_EXTENSIONS = /\.(txt|md|markdown|srt|vtt|ass|ssa|epub|pdf)$/i;
+// Types the picker reports for files it offered by type; some providers
+// give text files no extension or an unusual one. Subtitles are not among
+// them: their parser is chosen by extension.
+const MOBILE_IMPORT_TYPES = new Set(["text/plain", "text/markdown", "application/pdf"]);
+
+function mobileCanImport(file: File): boolean {
+  return MOBILE_IMPORT_EXTENSIONS.test(file.name || "") || MOBILE_IMPORT_TYPES.has(file.type);
+}
+
 function assertImportFileLimit(file: File): number {
   const maxImportBytes = isAndroidPlatform()
     ? MAX_POCKET_IMPORT_FILE_BYTES
@@ -71,6 +84,9 @@ function assertImportFileLimit(file: File): number {
 }
 
 export async function loadImportFile(file: File): Promise<boolean | void> {
+  if (isAndroidPlatform() && !mobileCanImport(file)) {
+    throw new Error(t("toast.mobileImportUnsupported"));
+  }
   clearPendingImportMeta();
   clearAutofilledImportFields();
   resetYoutubeTracks(false);

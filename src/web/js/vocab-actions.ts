@@ -98,6 +98,32 @@ export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry):
   return false;
 }
 
+/** The words of a new phrase entry are keyed by the phrase only once the page
+ *  is rendered again (until then they carry their own keys, so recoloring by
+ *  `data-word` misses them). Keeps the scroll position and refocuses the
+ *  selected word. */
+function rerenderReaderForNewPhrase(preserveScroll: boolean): void {
+  import("./reader/renderer.js").then(({ renderReader }) => {
+    const scrollY = preserveScroll ? window.scrollY : 0;
+    const readerText = document.getElementById("reader-text");
+    const readerScrollTop = preserveScroll ? (readerText?.scrollTop || 0) : 0;
+    if (readerText) {
+      if (Number.isInteger(state.selectedWordIndex)) readerText.dataset.focusWordIndex = String(state.selectedWordIndex);
+      else delete readerText.dataset.focusWordIndex;
+      readerText.dataset.focusWord = state.selectedWord || "";
+      delete readerText.dataset.focusAfterPageChange;
+    }
+    renderReader();
+    if (preserveScroll) {
+      setTimeout(() => {
+        window.scrollTo({ top: scrollY, behavior: "instant" });
+        const rt = document.getElementById("reader-text");
+        if (rt) rt.scrollTop = readerScrollTop;
+      }, 0);
+    }
+  });
+}
+
 export function selectWord(
   rawWord: string,
   normalizeFn: (word: string) => string,
@@ -145,25 +171,7 @@ export function selectWord(
   else maybeAutoSpeakFocusedWord(word, spokenHeadword);
   
   if (word.includes(" ") && isFresh) {
-    import("./reader/renderer.js").then(({ renderReader }) => {
-      const scrollY = preserveScroll ? window.scrollY : 0;
-      const readerText = document.getElementById("reader-text");
-      const readerScrollTop = preserveScroll ? (readerText?.scrollTop || 0) : 0;
-      if (readerText) {
-        if (Number.isInteger(state.selectedWordIndex)) readerText.dataset.focusWordIndex = String(state.selectedWordIndex);
-        else delete readerText.dataset.focusWordIndex;
-        readerText.dataset.focusWord = state.selectedWord || "";
-        delete readerText.dataset.focusAfterPageChange;
-      }
-      renderReader();
-      if (preserveScroll) {
-        setTimeout(() => {
-          window.scrollTo({ top: scrollY, behavior: "instant" });
-          const rt = document.getElementById("reader-text");
-          if (rt) rt.scrollTop = readerScrollTop;
-        }, 0);
-      }
-    });
+    rerenderReaderForNewPhrase(preserveScroll);
   } else if (statusChanged) {
     updateWordStatusInReader(word, entry.status);
   }
@@ -212,6 +220,9 @@ export function setWordStatus(word: string, status: string): void {
   saveState();
   renderShell();
   updateWordStatusInReader(word, status);
+  // A phrase selected as a range ("big red") gets its entry only now; its
+  // tokens still carry "big" and "red".
+  if (!hadEntry && state.currentView === "reader" && word.includes(" ")) rerenderReaderForNewPhrase(true);
   if (state.currentView === "library") renderLibrary();
   if (state.currentView === "vocabulary") {
     renderVocabulary();
@@ -274,6 +285,43 @@ export function deleteWord(word: string): void {
     render();
   }
   showToast(t("toast.wordRemoved"));
+}
+
+function hasWordProgress(entry: WhVocabEntry | undefined): boolean {
+  return Boolean(entry && (
+    (entry.status && entry.status !== "new")
+    || String(entry.translation || "").trim()
+    || String(entry.note || "").trim()
+    || String(entry.article || "").trim()
+    || entry.imageUrl
+    || entry.examples?.length
+    || entry.lastReviewedAt
+    || entry.knownAt
+    || entry.learningStartedAt
+    || Number(entry.repetition) > 0
+  ));
+}
+
+/**
+ * Deletes a word after a danger confirmation: its translation, note, examples,
+ * image and SRS schedule are gone for good and there is no undo. Every delete
+ * control (Word base trash icon, reader word panel, reader X key) goes through
+ * here; an entry with nothing to lose is removed without asking. Resolves true
+ * when the word was deleted.
+ */
+export async function confirmAndDeleteWord(word: string): Promise<boolean> {
+  const key = resolveVocabularyKey(word, state.vocab, effectiveLearningLanguage(state.preferences));
+  if (hasWordProgress(state.vocab[key])) {
+    const { showConfirmDialog } = await import("./dialog-backdrop.js");
+    const ok = await showConfirmDialog({
+      title: t("dialog.confirmTitle"),
+      message: t("vocab.confirmDeleteWord"),
+      danger: true
+    });
+    if (!ok) return false;
+  }
+  deleteWord(word);
+  return true;
 }
 
 export function ignoreWord(word: string): void {

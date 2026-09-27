@@ -1,6 +1,8 @@
 import { httpPost } from "./http.js";
+import { classifyTokenOccurrences, getTokenStatsFromClassifications, normalizeVocabularyWord, tokenizeText } from "./tokenizer_v2.js";
+import type { Vocabulary } from "./tokenizer_v2.js";
 
-export const VOCAB_INDEX_CACHE_VERSION = 4;
+export const VOCAB_INDEX_CACHE_VERSION = 5;
 const CACHE_KEY = `wordhunter:vocab-index:cache-v${VOCAB_INDEX_CACHE_VERSION}`;
 const MAX_CACHE_ENTRIES = 80;
 const SIGNATURE_VERSION = `vocab-index-v${VOCAB_INDEX_CACHE_VERSION}`;
@@ -266,7 +268,38 @@ export function clearVocabIndexCache(): void {
   persistCache();
 }
 
+// Languages written without spaces between words: the reader segments them
+// with Intl.Segmenter's dictionary, which the backend's Unicode word breaks
+// do not match (日本語 would be counted as 日, 本, 語). Their index is built
+// here from the reader's own tokens.
+const DICTIONARY_SEGMENTED_LANGUAGES = new Set(["ja", "zh", "th", "lo", "km", "my"]);
+
+export function usesLocalVocabIndex(lang: string): boolean {
+  return DICTIONARY_SEGMENTED_LANGUAGES.has(String(lang || "").toLowerCase().split(/[-_]/)[0]);
+}
+
+/** The backend's index (words, stats, phrases found) from the reader's tokens. */
+export function buildLocalVocabIndex(text: string, vocab: unknown, lang: string, algorithm: string): VocabIndexPayload {
+  const vocabulary = (isRecord(vocab) ? vocab : {}) as Vocabulary;
+  const tokens = tokenizeText(text, lang, algorithm);
+  const classifications = classifyTokenOccurrences(tokens, vocabulary, lang);
+  const stats = getTokenStatsFromClassifications(tokens, classifications, lang);
+  const words = [...new Set(tokens
+    .filter((token) => token.type === "word")
+    .map((token) => normalizeVocabularyWord(token.value, lang))
+    .filter(Boolean))];
+  const phrases = new Set<string>();
+  for (const { key } of classifications.values()) {
+    if (!key.includes(" ")) continue;
+    phrases.add(key.split(/\s+/).map((part) => normalizeVocabularyWord(part, lang)).filter(Boolean).join(" "));
+  }
+  // Same layout as the backend: every phrase between spaces, two spaces apart.
+  const tokenLine = phrases.size ? ` ${[...phrases].sort().join("  ")} ` : "  ";
+  return { indexVersion: VOCAB_INDEX_CACHE_VERSION, ...stats, words, tokenLine };
+}
+
 async function fetchVocabIndex({ text, vocab, lang, algorithm, book }: VocabIndexRequest): Promise<VocabIndexPayload> {
+  if (usesLocalVocabIndex(lang)) return buildLocalVocabIndex(text, vocab, lang, algorithm);
   const compactVocab = isRecord(vocab)
     ? Object.fromEntries(Object.entries(vocab).map(([key, entry]) => [key, isRecord(entry)
       ? { status: typeof entry.status === "string" ? entry.status : "new", ...(typeof entry.word === "string" ? { word: entry.word } : {}) }

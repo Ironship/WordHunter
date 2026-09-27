@@ -39,7 +39,15 @@ async function evaluateStatsCache({ state, getVocabularyRevision, getTextStats }
   const mocks = {
     // Deps of the real stats-cache chunk.
     "./state.js": { state, getVocabularyRevision },
-    "./tokenizer_v2.js": { getTextStats },
+    // vocab-index-client also imports the local-index helpers (used only for
+    // languages written without spaces, never reached here).
+    "./tokenizer_v2.js": {
+      getTextStats,
+      classifyTokenOccurrences: () => new Map(),
+      getTokenStatsFromClassifications: () => ({ unique: 0, known: 0, learning: 0, ignored: 0, new: 0 }),
+      normalizeVocabularyWord: (value) => String(value || "").toLowerCase(),
+      tokenizeText: () => []
+    },
     // Dep of the real vocab-index-client chunk (never reached: the
     // worker-less fallback path below performs no network requests).
     "./http.js": { httpPost: async () => { throw new Error("no network in perf smoke"); } }

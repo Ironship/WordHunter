@@ -129,7 +129,7 @@ function renderReaderSource(current: WhText): void {
       // webview cannot open the link and the toast below would lie about a
       // failure while the browser actually opened (audit 2026-08-13).
       if (openAndroidUrl(url)) return;
-      fetch(`/__open_external?url=${encodeURIComponent(url)}`)
+      fetch(`/__open_external?url=${encodeURIComponent(url)}`, { headers: { "X-WH-Token": window.WH_TOKEN || "" } })
         .then((res) => {
           if (!res.ok) {
             console.warn("Failed to open source link", `HTTP ${res.status}`);

@@ -37,6 +37,17 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.2" date="2026-09-27">
+      <description>
+        <ul>
+          <li>Wikipedia and Wikinews articles added from Discover open as texts again, and Gutenberg books no longer get a duplicate full-text card.</li>
+          <li>PDF, EPUB, subtitle and YouTube imports work for more files: browser-printed PDFs keep their words whole, illustrated EPUBs are accepted, and the Snap package includes a working yt-dlp.</li>
+          <li>Restoring the backup made before clearing words, the library or everything brings back what was cleared, and packages no longer carry API keys or deletions to another device.</li>
+          <li>French and Italian elisions, Ukrainian apostrophes and Ancient Greek accents no longer split one word into several vocabulary entries.</li>
+          <li>The review calendar keeps every review day, deleting a word asks for confirmation, and a reload right after an edit no longer loses it.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.1" date="2026-09-25">
       <description>
         <ul>

@@ -31,6 +31,26 @@ pub fn valid_token(request: &Request, token: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Name of the cookie that carries the session token to `/__media`: page
+/// images are loaded by `<img>` elements, which cannot send `X-WH-Token`.
+pub const MEDIA_COOKIE: &str = "wh_media";
+
+/// The `Set-Cookie` value `serve_index` sends with every page.
+pub fn media_cookie(token: &str) -> String {
+    format!("{MEDIA_COOKIE}={token}; Path=/__media; HttpOnly; SameSite=Strict")
+}
+
+/// Validate the media cookie against the expected server token.
+pub fn valid_media_cookie(request: &Request, token: &str) -> bool {
+    request
+        .headers()
+        .iter()
+        .filter(|header| header.field.equiv("Cookie"))
+        .flat_map(|header| header.value.as_str().split(';'))
+        .filter_map(|pair| pair.trim().split_once('='))
+        .any(|(name, value)| name == MEDIA_COOKIE && value == token)
+}
+
 /// A request-body read/parse failure, classified so router code can pick an
 /// HTTP status without string-matching error messages. Display preserves the
 /// historical message text the frontend and error responses surface.

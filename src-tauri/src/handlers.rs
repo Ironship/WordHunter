@@ -156,10 +156,16 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     // library, and a discarded language switch are shown (issue #281).
     // Android keeps loading it from /__store/load (compact media snapshot,
     // persistent WebView origin).
+    // Every served page gets its own id and saves against what it was
+    // served, from its first store request on (Store::claim_base), so the
+    // exit flush of the page this one replaces cannot rewrite its base (a
+    // reload right after an edit used to delete that edit on the next save).
+    let page = crate::server::make_token();
     let bootstrap = bootstrap_script(
         &state.token,
+        &page,
         #[cfg(not(target_os = "android"))]
-        Some(&store_snapshot(&state.store, true)),
+        Some(&store_snapshot(&state.store, true, Some(&page))),
         #[cfg(target_os = "android")]
         None,
         crate::pdf_ocr::image_ocr_available(&state.app_handle),
@@ -172,12 +178,14 @@ pub(crate) fn serve_index(request: Request, state: &ServerState) -> Result<(), S
     } else {
         html.insert_str(0, &format!("<script>{bootstrap}</script>"));
     }
-    response::respond(
+    let media_cookie = response::media_cookie(&state.token);
+    response::respond_with_headers(
         request,
         200,
         html.into_bytes(),
         "text/html; charset=utf-8",
         false,
+        &[("Set-Cookie", media_cookie.as_str())],
     )
 }
 
@@ -197,10 +205,15 @@ const BOOTSTRAP_TEMPLATE: &str = include_str!("../templates/bootstrap.js");
 /// The snapshot a renderer starts from: the store records plus the persisted
 /// UI state (open book, view, reading positions). `/__store/load` and the
 /// desktop's inlined boot snapshot share it so both hand the renderer the
-/// same state. `acknowledge` is false for `/__store/load?ack=0`.
-pub(crate) fn store_snapshot(store: &crate::store::Store, acknowledge: bool) -> Value {
+/// same state. `acknowledge` is false for `/__store/load?ack=0`; an
+/// acknowledged snapshot becomes `page`'s save base once it checks in.
+pub(crate) fn store_snapshot(
+    store: &crate::store::Store,
+    acknowledge: bool,
+    page: Option<&str>,
+) -> Value {
     let mut snapshot = if acknowledge {
-        store.snapshot()
+        store.snapshot_for_page(page)
     } else {
         store.snapshot_unacknowledged()
     };
@@ -212,10 +225,12 @@ pub(crate) fn store_snapshot(store: &crate::store::Store, acknowledge: bool) -> 
 
 pub(crate) fn bootstrap_script(
     token: &str,
+    page: &str,
     snapshot: Option<&Value>,
     image_ocr_available: bool,
 ) -> String {
     let escaped = escape_inline_json(&Value::String(token.to_string()));
+    let page = escape_inline_json(&Value::String(page.to_string()));
     // Without an inlined snapshot the template's else branch boots the
     // renderer from /__store/load.
     let snapshot = snapshot
@@ -225,6 +240,7 @@ pub(crate) fn bootstrap_script(
         BOOTSTRAP_TEMPLATE,
         &[
             ("__WH_TOKEN_JSON__", escaped.as_str()),
+            ("__WH_PAGE_JSON__", page.as_str()),
             (
                 "__WH_IMAGE_OCR_AVAILABLE__",
                 if image_ocr_available { "true" } else { "false" },
@@ -416,12 +432,10 @@ pub(crate) fn save_export(_payload: Value) -> Result<bool, String> {
     Err("Export file picker is not available in Word Hunter Pocket yet".to_string())
 }
 
-#[cfg(not(target_os = "android"))]
 pub(crate) struct ExportJob {
     progress: crate::store::transfer::ExportProgress,
 }
 
-#[cfg(not(target_os = "android"))]
 impl ExportJob {
     pub(crate) fn new(progress: crate::store::transfer::ExportProgress) -> Self {
         Self { progress }
@@ -464,18 +478,7 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
     };
     let temp = export_sidecar_path(&path, ".wordhunter-export.tmp")?;
     crate::store::durable::remove_file_if_exists(&temp)?;
-    // Run the ZIP build on a background thread and publish stage progress so
-    // the frontend can show a 0–100% bar instead of a frozen button.
-    let job_id = rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(16)
-        .map(char::from)
-        .collect::<String>();
-    let progress = crate::store::transfer::ExportProgress::new();
-    if let Ok(mut jobs) = state.exports.lock() {
-        jobs.retain(|_, job| !job.is_terminal());
-        jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
-    }
+    let (job_id, progress) = register_export_job(state);
     let clear_backup = export_clear_backup(payload);
     let store = state.store.clone();
     let target = path.clone();
@@ -495,7 +498,23 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
     Ok(serde_json::json!({ "saved": false, "job": job_id }))
 }
 
-#[cfg(not(target_os = "android"))]
+/// Registers a background export whose stage progress the frontend polls, so
+/// it can show a 0–100% bar instead of a frozen button (and, on Android, no
+/// HTTP timeout cuts a long export short).
+fn register_export_job(state: &ServerState) -> (String, crate::store::transfer::ExportProgress) {
+    let job_id = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect::<String>();
+    let progress = crate::store::transfer::ExportProgress::new();
+    if let Ok(mut jobs) = state.exports.lock() {
+        jobs.retain(|_, job| !job.is_terminal());
+        jobs.insert(job_id.clone(), ExportJob::new(progress.clone()));
+    }
+    (job_id, progress)
+}
+
 pub(crate) fn export_progress(state: &ServerState, query: &str) -> Result<Value, String> {
     let job_id = crate::paths::sanitize_id(
         response::query_value(query, "job")
@@ -539,17 +558,29 @@ pub(crate) fn export_transfer(state: &ServerState, payload: &Value) -> Result<Va
         .map_err(|e| e.to_string())?
         .join("wordhunter-transfer");
     std::fs::create_dir_all(&cache).map_err(|e| e.to_string())?;
+    // Earlier packages were already handed to the system file picker.
+    if let Ok(entries) = std::fs::read_dir(&cache) {
+        for entry in entries.flatten() {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
     let path = cache.join(format!("{request_id}.zip"));
-    let summary =
-        state
-            .store
-            .export_transfer(&path, scope, export_clear_backup(payload).as_ref(), None)?;
-    Ok(serde_json::json!({
-        "saved": true,
-        "path": path,
-        "filename": filename,
-        "summary": summary,
-    }))
+    let filename = filename.to_string();
+    let (job_id, progress) = register_export_job(state);
+    let clear_backup = export_clear_backup(payload);
+    let store = state.store.clone();
+    std::thread::spawn(move || {
+        match store.export_transfer(&path, scope, clear_backup.as_ref(), Some(&progress)) {
+            Ok(mut summary) => {
+                // The frontend hands this file to the system "Save as" picker.
+                summary["path"] = serde_json::json!(path);
+                summary["filename"] = Value::String(filename);
+                progress.set_done(summary);
+            }
+            Err(error) => progress.set_error(error),
+        }
+    });
+    Ok(serde_json::json!({ "saved": false, "job": job_id }))
 }
 
 #[cfg(not(target_os = "android"))]

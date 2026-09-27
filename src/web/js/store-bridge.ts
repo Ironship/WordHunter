@@ -4,11 +4,13 @@ import { fetchWithTimeout } from "./request.js";
 
 const JSON_HEADERS = (): Record<string, string> => ({
   "Content-Type": "application/json",
-  "X-WH-Token": window.WH_TOKEN || ""
+  "X-WH-Token": window.WH_TOKEN || "",
+  "X-WH-Page": window.WH_PAGE_ID || ""
 });
 
 const TOKEN_HEADERS = (): Record<string, string> => ({
-  "X-WH-Token": window.WH_TOKEN || ""
+  "X-WH-Token": window.WH_TOKEN || "",
+  "X-WH-Page": window.WH_PAGE_ID || ""
 });
 
 async function readOptionalJson(response: Response): Promise<WhRecord> {

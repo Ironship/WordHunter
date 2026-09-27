@@ -166,17 +166,17 @@ impl Store {
         };
         if let Some(progress) = progress {
             progress.set_phase("words");
+            let live = || {
+                records
+                    .values()
+                    .filter(|record| record.deleted_at.is_none())
+            };
             progress.set_totals(
-                records
-                    .values()
-                    .filter(|record| record.kind == "vocab")
-                    .count(),
-                records
-                    .values()
+                live().filter(|record| record.kind == "vocab").count(),
+                live()
                     .filter(|record| record.kind != "vocab" && record_book_id(record).is_none())
                     .count(),
-                records
-                    .values()
+                live()
                     .filter(|record| record_book_id(record).is_some())
                     .count(),
                 0,
@@ -212,7 +212,9 @@ impl Store {
             if scope == ExportScope::Vocabulary && record.kind != "vocab" {
                 continue;
             }
-            if is_device_secret(record) {
+            // A package is a copy of what exists: deletions stay on this
+            // device, so importing it never deletes anything elsewhere.
+            if is_device_secret(record) || record.deleted_at.is_some() {
                 continue;
             }
             let value = record_files::record_value(record);
@@ -253,6 +255,16 @@ impl Store {
         if scope == ExportScope::All {
             if let Some(progress) = progress {
                 progress.set_phase("books");
+                // One total over every book, so the images percentage keeps
+                // moving from the first book's images to the last one's.
+                let total_assets = books_with_assets
+                    .iter()
+                    .filter_map(|book_id| crate::paths::sanitize_id(book_id).ok())
+                    .map(|safe_id| {
+                        count_asset_files(&self.dir().join("books").join(safe_id).join("images"))
+                    })
+                    .sum();
+                progress.set_total_assets(total_assets);
             }
             for (book_id, book_records) in &books {
                 for (name, value) in book_yaml_entries(book_id, book_records, MAX_BOOK_YAML_BYTES)?
@@ -263,10 +275,8 @@ impl Store {
                 let safe_id = crate::paths::sanitize_id(book_id)?;
                 if books_with_assets.contains(book_id) {
                     let images = self.dir().join("books").join(&safe_id).join("images");
-                    let asset_total = count_asset_files(&images);
                     if let Some(progress) = progress {
                         progress.set_phase("images");
-                        progress.set_total_assets(asset_total);
                     }
                     write_asset_tree_counted(
                         &mut zip,
@@ -311,10 +321,31 @@ impl Store {
         let mut skipped = 0usize;
         let now = record_files::now_millis();
         let mut edited_by_clear = Vec::new();
+        // A device with no words or books yet (fresh install, onboarding
+        // done) takes the package's settings, although it saved its own
+        // defaults later than the package was made. Not when restoring the
+        // backup a clear made: the clear itself can leave the device empty.
+        let fresh_target = plan.clear_backup.is_none()
+            && !current.values().any(|record| {
+                record.deleted_at.is_none()
+                    && matches!(record.kind.as_str(), "vocab" | "text" | "book")
+            });
+        let new_books = books_brought_by(&root, &current, &plan)?;
+        let package_books = plan
+            .records
+            .values()
+            .filter(|record| record.deleted_at.is_none())
+            .filter_map(record_book_id)
+            .collect::<BTreeSet<_>>();
+        let device_books = current
+            .values()
+            .filter(|record| record.deleted_at.is_none())
+            .filter_map(record_book_id)
+            .collect::<BTreeSet<_>>();
         for (key, mut incoming) in std::mem::take(&mut plan.records) {
-            // Packages from before 1.1.2 may carry API keys; keep this
-            // device's own keys instead.
-            if is_device_secret(&incoming) {
+            // Packages from before 1.1.2 may carry API keys and deletions;
+            // keep this device's own keys, and delete nothing here.
+            if is_device_secret(&incoming) || incoming.deleted_at.is_some() {
                 skipped += 1;
                 continue;
             }
@@ -338,24 +369,39 @@ impl Store {
             let saved_is_newer = saved.is_some_and(|saved| {
                 record_files::record_time(saved) >= record_files::record_time(&incoming)
             });
+            let edited_by_the_clear = saved_is_newer
+                && plan
+                    .clear_backup
+                    .as_ref()
+                    .is_some_and(|(clear, exported_at)| {
+                        clear.edited(&key)
+                            && saved.is_some_and(|saved| {
+                                saved.deleted_at.is_none()
+                                    && within_clear_window(saved.updated_at, *exported_at)
+                            })
+                    });
             if cleared_after_backup {
                 restore_over(&mut incoming, saved, &self.device_id, now);
+            } else if edited_by_the_clear {
+                edited_by_clear.push((key, incoming));
+                continue;
+            } else if let Some(data) = saved.and_then(|saved| {
+                // A backup made before a clear gives back only what the clear
+                // changed (above); later edits of these lists stay.
+                merged_on_import(
+                    saved,
+                    &incoming,
+                    fresh_target,
+                    plan.clear_backup.is_none(),
+                    &new_books,
+                    &package_books,
+                    &device_books,
+                )
+            }) {
+                incoming.data = data;
+                restore_over(&mut incoming, saved, &self.device_id, now);
             } else if saved_is_newer {
-                let edited_by_the_clear =
-                    plan.clear_backup
-                        .as_ref()
-                        .is_some_and(|(clear, exported_at)| {
-                            clear.edited(&key)
-                                && saved.is_some_and(|saved| {
-                                    saved.deleted_at.is_none()
-                                        && within_clear_window(saved.updated_at, *exported_at)
-                                })
-                        });
-                if edited_by_the_clear {
-                    edited_by_clear.push((key, incoming));
-                } else {
-                    skipped += 1;
-                }
+                skipped += 1;
                 continue;
             }
             if incoming.kind == "text"
@@ -403,7 +449,17 @@ impl Store {
                 None => skipped += 1,
             }
         }
-        validate_incoming_pdf_assets(&accepted, &plan.asset_files)?;
+        // A PDF book whose page images are neither in the package nor here
+        // is left out; the rest of the package still comes in.
+        let incomplete = texts_missing_pdf_images(&root, &accepted, &plan.asset_files)?;
+        for key in &incomplete {
+            if let Some(record) = accepted.remove(key)
+                && let Some(book_id) = record_book_id(&record)
+            {
+                accepted_books.remove(&crate::paths::sanitize_id(&book_id)?);
+            }
+            skipped += 1;
+        }
 
         let mut asset_copies = Vec::new();
         let mut copied_books = BTreeSet::new();
@@ -467,20 +523,25 @@ impl Store {
         Ok(json!({
             "imported": imported,
             "skipped": skipped,
+            "incompleteBooks": incomplete.len(),
             "assets": asset_copies.len(),
             "snapshot": self.snapshot_unacknowledged(),
         }))
     }
 }
 
-fn validate_incoming_pdf_assets(
+/// Keys of PDF text records with a page image that is neither in the package
+/// nor already on this device.
+fn texts_missing_pdf_images(
+    root: &Path,
     records: &BTreeMap<String, record_files::SyncRecord>,
     assets: &[(String, PathBuf)],
-) -> Result<(), String> {
+) -> Result<BTreeSet<String>, String> {
     let paths = assets
         .iter()
         .map(|(path, _)| path.as_str())
         .collect::<BTreeSet<_>>();
+    let mut incomplete = BTreeSet::new();
     for record in records
         .values()
         .filter(|record| record.kind == "text" && record.deleted_at.is_none())
@@ -497,14 +558,150 @@ fn validate_incoming_pdf_assets(
             };
             let image_name = crate::paths::sanitize_id(image_name)?;
             let expected = format!("books/{book_id}/images/{image_name}");
-            if !paths.contains(expected.as_str()) {
-                return Err(format!(
-                    "WordHunter package is missing PDF image: {expected}"
-                ));
+            if !paths.contains(expected.as_str())
+                && !media_assets::safe_join(root, &expected)?.is_file()
+            {
+                incomplete.insert(record.key.clone());
+                break;
             }
         }
     }
-    Ok(())
+    Ok(incomplete)
+}
+
+/// Ids of the books this package brings to this device: live in the
+/// package, missing here or deleted before the package's copy was saved, and
+/// complete (a PDF book without its page images is left out).
+fn books_brought_by(
+    root: &Path,
+    current: &BTreeMap<String, record_files::SyncRecord>,
+    plan: &ImportPlan,
+) -> Result<BTreeSet<String>, String> {
+    let brought = plan
+        .records
+        .iter()
+        .filter(|(key, incoming)| {
+            matches!(incoming.kind.as_str(), "text" | "book")
+                && incoming.deleted_at.is_none()
+                && current.get(*key).is_none_or(|saved| {
+                    saved.deleted_at.is_some()
+                        && record_files::record_time(saved) < record_files::record_time(incoming)
+                })
+        })
+        .map(|(key, record)| (key.clone(), record.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let incomplete = texts_missing_pdf_images(root, &brought, &plan.asset_files)?;
+    Ok(brought
+        .iter()
+        .filter(|(key, _)| !incomplete.contains(*key))
+        .filter_map(|(_, record)| record_book_id(record))
+        .collect())
+}
+
+/// Import data for records that are merged instead of replaced. Without a
+/// common ancestor a missing entry can mean either side removed it, so the
+/// newer record wins and keeps the other side's reading positions, last
+/// read book and archive entries only for books the newer side can't have
+/// removed them from: the books this import brings (`new_books`) when this
+/// device's record is newer, and this device's own books the package
+/// doesn't have (`device_books`, `package_books`) when the package's is.
+/// Built-in books are on both sides, so the newer side decides for them. Review days are facts and
+/// always add up. On a device without words or books yet the package's
+/// settings win, and the device keeps its own reading positions and lists
+/// alongside them. `merge_lists` is false for the backup a clear made,
+/// which restores exactly what the clear changed elsewhere. `None` leaves
+/// the usual newest-wins.
+fn merged_on_import(
+    saved: &record_files::SyncRecord,
+    incoming: &record_files::SyncRecord,
+    fresh_target: bool,
+    merge_lists: bool,
+    new_books: &BTreeSet<String>,
+    package_books: &BTreeSet<String>,
+    device_books: &BTreeSet<String>,
+) -> Option<Value> {
+    if saved.deleted_at.is_some() || incoming.deleted_at.is_some() {
+        return None;
+    }
+    let saved_is_newer = record_files::record_time(saved) >= record_files::record_time(incoming);
+    let default_winner = if saved_is_newer { saved } else { incoming };
+    let is_settings = saved.key.starts_with("pref:") || saved.key.starts_with("profile:");
+    let fresh = fresh_target && is_settings;
+    if !fresh && !merge_lists {
+        return None;
+    }
+    let (newer, older) = if fresh || !saved_is_newer {
+        (incoming, saved)
+    } else {
+        (saved, incoming)
+    };
+    // Which of the older side's books to keep: all of them for the fresh
+    // device's own; else the package's entries for the books it brings, or
+    // this device's entries for the books the package doesn't have.
+    let keep = |id: &str| {
+        fresh
+            || if saved_is_newer {
+                new_books.contains(id)
+            } else {
+                device_books.contains(id) && !package_books.contains(id)
+            }
+    };
+    let mut merged = newer.clone();
+    match saved.key.as_str() {
+        "pref:readerBookmarks" => {
+            let mut kept = older.clone();
+            kept.data = Value::Object(
+                older
+                    .data
+                    .as_object()?
+                    .iter()
+                    .filter(|(id, _)| keep(id))
+                    .map(|(id, bookmarks)| (id.clone(), bookmarks.clone()))
+                    .collect(),
+            );
+            if !record_files::merge_reader_bookmark_data(&mut merged, &kept, None, true) {
+                return None;
+            }
+        }
+        "pref:lastReadTextIds" => {
+            let target = merged.data.as_object_mut()?;
+            for (language, id) in older.data.as_object()? {
+                if id.as_str().is_some_and(keep) {
+                    target.entry(language.clone()).or_insert_with(|| id.clone());
+                }
+            }
+        }
+        key if key.starts_with("profile:") => {
+            record_files::merge_review_days(&mut merged, older);
+            for field in ["archivedBookIds", "hiddenBuiltInBooks"] {
+                // Hiding a built-in book is not about a book the import brings.
+                if field == "hiddenBuiltInBooks" && !fresh {
+                    continue;
+                }
+                let Some(older_ids) = older.data.get(field).and_then(Value::as_array) else {
+                    continue;
+                };
+                let Some(ids) = merged
+                    .data
+                    .as_object_mut()?
+                    .entry(field)
+                    .or_insert_with(|| Value::Array(Vec::new()))
+                    .as_array_mut()
+                else {
+                    continue;
+                };
+                for id in older_ids {
+                    if id.as_str().is_some_and(keep) && !ids.contains(id) {
+                        ids.push(id.clone());
+                    }
+                }
+            }
+        }
+        _ if fresh => {}
+        _ => return None,
+    }
+    // Only a result that differs from what would win anyway needs a stamp.
+    (merged.data != default_winner.data).then_some(merged.data)
 }
 
 fn backup_targets(staging: &Path, targets: BTreeSet<PathBuf>) -> Result<Vec<FileBackup>, String> {
@@ -661,7 +858,7 @@ impl ExportProgress {
     /// Stage-weighted percentage: preparing 0–2, words 2–25, records 25–35,
     /// books 35–45, images 45–95, finalizing 95, done 100.
     pub fn snapshot(&self) -> Value {
-        let (phase, percent, error, summary) = if let Ok(inner) = self.inner.lock() {
+        let (phase, percent, steps, error, summary) = if let Ok(inner) = self.inner.lock() {
             let percent = match inner.phase {
                 "preparing" => 0u8,
                 "words" => 2 + scaled_percent(inner.done_words, inner.total_words, 23),
@@ -675,15 +872,18 @@ impl ExportProgress {
             (
                 inner.phase.to_string(),
                 percent,
+                inner.done_words + inner.done_records + inner.done_books + inner.done_assets,
                 inner.error.clone(),
                 inner.summary.clone(),
             )
         } else {
-            ("preparing".to_string(), 0u8, None, None)
+            ("preparing".to_string(), 0u8, 0, None, None)
         };
         let mut value = json!({
             "phase": phase,
             "percent": percent,
+            // Items written so far: moves even while the percentage doesn't.
+            "steps": steps,
             "done": phase == "done" || error.is_some(),
         });
         if let Some(error) = error {
@@ -836,7 +1036,23 @@ fn write_asset_tree_counted<W: Write + Seek>(
             }
             let archive_name = format!("{archive_dir}/{name}");
             counters.add_entry(&archive_name, size)?;
-            zip.start_file(archive_name, options)
+            // Page scans and covers are compressed already; deflating them
+            // again only makes large exports slow.
+            let already_compressed = std::path::Path::new(&name)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .is_some_and(|extension| {
+                    matches!(
+                        extension.to_ascii_lowercase().as_str(),
+                        "png" | "jpg" | "jpeg" | "webp" | "gif"
+                    )
+                });
+            let file_options = if already_compressed {
+                options.compression_method(zip::CompressionMethod::Stored)
+            } else {
+                options
+            };
+            zip.start_file(archive_name, file_options)
                 .map_err(|e| e.to_string())?;
             let mut file = std::fs::File::open(entry.path()).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, zip).map_err(|e| e.to_string())?;
@@ -1177,6 +1393,7 @@ mod tests {
             }),
             write_lock: Mutex::new(()),
             base_records: Mutex::new(BTreeMap::new()),
+            base_page: Mutex::default(),
             records_cache: Mutex::new(None),
             device_id: device_id.to_string(),
             startup_instant: std::time::Instant::now(),
@@ -1524,6 +1741,338 @@ mod tests {
         );
         assert!(ClearBackup::parse(&json!({"purpose": "other", "clear": "all"})).is_none());
         assert!(ClearBackup::parse(&json!({"clear": "all"})).is_none());
+    }
+
+    #[test]
+    fn packages_carry_no_deletions() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let target_dir = tempfile::tempdir().unwrap();
+        let source = store(source_dir.path(), "phone");
+        let target = store(target_dir.path(), "pc");
+        let words = record_files::payload_to_records(
+            &json!({"vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}, "Baum": {"word": "Baum"}}}}}),
+            "pc",
+            100,
+        );
+        record_files::write_records(target_dir.path(), &words).unwrap();
+        // The phone cleared "Baum" after the two devices shared their words.
+        let mut phone = words.clone();
+        phone.insert(
+            "vocab:de:baum".to_string(),
+            record_files::tombstone_with_base("vocab:de:baum", "phone", 200, None),
+        );
+        record_files::write_records(source_dir.path(), &phone).unwrap();
+
+        let archive = source_dir.path().join("words.zip");
+        source
+            .export_transfer(&archive, ExportScope::All, None, None)
+            .unwrap();
+        let mut zip = zip::ZipArchive::new(std::fs::File::open(&archive).unwrap()).unwrap();
+        let names = (0..zip.len())
+            .map(|index| zip.by_index(index).unwrap().name().to_string())
+            .collect::<Vec<_>>();
+        let baum = format!("words/{}.yaml", record_files::stable_hash("vocab:de:baum"));
+        assert!(!names.contains(&baum), "{names:?}");
+
+        target.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(target_dir.path()).unwrap();
+        assert!(after["vocab:de:baum"].deleted_at.is_none());
+
+        // A package from 1.1.1 still has the tombstone: it deletes nothing.
+        let old = source_dir.path().join("old.zip");
+        let mut zip = ZipWriter::new(std::fs::File::create(&old).unwrap());
+        let options = SimpleFileOptions::default();
+        write_yaml(
+            &mut zip,
+            "manifest.yaml",
+            &json!({"format": FORMAT, "schemaVersion": SCHEMA_VERSION, "appVersion": "1.1.1", "exportedAt": "1", "scope": "vocabulary"}),
+            options,
+        )
+        .unwrap();
+        write_yaml(
+            &mut zip,
+            &baum,
+            &record_files::record_value(&phone["vocab:de:baum"]),
+            options,
+        )
+        .unwrap();
+        zip.finish().unwrap();
+        target.import_transfer(&old).unwrap();
+        let after = record_files::load_records(target_dir.path()).unwrap();
+        assert!(after["vocab:de:baum"].deleted_at.is_none());
+    }
+
+    #[test]
+    fn a_fresh_device_takes_the_package_settings_and_bookmarks_merge() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let fresh_dir = tempfile::tempdir().unwrap();
+        let used_dir = tempfile::tempdir().unwrap();
+        let source = store(source_dir.path(), "pc");
+        let package = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {
+                    "vocab": {"Haus": {"word": "Haus"}},
+                    "archivedBookIds": ["a", "gb-1"],
+                    "hiddenBuiltInBooks": ["gb-2"],
+                }},
+                "texts": [{"id": "a", "title": "A", "text": "Text"}],
+                "prefs": {"theme": "dark", "readerBookmarks": {
+                    "a": [{"id": "1", "page": 3}],
+                    "gb-1": [{"id": "4", "page": 1}],
+                }},
+            }),
+            "pc",
+            100,
+        );
+        record_files::write_records(source_dir.path(), &package).unwrap();
+        let archive = source_dir.path().join("all.zip");
+        source
+            .export_transfer(&archive, ExportScope::All, None, None)
+            .unwrap();
+
+        // The new phone saved its defaults after the export, and read a
+        // built-in book before any word was saved.
+        let fresh = store(fresh_dir.path(), "phone");
+        let defaults = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {}, "archivedBookIds": [], "hiddenBuiltInBooks": ["gb-3"]}},
+                "prefs": {"theme": "light", "readerBookmarks": {"gb-3": [{"id": "3", "page": 2}]}},
+            }),
+            "phone",
+            200,
+        );
+        record_files::write_records(fresh_dir.path(), &defaults).unwrap();
+        fresh.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(fresh_dir.path()).unwrap();
+        assert_eq!(after["pref:theme"].data, "dark");
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({
+                "a": [{"id": "1", "page": 3}],
+                "gb-1": [{"id": "4", "page": 1}],
+                "gb-3": [{"id": "3", "page": 2}],
+            })
+        );
+        assert_eq!(
+            after["profile:de"].data["archivedBookIds"],
+            json!(["a", "gb-1"])
+        );
+        assert_eq!(
+            after["profile:de"].data["hiddenBuiltInBooks"],
+            json!(["gb-2", "gb-3"])
+        );
+
+        // A device in use keeps its newer settings and lists, and gains the
+        // package's bookmarks and archive entries only for the book the
+        // package brings. Its own removals (gb-1 unarchived, its bookmark
+        // deleted, gb-2 shown again) stay.
+        let used = store(used_dir.path(), "tablet");
+        let own = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Baum": {"word": "Baum"}}, "archivedBookIds": ["b"], "hiddenBuiltInBooks": []}},
+                "prefs": {"theme": "sepia", "readerBookmarks": {"b": [{"id": "2", "page": 9}]}},
+            }),
+            "tablet",
+            300,
+        );
+        record_files::write_records(used_dir.path(), &own).unwrap();
+        used.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(used_dir.path()).unwrap();
+        assert_eq!(after["pref:theme"].data, "sepia");
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({"a": [{"id": "1", "page": 3}], "b": [{"id": "2", "page": 9}]})
+        );
+        assert_eq!(
+            after["profile:de"].data["archivedBookIds"],
+            json!(["b", "a"])
+        );
+        assert_eq!(after["profile:de"].data["hiddenBuiltInBooks"], json!([]));
+
+        // Importing the same package again brings no book, so nothing of
+        // its lists comes back after the tablet removes it.
+        let mut edited = record_files::load_records(used_dir.path()).unwrap();
+        let bookmarks = edited.get_mut("pref:readerBookmarks").unwrap();
+        bookmarks.data = json!({"b": [{"id": "2", "page": 9}]});
+        bookmarks.updated_at = 400;
+        record_files::write_records(used_dir.path(), &edited).unwrap();
+        used.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(used_dir.path()).unwrap();
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({"b": [{"id": "2", "page": 9}]})
+        );
+    }
+
+    #[test]
+    fn a_newer_package_keeps_this_devices_lists_for_books_it_does_not_have() {
+        let source_dir = tempfile::tempdir().unwrap();
+        let target_dir = tempfile::tempdir().unwrap();
+        let tablet = store(target_dir.path(), "tablet");
+        let own = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Baum": {"word": "Baum"}}, "archivedBookIds": ["b", "c"]}},
+                "texts": [
+                    {"id": "b", "title": "B", "text": "Text"},
+                    {"id": "c", "title": "C", "text": "Text"},
+                ],
+                "prefs": {"readerBookmarks": {
+                    "b": [{"id": "1", "page": 2}],
+                    "c": [{"id": "2", "page": 4}],
+                    "gb-9": [{"id": "5", "page": 7}],
+                }},
+            }),
+            "tablet",
+            100,
+        );
+        record_files::write_records(target_dir.path(), &own).unwrap();
+
+        // The PC has book c too, and removed its bookmark and archive entry
+        // later than the tablet last changed its lists; built-in book gb-9
+        // is on both devices, so the PC's newer list decides for it too.
+        let source = store(source_dir.path(), "pc");
+        let package = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}, "archivedBookIds": ["a"]}},
+                "texts": [
+                    {"id": "a", "title": "A", "text": "Text"},
+                    {"id": "c", "title": "C", "text": "Text"},
+                ],
+                "prefs": {"readerBookmarks": {"a": [{"id": "3", "page": 1}]}},
+            }),
+            "pc",
+            300,
+        );
+        record_files::write_records(source_dir.path(), &package).unwrap();
+        let archive = source_dir.path().join("all.zip");
+        source
+            .export_transfer(&archive, ExportScope::All, None, None)
+            .unwrap();
+
+        tablet.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(target_dir.path()).unwrap();
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({"a": [{"id": "3", "page": 1}], "b": [{"id": "1", "page": 2}]})
+        );
+        assert_eq!(
+            after["profile:de"].data["archivedBookIds"],
+            json!(["a", "b"])
+        );
+    }
+
+    #[test]
+    fn export_progress_keeps_moving_through_every_books_images() {
+        let progress = ExportProgress::new();
+        progress.set_totals(0, 0, 2, 0);
+        progress.set_total_assets(5);
+        progress.set_phase("images");
+        let mut seen = Vec::new();
+        for _ in 0..5 {
+            progress.add_asset();
+            let snapshot = progress.snapshot();
+            seen.push((snapshot["percent"].clone(), snapshot["steps"].clone()));
+        }
+        assert_eq!(
+            seen,
+            [(55, 1), (65, 2), (75, 3), (85, 4), (95, 5)]
+                .map(|(percent, steps)| (json!(percent), json!(steps)))
+        );
+    }
+
+    #[test]
+    fn restoring_a_clear_backup_on_an_emptied_device_keeps_later_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = store(dir.path(), "phone");
+        let before = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}}},
+                "prefs": {"theme": "dark", "readerBookmarks": {"gb-1": [{"id": "1", "page": 3}]}},
+            }),
+            "phone",
+            100,
+        );
+        record_files::write_records(dir.path(), &before).unwrap();
+        let backup = dir.path().join("backup.zip");
+        target
+            .export_transfer(
+                &backup,
+                ExportScope::All,
+                Some(
+                    &ClearBackup::parse(
+                        &json!({"purpose": BACKUP_BEFORE_CLEAR, "clear": "words", "clearLanguage": "de"}),
+                    )
+                    .unwrap(),
+                ),
+                None,
+            )
+            .unwrap();
+        // "Clear words" empties the device; later the user changes the
+        // theme and moves a bookmark without saving any word.
+        let mut records = record_files::load_records(dir.path()).unwrap();
+        let now = record_files::now_millis();
+        let word = records.get_mut("vocab:de:haus").unwrap();
+        word.deleted_at = Some(now);
+        word.updated_at = now;
+        let theme = records.get_mut("pref:theme").unwrap();
+        theme.data = json!("light");
+        theme.updated_at = now;
+        let bookmarks = records.get_mut("pref:readerBookmarks").unwrap();
+        bookmarks.data = json!({"gb-1": [{"id": "1", "page": 8}]});
+        bookmarks.updated_at = now;
+        record_files::write_records(dir.path(), &records).unwrap();
+
+        target.import_transfer(&backup).unwrap();
+        let after = record_files::load_records(dir.path()).unwrap();
+        assert!(after["vocab:de:haus"].deleted_at.is_none());
+        assert_eq!(after["pref:theme"].data, "light");
+        assert_eq!(
+            after["pref:readerBookmarks"].data,
+            json!({"gb-1": [{"id": "1", "page": 8}]})
+        );
+    }
+
+    #[test]
+    fn a_pdf_book_without_its_page_images_does_not_stop_the_import() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = store(dir.path(), "phone");
+        let records = record_files::payload_to_records(
+            &json!({
+                "vocab": {"de": {"vocab": {"Haus": {"word": "Haus"}}}},
+                "texts": [{"id": "book-1", "title": "PDF", "pdfOcrPages": [{"imageName": "gone.png"}]}],
+            }),
+            "pc",
+            200,
+        );
+        let archive = dir.path().join("partial.zip");
+        let mut zip = ZipWriter::new(std::fs::File::create(&archive).unwrap());
+        let options = SimpleFileOptions::default();
+        write_yaml(
+            &mut zip,
+            "manifest.yaml",
+            &json!({"format": FORMAT, "schemaVersion": SCHEMA_VERSION, "appVersion": "1.1.1", "exportedAt": "1", "scope": "all"}),
+            options,
+        )
+        .unwrap();
+        for record in records.values() {
+            let name = match record_book_id(record) {
+                Some(book_id) => format!("books/{book_id}/book.yaml"),
+                None => format!("words/{}.yaml", record_files::stable_hash(&record.key)),
+            };
+            let value = if name.ends_with("book.yaml") {
+                json!({"records": [record_files::record_value(record)]})
+            } else {
+                record_files::record_value(record)
+            };
+            write_yaml(&mut zip, &name, &value, options).unwrap();
+        }
+        zip.finish().unwrap();
+
+        let summary = target.import_transfer(&archive).unwrap();
+        let after = record_files::load_records(dir.path()).unwrap();
+        assert!(after["vocab:de:haus"].deleted_at.is_none(), "{summary}");
+        assert!(!after.contains_key("text:book-1"));
+        assert_eq!(summary["incompleteBooks"], 1);
     }
 
     #[test]

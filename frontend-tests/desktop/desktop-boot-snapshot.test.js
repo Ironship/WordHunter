@@ -25,6 +25,7 @@ function runBootstrap(snapshotJson) {
   const window = { fetch(url) { fetches.push(url); return new Promise(() => {}); } };
   const script = template
     .replaceAll("__WH_TOKEN_JSON__", JSON.stringify("token"))
+    .replaceAll("__WH_PAGE_JSON__", JSON.stringify("page"))
     .replaceAll("__WH_IMAGE_OCR_AVAILABLE__", "false")
     .replaceAll("__WH_SNAPSHOT_JSON__", snapshotJson);
   // The deferred branch arms a 120 s abort timer; never schedule it here.
@@ -35,7 +36,7 @@ function runBootstrap(snapshotJson) {
 describe("desktop boot snapshot (#281)", () => {
   it("inlines the store snapshot on desktop only", () => {
     const call = handlers.match(/let bootstrap = bootstrap_script\(([\s\S]*?)\);/)?.[1] || "";
-    assert.match(call, /#\[cfg\(not\(target_os = "android"\)\)\]\s*Some\(&store_snapshot\(&state\.store, true\)\)/);
+    assert.match(call, /#\[cfg\(not\(target_os = "android"\)\)\]\s*Some\(&store_snapshot\(&state\.store, true, Some\(&page\)\)\)/);
     assert.match(call, /#\[cfg\(target_os = "android"\)\]\s*None/);
   });
 
@@ -44,7 +45,7 @@ describe("desktop boot snapshot (#281)", () => {
     assert.match(helper, /object\.insert\("uiState"\.to_string\(\), store\.load_ui_state\(\)\)/);
     const router = readFileSync(new URL("../../src-tauri/src/router.rs", import.meta.url), "utf8");
     const load = router.match(/\(Method::Get, "\/__store\/load"\) => \{[\s\S]*?\n {8}\}/)?.[0] || "";
-    assert.match(load, /handlers::store_snapshot\(&state\.store, acknowledge\)/);
+    assert.match(load, /handlers::store_snapshot\(&state\.store, acknowledge, page\.as_deref\(\)\)/);
   });
 
   it("hands an inlined snapshot to the renderer without a store round trip", () => {

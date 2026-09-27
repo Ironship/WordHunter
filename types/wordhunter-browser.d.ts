@@ -178,6 +178,8 @@ declare global {
     hiddenBuiltInBooks: string[];
     archivedBookIds: string[];
     preferences?: WhProfilePreferences;
+    /** Reviews graded per local day ("YYYY-MM-DD"), kept for about two years. */
+    reviewsByDay?: Record<string, number>;
   }
 
   interface WhStateFilters extends WhRecord {
@@ -452,6 +454,8 @@ interface WhDomCache {
   interface Window {
     __qtBridge?: boolean;
     WH_TOKEN?: string;
+    /** Id of this served page; the backend's save base belongs to one page. */
+    WH_PAGE_ID?: string;
     WH_IMAGE_OCR_AVAILABLE?: boolean;
     __bridgeState?: unknown;
     __bridgeStatePromise?: Promise<WhBridgeSnapshot>;

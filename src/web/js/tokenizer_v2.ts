@@ -124,7 +124,8 @@ export function normalizeWord(value: unknown): string {
   return String(value || "")
     .normalize("NFC")
     .toLowerCase()
-    .replace(/[‘’]/g, "'")
+    // U+02BC is the apostrophe Ukrainian orthography recommends ("памʼять").
+    .replace(/[‘’ʼ]/g, "'")
     // `*` is stripped too: a stray format-marker character must never leak
     // into a vocabulary identity (format markers are normally removed before
     // tokenization; this is the belt-and-braces guard).
@@ -138,7 +139,11 @@ export function normalizeVocabularyWord(value: unknown, language = "en"): string
   const compatible = String(value || "").normalize("NFKC");
   const localeAdjusted = baseLanguage === "tr" || baseLanguage === "az"
     ? compatible.replaceAll("I", "ı").replaceAll("İ", "i")
-    : compatible;
+    // Greek writes a final acute as grave before the next word (θεὰ, θεά):
+    // one word, one key. Keep in sync with vocabulary_word_key in Rust.
+    : baseLanguage === "grc" || baseLanguage === "el"
+      ? compatible.normalize("NFD").replaceAll("\u0300", "\u0301").normalize("NFC")
+      : compatible;
   const normalized = normalizeWord(localeAdjusted);
   return normalizeWord(vocabularyWordKey(normalized, language))
     .replaceAll("ß", "ss")
@@ -195,7 +200,9 @@ export function findGermanSeparableVerbMatches(tokens: readonly TextToken[], voc
   if (lang !== "de") return matches;
   const candidates = new Map<string, Array<{ key: string; prefix: string }>>();
   for (const key of Object.keys(vocab || {})) {
-    const parts = key.split(/\s+/).map(normalizeWord).filter(Boolean);
+    // Vocabulary keys fold ß to ss ("schliesse ab"), so tokens are compared
+    // in the same folded form.
+    const parts = key.split(/\s+/).map((part) => normalizeVocabularyWord(part, lang)).filter(Boolean);
     if (parts.length !== 2 || !GERMAN_SEPARABLE_PREFIXES.has(parts[1])) continue;
     const values = candidates.get(parts[0]) || [];
     values.push({ key, prefix: parts[1] });
@@ -206,7 +213,7 @@ export function findGermanSeparableVerbMatches(tokens: readonly TextToken[], voc
   const clauses: Array<Array<{ tokenIndex: number; word: string }>> = [];
   let clause: Array<{ tokenIndex: number; word: string }> = [];
   tokens.forEach((token, tokenIndex) => {
-    if (token.type === "word") clause.push({ tokenIndex, word: normalizeWord(token.value) });
+    if (token.type === "word") clause.push({ tokenIndex, word: normalizeVocabularyWord(token.value, lang) });
     if (token.type === "text" && /[.!?;,\n\r]/u.test(token.value)) {
       if (clause.length) clauses.push(clause);
       clause = [];

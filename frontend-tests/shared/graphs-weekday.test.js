@@ -38,7 +38,7 @@ async function loadHelpers() {
     "../i18n.js": { t: (key) => key },
     "../loading.js": { setElementBusy: () => {} },
     "../views/heatmap.js": { renderContributionHeatmap: () => {} },
-    "../sm2.js": { todayISO: () => "2026-08-12", simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }), isInReviewQueue: (entry, autoAddLearningOnly) => entry.status !== "ignored" && entry.status !== "known" && !(autoAddLearningOnly && entry.status === "new") }
+    "../sm2.js": { todayISO: (date = new Date(2026, 7, 12)) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`, simulateNextReview: () => ({ interval: 1, nextDate: "2026-08-13" }), isInReviewQueue: (entry, autoAddLearningOnly) => entry.status !== "ignored" && entry.status !== "known" && !(autoAddLearningOnly && entry.status === "new") }
   };
   for (const [specifier, values] of Object.entries(imports)) {
     modules.set(specifier, createMock(specifier, values));
@@ -74,6 +74,20 @@ describe("countReviewsByWeekday (graphs/helpers)", () => {
       { status: "learning", addedAt: "2026-08-12T09:00:00.000Z", lastReviewedAt: "2026-08-12T10:00:00.000Z" }
     ]);
     assert.equal(r.total, 1);
+  });
+
+  it("counts every review day the counter kept, not only each card's latest", async () => {
+    const { countReviewsByWeekday } = await loadHelpers();
+    const r = countReviewsByWeekday([
+      // Reviewed on Monday and again on Friday: the counter holds both.
+      { status: "learning", lastReviewedAt: "2026-08-14T10:00:00" },
+      // Last reviewed on a Tuesday before the counter's first day.
+      { status: "learning", lastReviewedAt: "2026-08-04T10:00:00" }
+    ], { "2026-08-10": 1, "2026-08-14": 1 });
+    assert.equal(r.total, 3);
+    assert.equal(r.counts[1], 1); // Monday
+    assert.equal(r.counts[2], 1); // Tuesday
+    assert.equal(r.counts[5], 1); // Friday, counted once
   });
 
   it("excludes ignored cards", async () => {

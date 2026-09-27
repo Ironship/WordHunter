@@ -112,6 +112,23 @@ describe("autosave dirty attribution (word status persistence, issue #127 P3)", 
     assert.ok(calls.deltas[0].langs.includes("en"));
   });
 
+  it("attributes a review counter change to its profile language", async () => {
+    const { createAutosave, calls } = await loadAutosaveHarness();
+    const { recordReviewDay } = await import("../../dist/web/js/sm2.js");
+    const raw = makeRawState();
+    const autosave = createAutosave(() => raw);
+    const state = autosave.wrap(raw);
+
+    recordReviewDay(state.profiles.en, new Date(2026, 8, 27, 10));
+
+    await autosave.saveState();
+
+    assert.deepEqual(raw.profiles.en.reviewsByDay, { "2026-09-27": 1 });
+    assert.equal(calls.deltas.length, 1);
+    assert.equal(calls.fulls.length, 0, "the counter change must be attributed, not saved as a full snapshot");
+    assert.ok(calls.deltas[0].langs.includes("en"));
+  });
+
   it("never sends an empty delta while a real mutation is pending", async () => {
     const { createAutosave, calls } = await loadAutosaveHarness();
     const raw = makeRawState();

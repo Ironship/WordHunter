@@ -2,6 +2,7 @@
 (function() {
   window.__qtBridge = true;
   window.WH_TOKEN = __WH_TOKEN_JSON__;
+  window.WH_PAGE_ID = __WH_PAGE_JSON__;
   window.WH_IMAGE_OCR_AVAILABLE = __WH_IMAGE_OCR_AVAILABLE__;
   const origFetch = window.fetch.bind(window);
   const bridgeSnapshot = __WH_SNAPSHOT_JSON__;
@@ -13,7 +14,8 @@
     window.__bridgeStatePromise = origFetch('/__store/load', {
       cache: 'no-store',
       headers: {
-        'X-WH-Token': __WH_TOKEN_JSON__
+        'X-WH-Token': __WH_TOKEN_JSON__,
+        'X-WH-Page': __WH_PAGE_JSON__
       },
       signal: storeLoadController.signal
     }).then(function(response) {

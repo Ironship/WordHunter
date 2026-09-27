@@ -24,7 +24,7 @@ pub(crate) fn records_to_payload(dir: &Path, records: &BTreeMap<String, SyncReco
     records_to_payload_inner(dir, records, true, false)
 }
 
-#[cfg_attr(target_os = "android", allow(dead_code))]
+#[cfg(test)]
 pub(crate) fn records_to_snapshot_payload(
     dir: &Path,
     records: &BTreeMap<String, SyncRecord>,
@@ -32,7 +32,6 @@ pub(crate) fn records_to_snapshot_payload(
     records_to_payload_inner(dir, records, false, false)
 }
 
-#[cfg_attr(not(target_os = "android"), allow(dead_code))]
 pub(crate) fn records_to_mobile_snapshot_payload(
     dir: &Path,
     records: &BTreeMap<String, SyncRecord>,

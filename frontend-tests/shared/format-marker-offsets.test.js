@@ -100,6 +100,9 @@ describe("saving a phrase selected in the reader", () => {
     els.readerText = {
       childNodes: nodes,
       dataset: { renderId: String(Math.random()) },
+      classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+      setAttribute() {},
+      removeAttribute() {},
       querySelectorAll: (selector) => selector === ".word-token" ? nodes.filter((node) => node.nodeType === 1) : []
     };
     els.wordPanel = { parentElement: null, classList: { add() {}, remove() {} }, dataset: {} };
@@ -128,5 +131,30 @@ describe("saving a phrase selected in the reader", () => {
     setWordStatus(key, "learning");
     assert.equal(key, "homme est");
     assert.equal(state.vocab[key].word, "L'homme est");
+  });
+
+  it("renders the page again so the new phrase's words take its status", async () => {
+    const key = selectPhrase("en", [{ token: "big" }, " ", { token: "red" }], "big red");
+    const readerText = els.readerText;
+    const staleRenderId = readerText.dataset.renderId;
+    const { getElementById } = document;
+    document.getElementById = (id) => id === "reader-text" ? readerText : null;
+    try {
+      setWordStatus(key, "learning");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The words still carried data-word="big" and "red"; only a new render
+      // keys them by the phrase (and refocuses it).
+      assert.equal(state.vocab[key].status, "learning");
+      assert.notEqual(readerText.dataset.renderId, staleRenderId);
+      assert.equal(readerText.dataset.focusWord, "big red");
+
+      const renderId = readerText.dataset.renderId;
+      setWordStatus(key, "known");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      assert.equal(readerText.dataset.renderId, renderId, "a saved phrase is recolored in place");
+    } finally {
+      document.getElementById = getElementById;
+    }
   });
 });

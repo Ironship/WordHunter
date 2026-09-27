@@ -5,6 +5,7 @@ import { state } from "../state.js";
 import { escapeHtml, escapeAttribute } from "../utils.js";
 import { t } from "../i18n.js";
 import { effectiveLearningLanguage } from "../translator-preferences.js";
+import { normalizeVocabularyWord } from "../tokenizer_v2.js";
 
 export interface ArticleSmartSuggestion {
   kind: "article";
@@ -216,6 +217,9 @@ function checkGermanSeparableVerb(context: string, word: string): string | null 
     lastSuggestPrefixVocab = state.vocab;
   }
   let isPrefixConsumed = false;
+  // Compared in the vocabulary's folded form: "schliesse ab" is saved for
+  // "schließe … ab".
+  const contextWords = new Set(wordsInContext.map((contextWord) => normalizeVocabularyWord(contextWord, "de")));
   for (const vocabWord of suggestPrefixIndex.get(lastWord) || []) {
     // Entries are deleted in place (deleteWord mutates the vocab map without
     // replacing its reference), so the index can hold dead keys — skip them
@@ -225,8 +229,7 @@ function checkGermanSeparableVerb(context: string, word: string): string | null 
     if (entry.status === "new") continue;
     const verbPart = vocabWord.split(" ")[0];
     if (!verbPart) continue;
-    const verbRegex = new RegExp(`\\b${verbPart}\\b`, 'i');
-    if (verbRegex.test(context)) {
+    if (contextWords.has(normalizeVocabularyWord(verbPart, "de"))) {
       isPrefixConsumed = true;
       break;
     }

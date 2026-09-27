@@ -4,7 +4,10 @@ import { t } from "./i18n.js";
 
 const DESKTOP_IMPORT_ACCEPT = ".txt,.md,.markdown,.srt,.vtt,.ass,.ssa,.epub,.mobi,.azw,.azw3,.pdf,text/plain,text/markdown,text/vtt,application/epub+zip,application/x-mobipocket-ebook,application/pdf";
 const OCR_IMAGE_IMPORT_ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
-const MOBILE_IMPORT_ACCEPT = "text/plain,text/markdown,text/vtt,application/x-subrip,text/x-ssa,application/epub+zip,application/pdf";
+// Android's picker filters on the MIME type the provider reports, and
+// providers that do not know .md/.ass/.ssa report application/octet-stream;
+// the import loader rejects other file types by extension.
+const MOBILE_IMPORT_ACCEPT = "text/plain,text/markdown,text/vtt,application/x-subrip,text/x-ssa,application/epub+zip,application/pdf,application/octet-stream";
 type PocketWordSheetState = "collapsed" | "expanded" | "custom";
 
 export function resolvePocketWordSheetState(
