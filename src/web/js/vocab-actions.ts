@@ -37,11 +37,21 @@ function isAutoTranslationRejected(entry: WhVocabEntry): boolean {
   return entry.translationAutoRejected === true;
 }
 
+/** An empty translation needs one; so does an automatic one made into another
+ *  language (the native language was switched since). Entries saved before the
+ *  language was recorded are translated once more. Translations the user typed
+ *  or imported carry no translationSource and are never replaced. */
+function needsAutoTranslation(entry: WhVocabEntry, toCode: string): boolean {
+  if (isAutoTranslationRejected(entry)) return false;
+  if (!String(entry.translation || "").trim()) return true;
+  return Boolean(entry.translationSource) && entry.translationLanguage !== toCode;
+}
+
 export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry): Promise<boolean> {
   if (state.preferences?.autoTranslateWords !== true) return false;
   if (!canUseTranslationProvider()) return false;
-  if (!entry || String(entry.translation || "").trim()) return false;
-  if (isAutoTranslationRejected(entry)) return false;
+  const pair = resolveProfileTranslationPair(state.preferences);
+  if (!entry || !needsAutoTranslation(entry, pair.toCode)) return false;
   const learningLanguage = state.preferences?.learningLanguage;
   const lastFailure = failedAutoTranslations.get(word);
   if (lastFailure && Date.now() - lastFailure < AUTO_TRANSLATE_FAILURE_COOLDOWN_MS) return false;
@@ -49,24 +59,27 @@ export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry):
   pendingAutoTranslations.add(entry);
 
   try {
-    const pair = resolveProfileTranslationPair(state.preferences);
     const displayWord = entry.word || word;
     // Retries transient endpoint failures internally (once, after a short delay).
     const data = await translateWithRetry(displayWord, pair.fromCode, pair.toCode);
     if (state.preferences?.learningLanguage !== learningLanguage) return false;
+    // A result in the language the user has just switched away from would be
+    // saved as if it were current.
+    const currentPair = resolveProfileTranslationPair(state.preferences);
+    if (currentPair.fromCode !== pair.fromCode || currentPair.toCode !== pair.toCode) return false;
     // The entry object may have been replaced by a state reload while we waited —
     // resolve the CURRENT entry for this word and apply the result only if it
     // still needs a translation (fixes silently dropped translations).
     const currentEntry = state.vocab[word];
-    if (!currentEntry
-      || String(currentEntry.translation || "").trim()
-      || isAutoTranslationRejected(currentEntry)) return false;
+    if (!currentEntry || !needsAutoTranslation(currentEntry, pair.toCode)) return false;
     const translated = String(data.translated || "").trim();
     if (translated && translated !== displayWord) {
       failedAutoTranslations.delete(word);
       autoTranslateFailureNotified = false;
+      const previousTranslation = String(currentEntry.translation || "").trim();
       currentEntry.translation = translated;
       currentEntry.translationSource = data.engine || "translator";
+      currentEntry.translationLanguage = pair.toCode;
       currentEntry.updatedAt = new Date().toISOString();
   invalidateVocabListCache();
       saveState();
@@ -75,7 +88,8 @@ export async function maybeAutoTranslateWord(word: string, entry: WhVocabEntry):
         const translationField = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(
           `#word-panel [data-word-field="translation"][data-word="${CSS.escape(word)}"]`
         );
-        if (translationField && !translationField.value.trim()) {
+        // Leaves alone whatever the user has started typing meanwhile.
+        if (translationField && translationField.value.trim() === previousTranslation) {
           translationField.value = translated;
         }
       }
@@ -249,6 +263,7 @@ export function updateWordField(word: string, field: string, value: unknown): vo
   }
   if (field === "translation") {
     delete entry.translationSource;
+    delete entry.translationLanguage;
     if (String(value || "").trim()) {
       delete entry.translationAutoRejected;
     } else {

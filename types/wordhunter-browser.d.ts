@@ -32,6 +32,8 @@ declare global {
     article?: string;
     translation?: string;
     translationSource?: string;
+    /** Language code an automatic translation was made into. */
+    translationLanguage?: string;
     translationAutoRejected?: boolean;
     note?: string;
     examples?: string[];

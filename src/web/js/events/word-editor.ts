@@ -304,6 +304,7 @@ export function bindWordEditorEvents() {
       if (translation !== undefined && translation !== entry.translation) {
         entry.translation = translation;
         delete entry.translationSource;
+        delete entry.translationLanguage;
         if (translation) delete entry.translationAutoRejected;
         else entry.translationAutoRejected = true;
       }
@@ -346,7 +347,12 @@ export function bindWordEditorEvents() {
       const article = addArticleInput?.value.trim();
       if (article) entry.article = article;
       const translation = addTranslationInput?.value.trim();
-      if (translation) entry.translation = translation;
+      if (translation && translation !== entry.translation) {
+        entry.translation = translation;
+        delete entry.translationSource;
+        delete entry.translationLanguage;
+        delete entry.translationAutoRejected;
+      }
       const example = addExampleInput?.value.trim();
       if (example && !entry.examples?.includes(example)) {
         entry.examples = [example, ...(entry.examples || [])].slice(0, 3);
