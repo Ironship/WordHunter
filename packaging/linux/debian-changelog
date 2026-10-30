@@ -1,3 +1,9 @@
+word-hunter (1.1.3) unstable; urgency=medium
+
+  * Translate automatic word translations again after the translation language changes; keep translations typed or imported by the user.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Fri, 30 Oct 2026 12:00:00 +0000
+
 word-hunter (1.1.2) unstable; urgency=medium
 
   * Open Wikipedia and Wikinews articles from Discover as texts again.
