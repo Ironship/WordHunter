@@ -37,6 +37,13 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.3" date="2026-10-30">
+      <description>
+        <ul>
+          <li>Words translated automatically are translated again into your current language after you change it; translations you typed or imported stay as they are.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.2" date="2026-09-27">
       <description>
         <ul>
