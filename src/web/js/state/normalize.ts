@@ -237,7 +237,7 @@ function mergeVocabEntries(first: WhVocabEntry, second: WhVocabEntry): WhVocabEn
   const translationSource = String(preferred.translation || "").trim() || preferred.translationAutoRejected === true
     ? preferred
     : fallback;
-  copyBundle(merged, translationSource, ["translation", "translationSource", "translationAutoRejected"]);
+  copyBundle(merged, translationSource, ["translation", "translationSource", "translationLanguage", "translationAutoRejected"]);
   const addedAt = [first.addedAt, second.addedAt]
     .filter((v): v is string => typeof v === "string" && v.length > 0)
     .sort((a, b) => timestamp(a) - timestamp(b))[0];

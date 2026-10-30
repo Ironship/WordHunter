@@ -118,6 +118,10 @@ export function mergeWordHunterWowEntry(
     }
   }
   if (row.translation && (row.updatedAt * 1000 >= localUpdatedTime || !entry.translation)) {
+    if (row.translation !== entry.translation) {
+      delete entry.translationSource;
+      delete entry.translationLanguage;
+    }
     entry.translation = row.translation;
     entry.updatedAt = unixSecondsToIso(row.updatedAt);
   }

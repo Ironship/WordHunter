@@ -572,6 +572,7 @@ pub(crate) fn merge_vocab_entry_data(existing: &mut Value, source: &Value) -> bo
         &[
             "translation",
             "translationSource",
+            "translationLanguage",
             "translationAutoRejected",
         ],
     );
