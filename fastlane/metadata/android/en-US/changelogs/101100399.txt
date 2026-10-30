@@ -1,0 +1,3 @@
+Word Hunter 1.1.3
+
+Word translations: after you change your language, words the app translated for you are translated again into the new one. Translations you typed yourself stay as they are.
