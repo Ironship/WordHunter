@@ -797,7 +797,11 @@ export function importAnkiTsv(event: unknown): void {
         const word = row.word;
         if (!word) continue;
         const entry = getOrCreateEntry(word, row.context);
-        if (row.translation) entry.translation = row.translation;
+        if (row.translation && row.translation !== entry.translation) {
+          entry.translation = row.translation;
+          delete entry.translationSource;
+          delete entry.translationLanguage;
+        }
         if (row.article) entry.article = row.article;
         entry.updatedAt = new Date().toISOString();
         importedCount++;
