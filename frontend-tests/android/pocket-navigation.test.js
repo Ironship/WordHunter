@@ -66,17 +66,6 @@ function hasSelector(css, selector) {
   ));
 }
 
-function elementSource(html, tagName) {
-  const openPattern = new RegExp(`<${tagName}\\b[^>]*>`, "i");
-  const open = openPattern.exec(html);
-  assert.ok(open, `Missing <${tagName}>`);
-  const closePattern = new RegExp(`</${tagName}\\s*>`, "i");
-  const close = closePattern.exec(html.slice(open.index + open[0].length));
-  assert.ok(close, `Missing </${tagName}>`);
-  const end = open.index + open[0].length + close.index + close[0].length;
-  return html.slice(open.index, end);
-}
-
 // The settings view markup lives in settings-view-template.js (module split,
 // 93a1828) while the behaviour was split into the events/settings/ folder
 // module; all ship to dist as separate modules, so tests that audit the
@@ -171,18 +160,16 @@ describe("Android Pocket navigation", () => {
     assert.match(discoverEvents, /els\.discoverQuery\.blur\(\)/);
   });
 
-  it("declares remote fonts as a preload with a noscript fallback", () => {
+  it("bundles the interface font instead of loading it from a remote host", () => {
     const html = readFileSync(new URL("../../dist/web/index.html", import.meta.url), "utf8");
-    const noscript = elementSource(html, "noscript");
-    const runtimeHtml = html.replace(noscript, "");
-    const runtimeFontLinks = openingTags(runtimeHtml, "link").filter(({ attributes }) => attributes.href?.startsWith("https://fonts.googleapis.com/"));
-    const fallbackFontLinks = openingTags(noscript, "link").filter(({ attributes }) => attributes.href?.startsWith("https://fonts.googleapis.com/"));
+    const styles = readFileSync(new URL("../../dist/web/styles.css", import.meta.url), "utf8");
 
-    assert.equal(runtimeFontLinks.length, 1);
-    assert.equal(runtimeFontLinks[0].attributes.rel, "preload");
-    assert.equal(runtimeFontLinks[0].attributes.as, "style");
-    assert.equal(fallbackFontLinks.length, 1);
-    assert.equal(fallbackFontLinks[0].attributes.rel, "stylesheet");
+    assert.doesNotMatch(html, /fonts\.(googleapis|gstatic)\.com/);
+    assert.doesNotMatch(styles, /fonts\.(googleapis|gstatic)\.com/);
+    assert.equal(openingTags(html, "link").filter(({ attributes }) => /^https?:/.test(attributes.href ?? "")).length, 0);
+    for (const subset of ["latin", "latin-ext", "cyrillic"]) {
+      assert.match(styles, new RegExp(`font-family:[ ]*"Inter";[^}]*fonts/inter-${subset}-wght-normal[.]woff2`));
+    }
   });
 
   it("declares the topbar reload binding", () => {

@@ -1,0 +1,5 @@
+Word Hunter 1.1.4
+
+Interface font: the font is now part of the app, so nothing is requested from Google's servers at startup.
+
+Android: the minimum supported version is now stated as Android 8.0.

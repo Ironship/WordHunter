@@ -1,7 +1,7 @@
 # Word Hunter Third-Party Notices
 
 This document describes the principal third-party technologies used or
-distributed by Word Hunter 1.1.3. Word Hunter itself is licensed under
+distributed by Word Hunter 1.1.4. Word Hunter itself is licensed under
 AGPL-3.0-or-later; the complete license is distributed as `LICENSE`.
 
 The exact Rust dependency license texts generated from the locked dependency
@@ -13,7 +13,7 @@ graphs are distributed as:
 The corresponding source for this release, including build instructions and
 lockfiles, is available at:
 
-https://github.com/Ironship/WordHunter/tree/WordHunter1.1.3
+https://github.com/Ironship/WordHunter/tree/WordHunter1.1.4
 
 ## Application Platform
 
@@ -26,7 +26,7 @@ https://github.com/Ironship/WordHunter/tree/WordHunter1.1.3
 | Microsoft Edge WebView2 | Windows system WebView and loader | Microsoft Edge WebView2 SDK license; loader sources use the repository's stated license | https://github.com/MicrosoftEdge/WebView2Samples and https://developer.microsoft.com/microsoft-edge/webview2/ |
 | WebKitGTK and GTK | Linux WebView and desktop toolkit | LGPL-2.1-or-later for the principal libraries; supplied by the system, Flatpak runtime, or AppImage payload | https://webkitgtk.org/ and https://www.gtk.org/ |
 | Android System WebView | Android WebView runtime | Supplied by the Android system | https://developer.android.com/reference/android/webkit/WebView |
-| Inter | Optional interface font loaded from Google Fonts | SIL Open Font License 1.1; copyright Rasmus Andersson | https://github.com/rsms/inter |
+| Inter | Bundled interface font (fonts/inter-*.woff2, variable, latin/latin-ext/cyrillic subsets) | SIL Open Font License 1.1; copyright Rasmus Andersson | https://github.com/rsms/inter |
 | Atkinson Hyperlegible | Bundled reader font (fonts/atkinson-hyperlegible-*.woff2) | SIL Open Font License 1.1; copyright Braille Institute of America | https://www.brailleinstitute.org/freefont/ and https://github.com/googlefonts/atkinson-hyperlegible |
 | OpenDyslexic | Bundled reader font for dyslexia support (fonts/opendyslexic-*.woff2) | SIL Open Font License 1.1 with font-specific reserved names; copyright OpenDyslexic contributors | https://opendyslexic.org/ and https://github.com/antijingoist/opendyslexic |
 

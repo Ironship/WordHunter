@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.4" date="2026-11-01">
+      <description>
+        <ul>
+          <li>The interface font is now bundled with the app, so nothing is requested from Google's font servers at startup.</li>
+          <li>Word Hunter Pocket now declares Android 8.0 as its minimum version.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.3" date="2026-10-30">
       <description>
         <ul>
