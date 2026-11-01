@@ -1399,11 +1399,8 @@ describe("persistence lifecycle", () => {
     assert.match(inlineBoot, /background:\s*var\(--boot-bg,#00395d\)/);
     assert.match(inlineBoot, /color-scheme:\s*inherit/);
     assert.match(html, /<script src="boot\.js\?v=[0-9a-f]{12}"><\/script>/);
-    assert.ok(html.indexOf('id="app-font-stylesheet"') < html.indexOf('src="boot.js'));
     assert.ok(html.indexOf("html.app-booting") < html.indexOf('src="boot.js'));
     assert.doesNotMatch(boot, /export \{\}/);
-    assert.doesNotMatch(boot, /app-font-stylesheet/);
-    assert.match(app, /getElementById\("app-font-stylesheet"\)\?\.setAttribute\("rel", "stylesheet"\)/);
     assert.ok(boot.includes('localStorage.getItem("wordHunterStateV2")'));
     assert.ok(boot.includes("root.dataset.themePref = theme"));
     assert.match(boot, /forceDesktopDark = !pocketMode && family !== "classic"/);

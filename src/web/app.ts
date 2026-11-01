@@ -316,7 +316,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (ready && restoringReaderTextId && state.currentView === "reader" && state.currentTextId === restoringReaderTextId) render();
       })
       .catch((error) => console.warn("Could not restore the active Reader body after startup:", error));
-    document.getElementById("app-font-stylesheet")?.setAttribute("rel", "stylesheet");
     showLanguageOnboardingIfNeeded();
   } catch (error) {
     reportClientError(`Startup failed: ${error?.stack || error}`, error);
