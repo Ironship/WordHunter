@@ -187,6 +187,9 @@ window.addEventListener("wordhunter:theme-changed", () => {
 });
 
 let bridgeStateLoadStarted = false;
+// Set when startup has rendered. The app-booting class is not enough: a boot
+// error report removes it while startup is still running.
+let bootFinished = false;
 function startBridgeStateLoad(): void {
   if (!window.__qtBridge || window.__bridgeState || bridgeStateLoadStarted) return;
   bridgeStateLoadStarted = true;
@@ -197,9 +200,11 @@ function startBridgeStateLoad(): void {
         return response.json();
       });
   window.__bridgeStatePromise = promise;
+  let snapshotApplied = false;
   void promise
     .then(async (snapshot) => {
       applyBridgeSnapshotToState(snapshot);
+      snapshotApplied = true;
       delete window.__bridgeStatePromise;
       // The persisted locale is authoritative only after the snapshot lands
       // (issue #275): the boot already ran loadLocale against the default /
@@ -213,6 +218,13 @@ function startBridgeStateLoad(): void {
     })
     .catch((error) => {
       reportClientError(`Store load failed: ${error?.stack || error}`, error);
+      // The open text cannot arrive now: stop showing the Reader as loading.
+      // null also keeps autosave from writing the unloaded state over the
+      // store, including when the snapshot was set but failed to normalize.
+      if (!snapshotApplied) window.__bridgeState = null;
+      if (!bootFinished) return;
+      ensureCurrentText();
+      render();
     });
 }
 
@@ -236,6 +248,8 @@ function reconcileLocaleAfterStateReplace(): Promise<void> {
     applyTranslations();
     refreshAddWordDialogLocalization();
     syncSettingsControls();
+    // applyTranslations put the generic Reader title over the open text's.
+    if (state.currentView === "reader" && bootFinished) render();
   });
 }
 
@@ -326,6 +340,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       delete window.wordHunterBootTimeout;
     }
     document.documentElement.classList.remove("app-booting");
+    bootFinished = true;
   }
   window.requestAnimationFrame(() => {
     if (document.documentElement.dataset.platform === "android") return;

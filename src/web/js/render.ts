@@ -147,6 +147,10 @@ function renderOcrGpuStatus(): void {
 
 export function ensureCurrentText(): void {
   if (state.currentTextId && getTextById(state.currentTextId)) return;
+  // Android loads the store after boot, so an imported text is unknown until
+  // the snapshot lands. Dropping it now would reopen the library, and the
+  // snapshot keeps that local choice; the snapshot handler opens it instead.
+  if (state.currentTextId && window.__qtBridge && window.__bridgeState === undefined && window.__bridgeStatePromise !== undefined) return;
   const lastTextId = getLastReadTextId();
   if (lastTextId && getTextById(lastTextId)) {
     state.currentTextId = lastTextId;
