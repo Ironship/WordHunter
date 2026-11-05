@@ -1,0 +1,3 @@
+Word Hunter 1.1.5
+
+Reading position: opening a text again from the library or restarting the app no longer takes you back to the top of the page. An imported text that was open when the app closed opens again after a restart.

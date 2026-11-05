@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.5" date="2026-11-05">
+      <description>
+        <ul>
+          <li>The Reader keeps your place in a text when you open it again from the library or restart the app.</li>
+          <li>On Android, an imported text that was open when the app closed opens again after a restart, instead of the library.</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.4" date="2026-11-01">
       <description>
         <ul>
