@@ -1,3 +1,9 @@
+word-hunter (1.1.5) unstable; urgency=medium
+
+  * Keep the reading position when a text is reopened from the library or the app restarts.
+
+ -- Word Hunter maintainers <maintainers@wordhunter.app>  Thu, 05 Nov 2026 12:00:00 +0000
+
 word-hunter (1.1.4) unstable; urgency=medium
 
   * Bundle the Inter interface font instead of loading it from Google Fonts.
