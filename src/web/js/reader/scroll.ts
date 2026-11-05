@@ -45,10 +45,17 @@ function visibleWordIndexFromPoint(container: HTMLElement): number | null {
     rect.left + rect.width * 0.5,
     rect.right - 20
   ].filter((x) => x > rect.left && x < rect.right);
+  // Restoring centres the saved word, so read it from the middle: a word
+  // taken from the top would move the place back half a screen per reopen.
+  const middle = rect.top + rect.height * 0.5;
   const ys = [
-    rect.top + 20,
+    middle,
+    middle - 16,
+    middle + 16,
+    middle - 32,
+    middle + 32,
     rect.top + rect.height * 0.25,
-    rect.top + rect.height * 0.5
+    rect.top + 20
   ].filter((y) => y > rect.top && y < rect.bottom);
 
   for (const y of ys) {
@@ -73,6 +80,14 @@ function visibleWordIndexFromPoint(container: HTMLElement): number | null {
 
 export function rememberReaderScrollPosition({ precise = true, flush = false }: RememberReaderScrollOptions = {}): void {
   if (!els.readerText || !state.currentTextId) return;
+  // Only a shown, rendered page has a position. A hidden Reader (opening a
+  // book from the library) or one still rendering or loading reads
+  // scrollTop 0, which would replace the saved place with the page top.
+  if (
+    els.readerText.clientHeight === 0
+    || els.readerText.dataset?.rendering === "1"
+    || els.readerText.querySelector?.(".reader-loading")
+  ) return;
   if (!state.readerScrolls) state.readerScrolls = {};
 
   const scrollTop = Math.max(0, Math.round(els.readerText.scrollTop || 0));

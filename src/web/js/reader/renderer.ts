@@ -214,7 +214,10 @@ export function renderReader(): void {
     if (els.uniqueSummary) els.uniqueSummary.textContent = "";
     if (els.progressBar) els.progressBar.style.width = "0%";
     if (els.progressBarLearning) els.progressBarLearning.style.width = "0%";
-    els.readerText.innerHTML = `<p>${escapeHtml(t("reader.empty"))}</p>`;
+    // The open text is kept while the Android store is still loading.
+    els.readerText.innerHTML = state.currentTextId && window.__bridgeState === undefined && window.__bridgeStatePromise !== undefined
+      ? `<div class="reader-loading" role="status" aria-live="polite" aria-atomic="true"><div class="spinner" aria-hidden="true"></div><p class="muted-copy">${escapeHtml(t("reader.loadingHint"))}</p></div>`
+      : `<p>${escapeHtml(t("reader.empty"))}</p>`;
     if (els.wordPanel) {
       clearWordPanelStatus();
       els.wordPanel.innerHTML = `<div class="empty-state"><p class="eyebrow">${escapeHtml(t("reader.wordPanelEyebrow"))}</p><h2>${escapeHtml(t("reader.wordPanelHeading"))}</h2><p>${escapeHtml(t("reader.wordPanelHint"))}</p></div>`;
