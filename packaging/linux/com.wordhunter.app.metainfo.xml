@@ -37,6 +37,14 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="1.1.6" date="2026-11-27">
+      <description>
+        <ul>
+          <li>Keep the current flashcard on screen when midnight passes so Show always reveals the matching answer.</li>
+          <li>Hide any open answer automatically if the active flashcard changes (for example after switching profiles).</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.5" date="2026-11-05">
       <description>
         <ul>

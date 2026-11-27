@@ -1,0 +1,3 @@
+Word Hunter 1.1.6
+
+Flashcards across midnight: clicking Show after 00:00 on a card opened before midnight now reveals the answer for that word instead of switching to another card.
