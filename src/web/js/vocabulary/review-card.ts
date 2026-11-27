@@ -16,7 +16,7 @@ import { resolveVocabularyKey, GERMAN_SEPARABLE_PREFIXES } from "../tokenizer_v2
 import { effectiveLearningLanguage } from "../translator-preferences.js";
 import { speakWord } from "../tts.js";
 
-import { reviewAnswerVisible } from "../views/vocabulary.js";
+import { hideReviewAnswer, reviewAnswerVisible } from "../views/vocabulary.js";
 
 interface SrsMetaEntry {
   srsAlgorithm?: string;
@@ -38,12 +38,14 @@ interface ReviewQueueEntry extends WhVocabEntry {
 }
 
 interface ReviewSession {
-  date: string;
+  id: number;
   profile: string;
   keys: string[];
 }
 
 let reviewSession: ReviewSession | null = null;
+let reviewSessionSeq = 0;
+let lastRenderedCardId: string | null = null;
 let lastAutoSpokenPresentation = "";
 let reviewGradePending = false;
 let pendingSummary: { entries: ReviewQueueEntry[]; today: string } | null = null;
@@ -84,13 +86,25 @@ export function shuffleTodayReviewQueue(): void {
 function buildReviewQueue(entries: readonly ReviewQueueEntry[], today: string): ReviewQueueEntry[] {
   const profile = effectiveLearningLanguage(state.preferences);
   const byKey = new Map(entries.filter((entry) => isDue(entry.nextDate, today)).map((entry) => [entry.key, entry]));
-  if (!reviewSession || reviewSession.date !== today || reviewSession.profile !== profile) {
-    reviewSession = { date: today, profile, keys: shuffle([...byKey.keys()]) };
+  if (!reviewSession || reviewSession.profile !== profile) {
+    reviewSession = { id: ++reviewSessionSeq, profile, keys: shuffle([...byKey.keys()]) };
     state.reviewIndex = 0;
   } else {
-    const previousQueueLength = reviewSession.keys.length;
+    // Keep the active queue order across local midnight (issue #296): a day
+    // rollover while a card is on screen must not reshuffle the deck or reset
+    // reviewIndex before the user reveals or grades it. Newly due cards for
+    // the new day are shuffled and appended after the remaining cards.
+    const activeKey = reviewSession.keys.length > 0
+      ? reviewSession.keys[clamp(state.reviewIndex || 0, 0, reviewSession.keys.length - 1)]
+      : null;
     reviewSession.keys = reviewSession.keys.filter((key) => byKey.has(key));
-    if (previousQueueLength > 0 && reviewSession.keys.length === 0) state.reviewIndex = 0;
+    if (reviewSession.keys.length === 0) {
+      reviewSession.id = ++reviewSessionSeq;
+      state.reviewIndex = 0;
+    } else if (activeKey !== null) {
+      const nextIndex = reviewSession.keys.indexOf(activeKey);
+      if (nextIndex >= 0) state.reviewIndex = nextIndex;
+    }
     const queued = new Set(reviewSession.keys);
     reviewSession.keys.push(...shuffle([...byKey.keys()].filter((key) => !queued.has(key))));
   }
@@ -113,11 +127,11 @@ function scheduleReviewSummary(entries: ReviewQueueEntry[], today: string): void
   else setTimeout(renderSummary, 0);
 }
 
-function maybeAutoSpeakCard(card: ReviewQueueEntry, today: string, isReverse: boolean): void {
+function maybeAutoSpeakCard(card: ReviewQueueEntry, sessionId: number, isReverse: boolean): void {
   if (state.currentView !== "flashcards" || state.preferences.autoTtsOnFlashcardOpen === false) return;
   if (isReverse && !reviewAnswerVisible) return;
   const side = isReverse ? "answer" : "front";
-  const presentation = `${effectiveLearningLanguage(state.preferences)}|${today}|${card.key}|${side}`;
+  const presentation = `${effectiveLearningLanguage(state.preferences)}|${sessionId}|${card.key}|${side}`;
   if (presentation === lastAutoSpokenPresentation) return;
   lastAutoSpokenPresentation = presentation;
   queueMicrotask(() => {
@@ -181,6 +195,8 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
   }
 
   if (!reviewWords.length) {
+    lastRenderedCardId = null;
+    if (reviewAnswerVisible) hideReviewAnswer();
     if (sessionStats.total > 0) {
       renderSessionSummary();
     } else {
@@ -195,6 +211,13 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     void saveUiState();
   }
   const card = reviewWords[state.reviewIndex];
+  const cardId = `${effectiveLearningLanguage(state.preferences)}|${card.key}`;
+  // Never display another card's revealed answer if the active card changed
+  // (e.g. profile switch, shuffle, or external removal of the current word).
+  if (lastRenderedCardId !== null && lastRenderedCardId !== cardId && reviewAnswerVisible) {
+    hideReviewAnswer();
+  }
+  lastRenderedCardId = cardId;
   const grades = [1, 2, 3, 4, 5];
   const ratingButtons = grades.map((q) => `
     <button class="status-button sm2-grade sm2-grade-${q}" type="button" data-sm2-grade="${q}" data-word="${escapeAttribute(card.key)}" title="${escapeAttribute(t(`sm2.grade${q}`))}" aria-label="${escapeAttribute(t(`sm2.grade${q}`))}">${q}</button>
@@ -344,7 +367,7 @@ export function renderReview(transition?: ReviewTransitionDirection): void {
     <p class="ai-explanation review-ai-explanation" data-review-ai-explanation role="status" aria-live="polite" hidden></p>
     <p class="muted-copy">${reviewIndex + 1} / ${reviewWords.length} · ${escapeHtml(t("sm2.nextDue", { date: card.nextDate || today }))} · ${escapeHtml(scheduleMeta)}</p>
   `;
-  maybeAutoSpeakCard(card, today, isReverse);
+  maybeAutoSpeakCard(card, reviewSession?.id ?? 0, isReverse);
 }
 
 /** End-of-session summary shown after the last card is graded (UI only). */
@@ -419,7 +442,6 @@ export async function gradeReview(word: string, quality: number): Promise<void> 
     sessionStats.total += 1;
     if (quality >= 4) sessionStats.remembered += 1;
     playReviewGradeSound(quality);
-    const { hideReviewAnswer } = await import("../views/vocabulary.js");
     hideReviewAnswer();
     reviewQueueCache = null;
     renderReview();
